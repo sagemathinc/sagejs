@@ -6,8 +6,8 @@
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Implement exact Minkowski, Bach, and BDF factor-base bounds, compact factor-base plans/records, prime-ideal norm streaming, and focused cross-oracle tests",
-  "base_commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+  "objective": "Implement and optimize exact Minkowski, Bach, and BDF factor-base planning, compact authenticated records, resumable norm streaming, and selective prime-ideal construction with focused cross-oracle and performance tests",
+  "base_commit": "80c300891aa499311e934e77e6be14bb5ea47c43",
   "claims": [
     "src/lib/sagejs/number_fields/class_group_factor_base.py",
     "test/number-field-class-group-factor-base.cjs",
@@ -37,6 +37,7 @@
     "pnpm exec pyright src/lib/sagejs/number_fields/class_group_factor_base.py",
     "pnpm test:baselib:strict",
     "node --test test/number-field-class-group-factor-base.cjs",
+    "node --test test/number-field-class-unit-engine.cjs",
     "pnpm test:native"
   ],
   "runs": [
@@ -69,19 +70,59 @@
       "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
       "workspace_fingerprint": "3eb2b637f9589ed26657e1702c47545dba9b653752c53588cbbd2d868df3f21d",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_group_factor_base.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.421,
+      "started_at": "2026-08-21T07:55:53.891Z",
+      "commit": "0276732eb497c1b1cd3a013f567d610f948f4b2e",
+      "workspace_fingerprint": "b73916cff44675b0feb6569f17439c1ba819a3bcfffb7a777505e2470a2fee0b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.342,
+      "started_at": "2026-08-21T07:55:59.462Z",
+      "commit": "0276732eb497c1b1cd3a013f567d610f948f4b2e",
+      "workspace_fingerprint": "b73916cff44675b0feb6569f17439c1ba819a3bcfffb7a777505e2470a2fee0b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-group-factor-base.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.621,
+      "started_at": "2026-08-21T07:56:30.996Z",
+      "commit": "0276732eb497c1b1cd3a013f567d610f948f4b2e",
+      "workspace_fingerprint": "b73916cff44675b0feb6569f17439c1ba819a3bcfffb7a777505e2470a2fee0b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-engine.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.374,
+      "started_at": "2026-08-21T07:57:12.327Z",
+      "commit": "0276732eb497c1b1cd3a013f567d610f948f4b2e",
+      "workspace_fingerprint": "b73916cff44675b0feb6569f17439c1ba819a3bcfffb7a777505e2470a2fee0b",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Implements rational-interval-certified Minkowski, Bach, and BDF bounds; canonical compact factor-base plans and authenticated prime records; deterministic norm-ordered prime-ideal streaming; and six-field Sage/PARI/Magma comparison fixtures including the discriminant-380452 C4 quintic.",
+    "summary": "Implements rational-interval-certified Minkowski, Bach, and BDF bounds; tighter preflight estimates and resumable progress; canonical authenticated records; and selective Dedekind--Kummer construction that builds only eligible residue degrees. The discriminant-380452 quintic factor base fell from 10.98s to 1.76s and repeated construction to 20 microseconds while retaining norm order and differential equality with the full certified decomposition.",
     "risks": [
       "The mandatory arithmetic-algebra pnpm test:native gate is intentionally pending for central integration; focused runtime, standalone Pyright, and strict-baselib receipts pass.",
-      "When one rational prime has both eligible and ineligible residue degrees, the existing public exact decomposition API materializes all siblings before this module filters by norm; rational primes with no eligible ideals are skipped entirely.",
+      "The selective path uses established internal Dedekind--Kummer constructors from prime_ideals.py because this lane cannot change the shared prime-ideal API; a later integration-owned public selective constructor should replace that private coupling.",
       "Exact BDF evaluation is deliberately capped and optimized for rigorous planning rather than bulk repeated calls; maximal-order identity caching avoids repeat work in one context."
     ],
     "next_steps": [
       "Integration should connect FactorBasePlan and FactorBasePrimeRecord.to_dict() to ClassUnitGroupContext.set_factor_base().",
       "Integration owns the pending pnpm test:native and broad build/precompile gates.",
-      "A future selective prime-ideal constructor can avoid materializing ineligible siblings at mixed splitting types without changing the canonical record schema."
+      "Promote the selective p-maximal constructor into the shared prime-ideal API when that integration-owned surface next changes; the canonical record schema needs no migration."
     ]
   }
 }
