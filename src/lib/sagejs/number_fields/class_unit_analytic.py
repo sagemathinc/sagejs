@@ -1015,10 +1015,17 @@ def _element_from_payload(field: Any, payload: Any) -> Any:
     for pair in payload:
         if not isinstance(pair, list) or len(pair) != 2:
             raise TypeError("a saturation coordinate must be [numerator, denominator]")
+        if any(isinstance(value, bool) for value in pair):
+            raise TypeError("a saturation coordinate must contain exact integers")
+        numerator = int(pair[0])
         denominator = int(pair[1])
+        if numerator != pair[0] or denominator != pair[1]:
+            raise TypeError("a saturation coordinate must contain exact integers")
         if denominator <= 0:
             raise ValueError("a saturation coordinate denominator must be positive")
-        coordinates.append(rational_field(int(pair[0])) / rational_field(denominator))
+        if _gcd(numerator, denominator) != 1:
+            raise ValueError("a saturation coordinate must be reduced")
+        coordinates.append(rational_field(numerator) / rational_field(denominator))
     return field._from_coefficients(coordinates)
 
 
@@ -1750,6 +1757,7 @@ def verify_saturation_evidence(
             selected_torsion = tuple(torsion_elements)
         selected_units = tuple(initial_units)
         obstructed: set[int] = set()
+        evidence_precision_history: list[int] = []
         for record in payload["evidence"]:
             prime = int(record["prime"])
             if prime not in required or not bool(record.get("rigorous", False)):
@@ -1759,6 +1767,7 @@ def verify_saturation_evidence(
                 if (
                     record.get("schema")
                     != "sagejs.number-fields.unit-pth-root-certificate.v1"
+                    or record.get("method") != "exact-pth-root-identity"
                     or int(record.get("lattice_index_change", 0)) != prime
                     or remaining_index % prime
                 ):
@@ -1781,10 +1790,13 @@ def verify_saturation_evidence(
                     return False
                 selected_units = replayed
                 remaining_index //= prime
+                evidence_precision_history.extend(certificate.precision_history)
             elif outcome == "saturated":
                 if (
                     record.get("schema")
                     != "sagejs.number-fields.unit-local-pth-obstruction.v1"
+                    or record.get("method")
+                    != "exact-finite-order-quotient-pth-power-obstruction"
                 ):
                     return False
                 targets = tuple(
@@ -1806,6 +1818,7 @@ def verify_saturation_evidence(
                 ):
                     return False
                 obstructed.add(prime)
+                evidence_precision_history.extend(certificate.precision_history)
             else:
                 return False
         final_payloads = [
@@ -1827,10 +1840,29 @@ def verify_saturation_evidence(
         if tuple(int(value) for value in payload["unresolved_primes"]) != unresolved:
             return False
         complete = rigorous_bound and not unresolved
+        payload_precision_history = tuple(
+            int(value) for value in payload["precision_history"]
+        )
+        if not payload_precision_history or any(
+            value < 16 for value in payload_precision_history
+        ):
+            return False
+        if complete and evidence_precision_history:
+            if payload_precision_history != tuple(evidence_precision_history):
+                return False
+        expected_status = "rigorous" if complete else "incomplete"
+        expected_proof_status = (
+            "exact-unit-p-saturation"
+            if complete
+            else "bounded-unit-p-saturation-incomplete"
+        )
         return (
             bool(payload["complete"]) == complete
             and bool(payload["saturated"]) == complete
             and bool(payload["rigorous"]) == complete
+            and payload["status"] == expected_status
+            and payload["proof_status"] == expected_proof_status
+            and (not complete or payload["incomplete_reason"] is None)
         )
     except (KeyError, TypeError, ValueError, ArithmeticError, ZeroDivisionError):
         return False
