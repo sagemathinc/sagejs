@@ -151,7 +151,7 @@
       "fallback_functions": 7,
       "total_functions": 7,
       "fallback_reasons": [
-        "foreign-resource-not-declared-for-wasm"
+        "foreign-resource-ownership-domain-adapter-required"
       ]
     },
     {
