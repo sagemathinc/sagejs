@@ -891,7 +891,15 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
         error: exports.sagejs_numeric_symbolic_result(1),
         operationCount: length / 12,
       });
-      trace("symbolicNumericalIntegral", length + 40, 16);
+      recordCapability(
+        "specialist:symbolic-numerical-integral-wasm",
+        "receipt-backed-wasm-artifact",
+        {
+          executionTarget: "wasm-artifact",
+          ingressBytes: length + 40,
+          egressBytes: 16,
+        },
+      );
       return result;
     },
     symbolicFindRoot(tree, variable, lower, upper, maxIterations, tolerance) {
@@ -906,7 +914,15 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
       );
       if (answer !== 1) failure("symbolic find root");
       const result = exports.sagejs_numeric_symbolic_result(0);
-      trace("symbolicFindRoot", length + 32, 8);
+      recordCapability(
+        "specialist:symbolic-find-root-wasm",
+        "receipt-backed-wasm-artifact",
+        {
+          executionTarget: "wasm-artifact",
+          ingressBytes: length + 32,
+          egressBytes: 8,
+        },
+      );
       return result;
     },
     serializeAnalyticPoint(value) {

@@ -314,17 +314,22 @@ export function createAnalyticWasmBackend(instance, options = {}) {
     }
     // Copy before any later Wasm call can mutate memory or grow the buffer.
     const packet = new Uint8Array(memory.buffer, outputPointer, outputLength).slice();
-    const capabilityIds = operation === analyticOperations.RIEMANN_ZETA_VALUES
-      ? ["analytic:riemann-zeta-batch"]
-      : operation === analyticOperations.DIRICHLET_L_VALUES
-        ? ["analytic:dirichlet-l-batch"]
-        : operation === analyticOperations.QUADRATIC_ZETA_VALUES
-          ? [
-            "analytic:riemann-zeta-batch",
-            "analytic:dirichlet-l-batch",
-            "analytic:quadratic-dedekind-zeta",
-          ]
-          : [];
+    let capabilityIds = [];
+    if (operation === analyticOperations.RIEMANN_ZETA_VALUES) {
+      capabilityIds = ["analytic:riemann-zeta-batch"];
+    } else if (operation === analyticOperations.COMPLEX_GAMMA_VALUES) {
+      capabilityIds = ["analytic:complex-gamma"];
+    } else if (operation === analyticOperations.RIEMANN_XI_VALUES) {
+      capabilityIds = ["analytic:riemann-xi"];
+    } else if (operation === analyticOperations.DIRICHLET_L_VALUES) {
+      capabilityIds = ["analytic:dirichlet-l-batch"];
+    } else if (operation === analyticOperations.QUADRATIC_ZETA_VALUES) {
+      capabilityIds = [
+        "analytic:riemann-zeta-batch",
+        "analytic:dirichlet-l-batch",
+        "analytic:quadratic-dedekind-zeta",
+      ];
+    }
     for (const capabilityId of capabilityIds) {
       recordCapability(
         capabilityId,
