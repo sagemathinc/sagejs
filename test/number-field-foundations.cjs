@@ -33,3 +33,26 @@ test("certified prime ideals and fractional ideal arithmetic are public", async 
     await session.close();
   }
 });
+
+test("integral element valuations agree with exact prime-power ideals", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "R.<x> = QQ[]\n" +
+            "K.<a> = NumberField(x^5 + x^3 - x^2 + 4*x + 1)\n" +
+            "O = K.maximal_order()\n" +
+            "D = O.factor_rational_prime(2)\n" +
+            "P, Q = D[0][0], D[1][0]\n" +
+            "alpha = a^4 + 2*a^2 + 5\n" +
+            "[P.norm(), Q.norm(), P.valuation(alpha), Q.valuation(alpha), " +
+            "O.ideal(alpha) == P^4, P.valuation(2), Q.valuation(2)]",
+        )
+      ).repr,
+      "[2, 4, 4, 0, True, 3, 1]",
+    );
+  } finally {
+    await session.close();
+  }
+});

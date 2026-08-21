@@ -1,0 +1,85 @@
+{
+  "schema": "sagejs.test/number-field-class-group-matrix-v1",
+  "oracle": {
+    "system": "SageMath",
+    "version": "10.9.post30",
+    "command": "matrix(ZZ, rows).elementary_divisors()",
+    "note": "Generated offline on 2026-08-21; Sage uses FLINT for exact integer Smith form. Zero elementary divisors record dependent relations or free quotient rank."
+  },
+  "cases": [
+    {
+      "name": "cyclic-4-noncanonical",
+      "rows": [[4, 0], [0, 1], [8, 3]],
+      "elementary_divisors": [1, 4, 0],
+      "invariants": [4],
+      "free_rank": 0,
+      "order": 4,
+      "dependency_count": 1
+    },
+    {
+      "name": "noncyclic-2-6",
+      "rows": [[2, 0], [0, 6], [4, 12]],
+      "elementary_divisors": [2, 6, 0],
+      "invariants": [2, 6],
+      "free_rank": 0,
+      "order": 12,
+      "dependency_count": 1
+    },
+    {
+      "name": "tall-unit-kernel",
+      "rows": [[2, 4, 6], [0, 6, 12], [0, 0, 30], [2, 10, 18], [4, 8, 12]],
+      "elementary_divisors": [2, 6, 30, 0, 0],
+      "invariants": [2, 6, 30],
+      "free_rank": 0,
+      "order": 360,
+      "dependency_count": 2
+    },
+    {
+      "name": "free-rank-one",
+      "rows": [[2, 4, 6], [0, 6, 12]],
+      "elementary_divisors": [2, 6],
+      "invariants": [2, 6],
+      "free_rank": 1,
+      "order": null,
+      "dependency_count": 0
+    },
+    {
+      "name": "screen-prime-collision",
+      "rows": [[46337, 0], [0, 2]],
+      "elementary_divisors": [1, 92674],
+      "invariants": [92674],
+      "free_rank": 0,
+      "order": 92674,
+      "dependency_count": 0
+    },
+    {
+      "name": "unimodular-skew",
+      "rows": [[3, 4], [-8, -11], [6, 8]],
+      "elementary_divisors": [1, 1, 0],
+      "invariants": [],
+      "free_rank": 0,
+      "order": 1,
+      "dependency_count": 1
+    },
+    {
+      "name": "zero-and-dependent-relations",
+      "rows": [[0, 0, 0], [2, 0, 0], [0, 6, 0], [2, 6, 0]],
+      "elementary_divisors": [2, 6, 0, 0],
+      "invariants": [2, 6],
+      "free_rank": 1,
+      "order": null,
+      "dependency_count": 2
+    }
+  ],
+  "benchmark": {
+    "columns": 48,
+    "rows": 96,
+    "entries_per_row": 5,
+    "seed": 20260821,
+    "modular_insert_max_ms": 1500,
+    "flint_presentation_max_ms": 10000,
+    "python_oracle_columns": 12,
+    "python_oracle_rows": 24,
+    "python_presentation_max_ms": 5000
+  }
+}

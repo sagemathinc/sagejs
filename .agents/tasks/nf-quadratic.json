@@ -1,0 +1,74 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-quadratic",
+  "title": "Quadratic class and unit groups",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement exact Minkowski triviality, continued-fraction real-quadratic units, and ordinary/narrow real-quadratic class groups in a new strict module with focused tests and oracle comparisons",
+  "base_commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+  "claims": [
+    "src/lib/sagejs/number_fields/quadratic_class_units.py",
+    "test/number-field-quadratic-class-units.cjs",
+    "test/fixtures/number-field-quadratic-class-units.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/pari-2.18.1.alpha/src/basemath/buch1.c"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage/PARI",
+      "Magma"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-quadratic-class-units.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.142,
+      "started_at": "2026-08-21T04:55:30.036Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "77a0b93323fe89ac8c644180263ebc3e3860e632c2c08cafd6b95fe24633879f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.558,
+      "started_at": "2026-08-21T04:55:48.373Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "77a0b93323fe89ac8c644180263ebc3e3860e632c2c08cafd6b95fe24633879f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a strict ordinary-Python quadratic engine with exact squared Minkowski comparisons, principal-form continued-fraction fundamental units and replayable minimality data, exhaustive primitive reduced-indefinite-form ordinary/narrow class groups, exact composition and canonical maps, ideal-basis representatives, resource caps, a 14-field Sage/PARI oracle corpus, and focused performance/corruption coverage. The focused Sage.js suite and strict baselib gate pass on linux-x64; discriminant 12 proves sqrt(12)/2 < 2 and yields ordinary invariants () versus narrow invariants (2,).",
+    "risks": [
+      "Enumeration is intentionally complete but O(D) in the discriminant and is the small/moderate-discriminant P1 path, not the later Shanks/Buchmann large-discriminant backend.",
+      "The offline Magma command is recorded but no Magma executable was available in this workspace; the committed numerical corpus was executed against SageMath 10.9.post30/PARI 2.18.1.",
+      "Only linux-x64 was executed in this lane; native Windows x64, Linux arm64, and macOS arm64 validation remains a central integration responsibility."
+    ],
+    "next_steps": [
+      "Integration lane should route positive degree-two field discriminants to real_quadratic_class_unit_context while retaining the existing imaginary reduced-form backend, and transport (x + y*sqrt(D))/2 through the field's certified square-root element.",
+      "Run pnpm test:changed, pnpm test:native, and exact-revision four-platform CI after merging all number-field class/unit lanes; the broad local self-hosting build was deliberately stopped at integration request after focused and strict receipts passed.",
+      "Oracle lane may replace the recorded Magma command metadata with an executed Magma receipt when a licensed executable is available."
+    ]
+  }
+}
