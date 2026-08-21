@@ -9,6 +9,10 @@ from __future__ import annotations
 
 from typing import Any
 
+HyperellipticCurve: Any
+HyperellipticCurve_generic: Any
+HyperellipticCurvePoint: Any
+
 __all__ = [
     "HyperellipticCurve",
     "HyperellipticCurve_generic",
