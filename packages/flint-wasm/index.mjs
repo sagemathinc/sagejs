@@ -364,7 +364,7 @@ export async function instantiateFlintFactor(
     });
     p1Objects.add(value);
     p1Finalizer?.register(value, handle);
-    tracePortableP1("p1List");
+    traceWasmP1(p1WasmCapabilities.list, 4, 8);
     return value;
   }
 
@@ -447,11 +447,24 @@ export async function instantiateFlintFactor(
     "dimension",
   ];
 
-  function tracePortableP1(capabilityId) {
+  // These identifiers are deliberately closed over here instead of being
+  // assembled from caller-controlled text.  Each operation below crosses the
+  // JavaScript/Wasm boundary into src/modsym.c, whose persistent P1 handle owns
+  // the exact shared C presentation and matrix computation.
+  const p1WasmCapabilities = Object.freeze({
+    list: "napi:@sagemath/sagejs-flint:p1List",
+    presentation:
+      "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
+    hecke: "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
+    boundary: "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
+    cuspidal: "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
+  });
+
+  function traceWasmP1(capabilityId, ingressBytes, egressBytes) {
     recordCapability(
-      `napi:@sagemath/sagejs-flint:${capabilityId}`,
-      "portable-fallback",
-      { executionTarget: "wasm-artifact" },
+      capabilityId,
+      "receipt-backed-wasm-artifact",
+      { executionTarget: "wasm-artifact", ingressBytes, egressBytes },
     );
   }
 
@@ -467,7 +480,11 @@ export async function instantiateFlintFactor(
       }
       result[presentationNames[field]] = number;
     }
-    tracePortableP1("p1ListManinPresentationInfo");
+    traceWasmP1(
+      p1WasmCapabilities.presentation,
+      4,
+      presentationNames.length * 4,
+    );
     return Object.freeze(result);
   }
 
@@ -507,7 +524,11 @@ export async function instantiateFlintFactor(
       (handle) => instance.exports.sagejs_p1_hecke_matrix(
         handle, Number(prime),
       ));
-    tracePortableP1("p1ListHeckeMatrix");
+    traceWasmP1(
+      p1WasmCapabilities.hecke,
+      8,
+      8 + result.rows * result.cols * 4,
+    );
     return result;
   }
 
@@ -519,14 +540,22 @@ export async function instantiateFlintFactor(
       instance.exports.sagejs_p1_cusp_numerator(index),
       instance.exports.sagejs_p1_cusp_denominator(index),
     ]);
-    tracePortableP1("p1ListBoundaryData");
+    traceWasmP1(
+      p1WasmCapabilities.boundary,
+      4,
+      12 + matrix.rows * matrix.cols * 4 + count * 16,
+    );
     return Object.freeze({ matrix, cusps: Object.freeze(cusps) });
   }
 
   function p1ListCuspidalBasis(value) {
     const result = runMatrixOperation(value, "exact cuspidal cycle basis",
       (handle) => instance.exports.sagejs_p1_cuspidal_basis(handle));
-    tracePortableP1("p1ListCuspidalBasis");
+    traceWasmP1(
+      p1WasmCapabilities.cuspidal,
+      4,
+      8 + result.rows * result.cols * 4,
+    );
     return result;
   }
 
