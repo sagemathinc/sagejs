@@ -325,6 +325,7 @@ const integration = [
   "test/hyperelliptic-research-tools.cjs",
   "test/hyperelliptic-rforest.cjs",
   "test/hyperelliptic-twist-lseries.cjs",
+  "test/hyperelliptic-webgpu-twists.cjs",
   "test/number-fields.cjs",
   "test/number-field-analytic-zeta-reference.cjs",
   "test/number-field-foundations.cjs",
