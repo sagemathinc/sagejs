@@ -25,6 +25,7 @@ _dense_rational_flint_module_cache = runtime.undefined
 _flint_ffi_module_cache = runtime.undefined
 _m4ri_ffi_module_cache = runtime.undefined
 _m4ri_available_cache = runtime.undefined
+_wasm_word_prime_resource_available_cache = runtime.undefined
 _FFLAS_DOUBLE_MAX_MODULUS = 94906266
 _PACKED_PRIME_MAX_MODULUS = 256
 _matrix_selection_module_cache = runtime.undefined
@@ -441,8 +442,11 @@ def _is_word_prime_resource_base(base: sage.Parent) -> bool:
     # FLINT's mature canonical nmod_mat representation; merely fitting exactly
     # in Modular<double> is not sufficient to make conversion competitive.
     # The Node adapter and FLINT resources in this release are 64-bit. Wasm32
-    # FLINT has 32-bit `ulong`; large moduli must remain on the portable packed
-    # path until an arbitrary-prime matrix resource is available there.
+    # FLINT has 32-bit `ulong`, so its authenticated generated-resource route
+    # is valid through `2^32 - 1`. This includes the complete exact
+    # `Modular<double>` range used by the optional desktop FFLAS adapter.
+    # Larger browser moduli and hosts without the production Wasm resolver
+    # retain the portable path until an arbitrary-prime resource is available.
     process = runtime.reflect.get(runtime.global_object, "process")
     versions = (
         runtime.undefined
@@ -454,9 +458,25 @@ def _is_word_prime_resource_base(base: sage.Parent) -> bool:
         if versions is runtime.undefined
         else runtime.reflect.get(versions, "node")
     )
+    if node is not runtime.undefined:
+        return _PACKED_PRIME_MAX_MODULUS <= modulus <= 0xFFFFFFFFFFFFFFFF
+    global _wasm_word_prime_resource_available_cache
+    if _wasm_word_prime_resource_available_cache is runtime.undefined:
+        resolver_available = (
+            runtime.reflect.get(
+                runtime.global_object,
+                "__sagejs_wasm_native_resolver__",
+            )
+            is not runtime.undefined
+        )
+        # A module may be imported while the evaluator is still installing
+        # its authenticated resolver. Cache success, but retry an early false
+        # observation on the first actual matrix construction.
+        if resolver_available:
+            _wasm_word_prime_resource_available_cache = True
     return (
-        node is not runtime.undefined
-        and _PACKED_PRIME_MAX_MODULUS <= modulus <= 0xFFFFFFFFFFFFFFFF
+        _wasm_word_prime_resource_available_cache is True
+        and _PACKED_PRIME_MAX_MODULUS <= modulus <= 0xFFFFFFFF
     )
 
 
