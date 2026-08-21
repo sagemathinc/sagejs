@@ -1,7 +1,16 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, readFileSync, rmSync } = require("node:fs");
+const {
+  lstatSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const test = require("node:test");
@@ -833,4 +842,210 @@ print(json.dumps({
   assert.equal(report.plan_mismatches, 4);
   assert.deepEqual(report.remaining_after_cancel, [2, 4, 5, 6]);
   assert.match(report.replay_hash, /^[0-9a-f]{64}$/);
+});
+
+test("checkpoint path writes resist collisions and preserve durability ordering", async (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-checkpoint-path-"));
+  t.after(() => rmSync(directory, { force: true, recursive: true }));
+  const destination = join(directory, "checkpoint.json");
+  const orderedDestination = join(directory, "ordered.json");
+  const failedDestination = join(directory, "failed.json");
+  const victim = join(directory, "victim.txt");
+  const symlinkName = `.checkpoint.json.tmp-${"11".repeat(16)}`;
+  const existingName = `.checkpoint.json.tmp-${"22".repeat(16)}`;
+  const symlinkTemporary = join(directory, symlinkName);
+  const existingTemporary = join(directory, existingName);
+  writeFileSync(victim, "do not replace\n", "utf8");
+  writeFileSync(existingTemporary, "pre-existing\n", "utf8");
+  const testSymlink = process.platform !== "win32";
+  if (testSymlink) symlinkSync(victim, symlinkTemporary);
+
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const source = String.raw`
+import os
+
+import sagejs.number_fields.class_unit_context as checkpoint_module
+
+destination = ${JSON.stringify(destination)}
+ordered_destination = ${JSON.stringify(orderedDestination)}
+failed_destination = ${JSON.stringify(failedDestination)}
+directory = ${JSON.stringify(directory)}
+test_symlink = ${Number(testSymlink)} == 1
+
+original_urandom = checkpoint_module.os.urandom
+tokens = []
+if test_symlink:
+    tokens.append(bytes([0x11] * 16))
+tokens.extend((bytes([0x22] * 16), bytes([0x33] * 16)))
+
+def next_token(size):
+    assert size == 16
+    return tokens.pop(0)
+
+checkpoint_module.os.urandom = next_token
+try:
+    checkpoint_module._write_checkpoint_path(destination, '{"secure":true}')
+finally:
+    checkpoint_module.os.urandom = original_urandom
+assert not tokens
+
+# Descriptor writes must retry short writes and fsync that same descriptor.
+original_write = checkpoint_module.os.write
+original_fsync = checkpoint_module.os.fsync
+descriptor_events = []
+
+def short_write(descriptor, data):
+    descriptor_events.append(("write", descriptor, bytes(data)))
+    return min(2, len(data))
+
+checkpoint_module.os.write = short_write
+checkpoint_module.os.fsync = lambda descriptor: descriptor_events.append(
+    ("fsync", descriptor)
+)
+try:
+    checkpoint_module._write_checkpoint_descriptor(41, b"abcdef")
+finally:
+    checkpoint_module.os.write = original_write
+    checkpoint_module.os.fsync = original_fsync
+assert descriptor_events == [
+    ("write", 41, b"abcdef"),
+    ("write", 41, b"cdef"),
+    ("write", 41, b"ef"),
+    ("fsync", 41),
+]
+
+# Parent-directory durability is attempted after replacement on platforms
+# where directory descriptors are supported.
+directory_events = []
+original_open = checkpoint_module.os.open
+original_close = checkpoint_module.os.close
+original_fsync = checkpoint_module.os.fsync
+if checkpoint_module.os.name != "nt":
+    checkpoint_module.os.open = lambda path, flags: (
+        directory_events.append(("open-dir", path, flags)) or 42
+    )
+    checkpoint_module.os.fsync = lambda descriptor: directory_events.append(
+        ("fsync-dir", descriptor)
+    )
+    checkpoint_module.os.close = lambda descriptor: directory_events.append(
+        ("close-dir", descriptor)
+    )
+try:
+    checkpoint_module._sync_parent_directory(destination)
+finally:
+    checkpoint_module.os.open = original_open
+    checkpoint_module.os.fsync = original_fsync
+    checkpoint_module.os.close = original_close
+if checkpoint_module.os.name == "nt":
+    assert directory_events == []
+else:
+    assert directory_events[0][0] == "open-dir"
+    assert directory_events[1:] == [("fsync-dir", 42), ("close-dir", 42)]
+
+# Verify whole-write durability ordering: the same exclusive descriptor is
+# written and synced, then closed before replacement and parent-directory sync.
+original_open_exclusive = checkpoint_module._open_exclusive_checkpoint
+original_write_descriptor = checkpoint_module._write_checkpoint_descriptor
+original_close = checkpoint_module.os.close
+original_replace = checkpoint_module.os.replace
+original_parent_sync = checkpoint_module._sync_parent_directory
+write_events = []
+
+def observed_replace(source, target):
+    write_events.append("replace")
+
+checkpoint_module._open_exclusive_checkpoint = lambda path: (
+    write_events.append("exclusive-open") or 77
+)
+checkpoint_module._write_checkpoint_descriptor = lambda descriptor, data: (
+    write_events.append(("write-and-fsync", descriptor, bytes(data)))
+)
+checkpoint_module.os.close = lambda descriptor: write_events.append(
+    ("close", descriptor)
+)
+checkpoint_module.os.replace = observed_replace
+checkpoint_module._sync_parent_directory = lambda path: write_events.append(
+    "directory-sync"
+)
+checkpoint_module.os.urandom = lambda size: bytes([0x44] * size)
+try:
+    checkpoint_module._write_checkpoint_path(ordered_destination, '{"ordered":true}')
+finally:
+    checkpoint_module._open_exclusive_checkpoint = original_open_exclusive
+    checkpoint_module._write_checkpoint_descriptor = original_write_descriptor
+    checkpoint_module.os.close = original_close
+    checkpoint_module.os.replace = original_replace
+    checkpoint_module._sync_parent_directory = original_parent_sync
+    checkpoint_module.os.urandom = original_urandom
+assert write_events == [
+    "exclusive-open",
+    ("write-and-fsync", 77, b'{"ordered":true}\n'),
+    ("close", 77),
+    "replace",
+    "directory-sync",
+]
+
+# A failed replacement cleans only the temporary reserved by this invocation.
+before_failure = tuple(sorted(os.listdir(directory)))
+checkpoint_module.os.urandom = lambda size: bytes([0x55] * size)
+
+def fail_replace(source, target):
+    raise RuntimeError("injected replacement failure")
+
+checkpoint_module.os.replace = fail_replace
+try:
+    checkpoint_module._write_checkpoint_path(failed_destination, '{"failed":true}')
+    raise AssertionError("an injected replacement failure was ignored")
+except RuntimeError:
+    pass
+finally:
+    checkpoint_module.os.replace = original_replace
+    checkpoint_module.os.urandom = original_urandom
+assert tuple(sorted(os.listdir(directory))) == before_failure
+
+# Descriptor hosts must receive exclusive creation, restrictive mode, and
+# no-follow/close-on-exec flags when those constants exist.
+native_events = []
+original_native_open = checkpoint_module.os.open
+checkpoint_module.os.open = lambda path, flags, mode: (
+    native_events.append(("open", path, flags, mode)) or 77
+)
+try:
+    native_descriptor = checkpoint_module._open_exclusive_checkpoint(
+        os.path.join(directory, "native-flags.tmp")
+    )
+finally:
+    checkpoint_module.os.open = original_native_open
+assert native_descriptor == 77
+assert native_events[0][0] == "open"
+assert native_events[0][2] == (
+    checkpoint_module.os.O_WRONLY
+    | checkpoint_module.os.O_CREAT
+    | checkpoint_module.os.O_EXCL
+    | checkpoint_module.os.O_NOFOLLOW
+    | checkpoint_module.os.O_CLOEXEC
+    | checkpoint_module.os.O_BINARY
+)
+assert native_events[0][3] == 0o600
+
+print("checkpoint-path-hardened")
+`;
+  const result = await session.evaluate(source);
+  assert.equal(result.stderr ?? "", "");
+  assert.equal(result.error, undefined);
+  assert.equal(result.stdout.trim(), "checkpoint-path-hardened");
+
+  assert.equal(readFileSync(destination, "utf8"), '{"secure":true}\n');
+  assert.equal(readFileSync(victim, "utf8"), "do not replace\n");
+  assert.equal(readFileSync(existingTemporary, "utf8"), "pre-existing\n");
+  if (testSymlink) assert.equal(lstatSync(symlinkTemporary).isSymbolicLink(), true);
+  if (process.platform !== "win32") {
+    assert.equal(statSync(destination).mode & 0o777, 0o600);
+  }
+  const leftovers = readdirSync(directory).filter((name) => name.includes(".tmp-"));
+  assert.deepEqual(
+    leftovers.sort(),
+    [...(testSymlink ? [symlinkName] : []), existingName].sort(),
+  );
 });

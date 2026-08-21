@@ -388,6 +388,16 @@ export class NodeHostAdapter {
         case "closeFd":
           fs.closeSync(Number(args[0]));
           return { ok: true, value: null };
+        case "writeFd": {
+          const data = Buffer.from(args[1] as number[]);
+          return {
+            ok: true,
+            value: fs.writeSync(Number(args[0]), data),
+          };
+        }
+        case "fsyncFd":
+          fs.fsyncSync(Number(args[0]));
+          return { ok: true, value: null };
         case "readFile": {
           const filename = this.resolve(args[0]);
           if (Boolean(args[1])) {
