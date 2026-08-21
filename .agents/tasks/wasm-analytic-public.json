@@ -47,7 +47,48 @@
     "node --test test/wasm-analytic-public.cjs",
     "node bench/wasm-analytic-public.mjs --check"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.623,
+      "started_at": "2026-08-21T01:21:05.493Z",
+      "commit": "e564343bb6cbfc29d080009254525655fb5834c7",
+      "workspace_fingerprint": "eaee8ac4f469912b2e8fa250c100f3eaeaea4174fd8498fa2a4eb36397959283",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/scripts/test-analytic-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.068,
+      "started_at": "2026-08-21T01:21:39.879Z",
+      "commit": "e564343bb6cbfc29d080009254525655fb5834c7",
+      "workspace_fingerprint": "eaee8ac4f469912b2e8fa250c100f3eaeaea4174fd8498fa2a4eb36397959283",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 48.249,
+      "started_at": "2026-08-21T01:21:46.806Z",
+      "commit": "e564343bb6cbfc29d080009254525655fb5834c7",
+      "workspace_fingerprint": "eaee8ac4f469912b2e8fa250c100f3eaeaea4174fd8498fa2a4eb36397959283",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 593.902,
+      "started_at": "2026-08-21T01:22:41.463Z",
+      "commit": "e564343bb6cbfc29d080009254525655fb5834c7",
+      "workspace_fingerprint": "eaee8ac4f469912b2e8fa250c100f3eaeaea4174fd8498fa2a4eb36397959283",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],
