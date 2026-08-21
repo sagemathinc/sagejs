@@ -1,7 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, readFileSync } = require("node:fs");
+const { mkdtempSync, readFileSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const test = require("node:test");
@@ -153,13 +153,16 @@ test("fundamental discriminants, twist models, and checkpoint resume are exact",
     assert.equal(lines.length, 3);
     const header = JSON.parse(lines[0]);
     const rows = lines.slice(1).map(JSON.parse);
-    assert.equal(header.schema, "sagejs.hyperelliptic-quadratic-twists/v2");
+    assert.equal(header.schema, "sagejs.hyperelliptic-quadratic-twists/v3");
     assert.equal(header.twist_assembly.scope, "gcd(D,N)=1");
     assert.deepEqual(
       rows.map((row) => row.discriminant),
       ["1", "5"],
     );
     assert.equal(rows[0].status, "ok");
+    assert.equal(rows[0].sequence, 0);
+    assert.match(rows[0].sha256, /^[0-9a-f]{64}$/);
+    assert.equal(rows[1].previous_sha256, rows[0].sha256);
     assert.equal(rows[1].status, "ok");
     assert.equal(rows[1].conductor, "445625");
     assert.equal(rows[1].root_number, "-1");
@@ -167,6 +170,106 @@ test("fundamental discriminants, twist models, and checkpoint resume are exact",
     assert.deepEqual(rows[1].central_derivatives, [
       { real: "0.0000", imaginary: "0.0000" },
     ]);
+  } finally {
+    await session.close();
+  }
+});
+
+test("persistent multicore twist tiles agree exactly with sequential CPU rows", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-twist-cpu-cache-"));
+  const checkpoint = join(directory, "parallel.jsonl");
+  const cancelledCheckpoint = join(directory, "cancelled.jsonl");
+  const cache = join(directory, "coefficients");
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "R = PolynomialRing(QQ, 'x')",
+        "x = R.gen()",
+        "C = HyperellipticCurve(x, x^3-x+1)",
+        `cache = ${JSON.stringify(cache)}`,
+        "sequential_family = C.quadratic_twists(-11,13,prec=16,max_order=0,algorithm='native',workers=1,cache_dir=cache)",
+        "sequential = list(sequential_family)",
+        "parallel_family = C.quadratic_twists(-11,13,prec=16,max_order=0,algorithm='native',workers=2,tile_size=2,cache_dir=cache)",
+        "parallel = list(parallel_family)",
+        "def signature(rows):",
+        "    return [(int(r.discriminant),r.status,None if r.conductor is None else int(r.conductor),None if r.root_number is None else int(r.root_number),tuple((str(v.real()),str(v.imag())) for v in r.central_derivatives)) for r in rows]",
+        `receipt = C.quadratic_twists(-11,13,prec=16,max_order=0,algorithm='native',workers=2,tile_size=2,cache_dir=cache).export_jsonl(${JSON.stringify(checkpoint)})`,
+        `resumed = C.quadratic_twists(-11,13,prec=16,max_order=0,algorithm='native',workers=1,cache_dir=cache).export_jsonl(${JSON.stringify(checkpoint)},resume=True)`,
+        "state = {'calls':0}",
+        "def cancel_parallel():",
+        "    state['calls'] += 1",
+        "    return state['calls'] > 3",
+        `cancelled = C.quadratic_twists(-11,13,prec=16,max_order=0,algorithm='native',workers=2,tile_size=2,cache_dir=cache,cancel=cancel_parallel).export_jsonl(${JSON.stringify(cancelledCheckpoint)})`,
+        `continued = C.quadratic_twists(-11,13,prec=16,max_order=0,algorithm='native',workers=1,cache_dir=cache).export_jsonl(${JSON.stringify(cancelledCheckpoint)},resume=True)`,
+        "info = parallel_family.diagnostics()",
+        "(signature(sequential) == signature(parallel), len(parallel),",
+        " info['engine'], info['workers'], info['cache']['hits'] >= 1,",
+        " info['cache']['entries'] >= 1, receipt['status'],",
+        " resumed['records_written'], resumed['records_total'],",
+        " cancelled['status'], cancelled['records_total'],",
+        " continued['status'], continued['records_total'],",
+        " len(receipt['checkpoint_sha256']))",
+      ].join("\n"),
+      { timeout: 300_000 },
+    );
+    assert.equal(
+      result.repr,
+      "(True, 10, 'persistent-multicore-v1', 2, True, True, 'complete', 0, 10, " +
+        "'cancelled', 2, 'complete', 10, 64)",
+    );
+    const lines = readFileSync(checkpoint, "utf8").trimEnd().split("\n");
+    assert.equal(lines.length, 11);
+    for (let index = 1; index < lines.length; index += 1) {
+      const row = JSON.parse(lines[index]);
+      assert.equal(row.sequence, index - 1);
+      assert.match(row.sha256, /^[0-9a-f]{64}$/);
+    }
+    const original = readFileSync(checkpoint, "utf8");
+    writeFileSync(
+      checkpoint,
+      original.replace('"status":"ok"', '"status":"tampered"'),
+    );
+    const corrupted = await session.evaluate(
+      [
+        "message = None",
+        "try:",
+        `    C.quadratic_twists(-11,13,prec=16,max_order=0,algorithm='native',workers=1,cache_dir=cache).export_jsonl(${JSON.stringify(checkpoint)},resume=True)`,
+        "except Exception as error:",
+        "    message = str(error)",
+        "message",
+      ].join("\n"),
+    );
+    assert.equal(corrupted.repr, "'the twist checkpoint hash chain is invalid'");
+  } finally {
+    await session.close();
+  }
+});
+
+test("persistent coefficient cache rejects corrupted content", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-twist-cache-integrity-"));
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "from sagejs.hyperelliptic_curves.family_cpu import PersistentCoefficientCache, coefficient_cache_identity",
+        `root = ${JSON.stringify(directory)}`,
+        "identity = coefficient_cache_identity({'curve':'test'}, {'reduction':'test'})",
+        "cache = PersistentCoefficientCache(root, identity, max_entries=2)",
+        "digest, path = cache.store([0,1,2,3], {'oracle':1})",
+        "with open(path, 'r', encoding='utf-8') as source:",
+        "    text = source.read()",
+        "with open(path, 'w', encoding='utf-8') as output:",
+        "    output.write(text.replace('[0,1,2,3]', '[0,1,2,4]'))",
+        "loaded = cache.load(3)",
+        "cache.store([0,1,2], {'oracle':1})",
+        "cache.store([0,1,2,3], {'oracle':1})",
+        "cache.store([0,1,2,3,4], {'oracle':1})",
+        "info = cache.info()",
+        "(loaded is None, info['corruptions'], info['misses'], len(digest), info['entries'], info['largest_cutoff'])",
+      ].join("\n"),
+    );
+    assert.equal(result.repr, "(True, 1, 1, 64, 2, 4)");
   } finally {
     await session.close();
   }

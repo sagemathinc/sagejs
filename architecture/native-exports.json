@@ -4780,6 +4780,7 @@
       "consumers": [
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
+        "src/lib/sagejs/hyperelliptic_curves/family_cpu.py",
         "test/ffi.cjs"
       ],
       "declared_ffi": null

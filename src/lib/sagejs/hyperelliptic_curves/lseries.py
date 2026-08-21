@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import cmath
 import math
-from typing import Any
+from typing import Any, Mapping
 
 import sagejs as sage
 import sagejs.runtime as runtime
@@ -160,6 +160,29 @@ class GlobalCoefficientPrefix:
         self.values = values
         self.extensions += 1
         return self.values
+
+    def _seed_exact_values(
+        self,
+        values: list[int],
+        backend_counts: Mapping[str, int] | None = None,
+    ) -> None:
+        """Seed this prefix from an independently authenticated exact cache.
+
+        The persistent family cache validates the curve identity, schema, and
+        payload digest before calling this internal method.  Keeping the
+        mutation here makes the prefix invariant explicit and prevents cache
+        plumbing from publishing a partially initialized prefix.
+        """
+        if len(values) < 2 or int(values[0]) != 0 or int(values[1]) != 1:
+            raise ValueError("an exact coefficient prefix must begin with [0, 1]")
+        checked = [int(value) for value in values]
+        self.values = checked
+        self.backend_counts = {
+            str(name): int(count)
+            for name, count in dict(
+                {} if backend_counts is None else backend_counts
+            ).items()
+        }
 
 
 def _checked_precision(value: Any) -> int:

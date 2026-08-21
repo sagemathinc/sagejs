@@ -133,12 +133,14 @@ before production selection.
 
 ## Twist checkpoint contract
 
-Quadratic-twist checkpoints use schema v2.  The request records values versus
+Quadratic-twist checkpoints use schema v3.  The request records values versus
 candidate mode, CPU/GPU request, threshold, coefficient formula, and exact
 twist conductor/sign formula.  Each row records selected backend, candidate
 decision, reason, numerical provenance, and per-stage timings.  Checkpoint
 order remains the canonical fundamental-discriminant order, independent of
-GPU scheduling.
+GPU scheduling.  Every completed row also carries its sequence number, the
+previous SHA-256 digest, and its own payload digest, so resume rejects mutation
+of any complete prefix while still truncating a partial final line safely.
 
 The conductor scaling remains unavoidable: for genus `g`, ordinary sum length
 grows roughly as `sqrt(N)*abs(D)^g`.  A GPU changes the dot-product constant;

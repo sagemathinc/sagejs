@@ -95,6 +95,7 @@
     "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
     "src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
     "src/lib/sagejs/hyperelliptic_curves/euler_products.py",
+    "src/lib/sagejs/hyperelliptic_curves/family_cpu.py",
     "src/lib/sagejs/hyperelliptic_curves/frobenius.py",
     "src/lib/sagejs/hyperelliptic_curves/genus3_candidate_kernel.py",
     "src/lib/sagejs/hyperelliptic_curves/genus3_completion.py",

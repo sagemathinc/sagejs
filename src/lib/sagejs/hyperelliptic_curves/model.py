@@ -447,6 +447,11 @@ class HyperellipticCurve_generic(sage.Parent):
         backend: str = "auto",
         candidate_threshold: Any = 1e-6,
         block_size: Any = 65536,
+        workers: Any = "auto",
+        tile_size: Any = 8,
+        cache_dir: Any = "auto",
+        max_cache_entries: Any = 8,
+        max_coefficient_cutoff: Any = 2_000_000,
         progress: Any = None,
         cancel: Any = None,
     ) -> Any:
@@ -466,6 +471,11 @@ class HyperellipticCurve_generic(sage.Parent):
             backend=backend,
             candidate_threshold=candidate_threshold,
             block_size=block_size,
+            workers=workers,
+            tile_size=tile_size,
+            cache_dir=cache_dir,
+            max_cache_entries=max_cache_entries,
+            max_coefficient_cutoff=max_coefficient_cutoff,
             progress=progress,
             cancel=cancel,
         )

@@ -252,6 +252,85 @@ numerically indeterminate rows are retained rather than silently skipped.
 The present segmented squarefree sieve accepts endpoints through `10^12` in
 absolute value; analytic resource limits can still turn a very large twist
 into an explicit unsupported row.
+
+### Persistent multicore CPU scans
+
+The authoritative CPU scanner can distribute deterministic tiles across
+persistent Sage.js worker evaluators.  Workers are isolated V8 evaluators, so
+the calculation uses multiple CPU cores without exposing Node worker objects
+in the mathematical API.  Every worker still calls the same Arb central-weight
+engine used by an individual `L`-series evaluation.
+
+```sage
+scan = C.quadratic_twists(
+    -10^5, 10^5,
+    prec=53,
+    max_order=2,
+    workers="auto",       # or an explicit positive integer
+    tile_size=8,
+    cache_dir="auto",     # ~/.cache/sagejs/hyperelliptic-families
+)
+scan.export_jsonl("twists.jsonl", resume=True)
+scan.diagnostics()
+```
+
+The parent computes each exact base coefficient only once.  It publishes
+immutable prefix files whose identity includes the exact curve model, global
+conductor, root number, bad Euler factors, coefficient algorithm, and schema.
+The filename contains the SHA-256 digest of the canonical payload; both the
+parent and every worker verify the identity, cutoff, initial coefficients, and
+digest before use.  Publication uses a same-directory temporary file followed
+by atomic replacement.  At most `max_cache_entries` prefixes are retained for
+one curve identity.  Set `cache_dir=None` to disable durable caching; this also
+selects the sequential engine because isolated workers require shared exact
+input storage.
+
+`workers="auto"` is bounded by the available CPUs, the reported host memory
+budget, and a conservative maximum of eight workers. Intervals narrower than
+256 integers remain sequential so worker startup cannot dominate them;
+explicit worker counts are useful for measurement and dedicated hosts.
+`tile_size` changes only
+scheduling: results are reassembled and yielded in canonical discriminant
+order.  A worker result is treated as transport data and must bind to exactly
+one submitted discriminant before it is exposed.
+Worker pools are process-local and persist across family objects, so repeated
+scans amortize evaluator startup; immutable coefficient files are normally
+served from the operating system's page cache after their first authenticated
+read. Long-running applications can release the worker pool with
+`close_cpu_family_workers()` from `sagejs.hyperelliptic_curves.twists`;
+session shutdown also releases the host workers.
+
+Checkpoint schema v3 forms a SHA-256 chain from the exact header through every
+record.  Resume verifies the mathematical request, sequence number,
+discriminant order, previous digest, and current digest.  A partial final line
+is truncated safely, while mutation of any complete row is rejected.  Worker
+count, tile size, and cache location are deliberately not part of the
+mathematical request, so a scan may resume with a different CPU count or on a
+different machine after copying its JSONL checkpoint.  The coefficient cache
+is only an accelerator and can always be deleted and reconstructed.
+
+Use `max_coefficient_cutoff` to impose a family-level memory/work boundary.
+Rows exceeding it are retained with status `resource_limit`; they are never
+silently omitted.  Cancellation is observed at deterministic discriminant
+boundaries.  A tile may finish internally before cancellation is noticed, but
+only the verified canonical prefix of its rows reaches the checkpoint.
+
+Preflight asks the same native central-weight planner used by evaluation for
+its exact coefficient cutoff. If that capability is unavailable, a documented
+conservative analytic estimate is used instead. This avoids constructing a
+large upper-bound prefix merely to discover a substantially smaller native
+plan.
+
+The reproducible CPU comparison is:
+
+```bash
+pnpm bench:hyperelliptic-cpu-twists
+```
+
+It reports sequential, forced cold-worker, forced warm-worker, and checkpoint
+stages separately. Its deliberately small interval exposes startup overhead;
+it is a reproducible diagnostic, not a claim that parallel execution wins on
+ten rows. Its exact interval and precision are part of the JSON receipt.
 For `gcd(D,N)=1`, it uses the primitive-character identities
 
 ```text
