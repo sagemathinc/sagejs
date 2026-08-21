@@ -936,6 +936,8 @@ class NumberFieldClassGroup:
         self._element_cache = runtime.map()
         self.proof_status = getattr(group, "proof_status", "exact-unconditional")
         self.algorithm = getattr(group, "algorithm", "quadratic-forms")
+        self.certificate = getattr(group, "certificate", None)
+        self.routing_plan = getattr(group, "routing_plan", None)
 
     def _wrap(self, element: Any) -> NumberFieldClassGroupElement:
         cached = self._element_cache.get(element)
@@ -999,15 +1001,28 @@ class NumberFieldClassGroup:
             return self._wrap(self._group(value))
         if value.ring() is not self._field.maximal_order():
             raise TypeError("the ideal belongs to a different maximal order")
-        if not hasattr(self._group.one().ideal(), "doubled_coefficients"):
-            raise NotImplementedError(
-                "ideal coercion is not implemented for this quadratic backend"
+        if value.is_zero():
+            raise ValueError("the zero ideal has no ideal class")
+        if self.certificate is not None and getattr(
+            self.certificate, "proves_triviality", False
+        ):
+            return self.one()
+        coefficients = self._field._quadratic_ideal_form(value)
+        if hasattr(self._group.one().ideal(), "doubled_coefficients"):
+            form = _nf_quadratic_class_units_module().QuadraticForm(
+                coefficients[0], coefficients[1], coefficients[2]
             )
-        coefficients = self._field._real_quadratic_ideal_form(value)
-        form = _nf_quadratic_class_units_module().QuadraticForm(
-            coefficients[0], coefficients[1], coefficients[2]
+            return self._wrap(self._group(form))
+        discriminant = runtime.integer_bigint(self._field.discriminant())
+        form = _quadratic_reduce(
+            QuadraticBinaryForm(coefficients[0], coefficients[1], coefficients[2]),
+            discriminant,
         )
-        return self._wrap(self._group(form))
+        return self._wrap(self._group._from_form(form))
+
+    def verify(self) -> bool:
+        verifier = getattr(self._group, "verify", None)
+        return True if not callable(verifier) else bool(verifier())
 
     def number_field(self) -> NumberFieldParent:
         return self._field
@@ -1554,7 +1569,7 @@ class NumberFieldIdeal:
     def __truediv__(self, other: Any) -> NumberFieldIdeal:
         if isinstance(other, NumberFieldIdeal):
             return self.quotient(other)
-        return self * self._field(other).inverse()
+        return self.__mul__(self._field(other).inverse())
 
     def __pow__(self, exponent: Any) -> NumberFieldIdeal:
         power = runtime.integer_bigint(exponent)
@@ -1977,6 +1992,7 @@ class NumberFieldParent(sage.Parent):
         self._quadratic_backend_cache = runtime.undefined
         self._real_quadratic_backend_cache = runtime.undefined
         self._class_group_cache = runtime.undefined
+        self._narrow_class_group_cache = runtime.undefined
         self._zeta_function_cache = runtime.map()
         self._archimedean_data_cache = runtime.undefined
         self._unit_group_cache = runtime.undefined
@@ -2427,8 +2443,8 @@ class NumberFieldParent(sage.Parent):
             int(self.discriminant()), algorithm=algorithm, **limits
         )
 
-    def _real_quadratic_ideal_form(self, ideal: NumberFieldIdeal) -> Any:
-        """Return the primitive form representing a real quadratic ideal."""
+    def _quadratic_ideal_form(self, ideal: NumberFieldIdeal) -> Any:
+        """Return the primitive form representing a quadratic ideal."""
         discriminant = runtime.integer_bigint(self.discriminant())
         _squarefree, square_root = _nf_units_module()._quadratic_square_root_element(
             self
@@ -2476,6 +2492,191 @@ class NumberFieldParent(sage.Parent):
         )
         return form.coefficients()
 
+    def quadratic_class_group_plan(
+        self,
+        algorithm: str = "auto",
+        narrow: bool = False,
+        **limits: Any,
+    ) -> Any:
+        """Return the deterministic specialized/general quadratic routing plan."""
+        if self.degree() != 2:
+            raise ValueError("quadratic routing requires a degree-two field")
+        if algorithm not in ("auto", "quadratic-forms", "minkowski", "buchmann-hecke"):
+            raise ValueError(
+                "unknown quadratic class-group algorithm: " + str(algorithm)
+            )
+        discriminant = int(self.discriminant())
+        signature = self.signature()
+        real = signature[0] == 2 and signature[1] == 0
+        specialized_names = {
+            "max_reduced_forms",
+            "max_enumeration_checks",
+            "max_steps",
+        }
+        specialized_limits = {}
+        general_limits = {}
+        for name in runtime.object.keys(limits):
+            value = runtime.reflect.get(limits, name)
+            if name in specialized_names:
+                specialized_limits[name] = value
+            else:
+                general_limits[name] = value
+        certificate = None
+        if not narrow and abs(discriminant) < 16:
+            certificate = (
+                _nf_quadratic_class_units_module().quadratic_minkowski_triviality(
+                    discriminant
+                )
+            )
+        if (
+            algorithm in ("auto", "minkowski")
+            and certificate is not None
+            and certificate.proves_triviality
+        ):
+            return _nf_quadratic_class_units_module().QuadraticClassRoutingPlan(
+                discriminant,
+                narrow,
+                algorithm,
+                "minkowski-triviality",
+                "the exact Minkowski bound is below 2",
+                None,
+                0,
+                0,
+                False,
+            )
+        if algorithm == "minkowski":
+            if narrow:
+                raise NotImplementedError(
+                    "the general Minkowski engine computes ordinary classes only"
+                )
+            return _nf_quadratic_class_units_module().QuadraticClassRoutingPlan(
+                discriminant,
+                narrow,
+                algorithm,
+                "general-minkowski",
+                "the exact bound does not prove an empty factor base",
+                None,
+                None,
+                None,
+                False,
+            )
+        if algorithm == "buchmann-hecke" or (
+            algorithm == "auto" and len(general_limits) != 0
+        ):
+            if narrow:
+                raise NotImplementedError(
+                    "large-discriminant narrow class groups await a narrow relation backend"
+                )
+            return _nf_quadratic_class_units_module().QuadraticClassRoutingPlan(
+                discriminant,
+                narrow,
+                algorithm,
+                "buchmann-hecke",
+                (
+                    "explicit relation algorithm"
+                    if algorithm == "buchmann-hecke"
+                    else "general relation-engine limits were requested"
+                ),
+                None,
+                None,
+                None,
+                False,
+            )
+        if real:
+            form_plan = (
+                _nf_quadratic_class_units_module().real_quadratic_class_group_plan(
+                    discriminant,
+                    algorithm="quadratic-forms",
+                    **specialized_limits,
+                )
+            )
+            if algorithm == "auto" and not form_plan.supported:
+                if narrow:
+                    return _nf_quadratic_class_units_module().QuadraticClassRoutingPlan(
+                        discriminant,
+                        narrow,
+                        algorithm,
+                        "quadratic-forms",
+                        "the exact narrow reduced-form candidate estimate exceeds its cap",
+                        None,
+                        form_plan.enumeration_checks,
+                        form_plan.max_enumeration_checks,
+                        True,
+                        False,
+                    )
+                return _nf_quadratic_class_units_module().QuadraticClassRoutingPlan(
+                    discriminant,
+                    narrow,
+                    algorithm,
+                    "buchmann-hecke",
+                    "the exact reduced-form candidate estimate exceeds its cap",
+                    None,
+                    form_plan.enumeration_checks,
+                    form_plan.max_enumeration_checks,
+                    False,
+                )
+            return _nf_quadratic_class_units_module().QuadraticClassRoutingPlan(
+                discriminant,
+                narrow,
+                algorithm,
+                "quadratic-forms",
+                "the exact reduced-form candidate estimate is within its cap",
+                None,
+                form_plan.enumeration_checks,
+                form_plan.max_enumeration_checks,
+                True,
+                form_plan.supported,
+            )
+        threshold = int(
+            _nf_quadratic_class_units_module().IMAGINARY_QUADRATIC_FORM_THRESHOLD
+        )
+        if algorithm == "auto" and abs(discriminant) > threshold:
+            return _nf_quadratic_class_units_module().QuadraticClassRoutingPlan(
+                discriminant,
+                narrow,
+                algorithm,
+                "buchmann-hecke",
+                "the discriminant exceeds the benchmarked FLINT enumeration threshold",
+                threshold,
+                None,
+                None,
+                False,
+            )
+        if algorithm == "quadratic-forms" and abs(discriminant) > threshold:
+            return _nf_quadratic_class_units_module().QuadraticClassRoutingPlan(
+                discriminant,
+                narrow,
+                algorithm,
+                "quadratic-forms",
+                "the discriminant exceeds the benchmarked FLINT enumeration cap",
+                threshold,
+                None,
+                None,
+                True,
+                False,
+            )
+        if len(specialized_limits) != 0:
+            raise TypeError("imaginary quadratic forms do not accept forms limits")
+        return _nf_quadratic_class_units_module().QuadraticClassRoutingPlan(
+            discriminant,
+            narrow,
+            algorithm,
+            "quadratic-forms",
+            "the discriminant is within the benchmarked FLINT enumeration threshold",
+            threshold,
+            None,
+            None,
+            True,
+        )
+
+    def _quadratic_general_limits(self, limits: dict[str, Any]) -> dict[str, Any]:
+        specialized = {"max_reduced_forms", "max_enumeration_checks", "max_steps"}
+        answer = {}
+        for name in runtime.object.keys(limits):
+            if name not in specialized:
+                answer[name] = runtime.reflect.get(limits, name)
+        return answer
+
     def class_group(
         self,
         proof: Any = None,
@@ -2490,22 +2691,41 @@ class NumberFieldParent(sage.Parent):
         if self._is_tutorial_cubic():
             result = NumberFieldClassGroup(self)
         elif self.degree() == 2:
-            if algorithm in ("minkowski", "buchmann-hecke"):
+            routing = self.quadratic_class_group_plan(algorithm, **limits)
+            if routing.backend in ("general-minkowski", "buchmann-hecke"):
+                general_limits = self._quadratic_general_limits(limits)
                 result = _nf_class_unit_groups_module().class_group(
-                    self, proof=proof, algorithm=algorithm, **limits
+                    self,
+                    proof=proof,
+                    algorithm=(
+                        "minkowski"
+                        if routing.backend == "general-minkowski"
+                        else "buchmann-hecke"
+                    ),
+                    **general_limits,
                 )
+                result.routing_plan = routing
             else:
-                if algorithm not in ("auto", "quadratic-forms"):
-                    raise ValueError("unknown class-group algorithm: " + str(algorithm))
-                signature = self.signature()
-                if signature[0] == 2 and signature[1] == 0:
-                    backend = self._real_quadratic_backend(algorithm, **limits)
-                else:
-                    if len(limits) != 0:
-                        raise TypeError(
-                            "imaginary quadratic forms do not accept resource limits"
+                if routing.backend == "minkowski-triviality":
+                    backend = (
+                        _nf_quadratic_class_units_module().MinkowskiTrivialClassGroup(
+                            int(self.discriminant())
                         )
-                    backend = self._quadratic_backend()[0].class_group()
+                    )
+                else:
+                    routing.require_supported()
+                    signature = self.signature()
+                    if signature[0] == 2 and signature[1] == 0:
+                        backend = self._real_quadratic_backend(
+                            routing.requested_algorithm, **limits
+                        )
+                    else:
+                        if len(limits) != 0:
+                            raise TypeError(
+                                "imaginary quadratic forms do not accept resource limits"
+                            )
+                        backend = self._quadratic_backend()[0].class_group()
+                backend.routing_plan = routing
                 result = NumberFieldClassGroup(self, backend)
         else:
             result = _nf_class_unit_groups_module().class_group(
@@ -2513,6 +2733,43 @@ class NumberFieldParent(sage.Parent):
             )
         if use_cache:
             self._class_group_cache = result
+        return result
+
+    def narrow_class_group(
+        self,
+        proof: Any = None,
+        names: str = "c",
+        algorithm: str = "auto",
+        **limits: Any,
+    ) -> Any:
+        """Return the narrow ideal class group for a quadratic field."""
+        del names
+        if self.degree() != 2:
+            raise NotImplementedError(
+                "public narrow class groups are currently specialized to degree two"
+            )
+        signature = self.signature()
+        if signature[0] == 0 and signature[1] == 1:
+            return self.class_group(proof=proof, algorithm=algorithm, **limits)
+        use_cache = proof is None and algorithm == "auto" and len(limits) == 0
+        if use_cache and self._narrow_class_group_cache is not runtime.undefined:
+            return self._narrow_class_group_cache
+        routing = self.quadratic_class_group_plan(algorithm, narrow=True, **limits)
+        if routing.backend != "quadratic-forms":
+            raise NotImplementedError(
+                "the selected backend does not compute narrow quadratic classes"
+            )
+        routing.require_supported()
+        backend = _nf_quadratic_class_units_module().real_quadratic_class_group(
+            int(self.discriminant()),
+            narrow=True,
+            algorithm="quadratic-forms",
+            **limits,
+        )
+        backend.routing_plan = routing
+        result = NumberFieldClassGroup(self, backend)
+        if use_cache:
+            self._narrow_class_group_cache = result
         return result
 
     def class_number(
@@ -2524,15 +2781,29 @@ class NumberFieldParent(sage.Parent):
         if self._is_tutorial_cubic():
             return 1
         if self.degree() == 2:
-            if algorithm in ("minkowski", "buchmann-hecke"):
+            routing = self.quadratic_class_group_plan(algorithm, **limits)
+            if routing.backend == "minkowski-triviality":
+                return 1
+            if routing.backend in ("general-minkowski", "buchmann-hecke"):
+                general_limits = self._quadratic_general_limits(limits)
                 return _nf_class_unit_groups_module().class_number(
-                    self, proof=proof, algorithm=algorithm, **limits
+                    self,
+                    proof=proof,
+                    algorithm=(
+                        "minkowski"
+                        if routing.backend == "general-minkowski"
+                        else "buchmann-hecke"
+                    ),
+                    **general_limits,
                 )
-            if algorithm not in ("auto", "quadratic-forms"):
-                raise ValueError("unknown class-number algorithm: " + str(algorithm))
+            routing.require_supported()
             signature = self.signature()
             if signature[0] == 2 and signature[1] == 0:
-                return int(self._real_quadratic_backend(algorithm, **limits).order())
+                return int(
+                    self._real_quadratic_backend(
+                        routing.requested_algorithm, **limits
+                    ).order()
+                )
             if len(limits) != 0:
                 raise TypeError(
                     "imaginary quadratic forms do not accept resource limits"

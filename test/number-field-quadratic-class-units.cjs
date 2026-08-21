@@ -47,6 +47,14 @@ test("quadratic class/unit oracle fixture records independent CAS interfaces", (
   assert.ok(
     fixture.cases.some((entry) => entry.narrow_invariants.length > 1),
   );
+  assert.equal(
+    fixture.routing_benchmark.imaginary_forms_max_abs_discriminant,
+    1000000007,
+  );
+  assert.equal(
+    fixture.routing_benchmark.real_forms_default_max_enumeration_checks,
+    5000000,
+  );
 });
 
 test("continued fractions and reduced forms match the Sage/PARI corpus", () => {
@@ -170,7 +178,9 @@ for field in (standard, translated):
     assert units.proof_status == "exact-unconditional"
     assert units.generators[0].norm() == 1
     assert units.verify_completion()
-    assert units.regulator(100).subgroup_complete
+    regulator = units.regulator(100)
+    assert regulator.rigorous and regulator.full_rank_certified
+    assert regulator.precision_bits >= 100
 
 # D=12 is accepted through a translated integral presentation, and exact
 # square-root transport gives the expected unit t + 4.
@@ -211,6 +221,88 @@ for polynomial in (x*x + x + 6, x*x + 3*x + 8):
 print("quadratic-public-routing-ok")
 `);
   assert.equal(output, "quadratic-public-routing-ok");
+});
+
+test("public quadratic certificates, narrow groups, and rigorous regulators", () => {
+  const output = runSage(String.raw`
+x = polygen(QQ, "x")
+
+# D=12 is settled before any factor-base or reduced-form materialization, in
+# both the square-root and translated presentations.
+for polynomial in (x*x - 3, x*x + 4*x + 1):
+    field = NumberField(polynomial, "a")
+    ordinary = field.class_group()
+    assert ordinary.order() == 1
+    assert ordinary.algorithm == "minkowski"
+    assert ordinary.proof_status == "exact-unconditional"
+    assert ordinary.certificate.proves_triviality
+    assert ordinary.certificate.exact_inequality == "sqrt(12)/2 < 2"
+    assert ordinary.certificate.verify()
+    assert ordinary.routing_plan.backend == "minkowski-triviality"
+    assert not ordinary.routing_plan.materializes_all_reduced_forms
+    assert ordinary.verify()
+    narrow = field.narrow_class_group()
+    assert narrow.invariants() == (2,)
+    assert narrow.routing_plan.narrow
+    assert narrow.routing_plan.backend == "quadratic-forms"
+    generator = narrow.gen()
+    assert narrow(generator.ideal()) == generator
+
+# D=60 distinguishes ordinary and narrow groups and is stable under translation.
+for polynomial in (x*x - 15, x*x + 2*x - 14):
+    field = NumberField(polynomial, "b")
+    assert field.class_group().invariants() == (2,)
+    assert field.narrow_class_group().invariants() == (2, 2)
+
+# The public regulator is an Arb-backed rational enclosure.  Increasing prec
+# narrows the exact interval instead of returning another binary64 value.
+field = NumberField(x*x + 4*x + 1, "u")
+regulator_100 = field.regulator(100)
+regulator_200 = field.regulator(200)
+for regulator, precision in ((regulator_100, 100), (regulator_200, 200)):
+    assert regulator.rigorous
+    assert regulator.full_rank_certified
+    assert regulator.ball.is_positive()
+    assert regulator.precision_bits >= precision
+    assert regulator.proof_status == "interval-certified-weighted-log-regulator"
+assert regulator_200.ball.width() < regulator_100.ball.width()
+assert regulator_100.ball.intersection(regulator_200.ball).is_positive()
+
+print("quadratic-public-certificates-ok")
+`);
+  assert.equal(output, "quadratic-public-certificates-ok");
+});
+
+test("imaginary public ideal maps include inverses and fractional ideals", () => {
+  const output = runSage(String.raw`
+x = polygen(QQ, "x")
+
+for polynomial in (x*x + x + 6, x*x + 3*x + 8):
+    field = NumberField(polynomial, "i")
+    group = field.class_group()
+    generator = group.gen()
+    ideal = generator.ideal()
+    assert group(ideal) == generator
+    assert group(~ideal) == ~generator
+    assert group(ideal / 2) == generator
+    assert not ideal.is_principal()
+    assert not (~ideal).is_principal()
+    assert (ideal * ~ideal).is_principal()
+    assert (ideal / 2).ideal_class_log() == generator
+
+# Imaginary fields with Minkowski bound below 2 use the same public certificate
+# short circuit; every nonzero fractional ideal maps to the unique class.
+eisenstein = NumberField(x*x + x + 1, "z")
+trivial = eisenstein.class_group()
+assert trivial.algorithm == "minkowski"
+assert trivial.certificate.proves_triviality
+principal = eisenstein.maximal_order().ideal(2)
+assert trivial(principal / 3).is_one()
+assert (principal / 3).is_principal()
+
+print("quadratic-imaginary-ideal-maps-ok")
+`);
+  assert.equal(output, "quadratic-imaginary-ideal-maps-ok");
 });
 
 test("quadratic resource caps fail instead of claiming truncated completeness", () => {
@@ -276,6 +368,51 @@ try:
     raise AssertionError("an infeasible exhaustive computation did not fail fast")
 except ValueError as error:
     assert "max_enumeration_checks" in str(error)
+
+# Public routing never starts an enumerate-all computation outside its explicit
+# measured/resource caps.  Auto selects the shared Buchmann--Hecke relation
+# engine; explicitly demanding forms produces an inspectable unsupported plan
+# and then fails before materialization.
+x = polygen(QQ, "x")
+real_field = NumberField(x*x - 15, "r")
+real_auto = real_field.quadratic_class_group_plan(
+    "auto", False, max_enumeration_checks=1
+)
+assert real_auto.backend == "buchmann-hecke"
+assert real_auto.supported and not real_auto.materializes_all_reduced_forms
+real_forced = real_field.quadratic_class_group_plan(
+    "quadratic-forms", False, max_enumeration_checks=1
+)
+assert real_forced.backend == "quadratic-forms"
+assert not real_forced.supported and real_forced.materializes_all_reduced_forms
+try:
+    real_field.class_number(
+        algorithm="quadratic-forms", max_enumeration_checks=1
+    )
+    raise AssertionError("an explicitly capped real enumeration started")
+except ValueError as error:
+    assert "candidate estimate" in str(error)
+
+boundary = NumberField(x*x + x + 250000002, "b")
+assert boundary.discriminant() == -1000000007
+boundary_plan = boundary.quadratic_class_group_plan()
+assert boundary_plan.backend == "quadratic-forms"
+assert boundary_plan.benchmark_threshold == 1000000007
+
+beyond = NumberField(x*x - x + 250000022, "c")
+assert beyond.discriminant() == -1000000087
+beyond_plan = beyond.quadratic_class_group_plan()
+assert beyond_plan.backend == "buchmann-hecke"
+assert beyond_plan.supported
+assert not beyond_plan.materializes_all_reduced_forms
+assert "compare-quadratic-class-groups.cjs" in beyond_plan.benchmark_source
+forced_beyond = beyond.quadratic_class_group_plan("quadratic-forms")
+assert not forced_beyond.supported
+try:
+    beyond.class_number(algorithm="quadratic-forms")
+    raise AssertionError("an imaginary enumeration exceeded its benchmark cap")
+except ValueError as error:
+    assert "benchmark" in str(error)
 
 print("quadratic-resource-caps-ok")
 `);
