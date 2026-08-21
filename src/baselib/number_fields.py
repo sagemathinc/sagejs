@@ -934,6 +934,8 @@ class NumberFieldClassGroup:
         self._field = field
         self._group = group
         self._element_cache = runtime.map()
+        self.proof_status = getattr(group, "proof_status", "exact-unconditional")
+        self.algorithm = getattr(group, "algorithm", "quadratic-forms")
 
     def _wrap(self, element: Any) -> NumberFieldClassGroupElement:
         cached = self._element_cache.get(element)
