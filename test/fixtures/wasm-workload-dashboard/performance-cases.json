@@ -1,0 +1,17 @@
+{
+  "schema": "sagejs.browser-wasm-performance-cases/v1",
+  "description": "Focused dashboard performance fixture.",
+  "cases": [
+    {
+      "id": "heavy-math",
+      "family": "fixture",
+      "requires": [
+        { "id": "library:math", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:compiled-math", "route": "receipt-backed-wasm-artifact" },
+        { "id": "runtime:glue", "route": "shared-runtime-js" }
+      ],
+      "source": "print(42)",
+      "timeout_ms": 1000
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schema": "sagejs.wasm-capability-report/v1",
+  "counts": {
+    "total": 4,
+    "by_kind": {},
+    "by_disposition": {},
+    "by_status": { "available": 3, "fallback": 1 }
+  },
+  "capabilities": [
+    {
+      "id": "library:math",
+      "family": "fixture",
+      "disposition": "shared-core",
+      "status": "available",
+      "wasm_module": "fixture"
+    },
+    {
+      "id": "kernel:compiled-math",
+      "family": "fixture",
+      "disposition": "compiled-source",
+      "status": "available",
+      "wasm_module": "production-native-kernels"
+    },
+    {
+      "id": "runtime:glue",
+      "family": "fixture",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "wasm_module": "host-runtime"
+    },
+    {
+      "id": "portable:math",
+      "family": "fixture",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "wasm_module": "sage-runtime"
+    }
+  ]
+}
