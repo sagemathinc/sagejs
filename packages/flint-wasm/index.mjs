@@ -65,7 +65,7 @@ export async function instantiateFlintFactor(
   });
   const polynomialBackend = createPortablePolynomialBackend();
   const matrixBackend = createPortableMatrixBackend();
-  const numericBackend = createNumericBackend();
+  const numericBackend = createNumericBackend(instance, { recordCapability });
   const publicGeneratedResourceBackend = generatedResourceBackend;
   const dirichletGroupBackend = createDirichletGroupBackend(instance);
   const analyticBackend = createAnalyticWasmBackend(instance, {
