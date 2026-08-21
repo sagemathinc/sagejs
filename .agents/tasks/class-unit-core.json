@@ -2,12 +2,12 @@
   "$schema": "../task.schema.json",
   "schema_version": 2,
   "id": "class-unit-core",
-  "title": "Class-unit core representations and checkpoints",
+  "title": "Class-unit proof-pass checkpoints",
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Implement factored elements, immutable proof states, shared class/unit state, and genuinely resumable corruption-resistant checkpoint, cancellation, and progress control",
-  "base_commit": "2927be798ff1784505aeb497678b2e23d4251e2f",
+  "objective": "Implement authenticated resumable Minkowski proof records and deterministic parallel partitions with atomic incremental checkpoint and cancellation control",
+  "base_commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
   "claims": [
     "src/lib/sagejs/number_fields/factored_elements.py",
     "src/lib/sagejs/number_fields/class_unit_context.py",
@@ -78,19 +78,41 @@
       "commit": "d69b3520a2b0c4e6048ffb81dd3e4fbef1325386",
       "workspace_fingerprint": "e7b71364b6f62458b1be4d2120cdb80290721ba6e3a879df289886bf31ac8c4f",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-context.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.728,
+      "started_at": "2026-08-21T09:26:34.554Z",
+      "commit": "d669b262f4fa2565261ef214f405f6e214a6cbea",
+      "workspace_fingerprint": "0ea90ad988b0a5b603e0bf9039b052658690dcfb6db50ce7d08e39094b0e50dc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/factored_elements.py src/lib/sagejs/number_fields/class_unit_context.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.759,
+      "started_at": "2026-08-21T09:26:47.951Z",
+      "commit": "d669b262f4fa2565261ef214f405f6e214a6cbea",
+      "workspace_fingerprint": "0ea90ad988b0a5b603e0bf9039b052658690dcfb6db50ce7d08e39094b0e50dc",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Extended the shared ClassUnitGroupContext with authenticated relation-search state and added ClassUnitCheckpoint as a duck-typed execution controller. It restores factor-base, relation, search, matrix, and proof progress; captures every producer state family; writes canonical bounded checkpoints atomically to paths or detached sinks; authenticates and verifies resumes; publishes immutable sequenced progress; and polls cooperative cancellation. The focused restart test proves exact candidate-stream continuity across a fresh controller, preserves factor-base/relation/matrix/proof state, checks detached sinks and byte limits, rejects search-state corruption, and verifies progress sequence continuation and cancellation metadata. The original factored-element/context regression now authenticates the added search-state component and rejects 20 independent mutations.",
+    "summary": "Added authenticated MinkowskiProofProgressRecord, MinkowskiProofPartition, and MinkowskiProofProgress records for unconditional proof passes. Exact prime fingerprints, rational bounds, theorem, deterministic strided partition assignment, and producer-selected relation/generator/saturation dependency hashes define one stable plan hash. Immutable append/merge operations enforce assigned-prefix coverage; replay authenticates every nested record and partition and supports producer decoders and semantic verifiers. ClassUnitCheckpoint now begins or restores a matching proof plan and atomically checkpoints either one accepted proof prime or a worker partition, saving in a finally boundary so callback-triggered cancellation cannot lose accepted work. The focused regression interrupts after the third accepted prime, resumes exact pending indices, completes three partitions, rejects or exposes prime/relation/generator/saturation/record/coverage mutations, and verifies canonical replay.",
     "risks": [
-      "Context component authentication detects accidental mutation, while mathematical semantics remain intentionally owned by producer-supplied replay verifiers.",
+      "Hashes authenticate checkpoint consistency rather than origin; mathematical coordinates, witnesses, and saturation claims remain intentionally owned by producer-supplied record verifiers.",
       "Atomic path replacement protects the previous complete checkpoint, but the helper does not fsync file or directory metadata and does not coordinate concurrent writers to the same destination.",
-      "Cancellation is cooperative: expensive producers must call stage/check_cancelled at safe boundaries, and only state captured before save is resumable.",
+      "Parallel workers merge deterministic authenticated prefixes; scheduling and interprocess transport remain engine policy, and divergent evidence for the same assigned index is rejected.",
+      "An authenticated truncated proof plan is valid resumable state with complete=False; callers must never upgrade the proof label until complete is true and producer verification succeeds.",
       "Broad native and merged-suite gates were deferred to integration at coordinator request; the recorded receipts are the focused Sage.js runtime regression and direct zero-error Pyright check."
     ],
     "next_steps": [
-      "Merge the engine lane's lazy hook integration and exercise a real relation-search interruption through the public class_group/unit_group entry point.",
-      "Supply producer-owned decoders and semantic verifiers for factor-base, relation, matrix, unit/analytic, and proof records when constructing resumed controllers.",
+      "Merge the engine lane's high-level proof-plan hooks and exercise cancellation/resume during the real Minkowski prime-ideal loop.",
+      "Bind every uniformly available relation presentation, generator, and saturation digest in dependency_hashes and replay accepted records through the class-group proof verifier.",
+      "Keep conditional and unconditional cache entries separate by forking the immutable proof state only after progress.complete and semantic replay succeed.",
       "Run pnpm test:baselib:strict, pnpm test:native, pnpm architecture:check, and pnpm test:changed after the controller and engine commits merge."
     ]
   }
