@@ -145,6 +145,11 @@ class FactoredNumberFieldElement:
             if exponent:
                 ordered.append((factor, int(exponent)))
         self._factors = tuple(ordered)
+        # Exact unit replay asks for the same principal ideal during unit
+        # recovery and again while authenticating the saturation record.  Keep
+        # this cache object-local and tiny: the factored element is immutable,
+        # while order identity prevents reuse in an unrelated order.
+        self._principal_ideal_cache: list[tuple[Any, Any]] = []
         runtime.object.freeze(self)
 
     @classmethod
@@ -223,12 +228,18 @@ class FactoredNumberFieldElement:
         selected_order = self._field.maximal_order() if order is None else order
         if selected_order.number_field() is not self._field:
             raise TypeError("the selected order belongs to a different field instance")
+        for cached_order, cached_ideal in self._principal_ideal_cache:
+            if cached_order is selected_order:
+                return cached_ideal
         ideal_module = __import__(
             "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
         )
         result = selected_order.ideal(1)
         for factor, exponent in self._factors:
             result *= ideal_module.ideal_power(selected_order.ideal(factor), exponent)
+        if len(self._principal_ideal_cache) >= 2:
+            self._principal_ideal_cache.pop(0)
+        self._principal_ideal_cache.append((selected_order, result))
         return result
 
     def verify_principal_ideal(self, ideal: Any) -> bool:

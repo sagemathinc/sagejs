@@ -1,0 +1,42 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "principal-ideal-cache",
+  "title": "Principal Ideal Cache",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Memoize exact principal ideals for repeated live class and unit proof replay with bounded object-local caches",
+  "base_commit": "588456db2e708a8036109b3bd8005c94a479c6ed",
+  "claims": [
+    "src/lib/sagejs/number_fields/factored_elements.py",
+    "src/lib/sagejs/number_fields/class_group_relations.py",
+    "test/number-field-class-unit-engine.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Exact replay differential on the Selmer degree-6 class/unit computation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
