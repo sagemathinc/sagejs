@@ -85,10 +85,42 @@ performance.  A physical adapter must additionally pass the complete CPU
 candidate corpus, deterministic-repeat tests, device loss tests, and the 5x
 end-to-end crossover threshold before `backend="auto"` may select it.
 
-At this commit no physical-device acceptance receipt is recorded.  Therefore
-`backend="auto"` selects CPU, and explicit `backend="gpu"` rejects even an
-available but uncalibrated device.  This is intentional: a working shader is
-not enough to justify discarding possible near-zero twists.
+At this commit no physical **WebGPU** acceptance receipt is recorded.
+Therefore `backend="auto"` selects CPU, and explicit `backend="gpu"` rejects
+even an available but uncalibrated device.  This is intentional: a working
+shader is not enough to justify discarding possible near-zero twists.
+
+### CUDA feasibility receipt
+
+The standalone
+`bench/hyperelliptic/cuda-twist-feasibility.cu` isolates the same packed f32
+dot-product shape on CUDA.  It is a feasibility benchmark, not a Sage.js
+runtime dependency.  Its GPU time includes coefficient, character, and weight
+uploads, the kernel, and result download.  Compile it with, for example:
+
+```sh
+nvcc -O3 -std=c++17 -arch=sm_120 \
+  bench/hyperelliptic/cuda-twist-feasibility.cu -o /tmp/cuda-twist
+/tmp/cuda-twist 8192 4096 2
+```
+
+On 2026-08-21, exact commit `c5f4f2df`, an NVIDIA RTX PRO 6000 Blackwell
+Server Edition with driver 580.173.02 and CUDA 13.0 gave:
+
+| rows | terms | orders | one-CPU-thread | GPU end-to-end | speedup |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 256 | 4096 | 2 | 2.18 ms | 6.35 ms | 0.34x |
+| 1,024 | 4096 | 2 | 9.02 ms | 4.00 ms | 2.25x |
+| 4,096 | 4096 | 2 | 59.96 ms | 14.50 ms | 4.13x |
+| 8,192 | 4096 | 2 | 146.33 ms | 28.85 ms | 5.07x |
+| 32,768 | 4096 | 2 | 610.15 ms | 110.33 ms | 5.53x |
+
+Thus the arithmetic and transfer crossover clears the planned 5x gate at
+roughly 8,000 rows for this shape.  This does **not** enable GPU selection:
+the Google compute image exposed CUDA but no NVIDIA Vulkan adapter, so Dawn
+saw only Mesa llvmpipe.  A CUDA runtime backend or a Vulkan/vWS-equipped VM
+still needs the full candidate-safety, checkpoint, and multicore comparison
+before production selection.
 
 ## Twist checkpoint contract
 

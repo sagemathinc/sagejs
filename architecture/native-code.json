@@ -2,7 +2,7 @@
   "schema_version": 1,
   "policy": {
     "default": "reject-unclassified",
-    "tracked_extensions": [".c", ".cc", ".cpp", ".h"],
+    "tracked_extensions": [".c", ".cc", ".cpp", ".cu", ".h"],
     "categories": [
       "benchmark-reference",
       "external-library-bridge",
@@ -17,6 +17,13 @@
     "review_statuses": ["accepted", "audit-required", "audited", "generated"]
   },
   "files": [
+    {
+      "path": "bench/hyperelliptic/cuda-twist-feasibility.cu",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Standalone CUDA feasibility and crossover benchmark for packed quadratic-twist weighted sums; it is not linked into Sage.js and includes host transfer and result download in the GPU timing."
+    },
     {
       "path": "bench/hyperelliptic/genus3-jacobian-kernel.c",
       "category": "benchmark-reference",

@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 95,
+    "classified-native-file": 96,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
     "napi-export": 308,
@@ -8061,6 +8061,14 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "native-compiler"
+    },
+    {
+      "id": "native-file:bench/hyperelliptic/cuda-twist-feasibility.cu",
+      "kind": "classified-native-file",
+      "path": "bench/hyperelliptic/cuda-twist-feasibility.cu",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
     },
     {
       "id": "native-file:bench/hyperelliptic/genus3-jacobian-kernel.c",
