@@ -1,0 +1,74 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-matrix",
+  "title": "Class relation linear algebra",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement sparse relation storage, modular rank/pivot screening, exact HNF/SNF presentation extraction and replay, with differential FLINT tests",
+  "base_commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_group_matrix.py",
+    "test/number-field-class-group-matrix.cjs",
+    "test/fixtures/number-field-class-group-matrix.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/Clgp"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "FLINT",
+      "Sage/PARI"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node test/number-field-class-group-matrix.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.948,
+      "started_at": "2026-08-21T04:56:35.272Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "d3d0b417129c6c01819c9b9f6c36be8b0f5432a01d4f32a9033f5afcd0ca9546",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/number-field-class-group-matrix.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.287,
+      "started_at": "2026-08-21T05:00:19.090Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "d3d0b417129c6c01819c9b9f6c36be8b0f5432a01d4f32a9033f5afcd0ca9546",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a standalone sparse relation accumulator with multi-prime incremental pivot screening, unlucky-prime replay, exact FLINT HNF/SNF extraction, ordinary-Python transform fallback, replayable class-map generator transforms, and left-kernel unit transforms. Frozen Sage 10.9 elementary-divisor fixtures and native-on/native-off differential, corruption, serialization, map, unit-kernel, collision, and benchmark tests pass.",
+    "risks": [
+      "Rows are relation exponent vectors in factor-base order and act on the right: H = H_left*A and S = S_left*A*S_right. Consumers using column vectors must transpose explicitly.",
+      "Exact transforms are intentionally dense once extraction is requested; relation collection should retain the sparse accumulator and defer presentation extraction until modular full rank is reached.",
+      "The coordinator requested focused handoff validation; broad test:native and test:changed gates remain for central integration and four-platform CI."
+    ],
+    "next_steps": [
+      "Wire RelationMatrixAccumulator.to_dict as the shared context matrix_state and RelationPresentation.generator_transforms/class_coordinates into the maps lane.",
+      "Run central broad native, changed-file, and four-platform validation after integrating sibling class/unit lanes."
+    ]
+  }
+}

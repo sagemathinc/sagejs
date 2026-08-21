@@ -1,0 +1,66 @@
+{
+  "schema": "sagejs.number-fields.class-unit-analytic-oracle.v1",
+  "generatedBy": {
+    "system": "SageMath",
+    "version": "10.9.post30",
+    "pariVersion": "2.17.1",
+    "command": "/home/user/sagelite/sage -c '<script recorded in test metadata>'",
+    "algorithmReferences": [
+      "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/Zeta.jl",
+      "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/Unit/Regulator.jl",
+      "/home/user/upstream/pari-2.18.1.alpha/src/basemath/buch2.c"
+    ]
+  },
+  "fields": [
+    {
+      "id": "real-quadratic-5",
+      "polynomial": [-5, 0, 1],
+      "signature": [2, 0],
+      "discriminant": 5,
+      "classNumber": 1,
+      "rootsOfUnity": 2,
+      "regulator": "0.48121182505960344749775891342436842313518433",
+      "weightedLogarithms": [
+        [
+          "0.48121182505960344749775891342436842313518432",
+          "0.48121182505960344749775891342436842313518434"
+        ]
+      ],
+      "residue": "0.43040894096400363863526974925887954000515996",
+      "logResidue": "-0.84301949673508085950635143577944712706387433"
+    },
+    {
+      "id": "imaginary-quadratic-23",
+      "polynomial": [6, 1, 1],
+      "signature": [0, 1],
+      "discriminant": -23,
+      "classNumber": 3,
+      "rootsOfUnity": 2,
+      "regulator": "1",
+      "weightedLogarithms": [],
+      "residue": "1.9652020541078591659027670051223364151296760",
+      "logResidue": "0.67559506655293502013529617237048635707359521"
+    },
+    {
+      "id": "totally-real-cubic-49",
+      "polynomial": [1, -2, -1, 1],
+      "signature": [3, 0],
+      "discriminant": 49,
+      "classNumber": 1,
+      "rootsOfUnity": 2,
+      "regulator": "0.52545468212257238833882604544832450953880131634614523598282",
+      "weightedLogarithms": [
+        [
+          "0.58886260576167973183384226394560",
+          "0.22072431028303298072503912082924"
+        ],
+        [
+          "0.22072431028303298072503912082924",
+          "-0.80958691604471271255888138477486"
+        ]
+      ],
+      "residue": "0.30025981835575565047932916882761400545074360934065442056161",
+      "logResidue": "-1.20310711795468000644940808320512043166550984928113139639001"
+    }
+  ]
+}

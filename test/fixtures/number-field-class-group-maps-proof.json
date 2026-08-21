@@ -1,0 +1,58 @@
+{
+  "schema": "sagejs.number-fields.class-group.minkowski-proof.v1",
+  "proof_status": "exact-unconditional",
+  "theorem": "Minkowski ideal-class theorem",
+  "field_order_fingerprint": "toy-field-order-v1",
+  "discriminant": -23,
+  "bound": [5, 1],
+  "prime_records": [
+    {
+      "ideal": [1, 0, 2],
+      "fingerprint": "1:0:2",
+      "norm": 2,
+      "coordinates": [1],
+      "principal_witness": {
+        "schema": "sagejs.number-fields.principal-ideal-witness.v1",
+        "ideal": [0, 0, 1],
+        "generator": [0, 0],
+        "source": "Minkowski proof-prime quotient",
+        "factored": true
+      }
+    },
+    {
+      "ideal": [2, 1, 3],
+      "fingerprint": "2:1:3",
+      "norm": 3,
+      "coordinates": [2],
+      "principal_witness": {
+        "schema": "sagejs.number-fields.principal-ideal-witness.v1",
+        "ideal": [0, 1, 1],
+        "generator": [0, 1],
+        "source": "Minkowski proof-prime quotient",
+        "factored": true
+      }
+    }
+  ],
+  "saturation": {
+    "class_primes": [2],
+    "unit_primes": [2],
+    "index_bound": 2,
+    "complete": true,
+    "evidence": "toy-index-two-saturation"
+  },
+  "mutations": [
+    {"path": ["schema"], "value": "corrupt-schema"},
+    {"path": ["proof_status"], "value": "exact-relations-conditional-grh"},
+    {"path": ["theorem"], "value": "unnamed theorem"},
+    {"path": ["field_order_fingerprint"], "value": "another-order"},
+    {"path": ["discriminant"], "value": -24},
+    {"path": ["bound", 0], "value": 4},
+    {"path": ["prime_records", 0, "fingerprint"], "value": "forged-prime"},
+    {"path": ["prime_records", 0, "norm"], "value": 3},
+    {"path": ["prime_records", 1, "coordinates", 0], "value": 3},
+    {"path": ["prime_records", 1, "principal_witness", "generator", 1], "value": 2},
+    {"path": ["prime_records", 1, "principal_witness", "factored"], "value": false},
+    {"path": ["saturation", "complete"], "value": false},
+    {"path": ["saturation", "index_bound"], "value": 0}
+  ]
+}

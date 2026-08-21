@@ -1,0 +1,177 @@
+{
+  "schema": "sagejs.number-fields/quadratic-class-units-oracle-v1",
+  "generated_at": "2026-08-21T00:00:00Z",
+  "oracles": {
+    "sage_pari": {
+      "version": "SageMath 10.9.post30 / PARI 2.18.1",
+      "command": "K=QuadraticField(D); K.unit_group().fundamental_units(); K.class_group().invariants(); K.narrow_class_group().invariants()"
+    },
+    "magma": {
+      "version": "V2.29-1 reference syntax",
+      "command": "K:=QuadraticField(D); UnitGroup(Integers(K)); ClassGroup(Integers(K)); NarrowClassGroup(Integers(K));"
+    }
+  },
+  "representation": "unit is (unit_x + unit_y*sqrt(discriminant))/2 with positive real value",
+  "cases": [
+    {
+      "discriminant": 5,
+      "unit_x": 1,
+      "unit_y": 1,
+      "unit_norm": -1,
+      "ordinary_invariants": [],
+      "narrow_invariants": [],
+      "reduced_forms": 2,
+      "proper_cycles": 1,
+      "continued_fraction_steps": 2
+    },
+    {
+      "discriminant": 8,
+      "unit_x": 2,
+      "unit_y": 1,
+      "unit_norm": -1,
+      "ordinary_invariants": [],
+      "narrow_invariants": [],
+      "reduced_forms": 2,
+      "proper_cycles": 1,
+      "continued_fraction_steps": 4
+    },
+    {
+      "discriminant": 12,
+      "unit_x": 4,
+      "unit_y": 1,
+      "unit_norm": 1,
+      "ordinary_invariants": [],
+      "narrow_invariants": [2],
+      "reduced_forms": 4,
+      "proper_cycles": 2,
+      "continued_fraction_steps": 4
+    },
+    {
+      "discriminant": 13,
+      "unit_x": 3,
+      "unit_y": 1,
+      "unit_norm": -1,
+      "ordinary_invariants": [],
+      "narrow_invariants": [],
+      "reduced_forms": 2,
+      "proper_cycles": 1,
+      "continued_fraction_steps": 4
+    },
+    {
+      "discriminant": 40,
+      "unit_x": 6,
+      "unit_y": 1,
+      "unit_norm": -1,
+      "ordinary_invariants": [2],
+      "narrow_invariants": [2],
+      "reduced_forms": 8,
+      "proper_cycles": 2,
+      "continued_fraction_steps": 4
+    },
+    {
+      "discriminant": 60,
+      "unit_x": 8,
+      "unit_y": 1,
+      "unit_norm": 1,
+      "ordinary_invariants": [2],
+      "narrow_invariants": [2, 2],
+      "reduced_forms": 8,
+      "proper_cycles": 4,
+      "continued_fraction_steps": 4
+    },
+    {
+      "discriminant": 61,
+      "unit_x": 39,
+      "unit_y": 5,
+      "unit_norm": -1,
+      "ordinary_invariants": [],
+      "narrow_invariants": [],
+      "reduced_forms": 6,
+      "proper_cycles": 1,
+      "continued_fraction_steps": 8
+    },
+    {
+      "discriminant": 73,
+      "unit_x": 2136,
+      "unit_y": 250,
+      "unit_norm": -1,
+      "ordinary_invariants": [],
+      "narrow_invariants": [],
+      "reduced_forms": 18,
+      "proper_cycles": 1,
+      "continued_fraction_steps": 20
+    },
+    {
+      "discriminant": 229,
+      "unit_x": 15,
+      "unit_y": 1,
+      "unit_norm": -1,
+      "ordinary_invariants": [3],
+      "narrow_invariants": [3],
+      "reduced_forms": 14,
+      "proper_cycles": 3,
+      "continued_fraction_steps": 4
+    },
+    {
+      "discriminant": 257,
+      "unit_x": 32,
+      "unit_y": 2,
+      "unit_norm": -1,
+      "ordinary_invariants": [3],
+      "narrow_invariants": [3],
+      "reduced_forms": 18,
+      "proper_cycles": 3,
+      "continued_fraction_steps": 8
+    },
+    {
+      "discriminant": 321,
+      "unit_x": 430,
+      "unit_y": 24,
+      "unit_norm": 1,
+      "ordinary_invariants": [3],
+      "narrow_invariants": [6],
+      "reduced_forms": 32,
+      "proper_cycles": 6,
+      "continued_fraction_steps": 6
+    },
+    {
+      "discriminant": 401,
+      "unit_x": 40,
+      "unit_y": 2,
+      "unit_norm": -1,
+      "ordinary_invariants": [5],
+      "narrow_invariants": [5],
+      "reduced_forms": 38,
+      "proper_cycles": 5,
+      "continued_fraction_steps": 8
+    },
+    {
+      "discriminant": 1001,
+      "unit_x": 2121810,
+      "unit_y": 67064,
+      "unit_norm": 1,
+      "ordinary_invariants": [2],
+      "narrow_invariants": [2, 2],
+      "reduced_forms": 52,
+      "proper_cycles": 4,
+      "continued_fraction_steps": 16
+    },
+    {
+      "discriminant": 2005,
+      "unit_x": 403,
+      "unit_y": 9,
+      "unit_norm": 1,
+      "ordinary_invariants": [4],
+      "narrow_invariants": [8],
+      "reduced_forms": 44,
+      "proper_cycles": 8,
+      "continued_fraction_steps": 6
+    }
+  ],
+  "benchmark": {
+    "discriminant": 2005,
+    "cold_max_seconds": 8,
+    "warm_iterations": 5,
+    "warm_max_seconds": 5
+  }
+}

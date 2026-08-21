@@ -331,6 +331,35 @@ assert.deepEqual(flint.polyCoefficients(zf), [1n, 3n, 3n, 1n]);
 assert.equal(flint.polyEqual(zf, zf), true);
 
 const algebraicTwo = flint.qqbarFromRational(2n, 1n);
+const logarithmBall40 = flint.qqbarLogAbsBall(algebraicTwo, 40);
+const logarithmBall100 = flint.qqbarLogAbsBall(algebraicTwo, 100);
+for (const enclosure of [logarithmBall40, logarithmBall100]) {
+  const midpoint = Number(enclosure.midpoint);
+  const radius = Number(enclosure.radius);
+  assert.equal(enclosure.precisionBits >= 40, true);
+  assert.equal(Number.isFinite(midpoint), true);
+  assert.equal(radius > 0, true);
+  assert.equal(Math.abs(midpoint - Math.LN2) <= radius + Number.EPSILON, true);
+}
+assert.equal(
+  Number(logarithmBall100.radius) < Number(logarithmBall40.radius),
+  true,
+);
+const quadraticSplitting = flint.numberFieldSplittingTypes(
+  [-5n, 0n, 1n],
+  [3, 5, 11],
+);
+for (const factors of quadraticSplitting) {
+  factors.sort((left, right) => left[1] - right[1] || left[0] - right[0]);
+}
+assert.deepEqual(quadraticSplitting, [
+  [[1, 2]],
+  [[2, 1]],
+  [
+    [1, 1],
+    [1, 1],
+  ],
+]);
 const algebraicSqrtTwo = flint.qqbarSqrt(algebraicTwo);
 assert.equal(flint.qqbarDegree(algebraicSqrtTwo), 2);
 assert.equal(flint.qqbarIsReal(algebraicSqrtTwo), true);

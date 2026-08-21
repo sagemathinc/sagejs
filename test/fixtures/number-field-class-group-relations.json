@@ -1,0 +1,38 @@
+{
+  "schema": "sagejs.number-fields/class-relation-oracles-v1",
+  "sources": {
+    "sage_pari": {
+      "system": "SageMath 10.9 / PARI",
+      "command": "K.<a> = NumberField(x^2-x-1); K.factor(2); K.factor(5); (3*a+1).norm()",
+      "result": "2 is inert, 5 is ramified, Norm(3*a+1)=-5"
+    },
+    "hecke_oscar": {
+      "system": "Hecke/Oscar relation semantics",
+      "reference": "Hecke.jl NumFieldOrd/NfOrd/Clgp/Rel_add.jl and Rel_LLL.jl",
+      "result": "principal rows are exact factor-base valuations; short search begins with reduced basis vectors and signed weight-two combinations"
+    }
+  },
+  "golden_ratio": {
+    "polynomial_low_to_high": [-1, -1, 1],
+    "discriminant": 5,
+    "rational_primes": [2, 5],
+    "factor_base": [
+      {"prime": 2, "e": 1, "f": 2, "norm": 4},
+      {"prime": 5, "e": 2, "f": 1, "norm": 5}
+    ],
+    "initial_rows": [[1, 0], [0, 2]],
+    "initial_modular_rank": 2,
+    "ramified_uniformizer": {
+      "norm": -5,
+      "source_row": [0, 1],
+      "quotient_row": [0, 0],
+      "relation_row": [0, 1]
+    },
+    "nonsmooth_element_coefficients": [3, 1],
+    "nonsmooth_norm": 11,
+    "short_element_prefix": ["1", "a", "a + 1", "-a + 1"],
+    "search_seed": 123,
+    "replay_iterations": 12,
+    "replay_budget_ms": 5000
+  }
+}

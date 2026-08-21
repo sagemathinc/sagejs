@@ -1,0 +1,76 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-unit-core",
+  "title": "Class-unit core representations",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement factored number-field elements, immutable proof states, shared ClassUnitGroupContext state/serialization, and corruption-resistant replay tests",
+  "base_commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+  "claims": [
+    "src/lib/sagejs/number_fields/factored_elements.py",
+    "src/lib/sagejs/number_fields/class_unit_context.py",
+    "test/number-field-class-unit-context.cjs",
+    "test/fixtures/number-field-class-unit-context.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/Clgp/Types.jl"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage/PARI"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/number-field-class-unit-context.cjs",
+    "pnpm exec pyright src/lib/sagejs/number_fields/factored_elements.py src/lib/sagejs/number_fields/class_unit_context.py"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-class-unit-context.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.58,
+      "started_at": "2026-08-21T04:59:57.692Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "b04398f34ae610cd287256ea0208d17b07dafc34a0a5a1d9f5e0df1d8f77593a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/factored_elements.py src/lib/sagejs/number_fields/class_unit_context.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.615,
+      "started_at": "2026-08-21T05:00:05.583Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "b04398f34ae610cd287256ea0208d17b07dafc34a0a5a1d9f5e0df1d8f77593a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added canonical FactoredNumberFieldElement arithmetic and authenticated replay, immutable exact proof labels and ResourceLimits, and a shared duck-typed ClassUnitGroupContext with policy-separated cache keys, proof forks, component update helpers, SHA-256 checkpoints, decoders, and producer verifiers. The frozen quadratic fixture and focused test cover exact expansion/norm/principal ideals/logarithms, portable replay, all four proof labels, immutable policy state, 19 component mutations, recomputed-hash identity/label failures, noncanonical factors, and semantic relation rejection.",
+    "risks": [
+      "Context component authentication detects accidental mutation, while mathematical semantics remain intentionally owned by producer-supplied replay verifiers.",
+      "The lane did not claim pyrightconfig.json or package exports; integration must register both strict modules and any desired public re-exports.",
+      "Broad native and merged-suite gates were deferred to integration at coordinator request; the recorded receipts are the focused Sage.js runtime regression and direct zero-error Pyright check."
+    ],
+    "next_steps": [
+      "Add factored_elements.py and class_unit_context.py to pyrightconfig.json in the integration lane.",
+      "Wire factor-base, relation, matrix, unit/analytic, and map/proof record decoders and verifiers into ClassUnitGroupContext replay.",
+      "Run pnpm test:baselib:strict, pnpm test:native, pnpm architecture:check, and pnpm test:changed after all class/unit lanes merge."
+    ]
+  }
+}
