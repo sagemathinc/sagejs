@@ -38,6 +38,7 @@ from sagejs.number_fields.class_unit_context import (
     ClassUnitProofState,
     ResourceLimits,
 )
+from sagejs.number_fields.units import roots_of_unity
 
 fixture = json.loads(${JSON.stringify(JSON.stringify(fixture))})
 R = PolynomialRing(QQ, "x")
@@ -181,6 +182,24 @@ assert not verify_saturation_evidence(
     generation_verifier=verify_generation,
 )
 
+oversized_root = copy.deepcopy(saturation.to_dict())
+oversized_root["evidence"][0]["root_coordinates"][0][0] = 1 << 20000
+assert not verify_saturation_evidence(
+    K, O, square_subgroup, oversized_root,
+    generation_verifier=verify_generation,
+)
+wrong_exponent_width = copy.deepcopy(saturation.to_dict())
+wrong_exponent_width["evidence"][0]["exponents"].append(0)
+assert not verify_saturation_evidence(
+    K, O, square_subgroup, wrong_exponent_width,
+    generation_verifier=verify_generation,
+)
+assert not verify_saturation_evidence(
+    K, O, square_subgroup, saturation.to_dict(),
+    generation_verifier=verify_generation,
+    cancelled=lambda: True,
+)
+
 for path, mutation in (
     (("index_bound_is_rigorous",), "false"),
     (("initial_index_bound",), "2"),
@@ -230,6 +249,23 @@ certificate_payload["content_sha256"] = hashlib.sha256(json.dumps(
 ).encode("utf-8")).hexdigest()
 assert not verify_saturation_evidence(
     K, O, square_subgroup, generation_mutation,
+    generation_verifier=verify_generation,
+)
+
+oversized_reauthenticated = copy.deepcopy(saturation.to_dict())
+certificate_payload = oversized_reauthenticated["global_index_certificate"]
+certificate_payload["generation_evidence"]["padding"] = "x" * 1000001
+certificate_body = dict(certificate_payload)
+certificate_body.pop("content_sha256")
+certificate_payload["content_sha256"] = hashlib.sha256(json.dumps(
+    certificate_body,
+    allow_nan=False,
+    ensure_ascii=True,
+    separators=(",", ":"),
+    sort_keys=True,
+).encode("utf-8")).hexdigest()
+assert not verify_saturation_evidence(
+    K, O, square_subgroup, oversized_reauthenticated,
     generation_verifier=verify_generation,
 )
 
@@ -295,6 +331,22 @@ assert locally_obstructed.complete
 assert locally_obstructed.evidence[0].outcome == "saturated"
 assert locally_obstructed.evidence[0].method == (
     "exact-finite-order-quotient-pth-power-obstruction"
+)
+canonical_torsion = roots_of_unity(K)
+assert locally_obstructed.evidence[0].verify(
+    K, O, full_subgroup, canonical_torsion.elements
+)
+oversized_targets = copy.deepcopy(locally_obstructed.to_dict())
+oversized_targets["evidence"][0]["target_obstructions"] *= 5000
+assert not verify_saturation_evidence(
+    K, O, full_subgroup, oversized_targets,
+    generation_verifier=verify_generation,
+)
+oversized_residue_cap = copy.deepcopy(locally_obstructed.to_dict())
+oversized_residue_cap["evidence"][0]["residue_candidate_cap"] = 100001
+assert not verify_saturation_evidence(
+    K, O, full_subgroup, oversized_residue_cap,
+    generation_verifier=verify_generation,
 )
 
 reconstruction_precisions = []
