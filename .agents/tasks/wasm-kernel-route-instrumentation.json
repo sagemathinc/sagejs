@@ -42,7 +42,8 @@
   "validation": [
     "pnpm architecture:check",
     "pnpm test:portable",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "node --test test/wasm-kernel-route-instrumentation.cjs test/test-manifest.test.cjs"
   ],
   "runs": [],
   "handoff": {
