@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5121,
-      "bytes": 167275,
+      "lines": 5127,
+      "bytes": 167527,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -46,13 +46,14 @@
     },
     {
       "path": "packages/flint/src/dirichlet.c",
-      "lines": 1270,
-      "bytes": 36655,
+      "lines": 1312,
+      "bytes": 37971,
       "decision": "split-and-migrate",
       "priority": "medium",
       "responsibilities": [
         "Node-API conversion",
         "FLINT Dirichlet group and character calls",
+        "coarse Arb and Acb batches for gamma, Riemann xi, zeta, and Dirichlet values",
         "locally assembled character values and metadata"
       ],
       "rationale": "The FLINT bridge belongs natively, while character-level orchestration is readable mathematical policy. Separate the packed group/character ABI and move orchestration to strict Python as coverage permits.",

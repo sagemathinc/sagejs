@@ -302,6 +302,11 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:complexGammaValues",
+      "family": "dirichlet",
+      "decision": "retain-host-adapter"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:complexImag",
       "family": "numerical",
       "decision": "migrate-to-declared-ffi"
@@ -1624,6 +1629,11 @@
     },
     {
       "id": "napi:@sagemath/sagejs-flint:riemannXiStandardValue",
+      "family": "dirichlet",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:riemannXiValues",
       "family": "dirichlet",
       "decision": "retain-host-adapter"
     },

@@ -191,6 +191,28 @@ test("native Riemann zeta jets, xi, and batches preserve precision", () => {
     Math.abs(flint.complexRealDouble(xi) - 0.4971207781883141) <
       1e-15,
   );
+  const gammaValues = flint.complexGammaValues(
+    [real(0.5), real(1), real(3)],
+    160,
+  );
+  assert.equal(gammaValues.length, 3);
+  assert.ok(
+    Math.abs(flint.complexRealDouble(gammaValues[0]) - Math.sqrt(Math.PI)) <
+      1e-15,
+  );
+  assert.equal(flint.complexRealDouble(gammaValues[1]), 1);
+  assert.equal(flint.complexRealDouble(gammaValues[2]), 2);
+  const xiValues = flint.riemannXiValues(
+    [real(0), real(1), real(0.5)],
+    160,
+  );
+  assert.equal(xiValues.length, 3);
+  assert.equal(flint.complexRealDouble(xiValues[0]), 0.5);
+  assert.equal(flint.complexRealDouble(xiValues[1]), 0.5);
+  assert.ok(
+    Math.abs(flint.complexRealDouble(xiValues[2]) - 0.4971207781883141) <
+      1e-15,
+  );
 
   const points = [real(2), real(3), real(-2)];
   const values = flint.riemannZetaValues(points, 160);

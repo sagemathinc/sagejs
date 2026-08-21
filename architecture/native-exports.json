@@ -6,7 +6,7 @@
     "migrate-to-declared-ffi": 214,
     "migrate-to-typed-python": 34,
     "retain-differential-oracle": 1,
-    "retain-host-adapter": 26,
+    "retain-host-adapter": 28,
     "retain-representation-primitive": 29
   },
   "exports": [
@@ -504,6 +504,44 @@
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexGammaValues",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexGammaValues",
+      "callback": "sagejs_complex_gamma_values",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/dirichlet.c",
+        "line": 1105,
+        "lines": 20,
+        "sha256": "88e9951d5ec7c12f52da62c76a8b075a3f4772d7e5a5b01de96ebb63c6140cc6",
+        "calls": [
+          "_acb_vec_clear",
+          "acb_gamma",
+          "complex_array_from_acb",
+          "get_precision",
+          "require_arguments",
+          "require_complex_array"
+        ]
+      },
+      "family": "dirichlet",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Dirichlet exports mix FLINT group primitives with Sage.js-owned character orchestration and require staged separation.",
+      "fallback": "The strict Python Dirichlet implementation is the semantic fallback for every public operation.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/analytic-backend.test.mjs",
+        "packages/flint/test/dirichlet.cjs"
       ],
       "declared_ffi": null
     },
@@ -1271,7 +1309,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 1190,
+        "line": 1232,
         "lines": 81,
         "sha256": "124d1b4382c55bedfeccfc0ce4d01a97a4555afed056d5e8efe642cf72d746d0",
         "calls": [
@@ -1834,7 +1872,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 1105,
+        "line": 1147,
         "lines": 59,
         "sha256": "ca810ce8c1b413ae296974844a7b3860c32ed12e244545bc8c2646d39d6a76b2",
         "calls": [
@@ -12029,7 +12067,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 1165,
+        "line": 1207,
         "lines": 24,
         "sha256": "439bd29f64ef930262117adec4da33a76eac2335ed97fd3c9832cf23a01b89f0",
         "calls": [
@@ -12057,6 +12095,43 @@
         "packages/flint-wasm/test/analytic-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/builtins.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:riemannXiValues",
+      "package": "@sagemath/sagejs-flint",
+      "export": "riemannXiValues",
+      "callback": "sagejs_riemann_xi_values",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/dirichlet.c",
+        "line": 1126,
+        "lines": 20,
+        "sha256": "aec775d2b9b8bac56cff44b494d0f41c67053b3cfd0505e1f28e4837f0f32445",
+        "calls": [
+          "_acb_vec_clear",
+          "acb_dirichlet_xi",
+          "complex_array_from_acb",
+          "get_precision",
+          "require_arguments",
+          "require_complex_array"
+        ]
+      },
+      "family": "dirichlet",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Dirichlet exports mix FLINT group primitives with Sage.js-owned character orchestration and require staged separation.",
+      "fallback": "The strict Python Dirichlet implementation is the semantic fallback for every public operation.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "packages/flint/test/dirichlet.cjs"
       ],
       "declared_ffi": null
     },

@@ -16,7 +16,7 @@
     "classified-native-file": 116,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
-    "napi-export": 311,
+    "napi-export": 313,
     "runtime-intrinsic": 137,
     "wasm-export": 72
   },
@@ -5080,6 +5080,16 @@
       "family": "numerical"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:complexGammaValues",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexGammaValues",
+      "symbol": "sagejs_complex_gamma_values",
+      "disposition": "retain-host-adapter",
+      "family": "dirichlet"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:complexImag",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -7727,6 +7737,16 @@
       "package": "@sagemath/sagejs-flint",
       "export": "riemannXiStandardValue",
       "symbol": "sagejs_riemann_xi_standard_value",
+      "disposition": "retain-host-adapter",
+      "family": "dirichlet"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:riemannXiValues",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "riemannXiValues",
+      "symbol": "sagejs_riemann_xi_values",
       "disposition": "retain-host-adapter",
       "family": "dirichlet"
     },

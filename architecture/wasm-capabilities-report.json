@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "90405ad921ec346e590c1f1e846064dd318637616346143d4a5a15b5cc437907",
+  "source_sha256": "43a1ba02d94f35644a7ebac30783f03d2045684da6cd41574eafd8cc228ab0be",
   "counts": {
-    "total": 951,
+    "total": 953,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
-      "napi-export": 311,
+      "napi-export": 313,
       "production-kernel": 37,
       "runtime-intrinsic": 137,
       "specialist-capability": 25
@@ -16,13 +16,13 @@
       "compiled-source": 37,
       "desktop-only": 13,
       "generated-wasm": 301,
-      "portable-fallback": 556,
+      "portable-fallback": 558,
       "shared-core": 44
     },
     "by_status": {
       "available": 514,
       "desktop-only": 13,
-      "fallback": 424
+      "fallback": 426
     }
   },
   "workflow_aliases": {
@@ -6228,6 +6228,18 @@
       "explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:complexGammaValues",
+      "family": "dirichlet",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "receipt-backed-analytic-wasm-or-ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/builtins.py"
+      ],
+      "explanation": "Desktop Node uses a coarse native Arb/Acb batch, while browser execution uses the receipt-backed analytic WebAssembly batch."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:complexImag",
       "family": "numerical",
       "disposition": "generated-wasm",
@@ -9427,6 +9439,18 @@
         "src/baselib/builtins.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:riemannXiValues",
+      "family": "dirichlet",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "receipt-backed-analytic-wasm-or-ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/builtins.py"
+      ],
+      "explanation": "Desktop Node uses a coarse native Arb/Acb batch, while browser execution uses the receipt-backed analytic WebAssembly batch."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:riemannZetaJet",

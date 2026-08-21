@@ -1102,6 +1102,48 @@ napi_value sagejs_riemann_zeta_values(
     return answer;
 }
 
+napi_value sagejs_complex_gamma_values(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    mpfr_prec_t precision;
+    acb_ptr points;
+    uint32_t count;
+    uint32_t index;
+    napi_value answer;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !get_precision(env, args[1], &precision) ||
+        !require_complex_array(env, args[0], &points, &count, precision))
+        return NULL;
+    for (index = 0; index < count; index++)
+        acb_gamma(points + index, points + index, precision);
+    answer = complex_array_from_acb(env, points, count, precision);
+    _acb_vec_clear(points, (slong) count);
+    return answer;
+}
+
+napi_value sagejs_riemann_xi_values(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    mpfr_prec_t precision;
+    acb_ptr points;
+    uint32_t count;
+    uint32_t index;
+    napi_value answer;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !get_precision(env, args[1], &precision) ||
+        !require_complex_array(env, args[0], &points, &count, precision))
+        return NULL;
+    for (index = 0; index < count; index++)
+        acb_dirichlet_xi(points + index, points + index, precision);
+    answer = complex_array_from_acb(env, points, count, precision);
+    _acb_vec_clear(points, (slong) count);
+    return answer;
+}
+
 napi_value sagejs_dirichlet_l_values(
     napi_env env, napi_callback_info info)
 {

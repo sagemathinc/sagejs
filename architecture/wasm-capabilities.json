@@ -11679,6 +11679,27 @@
       }
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:complexGammaValues",
+      "kind": "napi-export",
+      "family": "dirichlet",
+      "source": "packages/flint/src/dirichlet.c",
+      "disposition": "portable-fallback",
+      "fallback": "receipt-backed-analytic-wasm-or-ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/builtins.py"
+      ],
+      "tests": [
+        "dirichlet-differential",
+        "analytic-browser-parity",
+        "browser-wasm-workflow-parity"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The Node-API batch is host-specific; browser execution selects the separately authenticated analytic:complex-gamma WebAssembly route.",
+      "public_explanation": "Desktop Node uses a coarse native Arb/Acb batch, while browser execution uses the receipt-backed analytic WebAssembly batch."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:complexImag",
       "kind": "napi-export",
       "family": "numerical",
@@ -16819,6 +16840,27 @@
       "reviewed": true,
       "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:riemannXiValues",
+      "kind": "napi-export",
+      "family": "dirichlet",
+      "source": "packages/flint/src/dirichlet.c",
+      "disposition": "portable-fallback",
+      "fallback": "receipt-backed-analytic-wasm-or-ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/builtins.py"
+      ],
+      "tests": [
+        "dirichlet-differential",
+        "analytic-browser-parity",
+        "browser-wasm-workflow-parity"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The Node-API batch is host-specific; browser execution selects the separately authenticated analytic:riemann-xi WebAssembly route.",
+      "public_explanation": "Desktop Node uses a coarse native Arb/Acb batch, while browser execution uses the receipt-backed analytic WebAssembly batch."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:riemannXiStandardValue",
