@@ -221,8 +221,8 @@
     },
     {
       "path": "packages/flint/scripts/portable-smalljac/sagejs_gmp_word.h",
-      "lines": 297,
-      "bytes": 10506,
+      "lines": 322,
+      "bytes": 11509,
       "decision": "retain-bridge",
       "priority": "medium",
       "responsibilities": [

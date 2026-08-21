@@ -502,7 +502,7 @@ export function createCurveBackend(instance, { recordCapability = () => {} } = {
       };
       if (status === SMALLJAC_LPOLY_STATUS.OK ||
           status === SMALLJAC_LPOLY_STATUS.TRUNCATED) {
-        recordCapability("smalljac-local-factors", "receipt-backed-wasm-artifact", {
+        recordCapability("specialist:smalljac", "receipt-backed-wasm-artifact", {
           executionTarget: "wasm-artifact",
           ingressBytes: curveText.byteLength + 20,
           egressBytes: primes.byteLength + good.byteLength +

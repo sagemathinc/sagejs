@@ -18,7 +18,8 @@
         "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
         "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
         "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
-        "specialist:integer-factorization-wasm"
+        "specialist:integer-factorization-wasm",
+        "specialist:smalljac"
       ],
       "capabilities": [
         "ffi-resource:flint:byte_region",

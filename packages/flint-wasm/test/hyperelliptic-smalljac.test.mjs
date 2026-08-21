@@ -103,8 +103,8 @@ test("the packed boundary preserves bad rows, truncation, copies, and receipts",
   assert.deepEqual(
     records.map(([id, route]) => [id, route]),
     [
-      ["smalljac-local-factors", "receipt-backed-wasm-artifact"],
-      ["smalljac-local-factors", "receipt-backed-wasm-artifact"],
+      ["specialist:smalljac", "receipt-backed-wasm-artifact"],
+      ["specialist:smalljac", "receipt-backed-wasm-artifact"],
     ],
   );
 });
@@ -133,7 +133,7 @@ test("the public hyperelliptic workflow selects the Wasm smalljac route", async 
     ].join("\n"), { timeout: 30_000 });
     assert.match(result.stdout, /\(22, 5, 101, \[1, 0, 10, 0, 25\]\)/);
     assert.ok(result.instrumentation.routes.some((route) =>
-      route.capability_id === "smalljac-local-factors" &&
+      route.capability_id === "specialist:smalljac" &&
       route.selected_route === "receipt-backed-wasm-artifact" &&
       route.execution_target === "wasm-artifact"));
   } finally {

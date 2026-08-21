@@ -116,6 +116,36 @@
       }
     },
     {
+      "id": "graph-components-packed",
+      "family": "graphs",
+      "workflow": "graph-components-packed",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-graph-components-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "G = graphs.CycleGraph(10000)\nC = G.connected_components()\nprint(len(C), len(C[0]), C[0][:5])",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "1 10000 [0, 1, 9999, 2, 9998]\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "hyperelliptic-smalljac-local-factors",
+      "family": "hyperelliptic-curves",
+      "workflow": "hyperelliptic-smalljac-local-factors",
+      "tier": "release",
+      "requires": [
+        { "id": "specialist:smalljac", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x> = PolynomialRing(QQ)\nC = HyperellipticCurve(x^5 + x + 1)\nvalues = C.local_lpolynomials(3, 101, algorithm='smalljac')\nprint((len(values), values[0][0], values[-1][0], values[0][1].list()))",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "(22, 5, 101, [1, 0, 10, 0, 25])\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "number-field-cubic-headline",
       "family": "number-fields",
       "workflow": "number-field-cubic-headline",

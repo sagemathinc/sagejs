@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "3238ef71cebb03244262be2f6e66f1f0ac8915e65f182972e18fd97e69453878",
+  "source_sha256": "c42880d491cf8c871386ac3853ed7ff519cf794316f95f4a6573e0daff0b52d5",
   "counts": {
     "total": 943,
     "by_kind": {
@@ -14,14 +14,14 @@
     },
     "by_disposition": {
       "compiled-source": 32,
-      "desktop-only": 14,
+      "desktop-only": 13,
       "generated-wasm": 268,
       "portable-fallback": 589,
-      "shared-core": 40
+      "shared-core": 41
     },
     "by_status": {
-      "available": 472,
-      "desktop-only": 14,
+      "available": 473,
+      "desktop-only": 13,
       "fallback": 457
     }
   },
@@ -57,6 +57,12 @@
       "ffi:flint:fmpz_matrix_det",
       "ffi:flint:fmpz_matrix_hnf",
       "ffi:flint:fmpz_mod_polynomial_gcd"
+    ],
+    "graph-components-packed": [
+      "kernel:packed-graph-components-production"
+    ],
+    "hyperelliptic-smalljac-local-factors": [
+      "specialist:smalljac"
     ],
     "modular-symbols-weight-two": [
       "napi:@sagemath/sagejs-flint:p1List",
@@ -11468,14 +11474,14 @@
     {
       "id": "specialist:smalljac",
       "family": "hyperelliptic-curves",
-      "disposition": "desktop-only",
-      "status": "desktop-only",
+      "disposition": "shared-core",
+      "status": "available",
       "fallback": "strict-python-local-factor-computation",
-      "wasm_module": "optional-smalljac",
+      "wasm_module": "flint",
       "public_consumers": [
         "HyperellipticCurve.local_data"
       ],
-      "explanation": "Smalljac uses a portable native bridge today, while browser execution selects the exact strict-Python route."
+      "explanation": "Bounded genus-2 local-polynomial batches use portable smalljac and ffpoly inside the authenticated FLINT Wasm artifact; genus 3 remains unavailable."
     },
     {
       "id": "specialist:tree-sitter",

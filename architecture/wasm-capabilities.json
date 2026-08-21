@@ -311,6 +311,12 @@
       "ffi:flint:fmpz_matrix_hnf",
       "ffi:flint:fmpz_mod_polynomial_gcd"
     ],
+    "graph-components-packed": [
+      "kernel:packed-graph-components-production"
+    ],
+    "hyperelliptic-smalljac-local-factors": [
+      "specialist:smalljac"
+    ],
     "number-field-maximal-order-prime-zeta": [
       "ffi:flint:fmpz_matrix_hnf",
       "ffi:flint:nmod_poly_factor",
@@ -19849,20 +19855,24 @@
       "id": "specialist:smalljac",
       "family": "hyperelliptic-curves",
       "source": "packages/flint/src/hyperelliptic/smalljac.c",
-      "disposition": "desktop-only",
-      "status": "desktop-only",
+      "disposition": "shared-core",
+      "status": "available",
       "fallback": "strict-python-local-factor-computation",
-      "wasm_module": "optional-smalljac",
+      "wasm_module": "flint",
       "public_consumers": [
         "HyperellipticCurve.local_data"
       ],
       "tests": [
         "hyperelliptic-differential"
       ],
-      "review_note": "Smalljac uses a portable native bridge today, while browser execution selects the exact strict-Python route.",
+      "review_note": "The portable smalljac and ffpoly mathematical closure runs in the receipt-authenticated FLINT Wasm artifact for bounded genus-2 local-polynomial batches.",
       "kind": "specialist-capability",
       "reviewed": true,
-      "public_explanation": "Smalljac uses a portable native bridge today, while browser execution selects the exact strict-Python route."
+      "availability_evidence": {
+        "path": "packages/flint-wasm/scripts/build.cjs"
+      },
+      "public_explanation": "Bounded genus-2 local-polynomial batches use portable smalljac and ffpoly inside the authenticated FLINT Wasm artifact; genus 3 remains unavailable.",
+      "shared_core": "packages/flint-wasm/src/curves/smalljac-coefficients.c"
     },
     {
       "id": "specialist:sagepack",
