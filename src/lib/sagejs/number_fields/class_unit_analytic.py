@@ -29,6 +29,15 @@ from mpmath.libmp import to_rational as _mpf_to_rational
 
 _interval_context: Any = iv
 _MAXIMUM_SATURATION_REPLAY_WORK = 1_000_000
+_MAXIMUM_SATURATION_REPLAY_DEGREE = 64
+_MAXIMUM_SATURATION_REPLAY_RANK = 63
+_MAXIMUM_SATURATION_REPLAY_PRIME = 65_537
+_MAXIMUM_SATURATION_REPLAY_RESIDUES = 100_000
+_MAXIMUM_SATURATION_REPLAY_INTEGER_BITS = 16_384
+_MAXIMUM_SATURATION_REPLAY_PRECISION_STEPS = 32
+_MAXIMUM_SATURATION_REPLAY_RECORDS = 4_096
+_MAXIMUM_SATURATION_REPLAY_DEPTH = 64
+_MAXIMUM_SATURATION_REPLAY_STRING = 1_000_000
 
 
 def _canonical_json(value: Any) -> str:
@@ -59,6 +68,62 @@ class AnalyticResourceError(RuntimeError):
 
 class UnitLatticeError(ArithmeticError):
     """Raised when purported relation dependencies do not replay exactly."""
+
+
+class _ReplayResourceExceeded(RuntimeError):
+    pass
+
+
+class _SaturationReplayBudget:
+    """Verifier-owned work and cancellation boundary for untrusted payloads."""
+
+    def __init__(self, cancelled: Callable[[], Any] | None) -> None:
+        self.remaining = _MAXIMUM_SATURATION_REPLAY_WORK
+        self.cancelled = cancelled
+
+    def consume(self, amount: int = 1) -> None:
+        amount = int(amount)
+        if callable(self.cancelled) and self.cancelled():
+            raise _ReplayResourceExceeded("unit saturation replay was cancelled")
+        if amount < 0 or amount > self.remaining:
+            raise _ReplayResourceExceeded("unit saturation replay work exhausted")
+        self.remaining -= amount
+
+
+def _consume_replay_structure(
+    value: Any,
+    budget: _SaturationReplayBudget,
+    depth: int = 0,
+) -> None:
+    """Bound an authenticated nested value before canonical serialization."""
+    if depth > _MAXIMUM_SATURATION_REPLAY_DEPTH:
+        raise _ReplayResourceExceeded("saturation payload nesting is too deep")
+    budget.consume()
+    if value is None or isinstance(value, bool):
+        return
+    if isinstance(value, int):
+        if abs(value).bit_length() > _MAXIMUM_SATURATION_REPLAY_INTEGER_BITS:
+            raise _ReplayResourceExceeded("saturation payload integer is too large")
+        return
+    if isinstance(value, str):
+        if len(value) > _MAXIMUM_SATURATION_REPLAY_STRING:
+            raise _ReplayResourceExceeded("saturation payload string is too large")
+        budget.consume((len(value) + 63) // 64)
+        return
+    if isinstance(value, list):
+        budget.consume(len(value))
+        for item in value:
+            _consume_replay_structure(item, budget, depth + 1)
+        return
+    if isinstance(value, dict):
+        budget.consume(2 * len(value))
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise _ReplayResourceExceeded("saturation payload keys must be strings")
+            _consume_replay_structure(key, budget, depth + 1)
+            _consume_replay_structure(item, budget, depth + 1)
+        return
+    raise _ReplayResourceExceeded("saturation payload contains an unsupported value")
 
 
 def _gcd(left: int, right: int) -> int:
@@ -1153,6 +1218,13 @@ def _element_from_payload(field: Any, payload: Any) -> Any:
             raise TypeError("a saturation coordinate must be [numerator, denominator]")
         numerator = _payload_integer(pair[0], "saturation coordinate numerator")
         denominator = _payload_integer(pair[1], "saturation coordinate denominator")
+        if (
+            abs(numerator).bit_length() > _MAXIMUM_SATURATION_REPLAY_INTEGER_BITS
+            or denominator.bit_length() > _MAXIMUM_SATURATION_REPLAY_INTEGER_BITS
+        ):
+            raise _ReplayResourceExceeded(
+                "saturation coordinate exceeds the verifier bit-length cap"
+            )
         if denominator <= 0:
             raise ValueError("a saturation coordinate denominator must be positive")
         if _gcd(numerator, denominator) != 1:
@@ -1385,6 +1457,7 @@ def _local_pth_power_obstruction(
     prime: int,
     rational_primes: Sequence[int],
     residue_candidate_cap: int,
+    cancelled: Callable[[], Any] | None = None,
 ) -> int | None:
     if not rational_primes:
         return None
@@ -1397,12 +1470,25 @@ def _local_pth_power_obstruction(
     degree = len(one)
     for modulus in rational_primes:
         modulus = int(modulus)
-        if not _is_prime(modulus) or modulus**degree > residue_candidate_cap:
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("local p-th-power replay was cancelled")
+        if modulus < 2 or modulus > residue_candidate_cap:
             continue
-        pth_powers = {
-            _modular_power(vector, prime, one, table, modulus)
-            for vector in _residue_vectors(modulus, degree)
-        }
+        residue_count = _checked_power_at_most(
+            modulus, degree, residue_candidate_cap, cancelled
+        )
+        factors, _cofactor, factored, _work = _bounded_prime_divisors(
+            modulus,
+            min(residue_candidate_cap, _MAXIMUM_SATURATION_REPLAY_WORK),
+            cancelled,
+        )
+        if residue_count is None or not factored or factors != (modulus,):
+            continue
+        pth_powers = set()
+        for vector in _residue_vectors(modulus, degree):
+            if callable(cancelled) and cancelled():
+                raise AnalyticResourceError("local p-th-power replay was cancelled")
+            pth_powers.add(_modular_power(vector, prime, one, table, modulus))
         reduced_target = tuple(value % modulus for value in target_coordinates)
         if reduced_target not in pth_powers:
             return modulus
@@ -1439,13 +1525,15 @@ class UnitLocalPthPowerObstruction:
         order: Any,
         units: Sequence[Any],
         torsion_elements: Sequence[Any],
+        cancelled: Callable[[], Any] | None = None,
     ) -> bool:
-        expected = sorted(
-            (exponents, torsion)
-            for exponents in _residue_vectors(self.prime, len(units))
-            if any(exponents)
-            for torsion in range(len(torsion_elements))
-        )
+        expected = []
+        for exponents in _residue_vectors(self.prime, len(units)):
+            if callable(cancelled) and cancelled():
+                raise AnalyticResourceError("local p-th-power replay was cancelled")
+            if any(exponents):
+                for torsion in range(len(torsion_elements)):
+                    expected.append((exponents, torsion))
         recorded = sorted(
             (exponents, torsion)
             for exponents, torsion, _modulus in self.target_obstructions
@@ -1460,6 +1548,7 @@ class UnitLocalPthPowerObstruction:
                 self.prime,
                 (modulus,),
                 self.residue_candidate_cap,
+                cancelled,
             )
             if obstruction != modulus:
                 return False
@@ -1544,6 +1633,7 @@ def _exact_local_obstruction(
                 prime,
                 rational_primes,
                 residue_candidate_cap,
+                cancelled,
             )
             if modulus is None:
                 return None
@@ -2014,15 +2104,74 @@ def verify_saturation_evidence(
     payload: Any,
     *,
     generation_verifier: Callable[..., Any] | None = None,
+    cancelled: Callable[[], Any] | None = None,
 ) -> bool:
     """Replay a canonical exact-unit-saturation payload from algebraic data."""
     try:
+        expected_payload_keys = {
+            "schema",
+            "initial_index_bound",
+            "remaining_index_bound",
+            "index_bound_is_rigorous",
+            "global_index_certificate",
+            "factorization_complete",
+            "factorization_remaining",
+            "factorization_work",
+            "factorization_work_limit",
+            "index_enlargement",
+            "required_primes",
+            "unresolved_primes",
+            "units",
+            "evidence",
+            "precision_history",
+            "complete",
+            "saturated",
+            "rigorous",
+            "status",
+            "proof_status",
+            "global_proof_status",
+            "incomplete_reason",
+        }
         if (
             not isinstance(payload, dict)
+            or len(payload) != len(expected_payload_keys)
+            or set(payload) != expected_payload_keys
             or payload.get("schema")
             != "sagejs.number-fields.exact-unit-p-saturation.v1"
         ):
             return False
+        budget = _SaturationReplayBudget(cancelled)
+        degree = int(field.degree())
+        rank = len(initial_units)
+        if not (
+            1 <= degree <= _MAXIMUM_SATURATION_REPLAY_DEGREE
+            and rank <= _MAXIMUM_SATURATION_REPLAY_RANK
+        ):
+            return False
+        raw_evidence = payload["evidence"]
+        if (
+            not isinstance(raw_evidence, list)
+            or len(raw_evidence) > _MAXIMUM_SATURATION_REPLAY_RECORDS
+        ):
+            return False
+        budget.consume(len(raw_evidence))
+
+        def bounded_integer(value: Any, name: str) -> int:
+            answer = _payload_integer(value, name)
+            bits = abs(answer).bit_length()
+            if bits > _MAXIMUM_SATURATION_REPLAY_INTEGER_BITS:
+                raise _ReplayResourceExceeded(name + " exceeds the bit-length cap")
+            budget.consume(max(1, (bits + 63) // 64))
+            return answer
+
+        def bounded_integer_vector(
+            value: Any, expected_length: int, name: str
+        ) -> tuple[int, ...]:
+            if not isinstance(value, list) or len(value) != expected_length:
+                raise _ReplayResourceExceeded(name + " has the wrong width")
+            budget.consume(expected_length)
+            return tuple(bounded_integer(item, name + " entry") for item in value)
+
         for key, name in (
             ("index_bound_is_rigorous", "global index rigor"),
             ("complete", "saturation completeness"),
@@ -2046,11 +2195,12 @@ def verify_saturation_evidence(
                 initial_index,
                 min(
                     factorization_work_limit,
-                    _MAXIMUM_SATURATION_REPLAY_WORK,
+                    budget.remaining,
                 ),
-                None,
+                cancelled,
             )
         )
+        budget.consume(factor_work)
         if (
             _payload_boolean(
                 payload["factorization_complete"], "factorization completeness"
@@ -2065,9 +2215,10 @@ def verify_saturation_evidence(
         ):
             return False
         if (
-            tuple(
-                _payload_integer(value, "required saturation prime")
-                for value in payload["required_primes"]
+            bounded_integer_vector(
+                payload["required_primes"],
+                len(required),
+                "required saturation primes",
             )
             != required
         ):
@@ -2081,16 +2232,39 @@ def verify_saturation_evidence(
         obstructed: set[int] = set()
         replayed_evidence: list[Any] = []
         evidence_precision_history: list[int] = []
-        for record in payload["evidence"]:
-            prime = _payload_integer(record["prime"], "saturation evidence prime")
-            if prime not in required or not _payload_boolean(
-                record["rigorous"], "saturation evidence rigor"
+        for record in raw_evidence:
+            if not isinstance(record, dict):
+                return False
+            budget.consume()
+            prime = bounded_integer(record["prime"], "saturation evidence prime")
+            if (
+                prime not in required
+                or not _payload_boolean(record["rigorous"], "saturation evidence rigor")
+                or prime > _MAXIMUM_SATURATION_REPLAY_PRIME
             ):
                 return False
             outcome = record.get("outcome")
             if outcome == "enlarged":
+                expected_root_keys = {
+                    "schema",
+                    "outcome",
+                    "method",
+                    "prime",
+                    "exponents",
+                    "torsion_exponent",
+                    "root_coordinates",
+                    "replacement_index",
+                    "normalization_power",
+                    "normalization_quotients",
+                    "normalized_exponents",
+                    "lattice_index_change",
+                    "precision_history",
+                    "rigorous",
+                }
                 if (
-                    record.get("schema")
+                    len(record) != len(expected_root_keys)
+                    or set(record) != expected_root_keys
+                    or record.get("schema")
                     != "sagejs.number-fields.unit-pth-root-certificate.v1"
                     or record.get("method") != "exact-pth-root-identity"
                     or _payload_integer(
@@ -2100,23 +2274,65 @@ def verify_saturation_evidence(
                     or remaining_index % prime
                 ):
                     return False
+                exponents = bounded_integer_vector(
+                    record["exponents"], rank, "p-th-root exponents"
+                )
+                quotients = bounded_integer_vector(
+                    record["normalization_quotients"],
+                    rank,
+                    "p-th-root normalization quotients",
+                )
+                normalized = bounded_integer_vector(
+                    record["normalized_exponents"],
+                    rank,
+                    "p-th-root normalized exponents",
+                )
+                if any(
+                    abs(value) > _MAXIMUM_SATURATION_REPLAY_WORK
+                    for vector in (exponents, quotients, normalized)
+                    for value in vector
+                ):
+                    return False
+                raw_precision_history = record["precision_history"]
+                if (
+                    not isinstance(raw_precision_history, list)
+                    or not 1
+                    <= len(raw_precision_history)
+                    <= _MAXIMUM_SATURATION_REPLAY_PRECISION_STEPS
+                ):
+                    return False
+                precision_history = bounded_integer_vector(
+                    raw_precision_history,
+                    len(raw_precision_history),
+                    "p-th-root precision history",
+                )
+                raw_root = record["root_coordinates"]
+                if not isinstance(raw_root, list) or len(raw_root) != degree:
+                    return False
+                budget.consume(degree)
+                for pair in raw_root:
+                    if not isinstance(pair, list) or len(pair) != 2:
+                        return False
+                    bounded_integer(pair[0], "root coordinate numerator")
+                    bounded_integer(pair[1], "root coordinate denominator")
                 certificate = UnitPthRootCertificate(
                     prime,
-                    record["exponents"],
-                    _payload_integer(record["torsion_exponent"], "torsion exponent"),
-                    _element_from_payload(field, record["root_coordinates"]),
-                    replacement_index=_payload_integer(
+                    exponents,
+                    bounded_integer(record["torsion_exponent"], "torsion exponent"),
+                    _element_from_payload(field, raw_root),
+                    replacement_index=bounded_integer(
                         record["replacement_index"], "replacement index"
                     ),
-                    normalization_power=_payload_integer(
+                    normalization_power=bounded_integer(
                         record["normalization_power"], "normalization power"
                     ),
-                    normalization_quotients=record["normalization_quotients"],
-                    normalized_exponents=record["normalized_exponents"],
-                    precision_history=record["precision_history"],
+                    normalization_quotients=quotients,
+                    normalized_exponents=normalized,
+                    precision_history=precision_history,
                 )
                 if _canonical_json(certificate.to_dict()) != _canonical_json(record):
                     return False
+                budget.consume()
                 replayed = certificate.replay(
                     field, order, selected_units, selected_torsion
                 )
@@ -2127,41 +2343,123 @@ def verify_saturation_evidence(
                 replayed_evidence.append(certificate)
                 evidence_precision_history.extend(certificate.precision_history)
             elif outcome == "saturated":
+                expected_local_keys = {
+                    "schema",
+                    "outcome",
+                    "method",
+                    "prime",
+                    "target_obstructions",
+                    "residue_candidate_cap",
+                    "precision_history",
+                    "rigorous",
+                }
                 if (
-                    record.get("schema")
+                    len(record) != len(expected_local_keys)
+                    or set(record) != expected_local_keys
+                    or record.get("schema")
                     != "sagejs.number-fields.unit-local-pth-obstruction.v1"
                     or record.get("method")
                     != "exact-finite-order-quotient-pth-power-obstruction"
                 ):
                     return False
-                targets = tuple(
-                    (
-                        tuple(
-                            _payload_integer(value, "local-obstruction exponent")
-                            for value in item["exponents"]
-                        ),
-                        _payload_integer(
-                            item["torsion_exponent"], "local-obstruction torsion"
-                        ),
-                        _payload_integer(
-                            item["rational_prime"], "local-obstruction prime"
-                        ),
+                residue_cap = bounded_integer(
+                    record["residue_candidate_cap"],
+                    "local-obstruction residue cap",
+                )
+                if not 2 <= residue_cap <= _MAXIMUM_SATURATION_REPLAY_RESIDUES:
+                    return False
+                target_power = _checked_power_at_most(
+                    prime,
+                    rank,
+                    budget.remaining // len(selected_torsion) + 1,
+                    cancelled,
+                )
+                if target_power is None:
+                    return False
+                expected_target_count = (target_power - 1) * len(selected_torsion)
+                raw_targets = record["target_obstructions"]
+                if (
+                    not isinstance(raw_targets, list)
+                    or len(raw_targets) != expected_target_count
+                ):
+                    return False
+                budget.consume(2 * expected_target_count)
+                targets: list[tuple[tuple[int, ...], int, int]] = []
+                modulus_costs: dict[int, tuple[int, int]] = {}
+                for item in raw_targets:
+                    if (
+                        not isinstance(item, dict)
+                        or len(item) != 3
+                        or set(item)
+                        != {"exponents", "torsion_exponent", "rational_prime"}
+                    ):
+                        return False
+                    exponents = bounded_integer_vector(
+                        item["exponents"], rank, "local-obstruction exponents"
                     )
-                    for item in record["target_obstructions"]
+                    if any(
+                        abs(value) > _MAXIMUM_SATURATION_REPLAY_WORK
+                        for value in exponents
+                    ):
+                        return False
+                    torsion_exponent = bounded_integer(
+                        item["torsion_exponent"], "local-obstruction torsion"
+                    )
+                    if not 0 <= torsion_exponent < len(selected_torsion):
+                        return False
+                    modulus = bounded_integer(
+                        item["rational_prime"], "local-obstruction prime"
+                    )
+                    if not 2 <= modulus <= residue_cap:
+                        return False
+                    if modulus not in modulus_costs:
+                        residue_count = _checked_power_at_most(
+                            modulus,
+                            degree,
+                            min(residue_cap, budget.remaining),
+                            cancelled,
+                        )
+                        if residue_count is None:
+                            return False
+                        factors, _cofactor, factored, factor_work = (
+                            _bounded_prime_divisors(
+                                modulus, budget.remaining, cancelled
+                            )
+                        )
+                        budget.consume(factor_work)
+                        if not factored or factors != (modulus,):
+                            return False
+                        modulus_costs[modulus] = (residue_count, factor_work)
+                    residue_count, factor_work = modulus_costs[modulus]
+                    budget.consume(residue_count + factor_work)
+                    targets.append((exponents, torsion_exponent, modulus))
+                raw_precision_history = record["precision_history"]
+                if (
+                    not isinstance(raw_precision_history, list)
+                    or not 1
+                    <= len(raw_precision_history)
+                    <= _MAXIMUM_SATURATION_REPLAY_PRECISION_STEPS
+                ):
+                    return False
+                precision_history = bounded_integer_vector(
+                    raw_precision_history,
+                    len(raw_precision_history),
+                    "local-obstruction precision history",
                 )
                 certificate = UnitLocalPthPowerObstruction(
                     prime,
                     targets,
-                    residue_candidate_cap=_payload_integer(
-                        record["residue_candidate_cap"],
-                        "local-obstruction residue cap",
-                    ),
-                    precision_history=record["precision_history"],
+                    residue_candidate_cap=residue_cap,
+                    precision_history=precision_history,
                 )
                 if _canonical_json(certificate.to_dict()) != _canonical_json(record):
                     return False
                 if prime in obstructed or not certificate.verify(
-                    field, order, selected_units, selected_torsion
+                    field,
+                    order,
+                    selected_units,
+                    selected_torsion,
+                    cancelled,
                 ):
                     return False
                 obstructed.add(prime)
@@ -2169,10 +2467,22 @@ def verify_saturation_evidence(
                 evidence_precision_history.extend(certificate.precision_history)
             else:
                 return False
+        raw_final_units = payload["units"]
+        if not isinstance(raw_final_units, list) or len(raw_final_units) != rank:
+            return False
+        for raw_unit in raw_final_units:
+            if not isinstance(raw_unit, list) or len(raw_unit) != degree:
+                return False
+            budget.consume(degree)
+            for pair in raw_unit:
+                if not isinstance(pair, list) or len(pair) != 2:
+                    return False
+                bounded_integer(pair[0], "final unit coordinate numerator")
+                bounded_integer(pair[1], "final unit coordinate denominator")
         final_payloads = [
             _element_payload(_ordinary_unit(unit)) for unit in selected_units
         ]
-        if final_payloads != payload["units"]:
+        if _canonical_json(final_payloads) != _canonical_json(raw_final_units):
             return False
         if (
             _payload_integer(
@@ -2189,6 +2499,7 @@ def verify_saturation_evidence(
         certificate_payload = payload["global_index_certificate"]
         rigorous_bound = False
         if certificate_payload is not None:
+            _consume_replay_structure(certificate_payload, budget)
             certificate = UnitSaturationIndexCertificate.from_dict(certificate_payload)
             rigorous_bound = (
                 certificate.index_bound == initial_index
@@ -2211,17 +2522,25 @@ def verify_saturation_evidence(
         if not rigorous_bound:
             unresolved = required
         if (
-            tuple(
-                _payload_integer(value, "unresolved saturation prime")
-                for value in payload["unresolved_primes"]
+            bounded_integer_vector(
+                payload["unresolved_primes"],
+                len(unresolved),
+                "unresolved saturation primes",
             )
             != unresolved
         ):
             return False
         complete = rigorous_bound and factorization_complete and not unresolved
-        payload_precision_history = tuple(
-            _payload_integer(value, "saturation precision")
-            for value in payload["precision_history"]
+        raw_payload_precision = payload["precision_history"]
+        if (
+            not isinstance(raw_payload_precision, list)
+            or not 1 <= len(raw_payload_precision) <= _MAXIMUM_SATURATION_REPLAY_RECORDS
+        ):
+            return False
+        payload_precision_history = bounded_integer_vector(
+            raw_payload_precision,
+            len(raw_payload_precision),
+            "saturation precision history",
         )
         if not payload_precision_history or any(
             value < 16 for value in payload_precision_history
@@ -2276,7 +2595,15 @@ def verify_saturation_evidence(
         return statuses_match and _canonical_json(
             reconstructed.to_dict()
         ) == _canonical_json(payload)
-    except (KeyError, TypeError, ValueError, ArithmeticError, ZeroDivisionError):
+    except (
+        KeyError,
+        TypeError,
+        ValueError,
+        ArithmeticError,
+        ZeroDivisionError,
+        AnalyticResourceError,
+        _ReplayResourceExceeded,
+    ):
         return False
 
 
@@ -3417,7 +3744,22 @@ class UnitSaturationIndexCertificate:
 
     @classmethod
     def from_dict(cls, payload: Any) -> UnitSaturationIndexCertificate:
-        if not isinstance(payload, dict):
+        expected_keys = {
+            "schema",
+            "field_order_identity",
+            "initial_units",
+            "configuration",
+            "index_bound",
+            "analytic_proof",
+            "generation_evidence",
+            "proof_status",
+            "content_sha256",
+        }
+        if (
+            not isinstance(payload, dict)
+            or len(payload) != len(expected_keys)
+            or set(payload) != expected_keys
+        ):
             raise TypeError("a global index certificate payload must be a dictionary")
         body = dict(payload)
         expected_hash = body.pop("content_sha256", None)

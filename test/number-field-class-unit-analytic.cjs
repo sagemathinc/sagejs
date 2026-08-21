@@ -126,6 +126,14 @@ assert not bounded_factorization.factorization_complete
 assert bounded_factorization.factorization_work <= 8
 assert bounded_factorization.factorization_remaining > 1
 assert "factorization" in bounded_factorization.incomplete_reason
+class DegreeOnlyField:
+    def degree(self):
+        return 2
+oversized_evidence = bounded_factorization.to_dict()
+oversized_evidence["evidence"] = [{}] * 4097
+assert not verify_saturation_evidence(
+    DegreeOnlyField(), None, [], oversized_evidence
+)
 
 cancel_polls = []
 def cancel_factorization():
