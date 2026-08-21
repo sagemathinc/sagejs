@@ -257,6 +257,15 @@ def _exact_scalar_from_tree(value: Any) -> Any:
     )
 
 
+def _exact_complex_parts_from_tree(value: Any) -> tuple[Any, Any]:
+    """Decode Cortex's canonical exact real or complex scalar form."""
+    if runtime.array.isArray(value) and len(value) == 3 and value[0] == "Complex":
+        return _exact_scalar_from_tree(value[1]), _exact_scalar_from_tree(value[2])
+    if value == "ImaginaryUnit":
+        return sage.QQ(0), sage.QQ(1)
+    return _exact_scalar_from_tree(value), sage.QQ(0)
+
+
 def _trim_polynomial_coefficients(values: list[Any]) -> list[Any]:
     answer = list(values)
     while len(answer) > 1 and answer[len(answer) - 1] == 0:
@@ -645,9 +654,26 @@ class Expression(sage.Element):
         variables = expression.variables()
         if len(variables) != 1:
             raise ValueError("find_root() requires an expression in one variable")
-        evaluator = fast_callable(expression, vars=variables)
         left = float(lower)
         right = float(upper)
+        numeric_backend = runtime.flint_backend()
+        wasm_find_root = runtime.reflect.get(numeric_backend, "symbolicFindRoot")
+        if runtime.jstype(wasm_find_root) == "function":
+            accelerated = runtime.reflect.apply(
+                wasm_find_root,
+                numeric_backend,
+                [
+                    expression._tree,
+                    _symbol_name(variables[0]),
+                    left,
+                    right,
+                    int(maxiter),
+                    float(xtol),
+                ],
+            )
+            if accelerated is not runtime.undefined:
+                return float(accelerated)
+        evaluator = fast_callable(expression, vars=variables)
         left_value = float(evaluator(left))
         right_value = float(evaluator(right))
         if left_value == 0:
@@ -838,8 +864,10 @@ class Expression(sage.Element):
             field = runtime.reflect.get(runtime.global_object, "ComplexField")(
                 bit_precision
             )
-            order = field(_exact_scalar_from_tree(self._tree[1]))
-            argument = field(_exact_scalar_from_tree(self._tree[2]))
+            order_parts = _exact_complex_parts_from_tree(self._tree[1])
+            argument_parts = _exact_complex_parts_from_tree(self._tree[2])
+            order = field(order_parts[0], order_parts[1])
+            argument = field(argument_parts[0], argument_parts[1])
             value = field._fromNative(
                 runtime.flint_backend().complexBesselI(order._native, argument._native)
             )
@@ -1687,6 +1715,34 @@ def _numerical_integral_callable(
     return None
 
 
+def _symbolic_numerical_integral_request(
+    function_value: Any,
+    params: Any,
+) -> tuple[Any, str] | None:
+    """Return the supported symbolic tree and integration-variable name."""
+    parameters = [] if params is None else list(params)
+    if isinstance(function_value, CallableExpression):
+        variables = list(function_value._arguments_tuple())
+    elif isinstance(function_value, Expression):
+        variables = list(function_value.variables())
+    else:
+        return None
+    if len(variables) == 0 or len(variables) != len(parameters) + 1:
+        return None
+    if len(parameters):
+        substitutions = runtime.object.create(None)
+        for index in range(len(parameters)):
+            runtime.reflect.set(
+                substitutions,
+                _symbol_name(variables[index + 1]),
+                _expression_tree(parameters[index]),
+            )
+        function_value = Expression(
+            _call_backend("substitute", [function_value._tree, substitutions])
+        )
+    return function_value._tree, _symbol_name(variables[0])
+
+
 def numerical_integral(
     function_value: Any,
     a: Any,
@@ -1742,6 +1798,34 @@ def numerical_integral(
         )
     finite_lower = runtime.number.isFinite(runtime.number(lower))
     finite_upper = runtime.number.isFinite(runtime.number(upper))
+    symbolic_request = _symbolic_numerical_integral_request(function_value, params)
+    if finite_lower and finite_upper and symbolic_request is not None:
+        numeric_backend = runtime.flint_backend()
+        wasm_integral = runtime.reflect.get(
+            numeric_backend, "symbolicNumericalIntegral"
+        )
+        if runtime.jstype(wasm_integral) == "function":
+            accelerated = runtime.reflect.apply(
+                wasm_integral,
+                numeric_backend,
+                [
+                    symbolic_request[0],
+                    symbolic_request[1],
+                    lower,
+                    upper,
+                    interval_limit,
+                    absolute_tolerance,
+                    relative_tolerance,
+                    algorithm_name != "qng",
+                ],
+            )
+            if accelerated is not runtime.undefined:
+                return runtime.math_tuple(
+                    [
+                        runtime.reflect.get(accelerated, "value"),
+                        runtime.reflect.get(accelerated, "error"),
+                    ]
+                )
     if not finite_lower and not finite_upper:
         if lower >= 0.0 or upper <= 0.0:
             raise ValueError("invalid infinite integration interval")

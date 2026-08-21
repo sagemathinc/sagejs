@@ -379,6 +379,7 @@ const flintLocalIncludeArguments = [
 ];
 const flintLinkedSources = [
   path.join(packageRoot, "src", "factor.c"),
+  path.join(packageRoot, "src", "numeric.c"),
   path.join(packageRoot, "src", "modsym.c"),
   path.join(packageRoot, "src", "analytic.c"),
   path.join(packageRoot, "src", "dirichlet-group.c"),
@@ -419,6 +420,13 @@ const numberFieldExports = [
   "sagejs_nf_zeta_residue_compute",
   "sagejs_nf_zeta_residue_clear",
 ];
+const numericSource = path.join(packageRoot, "src", "numeric.c");
+const numericExports = [...fs.readFileSync(numericSource, "utf8")
+  .matchAll(/EXPORT\s+[\w\s*]+\s+(sagejs_numeric_\w+)\s*\(/g)]
+  .map((match) => match[1]);
+if (numericExports.length !== 34 || new Set(numericExports).size !== 34) {
+  throw new Error("the reviewed 34-function numeric Wasm export closure drifted");
+}
 const dirichletGroupHostSource = path.join(packageRoot, "dirichlet-group.mjs");
 const dirichletGroupExports = [...new Set(
   [...fs.readFileSync(dirichletGroupHostSource, "utf8")
@@ -581,6 +589,7 @@ const exportNames = [
   "sagejs_p1_cusp_numerator",
   "sagejs_p1_cusp_denominator",
   ...analyticExports,
+  ...numericExports,
   ...dirichletGroupExports,
   ...numberFieldExports,
   ...curveExports,

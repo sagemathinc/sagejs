@@ -2,9 +2,27 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  compileNumericExpression,
   composeNumericRepresentationBackends,
   createNumericBackend,
 } from "../numeric-backend.mjs";
+
+test("supported symbolic expressions compile to bounded numeric bytecode", () => {
+  const packet = compileNumericExpression(
+    ["Subtract", ["Power", "x", 2], 2],
+    "x",
+  );
+  assert.equal(packet.byteLength, 60);
+  const view = new DataView(packet.buffer);
+  assert.deepEqual(
+    Array.from({ length: 5 }, (_, index) => view.getUint32(index * 12, true)),
+    [0, 1, 6, 1, 3],
+  );
+  assert.throws(
+    () => compileNumericExpression(["Unknown", "x"], "x"),
+    /unsupported numeric expression head/,
+  );
+});
 
 test("browser numeric values preserve decimal field arithmetic", () => {
   const backend = createNumericBackend();
