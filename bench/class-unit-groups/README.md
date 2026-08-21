@@ -52,6 +52,30 @@ AbstractAlgebra 0.50.2, and FLINT_jll 301.600.0+0. The checked-out Oscar
 is 0.39.22 through 0.39; it therefore uses Hecke 0.39.22 rather than the
 independently checked-out Hecke 0.40.0. This explicit compatibility boundary
 is why the committed third-family records are labelled Hecke, not Oscar.
+
+The external corpus does not by itself claim that Sage.js completes those
+degrees. `run-live-high-degree-sagejs.cjs` is the separate bounded acceptance
+runner for that question. It launches one fresh Sage.js child per degree and
+proof mode, runs all `proof=False` jobs before any `proof=True` jobs, and
+classifies each result as supported-complete, supported-incomplete, timeout, or
+error. A complete result must match the exact class invariants and order, unit
+rank and torsion, and contain the pinned regulator in a rigorous enclosure.
+
+```bash
+# Policy/fixture validation only; performs no class-group computation.
+node bench/class-unit-groups/run-live-high-degree-sagejs.cjs --dry-run --proof both
+
+# Run on a dedicated benchmark clone, one process at a time.
+node bench/class-unit-groups/run-live-high-degree-sagejs.cjs \
+  --proof conditional --output /tmp/sagejs-live-degree-6-10.json
+```
+
+Each degree has a committed wall timeout and explicit engine limits for factor
+bases, relation attempts and retention, large-prime partials, coefficient
+search, precision, analytic primes, and memory. `--timeout-scale` is recorded
+in the receipt and changes only wall time, never mathematical resource limits.
+An incomplete or timed-out live run remains useful capability evidence but is
+not counted as agreement or silently replaced by the external-CAS answer.
 On POSIX hosts the harness wraps each external process in GNU `timeout`, sends
 `TERM` to its process group, and escalates to `KILL` after five seconds. The
 Node timeout remains a final fallback. Thus a failed capture cannot leave a
