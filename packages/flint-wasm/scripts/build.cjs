@@ -21,6 +21,7 @@ const {
   verifyWasmMemoryContract,
   writeProductionReceipt,
 } = require("./production-receipt.cjs");
+const { kernelPackExports } = require("./kernel-pack-exports.cjs");
 
 const packageRoot = path.resolve(__dirname, "..");
 const repositoryRoot = path.resolve(packageRoot, "..", "..");
@@ -1117,14 +1118,10 @@ function buildKernelPacks({ reuseLinkedArtifacts = false } = {}) {
         "kernel_core.h",
       )),
     );
-    const exports = [
-      ...kernels.flatMap((kernel) =>
-      kernel.functions
-        .filter((fn) => fn.status === "compiled-source")
-        .map((fn) => fn.bridge.export)
-      ),
-      ...(ownershipAdapter?.exports ?? []),
-    ].sort();
+    const exports = kernelPackExports(
+      kernels,
+      ownershipAdapter?.exports ?? [],
+    );
     const module = productionModules.get(`kernel-${pack.domain}`);
     const raw = path.join(outputDirectory, `kernel-${pack.domain}.unstripped.wasm`);
     const output = path.join(outputDirectory, module.artifact);
