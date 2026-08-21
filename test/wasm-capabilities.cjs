@@ -260,8 +260,41 @@ test("the checked-in generated report is accepted by the public API", async () =
     api.workflow("number-field-maximal-order-prime-zeta").required_capabilities,
     [
       "ffi:flint:fmpz_matrix_hnf",
-      "ffi:flint:nmod_poly_factor",
+      "ffi:flint:number_field_order_maximal_at_primes",
       "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
     ],
+  );
+});
+
+test("workflow aliases name observable public artifact boundaries", () => {
+  assert.deepEqual(
+    manifest.workflow_aliases["number-field-cubic-headline"],
+    [
+      "ffi:flint:fmpz_matrix_hnf",
+      "kernel:number-field-zeta-coefficients-production",
+      "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
+    ],
+  );
+  for (const workflow of [
+    "number-field-maximal-order-prime-zeta",
+    "number-field-cubic-headline",
+  ]) {
+    assert.equal(
+      manifest.workflow_aliases[workflow].includes("ffi:flint:nmod_poly_factor"),
+      false,
+      "an nmod factorization inside a compiled artifact is not a separately observable dispatch",
+    );
+  }
+
+  const corpus = JSON.parse(fs.readFileSync(
+    path.join(root, "test", "browser-wasm-parity-corpus.json"),
+    "utf8",
+  ));
+  const gf2 = corpus.cases.find(({ id }) => id === "gf2-matrix-m4ri");
+  assert.ok(gf2);
+  assert.ok(
+    gf2.source.indexOf("rank = A.rank()") <
+      gf2.source.indexOf("K = A.right_kernel_matrix()"),
+    "rank must dispatch before right-kernel computation populates the rank cache",
   );
 });

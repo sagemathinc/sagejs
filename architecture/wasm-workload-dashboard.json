@@ -20,11 +20,11 @@
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "9f94b1188a1d564408ac0584020b167b308d1ca91c7a10341613b64163be1dbc"
+      "sha256": "8ae2a374dd99a506236040138edc2c91a2bc281b796a4dba3c9b82607194d687"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "64f3455255481c1c9b152eb4785c2e7ee18bc67c81960909484686354dc5fef2"
+      "sha256": "7d0e6d2f97f166e1eeb89835b6949a1e9c9bb6494f1fcac6169bfdb36f689f71"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
@@ -75,8 +75,8 @@
   },
   "route_classes": {
     "expected_requirements": {
-      "wasm-library": 91,
-      "wasm-compiled-source": 13,
+      "wasm-library": 90,
+      "wasm-compiled-source": 14,
       "portable-orchestration": 3,
       "portable-computation": 0
     },
@@ -573,7 +573,7 @@
           "capability_disposition": "generated-wasm"
         },
         {
-          "capability_id": "ffi:flint:nmod_poly_factor",
+          "capability_id": "ffi:flint:number_field_order_maximal_at_primes",
           "legacy_route": "receipt-backed-wasm-artifact",
           "route_class": "wasm-library",
           "reviewed": true,
@@ -1543,13 +1543,13 @@
           "capability_disposition": "generated-wasm"
         },
         {
-          "capability_id": "ffi:flint:nmod_poly_factor",
+          "capability_id": "kernel:number-field-zeta-coefficients-production",
           "legacy_route": "receipt-backed-wasm-artifact",
-          "route_class": "wasm-library",
+          "route_class": "wasm-compiled-source",
           "reviewed": true,
           "review": null,
           "capability_status": "available",
-          "capability_disposition": "generated-wasm"
+          "capability_disposition": "compiled-source"
         },
         {
           "capability_id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",

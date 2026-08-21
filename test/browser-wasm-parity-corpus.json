@@ -120,7 +120,7 @@
       "tier": "release",
       "requires": [
         { "id": "ffi:flint:fmpz_matrix_hnf", "route": "receipt-backed-wasm-artifact" },
-        { "id": "ffi:flint:nmod_poly_factor", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:number_field_order_maximal_at_primes", "route": "receipt-backed-wasm-artifact" },
         { "id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "R.<x> = QQ[]\nK.<a> = NumberField(x^2 - 5)\nO = K.maximal_order()\nD = O.factor_rational_prime(11)\nprint(K.signature())\nprint([(P.rational_prime(),e,P.residue_class_degree(),P.norm()) for P,e in D])\nprint(K.zeta_function().coefficients(16))",
@@ -186,7 +186,7 @@
         { "id": "ffi:m4ri:matrix_right_kernel", "route": "receipt-backed-wasm-artifact" },
         { "id": "ffi:m4ri:matrix_solve", "route": "receipt-backed-wasm-artifact" }
       ],
-      "source": "F = GF(2)\nA = matrix(F, 4, 5, [1,0,1,1,0, 0,1,1,0,1, 1,1,0,1,1, 0,0,1,1,1])\nB = matrix(F, 5, 3, [1,0,1, 0,1,1, 1,1,0, 1,0,0, 0,1,0])\nQ = matrix(F, 3, 3, [1,1,0, 0,1,1, 1,1,1])\nrhs = matrix(F, 3, 1, [1,0,1])\nC = A * B\nK = A.right_kernel_matrix()\nX = Q.solve_right(rhs)\nprint(A.rank())\nprint(C.str().replace('\\n', ';'))\nprint(K.nrows(), K.ncols(), (A * K.transpose()).is_zero())\nprint(X.str().replace('\\n', ';'), Q * X == rhs)",
+      "source": "F = GF(2)\nA = matrix(F, 4, 5, [1,0,1,1,0, 0,1,1,0,1, 1,1,0,1,1, 0,0,1,1,1])\nB = matrix(F, 5, 3, [1,0,1, 0,1,1, 1,1,0, 1,0,0, 0,1,0])\nQ = matrix(F, 3, 3, [1,1,0, 0,1,1, 1,1,1])\nrhs = matrix(F, 3, 1, [1,0,1])\nrank = A.rank()\nC = A * B\nK = A.right_kernel_matrix()\nX = Q.solve_right(rhs)\nprint(rank)\nprint(C.str().replace('\\n', ';'))\nprint(K.nrows(), K.ncols(), (A * K.transpose()).is_zero())\nprint(X.str().replace('\\n', ';'), Q * X == rhs)",
       "timeout_ms": 30000,
       "expect": {
         "stdout": "3\n[1 1 1];[1 1 1];[0 0 0];[0 0 0]\n2 5 True\n[1];[0];[0] True\n",
@@ -404,7 +404,7 @@
       "tier": "routine",
       "requires": [
         { "id": "ffi:flint:fmpz_matrix_hnf", "route": "receipt-backed-wasm-artifact" },
-        { "id": "ffi:flint:nmod_poly_factor", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:number-field-zeta-coefficients-production", "route": "receipt-backed-wasm-artifact" },
         { "id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "R.<x> = PolynomialRing(QQ)\nK.<a> = NumberField(x^3 - x - 1)\nO = K.maximal_order()\nD = O.factor_rational_prime(23)\nprint(K.signature())\nprint([(P.rational_prime(),e,P.residue_class_degree(),P.norm()) for P,e in D])\nprint(K.zeta_function().coefficients(24))",

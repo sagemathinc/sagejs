@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "e4a170d899e6cc67503ffe274fc46367c3c9210e3c673cae66682c6d0c7e5ee3",
+  "source_sha256": "90405ad921ec346e590c1f1e846064dd318637616346143d4a5a15b5cc437907",
   "counts": {
     "total": 951,
     "by_kind": {
@@ -120,7 +120,7 @@
     ],
     "number-field-cubic-headline": [
       "ffi:flint:fmpz_matrix_hnf",
-      "ffi:flint:nmod_poly_factor",
+      "kernel:number-field-zeta-coefficients-production",
       "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
     ],
     "number-field-ideal-certificate-sagepack": [
@@ -128,7 +128,7 @@
     ],
     "number-field-maximal-order-prime-zeta": [
       "ffi:flint:fmpz_matrix_hnf",
-      "ffi:flint:nmod_poly_factor",
+      "ffi:flint:number_field_order_maximal_at_primes",
       "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
     ],
     "numeric-realfield-arithmetic": [

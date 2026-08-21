@@ -53,6 +53,13 @@ This makes the alias table suitable for release gates and user interfaces: a
 shell does not have to infer requirements from display names or implementation
 symbols.
 
+Workflow requirements name observable dispatch boundaries. Do not list a
+library function merely because a compiled kernel or shared C adapter calls it
+internally: route telemetry authenticates the outer artifact dispatch, not
+private calls within that artifact. Conversely, when a workflow requires a
+specific public operation, its corpus source must invoke that operation before
+another operation can satisfy it from a shared cache.
+
 [`wasm-capability-api.mjs`](wasm-capability-api.mjs) is the host-neutral query
 surface for the website, mobile shell, and release tooling. It accepts the
 separately staged report, validates and detaches all public data, freezes its
