@@ -157,7 +157,8 @@ class FakeRelation:
     def __init__(self, row=(4,), certified=True):
         self.row = row
         self.certified = certified
-    def verify(self, order, factor_base):
+    def verify(self, order, factor_base, *, reconstructor=None):
+        reconstruction_calls.append(reconstructor)
         return {"certified": self.certified}
 
 class FakePresentation:
@@ -180,6 +181,8 @@ class FakePresentation:
         return True
 
 P = FakeIdeal(1)
+reconstruction_cache = object()
+reconstruction_calls = []
 C = _EngineClassGroup(
     FakeOrder(),
     (4,),
@@ -194,6 +197,7 @@ C = _EngineClassGroup(
     lambda relation_witness, reduction_witness: relation_witness,
     EXACT_UNCONDITIONAL,
     "Minkowski",
+    reconstruction_cache,
 )
 assert C.invariants() == (4,)
 assert C.order() == 4
@@ -202,6 +206,7 @@ assert C(P**4).is_one()
 assert C.gen(0).ideal() == P
 assert C.gen(0).order() == 4
 assert C.verify()
+assert reconstruction_calls == [reconstruction_cache]
 result = ClassUnitComputation(
     object(),
     proof_status=EXACT_UNCONDITIONAL,

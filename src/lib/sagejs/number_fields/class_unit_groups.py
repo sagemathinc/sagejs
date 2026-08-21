@@ -572,6 +572,7 @@ class _EngineClassGroup:
         combine_reduction_witness: Callable[[Any, Any], Any],
         proof_status: str,
         theorem: str,
+        relation_reconstructor: Any = None,
     ) -> None:
         self._order = order
         self._invariants = tuple(int(value) for value in invariants)
@@ -589,6 +590,7 @@ class _EngineClassGroup:
         self._combine_reduction_witness = combine_reduction_witness
         self.proof_status = proof_status
         self.factor_base_theorem = theorem
+        self._relation_reconstructor = relation_reconstructor
         self._gens = tuple(
             _EngineClassElement(
                 self,
@@ -699,7 +701,11 @@ class _EngineClassGroup:
             if relation_rows != presentation_rows:
                 return False
             for record in self._relations:
-                replay = record.verify(self._order, self._factor_base)
+                replay = record.verify(
+                    self._order,
+                    self._factor_base,
+                    reconstructor=self._relation_reconstructor,
+                )
                 if replay["certified"] is not True:
                     return False
             for generator in self._gens:
@@ -2672,6 +2678,7 @@ class ClassUnitGroupEngine:
             ),
             proof_status,
             theorem,
+            collector,
         )
         if not group.verify():
             raise ArithmeticError("class-group ideal maps failed exact replay")
