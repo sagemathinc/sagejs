@@ -180,6 +180,53 @@ if (process.platform !== "win32") {
   assert.ok(fields[3] < 0.01, `cached RREF rank query took ${fields[3]}s`);
 }
 
+// Source-native compilation is independent of the generated M4RI resource
+// boundary.  Keep one exact public workflow differential with compilation
+// disabled so a future matrix kernel cannot silently change the public
+// answer or bypass the mature M4RI implementation.
+const publicDifferential = String.raw`
+F = GF(2)
+A = matrix(F, 4, 5, [
+    1,0,1,1,0,
+    0,1,1,0,1,
+    1,1,0,1,1,
+    0,0,1,1,1,
+])
+B = matrix(F, 5, 3, [
+    1,0,1,
+    0,1,1,
+    1,1,0,
+    1,0,0,
+    0,1,0,
+])
+rank = A.rank()
+C = A * B
+K = A.right_kernel_matrix()
+Q = matrix(F, 3, 3, [1,1,0, 0,1,1, 1,1,1])
+rhs = matrix(F, 3, 1, [1,0,1])
+X = Q.solve_right(rhs)
+print(rank)
+print(C.str().replace("\n", ";"))
+print(K.nrows(), K.ncols(), (A * K.transpose()).is_zero())
+print(X.str().replace("\n", ";"), Q * X == rhs)
+print(all(value._has_m4ri_matrix_resource() for value in [A,B,C,K,Q,rhs,X]))
+`;
+const nativeDifferential = runSage(publicDifferential);
+const disabledNativeDifferential = runSage(publicDifferential, {
+  SAGEJS_NATIVE_DISABLE: "1",
+});
+assert.equal(disabledNativeDifferential, nativeDifferential);
+assert.equal(
+  nativeDifferential,
+  [
+    "3",
+    "[1 1 1];[1 1 1];[0 0 0];[0 0 0]",
+    "2 5 True",
+    "[1];[0];[0] True",
+    process.platform === "win32" ? "False" : "True",
+  ].join("\n"),
+);
+
 // Keep a cheap JS timing witness so this file itself cannot accidentally
 // become a multi-second process-orchestration test outside mathematical work.
 const start = performance.now();
