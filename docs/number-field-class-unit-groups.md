@@ -95,16 +95,19 @@ canonical, authenticated payload and `unit.stable_hash()` is its content hash.
 `lower`, `upper`, `precision_bits`, `rigorous`, and `proof_status` fields record
 a weighted logarithmic determinant enclosure; complex places have weight two.
 `K.regulator(prec=200)` requests at least 200-bit work and may reuse or refine
-the coupled context. A rigorous enclosure certifies both nonzero determinant
-and full unit rank. Do not compare printed midpoint strings: compare interval
-containment or exact serialized endpoints.
+the coupled context. A rigorous nonzero determinant certifies independence at
+the full Dirichlet rank; the separate rigorous `h*R` index-one validation is
+what certifies that the subgroup is the complete unit lattice. Do not compare
+printed midpoint strings: compare interval containment or exact serialized
+endpoints.
 
 ## Resources, cancellation, and checkpoints
 
 Resource keywords participate in the context cache key. The public engine
 accepts bounds including `max_factor_base_bound`, `max_factor_base_size`,
 `max_relation_attempts`, `max_relations`, `max_candidates_per_ideal`,
-`max_random_terms`, `max_coefficient_bound`, `precision_bits`,
+`max_random_terms`, `max_coefficient_bound`, `max_partial_relations`,
+`large_prime_bound_multiplier`, `precision_bits`,
 `max_precision_bits`, `max_analytic_prime_bound`, and `max_memory_bytes`.
 Defaults are portable safety policy, not a promise that every field within a
 degree or discriminant range will complete.
@@ -120,9 +123,15 @@ The successful result's `context` supports `context.checkpoint()` and
 `context.checkpoint_hash()`. Checkpoints are canonical authenticated data tied
 to the exact field, maximal order, discriminant, proof state, resource policy,
 seed, and component states. `ClassUnitGroupContext.from_dict()` verifies those
-bindings and accepts component-specific decoders and verifiers. This is a
-replay and provenance format; there is not yet a public `resume=` parameter for
-continuing a partially collected public computation.
+bindings and accepts component-specific decoders and verifiers.
+
+For an in-progress computation, pass `checkpoint=path` (or a detached sink)
+to save authenticated stage snapshots and `resume_from=path` (or a detached
+source) to continue the same deterministic search. `progress=callback`
+receives structured events, and `max_checkpoint_bytes` bounds untrusted input.
+Filesystem replacement is atomic, but concurrent writers are not coordinated
+and directory contents are not explicitly `fsync`ed; applications needing
+stronger crash durability should provide their own sink.
 
 ## Oracle provenance and benchmark method
 
