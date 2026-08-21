@@ -436,7 +436,7 @@ async function runPerformance(driver, workloads, samples, workloadIdentity) {
   };
 }
 
-function checkBudget(report, budget, requireBaseline) {
+export function checkBudget(report, budget, requireBaseline) {
   if (budget.schema !== "sagejs.browser-wasm-budget/v1") {
     throw new Error(`unsupported budget schema ${budget.schema}`);
   }
@@ -457,8 +457,15 @@ function checkBudget(report, budget, requireBaseline) {
     for (const [id, timing] of Object.entries(report.operations)) {
       const baselineTiming = baseline.operations?.[id];
       const baselineWarm = baselineTiming?.warm_ms ?? baselineTiming;
+      if (!Number.isFinite(baselineWarm?.median)) {
+        if (requireBaseline) {
+          failures.push(
+            `reviewed performance_baseline.${key}.operations.${id} is absent`,
+          );
+        }
+        continue;
+      }
       if (
-        baselineWarm &&
         timing.warm_ms.median > baselineWarm.median * (1 + threshold.warm_operation_regression_fraction)
       ) {
         failures.push(`${id} warm median regressed beyond its reviewed allowance`);
@@ -480,6 +487,17 @@ function checkBudget(report, budget, requireBaseline) {
   }
   if (ratioBaseline) {
     const allowance = budget.thresholds.native_ratio_regression_fraction;
+    if (requireBaseline) {
+      for (const id of Object.keys(report.operations)) {
+        const reviewedRatio =
+          ratioBaseline.operations?.[id]?.warm_median_ratio;
+        if (!Number.isFinite(reviewedRatio) || reviewedRatio <= 0) {
+          failures.push(
+            `reviewed native_ratio_baseline.${key}.operations.${id} is absent`,
+          );
+        }
+      }
+    }
     if (!Number.isFinite(allowance) || allowance < 0) {
       failures.push("native ratio baseline exists without a reviewed regression allowance");
     } else if (report.native_comparison?.status !== "available") {

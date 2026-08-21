@@ -261,6 +261,54 @@ test("performance instrumentation distinguishes unavailable data from measured z
   assert.equal(measured.required_routes[0].status, "matched");
 });
 
+test("required performance budgets reject newly added unbaselined workloads", async () => {
+  const { checkBudget } = await import(
+    "../bench/browser-wasm-performance.mjs"
+  );
+  const report = {
+    runtime: { kind: "browser-wasm", engine: "chromium" },
+    startup_ms: { median: 10 },
+    interrupt_latency_ms: { median: 5, maximum: 5 },
+    operations: {
+      "new-heavy-workload": {
+        warm_ms: { median: 20 },
+      },
+    },
+    native_comparison: {
+      status: "available",
+      operations: {
+        "new-heavy-workload": { warm_median_ratio: 2 },
+      },
+    },
+  };
+  const budget = {
+    schema: "sagejs.browser-wasm-budget/v1",
+    thresholds: {
+      startup_regression_fraction: 0.2,
+      interrupt_latency_regression_fraction: 0.2,
+      warm_operation_regression_fraction: 0.3,
+      native_ratio_regression_fraction: 0.25,
+      maximum_interrupt_latency_ms: 5000,
+    },
+    performance_baseline: {
+      chromium: {
+        startup_ms: { median: 10 },
+        interrupt_latency_ms: { median: 5 },
+        operations: {},
+      },
+    },
+    native_ratio_baseline: {
+      chromium: { operations: {} },
+    },
+  };
+
+  assert.deepEqual(checkBudget(report, budget, true).failures, [
+    "reviewed performance_baseline.chromium.operations.new-heavy-workload is absent",
+    "reviewed native_ratio_baseline.chromium.operations.new-heavy-workload is absent",
+  ]);
+  assert.deepEqual(checkBudget(report, budget, false).failures, []);
+});
+
 test("browser/native comparison requires identical workload identities", async () => {
   const { compareNativeReceipts } = await import(
     "../bench/browser-wasm-performance.mjs"
