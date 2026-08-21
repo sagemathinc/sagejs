@@ -692,7 +692,12 @@ print("batched")
 
 test("live generation authority memo detaches after computation", () => {
   const output = run(String.raw`
-counts = {"factor_base": 0, "presentation": 0, "relations": 0}
+counts = {
+    "factor_base": 0,
+    "presentation": 0,
+    "relations": 0,
+    "detached_relations": 0,
+}
 
 class FakePrime:
     def to_dict(self):
@@ -713,12 +718,35 @@ class FakeRelation:
     row = (1,)
     def to_dict(self):
         return {"schema": "fake-relation-v1", "row": [1]}
-    def verify(self, order, factor_base):
+    def verify(self, order, factor_base, *, reconstructor=None):
+        if reconstructor is None:
+            counts["detached_relations"] += 1
+        else:
+            for reconstruction_row in ((1,), (1,), (1,)):
+                reconstructor(reconstruction_row)
         counts["relations"] += 1
         return {"certified": tuple(factor_base) == (prime,)}
 
 class FakeCollector:
-    records = (FakeRelation(),)
+    def __init__(self):
+        self.records = (FakeRelation(),)
+        self._rows = {}
+        self._row_requests = 0
+        self._row_hits = 0
+    def reconstruct_factor_base_ideal(self, row):
+        self._row_requests += 1
+        key = tuple(row)
+        if key in self._rows:
+            self._row_hits += 1
+            return self._rows[key]
+        answer = ("ideal", key)
+        self._rows[key] = answer
+        return answer
+    def reconstruction_diagnostics(self):
+        return {
+            "row_requests": self._row_requests,
+            "row_hits": self._row_hits,
+        }
 
 class FakePresentation:
     order = 1
@@ -749,25 +777,51 @@ K = NumberField(x - 1, "a")
 engine = ClassUnitGroupEngine(
     K, algorithm="buchmann-hecke", components=Components()
 )
+collector = FakeCollector()
 evidence, verifier = engine._generation_authority(
-    FakePlan(), (prime,), FakeCollector(), FakePresentation(),
+    FakePlan(), (prime,), collector, FakePresentation(),
     EXACT_RELATIONS_CONDITIONAL_GRH,
 )
-assert counts == {"factor_base": 1, "presentation": 1, "relations": 1}
+assert counts == {
+    "factor_base": 1,
+    "presentation": 1,
+    "relations": 1,
+    "detached_relations": 0,
+}
+assert engine._resource_usage["generation_reconstruction_calls"] == 3
+assert engine._resource_usage["generation_reconstruction_cache_hits"] == 2
 for _index in range(2):
     assert verifier(
         K, K.maximal_order(), (), 1, evidence,
         EXACT_RELATIONS_CONDITIONAL_GRH,
     )
-assert counts == {"factor_base": 1, "presentation": 1, "relations": 1}
+assert counts == {
+    "factor_base": 1,
+    "presentation": 1,
+    "relations": 1,
+    "detached_relations": 0,
+}
+assert engine._resource_usage["generation_reconstruction_calls"] == 3
+assert engine._resource_usage["generation_reconstruction_cache_hits"] == 2
 assert engine._resource_usage["generation_verification_cache_hits"] == 2
 engine._generation_verification_cache_active = False
 assert verifier(
     K, K.maximal_order(), (), 1, evidence,
     EXACT_RELATIONS_CONDITIONAL_GRH,
 )
-assert counts == {"factor_base": 2, "presentation": 2, "relations": 2}
+assert counts == {
+    "factor_base": 2,
+    "presentation": 2,
+    "relations": 2,
+    "detached_relations": 0,
+}
+assert engine._resource_usage["generation_reconstruction_calls"] == 6
+assert engine._resource_usage["generation_reconstruction_cache_hits"] == 5
 assert engine._resource_usage["generation_verification_full_replays"] == 2
+# The detached proof path does not inherit the live collector callback.
+assert FakeRelation().verify(K.maximal_order(), (prime,))["certified"]
+assert counts["detached_relations"] == 1
+assert engine._resource_usage["generation_reconstruction_calls"] == 6
 print("generation-memo")
 `);
   assert.equal(output, "generation-memo");
