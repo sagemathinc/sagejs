@@ -461,7 +461,10 @@ export async function instantiateSageEvaluator({
         recordCapability: (id, route, options) =>
           capabilityDispatchTrace.record(id, route, options),
       }),
-      instantiateM4riBackend(m4ri),
+      instantiateM4riBackend(m4ri, {
+        recordCapability: (id, route, options) =>
+          capabilityDispatchTrace.record(id, route, options),
+      }),
       importSymbolic(symbolic),
       fetchCapabilityReport(String(capabilityReport)),
       useSynchronousCompilerWorker
