@@ -110,6 +110,46 @@ test("rational matrix operations fall back independently of resource storage", a
   }
 });
 
+test("each optional exact-matrix resource operation has a public fallback", async () => {
+  const cases = [
+    ["ffiFmpzMatrixAdd", "A=matrix(ZZ,[[1,2],[3,4]])\nB=matrix(ZZ,[[5,6],[7,8]])\nanswer=(A+B).list()==[6,8,10,12]"],
+    ["ffiFmpzMatrixSub", "A=matrix(ZZ,[[1,2],[3,4]])\nB=matrix(ZZ,[[5,6],[7,8]])\nanswer=(A-B).list()==[-4,-4,-4,-4]"],
+    ["ffiFmpzMatrixNeg", "A=matrix(ZZ,[[1,2],[3,4]])\nanswer=(-A).list()==[-1,-2,-3,-4]"],
+    ["ffiFmpzMatrixScalarMul", "A=matrix(ZZ,[[1,2],[3,4]])\nanswer=(A*(2^130+3)).list()[3]==4*(2^130+3)"],
+    ["ffiFmpzMatrixCharpoly", "A=matrix(ZZ,[[1,2],[3,4]])\nanswer=str(A.charpoly())=='x^2 - 5*x - 2'"],
+    ["ffiFmpzMatrixMinpoly", "A=matrix(ZZ,[[1,2],[3,4]])\nanswer=str(A.minpoly())=='x^2 - 5*x - 2'"],
+    ["ffiFmpzMatrixHnfTransform", "A=matrix(ZZ,[[2,4,4],[6,6,12],[10,4,16]])\nH,U=A.hermite_form(transformation=True)\nanswer=(U*A).list()==H.list()"],
+    ["ffiFmpzMatrixSnfTransform", "A=matrix(ZZ,[[2,4,4],[6,6,12],[10,4,16]])\nD,L,R=A.smith_form()\nanswer=(L*A*R).list()==D.list()"],
+    ["ffiFmpqMatrixAdd", "A=matrix(QQ,[[1/2,2/3],[3/4,5/6]])\nB=matrix(QQ,[[1/3,1/5],[1/7,1/11]])\nanswer=(A+B).list()==[5/6,13/15,25/28,61/66]"],
+    ["ffiFmpqMatrixSub", "A=matrix(QQ,[[1/2,2/3],[3/4,5/6]])\nB=matrix(QQ,[[1/3,1/5],[1/7,1/11]])\nanswer=(A-B).list()==[1/6,7/15,17/28,49/66]"],
+    ["ffiFmpqMatrixNeg", "A=matrix(QQ,[[1/2,2/3],[3/4,5/6]])\nanswer=(-A).list()==[-1/2,-2/3,-3/4,-5/6]"],
+    ["ffiFmpqMatrixScalarMul", "A=matrix(QQ,[[1/2,2/3],[3/4,5/6]])\nanswer=(A*(7/5)).list()==[7/10,14/15,21/20,7/6]"],
+    ["ffiFmpqMatrixCharpoly", "A=matrix(QQ,[[1/2,2/3],[3/4,5/6]])\nanswer=str(A.charpoly())=='x^2 - 4/3*x - 1/12'"],
+    ["ffiFmpqMatrixMinpoly", "A=matrix(QQ,[[1/2,2/3],[3/4,5/6]])\nanswer=str(A.minpoly())=='x^2 - 4/3*x - 1/12'"],
+    ["ffiFmpqMatrixRightKernel", "A=matrix(QQ,[[1/2,1/3,1/5],[1/4,1/7,1/10]])\nK=A.right_kernel_matrix()\nanswer=K.dimensions()==(1,3) and (A*K.transpose()).list()==[0,0]"],
+  ];
+  const session = await createSage();
+  try {
+    for (const [name, body] of cases) {
+      const result = await session.evaluate([
+        "import sagejs.runtime as rt",
+        "backend=rt.flint_backend()",
+        `saved=rt.reflect.get(backend, '${name}')`,
+        "assert saved is not rt.undefined",
+        `rt.reflect.deleteProperty(backend, '${name}')`,
+        "try:",
+        ...body.split("\n").map((line) => `    ${line}`),
+        "finally:",
+        `    rt.reflect.set(backend, '${name}', saved)`,
+        "answer",
+      ].join("\n"));
+      assert.equal(result.repr, "True", name);
+    }
+  } finally {
+    await session.close();
+  }
+});
+
 test("modular-symbol integer matrices use the portable exact ingress", async () => {
   const session = await createSage();
   try {

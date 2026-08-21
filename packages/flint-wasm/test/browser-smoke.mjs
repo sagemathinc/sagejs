@@ -5,6 +5,11 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  expectedStdout as matrixFallbackExpectedStdout,
+  publicSource as matrixFallbackPublicSource,
+} from "./matrix-resource-fallback-support.mjs";
+
 const packageRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
@@ -282,6 +287,7 @@ try {
         "Echelon basis matrix:\n[ 1  1 -1]\n[ 0  3 -2]\nTrue",
     );
     await runPublicExactSubspaces();
+    await runSource(matrixFallbackPublicSource, matrixFallbackExpectedStdout.trimEnd());
     await runSource(
       "F = GF(5)\nA = matrix(F, [[1,2],[3,4]])\n" +
         "print(A.det(), A.rank())\n" +
