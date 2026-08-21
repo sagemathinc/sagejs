@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "2dd6db409bfe9f25607a0521cadbfc5bf68a1b0e918a686f575fc68548a3f6a4",
+  "source_sha256": "ba62b86c51b1347c688c4734a069834e0d224299981709d9e03d2ef1dc6d9fe5",
   "counts": {
-    "total": 942,
+    "total": 943,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
       "napi-export": 311,
-      "production-kernel": 31,
+      "production-kernel": 32,
       "runtime-intrinsic": 137,
       "specialist-capability": 22
     },
     "by_disposition": {
-      "compiled-source": 31,
+      "compiled-source": 32,
       "desktop-only": 14,
       "generated-wasm": 268,
       "portable-fallback": 594,
       "shared-core": 35
     },
     "by_status": {
-      "available": 466,
+      "available": 467,
       "desktop-only": 14,
       "fallback": 462
     }
@@ -5845,6 +5845,18 @@
         "packed-binary64"
       ],
       "explanation": "This family uses compiled WebAssembly for 0 of 2 functions and the same-source fallback for 2 functions."
+    },
+    {
+      "id": "kernel:packed-graph-components-production",
+      "family": "packed-graph-components",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "graph-connected-components"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:packed-integer-polynomial-production",

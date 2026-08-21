@@ -10881,8 +10881,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "The one registered packed CSR traversal is compiled into the receipt-authenticated production source-kernel pack and selected by large public Graph and DiGraph connected-components workflows.",
-      "public_explanation": "Large weak connected-components traversals use one batched source-transparent WebAssembly call; small graphs and missing artifacts retain the exact observable fallback.",
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 1,
         "fallback_functions": 0,

@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 31,
-    "production_kernels": 24,
-    "compiled_functions": 218,
+    "registered_kernels": 32,
+    "production_kernels": 25,
+    "compiled_functions": 219,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -226,6 +226,15 @@
       "fallback_reasons": [
         "development-witness-not-in-production-registry"
       ]
+    },
+    {
+      "id": "packed-graph-components-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
+      "fallback_reasons": []
     },
     {
       "id": "packed-integer-polynomial-production",
