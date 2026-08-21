@@ -982,7 +982,21 @@ def _line_plot_spec_payload(value: Any) -> dict[str, Any]:
             source_intent[source_name] = supplied_source_intent[source_name]
     return {
         "kind": "line",
-        "data": {"x": value.xdata, "y": value.ydata},
+        # Plotly consumes native JavaScript numbers.  Sage integers and exact
+        # symbolic endpoints can otherwise survive compilation as runtime
+        # objects (notably the exact endpoint `0`) and reach Plotly as `{}`.
+        # Preserve `None` as the line-break sentinel while normalizing every
+        # numeric coordinate at the renderer boundary.
+        "data": {
+            "x": [
+                None if coordinate is None else runtime.number(float(coordinate))
+                for coordinate in value.xdata
+            ],
+            "y": [
+                None if coordinate is None else runtime.number(float(coordinate))
+                for coordinate in value.ydata
+            ],
+        },
         "source_intent": source_intent,
         "style": {
             "color": _color_value(line_style["color"]),

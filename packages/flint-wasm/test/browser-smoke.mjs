@@ -287,7 +287,7 @@ try {
         "Echelon basis matrix:\n[ 1  1 -1]\n[ 0  3 -2]\nTrue",
     );
     await runPublicExactSubspaces();
-    await runSource(matrixFallbackPublicSource, matrixFallbackExpectedStdout.trimEnd());
+    await runSource(matrixFallbackPublicSource, matrixFallbackExpectedStdout);
     await runSource(
       "F = GF(5)\nA = matrix(F, [[1,2],[3,4]])\n" +
         "print(A.det(), A.rank())\n" +
@@ -304,7 +304,7 @@ try {
         "[1 0 3]\n[0 1 1]\n[0 0]\n[0 0]",
     );
     await runSource("a = 12\nfactor(a)", "2^2 * 3");
-    await runSource("factor(a^2)", "2^4 * 3^2");
+    await runSource("a = 12\nfactor(a^2)", "2^4 * 3^2");
     await runSource(
       "P = P1List(11)\n" +
         "print(len(P), P.normalize_with_scalar(3,7), P.apply_S(0))\n" +
