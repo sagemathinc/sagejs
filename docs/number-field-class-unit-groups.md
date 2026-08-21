@@ -104,6 +104,51 @@ what certifies that the subgroup is the complete unit lattice. Do not compare
 printed midpoint strings: compare interval containment or exact serialized
 endpoints.
 
+## Quadratic ordinary and narrow groups
+
+Quadratic fields also expose an exact routing plan and narrow class APIs:
+
+```sage
+R.<x> = PolynomialRing(QQ)
+K.<a> = NumberField(x^2 - 15)
+plan = K.quadratic_class_group_plan(narrow=True)
+plan.backend, plan.materializes_all_reduced_forms
+# ('quadratic-forms', True)
+K.class_number(), K.narrow_class_number()
+# (2, 4)
+K.narrow_class_group().invariants()
+# (2, 2)
+```
+
+`K.class_number()` and `K.narrow_class_number()` use an exact streaming
+reduced-form cycle counter when the real-quadratic forms plan is within its
+resource cap. These scalar calls do not construct invariant factors,
+generators, or a list of ideal classes. `K.class_group()` and
+`K.narrow_class_group()` materialize the corresponding group presentation
+when it is requested. Imaginary quadratic narrow and ordinary groups coincide.
+
+`K.quadratic_class_group_plan(algorithm='auto', narrow=...)` reports the
+selected backend, its reason, the exact enumeration estimate and cap, and
+whether all reduced forms will be materialized. Small discriminants may be
+settled by exact Minkowski triviality. Within the forms cap, `auto` uses the
+specialized quadratic implementation. Beyond it, ordinary groups use the
+general Buchmann--Hecke relation engine and real narrow groups use its exact
+orientation-augmented presentation. The latter appends the signs of exact
+principal witnesses and an exact norm-sign unit relation before computing
+Smith normal form, so it retains extension data such as the distinction
+between `C4` and `C2 x C2`.
+
+Use `algorithm='quadratic-forms'` to require the specialized route or
+`algorithm='buchmann-hecke'` to require relations. Forced forms fail before
+enumeration when the configured work cap is exceeded. Specialized limits are
+`max_reduced_forms`, `max_enumeration_checks`, and `max_steps`; narrow relation
+presentation limits use the `narrow_` prefix, for example
+`narrow_max_matrix_entries` and `narrow_max_list_size`. General class/unit
+engine limits retain the names described below. A completed narrow relation
+group exposes the same exact invariant-factor, generator-ideal, ideal-map, and
+certificate-replay boundaries as the ordinary group; its proof status is
+inherited from the coupled ordinary class/unit computation.
+
 ## Resources, cancellation, and checkpoints
 
 Resource keywords participate in the context cache key. The public engine
