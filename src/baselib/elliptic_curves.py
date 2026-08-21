@@ -704,6 +704,32 @@ def _lseries_record_get(record: Any, name: str) -> Any:
     return runtime.reflect.get(record, name)
 
 
+@runtime.lightweight_math_class
+class _LseriesPlotComplex:
+    """A resource-free machine complex value owned by the plot grid.
+
+    Plot batches have already rounded their packed Acb output to binary64.
+    Re-wrapping every pair in `CDF` would allocate a bounded MPFR/Acb Wasm
+    resource for each pixel even though the graphics layer immediately reads
+    only `real()` and `imag()`.  A 64-by-64 coarse/fine tile would therefore
+    occupy all 8,192 numeric resource slots and a retained plot would prevent
+    the next render from starting.  This private value keeps that ownership
+    boundary explicit: native resources end at the packed batch crossing and
+    the rendered grid owns two ordinary machine numbers.
+    """
+
+    def __init__(self, real_part: float, imaginary_part: float) -> None:
+        self._real_part = float(real_part)
+        self._imaginary_part = float(imaginary_part)
+        runtime.object.freeze(self)
+
+    def real(self) -> float:
+        return self._real_part
+
+    def imag(self) -> float:
+        return self._imaginary_part
+
+
 @runtime.callable_instance_class
 class Lseries_ell:
     """Numerical complex `L`-series attached to an elliptic curve over `QQ`.
@@ -1274,7 +1300,6 @@ class Lseries_ell:
             point_pairs
         ):
             raise ArithmeticError("elliptic L-series plot batch has invalid size")
-        complex_double = runtime.reflect.get(runtime.global_object, "CDF")
         fine = []
         coarse = []
         errors = []
@@ -1282,13 +1307,13 @@ class Lseries_ell:
             coarse_value = canonical_coarse[index]
             fine_value = canonical_fine[index]
             coarse.append(
-                complex_double(
+                _LseriesPlotComplex(
                     float(coarse_value[0]),
                     sign * float(coarse_value[1]),
                 )
             )
             fine.append(
-                complex_double(
+                _LseriesPlotComplex(
                     float(fine_value[0]),
                     sign * float(fine_value[1]),
                 )
