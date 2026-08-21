@@ -622,6 +622,7 @@ def _dense_integer_zeros(
                     word_capacity,
                 ],
             )
+        return runtime.integer_buffer([0 for _index in range(length)], word_capacity)
     if _declared_ffi_kernel(kernel_function):
         return runtime.integer_buffer([0 for _index in range(length)], word_capacity)
     return [0 for _index in range(length)]
