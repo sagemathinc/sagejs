@@ -68,6 +68,36 @@
       "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
       "workspace_fingerprint": "cee69f63dfd458308b3934b86ab70f15dbec7a2c2821b99df06acc35cdb8aebe",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-analytic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.314,
+      "started_at": "2026-08-21T05:02:16.405Z",
+      "commit": "61edfe579f429f4c87e2ba917b8c8d38831695ed",
+      "workspace_fingerprint": "599c6101b25e147740e49c3222a2c6fdd060a4b5a334c220126ac9ba81355a6a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_analytic.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.831,
+      "started_at": "2026-08-21T05:02:19.374Z",
+      "commit": "61edfe579f429f4c87e2ba917b8c8d38831695ed",
+      "workspace_fingerprint": "599c6101b25e147740e49c3222a2c6fdd060a4b5a334c220126ac9ba81355a6a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.75,
+      "started_at": "2026-08-21T05:02:21.832Z",
+      "commit": "61edfe579f429f4c87e2ba917b8c8d38831695ed",
+      "workspace_fingerprint": "599c6101b25e147740e49c3222a2c6fdd060a4b5a334c220126ac9ba81355a6a",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
