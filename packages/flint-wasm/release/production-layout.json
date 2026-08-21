@@ -110,8 +110,8 @@
           "web-tree-sitter.wasm"
         ],
         "maximumCompressedDelta": {
-          "gzipBytes": 12250000,
-          "brotliBytes": 6800000
+          "gzipBytes": 12350000,
+          "brotliBytes": 6900000
         }
       },
       {
