@@ -225,7 +225,12 @@ def _conditional_payload_within_caps(value: Any, cancelled: Any = None) -> bool:
             estimated_bytes += max(1, (bits + 7) // 8)
             continue
         if isinstance(item, str):
-            size = len(item.encode("utf-8"))
+            if len(item) > _CONDITIONAL_MAX_STRING_BYTES:
+                return False
+            try:
+                size = len(item.encode("utf-8"))
+            except UnicodeError:
+                return False
             if size > _CONDITIONAL_MAX_STRING_BYTES:
                 return False
             estimated_bytes += size
