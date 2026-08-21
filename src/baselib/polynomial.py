@@ -3501,7 +3501,7 @@ class PolynomialRingParent(sage.Parent):
                 coordinates.extend(values[index]._power_basis_coordinates())
             return self._from_fq_polynomial_resource(
                 _flint_ffi_module().fq_polynomial(
-                    self._base._nativeContext,
+                    runtime.reflect.get(self._base, "_nativeContext"),
                     runtime.uint64_buffer(coordinates),
                     len(coordinates),
                     length,

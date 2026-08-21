@@ -1192,11 +1192,12 @@ def _make_extension_field(
             + "implemented for this finite field"
         )
 
-    modulus_coefficients = (
-        coefficients
-        if generated_resource_backend
-        else backend.fqContextModulus(context)
-    )
+    if generated_resource_backend:
+        if coefficients is None:
+            raise RuntimeError("generated extension context has no modulus")
+        modulus_coefficients = coefficients
+    else:
+        modulus_coefficients = backend.fqContextModulus(context)
     if order < runtime.bigint(65536):
         parent_type = FiniteField_givaro
         element_type = FiniteField_givaroElement

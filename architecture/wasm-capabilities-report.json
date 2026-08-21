@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "930dae5aa56b8d1d71ff1d15c5616d45c32d4bf7e6de65faf5841649df5f4861",
+  "source_sha256": "5ff3e4624046766cc2daaabf7cf3136fa19efdeb75a3f35852a13f05f363f809",
   "counts": {
     "total": 945,
     "by_kind": {
@@ -26,6 +26,9 @@
     }
   },
   "workflow_aliases": {
+    "algebraic-matrix-qqbar": [
+      "algebraic:qqbar-resource-core"
+    ],
     "capability-report-api": [
       "specialist:capability-report-api"
     ],
@@ -57,6 +60,13 @@
       "ffi:flint:fmpz_matrix_det",
       "ffi:flint:fmpz_matrix_hnf",
       "ffi:flint:fmpz_mod_polynomial_gcd"
+    ],
+    "extension-field-polynomial-arithmetic": [
+      "ffi:flint:fq_context",
+      "ffi:flint:fq_element_mul",
+      "ffi:flint:fq_element_pow",
+      "ffi:flint:fq_polynomial_mul",
+      "ffi:flint:fq_polynomial_pow"
     ],
     "gf2-matrix-m4ri": [
       "ffi:m4ri:matrix_mul",

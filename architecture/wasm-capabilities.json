@@ -310,6 +310,16 @@
     "exact-algebraic-roots": [
       "algebraic:qqbar-resource-core"
     ],
+    "algebraic-matrix-qqbar": [
+      "algebraic:qqbar-resource-core"
+    ],
+    "extension-field-polynomial-arithmetic": [
+      "ffi:flint:fq_context",
+      "ffi:flint:fq_element_mul",
+      "ffi:flint:fq_element_pow",
+      "ffi:flint:fq_polynomial_mul",
+      "ffi:flint:fq_polynomial_pow"
+    ],
     "exact-integer-factorization": [
       "specialist:integer-factorization-wasm"
     ],

@@ -131,6 +131,7 @@ const integration = [
   "test/extension-polynomial-resource-ffi.cjs",
   "test/extension-polynomial-resource-kernels.cjs",
   "test/finite-extension-scalar-resource.cjs",
+  "test/wasm-public-extension-fields.cjs",
   "test/native-resource-basic-finalizer.cjs",
   "test/native-uint64-bitwise.cjs",
   "test/native-exact-uint64-buffer.cjs",
