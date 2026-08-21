@@ -1,0 +1,104 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-factor-base-small-bound",
+  "title": "Small-bound factor-base optimization",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Optimize exact BDF interval logarithms and select theorem-safe small Minkowski factor bases in auto mode",
+  "base_commit": "3f7482dbf43ae1c2b6c7f24a5074ddfa8748d3c2",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_group_factor_base.py",
+    "test/number-field-class-group-factor-base.cjs",
+    "test/fixtures/number-field-class-group-factor-base.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Exact rational interval differential",
+      "Sage/PARI/Magma factor-base fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm exec pyright src/lib/sagejs/number_fields/class_group_factor_base.py",
+    "pnpm test:baselib:strict",
+    "node --test test/number-field-class-group-factor-base.cjs",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 283.699,
+      "started_at": "2026-08-21T20:54:26.035Z",
+      "commit": "3f7482dbf43ae1c2b6c7f24a5074ddfa8748d3c2",
+      "workspace_fingerprint": "fc5cbb0bf17e37728f4075bef18c968e292b133205629c230d63d8fb70d222d3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_group_factor_base.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.5,
+      "started_at": "2026-08-21T20:59:24.694Z",
+      "commit": "3f7482dbf43ae1c2b6c7f24a5074ddfa8748d3c2",
+      "workspace_fingerprint": "fc5cbb0bf17e37728f4075bef18c968e292b133205629c230d63d8fb70d222d3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 29.664,
+      "started_at": "2026-08-21T20:59:26.808Z",
+      "commit": "3f7482dbf43ae1c2b6c7f24a5074ddfa8748d3c2",
+      "workspace_fingerprint": "fc5cbb0bf17e37728f4075bef18c968e292b133205629c230d63d8fb70d222d3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-group-factor-base.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 59.423,
+      "started_at": "2026-08-21T21:00:09.058Z",
+      "commit": "3f7482dbf43ae1c2b6c7f24a5074ddfa8748d3c2",
+      "workspace_fingerprint": "fc5cbb0bf17e37728f4075bef18c968e292b133205629c230d63d8fb70d222d3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 290.386,
+      "started_at": "2026-08-21T21:01:20.467Z",
+      "commit": "3f7482dbf43ae1c2b6c7f24a5074ddfa8748d3c2",
+      "workspace_fingerprint": "fc5cbb0bf17e37728f4075bef18c968e292b133205629c230d63d8fb70d222d3",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Uses exact integer anchoring for tight rational log intervals, reducing the discriminant-minus59 cubic's cold BDF certification from 8.18 seconds to 1.59 seconds with the same strict bound 7. Auto and explicit GRH selection now return a fresh assumption-free Minkowski bound when its exact integral-norm floor is at most the conditional search minimum 2; this field's complete factor base falls from two primes and 8.4 seconds to one prime and 0.12 seconds without polynomial special-casing. Tests replay the anchored interval outward construction, overlap it with direct endpoint logs, preserve the BDF oracle, and prove BDF is not entered by the unconditional shortcut. The full class-unit engine suite also passes 28/28 with the narrower bases and log-rank continuation policy.",
+    "risks": [
+      "Selecting the smaller unconditional base changes deterministic factor-base fingerprints and invalidates checkpoints made with the former BDF plan; greenfield policy permits the direct correction.",
+      "Legacy certified_minkowski_class_bound reports the ceiling 3 for this field, while factor-base generation correctly uses the integral-norm floor 2; downstream proofs must bind the factor-base theorem record rather than substitute the legacy ceiling.",
+      "The mandatory pnpm test:native gate remains pending for central integration as directed."
+    ],
+    "next_steps": [
+      "Integration should retain the exact FactorBaseBound cutoff and assumptions in class-number proof certificates.",
+      "Central integration owns broad native and full class-unit end-to-end gates."
+    ]
+  }
+}

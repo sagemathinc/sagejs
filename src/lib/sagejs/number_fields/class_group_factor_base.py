@@ -37,6 +37,7 @@ MAX_INTERVAL_BITS = 512
 
 _pi_cache: dict[int, _Interval] = {}
 _log_cache: dict[tuple[int, int, int], _Interval] = {}
+_interval_log_cache: dict[tuple[int, int, int, int, int], _Interval] = {}
 _sqrt_cache: dict[tuple[int, int, int], _Interval] = {}
 _gamma_cache: dict[int, _Interval] = {}
 _catalan_cache: dict[int, _Interval] = {}
@@ -351,9 +352,42 @@ def _log_interval(value: _Interval, bits: int) -> _Interval:
     """Enclose the logarithm of one positive rational interval."""
     if value.lower <= ZERO:
         raise ValueError("an interval logarithm needs positive endpoints")
-    lower = _log_rational_interval(value.lower, bits)
-    upper = _log_rational_interval(value.upper, bits)
-    return _Interval(lower.lower, upper.upper)
+    key = (
+        value.lower.numerator,
+        value.lower.denominator,
+        value.upper.numerator,
+        value.upper.denominator,
+        bits,
+    )
+    cached = _interval_log_cache.get(key)
+    if cached is not None:
+        return cached
+
+    # Tight transcendental enclosures often have enormous rational endpoints.
+    # Logging them directly can drive the atanh series with a mediocre
+    # argument and make every exact numerator/denominator grow needlessly.
+    # If both endpoints share an integer part m >= 2, use the exact identity
+    # log(x) = log(m) + log(x/m).  The scaled interval is close to one (pi/3
+    # is the motivating case), so the same outward-exact series converges with
+    # much smaller rational intermediates.  Extra work bits cover addition of
+    # the two independently enclosed logarithms; interval arithmetic preserves
+    # containment regardless of whether the final decision needs more bits.
+    anchor = value.lower.floor()
+    work_bits = bits
+    if anchor >= 2 and value.upper < _Rational(anchor + 1):
+        work_bits = bits + 4
+        anchor_value = _Rational(anchor)
+        anchor_log = _log_rational_interval(anchor_value, work_bits)
+        scaled = value / _Interval.exact(anchor_value)
+        scaled_lower = _log_rational_interval(scaled.lower, work_bits)
+        scaled_upper = _log_rational_interval(scaled.upper, work_bits)
+        answer = anchor_log + _Interval(scaled_lower.lower, scaled_upper.upper)
+    else:
+        lower = _log_rational_interval(value.lower, work_bits)
+        upper = _log_rational_interval(value.upper, work_bits)
+        answer = _Interval(lower.lower, upper.upper)
+    _interval_log_cache[key] = answer
+    return answer
 
 
 def _sqrt_rational_interval(value: _Rational, bits: int) -> _Interval:
@@ -779,7 +813,23 @@ def bdf_bound(value: Any, *, max_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBo
 
 
 def grh_bound(value: Any, *, max_bdf_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBound:
-    """Return the smaller certified bound from Bach and BDF."""
+    """Return the smallest selected unconditional or GRH-certified bound."""
+    minkowski = minkowski_bound(value)
+    if minkowski.bound <= 2:
+        details = dict(minkowski.details)
+        details["selection"] = "unconditional-bound-at-grh-search-minimum"
+        details["grh_search_minimum"] = 2
+        return FactorBaseBound(
+            minkowski.theorem,
+            minkowski.assumptions,
+            minkowski.bound,
+            minkowski.degree,
+            minkowski.signature,
+            minkowski.discriminant,
+            minkowski.precision_bits,
+            minkowski.interval,
+            details,
+        )
     bach = bach_bound(value)
     bdf = bdf_bound(value, max_bound=max_bdf_bound)
     selected = bdf if bdf.bound < bach.bound else bach
