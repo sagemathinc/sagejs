@@ -1527,7 +1527,11 @@ class _EngineProofReplayContext:
         column_count = len(prime_payloads)
         relation_module = __import__(
             "sagejs.number_fields.class_group_relations",
-            fromlist=["RelationRecord", "reconstruct_factor_base_ideal"],
+            fromlist=[
+                "FactorBaseIdealReconstructor",
+                "RelationRecord",
+                "reconstruct_factor_base_ideal",
+            ],
         )
         matrix_module = __import__(
             "sagejs.number_fields.class_group_matrix",
@@ -1573,6 +1577,12 @@ class _EngineProofReplayContext:
             )
             if rational_prime**residue_degree > bound:
                 return False
+        # This cache belongs only to this detached replay.  It does not trust
+        # or inherit the engine collector, and every cached ideal is still
+        # checked against the independently decoded relation witnesses below.
+        reconstructor = relation_module.FactorBaseIdealReconstructor(
+            self.order, factor_base
+        )
         decoded_relations = []
         for index, payload in enumerate(relation_payloads):
             if index % 32 == 0 and _cancelled(cancelled):
@@ -1580,7 +1590,9 @@ class _EngineProofReplayContext:
             relation = relation_module.RelationRecord.from_dict(payload)
             if relation.to_dict() != payload:
                 return False
-            verification = relation.verify(self.order, factor_base)
+            verification = relation.verify(
+                self.order, factor_base, reconstructor=reconstructor
+            )
             if (
                 not isinstance(verification, dict)
                 or verification.get("certified") is not True
@@ -1616,9 +1628,7 @@ class _EngineProofReplayContext:
         for transform, ideal in zip(
             presentation.generator_transforms, generator_ideals, strict=True
         ):
-            reconstructed = relation_module.reconstruct_factor_base_ideal(
-                self.order, factor_base, transform
-            )
+            reconstructed = reconstructor.reconstruct(transform)
             if reconstructed != ideal:
                 return False
         return True
