@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-relation-reconstruct-cache",
+  "title": "Class Relation Reconstruct Cache",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reduce exact class-group relation reconstruction cost with a collector-owned bounded cache while preserving independent ideal replay",
+  "base_commit": "a595ac22be63d3cb5ad323c4848845928fbd73b5",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_group_relations.py",
+    "src/lib/sagejs/number_fields/class_group_factor_base.py",
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "test/number-field-class-group-relations.cjs",
+    "test/number-field-class-group-factor-base.cjs",
+    "test/number-field-class-unit-engine.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Differential equality with uncached reconstruct_factor_base_ideal and exact relation replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
