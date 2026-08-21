@@ -25,6 +25,11 @@ print(float(xi_batch[1].real()), float(xi_batch[1].imag()))
 print(float(xi_batch[2].real()), float(xi_batch[2].imag()))
 print(float(xi_batch[3].real()), float(xi_batch[3].imag()))
 print(all(value.precision() == 160 for value in gamma_batch + xi_batch))
+print(gamma_batch[0])
+print(gamma_batch[1])
+print(xi_batch[0], xi_batch[1])
+print(xi_batch[2])
+print(xi_batch[3])
 `;
 
 const expectedStdout = [
@@ -36,6 +41,14 @@ const expectedStdout = [
   "0.9942415563766283 0.0",
   "1.0471975511965979 0.0",
   "True",
+  // `ComplexField(160)` prints the same floor((prec - 1) * log10(2))
+  // significant digits as the native MPFR backend. In particular, exact
+  // nonzero values retain fixed precision; they are not normalized to `1`.
+  "1.7724538509055160272981674833411451827975494561",
+  "0.49801566811835604271369111746219809195296296759 - 0.15494982830181068512495513048388660519587965208*I",
+  "1.0000000000000000000000000000000000000000000000 1.0000000000000000000000000000000000000000000000",
+  "0.99424155637662821982554747937079543961458721912",
+  "1.0471975511965977461542144610931676280657231331",
   "",
 ].join("\n");
 
