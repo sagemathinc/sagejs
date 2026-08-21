@@ -546,6 +546,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "packed-moebius-range-production",
+      "source": "src/lib/sagejs/kernels/arithmetic/moebius.py",
+      "functions": ["packed_moebius_range"],
+      "semantic_domain": "one bounded exact linear sieve for the public moebius.range(0, stop) normal heavy case over caller-owned signed and unsigned packed storage",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "scalar-factorization"],
+      "benchmark": "bench:wasm-arithmetic-hotspots",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "packed-combinatorial-integer-rational-production",
       "source": "src/lib/sagejs/kernels/matrix/combinatorial.py",
       "functions": [

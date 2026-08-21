@@ -33,6 +33,84 @@
       "timeout_ms": 180000
     },
     {
+      "id": "analytic-gamma-xi-batches",
+      "family": "analytic-functions",
+      "requires": [
+        { "id": "analytic:complex-gamma", "route": "receipt-backed-wasm-artifact" },
+        { "id": "analytic:riemann-xi", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "points=[[\"0.5\",(k-64)/16] for k in range(128)]\ngamma_values=complex_gamma_values(points,prec=160)\nxi_values=riemann_xi_values(points,prec=160)\nprint(len(gamma_values),len(xi_values),gamma_values[0].precision(),xi_values[-1].precision())",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "numeric-mpfr-symbolic",
+      "family": "numerical",
+      "requires": [
+        { "id": "napi:@sagemath/sagejs-flint:realDiv", "route": "receipt-backed-wasm-artifact" },
+        { "id": "specialist:symbolic-numerical-integral-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "specialist:symbolic-find-root-wasm", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R=RealField(100)\nx=R(1)/R(3)\nfor k in range(100): x=(x+R(1))/R(3)\nt=var('t')\nvalue=numerical_integral(exp(t^2),1,2,eps_abs=1e-12,eps_rel=1e-12)[0]\nroot=(t^2-2).find_root(1,2)\nprint(x,float(value),float(root))",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "moebius-range-100000",
+      "family": "combinatorics-number-theory",
+      "requires": [
+        { "id": "kernel:packed-moebius-range-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "values=moebius.range(100000)\nprint(len(values),sum(values),sum(abs(x) for x in values))",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "graph-components-10000",
+      "family": "graphs",
+      "requires": [
+        { "id": "kernel:packed-graph-components-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "G=graphs.CycleGraph(10000)\nC=G.connected_components()\nprint(len(C),len(C[0]))",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "gf2-matrix-384",
+      "family": "dense-binary-matrices",
+      "requires": [
+        { "id": "ffi:m4ri:matrix_mul", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:m4ri:matrix_rank", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "A=matrix(GF(2),384,384,lambda i,j:(i*17+j*31+i*j)%2)\nB=A*A\nprint(B.nrows(),B.ncols(),A.rank(),B.rank())",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "matrix-combinatorial-invariants",
+      "family": "combinatorics",
+      "requires": [
+        { "id": "kernel:packed-combinatorial-integer-rational-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:packed-combinatorial-prime-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "from sagejs.linear_algebra.combinatorial import matrix_permanent,matrix_minors\nfor base in [ZZ,QQ,GF(7)]:\n A=matrix(base,8,8,[base((i*7+3)%11-5) for i in range(64)])\n B=matrix(base,6,7,[base((i*7+3)%11-5) for i in range(42)])\n print(matrix_permanent(A),len(matrix_minors(B,3)))",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "extension-field-polynomial-5632",
+      "family": "extension-fields",
+      "requires": [
+        { "id": "ffi:flint:fq_context", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fq_polynomial_mul", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "P.<t>=PolynomialRing(GF(65537))\nK.<a>=GF(65537^3,modulus=t^3+t+1)\nR.<x>=PolynomialRing(K)\nf=x^256+(a+1)*x+2\nfor k in range(4): f=f*(x^1024+a+K(k+1))\nprint(f.degree(),f[0],f[f.degree()])",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "algebraic-matrix-8",
+      "family": "algebraic-numbers",
+      "requires": [
+        { "id": "algebraic:qqbar-resource-core", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x>=QQ[]\nr=(x^2-2).roots(AA,multiplicities=False)[1]\nM=matrix(AA,8,8,lambda i,j:r if i==j else AA((i+2*j)%5-2))\nprint(M.rank(),M.det(),(M*M).charpoly()[0])",
+      "timeout_ms": 240000
+    },
+    {
       "id": "elliptic-lseries-value-batch",
       "family": "elliptic-curves",
       "requires": [

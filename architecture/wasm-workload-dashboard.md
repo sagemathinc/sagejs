@@ -4,7 +4,7 @@
 
 **Policy status:** failed
 
-Heavy workloads: 0/18 accelerated; 18 failed closed.
+Heavy workloads: 0/31 accelerated; 31 failed closed.
 
 Trusted route receipts: 0; rejected receipts: 0.
 
@@ -12,8 +12,8 @@ Trusted route receipts: 0; rejected receipts: 0.
 
 | Class | Expected requirements | Observed calls |
 | --- | ---: | ---: |
-| `wasm-library` | 52 | 0 |
-| `wasm-compiled-source` | 4 | 0 |
+| `wasm-library` | 70 | 0 |
+| `wasm-compiled-source` | 9 | 0 |
 | `portable-orchestration` | 3 | 0 |
 | `portable-computation` | 0 | 0 |
 
@@ -21,17 +21,19 @@ Trusted route receipts: 0; rejected receipts: 0.
 
 | Family | Workloads | Heavy | Accelerated | Failed | Reviewed fallback | Pending/review |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| algebraic-numbers | 2 | 1 | 0 | 1 | 0 | 1 |
-| analytic-functions | 4 | 4 | 0 | 4 | 0 | 0 |
-| combinatorics | 1 | 1 | 0 | 1 | 0 | 0 |
-| dense-binary-matrices | 1 | 1 | 0 | 1 | 0 | 0 |
+| algebraic-numbers | 3 | 2 | 0 | 2 | 0 | 1 |
+| analytic-functions | 6 | 6 | 0 | 6 | 0 | 0 |
+| combinatorics | 2 | 2 | 0 | 2 | 0 | 0 |
+| combinatorics-number-theory | 2 | 2 | 0 | 2 | 0 | 0 |
+| dense-binary-matrices | 2 | 2 | 0 | 2 | 0 | 0 |
 | elliptic-curves | 3 | 3 | 0 | 3 | 0 | 0 |
 | exact-arithmetic | 3 | 1 | 0 | 1 | 0 | 2 |
-| extension-fields | 1 | 1 | 0 | 1 | 0 | 0 |
-| graphs | 1 | 1 | 0 | 1 | 0 | 0 |
+| extension-fields | 2 | 2 | 0 | 2 | 0 | 0 |
+| graphs | 2 | 2 | 0 | 2 | 0 | 0 |
 | hyperelliptic-curves | 1 | 1 | 0 | 1 | 0 | 0 |
 | modular-symbols | 1 | 0 | 0 | 0 | 0 | 1 |
 | number-fields | 4 | 2 | 0 | 2 | 0 | 2 |
+| numerical | 4 | 4 | 0 | 4 | 0 | 0 |
 | plotting | 2 | 2 | 0 | 2 | 0 | 0 |
 | runtime | 1 | 0 | 0 | 0 | 0 | 1 |
 | serialization | 1 | 0 | 0 | 0 | 0 | 1 |
@@ -51,6 +53,11 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `parity:graph-components-packed` | graphs | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:gf2-matrix-m4ri` | dense-binary-matrices | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:matrix-combinatorial-invariants` | combinatorics | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `parity:moebius-range-batch` | combinatorics-number-theory | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `parity:analytic-gamma-xi-batches` | analytic-functions | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `parity:numeric-realfield-arithmetic` | numerical | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `parity:numeric-special-functions` | numerical | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `parity:symbolic-numerical-kernels` | numerical | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:extension-field-polynomial-arithmetic` | extension-fields | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:hyperelliptic-smalljac-local-factors` | hyperelliptic-curves | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:number-field-cubic-headline` | number-fields | no | unmeasured | `wasm-library` | — |
@@ -64,6 +71,14 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `performance:exact-matrix-kernel` | exact-arithmetic | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:cubic-number-field-zeta-1000` | number-fields | yes | failed | `wasm-compiled-source`, `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:analytic-special-value-batches` | analytic-functions | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `performance:analytic-gamma-xi-batches` | analytic-functions | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `performance:numeric-mpfr-symbolic` | numerical | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `performance:moebius-range-100000` | combinatorics-number-theory | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `performance:graph-components-10000` | graphs | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `performance:gf2-matrix-384` | dense-binary-matrices | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `performance:matrix-combinatorial-invariants` | combinatorics | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `performance:extension-field-polynomial-5632` | extension-fields | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `performance:algebraic-matrix-8` | algebraic-numbers | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:elliptic-lseries-value-batch` | elliptic-curves | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:elliptic-lseries-complex-plot-64` | plotting | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 

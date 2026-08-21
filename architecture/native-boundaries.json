@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 112,
+    "classified-native-file": 113,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
     "napi-export": 311,
@@ -8234,6 +8234,14 @@
       "path": "packages/flint-wasm/src/number-field-zeta.c",
       "disposition": "host-adapter",
       "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/flint-wasm/src/numeric.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/src/numeric.c",
+      "disposition": "host-adapter",
+      "review_status": "audited",
       "lane": "distribution"
     },
     {

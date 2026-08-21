@@ -83,6 +83,20 @@
           "test/wasm-combinatorial-invariants.cjs"
         ]
       },
+      "arithmetic-hotspots-wasm-differential": {
+        "differential": true,
+        "paths": [
+          "test/wasm-arithmetic-hotspots.cjs"
+        ]
+      },
+      "numeric-symbolic-wasm-differential": {
+        "differential": true,
+        "paths": [
+          "packages/flint-wasm/test/numeric-backend.test.mjs",
+          "test/wasm-numeric-symbolic-public.cjs",
+          "test/wasm-analytic-public.cjs"
+        ]
+      },
       "native-public-fallback-differential": {
         "differential": true,
         "paths": [
@@ -239,6 +253,16 @@
         "source": "packages/flint-wasm/evaluator.mjs"
       },
       {
+        "id": "specialist:symbolic-find-root-wasm",
+        "family": "numerical",
+        "source": "packages/flint-wasm/src/numeric.c"
+      },
+      {
+        "id": "specialist:symbolic-numerical-integral-wasm",
+        "family": "numerical",
+        "source": "packages/flint-wasm/src/numeric.c"
+      },
+      {
         "id": "specialist:flint-arb-gmp-stack",
         "family": "exact-and-analytic",
         "source": "packages/flint-wasm/scripts/build.cjs"
@@ -286,6 +310,10 @@
     ]
   },
   "workflow_aliases": {
+    "analytic-gamma-xi-batches": [
+      "analytic:complex-gamma",
+      "analytic:riemann-xi"
+    ],
     "capability-report-api": [
       "specialist:capability-report-api"
     ],
@@ -341,6 +369,17 @@
       "kernel:packed-combinatorial-integer-rational-production",
       "kernel:packed-combinatorial-prime-production"
     ],
+    "moebius-range-packed": [
+      "kernel:packed-moebius-range-production"
+    ],
+    "numeric-realfield-arithmetic": [
+      "napi:@sagemath/sagejs-flint:realDiv"
+    ],
+    "numeric-special-functions": [
+      "napi:@sagemath/sagejs-flint:zetaZeros",
+      "napi:@sagemath/sagejs-flint:complexEi",
+      "napi:@sagemath/sagejs-flint:complexBesselI"
+    ],
     "hyperelliptic-smalljac-local-factors": [
       "specialist:smalljac"
     ],
@@ -373,6 +412,10 @@
     ],
     "sagepack-exact-roundtrip": [
       "specialist:sagepack"
+    ],
+    "symbolic-numerical-kernels": [
+      "specialist:symbolic-numerical-integral-wasm",
+      "specialist:symbolic-find-root-wasm"
     ]
   },
   "capabilities": [
@@ -10899,6 +10942,32 @@
       }
     },
     {
+      "id": "kernel:packed-moebius-range-production",
+      "kind": "production-kernel",
+      "family": "packed-moebius-range",
+      "source": "src/lib/sagejs/kernels/arithmetic/moebius.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "moebius.range"
+      ],
+      "tests": [
+        "arithmetic-hotspots-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
       "id": "kernel:packed-combinatorial-integer-rational-production",
       "kind": "production-kernel",
       "family": "packed-combinatorial-integer-rational",
@@ -11361,323 +11430,374 @@
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexBesselI",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/symbolic.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexDiv",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexEi",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexEqual",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexFromReals",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexImag",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexImagDouble",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexMul",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexNeg",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexPowInt",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexPrecision",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexReal",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexRealDouble",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexRound",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexSub",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexToString",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicElementCoefficients",
@@ -16238,266 +16358,308 @@
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realDiv",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realEqual",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realFromBigInt",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realFromRational",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realFromString",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realMul",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realNeg",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realPowInt",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realPrecision",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realRound",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realSub",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realToDouble",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realToString",
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:rforestCapabilities",
@@ -16732,19 +16894,22 @@
       "kind": "napi-export",
       "family": "numerical",
       "source": "packages/flint/src/floating.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/real_complex.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "numeric-symbolic-wasm-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zmodMatrix",
@@ -19976,6 +20141,62 @@
         "path": "packages/flint-wasm/test/browser-wasm-serialization.mjs"
       },
       "public_explanation": "Canonical SagePack serialization is available in browsers and produces the same exact byte representation as the Node runtime."
+    },
+    {
+      "id": "specialist:symbolic-find-root-wasm",
+      "family": "numerical",
+      "source": "packages/flint-wasm/src/numeric.c",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-bounded-bisection-for-arbitrary-python-callables",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "Expression.find_root"
+      ],
+      "tests": [
+        "numeric-symbolic-wasm-differential"
+      ],
+      "review_note": "Supported bounded symbolic expression trees are transported once and iterated inside the isolated FLINT Wasm reactor; arbitrary Python callables remain an explicit portable domain.",
+      "kind": "specialist-capability",
+      "reviewed": true,
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      },
+      "shared_core": "packages/flint-wasm/src/numeric.c",
+      "resource_limits": {
+        "maximum_expression_nodes": 4096,
+        "maximum_iterations": 100000,
+        "maximum_live_resources": 8192
+      },
+      "public_explanation": "Bounded supported symbolic roots use one receipt-backed WebAssembly call; unsupported expression trees and arbitrary callables remain explicit portable fallbacks."
+    },
+    {
+      "id": "specialist:symbolic-numerical-integral-wasm",
+      "family": "numerical",
+      "source": "packages/flint-wasm/src/numeric.c",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-adaptive-integration-for-arbitrary-python-callables",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "numerical_integral"
+      ],
+      "tests": [
+        "numeric-symbolic-wasm-differential"
+      ],
+      "review_note": "Supported bounded symbolic expression trees are transported once and evaluated adaptively inside the isolated FLINT Wasm reactor; arbitrary Python callables remain an explicit portable domain.",
+      "kind": "specialist-capability",
+      "reviewed": true,
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      },
+      "shared_core": "packages/flint-wasm/src/numeric.c",
+      "resource_limits": {
+        "maximum_expression_nodes": 4096,
+        "maximum_points": 100000,
+        "maximum_live_resources": 8192
+      },
+      "public_explanation": "Bounded supported symbolic integrals use one receipt-backed WebAssembly call; unsupported expression trees and arbitrary callables remain explicit portable fallbacks."
     },
     {
       "id": "specialist:tree-sitter",
