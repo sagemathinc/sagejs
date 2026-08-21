@@ -1815,8 +1815,13 @@ class ClassUnitGroupEngine:
         )
         self._relation_search_state = search.state
         attempts = int(search.state.ideals_tested)
+        # Initial discovery needs a full relation-matrix rank and enough
+        # independent logarithmic units.  Extra dependencies are not a proof
+        # boundary: rigorous hR index-one certification below proves
+        # completeness, while adaptive saturation requests an explicit larger
+        # dependency target whenever the certified index is not one.
         dependency_target = (
-            unit_rank + max(2, int(self.field.degree()))
+            unit_rank
             if minimum_dependencies is None
             else max(0, int(minimum_dependencies))
         )
