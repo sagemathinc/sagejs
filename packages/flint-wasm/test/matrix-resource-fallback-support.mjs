@@ -46,6 +46,9 @@ print(Q.charpoly(), Q.minpoly())
 A = matrix(QQ, [[1/2,1/3,1/5],[1/4,1/7,1/10]])
 K = A.right_kernel_matrix()
 print(K.dimensions(), (A * K.transpose()).list())
+
+set_random_seed(1)
+print(random_matrix(QQ, 30).charpoly().degree())
 `;
 
 export const expectedStdout = [
@@ -63,5 +66,6 @@ export const expectedStdout = [
   "[7/10, 14/15, 21/20, 7/6]",
   "x^2 - 4/3*x - 1/12 x^2 - 4/3*x - 1/12",
   "(1, 3) [0, 0]",
+  "30",
   "",
 ].join("\n");

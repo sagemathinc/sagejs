@@ -6654,7 +6654,10 @@ class Matrix(sage.Element):
                 kernel,
                 coefficient_count,
                 invoke_rational_charpoly,
-                self._rational_capacity() + 1,
+                # A degree-`n` coefficient can contain products of `n`
+                # entries, so size the copied exact components like the
+                # integer characteristic-polynomial path above.
+                (self._rational_capacity() + 1) * max(1, self.nrows()),
             )
             numerators = _integer_buffer_values(storage.numerators)
             denominators = _integer_buffer_values(storage.denominators)
