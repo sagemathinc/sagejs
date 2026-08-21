@@ -85,7 +85,9 @@
         "src/baselib/containers.py",
         "src/baselib/graphs.py",
         "src/baselib/itertools.py",
-        "src/lib/sagejs/kernels/graph/"
+        "src/lib/sagejs/kernels/graph/",
+        "test/wasm-capabilities.cjs",
+        "test/wasm-production-native-kernels.cjs"
       ],
       "required_checks": ["pnpm test:baselib:strict", "pnpm test:compiler"]
     },
