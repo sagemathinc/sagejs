@@ -1,0 +1,68 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fastmath-hyperelliptic",
+  "title": "Wasm genus-2 smalljac local factors",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Execute bounded genus-2 smalljac local L-polynomial batches in the production Wasm reactor with an exact packed ABI, observable route, native differential oracle, public workflow proof, and benchmark",
+  "base_commit": "b57e7c50209d1e77a900d206cd895ffbe9ff62fa",
+  "claims": [
+    "packages/flint-wasm/src/curves/smalljac-coefficients.c",
+    "packages/flint-wasm/src/curves/smalljac-coefficients.h",
+    "packages/flint-wasm/curve-backend.mjs",
+    "packages/flint-wasm/curve-backend.d.ts",
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/scripts/build-smalljac-toolchain.cjs",
+    "packages/flint/scripts/portable-smalljac/sagejs_gmp_word.h",
+    "packages/flint/scripts/portable-smalljac/gmp_word_test.c",
+    "packages/flint/test/smalljac-portability.cjs",
+    "packages/flint-wasm/test/smalljac-coefficients.test.mjs",
+    "packages/flint-wasm/test/hyperelliptic-smalljac.test.mjs",
+    "packages/flint-wasm/test/curve-parity.test.mjs",
+    "packages/flint-wasm/test/toolchain-resolution.test.cjs",
+    "packages/flint-wasm/README.md",
+    "bench/hyperelliptic/wasm-smalljac-benchmark.mjs",
+    "bench/hyperelliptic/README.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/hyperelliptic-smalljac-genus2-3-plan.md",
+    "agents/webassembly-fast-mathematics-completion-plan.md",
+    "smalljac-4.1.3",
+    "ffpoly-1.2.7"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "desktop sagejs_smalljac_lpoly_batch_compute from the same pinned source closure",
+      "checked-in Sage/PARI local-factor vectors"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Production Wasm now executes bounded genus-2 smalljac local-factor traversals through a copied packed ABI and the public hyperelliptic workflow. Native differentials cover four curve models, primes above the wasm32 GMP word boundary, bad rows, and a 100000 traversal; the benchmark records exact digest and route evidence.",
+    "risks": [
+      "Genus 3 deliberately fails closed because smalljac 4.1.3 does not provide a certified degree-six reconstruction through this adapter.",
+      "The shared native-code audit entry for sagejs_gmp_word.h must be refreshed from 322 lines/11509 bytes to 297 lines/10506 bytes in the integration lane."
+    ],
+    "next_steps": [
+      "Refresh architecture/native-code.json audit metrics for sagejs_gmp_word.h and rerun pnpm architecture:check.",
+      "Run the cache-contended distribution validation commands in the integration lane."
+    ]
+  }
+}

@@ -11,6 +11,7 @@
   "claims": [
     "packages/flint-wasm/src/curves/",
     "packages/flint-wasm/src/modsym.c",
+    "packages/flint-wasm/index.mjs",
     "packages/flint-wasm/curve-backend.mjs",
     "packages/flint-wasm/curve-backend.d.ts",
     "packages/flint-wasm/scripts/build.cjs",
@@ -46,7 +47,28 @@
     "pnpm test:native",
     "pnpm test:sea"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 33.741,
+      "started_at": "2026-08-21T00:18:09.472Z",
+      "commit": "e869c59dbf4d27fe11187e8d9496b1fc1918b824",
+      "workspace_fingerprint": "f1735eef4f0b958bd20634520dfb46f4f3f0bbb66b977de22efe07e594dd2779",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 586.759,
+      "started_at": "2026-08-21T00:18:56.340Z",
+      "commit": "e869c59dbf4d27fe11187e8d9496b1fc1918b824",
+      "workspace_fingerprint": "b286ad25a0621c91563d3b72b148a9cd972da71c9ac99625786a191ead468036",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],

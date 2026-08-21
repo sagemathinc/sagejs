@@ -51,12 +51,23 @@ test("the committed toolchain lock is complete and content addressed", () => {
   assert.equal(toolchainLockDigest(differentlyOrdered), toolchainLockDigest(lock));
 });
 
-test("the portable smalljac recipe is a closed genus-one source selection", () => {
+test("the portable smalljac recipe includes the reviewed genus-two closure", () => {
   const lock = loadToolchainLock();
   assert.equal(ffpolySources.length, 8);
   assert.equal(smalljacSources.length, 23);
   assert.ok(smalljacSources.includes("smalljac.c"));
   assert.ok(smalljacSources.includes("ecurve.c"));
+  for (const required of [
+    "smalljac_g23.c",
+    "hecurve.c",
+    "hecurve1.c",
+    "hecurve2.c",
+    "hecurve2_ladic.c",
+    "jac.c",
+    "jacorder.c",
+  ]) {
+    assert.ok(smalljacSources.includes(required), `missing ${required}`);
+  }
   for (const excluded of ["smalljac_parallel.c", "smalljac_moments.c", "STgroups.c"]) {
     assert.equal(smalljacSources.includes(excluded), false);
   }

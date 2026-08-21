@@ -12,7 +12,28 @@
 #include <limits.h>
 #include <stdint.h>
 
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__wasm__) || \
+    defined(SAGEJS_GMP_FORCE_NARROW_LONG)
+
+/* `prepare-sources.cjs` intentionally widens the dependency sources from
+   `long` to `int64_t`.  Do not spell C `long` or its limit macros below:
+   that same source transform is applied to this copied header.  The compiler
+   ABI macro remains the source of truth for GMP's `_ui`/`_si` entry points. */
+#if defined(SAGEJS_GMP_FORCE_NARROW_LONG)
+#define SAGEJS_GMP_NATIVE_LONG_BYTES 4
+#elif defined(__SIZEOF_LONG__)
+#define SAGEJS_GMP_NATIVE_LONG_BYTES __SIZEOF_LONG__
+#elif defined(_WIN32)
+#define SAGEJS_GMP_NATIVE_LONG_BYTES 4
+#else
+#error "unable to determine the GMP C long width"
+#endif
+
+#define SAGEJS_GMP_U64_FITS_NATIVE(value) \
+  (SAGEJS_GMP_NATIVE_LONG_BYTES >= 8 || (value) <= UINT32_MAX)
+#define SAGEJS_GMP_I64_FITS_NATIVE(value) \
+  (SAGEJS_GMP_NATIVE_LONG_BYTES >= 8 || \
+   ((value) >= INT32_MIN && (value) <= INT32_MAX))
 
 static inline void sagejs_mpz_set_u64(mpz_ptr result, uint64_t value) {
   mpz_import(result, 1, -1, sizeof(value), 0, 0, &value);
@@ -48,7 +69,7 @@ static inline void sagejs_mpz_init_set_u64(mpz_ptr result, uint64_t value) {
 }
 
 static inline int sagejs_mpz_cmp_u64(mpz_srcptr left, uint64_t right) {
-  if (right <= ULONG_MAX) return mpz_cmp_ui(left, (unsigned long)right);
+  if (SAGEJS_GMP_U64_FITS_NATIVE(right)) return mpz_cmp_ui(left, right);
   mpz_t temporary;
   sagejs_mpz_init_set_u64(temporary, right);
   int result = mpz_cmp(left, temporary);
@@ -57,7 +78,7 @@ static inline int sagejs_mpz_cmp_u64(mpz_srcptr left, uint64_t right) {
 }
 
 static inline int sagejs_mpz_cmpabs_u64(mpz_srcptr left, uint64_t right) {
-  if (right <= ULONG_MAX) return mpz_cmpabs_ui(left, (unsigned long)right);
+  if (SAGEJS_GMP_U64_FITS_NATIVE(right)) return mpz_cmpabs_ui(left, right);
   mpz_t temporary;
   sagejs_mpz_init_set_u64(temporary, right);
   int result = mpz_cmpabs(left, temporary);
@@ -66,7 +87,7 @@ static inline int sagejs_mpz_cmpabs_u64(mpz_srcptr left, uint64_t right) {
 }
 
 static inline int sagejs_mpz_cmp_i64(mpz_srcptr left, int64_t right) {
-  if (right >= LONG_MIN && right <= LONG_MAX) return mpz_cmp_si(left, (long)right);
+  if (SAGEJS_GMP_I64_FITS_NATIVE(right)) return mpz_cmp_si(left, right);
   mpz_t temporary;
   mpz_init(temporary);
   sagejs_mpz_set_i64(temporary, right);
@@ -77,8 +98,8 @@ static inline int sagejs_mpz_cmp_i64(mpz_srcptr left, int64_t right) {
 
 #define SAGEJS_MPZ_BINARY_U64(name, operation_ui, operation)                 \
   static inline void name(mpz_ptr result, mpz_srcptr left, uint64_t right) { \
-    if (right <= ULONG_MAX) {                                                \
-      operation_ui(result, left, (unsigned long)right);                      \
+    if (SAGEJS_GMP_U64_FITS_NATIVE(right)) {                                 \
+      operation_ui(result, left, right);                                     \
       return;                                                                \
     }                                                                        \
     mpz_t temporary;                                                         \
@@ -94,8 +115,8 @@ SAGEJS_MPZ_BINARY_U64(sagejs_mpz_divexact_u64, mpz_divexact_ui, mpz_divexact)
 
 static inline void sagejs_mpz_addmul_u64(mpz_ptr result, mpz_srcptr left,
                                           uint64_t right) {
-  if (right <= ULONG_MAX) {
-    mpz_addmul_ui(result, left, (unsigned long)right);
+  if (SAGEJS_GMP_U64_FITS_NATIVE(right)) {
+    mpz_addmul_ui(result, left, right);
     return;
   }
   mpz_t temporary;
@@ -107,8 +128,8 @@ static inline void sagejs_mpz_addmul_u64(mpz_ptr result, mpz_srcptr left,
 static inline uint64_t sagejs_mpz_fdiv_q_u64(mpz_ptr quotient,
                                               mpz_srcptr dividend,
                                               uint64_t divisor) {
-  if (divisor <= ULONG_MAX)
-    return mpz_fdiv_q_ui(quotient, dividend, (unsigned long)divisor);
+  if (SAGEJS_GMP_U64_FITS_NATIVE(divisor))
+    return mpz_fdiv_q_ui(quotient, dividend, divisor);
   mpz_t divisorInteger, remainder;
   sagejs_mpz_init_set_u64(divisorInteger, divisor);
   mpz_init(remainder);
@@ -122,8 +143,8 @@ static inline uint64_t sagejs_mpz_fdiv_q_u64(mpz_ptr quotient,
 static inline uint64_t sagejs_mpz_tdiv_q_u64(mpz_ptr quotient,
                                               mpz_srcptr dividend,
                                               uint64_t divisor) {
-  if (divisor <= ULONG_MAX)
-    return mpz_tdiv_q_ui(quotient, dividend, (unsigned long)divisor);
+  if (SAGEJS_GMP_U64_FITS_NATIVE(divisor))
+    return mpz_tdiv_q_ui(quotient, dividend, divisor);
   mpz_t divisorInteger, remainder;
   sagejs_mpz_init_set_u64(divisorInteger, divisor);
   mpz_init(remainder);
@@ -136,8 +157,8 @@ static inline uint64_t sagejs_mpz_tdiv_q_u64(mpz_ptr quotient,
 
 static inline uint64_t sagejs_mpz_fdiv_u64(mpz_srcptr dividend,
                                             uint64_t divisor) {
-  if (divisor <= ULONG_MAX)
-    return mpz_fdiv_ui(dividend, (unsigned long)divisor);
+  if (SAGEJS_GMP_U64_FITS_NATIVE(divisor))
+    return mpz_fdiv_ui(dividend, divisor);
   mpz_t divisorInteger, remainder;
   sagejs_mpz_init_set_u64(divisorInteger, divisor);
   mpz_init(remainder);
@@ -151,8 +172,8 @@ static inline uint64_t sagejs_mpz_fdiv_u64(mpz_srcptr dividend,
 static inline uint64_t sagejs_mpz_mod_u64(mpz_ptr remainder,
                                            mpz_srcptr dividend,
                                            uint64_t divisor) {
-  if (divisor <= ULONG_MAX) {
-    return mpz_mod_ui(remainder, dividend, (unsigned long)divisor);
+  if (SAGEJS_GMP_U64_FITS_NATIVE(divisor)) {
+    return mpz_mod_ui(remainder, dividend, divisor);
   }
   mpz_t divisorInteger;
   sagejs_mpz_init_set_u64(divisorInteger, divisor);
@@ -163,8 +184,8 @@ static inline uint64_t sagejs_mpz_mod_u64(mpz_ptr remainder,
 
 static inline void sagejs_mpz_pow_u64(mpz_ptr result, mpz_srcptr base,
                                        uint64_t exponent) {
-  if (exponent <= ULONG_MAX) {
-    mpz_pow_ui(result, base, (unsigned long)exponent);
+  if (SAGEJS_GMP_U64_FITS_NATIVE(exponent)) {
+    mpz_pow_ui(result, base, exponent);
     return;
   }
   mpz_t power;
@@ -181,8 +202,8 @@ static inline void sagejs_mpz_pow_u64(mpz_ptr result, mpz_srcptr base,
 static inline void sagejs_mpz_powm_u64(mpz_ptr result, mpz_srcptr base,
                                         uint64_t exponent,
                                         mpz_srcptr modulus) {
-  if (exponent <= ULONG_MAX) {
-    mpz_powm_ui(result, base, (unsigned long)exponent, modulus);
+  if (SAGEJS_GMP_U64_FITS_NATIVE(exponent)) {
+    mpz_powm_ui(result, base, exponent, modulus);
     return;
   }
   mpz_t exponentInteger;
@@ -200,8 +221,8 @@ static inline void sagejs_mpz_u64_pow_u64(mpz_ptr result, uint64_t base,
 }
 
 static inline void sagejs_mpz_fac_u64(mpz_ptr result, uint64_t value) {
-  if (value <= ULONG_MAX) {
-    mpz_fac_ui(result, (unsigned long)value);
+  if (SAGEJS_GMP_U64_FITS_NATIVE(value)) {
+    mpz_fac_ui(result, value);
     return;
   }
   mpz_set_ui(result, 1);
@@ -212,8 +233,8 @@ static inline void sagejs_mpz_fac_u64(mpz_ptr result, uint64_t value) {
 }
 
 static inline int sagejs_mpz_kronecker_u64(mpz_srcptr left, uint64_t right) {
-  if (right <= ULONG_MAX)
-    return mpz_kronecker_ui(left, (unsigned long)right);
+  if (SAGEJS_GMP_U64_FITS_NATIVE(right))
+    return mpz_kronecker_ui(left, right);
   mpz_t temporary;
   sagejs_mpz_init_set_u64(temporary, right);
   int result = mpz_kronecker(left, temporary);
@@ -223,8 +244,8 @@ static inline int sagejs_mpz_kronecker_u64(mpz_srcptr left, uint64_t right) {
 
 #define SAGEJS_MPZ_BINARY_I64(name, operation_si, operation)                \
   static inline void name(mpz_ptr result, mpz_srcptr left, int64_t right) { \
-    if (right >= LONG_MIN && right <= LONG_MAX) {                           \
-      operation_si(result, left, (long)right);                              \
+    if (SAGEJS_GMP_I64_FITS_NATIVE(right)) {                                \
+      operation_si(result, left, right);                                    \
       return;                                                               \
     }                                                                       \
     mpz_t temporary;                                                        \
@@ -292,6 +313,10 @@ static inline void sagejs_mpq_set_u64(mpq_ptr result, uint64_t numerator,
 #define mpz_sub_ui sagejs_mpz_sub_u64
 #define mpz_tdiv_q_ui sagejs_mpz_tdiv_q_u64
 #define mpz_ui_pow_ui sagejs_mpz_u64_pow_u64
+
+#undef SAGEJS_GMP_I64_FITS_NATIVE
+#undef SAGEJS_GMP_U64_FITS_NATIVE
+#undef SAGEJS_GMP_NATIVE_LONG_BYTES
 
 #endif
 #endif

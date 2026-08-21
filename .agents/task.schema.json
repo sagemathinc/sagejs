@@ -35,6 +35,7 @@
         "hyperelliptic-curves",
         "modular-forms",
         "symbolic",
+        "numeric-symbolic-wasm",
         "graphics",
         "combinatorics-groups",
         "polyglot",

@@ -208,6 +208,43 @@ jobs:
           path: build/wasm-*-${{ matrix.engine }}.json
           if-no-files-found: error
 
+  node-wasm-cli:
+    name: Public parity through the authenticated Node-Wasm CLI
+    needs: clean-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-clean-build-a
+          path: build/prebuilt
+      - name: Restore and authenticate the exact production artifact
+        run: |
+          rm -rf packages/flint-wasm/dist
+          cp -a build/prebuilt/packages/flint-wasm/dist packages/flint-wasm/dist
+          node packages/flint-wasm/scripts/production-receipt.cjs validate
+      - name: Run the shared release corpus through the CLI
+        run: |
+          node packages/flint-wasm/scripts/node-cli-parity.cjs \
+            --tier release --receipt build/wasm-node-cli-parity.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: wasm-node-cli-parity
+          path: build/wasm-node-cli-parity.json
+          if-no-files-found: error
+
   workload-enforcement:
     name: Reject silent portable computation
     needs: browser-release

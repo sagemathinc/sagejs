@@ -386,9 +386,16 @@ test("curve capability decisions distinguish shared cores and specialists", () =
     curveCapabilities["hyperelliptic-genus3-candidate-scan"].disposition,
     "compiled-source",
   );
+  assert.equal(
+    curveCapabilities["smalljac-local-factors"].disposition,
+    "shared-core",
+  );
+  assert.deepEqual(
+    curveCapabilities["smalljac-local-factors"].limits.fullLpolynomialGenus,
+    [2],
+  );
   for (const name of [
     "eclib-descent-and-rank",
-    "smalljac-local-factors",
     "rforest-genus3",
   ]) {
     assert.equal(curveCapabilities[name].disposition, "desktop-only");

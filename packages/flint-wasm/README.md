@@ -143,6 +143,36 @@ REPL, `:reset` explicitly replaces the worker and clears session state. This is
 a mathematical evaluation and profiling harness: it deliberately has no shell,
 subprocess, host-filesystem, package-manager, or general Unix emulation surface.
 
+The curve reactor includes the real portable smalljac 4.1.3 and ffpoly 1.2.7
+genus-2 closure. Consequently the ordinary public workflow is accelerated in
+both the browser and Node-Wasm hosts:
+
+```python
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+C = HyperellipticCurve(x^5 + x + 1)
+C.local_lpolynomials(3, 100000, algorithm="smalljac")
+```
+
+One call traverses an inclusive interval and returns copied packed arrays for
+the prime, good-reduction flag, coefficient count, first two coefficients of
+`det(1-T*Frob_p)`, and row status. The ordinary Python layer reconstructs and
+checks the reciprocal degree-four polynomial. Each reactor request is limited
+to 131071 consecutive integer values, which is sufficient for one maximum
+public chunk and prevents an unbounded linear-memory allocation. Bad primes
+remain explicit rows rather than being assigned guessed good factors.
+
+This is not a direct point-counting replacement: normal good-prime work stays
+inside smalljac's mature genus-2 algorithms. It also makes no genus-3 claim;
+smalljac 4.1.3 rejects genus 3 at this boundary because a complete certified
+degree-six reconstruction is not available from that source closure.
+The toolchain prepares the same portability layer used by native Windows:
+upstream LP64 words become fixed-width 64-bit values and ffpoly selects its
+portable C/128-bit arithmetic instead of GNU x86-64 inline assembly. Thus the
+wasm32 ABI does not truncate the library's mathematical word model. The
+narrow-`long` GMP adapter specifically preserves Jacobian orders above 2^32
+instead of passing them through wasm32's 32-bit `_ui`/`_si` ABI.
+
 Rich graphics can be rendered with the separate adapter:
 
 ```js

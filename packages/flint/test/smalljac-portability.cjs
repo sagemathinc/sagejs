@@ -117,8 +117,7 @@ test("portable ffpoly word arithmetic matches an independent exact oracle", () =
 });
 
 test(
-  "Windows GMP adapters preserve values beyond the LLP64 word boundary",
-  { skip: process.platform !== "win32" },
+  "narrow-long GMP adapters preserve values beyond the 32-bit word boundary",
   () => {
     const directory = mkdtempSync(join(tmpdir(), "sagejs-gmp-word-"));
     const prefix = resolve(
@@ -130,17 +129,33 @@ test(
           "x64-windows-static-md-release",
         ),
     );
-    const executable = join(directory, "gmp-word.exe");
-    windowsCompilerRun([
-      "/nologo",
-      "/O2",
-      "/MD",
-      `/I${include}`,
-      `/I${join(prefix, "include")}`,
-      gmpSource,
-      join(prefix, "lib", "gmp.lib"),
-      `/Fe:${executable}`,
-    ]);
+    const executable = join(
+      directory,
+      process.platform === "win32" ? "gmp-word.exe" : "gmp-word",
+    );
+    if (process.platform === "win32") {
+      windowsCompilerRun([
+        "/nologo",
+        "/O2",
+        "/MD",
+        `/I${include}`,
+        `/I${join(prefix, "include")}`,
+        gmpSource,
+        join(prefix, "lib", "gmp.lib"),
+        `/Fe:${executable}`,
+      ]);
+    } else {
+      const compiler = process.env.CC || "cc";
+      run(compiler, [
+        "-std=c99",
+        "-O2",
+        `-I${include}`,
+        gmpSource,
+        "-lgmp",
+        "-o",
+        executable,
+      ]);
+    }
     run(executable, []);
   },
 );

@@ -16,15 +16,15 @@
   "input_receipts": {
     "policy": {
       "path": "architecture/wasm-workload-policy.json",
-      "sha256": "a76b99bd404d67a058f3502776ba5b391ff17a050fa67ea2c307c7cbfd9d5911"
+      "sha256": "15bf392fb12cc2a7f7cac2fab62e6e62260a27fb4412516d2a44e59760cb4f62"
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "2ca88850abcb87232bbb67d2525c95905aa79ec85ed6a9b3637d89be25b834b1"
+      "sha256": "e4dcdce0a66c2f1efadc9a57b753ad1c4c6ac9b2cf6785b8125ef1371d2b3776"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "31c41addb4ec029b9995c355487a6828e72f7faea414500ade544687ed127910"
+      "sha256": "9006807fa41bc6cbf1c9039d6e1e0fa4da59b3bec61dd8122fc88bba2267f7da"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
@@ -55,13 +55,13 @@
         "compiled-source": 32,
         "desktop-only": 14,
         "generated-wasm": 268,
-        "portable-fallback": 594,
-        "shared-core": 35
+        "portable-fallback": 589,
+        "shared-core": 40
       },
       "by_status": {
-        "available": 467,
+        "available": 472,
         "desktop-only": 14,
-        "fallback": 462
+        "fallback": 457
       }
     },
     "kernel_coverage_totals": {
@@ -75,10 +75,10 @@
   },
   "route_classes": {
     "expected_requirements": {
-      "wasm-library": 36,
+      "wasm-library": 41,
       "wasm-compiled-source": 1,
       "portable-orchestration": 3,
-      "portable-computation": 5
+      "portable-computation": 0
     },
     "observed_calls": {
       "wasm-library": 0,
@@ -125,8 +125,8 @@
       "heavy_workloads": 0,
       "accelerated": 0,
       "failed": 0,
-      "reviewed_fallback": 1,
-      "unmeasured_or_review_required": 0
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 1
     },
     "number-fields": {
       "workloads": 4,
@@ -356,72 +356,52 @@
       "family": "modular-symbols",
       "tier": "routine",
       "heavy": false,
-      "status": "reviewed-fallback",
+      "status": "unmeasured",
       "expected_routes": [
         {
           "capability_id": "napi:@sagemath/sagejs-flint:p1List",
-          "legacy_route": "portable-fallback",
-          "route_class": "portable-computation",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
           "reviewed": true,
-          "review": {
-            "normal_domain": "the current level-37 routine parity example",
-            "heavy_policy": "prohibited",
-            "reason": "The ordinary exact Manin-symbol implementation is a known temporary browser fallback, not evidence of fast-mathematics completion."
-          },
-          "capability_status": "fallback",
-          "capability_disposition": "portable-fallback"
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
         },
         {
           "capability_id": "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
-          "legacy_route": "portable-fallback",
-          "route_class": "portable-computation",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
           "reviewed": true,
-          "review": {
-            "normal_domain": "the current level-37 routine parity example",
-            "heavy_policy": "prohibited",
-            "reason": "Presentation construction remains reviewed portable mathematics only for the routine corpus while its Wasm core is unfinished."
-          },
-          "capability_status": "fallback",
-          "capability_disposition": "portable-fallback"
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
         },
         {
           "capability_id": "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
-          "legacy_route": "portable-fallback",
-          "route_class": "portable-computation",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
           "reviewed": true,
-          "review": {
-            "normal_domain": "the current level-37 routine parity example",
-            "heavy_policy": "prohibited",
-            "reason": "Boundary computation is mathematically substantial and therefore cannot be silently accepted in a heavyweight workload."
-          },
-          "capability_status": "fallback",
-          "capability_disposition": "portable-fallback"
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
         },
         {
           "capability_id": "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
-          "legacy_route": "portable-fallback",
-          "route_class": "portable-computation",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
           "reviewed": true,
-          "review": {
-            "normal_domain": "the current level-37 routine parity example",
-            "heavy_policy": "prohibited",
-            "reason": "Cuspidal-basis computation is a reviewed correctness fallback pending a receipt-backed Wasm implementation."
-          },
-          "capability_status": "fallback",
-          "capability_disposition": "portable-fallback"
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
         },
         {
           "capability_id": "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
-          "legacy_route": "portable-fallback",
-          "route_class": "portable-computation",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
           "reviewed": true,
-          "review": {
-            "normal_domain": "the current level-37 routine parity example",
-            "heavy_policy": "prohibited",
-            "reason": "Hecke-matrix construction is a hot mathematical algorithm and remains explicit acceleration debt."
-          },
-          "capability_status": "fallback",
-          "capability_disposition": "portable-fallback"
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
         }
       ],
       "engines": {
