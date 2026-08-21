@@ -2594,13 +2594,13 @@ static void hg_acb_mul_factorial(acb_t value, slong order, slong precision)
         acb_mul_ui(value, value, (ulong) index, precision);
 }
 
-static int hg_raw_jet_from_completed(
+static int hg_raw_jet_from_completed_arb(
     acb_ptr raw,
     acb_srcptr completed,
     const acb_t point,
     slong derivative_count,
     slong genus,
-    double log_a,
+    const arb_t log_a,
     slong precision)
 {
     acb_poly_t variable, inverse_gamma, exponential, multiplier;
@@ -2625,7 +2625,8 @@ static int hg_raw_jet_from_completed(
     acb_poly_pow_ui(
         inverse_gamma, inverse_gamma, (ulong) genus, precision);
     acb_poly_truncate(inverse_gamma, derivative_count);
-    acb_set_d(scalar, -log_a);
+    acb_set_arb(scalar, log_a);
+    acb_neg(scalar, scalar);
     acb_poly_scalar_mul(exponential, variable, scalar, precision);
     acb_poly_exp_series(exponential, exponential, derivative_count, precision);
     acb_poly_mullow(
@@ -2654,6 +2655,276 @@ static int hg_raw_jet_from_completed(
     acb_poly_clear(exponential);
     acb_poly_clear(inverse_gamma);
     acb_poly_clear(variable);
+    return 1;
+}
+
+static int hg_raw_jet_from_completed(
+    acb_ptr raw,
+    acb_srcptr completed,
+    const acb_t point,
+    slong derivative_count,
+    slong genus,
+    double log_a,
+    slong precision)
+{
+    arb_t log_a_arb;
+    arb_init(log_a_arb);
+    arb_set_d(log_a_arb, log_a);
+    const int status = hg_raw_jet_from_completed_arb(
+        raw,
+        completed,
+        point,
+        derivative_count,
+        genus,
+        log_a_arb,
+        precision);
+    arb_clear(log_a_arb);
+    return status;
+}
+
+/*
+ * At the center, the integrated inverse-Mellin weight has the single-contour
+ * representation
+ *
+ *   W_(g,k)(x) = k!/(2*pi*i) int Gamma(s)^g x^-s/(s-1)^(k+1) ds.
+ *
+ * Summing the coefficients before integrating therefore computes the whole
+ * completed central jet with one vertical Dirichlet-polynomial grid.  This is
+ * the same mathematical weight used by the two-dimensional theta evaluator,
+ * but avoids materializing its outer grid.
+ */
+
+#define SAGEJS_HG_CENTRAL_MAX_POINTS 8000
+
+typedef struct
+{
+    slong cutoff;
+    slong contour_points;
+    slong work_precision;
+    double contour_step;
+    double contour_height;
+    double log_a;
+} hg_central_weight_plan;
+
+static int hg_central_weight_make_plan(
+    hg_central_weight_plan *plan,
+    const fmpz_t conductor,
+    slong genus,
+    slong target_bits,
+    slong maximum_derivative,
+    int fine)
+{
+    const double conductor_double = fmpz_get_d(conductor);
+    if (!isfinite(conductor_double) || conductor_double <= 0.0 ||
+        (genus != 2 && genus != 3) || target_bits < 16 ||
+        maximum_derivative < 0 ||
+        maximum_derivative > SAGEJS_HG_LSERIES_MAX_DERIVATIVE)
+        return 0;
+    const double guard_bits = target_bits <= 64 ? 4.0 : 18.0;
+    const double demand = ((double) target_bits + guard_bits) * SAGEJS_LN2;
+    const double denominator = 2.0 * SAGEJS_PI * (double) genus;
+    double cutoff_double = 2.0 * sqrt(conductor_double) *
+        pow(demand / denominator, (double) genus);
+    if (cutoff_double < 64.0) cutoff_double = 64.0;
+    cutoff_double *= fmax(1.0, (double) target_bits / 64.0);
+    cutoff_double *= 1.0;
+    const double log_a = log(conductor_double) / 2.0 -
+        (double) genus * log(2.0 * SAGEJS_PI);
+    const double bandwidth = fmax(1.0, fabs(log(cutoff_double) - log_a));
+    const double step_denominator = demand + bandwidth + 12.0 +
+        1.0 * (double) maximum_derivative * log(demand + 3.0);
+    double contour_step = 4.0 * SAGEJS_PI / step_denominator;
+    if (!fine) contour_step *= 1.1;
+    const double contour_height =
+        (demand +
+            (1.5 * (double) genus + 3.0) * log(demand + 3.0) + 8.0) /
+        ((double) genus * SAGEJS_PI / 2.0);
+    if (!isfinite(cutoff_double) || !isfinite(contour_step) ||
+        !isfinite(contour_height) || contour_step <= 0.0 ||
+        contour_height <= 0.0)
+        return 0;
+    const double points_double = ceil(contour_height / contour_step);
+    if (cutoff_double > SAGEJS_HG_LSERIES_MAX_CUTOFF ||
+        points_double > SAGEJS_HG_CENTRAL_MAX_POINTS)
+        return 0;
+    const slong cutoff = (slong) ceil(cutoff_double);
+    const slong contour_points = (slong) points_double;
+    if (cutoff > SAGEJS_HG_LSERIES_MAX_COEFFICIENT_TERMS /
+            (contour_points + 1))
+        return 0;
+    plan->cutoff = cutoff;
+    plan->contour_points = contour_points;
+    /* The contour is evaluated twice independently and the public layer
+     * rejects an unstable comparison.  A 32-bit guard is sufficient for the
+     * finite Arb arithmetic here and keeps the common 32/53-bit path out of
+     * unnecessarily large limb sizes. */
+    plan->work_precision = target_bits + 32;
+    plan->contour_step = contour_step;
+    plan->contour_height = contour_step * (double) contour_points;
+    plan->log_a = log_a;
+    return 1;
+}
+
+static int hg_central_weight_grid(
+    acb_ptr completed,
+    acb_ptr raw,
+    const int32_t *coefficients,
+    slong available_cutoff,
+    const fmpz_t conductor,
+    int root_number,
+    slong genus,
+    slong maximum_derivative,
+    const hg_central_weight_plan *plan)
+{
+    if (available_cutoff < plan->cutoff ||
+        (root_number != -1 && root_number != 1))
+        return 0;
+    const slong precision = plan->work_precision;
+    const slong contour_count = plan->contour_points + 1;
+    const slong derivative_count = maximum_derivative + 1;
+    acb_ptr bases = _acb_vec_init(contour_count);
+
+    arb_t logarithm, amplitude, angle, sine, cosine, scale, temporary_arb;
+    arb_t log_a_exact;
+    arb_init(logarithm);
+    arb_init(amplitude);
+    arb_init(angle);
+    arb_init(sine);
+    arb_init(cosine);
+    arb_init(scale);
+    arb_init(temporary_arb);
+    arb_init(log_a_exact);
+    acb_t phase, phase_step, temporary, point, gamma_value, gamma_power;
+    acb_t denominator_value, denominator_power, term, central_point;
+    acb_init(phase);
+    acb_init(phase_step);
+    acb_init(temporary);
+    acb_init(point);
+    acb_init(gamma_value);
+    acb_init(gamma_power);
+    acb_init(denominator_value);
+    acb_init(denominator_power);
+    acb_init(term);
+    acb_init(central_point);
+
+    /* Keep the completion factor exact at the requested Arb precision.
+     * Storing log(A) in the double-valued planning structure is fine for
+     * choosing a cutoff, but using that approximation in A^s or in the
+     * completed-to-raw conversion caps the result at roughly 53 bits. */
+    arb_set_fmpz(log_a_exact, conductor);
+    arb_log(log_a_exact, log_a_exact, precision);
+    arb_mul_2exp_si(log_a_exact, log_a_exact, -1);
+    arb_const_pi(temporary_arb, precision);
+    arb_mul_ui(temporary_arb, temporary_arb, 2, precision);
+    arb_log(temporary_arb, temporary_arb, precision);
+    arb_mul_ui(temporary_arb, temporary_arb, (ulong) genus, precision);
+    arb_sub(log_a_exact, log_a_exact, temporary_arb, precision);
+
+    for (slong n = 1; n <= plan->cutoff; ++n)
+    {
+        const int32_t coefficient_value = coefficients[n];
+        if (coefficient_value == 0) continue;
+        arb_set_ui(logarithm, (ulong) n);
+        arb_log(logarithm, logarithm, precision);
+        arb_mul_si(amplitude, logarithm, -2, precision);
+        arb_exp(amplitude, amplitude, precision);
+        arb_mul_si(amplitude, amplitude, (slong) coefficient_value, precision);
+        arb_set_d(angle, -plan->contour_step);
+        arb_mul(angle, angle, logarithm, precision);
+        arb_sin_cos(sine, cosine, angle, precision);
+        acb_set_arb_arb(phase_step, cosine, sine);
+        acb_one(phase);
+        for (slong index = 0; index < contour_count; ++index)
+        {
+            acb_mul_arb(temporary, phase, amplitude, precision);
+            acb_add(bases + index, bases + index, temporary, precision);
+            if (index + 1 < contour_count)
+                acb_mul(phase, phase, phase_step, precision);
+        }
+    }
+
+    for (slong index = 0; index < contour_count; ++index)
+    {
+        acb_set_si(point, 2);
+        arb_set_d(
+            acb_imagref(point), plan->contour_step * (double) index);
+        acb_gamma(gamma_value, point, precision);
+        acb_pow_ui(gamma_power, gamma_value, (ulong) genus, precision);
+        acb_mul(bases + index, bases + index, gamma_power, precision);
+        acb_mul_arb(temporary, point, log_a_exact, precision);
+        acb_exp(temporary, temporary, precision);
+        acb_mul(bases + index, bases + index, temporary, precision);
+        if (index == plan->contour_points)
+            acb_mul_2exp_si(bases + index, bases + index, -1);
+    }
+
+    for (slong order = 0; order < derivative_count; ++order)
+        acb_zero(completed + order);
+    for (slong index = 0; index < contour_count; ++index)
+    {
+        acb_set_si(point, 2);
+        arb_set_d(
+            acb_imagref(point), plan->contour_step * (double) index);
+        acb_sub_ui(denominator_value, point, 1, precision);
+        acb_set(denominator_power, denominator_value);
+        for (slong order = 0; order < derivative_count; ++order)
+        {
+            if (((order & 1) == 0) == (root_number == 1))
+            {
+                acb_div(term, bases + index, denominator_power, precision);
+                hg_acb_mul_factorial(term, order, precision);
+                arb_mul_ui(temporary_arb, acb_realref(term), 2, precision);
+                if (index == 0)
+                    arb_mul_2exp_si(temporary_arb, temporary_arb, -1);
+                acb_add_arb(
+                    completed + order,
+                    completed + order,
+                    temporary_arb,
+                    precision);
+            }
+            acb_mul(
+                denominator_power,
+                denominator_power,
+                denominator_value,
+                precision);
+        }
+    }
+    arb_const_pi(scale, precision);
+    arb_set_d(temporary_arb, plan->contour_step);
+    arb_div(scale, temporary_arb, scale, precision);
+    for (slong order = 0; order < derivative_count; ++order)
+        acb_mul_arb(completed + order, completed + order, scale, precision);
+
+    acb_one(central_point);
+    hg_raw_jet_from_completed_arb(
+        raw,
+        completed,
+        central_point,
+        derivative_count,
+        genus,
+        log_a_exact,
+        precision);
+
+    acb_clear(central_point);
+    acb_clear(term);
+    acb_clear(denominator_power);
+    acb_clear(denominator_value);
+    acb_clear(gamma_power);
+    acb_clear(gamma_value);
+    acb_clear(point);
+    acb_clear(temporary);
+    acb_clear(phase_step);
+    acb_clear(phase);
+    arb_clear(temporary_arb);
+    arb_clear(log_a_exact);
+    arb_clear(scale);
+    arb_clear(cosine);
+    arb_clear(sine);
+    arb_clear(angle);
+    arb_clear(amplitude);
+    arb_clear(logarithm);
+    _acb_vec_clear(bases, contour_count);
+    (void) conductor;
     return 1;
 }
 
@@ -3069,6 +3340,189 @@ hg_computed_failure:
 hg_failure:
     packed_coefficient_view_clear(&coefficient_view);
     _acb_vec_clear(points, point_count);
+    fmpz_clear(conductor);
+    return NULL;
+}
+
+napi_value sagejs_hyperelliptic_central_weights(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[6];
+    size_t argc = 6;
+    if (!check_napi(env,
+            napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
+        return NULL;
+    if (argc != 6)
+    {
+        napi_throw_type_error(env, NULL,
+            "hyperellipticCentralWeights expects conductor, root number, "
+            "genus, coefficients, precision, and maximum derivative");
+        return NULL;
+    }
+
+    fmpz_t conductor;
+    fmpz_init(conductor);
+    slong root_number, genus, target_bits, maximum_derivative;
+    if (!value_to_fmpz(env, args[0], conductor) ||
+        !value_to_slong(env, args[1], -1, 1, &root_number) ||
+        !value_to_slong(env, args[2], 2, 3, &genus) ||
+        !value_to_slong(env, args[4], 16, 512, &target_bits) ||
+        !value_to_slong(env, args[5], 0,
+            SAGEJS_HG_LSERIES_MAX_DERIVATIVE, &maximum_derivative) ||
+        (root_number != -1 && root_number != 1))
+    {
+        fmpz_clear(conductor);
+        return NULL;
+    }
+
+    hg_central_weight_plan coarse_plan, fine_plan;
+    if (!hg_central_weight_make_plan(&coarse_plan, conductor, genus,
+            target_bits, maximum_derivative, 0) ||
+        !hg_central_weight_make_plan(&fine_plan, conductor, genus,
+            target_bits, maximum_derivative, 1))
+    {
+        fmpz_clear(conductor);
+        napi_throw_range_error(env, NULL,
+            "hyperelliptic central-weight plan exceeds native resource limits");
+        return NULL;
+    }
+
+    packed_coefficient_view coefficient_view;
+    if (!value_to_packed_coefficients(env, args[3], &coefficient_view))
+    {
+        fmpz_clear(conductor);
+        return NULL;
+    }
+    const slong available_cutoff = coefficient_view.length - 1;
+    napi_value result, status, rigorous;
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !check_napi(env, napi_create_string_utf8(env,
+            available_cutoff < fine_plan.cutoff
+                ? "insufficient_coefficients" : "ok",
+            NAPI_AUTO_LENGTH, &status)) ||
+        !check_napi(env, napi_get_boolean(env, false, &rigorous)) ||
+        !set_named(env, result, "status", status) ||
+        !set_named(env, result, "rigorous", rigorous) ||
+        !set_named_slong(env, result, "genus", genus) ||
+        !set_named_slong(env, result, "precisionBits", target_bits) ||
+        !set_named_slong(
+            env, result, "workPrecisionBits", fine_plan.work_precision) ||
+        !set_named_slong(env, result, "cutoff", available_cutoff) ||
+        !set_named_slong(
+            env, result, "requiredCutoff", fine_plan.cutoff) ||
+        !set_named_slong(env, result, "coarseCutoff", coarse_plan.cutoff) ||
+        !set_named_slong(env, result, "coarseContourPoints",
+            coarse_plan.contour_points) ||
+        !set_named_slong(
+            env, result, "contourPoints", fine_plan.contour_points) ||
+        !set_named_double(
+            env, result, "contourStep", fine_plan.contour_step) ||
+        !set_named_double(
+            env, result, "contourHeight", fine_plan.contour_height) ||
+        !set_named_slong(env, result, "coefficientTerms",
+            fine_plan.cutoff * (fine_plan.contour_points + 1) +
+                coarse_plan.cutoff * (coarse_plan.contour_points + 1)) ||
+        !set_named_slong(
+            env, result, "maximumDerivative", maximum_derivative))
+        goto hg_central_failure;
+    if (available_cutoff < fine_plan.cutoff)
+    {
+        packed_coefficient_view_clear(&coefficient_view);
+        fmpz_clear(conductor);
+        return result;
+    }
+
+    const slong derivative_count = maximum_derivative + 1;
+    acb_ptr coarse_completed = _acb_vec_init(derivative_count);
+    acb_ptr coarse_raw = _acb_vec_init(derivative_count);
+    acb_ptr fine_completed = _acb_vec_init(derivative_count);
+    acb_ptr fine_raw = _acb_vec_init(derivative_count);
+    const int computed = hg_central_weight_grid(
+            coarse_completed, coarse_raw, coefficient_view.data,
+            available_cutoff, conductor, (int) root_number, genus,
+            maximum_derivative, &coarse_plan) &&
+        hg_central_weight_grid(
+            fine_completed, fine_raw, coefficient_view.data,
+            available_cutoff, conductor, (int) root_number, genus,
+            maximum_derivative, &fine_plan);
+    packed_coefficient_view_clear(&coefficient_view);
+    fmpz_clear(conductor);
+    if (!computed)
+    {
+        napi_throw_error(env, NULL,
+            "hyperelliptic central-weight native grid failed");
+        goto hg_central_computed_failure;
+    }
+
+    double maximum_relative_difference = 0.0;
+    acb_t difference;
+    acb_init(difference);
+    mag_t magnitude, denominator;
+    mag_init(magnitude);
+    mag_init(denominator);
+    for (slong index = 0; index < derivative_count; ++index)
+    {
+        acb_sub(difference, fine_raw + index, coarse_raw + index,
+            fine_plan.work_precision);
+        acb_get_mag(magnitude, difference);
+        acb_get_mag(denominator, fine_raw + index);
+        if (mag_cmp_2exp_si(denominator, 0) < 0) mag_one(denominator);
+        mag_div(magnitude, magnitude, denominator);
+        const double relative = mag_get_d(magnitude);
+        if (relative > maximum_relative_difference)
+            maximum_relative_difference = relative;
+    }
+    const int is_stable = maximum_relative_difference <=
+        ldexp(1.0, -(target_bits / 2 > 12 ? target_bits / 2 : 12));
+    mag_clear(denominator);
+    mag_clear(magnitude);
+    acb_clear(difference);
+
+    const slong digits = (slong) ceil((double) target_bits * 0.30103) + 12;
+    napi_value completed_values = hg_ball_array(env, fine_completed,
+        derivative_count, digits, target_bits + 64);
+    napi_value raw_values = hg_ball_array(env, fine_raw,
+        derivative_count, digits, target_bits + 64);
+    napi_value coarse_completed_values = hg_ball_array(env, coarse_completed,
+        derivative_count, digits, target_bits + 64);
+    napi_value coarse_raw_values = hg_ball_array(env, coarse_raw,
+        derivative_count, digits, target_bits + 64);
+    napi_value stable, error_status, algorithm;
+    if (completed_values == NULL || raw_values == NULL ||
+        coarse_completed_values == NULL || coarse_raw_values == NULL ||
+        !check_napi(env, napi_get_boolean(env, is_stable, &stable)) ||
+        !check_napi(env, napi_create_string_utf8(env,
+            "arb_roundoff_with_nested_central_weight_contour_refinement",
+            NAPI_AUTO_LENGTH, &error_status)) ||
+        !check_napi(env, napi_create_string_utf8(env,
+            "central-mellin-weights", NAPI_AUTO_LENGTH, &algorithm)) ||
+        !set_named(env, result, "completedDerivatives", completed_values) ||
+        !set_named(env, result, "rawDerivatives", raw_values) ||
+        !set_named(env, result, "coarseCompletedDerivatives",
+            coarse_completed_values) ||
+        !set_named(env, result, "coarseRawDerivatives", coarse_raw_values) ||
+        !set_named(env, result, "refinementStable", stable) ||
+        !set_named_double(env, result, "refinementRelativeDifference",
+            maximum_relative_difference) ||
+        !set_named(env, result, "analyticErrorStatus", error_status) ||
+        !set_named(env, result, "algorithm", algorithm))
+        goto hg_central_computed_failure;
+
+    _acb_vec_clear(fine_raw, derivative_count);
+    _acb_vec_clear(fine_completed, derivative_count);
+    _acb_vec_clear(coarse_raw, derivative_count);
+    _acb_vec_clear(coarse_completed, derivative_count);
+    return result;
+
+hg_central_computed_failure:
+    _acb_vec_clear(fine_raw, derivative_count);
+    _acb_vec_clear(fine_completed, derivative_count);
+    _acb_vec_clear(coarse_raw, derivative_count);
+    _acb_vec_clear(coarse_completed, derivative_count);
+    return NULL;
+
+hg_central_failure:
+    packed_coefficient_view_clear(&coefficient_view);
     fmpz_clear(conductor);
     return NULL;
 }

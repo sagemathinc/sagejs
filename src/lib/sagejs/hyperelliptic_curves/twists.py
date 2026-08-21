@@ -9,12 +9,13 @@ row status rather than a silently omitted twist.
 from __future__ import annotations
 
 import json
+import math
 import time
 from typing import Any, Callable, Iterator, Mapping
 
 import sagejs as sage
 
-TWIST_FAMILY_SCHEMA = "sagejs.hyperelliptic-quadratic-twists/v1"
+TWIST_FAMILY_SCHEMA = "sagejs.hyperelliptic-quadratic-twists/v2"
 _MAX_DISCRIMINANT_ABS = 10**12
 
 
@@ -251,6 +252,7 @@ class QuadraticTwistRecord:
         rigorous: bool = False,
         arithmetic_balls_rigorous: bool = False,
         refinement_stable: bool = False,
+        screening: Mapping[str, Any] | None = None,
         timings: Mapping[str, float] | None = None,
     ) -> None:
         self.discriminant = sage.ZZ(discriminant)
@@ -263,6 +265,7 @@ class QuadraticTwistRecord:
         self.rigorous = bool(rigorous)
         self.arithmetic_balls_rigorous = bool(arithmetic_balls_rigorous)
         self.refinement_stable = bool(refinement_stable)
+        self.screening = dict({} if screening is None else screening)
         self.timings = dict({} if timings is None else timings)
 
     @property
@@ -308,6 +311,8 @@ def _record_payload(record: QuadraticTwistRecord) -> dict[str, Any]:
         "rigorous": record.rigorous,
         "arithmetic_balls_rigorous": record.arithmetic_balls_rigorous,
         "refinement_stable": record.refinement_stable,
+        "screening": record.screening,
+        "timings": record.timings,
     }
 
 
@@ -347,6 +352,9 @@ class QuadraticTwistFamily:
         prec: Any = 53,
         max_order: Any = 0,
         algorithm: str = "auto",
+        mode: str = "values",
+        backend: str = "auto",
+        candidate_threshold: Any = 1e-6,
         block_size: Any = 65536,
         progress: Callable[[str, Mapping[str, Any]], None] | None = None,
         cancel: Callable[[], bool] | None = None,
@@ -358,6 +366,9 @@ class QuadraticTwistFamily:
         self.max_order = _exact_integer(max_order, "max_order")
         self.block_size = _exact_integer(block_size, "block_size")
         self.algorithm = str(algorithm)
+        self.mode = str(mode)
+        self.backend = str(backend)
+        self.candidate_threshold = float(candidate_threshold)
         self.progress = progress
         self.cancel = cancel
         if self.start > self.stop:
@@ -368,6 +379,12 @@ class QuadraticTwistFamily:
             raise ValueError("max_order must be from 0 through 16")
         if self.algorithm not in ("auto", "native", "reference"):
             raise ValueError("algorithm must be 'auto', 'native', or 'reference'")
+        if self.mode not in ("values", "candidates"):
+            raise ValueError("mode must be 'values' or 'candidates'")
+        if self.backend not in ("auto", "cpu", "gpu"):
+            raise ValueError("backend must be 'auto', 'cpu', or 'gpu'")
+        if not math.isfinite(self.candidate_threshold) or self.candidate_threshold < 0:
+            raise ValueError("candidate_threshold must be a finite nonnegative number")
         if progress is not None and not callable(progress):
             raise TypeError("progress must be callable")
         if cancel is not None and not callable(cancel):
@@ -380,6 +397,22 @@ class QuadraticTwistFamily:
         self._base_coefficient_prefix = self._lseries_module.GlobalCoefficientPrefix(
             curve
         )
+        self._gpu_capability: dict[str, Any] | None = None
+        if self.backend == "gpu":
+            gpu_module = __import__(
+                "sagejs.hyperelliptic_curves.gpu_twists",
+                fromlist=["gpu_twist_capabilities"],
+            )
+            capability = dict(gpu_module.gpu_twist_capabilities())
+            self._gpu_capability = capability
+            if not capability["available"]:
+                raise gpu_module.GpuTwistUnavailableError(
+                    str(capability.get("reason", "no GPU is available"))
+                )
+            raise gpu_module.GpuTwistUnavailableError(
+                "this WebGPU device has not passed the physical candidate-safety "
+                "and 5x crossover acceptance gate; use backend='cpu'"
+            )
 
     def _emit(self, event: str, payload: Mapping[str, Any]) -> None:
         if self.progress is not None:
@@ -420,6 +453,13 @@ class QuadraticTwistFamily:
                     rigorous=True,
                     arithmetic_balls_rigorous=True,
                     refinement_stable=True,
+                    screening={
+                        "mode": self.mode,
+                        "backend": "cpu",
+                        "candidate": self.mode == "candidates",
+                        "threshold": self.candidate_threshold,
+                        "reason": "exact functional-equation parity zero",
+                    },
                     timings={
                         "exact_global": exact_elapsed,
                         "analytic": time.monotonic() - analytic_started,
@@ -437,6 +477,13 @@ class QuadraticTwistFamily:
             )
             analytic_elapsed = time.monotonic() - analytic_started
             diagnostics = lseries.last_diagnostics()
+            candidate = False
+            if self.mode == "candidates":
+                permitted = 0 if root_number == 1 else 1
+                candidate = any(
+                    abs(derivatives[order]) <= self.candidate_threshold
+                    for order in range(permitted, len(derivatives), 2)
+                )
             return QuadraticTwistRecord(
                 discriminant,
                 status="ok",
@@ -449,6 +496,14 @@ class QuadraticTwistFamily:
                     "arithmetic_balls_rigorous", False
                 ),
                 refinement_stable=diagnostics["refinement_stable"],
+                screening={
+                    "mode": self.mode,
+                    "backend": "cpu",
+                    "candidate": candidate,
+                    "threshold": self.candidate_threshold,
+                    "gpu_auto_selected": False,
+                    "gpu_auto_reason": "physical crossover gate not recorded",
+                },
                 timings={
                     "exact_global": exact_elapsed,
                     "analytic": analytic_elapsed,
@@ -502,6 +557,9 @@ class QuadraticTwistFamily:
                 "precision_bits": self.precision,
                 "max_order": self.max_order,
                 "algorithm": self.algorithm,
+                "mode": self.mode,
+                "backend": self.backend,
+                "candidate_threshold": self.candidate_threshold,
                 "fundamental_discriminants_only": True,
             },
             "twist_assembly": {

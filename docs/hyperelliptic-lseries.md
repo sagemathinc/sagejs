@@ -193,6 +193,57 @@ succeed. In particular, bad reduction at 2 and odd reduction outside the
 implemented almost-good/semistable envelope remain honest capability
 boundaries.
 
+## Central weights and prepared evaluations
+
+At the center, Sage.js now avoids the general two-dimensional theta grid.  It
+uses the single-contour central weights
+
+```text
+W_(g,k)(x) = k!/(2*pi*i) integral Gamma(s)^g*x^(-s)/(s-1)^(k+1) ds
+Lambda^(k)(1) = (1+w*(-1)^k) sum_n a_n W_(g,k)(n/A).
+```
+
+The factor in front makes derivatives of the wrong functional-equation parity
+exact zeros.  The default native implementation performs the weighted sums in
+Arb/Acb and compares nested coefficient/contour plans.  It is substantially
+faster than the retained `algorithm="inverse_mellin"` implementation, which is
+still useful as an independent numerical oracle.  Arb encloses the finite
+arithmetic, but the contour error is currently checked by refinement, so the
+overall result remains explicitly probable rather than theorem-proving.
+
+For repeated work, initialize the L-function once:
+
+```sage
+L = C.lseries()
+init = L.init(prec=80, max_order=6, domain=(0, 2, -20, 20))
+init.central_value()
+init.central_jet(4)
+init.analytic_rank()
+init.leading_derivative()
+CC = ComplexField(80)
+init.values_along_line(1, 1 + 3*CC.gen(), 101)
+init.diagnostics()
+```
+
+The central jet is materialized once, exact coefficients are shared, and
+general points requested together use one inverse-Mellin grid.  `close()`
+clears the prepared host cache; the current implementation owns no persistent
+native pointer.  Process-local reference-weight and curve-plan caches are
+bounded and inspectable with `central_weight_cache_info()`, and may be reset
+with `clear_central_weight_cache()`.
+
+The readable universal functions are public for checking normalization:
+
+```sage
+from sagejs.hyperelliptic_curves.lseries import central_kernel, central_weight
+central_kernel(2, 1)       # 2*K_0(2)
+central_weight(2, 0, 1)    # 2*K_1(2)
+```
+
+Genus 3 uses the inverse Mellin transform of `Gamma(s)^3` as its readable
+reference.  Production central values sum the equivalent one-contour weights
+directly rather than evaluating one Meijer-G function per coefficient.
+
 ## Quadratic-twist families
 
 `quadratic_twists` scans fundamental quadratic discriminants in deterministic
@@ -242,9 +293,31 @@ line is safely truncated, and resume verifies every preceding fundamental
 discriminant before appending:
 
 ```sage
-scan = C.quadratic_twists(-10^6, 10^6, prec=53)
+scan = C.quadratic_twists(-10^6, 10^6, prec=53, mode="candidates",
+                          backend="auto", candidate_threshold=1e-8)
 scan.export_jsonl("twists.jsonl", resume=True)
 ```
+
+The v2 checkpoint records mode, requested backend, threshold, exact CPU/GPU
+selection, per-row timings, and screening metadata.  `backend="auto"` remains
+CPU until a named physical WebGPU device passes both the candidate-safety
+corpus and the documented 5x crossover gate.  `backend="gpu"` fails clearly
+when WebGPU is absent or uncalibrated; it never silently substitutes an
+unverified f32 result.
+
+The optional WebGPU feasibility boundary is separately inspectable:
+
+```sage
+from sagejs.hyperelliptic_curves.gpu_twists import gpu_twist_capabilities
+gpu_twist_capabilities()
+```
+
+It provides deterministic packed f32 dot products, an explicit sequential
+roundoff bound, and device/shader provenance.  GPU values are candidate-screen
+data only—not Arb balls—and every retained or ambiguous candidate must be
+refined by the CPU central-weight engine.  The portable dependency is Dawn's
+MIT-licensed `webgpu` package; CPU-only installations retain the complete
+mathematical API.
 
 Progress and cancellation callbacks run only at safe discriminant boundaries.
 All twists share one extendable exact coefficient prefix for the base curve;

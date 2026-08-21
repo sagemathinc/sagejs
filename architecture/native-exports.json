@@ -6,7 +6,7 @@
     "migrate-to-declared-ffi": 214,
     "migrate-to-typed-python": 34,
     "retain-differential-oracle": 1,
-    "retain-host-adapter": 22,
+    "retain-host-adapter": 23,
     "retain-representation-primitive": 29
   },
   "exports": [
@@ -2457,7 +2457,8 @@
       "consumers": [
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/builtins.py"
+        "src/baselib/builtins.py",
+        "src/lib/sagejs/hyperelliptic_curves/lseries.py"
       ],
       "declared_ffi": null
     },
@@ -4606,6 +4607,74 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticCentralWeights",
+      "package": "@sagemath/sagejs-flint",
+      "export": "hyperellipticCentralWeights",
+      "callback": "sagejs_hyperelliptic_central_weights",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/elliptic_lfunction.c",
+        "line": 3347,
+        "lines": 182,
+        "sha256": "7e8fb5ec7cd1a4769d7ab889364412db09ace351605eb6c0be1a579875e593ea",
+        "calls": [
+          "_acb_vec_clear",
+          "_acb_vec_init",
+          "acb_clear",
+          "acb_get_mag",
+          "acb_init",
+          "acb_sub",
+          "ceil",
+          "check_napi",
+          "fmpz_clear",
+          "fmpz_init",
+          "hg_ball_array",
+          "hg_central_weight_grid",
+          "hg_central_weight_make_plan",
+          "ldexp",
+          "mag_clear",
+          "mag_cmp_2exp_si",
+          "mag_div",
+          "mag_get_d",
+          "mag_init",
+          "mag_one",
+          "napi_create_object",
+          "napi_create_string_utf8",
+          "napi_get_boolean",
+          "napi_get_cb_info",
+          "napi_throw_error",
+          "napi_throw_range_error",
+          "napi_throw_type_error",
+          "packed_coefficient_view_clear",
+          "set_named",
+          "set_named_double",
+          "set_named_slong",
+          "value_to_fmpz",
+          "value_to_packed_coefficients",
+          "value_to_slong"
+        ]
+      },
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries and an Arb/Acb numerical primitive translated from the readable double-Mellin evaluator; exact reconstruction, ambiguity handling, and analytic policy remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, bounded ordinary Jacobian arithmetic, and the readable numerical L-series evaluator remain available without native capabilities.",
+      "oracles": [
+        "CPython",
+        "Sage.js exact fallback",
+        "SageMath",
+        "Magma",
+        "PARI/GP",
+        "standalone smalljac and rforest bridges"
+      ],
+      "consumers": [
+        "packages/flint/test/elliptic-native.cjs"
+      ],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:hyperellipticLseriesValues",
       "package": "@sagemath/sagejs-flint",
       "export": "hyperellipticLseriesValues",
@@ -4615,7 +4684,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 2862,
+        "line": 3133,
         "lines": 213,
         "sha256": "ee1c40b05db883f70bac9820946ba8bc13c6d782e75307b31bbae25b03794d36",
         "calls": [

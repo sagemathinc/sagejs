@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5127,
-      "bytes": 167303,
+      "lines": 5130,
+      "bytes": 167450,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -62,8 +62,8 @@
     },
     {
       "path": "packages/flint/src/elliptic_lfunction.c",
-      "lines": 3074,
-      "bytes": 116805,
+      "lines": 3528,
+      "bytes": 134518,
       "decision": "retain-primitive",
       "priority": "medium",
       "responsibilities": [
@@ -71,7 +71,7 @@
         "FLINT Arb and Acb coefficient, ball, gamma-conversion, and tail-bound arithmetic",
         "batched Node-API decimal input validation, compact planning, packed plotting output, and diagnostic conversion"
       ],
-      "rationale": "The compact host-neutral numerical cores are justified arbitrary-precision primitives over Arb and Acb, while the surrounding adapters provide one batched exact-coefficient crossing. The hyperelliptic double-Mellin implementation is a direct translation of its ordinary-Python source oracle. Rank selection, value caching, precision refinement, and the readable mathematical fallbacks remain ordinary Python.",
+      "rationale": "The compact host-neutral numerical cores are justified arbitrary-precision primitives over Arb and Acb, while the surrounding adapters provide one batched exact-coefficient crossing. The hyperelliptic double-Mellin implementation is a direct translation of its ordinary-Python source oracle, and the central-weight contour is independently checked against it. Rank selection, value caching, precision refinement, and the readable mathematical fallbacks remain ordinary Python.",
       "fallback": "The ordinary Python Mellin evaluators preserve the same completed-function normalizations, probable-rank semantics, and moderate-complex values whenever the native capability is unavailable.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "Sage/PARI", "Magma"],
       "next": "Keep differential tests for every supported platform and add a proved Molin discretization enclosure before changing the diagnostic from non-rigorous."

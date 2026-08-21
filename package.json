@@ -316,6 +316,7 @@
     "@sagemath/sagejs-darwin-arm64": "workspace:*",
     "@sagemath/sagejs-linux-arm64": "workspace:*",
     "@sagemath/sagejs-linux-x64": "workspace:*",
-    "@sagemath/sagejs-win32-x64": "workspace:*"
+    "@sagemath/sagejs-win32-x64": "workspace:*",
+    "webgpu": "0.4.0"
   }
 }

@@ -31,8 +31,56 @@ test("native Arb values and jets agree with the readable genus-2 evaluator", asy
     );
     assert.equal(
       result.repr,
-      "(True, True, 'native-arb-double-mellin', True, True, False, True, 3)",
+      "(True, True, 'native-arb-central-mellin-weights', True, True, False, True, 3)",
     );
+  } finally {
+    await session.close();
+  }
+});
+
+test("prepared central weights cache jets and batch general values", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "from sagejs.hyperelliptic_curves.lseries import central_weight, clear_central_weight_cache, central_weight_cache_info",
+        "R = PolynomialRing(QQ, 'x')",
+        "x = R.gen()",
+        "C = HyperellipticCurve(x, x^3-x+1)",
+        "L = C.lseries()",
+        "I = L.init(prec=32, max_order=4, domain=(0,2,-2,2))",
+        "jet = I.central_jet(4, completed=True)",
+        "line = I.values_along_line(1, 2, 3)",
+        "weight = central_weight(2, 0, 1, prec=32)",
+        "info = central_weight_cache_info()",
+        "(abs(I.central_value()-L.value(1,prec=32)) < 1e-8,",
+        " abs(jet[1]) < 1e-20, abs(jet[3]) < 1e-20,",
+        " len(line), abs(line[0]-I.central_value()) < 1e-8,",
+        " abs(float(weight)-0.27973176363304485) < 1e-10,",
+        " info['reference_weights'] >= 1, I.diagnostics()['cached_points'])",
+      ].join("\n"),
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "(True, True, True, 3, True, True, True, 3)");
+  } finally {
+    await session.close();
+  }
+});
+
+test("optional WebGPU capability fails closed without changing CPU results", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "from sagejs.hyperelliptic_curves.gpu_twists import gpu_twist_capabilities",
+        "capability = gpu_twist_capabilities()",
+        "(capability['backend'], capability['numeric_format'],",
+        " capability['authoritative'], capability['candidate_screen_only'],",
+        " isinstance(capability['available'], bool))",
+      ].join("\n"),
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "('webgpu', 'f32', False, True, True)");
   } finally {
     await session.close();
   }
@@ -76,7 +124,7 @@ test("fundamental discriminants, twist models, and checkpoint resume are exact",
     assert.equal(lines.length, 3);
     const header = JSON.parse(lines[0]);
     const rows = lines.slice(1).map(JSON.parse);
-    assert.equal(header.schema, "sagejs.hyperelliptic-quadratic-twists/v1");
+    assert.equal(header.schema, "sagejs.hyperelliptic-quadratic-twists/v2");
     assert.equal(header.twist_assembly.scope, "gcd(D,N)=1");
     assert.deepEqual(
       rows.map((row) => row.discriminant),

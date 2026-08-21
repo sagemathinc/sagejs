@@ -16,7 +16,7 @@
     "classified-native-file": 95,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
-    "napi-export": 307,
+    "napi-export": 308,
     "runtime-intrinsic": 137,
     "wasm-export": 46
   },
@@ -6019,6 +6019,16 @@
       "symbol": "sagejs_higher_weight_presentation_reduction",
       "disposition": "migrate-to-typed-python",
       "family": "modular-symbols"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticCentralWeights",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "hyperellipticCentralWeights",
+      "symbol": "sagejs_hyperelliptic_central_weights",
+      "disposition": "retain-host-adapter",
+      "family": "hyperelliptic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:hyperellipticLseriesValues",
