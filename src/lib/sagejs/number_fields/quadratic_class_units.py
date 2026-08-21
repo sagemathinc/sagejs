@@ -413,6 +413,31 @@ def _canonical_proper_form(
     return _least_form(positive if positive else list(cycle))
 
 
+def _is_canonical_proper_form(
+    form: QuadraticForm, discriminant: int, max_steps: int
+) -> bool:
+    """Test canonicality while retaining only one `rho`-cycle element.
+
+    A negative-leading reduced form cannot be the chosen representative.  For
+    a positive-leading form, encountering any smaller positive form proves it
+    noncanonical and stops the walk early.  Only the unique minimum traverses
+    its complete cycle.  This avoids building a cycle tuple for every streamed
+    class-number candidate.
+    """
+    if form.a <= 0:
+        return False
+    current, _step, _quotient = _rho_step(form, discriminant)
+    steps = 1
+    while current != form:
+        if steps >= max_steps:
+            raise ValueError("continued-fraction cycle exceeded max_steps")
+        if current.a > 0 and _form_key(current) < _form_key(form):
+            return False
+        current, _step, _quotient = _rho_step(current, discriminant)
+        steps += 1
+    return True
+
+
 @dataclass(frozen=True)
 class QuadraticUnit:
     """The exact unit `(x + y*sqrt(D))/2` in a maximal quadratic order."""
@@ -711,6 +736,28 @@ class QuadraticClassGroupPlan:
             )
 
 
+def _real_quadratic_enumeration_bound(discriminant: int) -> int:
+    """Return a safe divisor-trial bound for reduced-form enumeration.
+
+    A reduced indefinite form has `b^2 - D = 4*a*c`, with `0 < b <
+    sqrt(D)`.  Fundamental discriminants force `b` to have the parity of
+    `D`.  For each such `b`, the divisor enumerator tests at most
+    `floor(sqrt((D-b^2)/4))` positive divisors.  Replacing every summand by
+    the first (largest) one gives this constant-time, conservative preflight
+    bound.  It is substantially tighter than scanning every signed `a` in a
+    square of side `2*sqrt(D)`.
+    """
+    root_floor = _isqrt(discriminant)
+    if discriminant % 2:
+        middle_count = (root_floor + 1) // 2
+        first_middle = 1
+    else:
+        middle_count = root_floor // 2
+        first_middle = 2
+    largest_cofactor = max(0, (discriminant - first_middle * first_middle) // 4)
+    return middle_count * _isqrt(largest_cofactor)
+
+
 @dataclass(frozen=True)
 class QuadraticClassRoutingPlan:
     """Inspectable public routing decision for one quadratic class request."""
@@ -780,11 +827,71 @@ def real_quadratic_class_group_plan(
         algorithm,
         selected,
         root_floor,
-        2 * root_floor * root_floor,
+        _real_quadratic_enumeration_bound(discriminant),
         max_enumeration_checks,
         max_reduced_forms,
         max_steps,
     )
+
+
+def _iter_reduced_forms(
+    discriminant: int,
+    max_reduced_forms: int,
+    max_enumeration_checks: int,
+) -> Iterator[QuadraticForm]:
+    """Yield every primitive reduced indefinite form with bounded work.
+
+    Writing `n = (D-b^2)/4`, the opposite-sign coefficients satisfy
+    `abs(a) * abs(c) = n`.  Enumerating positive divisors of `n` avoids the
+    previous rectangular scan over all signed leading coefficients.  The
+    iterator keeps only the current factor pair, so class-number callers do
+    not materialize the reduced forms.
+    """
+    if max_reduced_forms < 1:
+        raise ValueError("max_reduced_forms must be positive")
+    root_floor = _isqrt(discriminant)
+    enumeration_bound = _real_quadratic_enumeration_bound(discriminant)
+    if enumeration_bound > max_enumeration_checks:
+        raise ValueError(
+            "reduced-form enumeration exceeded max_enumeration_checks="
+            + str(max_enumeration_checks)
+        )
+    candidate_checks = 0
+    reduced_forms = 0
+    first_middle = 1 if discriminant % 2 else 2
+    for middle in range(first_middle, root_floor + 1, 2):
+        difference = discriminant - middle * middle
+        if difference <= 0 or difference % 4:
+            continue
+        product = difference // 4
+        divisor = 1
+        while divisor * divisor <= product:
+            candidate_checks += 1
+            if candidate_checks > max_enumeration_checks:
+                raise ValueError(
+                    "reduced-form enumeration exceeded max_enumeration_checks="
+                    + str(max_enumeration_checks)
+                )
+            if product % divisor == 0:
+                paired = product // divisor
+                factors = (divisor,) if divisor == paired else (divisor, paired)
+                for leading_absolute in factors:
+                    trailing_absolute = product // leading_absolute
+                    if (leading_absolute + trailing_absolute) ** 2 >= discriminant:
+                        continue
+                    for sign in (1, -1):
+                        leading = sign * leading_absolute
+                        trailing = -sign * trailing_absolute
+                        form = QuadraticForm(leading, middle, trailing)
+                        if form.is_primitive():
+                            reduced_forms += 1
+                            if reduced_forms > max_reduced_forms:
+                                raise ValueError(
+                                    "reduced-form enumeration exceeded "
+                                    "max_reduced_forms=" + str(max_reduced_forms)
+                                )
+                            yield form
+            divisor += 1
 
 
 def _enumerate_reduced_forms(
@@ -792,31 +899,9 @@ def _enumerate_reduced_forms(
     max_reduced_forms: int,
     max_enumeration_checks: int,
 ) -> tuple[QuadraticForm, ...]:
-    if max_reduced_forms < 1:
-        raise ValueError("max_reduced_forms must be positive")
-    root_floor = _isqrt(discriminant)
-    enumeration_checks = 2 * root_floor * root_floor
-    if enumeration_checks > max_enumeration_checks:
-        raise ValueError(
-            "reduced-form enumeration exceeded max_enumeration_checks="
-            + str(max_enumeration_checks)
-        )
-    forms: list[QuadraticForm] = []
-    for middle in range(1, root_floor + 1):
-        numerator = middle * middle - discriminant
-        for leading in range(-root_floor, root_floor + 1):
-            if leading == 0 or numerator % (4 * leading) != 0:
-                continue
-            trailing = numerator // (4 * leading)
-            form = QuadraticForm(leading, middle, trailing)
-            if form.is_primitive() and _is_reduced_indefinite(form, discriminant):
-                forms.append(form)
-                if len(forms) > max_reduced_forms:
-                    raise ValueError(
-                        "reduced-form enumeration exceeded max_reduced_forms="
-                        + str(max_reduced_forms)
-                    )
-    return tuple(forms)
+    return tuple(
+        _iter_reduced_forms(discriminant, max_reduced_forms, max_enumeration_checks)
+    )
 
 
 def _extended_gcd(left: int, right: int) -> tuple[int, int, int]:
@@ -1163,6 +1248,147 @@ class QuadraticClassGroupCertificate:
         except (ValueError, ArithmeticError):
             return False
         return replay.certificate == self
+
+
+@dataclass(frozen=True)
+class QuadraticClassNumberCertificate:
+    """Replayable streaming cycle count for a real quadratic class number."""
+
+    discriminant: int
+    narrow: bool
+    reduced_forms_checked: int
+    proper_cycles: int
+    class_number: int
+    unit_norm: int
+    plan: QuadraticClassGroupPlan
+    proof_status: str = "exact-unconditional"
+    source: str = "streamed primitive reduced indefinite forms and complete rho cycles"
+
+    def verify(self) -> bool:
+        try:
+            replay = real_quadratic_class_number(
+                self.discriminant,
+                narrow=self.narrow,
+                algorithm=self.plan.requested_algorithm,
+                max_reduced_forms=self.plan.max_reduced_forms,
+                max_enumeration_checks=self.plan.max_enumeration_checks,
+                max_steps=self.plan.max_steps,
+            )
+        except (ValueError, ArithmeticError):
+            return False
+        return replay.certificate == self
+
+
+class RealQuadraticClassNumberResult:
+    """A non-materializing ordinary or narrow real quadratic class number."""
+
+    def __init__(
+        self,
+        discriminant: int,
+        narrow: bool,
+        class_number: int,
+        certificate: QuadraticClassNumberCertificate,
+    ) -> None:
+        self.discriminant = int(discriminant)
+        self.narrow = bool(narrow)
+        self._class_number = int(class_number)
+        self.certificate = certificate
+        self.plan = certificate.plan
+        self.algorithm = "quadratic-form-cycle-count"
+        self.proof_status = "exact-unconditional"
+        self.materializes_all_reduced_forms = False
+
+    def order(self) -> int:
+        return self._class_number
+
+    cardinality = order
+    class_number = order
+
+    def verify(self) -> bool:
+        return self.certificate.verify()
+
+    def __repr__(self) -> str:
+        kind = "narrow " if self.narrow else ""
+        return (
+            "Exact "
+            + kind
+            + "real quadratic class number "
+            + str(self._class_number)
+            + " for discriminant "
+            + str(self.discriminant)
+            + " (streaming cycle count)"
+        )
+
+
+def real_quadratic_class_number(
+    discriminant: int,
+    *,
+    narrow: bool = False,
+    algorithm: str = "auto",
+    max_reduced_forms: int = 1_000_000,
+    max_enumeration_checks: int = _DEFAULT_MAX_ENUMERATION_CHECKS,
+    max_steps: int = 1_000_000,
+) -> RealQuadraticClassNumberResult:
+    """Count real quadratic classes without constructing their presentation.
+
+    Each proper equivalence class is one complete `rho` cycle.  Exactly one
+    positive member of that cycle is its lexicographically least canonical
+    representative, so the narrow class number is obtained by streaming all
+    reduced forms and counting those canonical members.  The ordinary class
+    number is the quotient by the orientation kernel, whose order is `1` in
+    the presence of a norm `-1` unit and `2` otherwise.
+    """
+    _require_real_fundamental_discriminant(discriminant)
+    base_plan = real_quadratic_class_group_plan(
+        discriminant,
+        algorithm=algorithm,
+        max_reduced_forms=max_reduced_forms,
+        max_enumeration_checks=max_enumeration_checks,
+        max_steps=max_steps,
+    )
+    base_plan.require_supported()
+    plan = QuadraticClassGroupPlan(
+        base_plan.discriminant,
+        base_plan.requested_algorithm,
+        base_plan.algorithm,
+        base_plan.root_floor,
+        base_plan.enumeration_checks,
+        base_plan.max_enumeration_checks,
+        base_plan.max_reduced_forms,
+        base_plan.max_steps,
+        False,
+        base_plan.exact_integer_storage,
+        base_plan.proof_status,
+    )
+    reduced_forms_checked = 0
+    proper_cycles = 0
+    for form in _iter_reduced_forms(
+        discriminant, max_reduced_forms, max_enumeration_checks
+    ):
+        reduced_forms_checked += 1
+        if _is_canonical_proper_form(form, discriminant, max_steps):
+            proper_cycles += 1
+    if proper_cycles < 1:
+        raise ArithmeticError("reduced-form enumeration omitted the principal cycle")
+    unit_norm = real_quadratic_fundamental_unit(discriminant, max_steps=max_steps).norm
+    orientation_order = 1 if unit_norm == -1 else 2
+    if proper_cycles % orientation_order:
+        raise ArithmeticError(
+            "the orientation kernel does not divide the narrow class number"
+        )
+    class_number = proper_cycles if narrow else proper_cycles // orientation_order
+    certificate = QuadraticClassNumberCertificate(
+        discriminant,
+        narrow,
+        reduced_forms_checked,
+        proper_cycles,
+        class_number,
+        unit_norm,
+        plan,
+    )
+    return RealQuadraticClassNumberResult(
+        discriminant, narrow, class_number, certificate
+    )
 
 
 class QuadraticClassGroup:
@@ -1523,12 +1749,14 @@ __all__ = [
     "QuadraticClassElement",
     "QuadraticClassGroup",
     "QuadraticClassGroupCertificate",
+    "QuadraticClassNumberCertificate",
     "QuadraticClassGroupPlan",
     "QuadraticClassRoutingPlan",
     "QuadraticForm",
     "QuadraticIdealBasis",
     "QuadraticUnit",
     "RealQuadraticClassUnitContext",
+    "RealQuadraticClassNumberResult",
     "RealQuadraticFieldUnitGroupResult",
     "RealQuadraticUnitResult",
     "exact_minkowski_triviality",
@@ -1538,6 +1766,7 @@ __all__ = [
     "quadratic_form_from_ideal_lattice",
     "real_quadratic_class_group",
     "real_quadratic_class_group_plan",
+    "real_quadratic_class_number",
     "real_quadratic_class_unit_context",
     "real_quadratic_fundamental_unit",
     "real_quadratic_field_unit_group",

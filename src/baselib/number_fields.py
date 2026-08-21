@@ -1991,6 +1991,8 @@ class NumberFieldParent(sage.Parent):
         self._maximal_order_cache = runtime.undefined
         self._quadratic_backend_cache = runtime.undefined
         self._real_quadratic_backend_cache = runtime.undefined
+        self._real_quadratic_class_number_cache = runtime.undefined
+        self._real_quadratic_narrow_class_number_cache = runtime.undefined
         self._class_group_cache = runtime.undefined
         self._narrow_class_group_cache = runtime.undefined
         self._zeta_function_cache = runtime.map()
@@ -2799,11 +2801,21 @@ class NumberFieldParent(sage.Parent):
             routing.require_supported()
             signature = self.signature()
             if signature[0] == 2 and signature[1] == 0:
-                return int(
-                    self._real_quadratic_backend(
-                        routing.requested_algorithm, **limits
-                    ).order()
+                use_cache = proof is None and algorithm == "auto" and len(limits) == 0
+                if (
+                    use_cache
+                    and self._real_quadratic_class_number_cache is not runtime.undefined
+                ):
+                    return int(self._real_quadratic_class_number_cache)
+                result = _nf_quadratic_class_units_module().real_quadratic_class_number(
+                    int(self.discriminant()),
+                    algorithm=routing.requested_algorithm,
+                    **limits,
                 )
+                answer = int(result.order())
+                if use_cache:
+                    self._real_quadratic_class_number_cache = answer
+                return answer
             if len(limits) != 0:
                 raise TypeError(
                     "imaginary quadratic forms do not accept resource limits"
@@ -2812,6 +2824,49 @@ class NumberFieldParent(sage.Parent):
         return _nf_class_unit_groups_module().class_number(
             self, proof=proof, algorithm=algorithm, **limits
         )
+
+    def narrow_class_number(
+        self,
+        proof: Any = None,
+        algorithm: str = "auto",
+        **limits: Any,
+    ) -> int:
+        """Return the narrow class number of a quadratic field.
+
+        Real quadratic fields use the exact streaming reduced-form cycle
+        counter, so this request does not construct invariant factors,
+        generators, or a list of ideal classes.  For imaginary quadratic
+        fields the narrow and ordinary class groups coincide.
+        """
+        if self.degree() != 2:
+            raise NotImplementedError(
+                "public narrow class numbers are currently specialized to degree two"
+            )
+        signature = self.signature()
+        if signature[0] == 0 and signature[1] == 1:
+            return self.class_number(proof=proof, algorithm=algorithm, **limits)
+        routing = self.quadratic_class_group_plan(algorithm, narrow=True, **limits)
+        if routing.backend != "quadratic-forms":
+            raise NotImplementedError(
+                "the selected backend does not compute narrow quadratic classes"
+            )
+        routing.require_supported()
+        use_cache = proof is None and algorithm == "auto" and len(limits) == 0
+        if (
+            use_cache
+            and self._real_quadratic_narrow_class_number_cache is not runtime.undefined
+        ):
+            return int(self._real_quadratic_narrow_class_number_cache)
+        result = _nf_quadratic_class_units_module().real_quadratic_class_number(
+            int(self.discriminant()),
+            narrow=True,
+            algorithm=routing.requested_algorithm,
+            **limits,
+        )
+        answer = int(result.order())
+        if use_cache:
+            self._real_quadratic_narrow_class_number_cache = answer
+        return answer
 
 
 def NumberField(
