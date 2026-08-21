@@ -109,6 +109,7 @@
         "src/baselib/graphs.py",
         "src/baselib/itertools.py",
         "src/lib/sagejs/kernels/graph/",
+        "src/lib/sagejs/kernels/groups/",
         "test/wasm-capabilities.cjs",
         "test/wasm-production-native-kernels.cjs"
       ],
