@@ -175,3 +175,34 @@ test("genus-2/3 Arb boundary plans packed coefficients and returns balls", () =>
   assert.ok(Number(result.values[0].rawDerivatives[0].realRadius) >= 0);
   assert.match(result.analyticErrorStatus, /nested_inverse_mellin/);
 });
+
+test("genus-2/3 central weights return packed completed and raw jets", () => {
+  const probe = flint.hyperellipticCentralWeights(
+    713n, 1, 2, new Int32Array([0, 1]), 32, 4,
+  );
+  assert.equal(probe.status, "insufficient_coefficients");
+  assert.ok(probe.requiredCutoff >= probe.coarseCutoff);
+  assert.ok(probe.contourPoints >= probe.coarseContourPoints);
+  assert.equal(probe.contourReal, 2);
+
+  const highPrecisionProbe = flint.hyperellipticCentralWeights(
+    713n, 1, 2, new Int32Array([0, 1]), 200, 4,
+  );
+  assert.equal(highPrecisionProbe.status, "insufficient_coefficients");
+  assert.equal(highPrecisionProbe.contourReal, 3);
+
+  const coefficients = new Int32Array(probe.requiredCutoff + 1);
+  coefficients[1] = 1;
+  const result = flint.hyperellipticCentralWeights(
+    713n, 1, 2, coefficients, 32, 4,
+  );
+  assert.equal(result.status, "ok");
+  assert.equal(result.algorithm, "central-mellin-weights");
+  assert.equal(result.completedDerivatives.length, 5);
+  assert.equal(result.rawDerivatives.length, 5);
+  assert.equal(result.completedDerivatives[1].realMidpoint, "0");
+  assert.equal(result.completedDerivatives[3].realMidpoint, "0");
+  assert.equal(result.rigorous, false);
+  assert.match(result.analyticErrorStatus, /central_weight_contour/);
+  assert.ok(result.coefficientTerms > 0);
+});

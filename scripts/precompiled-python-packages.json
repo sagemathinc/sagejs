@@ -39,6 +39,7 @@
   ],
   "taskRuntimeImports": [
     "multiprocessing",
+    "sagejs.hyperelliptic_curves.family_cpu",
     "sagejs.number_fields.local_parallel_worker",
     "sagejs.number_fields.local_parallel",
     "sagejs.number_fields.maximal_order_engine",

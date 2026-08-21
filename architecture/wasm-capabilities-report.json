@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "94b9f5d5b81b356adc1da6173d80feed620e1158335d6bc7070b98afd76cce79",
+  "source_sha256": "71ed831320d1c0c498b34dfa72657ed1f77a2ac227f9c5a988a2d45a4bdf3dda",
   "counts": {
-    "total": 956,
+    "total": 957,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
-      "napi-export": 316,
+      "napi-export": 317,
       "production-kernel": 37,
       "runtime-intrinsic": 137,
       "specialist-capability": 25
@@ -16,13 +16,13 @@
       "compiled-source": 37,
       "desktop-only": 14,
       "generated-wasm": 302,
-      "portable-fallback": 559,
+      "portable-fallback": 560,
       "shared-core": 44
     },
     "by_status": {
       "available": 515,
       "desktop-only": 14,
-      "fallback": 427
+      "fallback": 428
     }
   },
   "workflow_aliases": {
@@ -7381,6 +7381,18 @@
         "src/baselib/modular.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticCentralWeights",
+      "family": "hyperelliptic",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "strict-python-central-mellin-weights",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "HyperellipticCurve.lseries central values and twist families"
+      ],
+      "explanation": "Hyperelliptic central values and derivatives remain available in browsers through the tested strict-Python Mellin-weight implementation."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:hyperellipticLseriesValues",

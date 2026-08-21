@@ -8,14 +8,17 @@ row status rather than a silently omitted twist.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import math
 import time
 from typing import Any, Callable, Iterator, Mapping
 
 import sagejs as sage
 
-TWIST_FAMILY_SCHEMA = "sagejs.hyperelliptic-quadratic-twists/v1"
+TWIST_FAMILY_SCHEMA = "sagejs.hyperelliptic-quadratic-twists/v3"
 _MAX_DISCRIMINANT_ABS = 10**12
+_CPU_FAMILY_POOLS: dict[int, Any] = {}
 
 
 class QuadraticTwistFamilyCancelled(RuntimeError):
@@ -26,6 +29,41 @@ class QuadraticTwistFamilyCancelled(RuntimeError):
         super().__init__(
             "quadratic-twist family cancelled before " + str(next_discriminant)
         )
+
+
+def close_cpu_family_workers() -> None:
+    """Close every process-local persistent twist-family worker pool."""
+    for pool in list(_CPU_FAMILY_POOLS.values()):
+        try:
+            pool.close()
+            pool.join()
+        except Exception:
+            try:
+                pool.terminate()
+                pool.join()
+            except Exception:
+                pass
+    _CPU_FAMILY_POOLS.clear()
+
+
+def _cpu_family_pool(worker_count: int) -> Any:
+    pool = _CPU_FAMILY_POOLS.get(worker_count)
+    if pool is not None:
+        return pool
+    multiprocessing = __import__("multiprocessing", fromlist=["Pool"])
+    pool = multiprocessing.Pool(worker_count)
+    _CPU_FAMILY_POOLS[worker_count] = pool
+    return pool
+
+
+def _discard_cpu_family_pool(worker_count: int, pool: Any) -> None:
+    if _CPU_FAMILY_POOLS.get(worker_count) is pool:
+        del _CPU_FAMILY_POOLS[worker_count]
+    try:
+        pool.terminate()
+        pool.join()
+    except Exception:
+        pass
 
 
 def _exact_integer(value: Any, name: str) -> int:
@@ -251,6 +289,7 @@ class QuadraticTwistRecord:
         rigorous: bool = False,
         arithmetic_balls_rigorous: bool = False,
         refinement_stable: bool = False,
+        screening: Mapping[str, Any] | None = None,
         timings: Mapping[str, float] | None = None,
     ) -> None:
         self.discriminant = sage.ZZ(discriminant)
@@ -263,6 +302,7 @@ class QuadraticTwistRecord:
         self.rigorous = bool(rigorous)
         self.arithmetic_balls_rigorous = bool(arithmetic_balls_rigorous)
         self.refinement_stable = bool(refinement_stable)
+        self.screening = dict({} if screening is None else screening)
         self.timings = dict({} if timings is None else timings)
 
     @property
@@ -308,6 +348,8 @@ def _record_payload(record: QuadraticTwistRecord) -> dict[str, Any]:
         "rigorous": record.rigorous,
         "arithmetic_balls_rigorous": record.arithmetic_balls_rigorous,
         "refinement_stable": record.refinement_stable,
+        "screening": record.screening,
+        "timings": record.timings,
     }
 
 
@@ -335,6 +377,180 @@ def _canonical_json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
+def _payload_digest(value: Any) -> str:
+    return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _reduction_payload(reduction: Any) -> dict[str, Any]:
+    return {
+        "conductor": str(reduction.conductor),
+        "root_number": int(reduction.root_number),
+        "bad_local_factors": [
+            {
+                "prime": str(row.prime),
+                "coefficients": [str(value) for value in row.coefficients],
+                "conductor_exponent": int(row.conductor_exponent),
+                "local_root_number": int(row.local_root_number),
+            }
+            for row in reduction.local_data
+        ],
+    }
+
+
+def _compute_coprime_twist_record(
+    source: Any,
+    base_coefficient_prefix: Any,
+    base_conductor: int,
+    base_root_number: int,
+    discriminant: int,
+    *,
+    precision: int,
+    maximum_order: int,
+    algorithm: str,
+    mode: str,
+    candidate_threshold: float,
+) -> QuadraticTwistRecord:
+    """Compute one exact coprime-twist row with the authoritative CPU path."""
+    started = time.monotonic()
+    lseries_module = __import__(
+        "sagejs.hyperelliptic_curves.lseries",
+        fromlist=["HyperellipticLSeries"],
+    )
+    try:
+        exact_started = time.monotonic()
+        if _integer_gcd(discriminant, base_conductor) != 1:
+            raise ArithmeticError(
+                "certified twist assembly currently requires gcd(D,N)=1"
+            )
+        genus = int(source.genus())
+        conductor = base_conductor * abs(discriminant) ** (2 * genus)
+        root_number = base_root_number * _quadratic_character(
+            discriminant, ((-1) ** genus) * base_conductor
+        )
+        if root_number not in (-1, 1):
+            raise ArithmeticError("the coprime twist sign was not determined")
+        exact_elapsed = time.monotonic() - exact_started
+        analytic_started = time.monotonic()
+        analytic_curve = _QuadraticTwistAnalyticCurve(
+            source, discriminant, conductor, root_number
+        )
+        if root_number == -1 and maximum_order == 0:
+            zero = lseries_module.HyperellipticLSeries._coerce(("0", "0"), precision)
+            return QuadraticTwistRecord(
+                discriminant,
+                status="ok",
+                conductor=conductor,
+                root_number=root_number,
+                central_derivatives=(zero,),
+                algorithm="functional-equation-parity",
+                rigorous=True,
+                arithmetic_balls_rigorous=True,
+                refinement_stable=True,
+                screening={
+                    "mode": mode,
+                    "backend": "cpu",
+                    "candidate": mode == "candidates",
+                    "threshold": candidate_threshold,
+                    "reason": "exact functional-equation parity zero",
+                },
+                timings={
+                    "exact_global": exact_elapsed,
+                    "analytic": time.monotonic() - analytic_started,
+                    "total": time.monotonic() - started,
+                },
+            )
+        prefix = _QuadraticTwistCoefficientPrefix(base_coefficient_prefix, discriminant)
+        lseries = lseries_module.HyperellipticLSeries(analytic_curve, prefix)
+        derivatives = lseries.central_jet(
+            maximum_order,
+            prec=precision,
+            algorithm=algorithm,
+        )
+        analytic_elapsed = time.monotonic() - analytic_started
+        diagnostics = lseries.last_diagnostics()
+        candidate = False
+        if mode == "candidates":
+            permitted = 0 if root_number == 1 else 1
+            candidate = any(
+                abs(derivatives[order]) <= candidate_threshold
+                for order in range(permitted, len(derivatives), 2)
+            )
+        return QuadraticTwistRecord(
+            discriminant,
+            status="ok",
+            conductor=conductor,
+            root_number=root_number,
+            central_derivatives=derivatives,
+            algorithm=diagnostics["algorithm"],
+            rigorous=diagnostics["rigorous"],
+            arithmetic_balls_rigorous=diagnostics.get(
+                "arithmetic_balls_rigorous", False
+            ),
+            refinement_stable=diagnostics["refinement_stable"],
+            screening={
+                "mode": mode,
+                "backend": "cpu",
+                "candidate": candidate,
+                "threshold": candidate_threshold,
+                "gpu_auto_selected": False,
+                "gpu_auto_reason": "physical crossover gate not recorded",
+            },
+            timings={
+                "exact_global": exact_elapsed,
+                "analytic": analytic_elapsed,
+                "total": time.monotonic() - started,
+            },
+        )
+    except Exception as error:
+        if isinstance(error, lseries_module.HyperellipticLseriesResourceError):
+            status = "resource_limit"
+        elif isinstance(
+            error, lseries_module.HyperellipticLseriesNumericalIndeterminacyError
+        ):
+            status = "numerical_indeterminacy"
+        else:
+            status = "unsupported"
+        return QuadraticTwistRecord(
+            discriminant,
+            status=status,
+            reason=str(error),
+            timings={"total": time.monotonic() - started},
+        )
+
+
+def _record_from_payload(
+    payload: Mapping[str, Any], precision: int
+) -> QuadraticTwistRecord:
+    """Reconstruct one worker row from pointer-free authenticated fields."""
+    lseries_module = __import__(
+        "sagejs.hyperelliptic_curves.lseries", fromlist=["HyperellipticLSeries"]
+    )
+    derivatives = tuple(
+        lseries_module.HyperellipticLSeries._coerce(
+            (value["real"], value["imaginary"]), precision
+        )
+        for value in payload.get("central_derivatives", ())
+    )
+    return QuadraticTwistRecord(
+        int(payload["discriminant"]),
+        status=str(payload["status"]),
+        conductor=(
+            None if payload.get("conductor") is None else int(payload["conductor"])
+        ),
+        root_number=(
+            None if payload.get("root_number") is None else int(payload["root_number"])
+        ),
+        central_derivatives=derivatives,
+        reason=payload.get("reason"),
+        algorithm=payload.get("algorithm"),
+        rigorous=bool(payload.get("rigorous", False)),
+        arithmetic_balls_rigorous=bool(payload.get("arithmetic_balls_rigorous", False)),
+        refinement_stable=bool(payload.get("refinement_stable", False)),
+        screening=payload.get("screening", {}),
+        timings=payload.get("timings", {}),
+    )
+
+
 class QuadraticTwistFamily:
     """A bounded, restartable stream of fundamental quadratic twists."""
 
@@ -347,7 +563,15 @@ class QuadraticTwistFamily:
         prec: Any = 53,
         max_order: Any = 0,
         algorithm: str = "auto",
+        mode: str = "values",
+        backend: str = "auto",
+        candidate_threshold: Any = 1e-6,
         block_size: Any = 65536,
+        workers: Any = "auto",
+        tile_size: Any = 8,
+        cache_dir: Any = "auto",
+        max_cache_entries: Any = 8,
+        max_coefficient_cutoff: Any = 2_000_000,
         progress: Callable[[str, Mapping[str, Any]], None] | None = None,
         cancel: Callable[[], bool] | None = None,
     ) -> None:
@@ -357,7 +581,15 @@ class QuadraticTwistFamily:
         self.precision = _exact_integer(prec, "prec")
         self.max_order = _exact_integer(max_order, "max_order")
         self.block_size = _exact_integer(block_size, "block_size")
+        self.tile_size = _exact_integer(tile_size, "tile_size")
+        self.max_cache_entries = _exact_integer(max_cache_entries, "max_cache_entries")
+        self.max_coefficient_cutoff = _exact_integer(
+            max_coefficient_cutoff, "max_coefficient_cutoff"
+        )
         self.algorithm = str(algorithm)
+        self.mode = str(mode)
+        self.backend = str(backend)
+        self.candidate_threshold = float(candidate_threshold)
         self.progress = progress
         self.cancel = cancel
         if self.start > self.stop:
@@ -368,6 +600,18 @@ class QuadraticTwistFamily:
             raise ValueError("max_order must be from 0 through 16")
         if self.algorithm not in ("auto", "native", "reference"):
             raise ValueError("algorithm must be 'auto', 'native', or 'reference'")
+        if self.mode not in ("values", "candidates"):
+            raise ValueError("mode must be 'values' or 'candidates'")
+        if self.backend not in ("auto", "cpu", "gpu"):
+            raise ValueError("backend must be 'auto', 'cpu', or 'gpu'")
+        if self.tile_size < 1 or self.tile_size > 4096:
+            raise ValueError("tile_size must be from 1 through 4096")
+        if self.max_cache_entries < 1 or self.max_cache_entries > 128:
+            raise ValueError("max_cache_entries must be from 1 through 128")
+        if self.max_coefficient_cutoff < 64 or self.max_coefficient_cutoff > 2_000_000:
+            raise ValueError("max_coefficient_cutoff must be from 64 through 2000000")
+        if not math.isfinite(self.candidate_threshold) or self.candidate_threshold < 0:
+            raise ValueError("candidate_threshold must be a finite nonnegative number")
         if progress is not None and not callable(progress):
             raise TypeError("progress must be callable")
         if cancel is not None and not callable(cancel):
@@ -380,101 +624,300 @@ class QuadraticTwistFamily:
         self._base_coefficient_prefix = self._lseries_module.GlobalCoefficientPrefix(
             curve
         )
+        self._cpu_module = __import__(
+            "sagejs.hyperelliptic_curves.family_cpu",
+            fromlist=["PersistentCoefficientCache"],
+        )
+        identity = self._cpu_module.coefficient_cache_identity(
+            _curve_payload(curve), _reduction_payload(self._base_reduction)
+        )
+        self._coefficient_cache: Any = None
+        self._cache_path: str | None = None
+        self._cache_digest: str | None = None
+        self._cache_cutoff = 0
+        self._cache_disabled_reason: str | None = None
+        if cache_dir is not None:
+            automatic_cache = cache_dir == "auto"
+            directory = (
+                self._cpu_module.default_family_cache_directory()
+                if automatic_cache
+                else str(cache_dir)
+            )
+            try:
+                self._coefficient_cache = self._cpu_module.PersistentCoefficientCache(
+                    directory,
+                    identity,
+                    max_entries=self.max_cache_entries,
+                )
+                cached = self._coefficient_cache.load(1, largest=True)
+                if cached is not None:
+                    values, backend_counts, digest, path = cached
+                    self._base_coefficient_prefix._seed_exact_values(
+                        values, backend_counts
+                    )
+                    self._cache_digest = digest
+                    self._cache_path = path
+                    self._cache_cutoff = len(values) - 1
+            except (NotImplementedError, OSError) as error:
+                if not automatic_cache:
+                    raise
+                self._coefficient_cache = None
+                self._cache_disabled_reason = str(error)
+        self.requested_workers = workers
+        self.worker_count = self._select_worker_count(workers)
+        self._gpu_capability: dict[str, Any] | None = None
+        if self.backend == "gpu":
+            gpu_module = __import__(
+                "sagejs.hyperelliptic_curves.gpu_twists",
+                fromlist=["gpu_twist_capabilities"],
+            )
+            capability = dict(gpu_module.gpu_twist_capabilities())
+            self._gpu_capability = capability
+            if not capability["available"]:
+                raise gpu_module.GpuTwistUnavailableError(
+                    str(capability.get("reason", "no GPU is available"))
+                )
+            raise gpu_module.GpuTwistUnavailableError(
+                "this WebGPU device has not passed the physical candidate-safety "
+                "and 5x crossover acceptance gate; use backend='cpu'"
+            )
+
+    def _select_worker_count(self, workers: Any) -> int:
+        automatic = workers == "auto"
+        if self.algorithm == "reference":
+            if not automatic and _exact_integer(workers, "workers") > 1:
+                raise NotImplementedError(
+                    "multicore twist evaluation currently requires algorithm='native' or 'auto'"
+                )
+            return 1
+        if automatic:
+            if self.stop - self.start + 1 < 256:
+                return 1
+            try:
+                multiprocessing = __import__(
+                    "multiprocessing",
+                    fromlist=[
+                        "cpu_count",
+                        "worker_memory_budget_bytes",
+                    ],
+                )
+                available = int(multiprocessing.cpu_count() or 1)
+                count = min(available, 8)
+                budget = multiprocessing.worker_memory_budget_bytes()
+                if budget is not None:
+                    count = min(
+                        count, max(1, (int(budget) - 512 * 1024**2) // (256 * 1024**2))
+                    )
+            except Exception:
+                return 1
+        else:
+            count = _exact_integer(workers, "workers")
+            if count < 1 or count > 64:
+                raise ValueError("workers must be from 1 through 64 or 'auto'")
+        if count > 1 and self._coefficient_cache is None:
+            if automatic:
+                self._cache_disabled_reason = (
+                    self._cache_disabled_reason
+                    or "multicore evaluation requires a shared coefficient cache"
+                )
+                return 1
+            raise NotImplementedError(
+                "multicore twist evaluation requires a filesystem coefficient cache"
+            )
+        return int(count)
 
     def _emit(self, event: str, payload: Mapping[str, Any]) -> None:
         if self.progress is not None:
             self.progress(event, dict(payload))
 
     def _record(self, discriminant: int) -> QuadraticTwistRecord:
-        started = time.monotonic()
-        try:
-            exact_started = time.monotonic()
-            base_conductor = int(self._base_reduction.conductor)
+        record = _compute_coprime_twist_record(
+            self.curve,
+            self._base_coefficient_prefix,
+            int(self._base_reduction.conductor),
+            int(self._base_reduction.root_number),
+            discriminant,
+            precision=self.precision,
+            maximum_order=self.max_order,
+            algorithm=self.algorithm,
+            mode=self.mode,
+            candidate_threshold=self.candidate_threshold,
+        )
+        record.screening.setdefault("cpu_engine", "sequential-v1")
+        record.screening.setdefault("workers", 1)
+        return record
+
+    def _persist_current_prefix(self) -> None:
+        if self._coefficient_cache is None:
+            return
+        values = self._base_coefficient_prefix.values
+        if len(values) <= 2:
+            return
+        if self._cache_cutoff >= len(values) - 1:
+            return
+        digest, path = self._coefficient_cache.store(
+            values, self._base_coefficient_prefix.backend_counts
+        )
+        self._cache_digest = digest
+        self._cache_path = path
+        self._cache_cutoff = len(values) - 1
+
+    def _prepare_parallel_prefix(self, required_cutoff: int) -> tuple[str, str]:
+        if self._coefficient_cache is None:
+            raise RuntimeError("the multicore coefficient cache is unavailable")
+        if self._cache_path is not None and self._cache_cutoff >= required_cutoff:
+            return self._cache_digest or "", self._cache_path
+        cached = self._coefficient_cache.load(required_cutoff)
+        if cached is not None:
+            values, backend_counts, digest, path = cached
+            self._base_coefficient_prefix._seed_exact_values(values, backend_counts)
+            self._cache_digest = digest
+            self._cache_path = path
+            self._cache_cutoff = len(values) - 1
+            return digest, path
+        self._emit("coefficient_prefix_start", {"required_cutoff": required_cutoff})
+        values = self._base_coefficient_prefix.through(required_cutoff)
+        digest, path = self._coefficient_cache.store(
+            values, self._base_coefficient_prefix.backend_counts
+        )
+        self._cache_digest = digest
+        self._cache_path = path
+        self._cache_cutoff = len(values) - 1
+        self._emit(
+            "coefficient_prefix_end",
+            {"required_cutoff": required_cutoff, "cache_sha256": digest},
+        )
+        return digest, path
+
+    def _resource_record(self, discriminant: int, cutoff: int) -> QuadraticTwistRecord:
+        return QuadraticTwistRecord(
+            discriminant,
+            status="resource_limit",
+            reason=(
+                "the CPU family coefficient cutoff "
+                + str(cutoff)
+                + " exceeds max_coefficient_cutoff="
+                + str(self.max_coefficient_cutoff)
+            ),
+            screening={
+                "mode": self.mode,
+                "backend": "cpu",
+                "cpu_engine": "persistent-multicore-v1",
+                "workers": self.worker_count,
+            },
+        )
+
+    def _parallel_wave(
+        self, pool: Any, discriminants: list[int]
+    ) -> list[QuadraticTwistRecord]:
+        base_conductor = int(self._base_reduction.conductor)
+        base_root = int(self._base_reduction.root_number)
+        genus = int(self.curve.genus())
+        direct: dict[int, QuadraticTwistRecord] = {}
+        eligible: list[int] = []
+        required_cutoff = 1
+        for discriminant in discriminants:
             if _integer_gcd(discriminant, base_conductor) != 1:
-                raise ArithmeticError(
-                    "certified twist assembly currently requires gcd(D,N)=1"
-                )
-            genus = int(self.curve.genus())
-            conductor = base_conductor * abs(discriminant) ** (2 * genus)
-            root_number = int(self._base_reduction.root_number) * _quadratic_character(
+                direct[discriminant] = self._record(discriminant)
+                continue
+            root_number = base_root * _quadratic_character(
                 discriminant, ((-1) ** genus) * base_conductor
             )
-            if root_number not in (-1, 1):
-                raise ArithmeticError("the coprime twist sign was not determined")
-            exact_elapsed = time.monotonic() - exact_started
-            analytic_started = time.monotonic()
-            analytic_curve = _QuadraticTwistAnalyticCurve(
-                self.curve, discriminant, conductor, root_number
-            )
             if root_number == -1 and self.max_order == 0:
-                zero = self._lseries_module.HyperellipticLSeries._coerce(
-                    ("0", "0"), self.precision
+                direct[discriminant] = self._record(discriminant)
+                continue
+            conductor = base_conductor * abs(discriminant) ** (2 * genus)
+            try:
+                cutoff = self._cpu_module.central_coefficient_cutoff(
+                    conductor, genus, self.precision, self.max_order
                 )
-                return QuadraticTwistRecord(
-                    discriminant,
-                    status="ok",
-                    conductor=conductor,
-                    root_number=root_number,
-                    central_derivatives=(zero,),
-                    algorithm="functional-equation-parity",
-                    rigorous=True,
-                    arithmetic_balls_rigorous=True,
-                    refinement_stable=True,
-                    timings={
-                        "exact_global": exact_elapsed,
-                        "analytic": time.monotonic() - analytic_started,
-                        "total": time.monotonic() - started,
-                    },
+            except OverflowError:
+                cutoff = self.max_coefficient_cutoff + 1
+            if cutoff > self.max_coefficient_cutoff:
+                direct[discriminant] = self._resource_record(discriminant, cutoff)
+                continue
+            required_cutoff = max(required_cutoff, cutoff)
+            eligible.append(discriminant)
+        worker_records: dict[int, QuadraticTwistRecord] = {}
+        if eligible:
+            digest, path = self._prepare_parallel_prefix(required_cutoff)
+            jobs = []
+            for offset in range(0, len(eligible), self.tile_size):
+                tile = tuple(eligible[offset : offset + self.tile_size])
+                jobs.append(
+                    (
+                        self._cpu_module.CPU_FAMILY_ENGINE_SCHEMA,
+                        path,
+                        digest,
+                        self._coefficient_cache.identity_digest,
+                        genus,
+                        base_conductor,
+                        base_root,
+                        tile,
+                        self.precision,
+                        self.max_order,
+                        (self.mode, self.candidate_threshold),
+                    )
                 )
-            prefix = _QuadraticTwistCoefficientPrefix(
-                self._base_coefficient_prefix, discriminant
-            )
-            lseries = self._lseries_module.HyperellipticLSeries(analytic_curve, prefix)
-            derivatives = lseries.central_jet(
-                self.max_order,
-                prec=self.precision,
-                algorithm=self.algorithm,
-            )
-            analytic_elapsed = time.monotonic() - analytic_started
-            diagnostics = lseries.last_diagnostics()
-            return QuadraticTwistRecord(
-                discriminant,
-                status="ok",
-                conductor=conductor,
-                root_number=root_number,
-                central_derivatives=derivatives,
-                algorithm=diagnostics["algorithm"],
-                rigorous=diagnostics["rigorous"],
-                arithmetic_balls_rigorous=diagnostics.get(
-                    "arithmetic_balls_rigorous", False
-                ),
-                refinement_stable=diagnostics["refinement_stable"],
-                timings={
-                    "exact_global": exact_elapsed,
-                    "analytic": analytic_elapsed,
-                    "total": time.monotonic() - started,
-                },
-            )
-        except Exception as error:
-            if isinstance(
-                error, self._lseries_module.HyperellipticLseriesResourceError
-            ):
-                status = "resource_limit"
-            elif isinstance(
-                error,
-                self._lseries_module.HyperellipticLseriesNumericalIndeterminacyError,
-            ):
-                status = "numerical_indeterminacy"
-            else:
-                status = "unsupported"
-            return QuadraticTwistRecord(
-                discriminant,
-                status=status,
-                reason=str(error),
-                timings={"total": time.monotonic() - started},
-            )
+            batches = pool.map(self._cpu_module.evaluate_twist_tile, jobs)
+            for batch in batches:
+                for payload in batch:
+                    record = _record_from_payload(payload, self.precision)
+                    discriminant = int(record.discriminant)
+                    if discriminant in worker_records or discriminant not in eligible:
+                        raise RuntimeError(
+                            "a CPU family worker returned an unbound discriminant"
+                        )
+                    expected_conductor = base_conductor * abs(discriminant) ** (
+                        2 * genus
+                    )
+                    expected_root = base_root * _quadratic_character(
+                        discriminant, ((-1) ** genus) * base_conductor
+                    )
+                    if record.status in ("ok", "numerical_indeterminacy") and (
+                        record.conductor != expected_conductor
+                        or record.root_number != expected_root
+                    ):
+                        raise RuntimeError(
+                            "a CPU family worker returned inconsistent exact data"
+                        )
+                    if record.status == "ok" and len(record.central_derivatives) != (
+                        self.max_order + 1
+                    ):
+                        raise RuntimeError(
+                            "a CPU family worker returned the wrong derivative arity"
+                        )
+                    if self.mode == "candidates" and record.status == "ok":
+                        permitted = 0 if expected_root == 1 else 1
+                        record.screening["candidate"] = any(
+                            abs(record.central_derivatives[order])
+                            <= self.candidate_threshold
+                            for order in range(
+                                permitted,
+                                len(record.central_derivatives),
+                                2,
+                            )
+                        )
+                    record.screening["cpu_engine"] = "persistent-multicore-v1"
+                    record.screening["workers"] = self.worker_count
+                    record.screening["tile_size"] = self.tile_size
+                    record.screening["coefficient_cache_sha256"] = digest
+                    worker_records[discriminant] = record
+            if len(worker_records) != len(eligible):
+                raise RuntimeError("a CPU family worker omitted a discriminant")
+        ordered = []
+        for discriminant in discriminants:
+            record = direct.get(discriminant)
+            if record is None:
+                record = worker_records.get(discriminant)
+            if record is None:
+                raise RuntimeError("the CPU family engine omitted a discriminant")
+            ordered.append(record)
+        return ordered
 
-    def _iter_from(self, start: int) -> Iterator[QuadraticTwistRecord]:
+    def _iter_sequential(self, start: int) -> Iterator[QuadraticTwistRecord]:
+        if max(self.start, start) > self.stop:
+            return
         for discriminant in fundamental_discriminants(
             max(self.start, start), self.stop, block_size=self.block_size
         ):
@@ -487,6 +930,56 @@ class QuadraticTwistFamily:
                 {"discriminant": discriminant, "status": record.status},
             )
             yield record
+
+    def _iter_parallel(self, start: int) -> Iterator[QuadraticTwistRecord]:
+        if max(self.start, start) > self.stop:
+            return
+        pool = _cpu_family_pool(self.worker_count)
+        try:
+            source = iter(
+                fundamental_discriminants(
+                    max(self.start, start), self.stop, block_size=self.block_size
+                )
+            )
+            wave_size = self.worker_count * self.tile_size
+            while True:
+                wave = []
+                for _index in range(wave_size):
+                    discriminant = next(source, None)
+                    if discriminant is None:
+                        break
+                    wave.append(discriminant)
+                if not wave:
+                    break
+                if self.cancel is not None and bool(self.cancel()):
+                    raise QuadraticTwistFamilyCancelled(wave[0])
+                for discriminant in wave:
+                    self._emit("twist_start", {"discriminant": discriminant})
+                records = self._parallel_wave(pool, wave)
+                for discriminant, record in zip(wave, records, strict=True):
+                    if record is None or int(record.discriminant) != discriminant:
+                        raise RuntimeError("CPU family results lost canonical ordering")
+                    if self.cancel is not None and bool(self.cancel()):
+                        raise QuadraticTwistFamilyCancelled(discriminant)
+                    self._emit(
+                        "twist_end",
+                        {"discriminant": discriminant, "status": record.status},
+                    )
+                    yield record
+        except QuadraticTwistFamilyCancelled:
+            raise
+        except Exception:
+            _discard_cpu_family_pool(self.worker_count, pool)
+            raise
+
+    def _iter_from(self, start: int) -> Iterator[QuadraticTwistRecord]:
+        try:
+            if self.worker_count > 1:
+                yield from self._iter_parallel(start)
+            else:
+                yield from self._iter_sequential(start)
+        finally:
+            self._persist_current_prefix()
 
     def __iter__(self) -> Iterator[QuadraticTwistRecord]:
         return self._iter_from(self.start)
@@ -502,6 +995,9 @@ class QuadraticTwistFamily:
                 "precision_bits": self.precision,
                 "max_order": self.max_order,
                 "algorithm": self.algorithm,
+                "mode": self.mode,
+                "backend": self.backend,
+                "candidate_threshold": self.candidate_threshold,
                 "fundamental_discriminants_only": True,
             },
             "twist_assembly": {
@@ -510,6 +1006,36 @@ class QuadraticTwistFamily:
                 "root_number": "w*chi_D((-1)^g*N)",
                 "dirichlet_coefficients": "a_n*chi_D(n)",
             },
+            "cpu_family_engine": {
+                "schema": self._cpu_module.CPU_FAMILY_ENGINE_SCHEMA,
+                "deterministic_order": True,
+                "safe_checkpoint_boundary": "completed discriminant row",
+                "coefficient_cache_schema": (self._cpu_module.COEFFICIENT_CACHE_SCHEMA),
+            },
+        }
+
+    def diagnostics(self) -> dict[str, Any]:
+        """Return execution and persistent-cache diagnostics."""
+        cache = (
+            {
+                "enabled": False,
+                "reason": self._cache_disabled_reason,
+            }
+            if self._coefficient_cache is None
+            else self._coefficient_cache.info()
+        )
+        return {
+            "engine": (
+                "persistent-multicore-v1" if self.worker_count > 1 else "sequential-v1"
+            ),
+            "requested_workers": self.requested_workers,
+            "workers": self.worker_count,
+            "tile_size": self.tile_size,
+            "worker_pool": "process-local-persistent",
+            "max_coefficient_cutoff": self.max_coefficient_cutoff,
+            "coefficient_prefix_length": len(self._base_coefficient_prefix.values),
+            "coefficient_prefix_extensions": self._base_coefficient_prefix.extensions,
+            "cache": cache,
         }
 
     def export_jsonl(
@@ -521,8 +1047,9 @@ class QuadraticTwistFamily:
         header = self.provenance()
         count = 0
         last: int | None = None
+        previous_digest = _payload_digest(header)
         if resume:
-            count, last = _verify_checkpoint(path, header)
+            count, last, previous_digest = _verify_checkpoint(path, header)
         else:
             with open(path, "w", encoding="utf-8", newline="\n") as output:
                 output.write(_canonical_json(header) + "\n")
@@ -544,9 +1071,15 @@ class QuadraticTwistFamily:
         with open(path, "a", encoding="utf-8", newline="\n") as output:
             try:
                 for record in self._iter_from(self.start if last is None else last + 1):
-                    output.write(_canonical_json(_record_payload(record)) + "\n")
+                    payload = _record_payload(record)
+                    payload["sequence"] = count + written
+                    payload["previous_sha256"] = previous_digest
+                    digest = _payload_digest(payload)
+                    payload["sha256"] = digest
+                    output.write(_canonical_json(payload) + "\n")
                     written += 1
                     last = int(record.discriminant)
+                    previous_digest = digest
                     if flush:
                         output.flush()
             except QuadraticTwistFamilyCancelled:
@@ -572,24 +1105,27 @@ class QuadraticTwistFamily:
             "last_discriminant": last,
             "next_discriminant": next_value,
             "schema": TWIST_FAMILY_SCHEMA,
+            "checkpoint_sha256": previous_digest,
+            "engine": self.diagnostics(),
         }
 
 
 def _verify_checkpoint(
     path: Any, expected_header: Mapping[str, Any]
-) -> tuple[int, int | None]:
+) -> tuple[int, int | None, str]:
+    header_digest = _payload_digest(expected_header)
     try:
         source = open(path, "r+", encoding="utf-8", newline="")
     except FileNotFoundError:
-        return 0, None
+        return 0, None, header_digest
     with source:
         header_line = source.readline()
         if not header_line:
-            return 0, None
+            return 0, None, header_digest
         if not header_line.endswith("\n"):
             source.seek(0)
             source.truncate()
-            return 0, None
+            return 0, None, header_digest
         if json.loads(header_line) != expected_header:
             raise ValueError("the twist checkpoint belongs to a different request")
         expected = iter(
@@ -600,6 +1136,7 @@ def _verify_checkpoint(
         )
         count = 0
         last: int | None = None
+        previous_digest = header_digest
         offset = source.tell()
         while True:
             line = source.readline()
@@ -611,6 +1148,14 @@ def _verify_checkpoint(
                 source.truncate()
                 break
             payload = json.loads(line)
+            digest = str(payload.pop("sha256", ""))
+            if (
+                payload.get("sequence") != count
+                or payload.get("previous_sha256") != previous_digest
+                or len(digest) != 64
+                or _payload_digest(payload) != digest
+            ):
+                raise ValueError("the twist checkpoint hash chain is invalid")
             try:
                 expected_discriminant = next(expected)
             except StopIteration as error:
@@ -622,8 +1167,9 @@ def _verify_checkpoint(
                 raise ValueError("the twist checkpoint has a missing discriminant row")
             last = expected_discriminant
             count += 1
+            previous_digest = digest
             offset = next_offset
-        return count, last
+        return count, last, previous_digest
 
 
 __all__ = [
@@ -631,6 +1177,7 @@ __all__ = [
     "QuadraticTwistFamilyCancelled",
     "QuadraticTwistRecord",
     "TWIST_FAMILY_SCHEMA",
+    "close_cpu_family_workers",
     "fundamental_discriminants",
     "is_fundamental_discriminant",
     "quadratic_twist",

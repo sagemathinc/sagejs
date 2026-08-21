@@ -166,7 +166,8 @@
         "paths": [
           "test/hyperelliptic-oracles.cjs",
           "test/hyperelliptic-local-data.cjs",
-          "test/hyperelliptic-global-lseries.cjs"
+          "test/hyperelliptic-global-lseries.cjs",
+          "test/hyperelliptic-twist-lseries.cjs"
         ]
       },
       "dirichlet-differential": {
@@ -13543,6 +13544,25 @@
       "reviewed": true,
       "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticCentralWeights",
+      "kind": "napi-export",
+      "family": "hyperelliptic",
+      "source": "packages/flint/src/elliptic_lfunction.c",
+      "disposition": "portable-fallback",
+      "fallback": "strict-python-central-mellin-weights",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "HyperellipticCurve.lseries central values and twist families"
+      ],
+      "tests": [
+        "hyperelliptic-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The Arb Node adapter accelerates central jets, while browsers retain the independently refined strict-Python central Mellin-weight implementation.",
+      "public_explanation": "Hyperelliptic central values and derivatives remain available in browsers through the tested strict-Python Mellin-weight implementation."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:hyperellipticLseriesValues",

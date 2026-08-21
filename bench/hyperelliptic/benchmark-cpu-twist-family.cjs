@@ -1,20 +1,24 @@
 "use strict";
 
+const { mkdtempSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join } = require("node:path");
 const { performance } = require("node:perf_hooks");
 
 const { createSage } = require("../../dist/tools/kernel.js");
 
-async function measured(session, name, source, timeout = 180_000) {
+async function measured(session, stage, source, timeout = 300_000) {
   const started = performance.now();
   const result = await session.evaluate(source, { timeout });
   return {
-    stage: name,
+    stage,
     milliseconds: Number((performance.now() - started).toFixed(3)),
     result: result.repr,
   };
 }
 
 async function main() {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-cpu-twists-bench-"));
   const session = await createSage();
   try {
     const rows = [];
@@ -26,71 +30,57 @@ async function main() {
           "R = PolynomialRing(QQ, 'x')",
           "x = R.gen()",
           "C = HyperellipticCurve(x, x^3-x+1)",
-          "L = C.lseries()",
-          "C.genus()",
+          `cache = ${JSON.stringify(join(directory, "cache"))}`,
+          "C.global_reduction()",
         ].join("\n"),
       ),
     );
     rows.push(
-      await measured(session, "global_reduction", "C.global_reduction()"),
-    );
-    rows.push(
       await measured(
         session,
-        "coefficients_5000",
-        "len(L.coefficients(5000))",
+        "sequential_warm_exact_prefix",
+        "S = C.quadratic_twists(-13,13,prec=16,max_order=0,algorithm='native',workers=1,cache_dir=cache); len(list(S))",
       ),
     );
     rows.push(
       await measured(
         session,
-        "central_weight_jet_cold_32bit",
-        "L.central_jet(4,prec=32,algorithm='native')",
+        "forced_multicore_4_cold_workers",
+        "P = C.quadratic_twists(-13,13,prec=16,max_order=0,algorithm='native',workers=4,tile_size=8,cache_dir=cache); len(list(P))",
       ),
     );
     rows.push(
       await measured(
         session,
-        "inverse_mellin_jet_cold_32bit",
-        "L.central_jet(4,prec=32,algorithm='inverse_mellin')",
+        "forced_multicore_4_second_scan",
+        "Q = C.quadratic_twists(-13,13,prec=16,max_order=0,algorithm='native',workers=4,tile_size=8,cache_dir=cache); len(list(Q))",
       ),
     );
     rows.push(
       await measured(
         session,
-        "prepared_init_32bit",
-        "init = L.init(prec=32,max_order=4); init.central_jet(4)",
+        "forced_multicore_4_warm_values",
+        "W = C.quadratic_twists(-13,13,prec=16,max_order=0,algorithm='native',workers=4,tile_size=8,cache_dir=cache); len(list(W))",
       ),
     );
     rows.push(
       await measured(
         session,
-        "prepared_warm_value_32bit",
-        "tuple(init.central_value() for _index in range(100))",
-      ),
-    );
-    rows.push(
-      await measured(
-        session,
-        "general_values_one_grid_32bit",
-        "init.values([1,1.25,1.5,1.75,2])",
-      ),
-    );
-    rows.push(
-      await measured(
-        session,
-        "gpu_capability",
-        "from sagejs.hyperelliptic_curves.gpu_twists import gpu_twist_capabilities; gpu_twist_capabilities()",
+        "forced_multicore_4_warm_checkpoint_export",
+        `W.export_jsonl(${JSON.stringify(join(directory, "twists.jsonl"))})`,
       ),
     );
     console.log(
       JSON.stringify(
         {
-          schema: "sagejs.hyperelliptic-central-weights/benchmark-v2",
+          schema: "sagejs.hyperelliptic-cpu-family-benchmark/v1",
           node: process.version,
           platform: process.platform,
           architecture: process.arch,
           curve: "y^2 + (x^3-x+1)y = x",
+          interval: [-13, 13],
+          precisionBits: 16,
+          derivativeOrder: 0,
           rows,
         },
         null,

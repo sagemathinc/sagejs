@@ -13,10 +13,10 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 116,
+    "classified-native-file": 117,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
-    "napi-export": 316,
+    "napi-export": 317,
     "runtime-intrinsic": 137,
     "wasm-export": 72
   },
@@ -6041,6 +6041,16 @@
       "family": "modular-symbols"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticCentralWeights",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "hyperellipticCentralWeights",
+      "symbol": "sagejs_hyperelliptic_central_weights",
+      "disposition": "retain-host-adapter",
+      "family": "hyperelliptic"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:hyperellipticLseriesValues",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -8141,6 +8151,14 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "native-compiler"
+    },
+    {
+      "id": "native-file:bench/hyperelliptic/cuda-twist-feasibility.cu",
+      "kind": "classified-native-file",
+      "path": "bench/hyperelliptic/cuda-twist-feasibility.cu",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
     },
     {
       "id": "native-file:bench/hyperelliptic/genus3-jacobian-kernel.c",
