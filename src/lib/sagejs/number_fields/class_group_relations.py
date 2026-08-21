@@ -1245,7 +1245,15 @@ def _exact_lll_reduce_with_transform(
                     value - multiple * transform[previous][column]
                     for column, value in enumerate(transform[index])
                 ]
-                mu, norms = _gram_schmidt(basis)
+                # Subtracting a multiple of an earlier basis vector leaves
+                # this row's orthogonal component and norm unchanged.  Only
+                # its Gram--Schmidt coefficients through `previous` change:
+                # later coefficients are against vectors orthogonal to the
+                # subtracted row.  Updating those exact rationals avoids a
+                # complete Gram--Schmidt replay after every size reduction.
+                for earlier in range(previous):
+                    mu[index][earlier] -= multiple * mu[previous][earlier]
+                mu[index][previous] -= multiple
         if (
             norms[index]
             >= (sage.QQ(3) / sage.QQ(4) - mu[index][index - 1] ** 2) * norms[index - 1]

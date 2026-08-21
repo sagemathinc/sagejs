@@ -20,6 +20,11 @@ import hashlib
 import time
 
 from sagejs.number_fields.class_group_relations import (
+    _exact_lll_reduce_with_transform,
+    _gram_schmidt,
+    _integer_determinant,
+    _matrix_times_rows,
+    _nearest_integer,
     ExactRelationCollector,
     FactorBaseIdealReconstructor,
     FactoredPrincipalWitness,
@@ -242,6 +247,67 @@ assert screen.add([1, 0, 1]) == (True, 0)
 assert screen.add([2, 0, 2]) == (False, None)
 assert screen.add([0, 1, 1]) == (True, 1)
 assert screen.rank == 2 and screen.missing_pivots() == (2,)
+
+
+def full_recompute_lll(rows):
+    """Historical exact oracle that recomputes Gram--Schmidt after each edit."""
+    basis = [[int(value) for value in row] for row in rows]
+    transform = [
+        [1 if row == column else 0 for column in range(len(basis))]
+        for row in range(len(basis))
+    ]
+    mu, norms = _gram_schmidt(basis)
+    index = 1
+    while index < len(basis):
+        for previous in range(index - 1, -1, -1):
+            multiple = _nearest_integer(mu[index][previous])
+            if multiple:
+                basis[index] = [
+                    value - multiple * basis[previous][column]
+                    for column, value in enumerate(basis[index])
+                ]
+                transform[index] = [
+                    value - multiple * transform[previous][column]
+                    for column, value in enumerate(transform[index])
+                ]
+                mu, norms = _gram_schmidt(basis)
+        if (
+            norms[index]
+            >= (QQ(3) / QQ(4) - mu[index][index - 1] ** 2) * norms[index - 1]
+        ):
+            index += 1
+        else:
+            basis[index], basis[index - 1] = basis[index - 1], basis[index]
+            transform[index], transform[index - 1] = (
+                transform[index - 1],
+                transform[index],
+            )
+            mu, norms = _gram_schmidt(basis)
+            index = max(1, index - 1)
+    return basis, transform
+
+
+# Exact differential against the previous full-recompute path covers size
+# reductions before and after swaps, negative multiples, and large integers.
+lll_cases = (
+    [[1, 1], [1, -1]],
+    [[105, 821, 404], [281, 88, 197], [37, 401, 999]],
+    [[8, 3, -2, 7], [21, -5, 4, 1], [6, 17, 9, -3], [11, 2, 25, 4]],
+    [
+        [2**40 + 1, 3, 5, 7, 11],
+        [2**39 - 1, 13, 17, 19, 23],
+        [29, 2**38 + 1, 31, 37, 41],
+        [43, 47, 2**37 - 1, 53, 59],
+        [61, 67, 71, 2**36 + 1, 73],
+    ],
+)
+for lll_rows in lll_cases:
+    expected_basis, expected_transform = full_recompute_lll(lll_rows)
+    actual_basis, actual_transform = _exact_lll_reduce_with_transform(lll_rows)
+    assert actual_basis == expected_basis
+    assert actual_transform == expected_transform
+    assert _matrix_times_rows(actual_transform, lll_rows) == actual_basis
+    assert abs(_integer_determinant(actual_transform)) == 1
 
 assert exact_lll_reduce([[1, 1], [1, -1]]) == [[1, 1], [1, -1]]
 unit_plan = minkowski_lll_lattice(O.ideal(1), precision=128)
