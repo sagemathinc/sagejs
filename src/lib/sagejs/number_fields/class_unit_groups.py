@@ -1040,6 +1040,14 @@ class ClassUnitGroupEngine:
             "generation_reconstruction_cache_hits": 0,
             "generation_admission_receipt_requests": 0,
             "generation_admission_receipt_hits": 0,
+            "automorphism_orbit_plans": 0,
+            "automorphism_orbit_available_plans": 0,
+            "automorphism_orbit_useful_plans": 0,
+            "automorphism_orbit_relations": 0,
+            "automorphism_orbit_fixed_skips": 0,
+            "automorphism_orbit_duplicate_skips": 0,
+            "automorphism_orbit_recursive_skips": 0,
+            "automorphism_orbit_limit_skips": 0,
         }
         self._generation_verification_cache: dict[str, bool] = {}
         self._generation_verification_cache_active = True
@@ -1049,6 +1057,7 @@ class ClassUnitGroupEngine:
         self._relation_matrix_accumulator: Any = None
         self._relation_presentation_policy: Any = None
         self._relation_presentation_record_count = 0
+        self._automorphism_orbit_plans: list[tuple[tuple[Any, ...], Any]] = []
         self._proof_progress: Any = None
         self._proof_dependency_hashes: dict[str, str] = {}
         self._saturation_record: Any = None
@@ -1684,6 +1693,93 @@ class ClassUnitGroupEngine:
             "saturation": str(saturation.content_sha256),
         }
 
+    def _automorphism_plan_for_factor_base(
+        self, relations: Any, factor_base: tuple[Any, ...]
+    ) -> Any:
+        """Build at most one exact automorphism plan for each factor base."""
+        for planned_factor_base, plan in self._automorphism_orbit_plans:
+            if len(planned_factor_base) == len(factor_base) and all(
+                left is right or left == right
+                for left, right in zip(planned_factor_base, factor_base, strict=True)
+            ):
+                return plan
+        planner = getattr(relations, "plan_automorphism_orbits", None)
+        plan = planner(self.field, factor_base) if callable(planner) else None
+        self._automorphism_orbit_plans.append((factor_base, plan))
+        self._resource_usage["automorphism_orbit_plans"] += 1
+        if plan is not None:
+            available = bool(getattr(plan, "available", False))
+            useful = bool(getattr(plan, "useful", False))
+            if useful and not available:
+                raise ArithmeticError(
+                    "a useful automorphism-orbit plan must be available"
+                )
+            if available:
+                self._resource_usage["automorphism_orbit_available_plans"] += 1
+            if useful:
+                self._resource_usage["automorphism_orbit_useful_plans"] += 1
+        return plan
+
+    def _admit_automorphism_orbits(
+        self,
+        collector: Any,
+        plan: Any,
+        newly_admitted: Sequence[Any],
+    ) -> tuple[Any, ...]:
+        """Admit one nonrecursive exact orbit image for each new parent."""
+        if plan is None or not bool(getattr(plan, "available", False)):
+            return ()
+        if not bool(getattr(plan, "useful", False)):
+            return ()
+        admit = getattr(collector, "admit_automorphism_orbit", None)
+        if not callable(admit):
+            raise TypeError(
+                "an exact relation collector lacks automorphism-orbit admission"
+            )
+        derived: list[Any] = []
+        parents = tuple(newly_admitted)
+        for parent_index, parent in enumerate(parents):
+            provenance = getattr(parent, "provenance", None)
+            if (
+                isinstance(provenance, dict)
+                and provenance.get("algorithm") == "quadratic-conjugation-orbit"
+            ):
+                self._resource_usage["automorphism_orbit_recursive_skips"] += 1
+                continue
+            if len(collector.records) >= self.limits.max_relations:
+                self._resource_usage["automorphism_orbit_limit_skips"] += (
+                    len(parents) - parent_index
+                )
+                break
+            before = len(collector.records)
+            try:
+                admission = admit(parent, plan=plan)
+            except ValueError as error:
+                if "already admitted" not in str(error):
+                    raise
+                self._resource_usage["automorphism_orbit_duplicate_skips"] += 1
+                continue
+            after = len(collector.records)
+            if admission is None:
+                if after != before:
+                    raise ArithmeticError(
+                        "a skipped automorphism orbit changed the relation collector"
+                    )
+                self._resource_usage["automorphism_orbit_fixed_skips"] += 1
+                continue
+            if after != before + 1:
+                raise ArithmeticError(
+                    "an automorphism orbit must admit exactly one derived relation"
+                )
+            record = getattr(admission, "record", collector.records[-1])
+            if record is not collector.records[-1]:
+                raise ArithmeticError(
+                    "an automorphism admission did not return the appended relation"
+                )
+            derived.append(record)
+        self._resource_usage["automorphism_orbit_relations"] += len(derived)
+        return tuple(derived)
+
     def _relations(
         self,
         factor_base: tuple[Any, ...],
@@ -1698,6 +1794,9 @@ class ClassUnitGroupEngine:
         started = self._phase_start()
         relations = self.components.relations
         matrix_module = self.components.matrix
+        automorphism_plan = self._automorphism_plan_for_factor_base(
+            relations, factor_base
+        )
         restored_state = self._relation_search_state
         if collector is None:
             collector = relations.ExactRelationCollector(self.order, factor_base)
@@ -1712,7 +1811,15 @@ class ClassUnitGroupEngine:
             for record in restored_relations:
                 collector.add_relation(record)
             if not restored_relations:
+                before_initial = len(collector.records)
                 relations.initial_rational_prime_relations(collector)
+                if len(collector.records) > self.limits.max_relations:
+                    raise ValueError("exact relation count exceeds max_relations")
+                self._admit_automorphism_orbits(
+                    collector,
+                    automorphism_plan,
+                    tuple(collector.records[before_initial:]),
+                )
                 self._checkpoint_capture({"relations": tuple(collector.records)})
             if presentation is None and restored_matrix is not None:
                 replay = getattr(restored_matrix, "verify", None)
@@ -1886,6 +1993,12 @@ class ClassUnitGroupEngine:
             attempts += 1
             if len(collector.records) > self.limits.max_relations:
                 raise ValueError("exact relation count exceeds max_relations")
+            parents = tuple(collector.records[before:])
+            derived = self._admit_automorphism_orbits(
+                collector, automorphism_plan, parents
+            )
+            if derived:
+                search.state.relations_admitted += len(derived)
             if len(collector.records) != before:
                 accumulator = self._relation_matrix_accumulator
                 if accumulator is not None:
@@ -1929,14 +2042,18 @@ class ClassUnitGroupEngine:
                     "unit_rank_target": unit_rank,
                 }
             )
-            if len(collector.records) != before:
-                for record in collector.records[before:]:
-                    self._checkpoint_capture({"relation": record})
-            self._checkpoint_capture(
-                {
-                    "search_state": search.state,
-                }
-            )
+            if derived:
+                self._checkpoint_capture(
+                    {
+                        "relations": tuple(collector.records),
+                        "search_state": search.state,
+                    }
+                )
+            else:
+                if len(collector.records) != before:
+                    for record in collector.records[before:]:
+                        self._checkpoint_capture({"relation": record})
+                self._checkpoint_capture({"search_state": search.state})
             if attempts % 8 == 0:
                 self._checkpoint_save(force=False)
             self._emit_progress(
@@ -1988,6 +2105,13 @@ class ClassUnitGroupEngine:
             exact_rows=self._relation_presentation_record_count,
             presentation_extractions=int(
                 self._resource_usage["presentation_extractions"]
+            ),
+            automorphism_plan_available=bool(
+                getattr(automorphism_plan, "available", False)
+            ),
+            automorphism_plan_useful=bool(getattr(automorphism_plan, "useful", False)),
+            automorphism_relations=int(
+                self._resource_usage["automorphism_orbit_relations"]
             ),
             search_state=search.state.to_dict(),
         )
