@@ -376,6 +376,39 @@ try {
       traces: 1,
       points: [0, Math.PI, 2 * Math.PI],
     });
+    await startSource(
+      "E = EllipticCurve([1, 2, 3, 4, 999])\n" +
+        "L = E.lseries()\n" +
+        "complex_plot(L, (0, 2), (-4, 4), plot_points=100, " +
+        "interpolation='nearest')",
+    );
+    assert.equal(
+      await waitForIdle(),
+      "Graphics object consisting of 1 graphics primitive",
+    );
+    const complexPlotState = await command("Runtime.evaluate", {
+      expression: `(() => {
+        const display = document.querySelector('#display');
+        const trace = display?.data?.[0] ?? {};
+        const image = display?.querySelector('image') ?? null;
+        return {
+          trace: [trace.x0, trace.y0, trace.dx, trace.dy],
+          image: image === null ? null : ['x', 'y', 'width', 'height'].map(
+            (name) => Number(image.getAttribute(name))
+          )
+        };
+      })()`,
+      returnByValue: true,
+    });
+    const complexGeometry = complexPlotState.result.value;
+    assert.deepEqual(complexGeometry.trace, [0, 4, 2 / 99, -8 / 99]);
+    assert.ok(complexGeometry.image !== null, "complex plot must render an SVG image");
+    assert.ok(
+      complexGeometry.image.every(Number.isFinite),
+      `complex plot SVG geometry must be finite: ${complexGeometry.image}`,
+    );
+    assert.ok(complexGeometry.image[2] > 0);
+    assert.ok(complexGeometry.image[3] > 0);
     const imageExportState = await command("Runtime.evaluate", {
       expression: `(async () => {
         const renderer = await import("/plotly-renderer.mjs");
