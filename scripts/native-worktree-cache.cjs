@@ -496,6 +496,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
       ],
       addonOutputs: [
         "packages/flint/build/Release/sagejs_flint.node",
+        "packages/flint/build/Release/sagejs_flint.manifest.json",
         "packages/flint/build/generated-ffi",
       ],
       requiredAddonOutputs: [

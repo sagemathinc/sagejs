@@ -1312,6 +1312,18 @@ test("native production keys separate dependency and addon invalidation", () => 
     const first = nativeArtifactSpecs(directory, { identity: firstIdentity });
     const firstDependencies = first.find(({ id }) => id === "flint-dependencies");
     const firstAddon = first.find(({ id }) => id === "flint-addon");
+    assert.ok(
+      firstAddon.outputRoots.includes(
+        "packages/flint/build/Release/sagejs_flint.manifest.json",
+      ),
+    );
+    assert.ok(
+      firstAddon.requiredOutputs.every((required) =>
+        firstAddon.outputRoots.some((root) =>
+          required === root || required.startsWith(`${root}/`)
+        )
+      ),
+    );
 
     writeFileSync(source, "addon v2\n");
     const addonChanged = nativeArtifactSpecs(directory, { identity: firstIdentity });
