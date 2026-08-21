@@ -3,7 +3,7 @@
     "algorithm": "buchmann-hecke",
     "analytic_state": {"index_bound": 1, "log_residue": ["1", "2"], "schema": "test.analytic.v1"},
     "class_group_state": {"invariants": [], "schema": "test.class-group.v1"},
-    "content_sha256": "7764c770d05257ef3c365b94a5c54cc5342ee3902dd21230686f21e1cbf2d2cd",
+    "content_sha256": "b6b2a98701b6bd36f8888b0b82a2d2f9e788124bb51efb2d013c272c2e36dbd6",
     "diagnostics": {"relation_attempts": 4, "timing_micros": 1200},
     "discriminant": 5,
     "factor_base": [
@@ -76,6 +76,7 @@
         }
       }
     ],
+    "search_state": {"candidates_tested": 4, "random_state": [7, 13], "schema": "test.search-state.v1"},
     "saturation_history": [{"class_saturated": true, "prime": 2, "unit_saturated": true}],
     "schema": "sagejs.number-fields.class-unit-context.v1",
     "signature": [2, 0],

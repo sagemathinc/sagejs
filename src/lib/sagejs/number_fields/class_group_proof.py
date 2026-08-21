@@ -484,6 +484,11 @@ class UnconditionalMinkowskiProofRecord:
         try:
             if proof_label(presentation.proof_status) != self.proof_status:
                 return False
+            theorem = getattr(presentation, "factor_base_theorem", None)
+            if callable(theorem):
+                theorem = theorem()
+            if theorem is not None and theorem != self._theorem:
+                return False
             fingerprint = context.field_order_fingerprint
             if callable(fingerprint):
                 fingerprint = fingerprint()

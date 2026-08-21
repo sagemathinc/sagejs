@@ -16,6 +16,7 @@ index validation.  Neither system is a runtime dependency.
 
 from __future__ import annotations
 
+import time
 from typing import Any, Callable, Iterable, Sequence
 
 EXACT_UNCONDITIONAL = "exact-unconditional"
@@ -65,6 +66,12 @@ def _ideal_power(ideal: Any, exponent: int) -> Any:
     return ideal**exponent
 
 
+def _is_cancellation(error: BaseException) -> bool:
+    return str(error) == "class/unit computation cancelled" or (
+        type(error).__name__ == "ClassUnitCancellationError"
+    )
+
+
 class ClassUnitEngineLimits:
     """Portable resource policy for one adaptive computation."""
 
@@ -78,6 +85,8 @@ class ClassUnitEngineLimits:
         max_candidates_per_ideal: int = 64,
         max_random_terms: int = 5,
         max_coefficient_bound: int = 3,
+        max_partial_relations: int = 512,
+        large_prime_bound_multiplier: int = 20,
         precision_bits: int = 128,
         max_precision_bits: int = 1_024,
         max_analytic_prime_bound: int = 1_000_000,
@@ -100,6 +109,12 @@ class ClassUnitEngineLimits:
         self.max_coefficient_bound = _positive(
             max_coefficient_bound, "max_coefficient_bound"
         )
+        self.max_partial_relations = _positive(
+            max_partial_relations, "max_partial_relations"
+        )
+        self.large_prime_bound_multiplier = _positive(
+            large_prime_bound_multiplier, "large_prime_bound_multiplier"
+        )
         self.precision_bits = _positive(precision_bits, "precision_bits")
         self.max_precision_bits = _positive(max_precision_bits, "max_precision_bits")
         if self.precision_bits > self.max_precision_bits:
@@ -120,6 +135,8 @@ class ClassUnitEngineLimits:
                 "max_candidates_per_ideal",
                 "max_random_terms",
                 "max_coefficient_bound",
+                "max_partial_relations",
+                "large_prime_bound_multiplier",
                 "precision_bits",
                 "max_precision_bits",
                 "max_analytic_prime_bound",
@@ -483,6 +500,35 @@ class _Components:
         )
 
 
+def _prime_ideal_key(prime_ideal: Any) -> tuple[Any, ...]:
+    """Return a stable in-process identity for an exact prime ideal."""
+    rows = []
+    for row in prime_ideal.basis_matrix().rows():
+        rows.append(
+            tuple((int(value._numerator), int(value._denominator)) for value in row)
+        )
+    return (
+        int(prime_ideal.rational_prime()),
+        int(prime_ideal.ramification_index()),
+        int(prime_ideal.residue_class_degree()),
+        tuple(rows),
+    )
+
+
+class _LargePrimePartial:
+    def __init__(
+        self,
+        witness: Any,
+        source_ideal: Any,
+        source_row: Sequence[int],
+        provenance: dict[str, Any],
+    ) -> None:
+        self.witness = witness
+        self.source_ideal = source_ideal
+        self.source_row = tuple(int(value) for value in source_row)
+        self.provenance = dict(provenance)
+
+
 class ClassUnitGroupEngine:
     """Adaptive Buchmann--Hecke driver with exact terminal-state checks."""
 
@@ -495,6 +541,11 @@ class ClassUnitGroupEngine:
         limits: ClassUnitEngineLimits | None = None,
         seed: int = 0,
         cancelled: Callable[[], bool] | None = None,
+        progress: Callable[[dict[str, Any]], None] | None = None,
+        checkpoint: Any = None,
+        resume_from: Any = None,
+        checkpoint_controller: Any = None,
+        max_checkpoint_bytes: int | None = None,
         components: Any = None,
     ) -> None:
         if algorithm not in ("auto", "minkowski", "buchmann-hecke"):
@@ -512,15 +563,145 @@ class ClassUnitGroupEngine:
         self.cancelled = (lambda: False) if cancelled is None else cancelled
         if not callable(self.cancelled):
             raise TypeError("cancelled must be callable")
+        self.progress = progress
+        if self.progress is not None and not callable(self.progress):
+            raise TypeError("progress must be callable")
         self.components = _Components() if components is None else components
+        self.checkpoint_controller = checkpoint_controller
+        if self.checkpoint_controller is None and (
+            checkpoint is not None or resume_from is not None
+        ):
+            context_module = self.components.context
+            if context_module is None:
+                raise ImportError("the class/unit checkpoint controller is unavailable")
+            controller_type = getattr(context_module, "ClassUnitCheckpoint", None)
+            if controller_type is None:
+                raise ImportError("the class/unit checkpoint controller is unavailable")
+            prime_module = _optional_module("sagejs.number_fields.prime_ideals")
+
+            def decode_factor_base(payload: Any) -> Any:
+                return prime_module.prime_ideal_from_dict(self.order, payload)
+
+            def decode_search_state(payload: Any) -> Any:
+                if payload is None:
+                    return None
+                return self.components.relations.RelationSearchState.from_dict(payload)
+
+            def decode_matrix_state(payload: Any) -> Any:
+                if payload is None:
+                    return None
+                return self.components.matrix.RelationPresentation.from_dict(payload)
+
+            decoders = {
+                "factor_base": decode_factor_base,
+                "relations": self.components.relations.RelationRecord.from_dict,
+                "search_state": decode_search_state,
+                "matrix_state": decode_matrix_state,
+            }
+            proof_state = context_module.ClassUnitProofState.incomplete(
+                "class/unit computation in progress"
+            )
+            self.checkpoint_controller = controller_type(
+                self.field,
+                self.order,
+                proof_state,
+                algorithm=self.algorithm,
+                random_seed=self.seed,
+                destination=checkpoint,
+                resume_from=resume_from,
+                component_decoders=decoders,
+                max_checkpoint_bytes=max_checkpoint_bytes,
+            )
         self.stages: list[ClassUnitStage] = []
+        self._started_ns = time.perf_counter_ns()
+        self._phase_timings: dict[str, float] = {}
+        self._resource_usage: dict[str, Any] = {
+            "relation_attempts": 0,
+            "relation_candidates": 0,
+            "ideals_tested": 0,
+            "relations": 0,
+            "partial_relations": 0,
+            "partial_matches": 0,
+            "partial_discards": 0,
+            "unit_log_rank": 0,
+            "unit_rank_target": 0,
+        }
+        self._partials: dict[tuple[Any, ...], _LargePrimePartial] = {}
+        self._relation_unit_log_rank = 0
 
     def _stage(self, name: str, state: str, **details: Any) -> None:
+        if name in self._phase_timings and "elapsed_seconds" not in details:
+            details["elapsed_seconds"] = self._phase_timings[name]
         self.stages.append(ClassUnitStage(name, state, details))
+        if self.checkpoint_controller is not None:
+            try:
+                self.checkpoint_controller.stage(name, state, details)
+            except RuntimeError as error:
+                if state != "incomplete" or not _is_cancellation(error):
+                    raise
+            self.checkpoint_controller.capture(
+                {"diagnostics": self._diagnostics({"stage": name, "state": state})}
+            )
+            self.checkpoint_controller.save(force=False)
+        self._emit_progress(
+            "stage",
+            stage=name,
+            state=state,
+            details=dict(details),
+        )
+
+    def _phase_start(self) -> int:
+        return time.perf_counter_ns()
+
+    def _phase_finish(self, name: str, started_ns: int) -> float:
+        if name == "total" and name in self._phase_timings:
+            return self._phase_timings[name]
+        elapsed = (time.perf_counter_ns() - started_ns) / 1_000_000_000
+        self._phase_timings[name] = self._phase_timings.get(name, 0.0) + elapsed
+        return elapsed
+
+    def _elapsed_seconds(self) -> float:
+        return (time.perf_counter_ns() - self._started_ns) / 1_000_000_000
+
+    def _emit_progress(self, event: str, **details: Any) -> None:
+        if self.progress is None:
+            return
+        payload = {
+            "event": event,
+            "elapsed_seconds": self._elapsed_seconds(),
+            "resources": dict(self._resource_usage),
+        }
+        payload.update(details)
+        self.progress(payload)
+
+    def _diagnostics(self, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+        answer = {
+            "elapsed_seconds": self._elapsed_seconds(),
+            "phase_timings": dict(self._phase_timings),
+            "resources": dict(self._resource_usage),
+            "limits": self.limits.to_dict(),
+        }
+        if extra:
+            answer.update(extra)
+        return answer
 
     def _check_cancelled(self) -> None:
+        if self.checkpoint_controller is not None:
+            stage = self.stages[-1].name if self.stages else "initialization"
+            self.checkpoint_controller.check_cancelled(
+                stage, dict(self._resource_usage)
+            )
         if self.cancelled():
+            self._emit_progress("cancelled")
             raise RuntimeError("class/unit computation cancelled")
+
+    def _checkpoint_capture(self, payload: dict[str, Any]) -> None:
+        if self.checkpoint_controller is not None:
+            self.checkpoint_controller.capture(payload)
+
+    def _checkpoint_save(self, *, force: bool = False) -> None:
+        if self.checkpoint_controller is not None:
+            self.checkpoint_controller.save(force=force)
 
     def _incomplete(
         self,
@@ -530,7 +711,10 @@ class ClassUnitGroupEngine:
         unit_group: Any = None,
         diagnostics: dict[str, Any] | None = None,
     ) -> ClassUnitComputation:
+        self._phase_finish("total", self._started_ns)
         self._stage("terminal", "incomplete", reason=reason)
+        self._checkpoint_capture({"diagnostics": self._diagnostics(diagnostics)})
+        self._checkpoint_save(force=True)
         return ClassUnitComputation(
             self.field,
             proof_status=INCOMPLETE_RESOURCE_LIMIT,
@@ -540,12 +724,13 @@ class ClassUnitGroupEngine:
             stages=self.stages,
             unit_group=unit_group,
             tentative_invariants=invariants,
-            diagnostics=diagnostics,
+            diagnostics=self._diagnostics(diagnostics),
         )
 
     def _specialized(self) -> ClassUnitComputation | None:
-        if self.algorithm == "buchmann-hecke" or self.field.degree() > 3:
+        if self.algorithm != "auto" or self.field.degree() > 3:
             return None
+        started = self._phase_start()
         classes_module = _optional_module("sagejs.number_fields.class_groups")
         units_module = _optional_module("sagejs.number_fields.units")
         if classes_module is None or units_module is None:
@@ -557,12 +742,17 @@ class ClassUnitGroupEngine:
             return None
         if not classes.complete or not units.complete:
             return None
+        self._phase_finish("specialized", started)
         self._stage(
             "specialized",
             "complete",
             class_number=int(classes.order()),
             unit_rank=int(units.unit_rank),
         )
+        self._phase_finish("total", self._started_ns)
+        self._stage("terminal", "complete", class_number=int(classes.order()))
+        self._checkpoint_capture({"diagnostics": self._diagnostics()})
+        self._checkpoint_save(force=True)
         return ClassUnitComputation(
             self.field,
             proof_status=EXACT_UNCONDITIONAL,
@@ -573,11 +763,13 @@ class ClassUnitGroupEngine:
             class_group=classes.group,
             unit_group=units,
             tentative_invariants=classes.invariants(),
+            diagnostics=self._diagnostics(),
         )
 
     def _factor_base(
         self, *, proof: bool, record_stage: bool = True
     ) -> tuple[Any, tuple[Any, ...]]:
+        started = self._phase_start()
         module = self.components.factor_base
         plan = module.factor_base_plan(
             self.order,
@@ -592,6 +784,20 @@ class ClassUnitGroupEngine:
         primes = tuple(_value(record, ("prime_ideal", "ideal")) for record in records)
         if any(prime is None for prime in primes):
             raise TypeError("factor-base records do not expose exact prime ideals")
+        if self.checkpoint_controller is not None:
+            restored = tuple(self.checkpoint_controller.restore_factor_base())
+            if restored:
+                if len(restored) != len(primes) or any(
+                    left != right for left, right in zip(restored, primes, strict=True)
+                ):
+                    raise ValueError(
+                        "the checkpoint factor base differs from the deterministic plan"
+                    )
+                primes = restored
+            else:
+                self._checkpoint_capture({"factor_base": primes})
+        if record_stage:
+            self._phase_finish("factor-base", started)
         if record_stage:
             self._stage(
                 "factor-base",
@@ -603,7 +809,176 @@ class ClassUnitGroupEngine:
             )
         return plan, primes
 
+    def _large_prime_factor(
+        self, quotient: Any, factor_base: tuple[Any, ...], bound: int
+    ) -> Any:
+        """Return the sole bounded outside prime in an integral quotient."""
+        outside = []
+        for prime_ideal, exponent in quotient.factor():
+            if any(prime_ideal == base_prime for base_prime in factor_base):
+                continue
+            outside.append((prime_ideal, int(exponent)))
+        if len(outside) != 1 or outside[0][1] != 1:
+            return None
+        prime_ideal = outside[0][0]
+        norm = prime_ideal.norm()
+        if norm._denominator != 1 or int(norm._numerator) > bound:
+            return None
+        return prime_ideal
+
+    def _combine_partial_witnesses(self, left: Any, right: Any) -> Any:
+        factors = list(left.factors())
+        for element, exponent in right.factors():
+            factors.append((element, -int(exponent)))
+        return self.components.relations.FactoredPrincipalWitness(self.field, factors)
+
+    def _try_large_prime_partial(
+        self,
+        collector: Any,
+        witness: Any,
+        source_ideal: Any,
+        source_row: Sequence[int],
+        provenance: dict[str, Any],
+        large_prime_bound: int,
+    ) -> Any:
+        """Match one exact one-large-prime partial, if available."""
+        principal = witness.principal_ideal(self.order)
+        quotient = principal / source_ideal
+        try:
+            large_prime = self._large_prime_factor(
+                quotient, collector.factor_base, large_prime_bound
+            )
+        except (AttributeError, NotImplementedError, TypeError, ValueError):
+            self._resource_usage["partial_discards"] += 1
+            return None
+        if large_prime is None:
+            self._resource_usage["partial_discards"] += 1
+            return None
+        key = _prime_ideal_key(large_prime)
+        previous = self._partials.pop(key, None)
+        if previous is None:
+            if len(self._partials) >= self.limits.max_partial_relations:
+                self._resource_usage["partial_discards"] += 1
+                return None
+            self._partials[key] = _LargePrimePartial(
+                witness, source_ideal, source_row, provenance
+            )
+            self._resource_usage["partial_relations"] = len(self._partials)
+            return None
+        combined = self._combine_partial_witnesses(previous.witness, witness)
+        combined_source = previous.source_ideal / source_ideal
+        combined_values = []
+        for left, right in zip(previous.source_row, source_row, strict=True):
+            combined_values.append(int(left) - int(right))
+        combined_row = tuple(combined_values)
+        try:
+            admission = collector.admit_witness(
+                combined,
+                source_ideal=combined_source,
+                source_row=combined_row,
+                provenance={
+                    "algorithm": "one-large-prime-match",
+                    "large_prime_norm": int(large_prime.norm()._numerator),
+                    "left": previous.provenance,
+                    "right": provenance,
+                },
+            )
+        except ValueError as error:
+            if "already admitted" not in str(error):
+                raise
+            admission = None
+        self._resource_usage["partial_matches"] += 1
+        self._resource_usage["partial_relations"] = len(self._partials)
+        return admission
+
+    def _relation_ideal(
+        self,
+        search: Any,
+        factor_base: tuple[Any, ...],
+        attempt: int,
+        coefficient_bound: int,
+    ) -> tuple[Any, tuple[int, ...], str]:
+        """Choose a targeted product ideal before falling back to the PRNG."""
+        width = len(factor_base)
+        missing = tuple(search.collector.rank_screen.missing_pivots())
+        row = [0] * width
+        if attempt < width:
+            index = (attempt + (self.seed % width)) % width
+            row[index] = 1
+            strategy = "single-prime-sweep"
+        elif attempt % 3 != 2:
+            target = missing[attempt % len(missing)] if missing else attempt % width
+            row[target] = 1 + ((attempt // max(1, width)) % coefficient_bound)
+            if width > 1:
+                stride = 1 + ((attempt // width) % (width - 1))
+                row[(target + stride) % width] += 1
+            strategy = "targeted-prime-product"
+        else:
+            ideal, random_row = search.random_factor_base_ideal(
+                terms=search.random_terms,
+                max_exponent=min(3, coefficient_bound + 1),
+            )
+            return ideal, random_row, "seeded-random-product"
+        source_row = tuple(row)
+        ideal = self.components.relations.reconstruct_factor_base_ideal(
+            self.order, factor_base, source_row
+        )
+        return ideal, source_row, strategy
+
+    def _search_relation_ideal(
+        self,
+        search: Any,
+        ideal: Any,
+        source_row: Sequence[int],
+        provenance: dict[str, Any],
+        large_prime_bound: int,
+        stop_after: int = 2,
+    ) -> int:
+        """Search one ideal while retaining bounded exact partial relations."""
+        search.state.ideals_tested += 1
+        admitted = 0
+        for sequence, element in enumerate(search.short_elements(ideal)):
+            self._check_cancelled()
+            search.state.candidates_tested += 1
+            candidate_provenance = {
+                "algorithm": "exact-coefficient-lll",
+                "seed": search.state.seed,
+                "ideal_sequence": search.state.ideals_tested - 1,
+                "candidate_sequence": sequence,
+            }
+            candidate_provenance.update(provenance)
+            witness = self.components.relations.FactoredPrincipalWitness.from_element(
+                element
+            )
+            try:
+                admission = search.collector.admit_witness(
+                    witness,
+                    source_ideal=ideal,
+                    source_row=source_row,
+                    provenance=candidate_provenance,
+                )
+            except self.components.relations.RelationNotSmoothError:
+                admission = self._try_large_prime_partial(
+                    search.collector,
+                    witness,
+                    ideal,
+                    source_row,
+                    candidate_provenance,
+                    large_prime_bound,
+                )
+            except ValueError as error:
+                if "already admitted" not in str(error):
+                    raise
+                admission = None
+            if admission is not None:
+                admitted += 1
+                search.state.relations_admitted += 1
+                if admitted >= stop_after:
+                    break
+        return admitted
+
     def _unconditional_proof_pass(self, group: Any) -> tuple[Any, ...]:
+        started = self._phase_start()
         plan, proof_primes = self._factor_base(proof=True, record_stage=False)
         if tuple(plan.assumptions):
             raise ArithmeticError("the Minkowski proof pass recorded an assumption")
@@ -629,6 +1004,10 @@ class ClassUnitGroupEngine:
                     "witness": witness.to_dict(),
                 }
             )
+            self._emit_progress(
+                "proof-prime", completed=index + 1, total=len(proof_primes)
+            )
+        self._phase_finish("unconditional-proof", started)
         self._stage(
             "unconditional-proof",
             "complete",
@@ -641,25 +1020,37 @@ class ClassUnitGroupEngine:
     def _relations(
         self, factor_base: tuple[Any, ...], unit_rank: int
     ) -> tuple[Any, Any]:
+        started = self._phase_start()
         relations = self.components.relations
         matrix_module = self.components.matrix
         collector = relations.ExactRelationCollector(self.order, factor_base)
-        relations.initial_rational_prime_relations(collector)
-        attempts = 0
+        restored_relations = ()
+        restored_state = None
+        if self.checkpoint_controller is not None:
+            restored_relations = tuple(self.checkpoint_controller.restore_relations())
+            restored_state = self.checkpoint_controller.restore_search_state()
+        for record in restored_relations:
+            collector.add_relation(record)
+        if not restored_relations:
+            relations.initial_rational_prime_relations(collector)
+            self._checkpoint_capture({"relations": tuple(collector.records)})
+        if isinstance(restored_state, dict):
+            restored_state = relations.RelationSearchState.from_dict(restored_state)
         presentation = matrix_module.extract_relation_presentation(
             [record.row for record in collector.records],
             len(factor_base),
             require_full_rank=False,
         )
         coefficient_bound = 1
-        batch = 4
         search = relations.LLLRelationSearch(
             collector,
             seed=self.seed,
             max_candidates_per_ideal=min(8, self.limits.max_candidates_per_ideal),
             random_terms=min(3, self.limits.max_random_terms),
             coefficient_bound=coefficient_bound,
+            state=restored_state,
         )
+        attempts = int(search.state.ideals_tested)
         # One accepted relation can require seconds of exact ideal arithmetic,
         # so recompute the tiny presentation after each success.  Degree-many
         # redundant dependencies are nevertheless important: the first full
@@ -667,15 +1058,33 @@ class ClassUnitGroupEngine:
         # and the extra exact relations are what saturate both lattices before
         # the analytic index-one check.
         dependency_target = unit_rank + max(2, int(self.field.degree()))
+        unit_log_rank = self._unit_logarithmic_rank(
+            collector.records, presentation, unit_rank
+        )
+        self._relation_unit_log_rank = unit_log_rank
+        self._resource_usage.update(
+            {
+                "relation_attempts": attempts,
+                "relation_candidates": int(search.state.candidates_tested),
+                "ideals_tested": int(search.state.ideals_tested),
+                "relations": len(collector.records),
+                "unit_log_rank": unit_log_rank,
+                "unit_rank_target": unit_rank,
+            }
+        )
+        factor_norms = [int(prime.norm()._numerator) for prime in factor_base]
+        largest_factor_norm = max(factor_norms) if factor_norms else 2
+        large_prime_bound = (
+            largest_factor_norm * self.limits.large_prime_bound_multiplier
+        )
         while (
             presentation.rank < len(factor_base)
             or len(presentation.dependency_transforms) < dependency_target
+            or unit_log_rank < unit_rank
         ):
             self._check_cancelled()
             if attempts >= self.limits.max_relation_attempts:
                 break
-            remaining = self.limits.max_relation_attempts - attempts
-            count = min(batch, remaining)
             search.max_candidates_per_ideal = min(
                 self.limits.max_candidates_per_ideal,
                 8 * coefficient_bound,
@@ -684,39 +1093,108 @@ class ClassUnitGroupEngine:
                 self.limits.max_random_terms, 2 + coefficient_bound
             )
             search.coefficient_bound = coefficient_bound
-            for _attempt in range(count):
-                try:
-                    search.search_random_ideals(
-                        1,
-                        terms=search.random_terms,
-                        max_exponent=min(3, coefficient_bound + 1),
-                        stop_after_per_ideal=2,
-                    )
-                except ValueError as error:
-                    if "already admitted" not in str(error):
-                        raise
-            attempts += count
+            ideal, source_row, strategy = self._relation_ideal(
+                search, factor_base, attempts, coefficient_bound
+            )
+            before = len(collector.records)
+            self._search_relation_ideal(
+                search,
+                ideal,
+                source_row,
+                {
+                    "relation_attempt": attempts,
+                    "ideal_strategy": strategy,
+                },
+                large_prime_bound,
+            )
+            attempts += 1
             if len(collector.records) > self.limits.max_relations:
                 raise ValueError("exact relation count exceeds max_relations")
-            presentation = matrix_module.extract_relation_presentation(
-                [record.row for record in collector.records],
-                len(factor_base),
-                require_full_rank=False,
-            )
+            if len(collector.records) != before:
+                presentation = matrix_module.extract_relation_presentation(
+                    [record.row for record in collector.records],
+                    len(factor_base),
+                    require_full_rank=False,
+                )
+                unit_log_rank = self._unit_logarithmic_rank(
+                    collector.records, presentation, unit_rank
+                )
+                self._relation_unit_log_rank = unit_log_rank
             coefficient_bound = min(
-                self.limits.max_coefficient_bound, coefficient_bound + 1
+                self.limits.max_coefficient_bound,
+                1 + attempts // max(1, len(factor_base)),
             )
-            batch = min(64, 2 * batch)
+            self._resource_usage.update(
+                {
+                    "relation_attempts": attempts,
+                    "relation_candidates": int(search.state.candidates_tested),
+                    "ideals_tested": int(search.state.ideals_tested),
+                    "relations": len(collector.records),
+                    "partial_relations": len(self._partials),
+                    "unit_log_rank": unit_log_rank,
+                    "unit_rank_target": unit_rank,
+                }
+            )
+            if len(collector.records) != before:
+                for record in collector.records[before:]:
+                    self._checkpoint_capture({"relation": record})
+            self._checkpoint_capture(
+                {
+                    "search_state": search.state,
+                    "matrix_state": presentation,
+                }
+            )
+            if attempts % 8 == 0:
+                self._checkpoint_save(force=False)
+            self._emit_progress(
+                "relation-search",
+                attempt=attempts,
+                strategy=strategy,
+                rank=int(presentation.rank),
+                columns=len(factor_base),
+                dependencies=len(presentation.dependency_transforms),
+                unit_log_rank=unit_log_rank,
+                unit_rank_target=unit_rank,
+                search_state=search.state.to_dict(),
+            )
+        self._phase_finish("relations", started)
+        search_complete = (
+            presentation.rank == len(factor_base)
+            and len(presentation.dependency_transforms) >= dependency_target
+            and unit_log_rank >= unit_rank
+        )
         self._stage(
             "relations",
-            "complete" if presentation.rank == len(factor_base) else "bounded",
+            "complete" if search_complete else "bounded",
             attempts=attempts,
             relations=len(collector.records),
             rank=int(presentation.rank),
             columns=len(factor_base),
             dependencies=len(presentation.dependency_transforms),
+            dependency_target=dependency_target,
+            unit_log_rank=unit_log_rank,
+            unit_rank_target=unit_rank,
+            candidates=int(search.state.candidates_tested),
+            ideals=int(search.state.ideals_tested),
+            partials_retained=len(self._partials),
+            partial_matches=int(self._resource_usage["partial_matches"]),
+            partial_discards=int(self._resource_usage["partial_discards"]),
+            large_prime_bound=large_prime_bound,
+            search_state=search.state.to_dict(),
         )
         return collector, presentation
+
+    def _unit_logarithmic_rank(
+        self, records: Sequence[Any], presentation: Any, unit_rank: int
+    ) -> int:
+        """Return the observed archimedean rank of exact dependency units."""
+        if unit_rank == 0:
+            return 0
+        logarithms = []
+        for dependency in presentation.dependency_transforms:
+            unit = self._combine(records, dependency)
+            logarithms.append(list(unit.archimedean_logarithms(80)[:-1]))
+        return min(unit_rank, _floating_matrix_rank(logarithms))
 
     def _decode_relation_witness(self, record: Any) -> Any:
         return self.components.relations.FactoredPrincipalWitness.from_dict(
@@ -740,7 +1218,10 @@ class ClassUnitGroupEngine:
     def _independent_units(
         self, records: Sequence[Any], presentation: Any, unit_rank: int
     ) -> tuple[Any, ...]:
+        started = self._phase_start()
         if unit_rank == 0:
+            self._phase_finish("unit-recovery", started)
+            self._stage("unit-recovery", "complete", rank=0, candidates=0)
             return ()
         if not presentation.verify():
             raise ArithmeticError("the relation presentation failed exact replay")
@@ -773,17 +1254,32 @@ class ClassUnitGroupEngine:
                 best = indices
                 best_volume = volume
         if not best:
+            self._phase_finish("unit-recovery", started)
+            self._stage(
+                "unit-recovery",
+                "bounded",
+                rank=unit_rank,
+                candidates=len(candidates),
+            )
             return ()
         units = tuple(candidates[index] for index in best)
         one = self.order.ideal(1)
         for unit in units:
             if unit.principal_ideal(self.order) != one:
                 raise ArithmeticError("a relation dependency is not an exact unit")
+        self._phase_finish("unit-recovery", started)
+        self._stage(
+            "unit-recovery",
+            "complete",
+            rank=unit_rank,
+            candidates=len(candidates),
+        )
         return units
 
     def _analytic_index(
         self, presentation: Any, units: tuple[Any, ...], unit_rank: int
     ) -> tuple[Any, Any, Any]:
+        started = self._phase_start()
         analytic = self.components.analytic
         if len(units) != unit_rank:
             raise ArithmeticError(
@@ -819,6 +1315,7 @@ class ClassUnitGroupEngine:
             zeta_log_residue=zeta,
             precision_bits=self.limits.precision_bits,
         )
+        self._phase_finish("analytic-index", started)
         self._stage(
             "analytic-index",
             "complete" if index.index_one else "bounded",
@@ -837,6 +1334,7 @@ class ClassUnitGroupEngine:
         proof_status: str,
         theorem: str,
     ) -> _EngineClassGroup:
+        started = self._phase_start()
         positions = tuple(presentation.invariant_positions)
         generator_rows = tuple(
             tuple(int(value) for value in presentation.smith_right_inverse[position])
@@ -869,6 +1367,12 @@ class ClassUnitGroupEngine:
         )
         if not group.verify():
             raise ArithmeticError("class-group ideal maps failed exact replay")
+        self._phase_finish("class-group", started)
+        self._stage(
+            "class-group",
+            "complete",
+            invariants=tuple(int(value) for value in presentation.invariants),
+        )
         return group
 
     def run(self) -> ClassUnitComputation:
@@ -888,13 +1392,24 @@ class ClassUnitGroupEngine:
             # Relation discovery uses the much smaller BDF factor base.  A
             # proof=True request is upgraded afterward by expressing every
             # Minkowski-required prime ideal in this exact presentation.
-            plan, factor_base = self._factor_base(proof=False)
+            discovery_proof = self.algorithm == "minkowski"
+            plan, factor_base = self._factor_base(proof=discovery_proof)
             collector, presentation = self._relations(factor_base, unit_rank)
             if presentation.rank != len(factor_base) or presentation.order is None:
                 return self._incomplete(
                     "relation search exhausted before full rank",
                     invariants=presentation.invariants,
                     diagnostics={"relations": len(collector.records)},
+                )
+            if self._relation_unit_log_rank < unit_rank:
+                return self._incomplete(
+                    "relation search exhausted before full logarithmic unit rank",
+                    invariants=presentation.invariants,
+                    diagnostics={
+                        "relations": len(collector.records),
+                        "unit_log_rank": self._relation_unit_log_rank,
+                        "unit_rank_target": unit_rank,
+                    },
                 )
             units = self._independent_units(collector.records, presentation, unit_rank)
             torsion, regulator, index = self._analytic_index(
@@ -915,18 +1430,24 @@ class ClassUnitGroupEngine:
                     invariants=presentation.invariants,
                     unit_group=unit_group,
                 )
-            if not tuple(plan.assumptions):
+            conditional_discovery = bool(tuple(plan.assumptions))
+            if not conditional_discovery and not discovery_proof:
                 raise ArithmeticError("a conditional run did not record its assumption")
+            initial_proof_status = (
+                EXACT_RELATIONS_CONDITIONAL_GRH
+                if conditional_discovery
+                else EXACT_UNCONDITIONAL
+            )
             group = self._class_group(
                 factor_base,
                 collector,
                 presentation,
-                EXACT_RELATIONS_CONDITIONAL_GRH,
+                initial_proof_status,
                 str(plan.theorem),
             )
             proof_records: tuple[Any, ...] = ()
-            proof_status = EXACT_RELATIONS_CONDITIONAL_GRH
-            if self.proof:
+            proof_status = initial_proof_status
+            if self.proof or discovery_proof:
                 proof_records = self._unconditional_proof_pass(group)
                 proof_status = EXACT_UNCONDITIONAL
                 group.proof_status = proof_status
@@ -939,8 +1460,20 @@ class ClassUnitGroupEngine:
                 minkowski_primes=len(proof_records),
                 exact_relations=len(collector.records),
             )
+            self._phase_finish("total", self._started_ns)
             self._stage("terminal", "complete", class_number=group.order())
-            return ClassUnitComputation(
+            self._checkpoint_capture(
+                {
+                    "matrix_state": presentation,
+                    "proof_progress": {
+                        "proof_status": proof_status,
+                        "unconditional_prime_records": proof_records,
+                    },
+                    "diagnostics": self._diagnostics(),
+                }
+            )
+            self._checkpoint_save(force=True)
+            result = ClassUnitComputation(
                 self.field,
                 proof_status=proof_status,
                 complete=True,
@@ -950,16 +1483,25 @@ class ClassUnitGroupEngine:
                 class_group=group,
                 unit_group=unit_group,
                 tentative_invariants=presentation.invariants,
-                diagnostics={
-                    "factor_base_bound": int(plan.bound),
-                    "factor_base_size": len(factor_base),
-                    "relations": len(collector.records),
-                    "unconditional_prime_records": proof_records,
-                },
+                diagnostics=self._diagnostics(
+                    {
+                        "factor_base_bound": int(plan.bound),
+                        "factor_base_size": len(factor_base),
+                        "relations": len(collector.records),
+                        "unconditional_prime_records": proof_records,
+                    }
+                ),
             )
+            return result
         except RuntimeError as error:
-            if str(error) == "class/unit computation cancelled":
-                return self._incomplete(str(error))
+            if _is_cancellation(error):
+                return self._incomplete(
+                    "class/unit computation cancelled",
+                    diagnostics={
+                        "cancelled_stage": getattr(error, "stage", ""),
+                        "cancelled_details": getattr(error, "details", None),
+                    },
+                )
             raise
         except (ImportError, TypeError, ValueError, ArithmeticError) as error:
             return self._incomplete(str(error))
@@ -988,6 +1530,44 @@ def _index_combinations(count: int, size: int) -> Iterable[tuple[int, ...]]:
         indices[position] += 1
         for index in range(position + 1, size):
             indices[index] = indices[index - 1] + 1
+
+
+def _floating_matrix_rank(rows: Sequence[Sequence[Any]]) -> int:
+    """Estimate row rank after scale normalization for search steering only."""
+    if not rows:
+        return 0
+    width = len(rows[0])
+    matrix = []
+    for row in rows:
+        if len(row) != width:
+            raise ValueError("logarithm rows have inconsistent widths")
+        values = [_floating_value(value) for value in row]
+        scale = 0.0
+        for value in values:
+            scale = max(scale, abs(value))
+        if scale > 1e-14:
+            matrix.append([value / scale for value in values])
+    rank = 0
+    for column in range(width):
+        pivot = None
+        pivot_size = 0.0
+        for row_index in range(rank, len(matrix)):
+            candidate_size = abs(matrix[row_index][column])
+            if candidate_size > pivot_size:
+                pivot = row_index
+                pivot_size = candidate_size
+        if pivot is None or abs(matrix[pivot][column]) <= 1e-10:
+            continue
+        matrix[rank], matrix[pivot] = matrix[pivot], matrix[rank]
+        pivot_value = matrix[rank][column]
+        for row_index in range(rank + 1, len(matrix)):
+            multiple = matrix[row_index][column] / pivot_value
+            for index in range(column, width):
+                matrix[row_index][index] -= multiple * matrix[rank][index]
+        rank += 1
+        if rank == len(matrix):
+            break
+    return rank
 
 
 def _floating_determinant_absolute(rows: Sequence[Sequence[Any]]) -> float:
@@ -1022,6 +1602,11 @@ def compute_class_unit_group(
     limits: ClassUnitEngineLimits | None = None,
     seed: int = 0,
     cancelled: Callable[[], bool] | None = None,
+    progress: Callable[[dict[str, Any]], None] | None = None,
+    checkpoint: Any = None,
+    resume_from: Any = None,
+    checkpoint_controller: Any = None,
+    max_checkpoint_bytes: int | None = None,
     components: Any = None,
 ) -> ClassUnitComputation:
     """Run one deterministic shared class-and-unit computation."""
@@ -1032,14 +1617,19 @@ def compute_class_unit_group(
         limits=limits,
         seed=seed,
         cancelled=cancelled,
+        progress=progress,
+        checkpoint=checkpoint,
+        resume_from=resume_from,
+        checkpoint_controller=checkpoint_controller,
+        max_checkpoint_bytes=max_checkpoint_bytes,
         components=components,
     )
     try:
         return engine.run()
     except RuntimeError as error:
-        if str(error) != "class/unit computation cancelled":
+        if not _is_cancellation(error):
             raise
-        return engine._incomplete(str(error))
+        return engine._incomplete("class/unit computation cancelled")
 
 
 class_unit_group = compute_class_unit_group
@@ -1053,6 +1643,11 @@ def class_unit_context(
     limits: ClassUnitEngineLimits | None = None,
     seed: int = 0,
     cancelled: Callable[[], bool] | None = None,
+    progress: Callable[[dict[str, Any]], None] | None = None,
+    checkpoint: Any = None,
+    resume_from: Any = None,
+    checkpoint_controller: Any = None,
+    max_checkpoint_bytes: int | None = None,
     components: Any = None,
     **limit_overrides: Any,
 ) -> ClassUnitComputation:
@@ -1065,7 +1660,14 @@ def class_unit_context(
     if selected_limits is None:
         selected_limits = ClassUnitEngineLimits()
     proof_value = True if proof is None else bool(proof)
-    use_cache = cancelled is None and components is None
+    use_cache = (
+        cancelled is None
+        and progress is None
+        and checkpoint is None
+        and resume_from is None
+        and checkpoint_controller is None
+        and components is None
+    )
     cache_key = (
         proof_value,
         algorithm,
@@ -1082,6 +1684,11 @@ def class_unit_context(
         limits=selected_limits,
         seed=seed,
         cancelled=cancelled,
+        progress=progress,
+        checkpoint=checkpoint,
+        resume_from=resume_from,
+        checkpoint_controller=checkpoint_controller,
+        max_checkpoint_bytes=max_checkpoint_bytes,
         components=components,
     )
     if use_cache:
@@ -1097,24 +1704,64 @@ def class_group(
     proof: bool | None = None,
     names: str = "c",
     algorithm: str = "auto",
+    *,
+    cancelled: Callable[[], bool] | None = None,
+    progress: Callable[[dict[str, Any]], None] | None = None,
+    checkpoint: Any = None,
+    resume_from: Any = None,
+    checkpoint_controller: Any = None,
+    max_checkpoint_bytes: int | None = None,
     **limits: Any,
 ) -> Any:
     """Return the proved ordinary ideal class group of `field`."""
     del names
-    return class_unit_context(
-        field, proof=proof, algorithm=algorithm, **limits
-    ).class_group()
+    result = class_unit_context(
+        field,
+        proof=proof,
+        algorithm=algorithm,
+        cancelled=cancelled,
+        progress=progress,
+        checkpoint=checkpoint,
+        resume_from=resume_from,
+        checkpoint_controller=checkpoint_controller,
+        max_checkpoint_bytes=max_checkpoint_bytes,
+        **limits,
+    )
+    try:
+        maps = __import__(
+            "sagejs.number_fields.class_group_maps", fromlist=["class_group_maps"]
+        )
+        adapter = maps.class_group_from_engine_result
+        return adapter(result)
+    except (ImportError, AttributeError, TypeError):
+        return result.class_group()
 
 
 def class_number(
     field: Any,
     proof: bool | None = None,
     algorithm: str = "auto",
+    *,
+    cancelled: Callable[[], bool] | None = None,
+    progress: Callable[[dict[str, Any]], None] | None = None,
+    checkpoint: Any = None,
+    resume_from: Any = None,
+    checkpoint_controller: Any = None,
+    max_checkpoint_bytes: int | None = None,
     **limits: Any,
 ) -> int:
     """Return the proved ordinary class number of `field`."""
     return class_unit_context(
-        field, proof=proof, algorithm=algorithm, **limits
+        field,
+        proof=proof,
+        algorithm=algorithm,
+        cancelled=cancelled,
+        progress=progress,
+        checkpoint=checkpoint,
+        resume_from=resume_from,
+        checkpoint_controller=checkpoint_controller,
+        max_checkpoint_bytes=max_checkpoint_bytes,
+        **limits,
     ).class_number()
 
 
@@ -1122,10 +1769,28 @@ def unit_group(
     field: Any,
     proof: bool | None = None,
     algorithm: str = "auto",
+    *,
+    cancelled: Callable[[], bool] | None = None,
+    progress: Callable[[dict[str, Any]], None] | None = None,
+    checkpoint: Any = None,
+    resume_from: Any = None,
+    checkpoint_controller: Any = None,
+    max_checkpoint_bytes: int | None = None,
     **limits: Any,
 ) -> Any:
     """Return the complete ordinary unit group computation for `field`."""
-    result = class_unit_context(field, proof=proof, algorithm=algorithm, **limits)
+    result = class_unit_context(
+        field,
+        proof=proof,
+        algorithm=algorithm,
+        cancelled=cancelled,
+        progress=progress,
+        checkpoint=checkpoint,
+        resume_from=resume_from,
+        checkpoint_controller=checkpoint_controller,
+        max_checkpoint_bytes=max_checkpoint_bytes,
+        **limits,
+    )
     unit_result = result.unit_group()
     if not unit_result.complete:
         raise ValueError("the unit subgroup has not been proved complete")
@@ -1136,10 +1801,28 @@ def units(
     field: Any,
     proof: bool | None = None,
     algorithm: str = "auto",
+    *,
+    cancelled: Callable[[], bool] | None = None,
+    progress: Callable[[dict[str, Any]], None] | None = None,
+    checkpoint: Any = None,
+    resume_from: Any = None,
+    checkpoint_controller: Any = None,
+    max_checkpoint_bytes: int | None = None,
     **limits: Any,
 ) -> tuple[Any, ...]:
     """Return exact free unit generators for `field`."""
-    result = unit_group(field, proof, algorithm, **limits)
+    result = unit_group(
+        field,
+        proof,
+        algorithm,
+        cancelled=cancelled,
+        progress=progress,
+        checkpoint=checkpoint,
+        resume_from=resume_from,
+        checkpoint_controller=checkpoint_controller,
+        max_checkpoint_bytes=max_checkpoint_bytes,
+        **limits,
+    )
     return tuple(_value(result, ("generators", "gens"), ()))
 
 
@@ -1148,11 +1831,29 @@ def regulator(
     prec: int = 53,
     proof: bool | None = None,
     algorithm: str = "auto",
+    *,
+    cancelled: Callable[[], bool] | None = None,
+    progress: Callable[[dict[str, Any]], None] | None = None,
+    checkpoint: Any = None,
+    resume_from: Any = None,
+    checkpoint_controller: Any = None,
+    max_checkpoint_bytes: int | None = None,
     **limits: Any,
 ) -> Any:
     """Return the regulator result under a requested `prec`-bit policy."""
     precision = _positive(prec, "regulator precision")
-    result = class_unit_context(field, proof=proof, algorithm=algorithm, **limits)
+    result = class_unit_context(
+        field,
+        proof=proof,
+        algorithm=algorithm,
+        cancelled=cancelled,
+        progress=progress,
+        checkpoint=checkpoint,
+        resume_from=resume_from,
+        checkpoint_controller=checkpoint_controller,
+        max_checkpoint_bytes=max_checkpoint_bytes,
+        **limits,
+    )
     current = result.regulator()
     if int(current.precision_bits) >= precision:
         return current

@@ -305,18 +305,18 @@
       "id": "general-class-groups",
       "area": "Algebraic number theory",
       "feature": "General class and unit groups",
-      "state": "planned",
-      "quality": "planned",
+      "state": "available",
+      "quality": "certified",
       "coverage": {
-        "level": "planned",
-        "label": "General certified class and unit groups",
-        "summary": "This is the major missing layer beyond quadratic fields; the prerequisite order and ideal machinery is under active construction.",
-        "includes": ["relation collection", "factor bases", "analytic bounds", "relation saturation", "class-group structure", "unit groups", "regulators", "proof and heuristic modes"]
+        "level": "substantial",
+        "label": "Certified general class and unit groups",
+        "summary": "Absolute fields over QQ have coupled class/unit contexts with exact relations, conditional-GRH and unconditional completion, ideal maps, factored units, and rigorous regulator enclosures within explicit resource limits.",
+        "includes": ["class_unit_group() and projections", "relation collection and factor bases", "conditional-GRH and unconditional proof states", "ideal class maps and principality witnesses", "factored units", "rigorous regulator enclosures", "resource limits and authenticated checkpoints"]
       },
-      "summary": "Beyond quadratic fields, complete class groups and unit groups remain a major gap.",
-      "implementation": "The required order and ideal-lattice substrate is being built first.",
-      "evidence": "Tracked as a foundational research milestone, with PARI, Magma, Hecke, and Oscar as comparison systems.",
-      "target": "Certified relation collection, analytic bounds, saturation, units, and proof modes.",
+      "summary": "General absolute number fields support certified class groups, exact ideal maps, complete unit groups, and regulator enclosures.",
+      "implementation": "Deterministic Python orchestration over exact maximal-order, ideal, matrix, FLINT/Arb, relation, saturation, and analytic-index components.",
+      "evidence": "Public quadratic and quintic acceptance tests plus a committed 16-field normalized Sage/PARI and Magma oracle corpus.",
+      "target": "Expand scale frontiers, hard-case relation search, and cross-platform performance evidence without weakening proof labels.",
       "priority": "now"
     },
     {
