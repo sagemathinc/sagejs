@@ -2282,7 +2282,7 @@ class NumberFieldParent(sage.Parent):
                     )
                 )
             elif self.degree() == 2 and signature[0] == 0 and signature[1] == 1:
-                if limits:
+                if len(limits) != 0:
                     raise TypeError(
                         "imaginary quadratic units do not accept resource limits"
                     )
@@ -2306,7 +2306,7 @@ class NumberFieldParent(sage.Parent):
                 self, algorithm=algorithm, **limits
             )
         if self.degree() == 2 and signature[0] == 0 and signature[1] == 1:
-            if limits:
+            if len(limits) != 0:
                 raise TypeError(
                     "imaginary quadratic units do not accept resource limits"
                 )
@@ -2501,7 +2501,7 @@ class NumberFieldParent(sage.Parent):
                 if signature[0] == 2 and signature[1] == 0:
                     backend = self._real_quadratic_backend(algorithm, **limits)
                 else:
-                    if limits:
+                    if len(limits) != 0:
                         raise TypeError(
                             "imaginary quadratic forms do not accept resource limits"
                         )
@@ -2533,7 +2533,7 @@ class NumberFieldParent(sage.Parent):
             signature = self.signature()
             if signature[0] == 2 and signature[1] == 0:
                 return int(self._real_quadratic_backend(algorithm, **limits).order())
-            if limits:
+            if len(limits) != 0:
                 raise TypeError(
                     "imaginary quadratic forms do not accept resource limits"
                 )
