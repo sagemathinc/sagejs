@@ -460,6 +460,13 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
     const worker = new URL("./sw.js", location.href);
     worker.searchParams.set("release", manifest.release);
     if (fetchCredentials === "same-origin") worker.searchParams.set("cocalc-preview", "1");
-    await navigator.serviceWorker.register(worker, { scope: "./" });
+    let reloadingForUpdate = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloadingForUpdate) return;
+      reloadingForUpdate = true;
+      location.reload();
+    });
+    const registration = await navigator.serviceWorker.register(worker, { scope: "./" });
+    await registration.update();
   })().catch((error) => setLive(`Offline cache unavailable: ${error.message}`)));
 }

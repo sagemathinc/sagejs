@@ -142,6 +142,7 @@ self.addEventListener("install", (event) => {
       const request = new Request(url, { credentials: FETCH_CREDENTIALS });
       await cacheVerified(cache, request, await fetchAndVerify(request, record));
     }
+    await self.skipWaiting();
   })());
 });
 
