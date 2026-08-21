@@ -17,6 +17,8 @@
     "packages/flint-wasm/test/capability-dispatch-trace.test.mjs",
     "packages/flint-wasm/test/evaluator-host.test.mjs",
     "packages/flint-wasm/test/production-receipt.test.cjs",
+    "test/node-test-manifest.cjs",
+    "test/wasm-kernel-route-instrumentation.cjs",
     "tools/native-kernel/wasm-pack-loader.mjs",
     "tools/native-kernel/test/wasm-pack-loader.cjs"
   ],

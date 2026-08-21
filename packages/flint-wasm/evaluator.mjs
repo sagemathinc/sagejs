@@ -5,7 +5,10 @@ import {
   createPrecompiledDynamicCompiler,
 } from "./dynamic-compiler.mjs";
 import { createWasiHost } from "./dist/wasi-runtime.mjs";
-import { instantiateWasmKernelPacks } from "./dist/wasm-pack-loader.mjs";
+import {
+  instantiateWasmKernelPacks,
+  instrumentAuthenticatedWasmKernelResolver,
+} from "./dist/wasm-pack-loader.mjs";
 import {
   fetchLazyModuleBundle,
   installLazyModuleLoader,
@@ -77,29 +80,6 @@ function supportsSynchronousCompilerWorker() {
   );
 }
 
-const KERNEL_CAPABILITY_BY_SOURCE = new Map([
-  [
-    "sagejs/number_fields/field_analysis_resource.py",
-    "kernel:field-analysis-fixed-point-checker-production",
-  ],
-  [
-    "sagejs/number_fields/om_maxmin.py",
-    "kernel:number-field-om-proof-production",
-  ],
-  [
-    "sagejs/number_fields/round4_state_kernel.py",
-    "kernel:number-field-round4-state-production",
-  ],
-  [
-    "sagejs/number_fields/composite_field_analysis.py",
-    "kernel:number-field-composite-analysis-production",
-  ],
-  [
-    "sagejs/number_fields/zeta_coefficient_kernel.py",
-    "kernel:number-field-zeta-coefficients-production",
-  ],
-]);
-
 function transportByteLength(value) {
   if (ArrayBuffer.isView(value)) return value.byteLength;
   if (value instanceof ArrayBuffer) return value.byteLength;
@@ -109,41 +89,19 @@ function transportByteLength(value) {
 }
 
 export function instrumentWasmNativeResolver(resolver, trace) {
-  const wrapped = new WeakMap();
-  const instrument = (logicalSource, candidate) => {
-    const capabilityId = KERNEL_CAPABILITY_BY_SOURCE.get(logicalSource);
-    if (capabilityId === undefined || typeof candidate !== "function") return candidate;
-    let result = wrapped.get(candidate);
-    if (result) return result;
-    result = new Proxy(candidate, {
-      apply(target, thisArgument, arguments_) {
-        const value = Reflect.apply(target, thisArgument, arguments_);
-        trace.record(capabilityId, "receipt-backed-wasm-artifact", {
-          executionTarget: "wasm-artifact",
-          ingressBytes: arguments_.reduce(
-            (total, argument) => total + transportByteLength(argument),
-            0,
-          ),
-          egressBytes: transportByteLength(value),
-        });
-        return value;
-      },
-    });
-    wrapped.set(candidate, result);
-    return result;
-  };
-  return Object.freeze({
-    ...resolver,
-    resolve(logicalSource, name, expected) {
-      return instrument(
-        logicalSource,
-        resolver.resolve(logicalSource, name, expected),
-      );
+  return instrumentAuthenticatedWasmKernelResolver(
+    resolver,
+    (capabilityId, arguments_, value) => {
+      trace.record(capabilityId, "receipt-backed-wasm-artifact", {
+        executionTarget: "wasm-artifact",
+        ingressBytes: arguments_.reduce(
+          (total, argument) => total + transportByteLength(argument),
+          0,
+        ),
+        egressBytes: transportByteLength(value),
+      });
     },
-    function(logicalSource, name) {
-      return instrument(logicalSource, resolver.function(logicalSource, name));
-    },
-  });
+  );
 }
 
 function preservePythonCallableMetadata(wrapper, original) {
