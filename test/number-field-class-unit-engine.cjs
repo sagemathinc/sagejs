@@ -260,6 +260,45 @@ print("observable")
   assert.equal(output, "observable");
 });
 
+test("saturation diagnostics never duplicate the authenticated proof payload", () => {
+  const output = run(String.raw`
+class FakeCertificate:
+    def workspace_diagnostics(self):
+        return {
+            "provider_calls": 7,
+            "regulator_cache_hits": 3,
+            "finite_term_cache_hits": 4,
+            "certificate_construction_calls": 1,
+            "certificate_replay_calls": 2,
+            "unbounded_provenance": "x" * 1000000,
+        }
+
+class HugeProofRecord:
+    complete = True
+    rigorous = True
+    index_bound = 2
+    remaining_index_bound = 1
+    content_sha256 = "a" * 64
+    _analytic_certificate = FakeCertificate()
+    def to_dict(self):
+        raise AssertionError("diagnostics serialized the full proof payload")
+
+summary = _saturation_diagnostic_summary(HugeProofRecord())
+encoded = json.dumps(summary, sort_keys=True)
+assert len(encoded.encode("utf-8")) < 1024
+assert summary["schema"] == (
+    "sagejs.number-fields/class-unit-saturation-summary-v1"
+)
+assert summary["status"] == "complete"
+assert summary["index_bound"] == 2
+assert summary["remaining_index_bound"] == 1
+assert summary["content_sha256"] == "a" * 64
+assert "unbounded_provenance" not in summary["certificate_workspace"]
+print("compact-saturation-diagnostics")
+`);
+  assert.equal(output, "compact-saturation-diagnostics");
+});
+
 test("one-large-prime partials combine through exact relation replay", () => {
   const output = run(String.raw`
 relations = __import__(
