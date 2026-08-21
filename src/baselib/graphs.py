@@ -27,6 +27,11 @@ _graph_native_state = {"attempted": False, "backend": None}
 # Above it, the old traversal's repeated full-edge scans are a measured hot
 # loop and the packed O(V + E) kernel is the normal route.
 _PACKED_COMPONENTS_MIN_EDGE_SCANS = 100000
+_PACKED_SHORTEST_PATHS_MIN_EDGE_SCANS = 100000
+_PACKED_SHORTEST_PATHS_MAX_VERTICES = 250000
+_PACKED_SHORTEST_PATHS_MAX_EDGE_ENTRIES = 2000000
+_PACKED_ALL_PAIRS_MAX_VERTICES = 2048
+_PACKED_ALL_PAIRS_MAX_EDGE_ENTRIES = 4000000
 
 
 class _GraphPositiveInfinity:
@@ -92,6 +97,21 @@ def _packed_components_modules() -> tuple[Any, Any]:
             loader,
             runtime.undefined,
             ["sagejs.kernels.graph.components"],
+        ),
+    )
+
+
+def _packed_shortest_paths_modules() -> tuple[Any, Any]:
+    """Load packed unweighted-distance kernels only for a heavy request."""
+    loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
+    if loader is runtime.undefined:
+        raise RuntimeError("the packed graph shortest-path loader is unavailable")
+    return (
+        runtime.reflect.apply(loader, runtime.undefined, ["sagejs.native"]),
+        runtime.reflect.apply(
+            loader,
+            runtime.undefined,
+            ["sagejs.kernels.graph.shortest_paths"],
         ),
     )
 
@@ -686,6 +706,15 @@ class GenericGraph:
         self._name = name
         self._pos = pos
         self._last_components_acceleration = _native_record(
+            route="not-run",
+            reason="not-run",
+            boundaryCrossings=0,
+            copiedValues=0,
+            vertices=0,
+            edges=0,
+        )
+        self._last_shortest_paths_acceleration = _native_record(
+            operation="not-run",
             route="not-run",
             reason="not-run",
             boundaryCrossings=0,
@@ -1551,6 +1580,7 @@ class GenericGraph:
         return self.order() == 0 or len(self.connected_components()) == 1
 
     def _shortest_index_data(self, source: int) -> tuple[list[int], list[int]]:
+        """Return the exact edge-scan BFS data used as the portable oracle."""
         distances = [-1] * self.order()
         parents = [-1] * self.order()
         distances[source] = 0
@@ -1565,6 +1595,159 @@ class GenericGraph:
                     parents[target] = current
                     queue.append(target)
         return distances, parents
+
+    def _record_shortest_paths_acceleration(
+        self,
+        operation: str,
+        route: str,
+        reason: str,
+        boundary_crossings: int,
+        copied_values: int,
+    ) -> None:
+        self._last_shortest_paths_acceleration = _native_record(
+            operation=operation,
+            route=route,
+            reason=reason,
+            boundaryCrossings=boundary_crossings,
+            copiedValues=copied_values,
+            vertices=self.order(),
+            edges=len(self._edges),
+        )
+
+    def _packed_shortest_edges(self) -> list[int]:
+        packed_edges = []
+        for edge in self._edges:
+            packed_edges.extend([edge.source, edge.target])
+        return packed_edges
+
+    def _packed_shortest_route(
+        self,
+        packed_kernel: Any,
+        native_module: Any,
+    ) -> tuple[str, str]:
+        execution_target = getattr(packed_kernel, "executionTarget", None)
+        if execution_target == "wasm":
+            return "wasm-compiled-source", "normal-heavy-case"
+        native_is_compiled = runtime.reflect.get(native_module, "is_compiled")
+        if bool(
+            runtime.reflect.apply(
+                native_is_compiled,
+                native_module,
+                [packed_kernel],
+            )
+        ) and bool(getattr(packed_kernel, "nativeAvailable", False)):
+            return "native-compiled-source", "normal-heavy-case"
+        return "portable-computation", "compiled-source-unavailable"
+
+    def _packed_shortest_index_data(self, source: int) -> tuple[list[int], list[int]]:
+        vertex_count = self.order()
+        edge_entries = 2 * len(self._edges)
+        native_module, shortest_module = _packed_shortest_paths_modules()
+        packed_kernel = runtime.reflect.get(
+            shortest_module,
+            "packed_graph_shortest_paths",
+        )
+        kernel_uint64_zeros = runtime.reflect.get(
+            native_module,
+            "kernel_uint64_zeros",
+        )
+        kernel_uint64_buffer = runtime.reflect.get(
+            native_module,
+            "kernel_uint64_buffer",
+        )
+        workspace_length = 3 * vertex_count + 1 + edge_entries
+        packed_edges = self._packed_shortest_edges()
+        distances = runtime.reflect.apply(
+            kernel_uint64_zeros,
+            native_module,
+            [packed_kernel, vertex_count],
+        )
+        parents = runtime.reflect.apply(
+            kernel_uint64_zeros,
+            native_module,
+            [packed_kernel, vertex_count],
+        )
+        workspace = runtime.reflect.apply(
+            kernel_uint64_zeros,
+            native_module,
+            [packed_kernel, workspace_length],
+        )
+        edge_buffer = runtime.reflect.apply(
+            kernel_uint64_buffer,
+            native_module,
+            [packed_kernel, packed_edges],
+        )
+        status = int(
+            runtime.reflect.apply(
+                packed_kernel,
+                shortest_module,
+                [
+                    distances,
+                    parents,
+                    edge_buffer,
+                    workspace,
+                    vertex_count,
+                    edge_entries,
+                    1 if self._directed else 0,
+                    source,
+                    vertex_count + edge_entries,
+                ],
+            )
+        )
+        if status == 1:
+            raise ValueError("packed graph shortest paths rejected their input")
+        if status == 2:
+            raise RuntimeError(
+                "packed graph shortest paths exhausted their work budget"
+            )
+        route, reason = self._packed_shortest_route(packed_kernel, native_module)
+        self._record_shortest_paths_acceleration(
+            "single-source",
+            route,
+            reason,
+            1 if route != "portable-computation" else 0,
+            edge_entries + 2 * vertex_count + workspace_length,
+        )
+        return (
+            [
+                -1 if int(distances[index]) == vertex_count else int(distances[index])
+                for index in range(vertex_count)
+            ],
+            [
+                -1 if int(parents[index]) == vertex_count else int(parents[index])
+                for index in range(vertex_count)
+            ],
+        )
+
+    def _shortest_index_data_for_public(
+        self,
+        source: int,
+    ) -> tuple[list[int], list[int]]:
+        vertex_count = self.order()
+        edge_entries = 2 * len(self._edges)
+        edge_scans = vertex_count * len(self._edges)
+        if edge_scans < _PACKED_SHORTEST_PATHS_MIN_EDGE_SCANS:
+            self._record_shortest_paths_acceleration(
+                "single-source",
+                "portable-computation",
+                "below-packed-threshold",
+                0,
+                0,
+            )
+            return self._shortest_index_data(source)
+        if (
+            vertex_count > _PACKED_SHORTEST_PATHS_MAX_VERTICES
+            or edge_entries > _PACKED_SHORTEST_PATHS_MAX_EDGE_ENTRIES
+        ):
+            self._record_shortest_paths_acceleration(
+                "single-source",
+                "portable-computation",
+                "packed-bound-exceeded",
+                0,
+                0,
+            )
+            return self._shortest_index_data(source)
+        return self._packed_shortest_index_data(source)
 
     def shortest_path(self, u: Any, v: Any, **_options: Any) -> list[Any]:
         if u is runtime.undefined:
@@ -1583,7 +1766,7 @@ class GenericGraph:
             raise ValueError("vertex '" + str(u) + "' is not in the (di)graph")
         if target < 0:
             raise ValueError("vertex '" + str(v) + "' is not in the (di)graph")
-        distances, parents = self._shortest_index_data(source)
+        distances, parents = self._shortest_index_data_for_public(source)
         if distances[target] < 0:
             return []
         path = []
@@ -1600,7 +1783,8 @@ class GenericGraph:
         path = self.shortest_path(source_vertex, target_vertex)
         return _graph_positive_infinity if len(path) == 0 else len(path) - 1
 
-    def distances_all_pairs(self) -> dict[Any, dict[Any, Any]]:
+    def _portable_distances_all_pairs(self) -> dict[Any, dict[Any, Any]]:
+        """Return exact all-pairs distances through the independent BFS oracle."""
         answer = dict()
         for source in range(self.order()):
             distances, _parents = self._shortest_index_data(source)
@@ -1616,6 +1800,108 @@ class GenericGraph:
                 )
             answer.__setitem__(self._vertices[source], source_distances)
         return answer
+
+    def _packed_distances_all_pairs(self) -> dict[Any, dict[Any, Any]]:
+        vertex_count = self.order()
+        edge_entries = 2 * len(self._edges)
+        native_module, shortest_module = _packed_shortest_paths_modules()
+        packed_kernel = runtime.reflect.get(
+            shortest_module,
+            "packed_graph_all_pairs_distances",
+        )
+        kernel_uint64_zeros = runtime.reflect.get(
+            native_module,
+            "kernel_uint64_zeros",
+        )
+        kernel_uint64_buffer = runtime.reflect.get(
+            native_module,
+            "kernel_uint64_buffer",
+        )
+        workspace_length = 3 * vertex_count + 1 + edge_entries
+        distances = runtime.reflect.apply(
+            kernel_uint64_zeros,
+            native_module,
+            [packed_kernel, vertex_count * vertex_count],
+        )
+        workspace = runtime.reflect.apply(
+            kernel_uint64_zeros,
+            native_module,
+            [packed_kernel, workspace_length],
+        )
+        edge_buffer = runtime.reflect.apply(
+            kernel_uint64_buffer,
+            native_module,
+            [packed_kernel, self._packed_shortest_edges()],
+        )
+        status = int(
+            runtime.reflect.apply(
+                packed_kernel,
+                shortest_module,
+                [
+                    distances,
+                    edge_buffer,
+                    workspace,
+                    vertex_count,
+                    edge_entries,
+                    1 if self._directed else 0,
+                    vertex_count * (vertex_count + edge_entries),
+                ],
+            )
+        )
+        if status == 1:
+            raise ValueError("packed graph all-pairs distances rejected their input")
+        if status == 2:
+            raise RuntimeError(
+                "packed graph all-pairs distances exhausted their work budget"
+            )
+        route, reason = self._packed_shortest_route(packed_kernel, native_module)
+        self._record_shortest_paths_acceleration(
+            "all-pairs",
+            route,
+            reason,
+            1 if route != "portable-computation" else 0,
+            edge_entries + vertex_count * vertex_count + workspace_length,
+        )
+        answer = dict()
+        for source in range(vertex_count):
+            source_distances = dict()
+            row = source * vertex_count
+            for target in range(vertex_count):
+                value = int(distances[row + target])
+                source_distances.__setitem__(
+                    self._vertices[target],
+                    _graph_positive_infinity if value == vertex_count else value,
+                )
+            answer.__setitem__(self._vertices[source], source_distances)
+        return answer
+
+    def distances_all_pairs(self) -> dict[Any, dict[Any, Any]]:
+        """Return all unweighted distances, batching a normal heavy request."""
+        vertex_count = self.order()
+        edge_entries = 2 * len(self._edges)
+        edge_scans = vertex_count * vertex_count * len(self._edges)
+        if edge_scans < _PACKED_SHORTEST_PATHS_MIN_EDGE_SCANS:
+            self._record_shortest_paths_acceleration(
+                "all-pairs",
+                "portable-computation",
+                "below-packed-threshold",
+                0,
+                0,
+            )
+            return self._portable_distances_all_pairs()
+        if (
+            vertex_count > _PACKED_ALL_PAIRS_MAX_VERTICES
+            or edge_entries > _PACKED_ALL_PAIRS_MAX_EDGE_ENTRIES
+        ):
+            self._record_shortest_paths_acceleration(
+                "all-pairs",
+                "portable-computation",
+                "packed-bound-exceeded",
+                0,
+                0,
+            )
+            return self._portable_distances_all_pairs()
+        return self._packed_distances_all_pairs()
 
     def eccentricity(self, vertex: Any = None) -> Any:
         if vertex is None:
