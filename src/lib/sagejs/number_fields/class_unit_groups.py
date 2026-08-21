@@ -1209,6 +1209,8 @@ class ClassUnitGroupEngine:
     ) -> tuple[Any, tuple[int, ...], str]:
         """Choose a targeted product ideal before falling back to the PRNG."""
         width = len(factor_base)
+        if width == 0:
+            return self.order.ideal(1), (), "unit-ideal-sweep"
         missing = tuple(search.collector.rank_screen.missing_pivots())
         row = [0] * width
         if saturation_prime is not None:
