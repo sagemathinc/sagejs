@@ -6,8 +6,8 @@
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Implement unit-lattice extraction/saturation interfaces, rigorous regulator enclosures, rigorous zeta log-residue bounds, and hR index validation with focused tests",
-  "base_commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+  "objective": "Audit and improve rigorous unit/regulator and zeta-residue performance, reuse exact splitting and interval work, and strengthen saturation/precision semantics with focused differential benchmarks",
+  "base_commit": "80c300891aa499311e934e77e6be14bb5ea47c43",
   "claims": [
     "src/lib/sagejs/number_fields/class_unit_analytic.py",
     "test/number-field-class-unit-analytic.cjs",
@@ -98,19 +98,59 @@
       "commit": "61edfe579f429f4c87e2ba917b8c8d38831695ed",
       "workspace_fingerprint": "599c6101b25e147740e49c3222a2c6fdd060a4b5a334c220126ac9ba81355a6a",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-analytic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.554,
+      "started_at": "2026-08-21T07:59:55.549Z",
+      "commit": "80c300891aa499311e934e77e6be14bb5ea47c43",
+      "workspace_fingerprint": "2f70550351a254ded2cf301619874414e4fd44023b3916e0b3dc07965a2d993f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_analytic.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.803,
+      "started_at": "2026-08-21T08:00:01.544Z",
+      "commit": "80c300891aa499311e934e77e6be14bb5ea47c43",
+      "workspace_fingerprint": "2f70550351a254ded2cf301619874414e4fd44023b3916e0b3dc07965a2d993f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-analytic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.585,
+      "started_at": "2026-08-21T08:01:30.469Z",
+      "commit": "80c300891aa499311e934e77e6be14bb5ea47c43",
+      "workspace_fingerprint": "ec2f60e6386f65ed27d007e32efa2e101ce74ea4470807b411226c3b827b1851",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_analytic.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.804,
+      "started_at": "2026-08-21T08:01:37.662Z",
+      "commit": "80c300891aa499311e934e77e6be14bb5ea47c43",
+      "workspace_fingerprint": "ec2f60e6386f65ed27d007e32efa2e101ce74ea4470807b411226c3b827b1851",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added an ordinary strict-Python analytic proof layer for class/unit computations. Exact relation dependencies replay as integral left kernels with maximal-minor saturation indices and certificate-driven p-saturation states. Exact rational endpoint balls plus mpmath.libmp directed rounding certify weighted-log regulator determinants with precision escalation. A provider-oriented Belabas--Friedman implementation authenticates every splitting type below its theorem-selected cutoff, encloses the finite prime-power sum and complete analytic tail separately, and feeds a rigorous analytic class-number-formula comparison that returns an integer interval for the missing hR index. Focused Sage/PARI fixtures cover real/imaginary quadratic and rank-two cubic data; direct CPython and generated Sage.js witnesses agree.",
+    "summary": "Audited and optimized the ordinary strict-Python analytic proof layer after the integrated batched splitting work. RealBall arithmetic now rounds directly to dyadic endpoints without normalized-rational temporaries. An explicit field/provider-bound ZetaLogResidueWorkspace reuses authenticated splitting tails, exact aggregated prime-power plans, theorem thresholds, and certified finite-term intervals; the representative discriminant-5 cutoff reduces 1,534 raw contributions to 800 exact nonzero terms. Independent precision attempts are intersected, and regulator/zeta results record attempt counts and widths. Regulator providers must honor requested precision and give consistent refinements. Unit p-saturation evidence now records a doubling precision history, binds the decisive precision to the final attempt, and requires a genuine p-divisible enlargement index for nonmaximal results. Focused quadratic/cubic oracle checks, warm-cache isolation, precision escalation, hR index validation, and strict Pyright all pass.",
     "risks": [
       "Rigorous zeta status assumes the caller supplies the actual maximal-order discriminant and a complete exact splitting provider; the function validates prime coverage and every local degree identity but does not independently prove the field/order identity.",
-      "Unit p-saturation is a verification interface: only evidence objects whose verify method succeeds become rigorous. This lane does not implement the algebraic p-th-root obstruction producer, so an unchecked search result remains explicitly unverified.",
+      "Unit p-saturation remains a verification interface: only evidence whose certificate replay succeeds and whose doubling/decisive-precision metadata is internally consistent becomes rigorous. This lane does not implement the algebraic p-th-root obstruction producer, so an unchecked search remains explicitly unverified.",
       "The common base had no public RealBall enclosure transport. This module therefore uses exact rational endpoints and mpmath.libmp directed-rounding intervals; future Arb transport can supply the same lower/upper protocol without changing proof states.",
-      "The arithmetic-algebra lane policy requires pnpm test:native before review. Per coordinator direction, this handoff stays active with focused receipts; central integration owns that broad native gate."
+      "FactoredNumberFieldElement currently exposes only scalar qqbarLogAbsBall calls. The measured strict-Python regulator determinant is already sub-millisecond for the rank-two fixture, while zeta finite-interval evaluation dominated the profile, so this lane did not add an unmeasured algebraic-log batch boundary.",
+      "The lane worktree has no built FLINT addon, so generated Sage.js/native validation could not run locally. Per coordinator direction, this handoff stays active with focused receipts; central integration owns the broad native gate."
     ],
     "next_steps": [
-      "Integration should add class_unit_analytic.py to pyrightconfig.json and the focused test to the node test manifest, then expose the selected public APIs.",
-      "Store the result objects directly through ClassUnitGroupContext.set_unit_state/set_analytic_state and mirror their precision/saturation histories using core commit a2269e4e162ff87e2eacc7f9663847588bf499ac.",
+      "Integration may retain a ZetaLogResidueWorkspace beside the analytic context when independent callers request the same field residue at several tolerances; the workspace rejects degree or provider identity changes.",
       "Run pnpm test:native in central integration and move this contract to review only after recording that required receipt."
     ]
   }

@@ -15,7 +15,7 @@ floating-point inputs are never promoted to rigorous balls.
 The zeta implementation follows Hecke's BSD-licensed
 `src/NumFieldOrd/NfOrd/Zeta.jl`, which implements the explicit estimate of
 Belabas and Friedman.  PARI's `buch2.c` is an independent algorithmic oracle;
-no PARI or Hecke code is loaded at runtime.
+no PARI or Hecke code is loaded during execution.
 """
 
 from __future__ import annotations
@@ -248,12 +248,8 @@ class RealBall:
         it bounds coefficient growth while preserving enclosure.
         """
         scale = 1 << precision_bits
-        lower_scaled = RationalEndpoint(
-            lower.numerator * scale, lower.denominator
-        ).floor()
-        upper_scaled = RationalEndpoint(
-            upper.numerator * scale, upper.denominator
-        ).ceil()
+        lower_scaled = (lower.numerator * scale) // lower.denominator
+        upper_scaled = -((-upper.numerator * scale) // upper.denominator)
         return RealBall(
             RationalEndpoint(lower_scaled, scale),
             RationalEndpoint(upper_scaled, scale),
@@ -371,6 +367,23 @@ class RealBall:
             source=self.source + "; explicit-error-bound",
         )
 
+    def intersection(self, other: RealBall) -> RealBall:
+        """Return the common part of two enclosures of the same real value."""
+        lower = other.lower if self.lower < other.lower else self.lower
+        upper = self.upper if self.upper < other.upper else other.upper
+        if upper < lower:
+            raise AnalyticCertificationError(
+                "independent certified enclosures are disjoint"
+            )
+        precision, rigorous, source = self._binary_state(other)
+        return RealBall(
+            lower,
+            upper,
+            precision_bits=precision,
+            rigorous=rigorous,
+            source=source + "; certified-intersection",
+        )
+
     def contains_zero(self) -> bool:
         zero = RationalEndpoint(0)
         return self.lower <= zero and zero <= self.upper
@@ -446,6 +459,12 @@ class IntervalBallField:
         if precision_bits < 16:
             raise ValueError("interval transcendental precision must be at least 16")
         self.precision_bits = precision_bits
+        self._integer_logs: dict[int, RealBall] = {}
+        self._integer_square_roots: dict[int, RealBall] = {}
+        self._log_hits = 0
+        self._sqrt_hits = 0
+        self._log_evaluations = 0
+        self._sqrt_evaluations = 0
 
     def _from_iv(self, value: Any, source: str) -> RealBall:
         lower_value, upper_value = value._mpi_
@@ -487,21 +506,45 @@ class IntervalBallField:
     def log(self, value: RealBall) -> RealBall:
         if not value.is_positive():
             raise ValueError("logarithm requires a provably positive ball")
+        self._log_evaluations += 1
         return self._monotone(value, _interval_context.log, "interval-log")
 
     def sqrt(self, value: RealBall) -> RealBall:
         if value.lower < RationalEndpoint(0):
             raise ValueError("square root requires a nonnegative ball")
+        self._sqrt_evaluations += 1
         return self._monotone(value, _interval_context.sqrt, "interval-sqrt")
 
     def exp(self, value: RealBall) -> RealBall:
         return self._monotone(value, _interval_context.exp, "interval-exp")
 
     def log_integer(self, value: int) -> RealBall:
-        return self.log(RealBall(int(value), precision_bits=self.precision_bits))
+        value = int(value)
+        cached = self._integer_logs.get(value)
+        if cached is not None:
+            self._log_hits += 1
+            return cached
+        result = self.log(RealBall(value, precision_bits=self.precision_bits))
+        self._integer_logs[value] = result
+        return result
 
     def sqrt_integer(self, value: int) -> RealBall:
-        return self.sqrt(RealBall(int(value), precision_bits=self.precision_bits))
+        value = int(value)
+        cached = self._integer_square_roots.get(value)
+        if cached is not None:
+            self._sqrt_hits += 1
+            return cached
+        result = self.sqrt(RealBall(value, precision_bits=self.precision_bits))
+        self._integer_square_roots[value] = result
+        return result
+
+    def diagnostics(self) -> dict[str, int]:
+        return {
+            "log_evaluations": self._log_evaluations,
+            "log_cache_hits": self._log_hits,
+            "sqrt_evaluations": self._sqrt_evaluations,
+            "sqrt_cache_hits": self._sqrt_hits,
+        }
 
     def pi(self) -> RealBall:
         previous = _interval_context.prec
@@ -765,6 +808,8 @@ class UnitSaturationEvidence:
         certificate: Any,
         rigorous: bool,
         enlargement_index: int = 1,
+        precision_history: Sequence[int] = (),
+        decisive_precision_bits: int | None = None,
     ) -> None:
         prime = int(prime)
         if not _is_prime(prime):
@@ -777,10 +822,35 @@ class UnitSaturationEvidence:
         self.certificate = certificate
         self.rigorous = bool(rigorous)
         self.enlargement_index = int(enlargement_index)
+        self.precision_history = tuple(int(value) for value in precision_history)
+        self.decisive_precision_bits = (
+            None if decisive_precision_bits is None else int(decisive_precision_bits)
+        )
+        if any(value < 16 for value in self.precision_history):
+            raise ValueError("saturation precisions must be at least 16 bits")
+        if any(
+            2 * self.precision_history[index] != self.precision_history[index + 1]
+            for index in range(len(self.precision_history) - 1)
+        ):
+            raise ValueError("saturation precision must double on every retry")
+        if self.saturated and self.enlargement_index != 1:
+            raise ValueError("p-maximal evidence cannot record an enlargement index")
+        if not self.saturated:
+            if self.enlargement_index <= 1:
+                raise ValueError("an enlargement needs a nontrivial lattice index")
+            if self.enlargement_index % self.prime != 0:
+                raise ValueError(
+                    "a p-saturation enlargement index must be divisible by p"
+                )
 
     def verify(self, lattice: UnitLatticeExtractionResult) -> bool:
         verifier = getattr(self.certificate, "verify", None)
-        if not self.rigorous or not callable(verifier):
+        if (
+            not self.rigorous
+            or not callable(verifier)
+            or not self.precision_history
+            or self.decisive_precision_bits != self.precision_history[-1]
+        ):
             return False
         return bool(verifier(lattice, self.prime, self.saturated))
 
@@ -791,6 +861,8 @@ class UnitSaturationEvidence:
             "method": self.method,
             "rigorous": self.rigorous,
             "enlargement_index": self.enlargement_index,
+            "precision_history": list(self.precision_history),
+            "decisive_precision_bits": self.decisive_precision_bits,
         }
 
 
@@ -889,12 +961,15 @@ class RegulatorEnclosure:
         precision_history: Sequence[int],
         *,
         weighted_complex_places: bool,
+        determinant_widths: Sequence[RationalEndpoint] = (),
     ) -> None:
         self.ball = ball
         self.unit_rank = int(unit_rank)
         self.precision_history = tuple(int(value) for value in precision_history)
         self.precision_bits = self.precision_history[-1]
         self.weighted_complex_places = bool(weighted_complex_places)
+        self.determinant_widths = tuple(determinant_widths)
+        self.refinement_attempts = len(self.precision_history)
         self.full_rank_certified = not ball.contains_zero()
         self.rigorous = ball.rigorous and self.full_rank_certified
         self.status = "rigorous-enclosure" if self.rigorous else "unresolved-enclosure"
@@ -919,6 +994,8 @@ class RegulatorEnclosure:
             "unit_rank": self.unit_rank,
             "precision_history": list(self.precision_history),
             "weighted_complex_places": self.weighted_complex_places,
+            "determinant_widths": [str(value) for value in self.determinant_widths],
+            "refinement_attempts": self.refinement_attempts,
             "full_rank_certified": self.full_rank_certified,
             "rigorous": self.rigorous,
             "status": self.status,
@@ -950,18 +1027,34 @@ def certified_regulator_enclosure(
             "certified regulators require the frozen complex-place factor-two convention"
         )
     precision = int(precision_bits)
-    tolerance = RationalEndpoint(1, 2 ** int(absolute_tolerance_bits))
+    maximum_precision = int(maximum_precision_bits)
+    tolerance_bits = int(absolute_tolerance_bits)
+    if precision < 16:
+        raise ValueError("regulator precision must be at least 16 bits")
+    if maximum_precision < precision:
+        raise ValueError("maximum_precision_bits is below the initial precision")
+    if tolerance_bits < 1:
+        raise ValueError("absolute_tolerance_bits must be positive")
+    tolerance = RationalEndpoint(1, 2**tolerance_bits)
     history: list[int] = []
+    determinant_widths: list[RationalEndpoint] = []
     if unit_rank == 0:
         return RegulatorEnclosure(
             RealBall(1, precision_bits=precision),
             0,
             [precision],
             weighted_complex_places=True,
+            determinant_widths=[RationalEndpoint(0)],
         )
-    while precision <= int(maximum_precision_bits):
+    refined_rows: list[list[RealBall]] | None = None
+    while precision <= maximum_precision:
         history.append(precision)
-        raw_rows = logarithms(precision) if callable(logarithms) else logarithms
+        raw_rows: Sequence[Sequence[Any]]
+        if callable(logarithms):
+            provider: Any = logarithms
+            raw_rows = provider(precision)
+        else:
+            raw_rows = logarithms
         if len(raw_rows) != unit_rank:
             raise ValueError("the logarithm matrix must have one row per free unit")
         rows: list[list[RealBall]] = []
@@ -976,14 +1069,29 @@ def certified_regulator_enclosure(
                 raise AnalyticCertificationError(
                     "a midpoint-only logarithm cannot certify a regulator"
                 )
+            if any(entry.precision_bits < precision for entry in row):
+                raise AnalyticPrecisionError(
+                    "a logarithm provider returned less than the requested precision"
+                )
             rows.append(row)
+        if refined_rows is not None:
+            rows = [
+                [
+                    refined_rows[row][column].intersection(rows[row][column])
+                    for column in range(unit_rank)
+                ]
+                for row in range(unit_rank)
+            ]
+        refined_rows = rows
         determinant = _determinant_ball(rows).absolute_value()
+        determinant_widths.append(determinant.width())
         if not determinant.contains_zero() and determinant.radius() <= tolerance:
             return RegulatorEnclosure(
                 determinant,
                 unit_rank,
                 history,
                 weighted_complex_places=True,
+                determinant_widths=determinant_widths,
             )
         if not callable(logarithms):
             raise AnalyticPrecisionError(
@@ -1097,78 +1205,254 @@ def _splitting_record(
     return prime, factors
 
 
-def _splitting_types(
-    primes: Sequence[int],
-    degree: int,
-    provider: Callable[[int, int], Iterable[Any]],
-    block_size: int,
-) -> dict[int, tuple[tuple[int, int], ...]]:
-    if not primes:
-        return {}
-    result: dict[int, tuple[tuple[int, int], ...]] = {}
-    start = 2
-    final = primes[-1] + 1
-    while start < final:
-        stop = min(final, start + block_size)
-        for raw_record in provider(start, stop):
-            prime, factors = _splitting_record(raw_record, degree)
-            if prime < start or prime >= stop:
-                raise ValueError(
-                    "splitting provider returned a prime outside its block"
-                )
-            if prime in result:
-                raise ValueError("splitting provider returned a duplicate prime")
-            result[prime] = factors
-        start = stop
-    missing = [prime for prime in primes if prime not in result]
-    if missing:
-        raise AnalyticCertificationError(
-            "splitting provider omitted rational prime " + str(missing[0])
-        )
-    unexpected = [prime for prime in result if prime not in set(primes)]
-    if unexpected:
-        raise ValueError(
-            "splitting provider returned a composite or out-of-range entry"
-        )
-    return result
-
-
-def _bf_error_bound(
-    discriminant: int,
-    degree: int,
-    threshold: int,
-    field: IntervalBallField,
-) -> RealBall:
-    log_discriminant = field.log_integer(abs(discriminant))
-    sqrt_log_discriminant = field.sqrt(log_discriminant)
-    sqrt_threshold = field.sqrt_integer(threshold)
-    log_three_threshold = field.log_integer(3 * threshold)
-    log_threshold_ninth = field.log_integer(threshold // 9)
-    c1 = RealBall("2.324", precision_bits=field.precision_bits)
-    c2 = RealBall("3.88", precision_bits=field.precision_bits)
-    c4 = RealBall("4.26", precision_bits=field.precision_bits)
-    one = RealBall(1, precision_bits=field.precision_bits)
-    two = RealBall(2, precision_bits=field.precision_bits)
-    a1 = c1 * log_discriminant / (sqrt_threshold * log_three_threshold)
-    a2 = one + c2 / log_threshold_ninth
-    a3 = one + two / sqrt_log_discriminant
-    a4 = (
-        c4
-        * RealBall(degree - 1, precision_bits=field.precision_bits)
-        / (sqrt_threshold * log_discriminant)
+def _same_provider(left: Any, right: Any) -> bool:
+    if left is right:
+        return True
+    left_function = getattr(left, "__func__", None)
+    return (
+        left_function is not None
+        and left_function is getattr(right, "__func__", None)
+        and getattr(left, "__self__", None) is getattr(right, "__self__", None)
     )
-    return a1 * (a2 * (a3**2) + a4)
+
+
+class _BFPrimePowerPlan:
+    """Exact aggregation plan for one Belabas--Friedman cutoff."""
+
+    def __init__(
+        self,
+        threshold: int,
+        terms: Sequence[tuple[int, int, int, int]],
+        raw_terms: int,
+    ) -> None:
+        self.threshold = int(threshold)
+        self.terms = tuple(terms)
+        self.raw_terms = int(raw_terms)
+        self.aggregated_terms = len(self.terms)
+
+
+def _build_bf_plan(
+    threshold: int,
+    splitting: dict[int, tuple[tuple[int, int], ...]],
+) -> _BFPrimePowerPlan:
+    ninth = threshold // 9
+    aggregated: dict[tuple[int, int, int], int] = {}
+    raw_terms = 0
+
+    def add(sign: int, scale: int, norm: int, exponent: int) -> None:
+        nonlocal raw_terms
+        raw_terms += 1
+        key = (scale, norm, exponent)
+        aggregated[key] = aggregated.get(key, 0) + sign
+
+    for prime, factors in splitting.items():
+        for exponent in range(1, _max_power_strict(prime, threshold) + 1):
+            add(-1, 0, prime, exponent)
+        for _ramification, residue_degree in factors:
+            norm = prime**residue_degree
+            for exponent in range(1, _max_power_strict(norm, threshold) + 1):
+                add(1, 0, norm, exponent)
+        if prime < ninth:
+            for exponent in range(1, _max_power_strict(prime, ninth) + 1):
+                add(1, 1, prime, exponent)
+            for _ramification, residue_degree in factors:
+                norm = prime**residue_degree
+                for exponent in range(1, _max_power_strict(norm, ninth) + 1):
+                    add(-1, 1, norm, exponent)
+    terms = [
+        (multiplicity, scale, norm, exponent)
+        for (scale, norm, exponent), multiplicity in sorted(aggregated.items())
+        if multiplicity
+    ]
+    return _BFPrimePowerPlan(threshold, terms, raw_terms)
+
+
+class ZetaLogResidueWorkspace:
+    """Reusable exact splitting records and prime-power plans for one field.
+
+    The cache is explicit so proof data cannot leak between fields. Extending
+    a cutoff asks the provider only for the uncovered tail, while every new
+    block is checked for complete prime coverage and local degree identities.
+    """
+
+    def __init__(
+        self,
+        discriminant: int,
+        degree: int,
+        splitting_provider: Callable[[int, int], Iterable[Any]],
+    ) -> None:
+        discriminant = int(discriminant)
+        degree = int(degree)
+        if abs(discriminant) <= 1:
+            raise ValueError("a zeta workspace requires a field discriminant")
+        if degree <= 1:
+            raise ValueError("a zeta workspace requires degree greater than one")
+        if not callable(splitting_provider):
+            raise TypeError("splitting_provider must be callable")
+        self.discriminant = discriminant
+        self.degree = degree
+        self.splitting_provider = splitting_provider
+        self.covered_stop = 2
+        self.provider_calls = 0
+        self.records_decoded = 0
+        self.splitting_cache_hits = 0
+        self.plan_cache_hits = 0
+        self.threshold_cache_hits = 0
+        self.finite_term_cache_hits = 0
+        self._records: dict[int, tuple[tuple[int, int], ...]] = {}
+        self._plans: dict[int, _BFPrimePowerPlan] = {}
+        self._thresholds: dict[tuple[str, int], tuple[int, RealBall, int]] = {}
+        self._finite_terms: dict[tuple[int, int], tuple[RealBall, dict[str, int]]] = {}
+
+    def require_field(
+        self,
+        discriminant: int,
+        degree: int,
+        provider: Callable[[int, int], Iterable[Any]],
+    ) -> None:
+        if self.discriminant != int(discriminant) or self.degree != int(degree):
+            raise AnalyticCertificationError(
+                "a zeta workspace cannot be reused for a different field"
+            )
+        if not _same_provider(self.splitting_provider, provider):
+            raise AnalyticCertificationError(
+                "a zeta workspace cannot use a different splitting provider"
+            )
+
+    def splitting_types(
+        self, primes: Sequence[int], block_size: int
+    ) -> dict[int, tuple[tuple[int, int], ...]]:
+        if not primes:
+            return {}
+        final = primes[-1] + 1
+        if final <= self.covered_stop:
+            self.splitting_cache_hits += 1
+        while self.covered_stop < final:
+            start = self.covered_stop
+            stop = min(final, start + block_size)
+            expected = {prime for prime in primes if start <= prime < stop}
+            block: dict[int, tuple[tuple[int, int], ...]] = {}
+            self.provider_calls += 1
+            for raw_record in self.splitting_provider(start, stop):
+                prime, factors = _splitting_record(raw_record, self.degree)
+                if prime < start or prime >= stop:
+                    raise ValueError(
+                        "splitting provider returned a prime outside its block"
+                    )
+                if prime in block or prime in self._records:
+                    raise ValueError("splitting provider returned a duplicate prime")
+                block[prime] = factors
+                self.records_decoded += 1
+            missing = expected - set(block)
+            if missing:
+                raise AnalyticCertificationError(
+                    "splitting provider omitted rational prime " + str(min(missing))
+                )
+            unexpected = set(block) - expected
+            if unexpected:
+                raise ValueError(
+                    "splitting provider returned a composite or out-of-range entry"
+                )
+            self._records.update(block)
+            self.covered_stop = stop
+        return {prime: self._records[prime] for prime in primes}
+
+    def prime_power_plan(
+        self,
+        threshold: int,
+        splitting: dict[int, tuple[tuple[int, int], ...]],
+    ) -> _BFPrimePowerPlan:
+        cached = self._plans.get(threshold)
+        if cached is not None:
+            self.plan_cache_hits += 1
+            return cached
+        plan = _build_bf_plan(threshold, splitting)
+        self._plans[threshold] = plan
+        return plan
+
+    def threshold(
+        self,
+        target: RationalEndpoint,
+        precision: int,
+        maximum: int,
+    ) -> tuple[int, RealBall, int]:
+        key = (str(target), int(precision))
+        cached = self._thresholds.get(key)
+        if cached is not None:
+            if cached[0] > maximum:
+                raise AnalyticResourceError(
+                    "cached Belabas--Friedman threshold exceeds maximum_prime_bound"
+                )
+            self.threshold_cache_hits += 1
+            return cached[0], cached[1], 0
+        model = _BFErrorModel(
+            self.discriminant, self.degree, IntervalBallField(precision)
+        )
+        threshold, bound = _bf_threshold(model, target, maximum)
+        result = (threshold, bound, model.evaluations)
+        self._thresholds[key] = result
+        return result
+
+    def finite_term(
+        self, plan: _BFPrimePowerPlan, precision: int
+    ) -> tuple[RealBall, dict[str, int]]:
+        key = (plan.threshold, int(precision))
+        cached = self._finite_terms.get(key)
+        if cached is not None:
+            self.finite_term_cache_hits += 1
+            return cached[0], {
+                "log_evaluations": 0,
+                "log_cache_hits": 0,
+                "sqrt_evaluations": 0,
+                "sqrt_cache_hits": 0,
+            }
+        field = IntervalBallField(precision)
+        result = (_bf_finite_term(plan, field), field.diagnostics())
+        self._finite_terms[key] = result
+        return result
+
+
+class _BFErrorModel:
+    """Precision-local constants for the explicit residue error bound."""
+
+    def __init__(
+        self, discriminant: int, degree: int, field: IntervalBallField
+    ) -> None:
+        self.degree = int(degree)
+        self.field = field
+        self.log_discriminant = field.log_integer(abs(int(discriminant)))
+        self.sqrt_log_discriminant = field.sqrt(self.log_discriminant)
+        self.evaluations = 0
+
+    def bound(self, threshold: int) -> RealBall:
+        self.evaluations += 1
+        field = self.field
+        sqrt_threshold = field.sqrt_integer(threshold)
+        log_three_threshold = field.log_integer(3 * threshold)
+        log_threshold_ninth = field.log_integer(threshold // 9)
+        c1 = RealBall("2.324", precision_bits=field.precision_bits)
+        c2 = RealBall("3.88", precision_bits=field.precision_bits)
+        c4 = RealBall("4.26", precision_bits=field.precision_bits)
+        one = RealBall(1, precision_bits=field.precision_bits)
+        two = RealBall(2, precision_bits=field.precision_bits)
+        a1 = c1 * self.log_discriminant / (sqrt_threshold * log_three_threshold)
+        a2 = one + c2 / log_threshold_ninth
+        a3 = one + two / self.sqrt_log_discriminant
+        a4 = (
+            c4
+            * RealBall(self.degree - 1, precision_bits=field.precision_bits)
+            / (sqrt_threshold * self.log_discriminant)
+        )
+        return a1 * (a2 * (a3**2) + a4)
 
 
 def _bf_threshold(
-    discriminant: int,
-    degree: int,
+    model: _BFErrorModel,
     target: RationalEndpoint,
-    field: IntervalBallField,
     maximum: int,
 ) -> tuple[int, RealBall]:
     threshold = 72
-    bound = _bf_error_bound(discriminant, degree, threshold, field)
+    bound = model.bound(threshold)
     while not bound.upper < target:
         threshold *= 2
         threshold += (-threshold) % 9
@@ -1176,20 +1460,20 @@ def _bf_threshold(
             raise AnalyticResourceError(
                 "Belabas--Friedman threshold exceeds maximum_prime_bound"
             )
-        bound = _bf_error_bound(discriminant, degree, threshold, field)
+        bound = model.bound(threshold)
     lower = max(8, (threshold // 2) // 9)
     upper = threshold // 9
     while upper - lower > 1:
         middle = (lower + upper) // 2
         candidate = 9 * middle
-        candidate_bound = _bf_error_bound(discriminant, degree, candidate, field)
+        candidate_bound = model.bound(candidate)
         if candidate_bound.upper < target:
             upper = middle
             bound = candidate_bound
         else:
             lower = middle
     threshold = 9 * upper
-    bound = _bf_error_bound(discriminant, degree, threshold, field)
+    bound = model.bound(threshold)
     return threshold, bound
 
 
@@ -1233,11 +1517,10 @@ def _bf_prime_power_summand(
 
 
 def _bf_finite_term(
-    degree: int,
-    threshold: int,
-    splitting: dict[int, tuple[tuple[int, int], ...]],
+    plan: _BFPrimePowerPlan,
     field: IntervalBallField,
-) -> tuple[RealBall, int]:
+) -> RealBall:
+    threshold = plan.threshold
     ninth = threshold // 9
     sqrt_threshold = field.sqrt_integer(threshold)
     sqrt_ninth = field.sqrt_integer(ninth)
@@ -1246,39 +1529,27 @@ def _bf_finite_term(
     total = RealBall(0, precision_bits=field.precision_bits)
     log_cache: dict[int, RealBall] = {}
     sqrt_cache: dict[int, RealBall] = {}
-    term_count = 0
-    for prime, factors in splitting.items():
-        for exponent in range(1, _max_power_strict(prime, threshold) + 1):
-            total = total - _bf_prime_power_summand(
-                prime, exponent, scale, field, log_cache, sqrt_cache
+    scales = (scale, scale_ninth)
+    for multiplicity, scale_index, norm, exponent in plan.terms:
+        summand = _bf_prime_power_summand(
+            norm,
+            exponent,
+            scales[scale_index],
+            field,
+            log_cache,
+            sqrt_cache,
+        )
+        if multiplicity != 1:
+            summand = summand * RealBall(
+                multiplicity, precision_bits=field.precision_bits
             )
-            term_count += 1
-        for _ramification, residue_degree in factors:
-            norm = prime**residue_degree
-            for exponent in range(1, _max_power_strict(norm, threshold) + 1):
-                total = total + _bf_prime_power_summand(
-                    norm, exponent, scale, field, log_cache, sqrt_cache
-                )
-                term_count += 1
-        if prime < ninth:
-            for exponent in range(1, _max_power_strict(prime, ninth) + 1):
-                total = total + _bf_prime_power_summand(
-                    prime, exponent, scale_ninth, field, log_cache, sqrt_cache
-                )
-                term_count += 1
-            for _ramification, residue_degree in factors:
-                norm = prime**residue_degree
-                for exponent in range(1, _max_power_strict(norm, ninth) + 1):
-                    total = total - _bf_prime_power_summand(
-                        norm, exponent, scale_ninth, field, log_cache, sqrt_cache
-                    )
-                    term_count += 1
+        total = total + summand
     multiplier = RealBall(3, precision_bits=field.precision_bits) / (
         RealBall(2, precision_bits=field.precision_bits)
         * sqrt_threshold
         * field.log_integer(3 * threshold)
     )
-    return multiplier * total, term_count
+    return multiplier * total
 
 
 class ZetaLogResidueEnclosure:
@@ -1296,6 +1567,9 @@ class ZetaLogResidueEnclosure:
         precision_history: Sequence[int],
         rational_primes: int,
         prime_power_terms: int,
+        aggregated_prime_power_terms: int,
+        diagnostics: dict[str, Any],
+        enclosure_widths: Sequence[RationalEndpoint],
     ) -> None:
         self.ball = ball
         self.finite_term = finite_term
@@ -1306,6 +1580,10 @@ class ZetaLogResidueEnclosure:
         self.precision_history = tuple(int(value) for value in precision_history)
         self.rational_primes = int(rational_primes)
         self.prime_power_terms = int(prime_power_terms)
+        self.aggregated_prime_power_terms = int(aggregated_prime_power_terms)
+        self.diagnostics = dict(diagnostics)
+        self.enclosure_widths = tuple(enclosure_widths)
+        self.refinement_attempts = len(self.precision_history)
         self.rigorous = ball.rigorous and tail_bound.rigorous
         self.status = "rigorous-enclosure" if self.rigorous else "heuristic"
         self.proof_status = (
@@ -1334,6 +1612,10 @@ class ZetaLogResidueEnclosure:
             "precision_history": list(self.precision_history),
             "rational_primes": self.rational_primes,
             "prime_power_terms": self.prime_power_terms,
+            "aggregated_prime_power_terms": self.aggregated_prime_power_terms,
+            "enclosure_widths": [str(value) for value in self.enclosure_widths],
+            "refinement_attempts": self.refinement_attempts,
+            "diagnostics": dict(self.diagnostics),
             "rigorous": self.rigorous,
             "status": self.status,
             "proof_status": self.proof_status,
@@ -1348,6 +1630,7 @@ def zeta_log_residue_bound(
     absolute_error: Any = "0.125",
     precision_bits: int = 128,
     limits: ZetaLogResidueLimits | None = None,
+    workspace: ZetaLogResidueWorkspace | None = None,
 ) -> ZetaLogResidueEnclosure:
     """Rigorously enclose `log(Res_{s=1} zeta_K(s))`.
 
@@ -1368,36 +1651,71 @@ def zeta_log_residue_bound(
     if requested_error <= RationalEndpoint(0):
         raise ValueError("absolute_error must be positive")
     precision = int(precision_bits)
+    if precision < 16:
+        raise ValueError("zeta residue precision must be at least 16 bits")
+    if resource_limits.maximum_precision_bits < precision:
+        raise ValueError("maximum_precision_bits is below the initial precision")
+    selected_workspace = (
+        ZetaLogResidueWorkspace(discriminant, degree, splitting_provider)
+        if workspace is None
+        else workspace
+    )
+    selected_workspace.require_field(discriminant, degree, splitting_provider)
+    initial_provider_calls = selected_workspace.provider_calls
+    initial_splitting_hits = selected_workspace.splitting_cache_hits
+    initial_plan_hits = selected_workspace.plan_cache_hits
+    initial_threshold_hits = selected_workspace.threshold_cache_hits
+    initial_finite_hits = selected_workspace.finite_term_cache_hits
     history: list[int] = []
-    splitting: dict[int, tuple[tuple[int, int], ...]] | None = None
+    enclosure_widths: list[RationalEndpoint] = []
+    accumulated: RealBall | None = None
     primes: list[int] = []
     threshold = 0
     tail = RealBall(0)
-    term_count = 0
+    plan = _BFPrimePowerPlan(0, (), 0)
+    threshold_evaluations = 0
+    interval_diagnostics: dict[str, int] = {}
     while precision <= resource_limits.maximum_precision_bits:
         history.append(precision)
-        field = IntervalBallField(precision)
-        threshold, tail = _bf_threshold(
-            discriminant,
-            degree,
+        threshold, tail, evaluations = selected_workspace.threshold(
             requested_error / RationalEndpoint(2),
-            field,
+            precision,
             resource_limits.maximum_prime_bound,
         )
-        current_primes = _primes_below(threshold)
-        if splitting is None or current_primes != primes:
-            primes = current_primes
-            splitting = _splitting_types(
-                primes,
-                degree,
-                splitting_provider,
-                resource_limits.splitting_block_size,
-            )
-        finite, term_count = _bf_finite_term(degree, threshold, splitting, field)
+        threshold_evaluations += evaluations
+        primes = _primes_below(threshold)
+        splitting = selected_workspace.splitting_types(
+            primes, resource_limits.splitting_block_size
+        )
+        plan = selected_workspace.prime_power_plan(threshold, splitting)
+        finite, interval_diagnostics = selected_workspace.finite_term(plan, precision)
         answer = finite.add_error(tail.upper)
-        if answer.radius() <= requested_error:
+        accumulated = (
+            answer if accumulated is None else accumulated.intersection(answer)
+        )
+        enclosure_widths.append(accumulated.width())
+        if accumulated.radius() <= requested_error:
+            diagnostics: dict[str, Any] = {
+                "provider_calls": (
+                    selected_workspace.provider_calls - initial_provider_calls
+                ),
+                "splitting_cache_hits": (
+                    selected_workspace.splitting_cache_hits - initial_splitting_hits
+                ),
+                "prime_power_plan_cache_hits": (
+                    selected_workspace.plan_cache_hits - initial_plan_hits
+                ),
+                "threshold_cache_hits": (
+                    selected_workspace.threshold_cache_hits - initial_threshold_hits
+                ),
+                "finite_term_cache_hits": (
+                    selected_workspace.finite_term_cache_hits - initial_finite_hits
+                ),
+                "threshold_bound_evaluations": threshold_evaluations,
+                **interval_diagnostics,
+            }
             return ZetaLogResidueEnclosure(
-                answer,
+                accumulated,
                 finite,
                 tail,
                 discriminant=discriminant,
@@ -1405,7 +1723,10 @@ def zeta_log_residue_bound(
                 threshold=threshold,
                 precision_history=history,
                 rational_primes=len(primes),
-                prime_power_terms=term_count,
+                prime_power_terms=plan.raw_terms,
+                aggregated_prime_power_terms=plan.aggregated_terms,
+                diagnostics=diagnostics,
+                enclosure_widths=enclosure_widths,
             )
         precision *= 2
     raise AnalyticPrecisionError(
@@ -1543,6 +1864,7 @@ __all__ = [
     "UnitSaturationResult",
     "ZetaLogResidueEnclosure",
     "ZetaLogResidueLimits",
+    "ZetaLogResidueWorkspace",
     "certified_regulator_enclosure",
     "extract_unit_lattice",
     "regulator_from_factored_units",

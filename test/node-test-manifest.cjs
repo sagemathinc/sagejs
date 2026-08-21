@@ -54,6 +54,15 @@ const unit = [
 ];
 
 const integration = [
+  "test/number-field-class-group-factor-base.cjs",
+  "test/number-field-class-group-maps-proof.cjs",
+  "test/number-field-class-group-matrix.cjs",
+  "test/number-field-class-group-relations.cjs",
+  "test/number-field-class-unit-analytic.cjs",
+  "test/number-field-class-unit-context.cjs",
+  "test/number-field-class-unit-engine.cjs",
+  "test/number-field-class-unit-public.cjs",
+  "test/number-field-quadratic-class-units.cjs",
   "test/number-field-maximal-order-final-evidence/test.cjs",
   "test/number-field-maximal-order-corpus.cjs",
   "test/number-field-maximal-order-corpus-report-505.cjs",

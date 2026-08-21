@@ -38,6 +38,24 @@ Missing systems produce explicit `unavailable` records. `--require-sage` and
 `--require-magma` make those conditions fatal. Julia was absent on the capture
 host, so the pinned baseline does not count Hecke/Oscar as a third agreement;
 the exact upstream versions and commits remain recorded for a future adapter.
+The capture host specifically has no `julia` executable; both pinned local
+projects declare `julia = "1.10"`. After installing Julia 1.10 or newer under a
+task-scoped tool prefix, the reproducible dependency setup is:
+
+```bash
+JULIA_DEPOT_PATH=/home/user/upstream/julia-class-unit-depot \
+  /home/user/upstream/julia/bin/julia \
+  --project=/home/user/upstream/Hecke.jl \
+  -e 'using Pkg; Pkg.instantiate(); using Hecke; Pkg.status()'
+```
+
+An adapter must record the Julia, Hecke, Nemo/FLINT, and (if loaded) Oscar
+versions and normalized results before changing the baseline from
+`unavailable`; installing packages alone is not oracle agreement.
+On POSIX hosts the harness wraps each external process in GNU `timeout`, sends
+`TERM` to its process group, and escalates to `KILL` after five seconds. The
+Node timeout remains a final fallback. Thus a failed capture cannot leave a
+Sage or Magma worker consuming resources in the background.
 
 ## Mathematical coverage
 

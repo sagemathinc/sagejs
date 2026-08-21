@@ -20,6 +20,7 @@ Start with:
 - [Polyglot execution](../POLYGLOT.md)
 - [Python standard library compatibility](python-standard-library.md)
 - [Certified number-field maximal orders](number-field-maximal-orders.md)
+- [General number-field class and unit groups](number-field-class-unit-groups.md)
 - [Plotting](../PLOTTING.md)
 - [Hyperelliptic curves and local Frobenius data](hyperelliptic-curves.md)
 - [Hyperelliptic conductors, root numbers, and L-series](hyperelliptic-lseries.md)
