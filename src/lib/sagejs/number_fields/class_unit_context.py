@@ -2,9 +2,11 @@
 
 The context is intentionally representation-neutral.  Producer lanes may put
 ordinary JSON-safe records or objects exposing `to_dict()` into its component
-slots.  Checkpoints detach and canonically serialize those records, authenticate
-the complete payload, and can replay them through caller-supplied decoders and
-verifiers.
+slots. Checkpoints detach and canonically serialize those records, bind the
+complete payload with a content-integrity hash, and can replay them through
+caller-supplied decoders and verifiers. The unkeyed hash detects corruption;
+mathematical component replay, not the hash, is the trust boundary for
+untrusted checkpoints.
 """
 
 from __future__ import annotations
@@ -641,7 +643,7 @@ class ClassUnitGroupContext:
         }
 
     def to_dict(self) -> dict[str, Any]:
-        """Return a deterministic authenticated checkpoint."""
+        """Return a deterministic content-integrity-bound checkpoint."""
         body = self._body_dict()
         body["content_sha256"] = _content_hash(body)
         return body
@@ -1576,7 +1578,7 @@ def load_class_unit_checkpoint(
     component_verifiers: dict[str, Any] | None = None,
     max_checkpoint_bytes: int | None = None,
 ) -> ClassUnitGroupContext:
-    """Load, authenticate, decode, and independently verify a checkpoint."""
+    """Load, integrity-check, decode, and independently verify a checkpoint."""
     maximum = _checkpoint_byte_limit(max_checkpoint_bytes, "checkpoint byte limit")
     payload = _read_checkpoint_source(source, maximum)
     return ClassUnitGroupContext.from_dict(
