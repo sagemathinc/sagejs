@@ -106,7 +106,7 @@
       "category": "host-adapter",
       "review_status": "audited",
       "lane": "distribution",
-      "rationale": "Bounded generation-tagged Wasm32 MPFR and complex resources plus a finite expression transport; arithmetic and special functions delegate to MPFR, Arb, and Acb, while supported integration/root iteration remains inside the isolated reactor."
+      "rationale": "Bounded generation-tagged Wasm32 MPFR/Acb resources plus a finite expression transport. The GK21 and bisection loops are a reviewed compiler-limitation exception because the synchronous reactor cannot invoke host callbacks and source-transparent kernels cannot yet own MPFR/Acb resources."
     },
     {
       "path": "packages/flint-wasm/src/algebraic.c",

@@ -389,8 +389,8 @@
     },
     {
       "path": "packages/flint-wasm/src/numeric.c",
-      "lines": 1296,
-      "bytes": 40385,
+      "lines": 1311,
+      "bytes": 40997,
       "decision": "retain-bridge",
       "priority": "high",
       "responsibilities": [
@@ -399,7 +399,7 @@
         "mature Arb and Acb special-function dispatch",
         "bounded elementary-expression VM, quadrature, and root iteration"
       ],
-      "rationale": "The numerical algorithms and special functions are delegated to mature MPFR, Arb, and Acb operations. The remaining code is an isolated Wasm32 ownership and coarse-call adapter that cannot synchronously invoke host callbacks, so keeping the bounded expression transport inside the reactor removes Python hot loops without embedding a Unix runtime.",
+      "rationale": "The scalar numerical algorithms and special functions delegate to mature MPFR, Arb, and Acb operations. The handwritten finite VM, GK21 quadrature policy, and bisection loop are an explicit measured compiler limitation exception: the isolated synchronous reactor cannot call a Python/JavaScript callback, while the source compiler does not yet lower MPFR/Acb resource operations. Keeping this bounded coarse call in the reactor removes the measured hot loops without embedding an interpreter or Unix runtime.",
       "fallback": "Ordinary Python numerical evaluation remains explicit for unsupported expression trees and arbitrary Python callables.",
       "oracles": [
         "CPython",
@@ -407,7 +407,7 @@
         "FLINT",
         "SageMath"
       ],
-      "next": "Keep the accepted expression language finite, preserve stale-handle and allocation limits, and extend only with differential vectors and public route evidence."
+      "next": "Keep the accepted expression language finite and the shared 8192-handle and 100000-iteration ceilings exact; migrate the quadrature and bisection control flow to typed source-transparent kernels when the compiler can own MPFR/Acb resources."
     },
     {
       "path": "packages/flint/src/analytic_batch_core.c",
