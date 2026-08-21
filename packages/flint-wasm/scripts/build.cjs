@@ -117,6 +117,7 @@ const compilerFrontendMetafile = path.join(
 const baselibOutput = path.join(outputDirectory, "baselib.js");
 const standardLibraryOutput = path.join(outputDirectory, "stdlib.json");
 const lazyModulesOutput = path.join(outputDirectory, "lazy-modules.json");
+const conwayDataOutput = path.join(outputDirectory, "conway-polynomials.json");
 const dynamicProgramsOutput = path.join(outputDirectory, "dynamic-programs.json");
 const kernelCoverageOutput = path.join(
   outputDirectory,
@@ -153,6 +154,13 @@ const standardLibraryCacheDirectory = path.join(
   "module-cache",
 );
 const lazyModulesSource = path.join(repositoryRoot, "dist", "lazy-modules.json");
+const conwayDataSource = path.join(
+  repositoryRoot,
+  "src",
+  "lib",
+  "conway_polynomials",
+  "conway_polynomials.json",
+);
 const kernelCoverageSource = path.join(
   packageRoot,
   "release",
@@ -821,6 +829,7 @@ fs.writeFileSync(
   }),
 );
 fs.copyFileSync(lazyModulesSource, lazyModulesOutput);
+fs.copyFileSync(conwayDataSource, conwayDataOutput);
 fs.copyFileSync(kernelCoverageSource, kernelCoverageOutput);
 const dynamicProgramInputs = fs.readdirSync(dynamicProgramCacheDirectory)
   .filter((name) => /^[a-f0-9]{64}\.json$/.test(name))
@@ -929,6 +938,7 @@ const receipt = writeProductionReceipt({
     ...dynamicProgramInputs,
     lazyModuleGenerator,
     lazyModuleConfig,
+    conwayDataSource,
     kernelCoverageSource,
     plotlySource,
     wasmPackLoaderSource,
