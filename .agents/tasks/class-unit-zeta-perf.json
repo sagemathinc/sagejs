@@ -4,7 +4,7 @@
   "id": "class-unit-zeta-perf",
   "title": "Class Unit Zeta Perf",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Profile and materially reduce motivating-quintic certified zeta workspace cost without changing proof intervals",
   "base_commit": "817ce63721b0aad7fae91dc8c4d7b1c3c69f5318",
@@ -32,13 +32,74 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/number-field-class-unit-analytic.cjs",
+    "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_analytic.py",
     "pnpm test:baselib:strict",
+    "pnpm architecture:check",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/number-field-class-unit-analytic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.182,
+      "started_at": "2026-08-21T15:33:26.400Z",
+      "commit": "72cc74b675a996888d22cc8ae8db740987d6b77f",
+      "workspace_fingerprint": "b8d4e7829cc00097f1b3b7b45d1bf657d96c9d6962819acd35ae0a2f712f5797",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_analytic.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.369,
+      "started_at": "2026-08-21T15:33:29.209Z",
+      "commit": "72cc74b675a996888d22cc8ae8db740987d6b77f",
+      "workspace_fingerprint": "b8d4e7829cc00097f1b3b7b45d1bf657d96c9d6962819acd35ae0a2f712f5797",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 28.979,
+      "started_at": "2026-08-21T15:33:32.258Z",
+      "commit": "72cc74b675a996888d22cc8ae8db740987d6b77f",
+      "workspace_fingerprint": "b8d4e7829cc00097f1b3b7b45d1bf657d96c9d6962819acd35ae0a2f712f5797",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.378,
+      "started_at": "2026-08-21T15:34:01.838Z",
+      "commit": "72cc74b675a996888d22cc8ae8db740987d6b77f",
+      "workspace_fingerprint": "b8d4e7829cc00097f1b3b7b45d1bf657d96c9d6962819acd35ae0a2f712f5797",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 853.912,
+      "started_at": "2026-08-21T15:35:38.897Z",
+      "commit": "72cc74b675a996888d22cc8ae8db740987d6b77f",
+      "workspace_fingerprint": "b8d4e7829cc00097f1b3b7b45d1bf657d96c9d6962819acd35ae0a2f712f5797",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Replaced pathological tuple-key BF-plan aggregation with nested exact-integer maps and bounded finite-sum provenance while retaining the identical sorted plan and exact outward-dyadic interval. On bench-1 the motivating quintic improved from 154.87s to 80.67s wall (engine 76.08s, peak RSS 525152KB); the exact finite endpoints and splitting-record hash match the reference. The degree-7 phase probe completed in 145.93s and showed relation search, not splitting, as the remaining dominant stage.",
+    "risks": [
+      "The exact finite fold remains the dominant zeta component at roughly 16-18 seconds; a future mature FLINT/Arb batched implementation would still require the current dynamic fallback and exact differential oracle.",
+      "Increasing the splitting block size from 4096 to 65536 saved only about 0.1 seconds and is deliberately not part of this change.",
+      "The repository-wide test:changed run was stopped after the relevant class/unit integration batch passed; later unrelated integration batches were not completed in this lane."
+    ],
+    "next_steps": [
+      "Cherry-pick e187bd231383fbd74c6e1764b0228cd65466094f and then 72cc74b675a996888d22cc8ae8db740987d6b77f; the intervening benchmark-instrumentation commit is optional.",
+      "Profile relation collection for degree 7, where it accounts for 90.91 seconds of the 144.35-second engine runtime."
+    ]
   }
 }
