@@ -318,6 +318,7 @@ warm_zeta = zeta_log_residue_bound(
 assert len(provider_calls) == calls_after_cold
 assert warm_zeta.diagnostics["provider_calls"] == 0
 assert warm_zeta.diagnostics["splitting_cache_hits"] == 1
+assert warm_zeta.diagnostics["prime_enumeration_cache_hits"] == 1
 assert warm_zeta.diagnostics["prime_power_plan_cache_hits"] == 1
 assert warm_zeta.diagnostics["threshold_cache_hits"] == 1
 assert warm_zeta.diagnostics["finite_term_cache_hits"] == 1
@@ -326,6 +327,53 @@ assert zeta.aggregated_prime_power_terms < zeta.prime_power_terms
 assert zeta.aggregated_prime_power_terms == 800
 assert zeta.prime_power_terms == 1534
 assert warm_zeta.ball.contains(quadratic["logResidue"])
+assert warm_zeta.ball.to_dict() == zeta.ball.to_dict()
+assert workspace.diagnostics()["zeta_residue_calls"] == 2
+assert workspace.diagnostics()["splitting_nanoseconds"] >= 0
+
+class FakeCoordinate:
+    def __init__(self, numerator, denominator=1):
+        self._numerator = numerator
+        self._denominator = denominator
+
+class FakeElement:
+    def __init__(self, numerator):
+        self.numerator = numerator
+    def list(self):
+        return [FakeCoordinate(self.numerator), FakeCoordinate(0)]
+
+class CountedFactoredUnit:
+    def __init__(self, numerator):
+        self.element = FakeElement(numerator)
+        self.calls = []
+    def evaluate(self):
+        return self.element
+    def archimedean_logarithms(self, precision):
+        self.calls.append(precision)
+        return [RealBall("1", precision_bits=precision)]
+
+counted_unit = CountedFactoredUnit(1)
+cached_regulator = workspace.regulator_from_factored_units(
+    [counted_unit], unit_rank=1, precision_bits=96,
+    absolute_tolerance_bits=60, maximum_precision_bits=192,
+)
+warm_regulator = workspace.regulator_from_factored_units(
+    [counted_unit], unit_rank=1, precision_bits=96,
+    absolute_tolerance_bits=60, maximum_precision_bits=192,
+)
+assert cached_regulator.to_dict() == warm_regulator.to_dict()
+assert counted_unit.calls == [96]
+assert workspace.diagnostics()["regulator_calls"] == 2
+assert workspace.diagnostics()["regulator_cache_hits"] == 1
+try:
+    workspace.regulator_from_factored_units(
+        [counted_unit], unit_rank=1, precision_bits=96,
+        absolute_tolerance_bits=60, maximum_precision_bits=192,
+        cancelled=lambda: True,
+    )
+    raise AssertionError("a warm regulator cache ignored cancellation")
+except AnalyticResourceError:
+    pass
 
 escalating_workspace = ZetaLogResidueWorkspace(5, 2, counted_provider)
 refined_zeta = zeta_log_residue_bound(

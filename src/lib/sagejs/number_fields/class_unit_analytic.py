@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from typing import Any, Callable, Iterable, Sequence
 
 from mpmath import iv
@@ -2451,11 +2452,14 @@ def _build_bf_plan(
 
 
 class ZetaLogResidueWorkspace:
-    """Reusable exact splitting records and prime-power plans for one field.
+    """Reusable exact analytic work for one field computation.
 
     The cache is explicit so proof data cannot leak between fields. Extending
     a cutoff asks the provider only for the uncovered tail, while every new
     block is checked for complete prime coverage and local degree identities.
+    Regulator entries are keyed by the exact algebraic unit coordinates and
+    every precision/resource parameter. The workspace is deliberately absent
+    from serialized certificates, whose replay therefore remains independent.
     """
 
     def __init__(
@@ -2482,10 +2486,133 @@ class ZetaLogResidueWorkspace:
         self.plan_cache_hits = 0
         self.threshold_cache_hits = 0
         self.finite_term_cache_hits = 0
+        self.prime_enumeration_cache_hits = 0
+        self.regulator_calls = 0
+        self.regulator_cache_hits = 0
+        self.zeta_residue_calls = 0
+        self.certificate_construction_calls = 0
+        self.certificate_replay_calls = 0
+        self.splitting_nanoseconds = 0
+        self.prime_enumeration_nanoseconds = 0
+        self.threshold_nanoseconds = 0
+        self.prime_power_plan_nanoseconds = 0
+        self.finite_term_nanoseconds = 0
+        self.regulator_nanoseconds = 0
+        self.zeta_residue_nanoseconds = 0
+        self.hr_validation_nanoseconds = 0
+        self.certificate_construction_nanoseconds = 0
+        self.certificate_replay_nanoseconds = 0
         self._records: dict[int, tuple[tuple[int, int], ...]] = {}
         self._plans: dict[int, _BFPrimePowerPlan] = {}
+        self._primes: dict[int, tuple[int, ...]] = {}
         self._thresholds: dict[tuple[str, int], tuple[int, RealBall, int]] = {}
         self._finite_terms: dict[tuple[int, int], tuple[RealBall, dict[str, int]]] = {}
+        self._regulators: dict[
+            tuple[str, int, int, int, int, int], tuple[RegulatorEnclosure, str]
+        ] = {}
+
+    def diagnostics(self) -> dict[str, int]:
+        """Return non-proof cache counters and monotonic phase timings."""
+        return {
+            "provider_calls": self.provider_calls,
+            "records_decoded": self.records_decoded,
+            "splitting_cache_hits": self.splitting_cache_hits,
+            "prime_enumeration_cache_hits": self.prime_enumeration_cache_hits,
+            "prime_power_plan_cache_hits": self.plan_cache_hits,
+            "threshold_cache_hits": self.threshold_cache_hits,
+            "finite_term_cache_hits": self.finite_term_cache_hits,
+            "regulator_calls": self.regulator_calls,
+            "regulator_cache_hits": self.regulator_cache_hits,
+            "zeta_residue_calls": self.zeta_residue_calls,
+            "certificate_construction_calls": self.certificate_construction_calls,
+            "certificate_replay_calls": self.certificate_replay_calls,
+            "splitting_nanoseconds": self.splitting_nanoseconds,
+            "prime_enumeration_nanoseconds": self.prime_enumeration_nanoseconds,
+            "threshold_nanoseconds": self.threshold_nanoseconds,
+            "prime_power_plan_nanoseconds": self.prime_power_plan_nanoseconds,
+            "finite_term_nanoseconds": self.finite_term_nanoseconds,
+            "regulator_nanoseconds": self.regulator_nanoseconds,
+            "zeta_residue_nanoseconds": self.zeta_residue_nanoseconds,
+            "hr_validation_nanoseconds": self.hr_validation_nanoseconds,
+            "certificate_construction_nanoseconds": (
+                self.certificate_construction_nanoseconds
+            ),
+            "certificate_replay_nanoseconds": self.certificate_replay_nanoseconds,
+        }
+
+    def _record_certificate_construction(self, started: int) -> None:
+        self.certificate_construction_calls += 1
+        self.certificate_construction_nanoseconds += time.perf_counter_ns() - started
+
+    def _record_certificate_replay(self, started: int) -> None:
+        self.certificate_replay_calls += 1
+        self.certificate_replay_nanoseconds += time.perf_counter_ns() - started
+
+    def rational_primes_below(self, bound: int) -> list[int]:
+        """Return a cached exact rational-prime table below `bound`."""
+        started = time.perf_counter_ns()
+        try:
+            cached = self._primes.get(int(bound))
+            if cached is not None:
+                self.prime_enumeration_cache_hits += 1
+                return list(cached)
+            primes = tuple(_primes_below(int(bound)))
+            self._primes[int(bound)] = primes
+            return list(primes)
+        finally:
+            self.prime_enumeration_nanoseconds += time.perf_counter_ns() - started
+
+    def regulator_from_factored_units(
+        self,
+        units: Sequence[Any],
+        *,
+        unit_rank: int,
+        precision_bits: int = 100,
+        absolute_tolerance_bits: int = 64,
+        maximum_precision_bits: int = 4096,
+        maximum_determinant_states: int = 65_536,
+        cancelled: Callable[[], Any] | None = None,
+    ) -> RegulatorEnclosure:
+        """Reuse a regulator only for the same exact units and parameters."""
+        started = time.perf_counter_ns()
+        self.regulator_calls += 1
+        try:
+            if callable(cancelled) and cancelled():
+                raise AnalyticResourceError("regulator computation was cancelled")
+            unit_payload = [_element_payload(_ordinary_unit(unit)) for unit in units]
+            key = (
+                _canonical_json(unit_payload),
+                int(unit_rank),
+                int(precision_bits),
+                int(absolute_tolerance_bits),
+                int(maximum_precision_bits),
+                int(maximum_determinant_states),
+            )
+            cached = self._regulators.get(key)
+            if cached is not None:
+                regulator, authenticated_payload = cached
+                if _canonical_json(regulator.to_dict()) != authenticated_payload:
+                    raise AnalyticCertificationError(
+                        "a cached regulator enclosure was mutated"
+                    )
+                self.regulator_cache_hits += 1
+                return regulator
+            regulator = regulator_from_factored_units(
+                units,
+                unit_rank=unit_rank,
+                precision_bits=precision_bits,
+                absolute_tolerance_bits=absolute_tolerance_bits,
+                maximum_precision_bits=maximum_precision_bits,
+                maximum_determinant_states=maximum_determinant_states,
+                cancelled=cancelled,
+            )
+            self._regulators[key] = (
+                regulator,
+                _canonical_json(regulator.to_dict()),
+            )
+            return regulator
+        finally:
+            self.regulator_nanoseconds += time.perf_counter_ns() - started
 
     def require_field(
         self,
@@ -2505,53 +2632,63 @@ class ZetaLogResidueWorkspace:
     def splitting_types(
         self, primes: Sequence[int], block_size: int
     ) -> dict[int, tuple[tuple[int, int], ...]]:
-        if not primes:
-            return {}
-        final = primes[-1] + 1
-        if final <= self.covered_stop:
-            self.splitting_cache_hits += 1
-        while self.covered_stop < final:
-            start = self.covered_stop
-            stop = min(final, start + block_size)
-            expected = {prime for prime in primes if start <= prime < stop}
-            block: dict[int, tuple[tuple[int, int], ...]] = {}
-            self.provider_calls += 1
-            for raw_record in self.splitting_provider(start, stop):
-                prime, factors = _splitting_record(raw_record, self.degree)
-                if prime < start or prime >= stop:
-                    raise ValueError(
-                        "splitting provider returned a prime outside its block"
+        started = time.perf_counter_ns()
+        try:
+            if not primes:
+                return {}
+            final = primes[-1] + 1
+            if final <= self.covered_stop:
+                self.splitting_cache_hits += 1
+            while self.covered_stop < final:
+                start = self.covered_stop
+                stop = min(final, start + block_size)
+                expected = {prime for prime in primes if start <= prime < stop}
+                block: dict[int, tuple[tuple[int, int], ...]] = {}
+                self.provider_calls += 1
+                for raw_record in self.splitting_provider(start, stop):
+                    prime, factors = _splitting_record(raw_record, self.degree)
+                    if prime < start or prime >= stop:
+                        raise ValueError(
+                            "splitting provider returned a prime outside its block"
+                        )
+                    if prime in block or prime in self._records:
+                        raise ValueError(
+                            "splitting provider returned a duplicate prime"
+                        )
+                    block[prime] = factors
+                    self.records_decoded += 1
+                missing = expected - set(block)
+                if missing:
+                    raise AnalyticCertificationError(
+                        "splitting provider omitted rational prime " + str(min(missing))
                     )
-                if prime in block or prime in self._records:
-                    raise ValueError("splitting provider returned a duplicate prime")
-                block[prime] = factors
-                self.records_decoded += 1
-            missing = expected - set(block)
-            if missing:
-                raise AnalyticCertificationError(
-                    "splitting provider omitted rational prime " + str(min(missing))
-                )
-            unexpected = set(block) - expected
-            if unexpected:
-                raise ValueError(
-                    "splitting provider returned a composite or out-of-range entry"
-                )
-            self._records.update(block)
-            self.covered_stop = stop
-        return {prime: self._records[prime] for prime in primes}
+                unexpected = set(block) - expected
+                if unexpected:
+                    raise ValueError(
+                        "splitting provider returned a composite or out-of-range entry"
+                    )
+                self._records.update(block)
+                self.covered_stop = stop
+            return {prime: self._records[prime] for prime in primes}
+        finally:
+            self.splitting_nanoseconds += time.perf_counter_ns() - started
 
     def prime_power_plan(
         self,
         threshold: int,
         splitting: dict[int, tuple[tuple[int, int], ...]],
     ) -> _BFPrimePowerPlan:
-        cached = self._plans.get(threshold)
-        if cached is not None:
-            self.plan_cache_hits += 1
-            return cached
-        plan = _build_bf_plan(threshold, splitting)
-        self._plans[threshold] = plan
-        return plan
+        started = time.perf_counter_ns()
+        try:
+            cached = self._plans.get(threshold)
+            if cached is not None:
+                self.plan_cache_hits += 1
+                return cached
+            plan = _build_bf_plan(threshold, splitting)
+            self._plans[threshold] = plan
+            return plan
+        finally:
+            self.prime_power_plan_nanoseconds += time.perf_counter_ns() - started
 
     def threshold(
         self,
@@ -2559,40 +2696,48 @@ class ZetaLogResidueWorkspace:
         precision: int,
         maximum: int,
     ) -> tuple[int, RealBall, int]:
-        key = (str(target), int(precision))
-        cached = self._thresholds.get(key)
-        if cached is not None:
-            if cached[0] > maximum:
-                raise AnalyticResourceError(
-                    "cached Belabas--Friedman threshold exceeds maximum_prime_bound"
-                )
-            self.threshold_cache_hits += 1
-            return cached[0], cached[1], 0
-        model = _BFErrorModel(
-            self.discriminant, self.degree, IntervalBallField(precision)
-        )
-        threshold, bound = _bf_threshold(model, target, maximum)
-        result = (threshold, bound, model.evaluations)
-        self._thresholds[key] = result
-        return result
+        started = time.perf_counter_ns()
+        try:
+            key = (str(target), int(precision))
+            cached = self._thresholds.get(key)
+            if cached is not None:
+                if cached[0] > maximum:
+                    raise AnalyticResourceError(
+                        "cached Belabas--Friedman threshold exceeds maximum_prime_bound"
+                    )
+                self.threshold_cache_hits += 1
+                return cached[0], cached[1], 0
+            model = _BFErrorModel(
+                self.discriminant, self.degree, IntervalBallField(precision)
+            )
+            threshold, bound = _bf_threshold(model, target, maximum)
+            result = (threshold, bound, model.evaluations)
+            self._thresholds[key] = result
+            return result
+        finally:
+            self.threshold_nanoseconds += time.perf_counter_ns() - started
 
     def finite_term(
         self, plan: _BFPrimePowerPlan, precision: int
     ) -> tuple[RealBall, dict[str, int]]:
-        key = (plan.threshold, int(precision))
-        cached = self._finite_terms.get(key)
-        if cached is not None:
-            self.finite_term_cache_hits += 1
-            return cached[0], {
-                "log_evaluations": 0,
-                "log_cache_hits": 0,
-                "sqrt_evaluations": 0,
-                "sqrt_cache_hits": 0,
-            }
-        field = IntervalBallField(precision)
-        result = (_bf_finite_term(plan, field), field.diagnostics())
-        self._finite_terms[key] = result
-        return result
+        started = time.perf_counter_ns()
+        try:
+            key = (plan.threshold, int(precision))
+            cached = self._finite_terms.get(key)
+            if cached is not None:
+                self.finite_term_cache_hits += 1
+                return cached[0], {
+                    "log_evaluations": 0,
+                    "log_cache_hits": 0,
+                    "sqrt_evaluations": 0,
+                    "sqrt_cache_hits": 0,
+                }
+            field = IntervalBallField(precision)
+            result = (_bf_finite_term(plan, field), field.diagnostics())
+            self._finite_terms[key] = result
+            return result
+        finally:
+            self.finite_term_nanoseconds += time.perf_counter_ns() - started
 
 
 class _BFErrorModel:
@@ -2844,11 +2989,18 @@ def zeta_log_residue_bound(
         else workspace
     )
     selected_workspace.require_field(discriminant, degree, splitting_provider)
+    zeta_started = time.perf_counter_ns()
     initial_provider_calls = selected_workspace.provider_calls
     initial_splitting_hits = selected_workspace.splitting_cache_hits
+    initial_prime_hits = selected_workspace.prime_enumeration_cache_hits
     initial_plan_hits = selected_workspace.plan_cache_hits
     initial_threshold_hits = selected_workspace.threshold_cache_hits
     initial_finite_hits = selected_workspace.finite_term_cache_hits
+    initial_splitting_ns = selected_workspace.splitting_nanoseconds
+    initial_prime_ns = selected_workspace.prime_enumeration_nanoseconds
+    initial_plan_ns = selected_workspace.prime_power_plan_nanoseconds
+    initial_threshold_ns = selected_workspace.threshold_nanoseconds
+    initial_finite_ns = selected_workspace.finite_term_nanoseconds
     history: list[int] = []
     enclosure_widths: list[RationalEndpoint] = []
     accumulated: RealBall | None = None
@@ -2866,7 +3018,7 @@ def zeta_log_residue_bound(
             resource_limits.maximum_prime_bound,
         )
         threshold_evaluations += evaluations
-        primes = _primes_below(threshold)
+        primes = selected_workspace.rational_primes_below(threshold)
         splitting = selected_workspace.splitting_types(
             primes, resource_limits.splitting_block_size
         )
@@ -2885,6 +3037,9 @@ def zeta_log_residue_bound(
                 "splitting_cache_hits": (
                     selected_workspace.splitting_cache_hits - initial_splitting_hits
                 ),
+                "prime_enumeration_cache_hits": (
+                    selected_workspace.prime_enumeration_cache_hits - initial_prime_hits
+                ),
                 "prime_power_plan_cache_hits": (
                     selected_workspace.plan_cache_hits - initial_plan_hits
                 ),
@@ -2895,8 +3050,27 @@ def zeta_log_residue_bound(
                     selected_workspace.finite_term_cache_hits - initial_finite_hits
                 ),
                 "threshold_bound_evaluations": threshold_evaluations,
+                "splitting_nanoseconds": (
+                    selected_workspace.splitting_nanoseconds - initial_splitting_ns
+                ),
+                "prime_enumeration_nanoseconds": (
+                    selected_workspace.prime_enumeration_nanoseconds - initial_prime_ns
+                ),
+                "prime_power_plan_nanoseconds": (
+                    selected_workspace.prime_power_plan_nanoseconds - initial_plan_ns
+                ),
+                "threshold_nanoseconds": (
+                    selected_workspace.threshold_nanoseconds - initial_threshold_ns
+                ),
+                "finite_term_nanoseconds": (
+                    selected_workspace.finite_term_nanoseconds - initial_finite_ns
+                ),
                 **interval_diagnostics,
             }
+            selected_workspace.zeta_residue_calls += 1
+            selected_workspace.zeta_residue_nanoseconds += (
+                time.perf_counter_ns() - zeta_started
+            )
             return ZetaLogResidueEnclosure(
                 accumulated,
                 finite,
@@ -3087,20 +3261,33 @@ def _compute_unit_index_proof(
             "the global index certificate has unverified torsion data"
         )
     regulator_configuration = configuration["regulator"]
-    regulator = regulator_from_factored_units(
-        initial_units,
-        unit_rank=expected_rank,
-        precision_bits=_payload_integer(
-            regulator_configuration["precision_bits"], "regulator precision"
-        ),
-        absolute_tolerance_bits=_payload_integer(
-            regulator_configuration["absolute_tolerance_bits"],
-            "regulator absolute tolerance",
-        ),
-        maximum_precision_bits=_payload_integer(
-            regulator_configuration["maximum_precision_bits"],
-            "maximum regulator precision",
-        ),
+    regulator_precision = _payload_integer(
+        regulator_configuration["precision_bits"], "regulator precision"
+    )
+    regulator_tolerance = _payload_integer(
+        regulator_configuration["absolute_tolerance_bits"],
+        "regulator absolute tolerance",
+    )
+    regulator_maximum_precision = _payload_integer(
+        regulator_configuration["maximum_precision_bits"],
+        "maximum regulator precision",
+    )
+    regulator = (
+        regulator_from_factored_units(
+            initial_units,
+            unit_rank=expected_rank,
+            precision_bits=regulator_precision,
+            absolute_tolerance_bits=regulator_tolerance,
+            maximum_precision_bits=regulator_maximum_precision,
+        )
+        if workspace is None
+        else workspace.regulator_from_factored_units(
+            initial_units,
+            unit_rank=expected_rank,
+            precision_bits=regulator_precision,
+            absolute_tolerance_bits=regulator_tolerance,
+            maximum_precision_bits=regulator_maximum_precision,
+        )
     )
     zeta_configuration = configuration["zeta"]
     zeta_absolute_error = zeta_configuration["absolute_error"]
@@ -3135,21 +3322,26 @@ def _compute_unit_index_proof(
         limits=limits,
         workspace=workspace,
     )
-    index = validate_hr_index(
-        signature=(signature[0], signature[1]),
-        discriminant=int(order.discriminant()),
-        class_number=_payload_integer(
-            configuration["class_number"], "global-index class number"
-        ),
-        roots_of_unity=_payload_integer(
-            configuration["roots_of_unity"], "global-index torsion order"
-        ),
-        regulator=regulator,
-        zeta_log_residue=zeta,
-        precision_bits=_payload_integer(
-            configuration["hr_precision_bits"], "hR validation precision"
-        ),
-    )
+    hr_started = time.perf_counter_ns()
+    try:
+        index = validate_hr_index(
+            signature=(signature[0], signature[1]),
+            discriminant=int(order.discriminant()),
+            class_number=_payload_integer(
+                configuration["class_number"], "global-index class number"
+            ),
+            roots_of_unity=_payload_integer(
+                configuration["roots_of_unity"], "global-index torsion order"
+            ),
+            regulator=regulator,
+            zeta_log_residue=zeta,
+            precision_bits=_payload_integer(
+                configuration["hr_precision_bits"], "hR validation precision"
+            ),
+        )
+    finally:
+        if workspace is not None:
+            workspace.hr_validation_nanoseconds += time.perf_counter_ns() - hr_started
     if not index.rigorous or index.unique_index is None:
         raise AnalyticPrecisionError(
             "the replayed analytic proof does not isolate a unique global index"
@@ -3206,6 +3398,10 @@ class UnitSaturationIndexCertificate:
         body["content_sha256"] = _content_hash(body)
         return body
 
+    def workspace_diagnostics(self) -> dict[str, int] | None:
+        """Describe live cache use, or `None` for a detached certificate."""
+        return None if self._workspace is None else self._workspace.diagnostics()
+
     @classmethod
     def from_dict(cls, payload: Any) -> UnitSaturationIndexCertificate:
         if not isinstance(payload, dict):
@@ -3243,6 +3439,7 @@ class UnitSaturationIndexCertificate:
         initial_units: Sequence[Any],
         generation_verifier: Callable[..., Any] | None = None,
     ) -> bool:
+        replay_started = time.perf_counter_ns()
         try:
             hr_payload = self.analytic_proof["hr_index"]
             lower_index = _payload_integer(
@@ -3304,6 +3501,9 @@ class UnitSaturationIndexCertificate:
             ) == _canonical_json(self.analytic_proof)
         except (TypeError, ValueError, ArithmeticError, ZeroDivisionError):
             return False
+        finally:
+            if self._workspace is not None:
+                self._workspace._record_certificate_replay(replay_started)
 
 
 def certify_unit_saturation_index(
@@ -3379,13 +3579,17 @@ def certify_unit_saturation_index(
     selected_workspace = workspace or ZetaLogResidueWorkspace(
         int(order.discriminant()), int(field.degree()), order.splitting_records
     )
-    index_bound, proof = _compute_unit_index_proof(
-        field,
-        order,
-        initial_units,
-        configuration,
-        workspace=selected_workspace,
-    )
+    construction_started = time.perf_counter_ns()
+    try:
+        index_bound, proof = _compute_unit_index_proof(
+            field,
+            order,
+            initial_units,
+            configuration,
+            workspace=selected_workspace,
+        )
+    finally:
+        selected_workspace._record_certificate_construction(construction_started)
     return UnitSaturationIndexCertificate(
         _saturation_field_order_identity(field, order),
         [_element_payload(_ordinary_unit(unit)) for unit in initial_units],
