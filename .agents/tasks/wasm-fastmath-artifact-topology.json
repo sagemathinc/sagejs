@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fastmath-artifact-topology",
+  "title": "Wasm fast-math artifact topology",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Enforce reproducible lazy specialist dependency receipts and per-specialist compressed delta budgets so large mathematical libraries cannot silently enter the eager Wasm core",
+  "base_commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+  "claims": [
+    "packages/flint-wasm/scripts/production-receipt.cjs",
+    "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs",
+    "packages/flint-wasm/release/production-layout.json",
+    "packages/flint-wasm/test/production-receipt.test.cjs",
+    "packages/flint-wasm/test/lazy-module-receipt.test.cjs",
+    "packages/flint-wasm/test/fixtures/artifact-topology"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Deterministic release receipt fixtures and mutation tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

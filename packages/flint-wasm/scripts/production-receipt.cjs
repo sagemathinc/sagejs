@@ -140,11 +140,17 @@ function filesUnder(root, filename, { ignored = new Set() } = {}) {
 }
 
 function sourceClosure(repositoryRoot, packageRoot, sourceInputs = []) {
+  for (const filename of sourceInputs) {
+    if (!existsSync(filename)) {
+      throw new Error(`required production source input is missing: ${filename}`);
+    }
+  }
   const lazyInputs = lazyModuleSourceInputs(repositoryRoot, packageRoot);
   const roots = [
     ...sourceInputs,
     ...lazyInputs,
     join(packageRoot, "scripts", "build.cjs"),
+    join(packageRoot, "scripts", "browser-wasm-release-artifact.cjs"),
     join(packageRoot, "scripts", "production-receipt.cjs"),
     join(packageRoot, "scripts", "wasm-toolchain.cjs"),
     join(packageRoot, "toolchain"),
@@ -161,12 +167,14 @@ function sourceClosure(repositoryRoot, packageRoot, sourceInputs = []) {
   }
   const hash = createHash("sha256");
   let bytes = 0;
+  const entries = [];
   for (const [name, filename] of [...unique.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     const contents = readFileSync(filename);
     hash.update(name); hash.update("\0"); hash.update(contents); hash.update("\0");
     bytes += contents.byteLength;
+    entries.push({ path: name, bytes: contents.byteLength, sha256: sha256Bytes(contents) });
   }
-  return { sha256: hash.digest("hex"), files: unique.size, bytes };
+  return { sha256: hash.digest("hex"), files: unique.size, bytes, entries };
 }
 
 function lazyModuleSourceInputs(repositoryRoot, packageRoot) {
@@ -232,6 +240,117 @@ function runtimeHostAssets(layout, packageRoot) {
     .sort((left, right) => left.path.localeCompare(right.path));
 }
 
+function createArtifactTopology(layout, assets) {
+  const policy = layout.artifactTopology;
+  if (policy?.schema !== "sagejs.wasm-artifact-topology/v1" ||
+      !Array.isArray(policy.groups) || policy.groups.length === 0) {
+    throw new Error("production layout must declare an artifact topology");
+  }
+  const assetByPath = new Map(assets.map((asset) => [asset.path, asset]));
+  const groupById = new Map();
+  const ownerByAsset = new Map();
+  const kinds = new Set(["eager", "specialist", "support"]);
+  for (const group of policy.groups) {
+    if (typeof group.id !== "string" || !/^[a-z][a-z0-9-]*$/.test(group.id) ||
+        groupById.has(group.id)) {
+      throw new Error(`invalid or duplicate artifact group id: ${group.id}`);
+    }
+    if (!kinds.has(group.kind)) throw new Error(`invalid artifact group kind: ${group.id}`);
+    if (!Array.isArray(group.dependencies) || !Array.isArray(group.assets) || group.assets.length === 0) {
+      throw new Error(`artifact group ${group.id} must declare dependencies and assets`);
+    }
+    if (new Set(group.dependencies).size !== group.dependencies.length ||
+        new Set(group.assets).size !== group.assets.length) {
+      throw new Error(`artifact group ${group.id} contains duplicate dependencies or assets`);
+    }
+    if (canonicalJson(group.dependencies) !== canonicalJson([...group.dependencies].sort()) ||
+        canonicalJson(group.assets) !== canonicalJson([...group.assets].sort())) {
+      throw new Error(`artifact group ${group.id} dependencies and assets must be sorted`);
+    }
+    const budget = group.maximumCompressedDelta;
+    for (const encoding of ["gzipBytes", "brotliBytes"]) {
+      if (!Number.isSafeInteger(budget?.[encoding]) || budget[encoding] <= 0) {
+        throw new Error(`artifact group ${group.id} has no positive ${encoding} budget`);
+      }
+    }
+    groupById.set(group.id, group);
+    for (const name of group.assets) {
+      if (!assetByPath.has(name)) throw new Error(`artifact group ${group.id} names unknown asset ${name}`);
+      if (ownerByAsset.has(name)) {
+        throw new Error(`artifact ${name} belongs to multiple topology groups`);
+      }
+      if (group.kind === "support" && name.endsWith(".wasm")) {
+        throw new Error(`WebAssembly asset ${name} cannot be hidden in support group ${group.id}`);
+      }
+      ownerByAsset.set(name, group.id);
+    }
+  }
+  for (const name of assetByPath.keys()) {
+    if (!ownerByAsset.has(name)) {
+      throw new Error(`production asset has no reviewed topology group: ${name}`);
+    }
+  }
+  const eagerGroups = policy.groups.filter(({ kind }) => kind === "eager");
+  if (eagerGroups.length !== 1) {
+    throw new Error(`artifact topology must declare exactly one eager group, found ${eagerGroups.length}`);
+  }
+  for (const group of policy.groups) {
+    for (const dependency of group.dependencies) {
+      if (!groupById.has(dependency)) {
+        throw new Error(`artifact group ${group.id} has unknown dependency ${dependency}`);
+      }
+      if (group.kind === "eager" && groupById.get(dependency).kind !== "eager") {
+        throw new Error(`eager group ${group.id} cannot depend on ${dependency}`);
+      }
+    }
+  }
+  const closures = new Map();
+  const visiting = new Set();
+  function dependencyClosure(id) {
+    if (closures.has(id)) return closures.get(id);
+    if (visiting.has(id)) throw new Error(`artifact topology dependency cycle includes ${id}`);
+    visiting.add(id);
+    const closure = new Set();
+    for (const dependency of groupById.get(id).dependencies) {
+      closure.add(dependency);
+      for (const ancestor of dependencyClosure(dependency)) closure.add(ancestor);
+    }
+    visiting.delete(id);
+    const result = [...closure].sort();
+    closures.set(id, result);
+    return result;
+  }
+  for (const module of layout.modules) {
+    const group = groupById.get(ownerByAsset.get(module.artifact));
+    const expectedKind = module.eager ? "eager" : "specialist";
+    if (group?.kind !== expectedKind) {
+      throw new Error(`module ${module.id} must belong to a ${expectedKind} artifact group`);
+    }
+  }
+  const eagerId = eagerGroups[0].id;
+  const groups = policy.groups.map((group) => {
+    const dependencyClosureIds = dependencyClosure(group.id);
+    if (group.kind === "specialist" && !dependencyClosureIds.includes(eagerId)) {
+      throw new Error(`specialist artifact group ${group.id} must depend on ${eagerId}`);
+    }
+    const groupAssets = group.assets.map((name) => {
+      const { path, bytes, sha256 } = assetByPath.get(name);
+      return { path, bytes, sha256 };
+    });
+    const receipt = {
+      id: group.id,
+      kind: group.kind,
+      dependencies: group.dependencies,
+      dependencyClosure: dependencyClosureIds,
+      maximumCompressedDelta: group.maximumCompressedDelta,
+      assets: groupAssets,
+    };
+    return { ...receipt, identity: `sha256:${sha256Bytes(canonicalJson(receipt))}` };
+  });
+  const receipt = { schema: policy.schema, eagerGroup: eagerId, groups };
+  return { ...receipt, identity: `sha256:${sha256Bytes(canonicalJson(receipt))}` };
+}
+
 function createArtifactManifest({ packageRoot, outputDirectory }) {
   const layoutFilename = join(packageRoot, "release", "production-layout.json");
   const layout = JSON.parse(readFileSync(layoutFilename, "utf8"));
@@ -282,6 +401,7 @@ function createArtifactManifest({ packageRoot, outputDirectory }) {
     }
   }
   capabilities.sort((left, right) => left.id.localeCompare(right.id));
+  const topology = createArtifactTopology(layout, assets);
   const ffiClosure = JSON.parse(readFileSync(
     join(outputDirectory, "ffi-production-closure.json"),
     "utf8",
@@ -303,13 +423,14 @@ function createArtifactManifest({ packageRoot, outputDirectory }) {
     expectedCapabilities,
     "tracked production capabilities and adapter inputs",
   );
-  const identity = sha256Bytes(canonicalJson({ layout, assets, capabilities }));
+  const identity = sha256Bytes(canonicalJson({ layout, assets, capabilities, topology }));
   return {
     schema: artifactSchema,
     identity: `sha256:${identity}`,
     layout,
     assets,
     capabilities,
+    topology,
   };
 }
 
@@ -375,6 +496,7 @@ function validateProductionReceipt({ packageRoot, outputDirectory }) {
     layout: receipt.artifact.layout,
     assets: receipt.artifact.assets,
     capabilities: receipt.artifact.capabilities,
+    topology: receipt.artifact.topology,
   }));
   if (receipt.artifact.identity !== `sha256:${identity}`) {
     return { valid: false, reason: "artifact identity differs" };
@@ -396,6 +518,7 @@ function validateProductionReceipt({ packageRoot, outputDirectory }) {
 module.exports = {
   artifactFiles,
   artifactSchema,
+  createArtifactTopology,
   createArtifactManifest,
   lazyModuleSourceInputs,
   receiptSchema,

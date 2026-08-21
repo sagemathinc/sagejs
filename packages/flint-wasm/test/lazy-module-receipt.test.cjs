@@ -94,6 +94,12 @@ test("production receipt closure is reproducible and binds every lazy input", ()
     const initial = sourceClosure(left.root, left.packageRoot);
     assert.deepEqual(initial, sourceClosure(right.root, right.packageRoot));
     assert.equal(initial.files, 3);
+    assert.deepEqual(initial.entries.map(({ path }) => path), [
+      "scripts/build-lazy-module-cache.cjs",
+      "scripts/precompiled-python-packages.json",
+      "src/lib/example.py",
+    ]);
+    assert.ok(initial.entries.every(({ sha256: value }) => /^[0-9a-f]{64}$/.test(value)));
 
     write(left.source, "value = 18\n");
     assert.throws(
@@ -130,5 +136,17 @@ test("production receipt closure is reproducible and binds every lazy input", ()
   } finally {
     rmSync(left.root, { recursive: true, force: true });
     rmSync(right.root, { recursive: true, force: true });
+  }
+});
+
+test("an explicitly requested production source input cannot disappear silently", () => {
+  const value = fixture("missing-input");
+  try {
+    assert.throws(
+      () => sourceClosure(value.root, value.packageRoot, [join(value.root, "missing-source.c")]),
+      /required production source input is missing/,
+    );
+  } finally {
+    rmSync(value.root, { recursive: true, force: true });
   }
 });
