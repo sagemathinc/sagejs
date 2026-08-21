@@ -102,6 +102,13 @@
       "rationale": "Bounded Wasm32 buffer and status adapter over the shared Arb and Acb analytic batch core; all mathematical policy remains in the host-neutral core."
     },
     {
+      "path": "packages/flint-wasm/src/numeric.c",
+      "category": "host-adapter",
+      "review_status": "audited",
+      "lane": "distribution",
+      "rationale": "Bounded generation-tagged Wasm32 MPFR and complex resources plus a finite expression transport; arithmetic and special functions delegate to MPFR, Arb, and Acb, while supported integration/root iteration remains inside the isolated reactor."
+    },
+    {
       "path": "packages/flint-wasm/src/algebraic.c",
       "category": "host-adapter",
       "review_status": "accepted",

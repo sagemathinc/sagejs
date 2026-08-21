@@ -180,6 +180,95 @@
       }
     },
     {
+      "id": "moebius-range-batch",
+      "family": "combinatorics-number-theory",
+      "workflow": "moebius-range-packed",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-moebius-range-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "values=moebius.range(10000)\nprint([len(values),sum(values),sum(abs(x) for x in values),values[-10:]])",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "[10000, -23, 6083, [0, 1, 0, 1, -1, 1, 0, 1, 1, 0]]\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "analytic-gamma-xi-batches",
+      "family": "analytic-functions",
+      "workflow": "analytic-gamma-xi-batches",
+      "tier": "release",
+      "requires": [
+        { "id": "analytic:complex-gamma", "route": "receipt-backed-wasm-artifact" },
+        { "id": "analytic:riemann-xi", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "gamma_batch=complex_gamma_values([[\"0.5\",\"0\"],[\"1\",\"1\"]],prec=160)\nxi_batch=riemann_xi_values([[\"0\",\"0\"],[\"1\",\"0\"],[\"0.5\",\"0\"],[\"2\",\"0\"]],prec=160)\nprint(gamma_batch[0])\nprint(gamma_batch[1])\nprint(xi_batch[0],xi_batch[1])\nprint(xi_batch[2])\nprint(xi_batch[3])",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "1.77245385090551602729816748334114518279754945612\n0.49801566811835604271369111746219809195296296759 - 0.154949828301810685124955130483886605195879652079*I\n1 1\n0.99424155637662821982554747937079543961458721912\n1.04719755119659774615421446109316762806572313312\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "numeric-realfield-arithmetic",
+      "family": "numerical",
+      "workflow": "numeric-realfield-arithmetic",
+      "tier": "release",
+      "requires": [
+        { "id": "napi:@sagemath/sagejs-flint:realDiv", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R=RealField(100)\nx=R(1)/R(3)\nprint(x,x.precision())",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "0.33333333333333333333333333333 100\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "numeric-special-functions",
+      "family": "numerical",
+      "workflow": "numeric-special-functions",
+      "tier": "release",
+      "requires": [
+        { "id": "napi:@sagemath/sagejs-flint:zetaZeros", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:complexEi", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:complexBesselI", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "zeros=zeta_zeros(3)\nei=Ei(CDF(1,2))\nbessel=bessel_I(1+I,2+I).n(80)\nprint(zeros[0],zeros[1],zeros[2],float(ei.real()),float(ei.imag()),float(bessel.real()),float(bessel.imag()))",
+      "timeout_ms": 30000,
+      "expect": {
+        "repr": "",
+        "numeric_tokens": {
+          "stream": "stdout",
+          "values": [14.134725141734693, 21.022039638771552, 25.010857580145686, 1.0421677081649356, 3.7015014259378742, 1.4409091470417881, 0.47516726750336723],
+          "absolute_tolerance": 1e-13,
+          "relative_tolerance": 1e-13
+        }
+      }
+    },
+    {
+      "id": "symbolic-numerical-kernels",
+      "family": "numerical",
+      "workflow": "symbolic-numerical-kernels",
+      "tier": "release",
+      "requires": [
+        { "id": "specialist:symbolic-numerical-integral-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "specialist:symbolic-find-root-wasm", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "x=var('x')\nintegral=numerical_integral(exp(x^2),1,2,eps_abs=1e-12,eps_rel=1e-12)\nroot=(x^2-2).find_root(1,2)\nprint(float(integral[0]),float(root))",
+      "timeout_ms": 30000,
+      "expect": {
+        "repr": "",
+        "numeric_tokens": {
+          "stream": "stdout",
+          "values": [14.989976019600046, 1.414213562372879],
+          "absolute_tolerance": 1e-10,
+          "relative_tolerance": 1e-10
+        }
+      }
+    },
+    {
       "id": "extension-field-polynomial-arithmetic",
       "family": "extension-fields",
       "workflow": "extension-field-polynomial-arithmetic",

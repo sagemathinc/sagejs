@@ -170,6 +170,8 @@
     "src/lib/sagejs/kernels/__init__.py",
     "src/lib/sagejs/kernels/graph/__init__.py",
     "src/lib/sagejs/kernels/graph/components.py",
+    "src/lib/sagejs/kernels/arithmetic/__init__.py",
+    "src/lib/sagejs/kernels/arithmetic/moebius.py",
     "src/lib/sagejs/kernels/matrix/__init__.py",
     "src/lib/sagejs/kernels/matrix/combinatorial.py",
     "src/lib/sagejs/kernels/matrix/dense_prime_field.py",

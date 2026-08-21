@@ -40,7 +40,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 666000,
+      "max_source_bytes": 674000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -132,6 +132,20 @@
         "src/lib/sagejs/kernels/polynomial/structural_flint.py"
       ],
       "prefixes": []
+    },
+    {
+      "id": "arithmetic-native-kernels",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 20000,
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic"
+      ],
+      "modules": ["sagejs.kernels.arithmetic"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/kernels/arithmetic/"]
     },
     {
       "id": "matrix-native-kernels",
