@@ -273,7 +273,7 @@ class NarrowQuadraticClassElement:
 
     def __init__(
         self, parent: NarrowQuadraticRelationGroup, coordinates: Iterable[int]
-    ):
+    ) -> None:
         self._parent = parent
         values = tuple(int(value) for value in coordinates)
         if len(values) != len(parent._invariants):

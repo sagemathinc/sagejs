@@ -238,7 +238,7 @@
       "id": "number-field-global-arithmetic",
       "layer": 7,
       "startup": "lazy",
-      "max_source_bytes": 825000,
+      "max_source_bytes": 850000,
       "depends_on": [
         "core-runtime",
         "arithmetic",
@@ -261,6 +261,7 @@
         "sagejs.number_fields.embeddings",
         "sagejs.number_fields.factored_elements",
         "sagejs.number_fields.quadratic_class_units",
+        "sagejs.number_fields.quadratic_narrow_relations",
         "sagejs.number_fields.units"
       ],
       "files": [
@@ -276,6 +277,7 @@
         "src/lib/sagejs/number_fields/embeddings.py",
         "src/lib/sagejs/number_fields/factored_elements.py",
         "src/lib/sagejs/number_fields/quadratic_class_units.py",
+        "src/lib/sagejs/number_fields/quadratic_narrow_relations.py",
         "src/lib/sagejs/number_fields/units.py"
       ],
       "prefixes": []
