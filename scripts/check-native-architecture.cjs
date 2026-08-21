@@ -37,7 +37,13 @@ function repositoryPath(value, label) {
   return value;
 }
 
-function nativeFiles(root = ROOT, extensions = [".c", ".cc", ".cpp", ".h"]) {
+// Keep this default in step with `policy.tracked_extensions` in
+// architecture/native-code.json; callers that omit the argument must classify
+// exactly the same file set as the manifest-driven checks.
+function nativeFiles(
+  root = ROOT,
+  extensions = [".c", ".cc", ".cpp", ".cu", ".h"],
+) {
   const tracked = execFileSync("git", ["ls-files", "-z"], {
     cwd: root,
     encoding: "utf8",
