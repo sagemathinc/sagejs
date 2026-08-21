@@ -54,7 +54,9 @@ for (const relativePath of strictModules) {
     /^#\s*globals:/m,
     `${relativePath} must not declare implicit globals`,
   );
-  if (source.includes("runtime.")) {
+  // Require an actual attribute access: prose ending a sentence with the word
+  // "runtime." must not be mistaken for a runtime namespace reference.
+  if (/runtime\.[A-Za-z_]/.test(source)) {
     assert.match(
       source,
       /^\s*import sagejs\.runtime as _?runtime$/m,
