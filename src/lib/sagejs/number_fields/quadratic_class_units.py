@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from math import log, sqrt
 from typing import Iterator
 
-
 Matrix2 = tuple[tuple[int, int], tuple[int, int]]
 
 _IDENTITY_MATRIX: Matrix2 = ((1, 0), (0, 1))

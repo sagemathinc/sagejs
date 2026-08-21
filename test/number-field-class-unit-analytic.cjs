@@ -1,0 +1,253 @@
+"use strict";
+
+const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const { join } = require("node:path");
+const { spawnSync } = require("node:child_process");
+const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
+
+const root = join(__dirname, "..");
+const modulePath = join(
+  root,
+  "src/lib/sagejs/number_fields/class_unit_analytic.py",
+);
+const fixturePath = join(
+  root,
+  "test/fixtures/number-field-class-unit-analytic.json",
+);
+const fixture = JSON.parse(readFileSync(fixturePath, "utf8"));
+
+function runPython(witness, timeout = 120_000) {
+  const bootstrap = String.raw`
+import importlib.util
+import json
+
+spec = importlib.util.spec_from_file_location(
+    "sagejs.number_fields.class_unit_analytic",
+    ${JSON.stringify(modulePath)},
+)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+for exported_name in module.__all__:
+    globals()[exported_name] = getattr(module, exported_name)
+fixture = json.loads(${JSON.stringify(JSON.stringify(fixture))})
+`;
+  const result = spawnSync(pythonExecutable(), ["-I", "-c", `${bootstrap}\n${witness}`], {
+    cwd: root,
+    encoding: "utf8",
+    timeout,
+  });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  return result.stdout.trim();
+}
+
+test("relation dependencies expose exact kernel and saturation states", () => {
+  const output = runPython(String.raw`
+relations = [[2, 0], [0, 3], [2, 3]]
+complete = extract_unit_lattice(relations, [[-1, -1, 1]], expected_rank=1)
+assert complete.verify()
+assert complete.exact_kernel and complete.saturated
+assert complete.saturation_index == 1
+
+index_two = extract_unit_lattice(relations, [[-2, -2, 2]], expected_rank=1)
+assert index_two.exact_kernel and not index_two.saturated
+assert index_two.saturation_index == 2
+
+try:
+    extract_unit_lattice(relations, [[-1, 0, 1]])
+    raise AssertionError("a false relation dependency was accepted")
+except UnitLatticeError:
+    pass
+
+class SaturationCertificate:
+    def __init__(self, expected_prime):
+        self.expected_prime = expected_prime
+    def verify(self, lattice, prime, saturated):
+        return lattice.verify() and prime == self.expected_prime and saturated
+
+evidence = UnitSaturationEvidence(
+    2,
+    True,
+    method="exact-local-pth-root-obstruction",
+    certificate=SaturationCertificate(2),
+    rigorous=True,
+)
+saturation = validate_unit_saturation(complete, [evidence], required_primes=[2])
+assert saturation.rigorous and saturation.saturated
+
+unchecked = UnitSaturationEvidence(
+    3,
+    True,
+    method="search-found-no-root",
+    certificate=None,
+    rigorous=False,
+)
+assert not validate_unit_saturation(complete, [unchecked]).rigorous
+print("unit-lattice-ok")
+`);
+  assert.equal(output, "unit-lattice-ok");
+});
+
+test("weighted logarithm determinants give certified regulator balls", () => {
+  const output = runPython(String.raw`
+quadratic = fixture["fields"][0]
+quadratic_rows = [[RealBall(
+    quadratic["weightedLogarithms"][0][0],
+    quadratic["weightedLogarithms"][0][1],
+    precision_bits=160, rigorous=True,
+    source="Sage/PARI offline embedding enclosure",
+)]]
+quadratic_regulator = certified_regulator_enclosure(
+    quadratic_rows,
+    1,
+    precision_bits=160,
+    absolute_tolerance_bits=120,
+)
+assert quadratic_regulator.rigorous
+assert quadratic_regulator.ball.contains(quadratic["regulator"])
+
+cubic = fixture["fields"][2]
+cubic_rows = []
+for row in cubic["weightedLogarithms"]:
+    cubic_rows.append([
+        RealBall.midpoint_radius(
+            entry, "0.000000000000000000000000000001",
+            precision_bits=140,
+            source="Sage/PARI offline embedding enclosure",
+        )
+        for entry in row
+    ])
+cubic_regulator = certified_regulator_enclosure(
+    cubic_rows,
+    2,
+    precision_bits=140,
+    absolute_tolerance_bits=90,
+)
+assert cubic_regulator.rigorous
+assert cubic_regulator.ball.contains(cubic["regulator"])
+
+calls = []
+def escalating_provider(precision):
+    calls.append(precision)
+    if precision == 64:
+        return [[RealBall("-0.1", "0.1", precision_bits=precision)]]
+    return [[RealBall("0.48", "0.49", precision_bits=precision)]]
+refined = certified_regulator_enclosure(
+    escalating_provider, 1, precision_bits=64,
+    absolute_tolerance_bits=5, maximum_precision_bits=128,
+)
+assert calls == [64, 128]
+assert refined.precision_history == (64, 128)
+
+try:
+    certified_regulator_enclosure([[0.48]], 1)
+    raise AssertionError("a binary64 midpoint certified a regulator")
+except AnalyticCertificationError:
+    pass
+print("regulator-ok")
+`);
+  assert.equal(output, "regulator-ok");
+});
+
+test("Belabas-Friedman tails and hR give a rigorous index-one result", () => {
+  const output = runPython(String.raw`
+def is_prime(value):
+    if value < 2:
+        return False
+    divisor = 2
+    while divisor * divisor <= value:
+        if value % divisor == 0:
+            return False
+        divisor += 1
+    return True
+
+def quadratic_character(discriminant, prime):
+    if discriminant % prime == 0:
+        return 0
+    if prime == 2:
+        residue = discriminant % 8
+        return 1 if residue in (1, 7) else -1
+    symbol = pow(discriminant % prime, (prime - 1) // 2, prime)
+    return -1 if symbol == prime - 1 else symbol
+
+def quadratic_provider(discriminant):
+    def provider(start, stop):
+        records = []
+        for prime in range(max(2, start), stop):
+            if not is_prime(prime):
+                continue
+            character = quadratic_character(discriminant, prime)
+            if character == 0:
+                factors = [(2, 1)]
+            elif character == 1:
+                factors = [(1, 1), (1, 1)]
+            else:
+                factors = [(1, 2)]
+            records.append({"prime": prime, "factors": factors})
+        return records
+    return provider
+
+for field in fixture["fields"][:2]:
+    enclosure = zeta_log_residue_bound(
+        field["discriminant"],
+        2,
+        quadratic_provider(field["discriminant"]),
+        absolute_error="0.125",
+        precision_bits=96,
+        limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+    )
+    assert enclosure.rigorous
+    assert enclosure.ball.contains(field["logResidue"])
+    assert enclosure.tail_bound.upper < RationalEndpoint(1, 16)
+    assert enclosure.rational_primes > 100
+
+quadratic = fixture["fields"][0]
+regulator = RegulatorEnclosure(
+    RealBall(
+        "0.48121182505960344", "0.48121182505960346",
+        precision_bits=120,
+    ),
+    1,
+    [120],
+    weighted_complex_places=True,
+)
+zeta = zeta_log_residue_bound(
+    5,
+    2,
+    quadratic_provider(5),
+    absolute_error="0.125",
+    precision_bits=96,
+    limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+)
+validation = validate_hr_index(
+    signature=(2, 0),
+    discriminant=5,
+    class_number=1,
+    roots_of_unity=2,
+    regulator=regulator,
+    zeta_log_residue=zeta,
+    precision_bits=128,
+)
+assert validation.rigorous and validation.index_one
+assert validation.lower_index == validation.upper_index == 1
+
+forged = validate_hr_index(
+    signature=(2, 0), discriminant=5, class_number=2, roots_of_unity=2,
+    regulator=regulator, zeta_log_residue=zeta, precision_bits=128,
+)
+assert forged.rigorous and forged.unique_index == 2 and not forged.index_one
+
+try:
+    zeta_log_residue_bound(
+        5, 2, lambda start, stop: [], absolute_error="0.125",
+        limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+    )
+    raise AssertionError("an incomplete splitting stream certified a zeta bound")
+except AnalyticCertificationError:
+    pass
+print("analytic-index-ok")
+`, 180_000);
+  assert.equal(output, "analytic-index-ok");
+});

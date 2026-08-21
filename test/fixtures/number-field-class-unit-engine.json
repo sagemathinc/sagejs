@@ -1,0 +1,35 @@
+{
+  "schema": "sagejs.number-fields/class-unit-engine-oracles-v1",
+  "provenance": {
+    "primary_algorithm": "Hecke NumFieldOrd/NfOrd/Clgp",
+    "performance_checklist": "PARI src/basemath/buch2.c",
+    "answers": ["Sage/PARI", "Magma"]
+  },
+  "cases": [
+    {
+      "id": "rational",
+      "coefficients": [-1, 1],
+      "class_invariants": [],
+      "unit_rank": 0,
+      "proof_status": "exact-unconditional"
+    },
+    {
+      "id": "small-cubic",
+      "coefficients": [-1, -1, 0, 1],
+      "class_invariants": [],
+      "unit_rank": 1,
+      "proof_status": "exact-unconditional"
+    },
+    {
+      "id": "motivating-quintic-c4",
+      "coefficients": [1, 4, -1, 1, 0, 1],
+      "discriminant": 380452,
+      "signature": [1, 2],
+      "minkowski_bound": 38,
+      "legacy_coarse_bound": 43,
+      "class_invariants": [4],
+      "generator": [2, "a + 1"],
+      "proof_status": "exact-unconditional"
+    }
+  ]
+}

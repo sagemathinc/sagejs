@@ -579,6 +579,9 @@ class NumberFieldPrimeIdeal(NumberFieldIdeal):
         self._ramification_index = int(ramification_index)
         self._residue_degree = int(residue_degree)
         self._residue_presentation = presentation
+        # Successive powers are immutable exact ideals and are reused heavily
+        # by integral element valuations during class-group relation search.
+        self._valuation_power_cache = [self]
 
     def rational_prime(self) -> Any:
         return sage.ZZ(self._rational_prime)
@@ -1126,12 +1129,65 @@ def splitting_records(
         raise ArithmeticError("equation and maximal-order discriminants disagree")
     index_squared = equation_discriminant // order_discriminant
 
-    for prime_value in _nf_global("prime_range")(lower, upper):
-        candidate = int(prime_value)
+    candidates = [
+        int(prime_value) for prime_value in _nf_global("prime_range")(lower, upper)
+    ]
+    compact_candidates = [
+        candidate
+        for candidate in candidates
+        if not include_lattices and index_squared % candidate != 0
+    ]
+    compact_records: dict[int, dict[str, Any]] = {}
+    if compact_candidates:
+        batch_splitting_types = None
+        try:
+            batch_splitting_types = getattr(
+                runtime.flint_backend(), "numberFieldSplittingTypes", None
+            )
+        except (AttributeError, ImportError, RuntimeError):
+            pass
+        if batch_splitting_types is not None:
+            coefficient_values = [
+                runtime.bigint(int(coefficient)) for coefficient in polynomial.list()
+            ]
+            raw_records = batch_splitting_types(
+                coefficient_values,
+                [runtime.number(candidate) for candidate in compact_candidates],
+            )
+            for candidate, raw_factors in zip(
+                compact_candidates, raw_records, strict=True
+            ):
+                factors = [
+                    {
+                        "e": int(runtime.number(pair[0])),
+                        "f": int(runtime.number(pair[1])),
+                    }
+                    for pair in raw_factors
+                ]
+                factors.sort(key=lambda factor: (factor["f"], factor["e"]))
+                if (
+                    sum(factor["e"] * factor["f"] for factor in factors)
+                    != order.degree()
+                ):
+                    raise ArithmeticError(
+                        "batched compact splitting data has the wrong local degree"
+                    )
+                compact_records[candidate] = {
+                    "version": 1,
+                    "prime": candidate,
+                    "factors": factors,
+                }
+
+    for candidate in candidates:
         if include_lattices or index_squared % candidate == 0:
             yield factor_rational_prime(order, candidate).splitting_record(
                 include_lattices
             )
+            continue
+
+        batched_record = compact_records.get(candidate)
+        if batched_record is not None:
+            yield batched_record
             continue
 
         residue_ring = _nf_global("PolynomialRing")(

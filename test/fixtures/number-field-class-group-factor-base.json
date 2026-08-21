@@ -1,0 +1,100 @@
+{
+  "schema": "sagejs.number-fields/factor-base-oracles-v1",
+  "generated_at": "2026-08-21",
+  "systems": {
+    "sage_pari": {
+      "version": "SageMath 10.9.post1 / PARI 2.17.1",
+      "status": "executed",
+      "command": "K.<a> = NumberField(f); O = K.maximal_order(); K.signature(); O.discriminant(); floor(K.minkowski_bound()); [K.ideal(p).factor() for p in prime_range(2, 13)]; K.class_group(proof=False).invariants()"
+    },
+    "magma": {
+      "version": "V2.29 syntax",
+      "status": "pinned-comparison-command",
+      "command": "Q<x> := PolynomialRing(Rationals()); K<a> := NumberField(f); O := MaximalOrder(K); Signature(K); Discriminant(O); ClassGroup(O); [Decomposition(O, p) : p in PrimesUpTo(11)]"
+    },
+    "bdf": {
+      "version": "Hecke FactorBaseBound.jl formula",
+      "status": "independent exact rational-interval replay",
+      "command": "smallest integer x >= 2 satisfying the strict Belabas--Diaz y Diaz--Friedman inequality"
+    }
+  },
+  "cases": [
+    {
+      "id": "real-quadratic-d5",
+      "polynomial": [-1, -1, 1],
+      "signature": [2, 0],
+      "discriminant": 5,
+      "bounds": {"minkowski": 1, "bach": 16, "bdf": 7},
+      "bdf_factor_base": [
+        {"p": 2, "norm": 4, "e": 1, "f": 2},
+        {"p": 5, "norm": 5, "e": 2, "f": 1}
+      ],
+      "class_group": []
+    },
+    {
+      "id": "gaussian",
+      "polynomial": [1, 0, 1],
+      "signature": [0, 1],
+      "discriminant": -4,
+      "bounds": {"minkowski": 1, "bach": 12, "bdf": 5},
+      "bdf_factor_base": [
+        {"p": 2, "norm": 2, "e": 2, "f": 1},
+        {"p": 5, "norm": 5, "e": 1, "f": 1},
+        {"p": 5, "norm": 5, "e": 1, "f": 1}
+      ],
+      "class_group": []
+    },
+    {
+      "id": "cubic-discriminant-minus23",
+      "polynomial": [-1, -1, 0, 1],
+      "signature": [1, 1],
+      "discriminant": -23,
+      "bounds": {"minkowski": 1, "bach": 118, "bdf": 7},
+      "bdf_factor_base": [
+        {"p": 5, "norm": 5, "e": 1, "f": 1},
+        {"p": 7, "norm": 7, "e": 1, "f": 1}
+      ],
+      "class_group": []
+    },
+    {
+      "id": "pure-cubic-minus108",
+      "polynomial": [-2, 0, 0, 1],
+      "signature": [1, 1],
+      "discriminant": -108,
+      "bounds": {"minkowski": 2, "bach": 264, "bdf": 7},
+      "bdf_factor_base": [
+        {"p": 2, "norm": 2, "e": 3, "f": 1},
+        {"p": 3, "norm": 3, "e": 3, "f": 1},
+        {"p": 5, "norm": 5, "e": 1, "f": 1}
+      ],
+      "class_group": []
+    },
+    {
+      "id": "cyclotomic-eight",
+      "polynomial": [1, 0, 0, 0, 1],
+      "signature": [0, 2],
+      "discriminant": 256,
+      "bounds": {"minkowski": 2, "bach": 369, "bdf": 7},
+      "bdf_factor_base": [
+        {"p": 2, "norm": 2, "e": 4, "f": 1}
+      ],
+      "class_group": []
+    },
+    {
+      "id": "quintic-class-c4",
+      "polynomial": [1, 4, -1, 1, 0, 1],
+      "signature": [1, 2],
+      "discriminant": 380452,
+      "bounds": {"minkowski": 38, "bach": 1982, "bdf": 12},
+      "bdf_factor_base": [
+        {"p": 2, "norm": 2, "e": 3, "f": 1},
+        {"p": 3, "norm": 3, "e": 1, "f": 1},
+        {"p": 3, "norm": 3, "e": 1, "f": 1},
+        {"p": 2, "norm": 4, "e": 1, "f": 2},
+        {"p": 5, "norm": 5, "e": 1, "f": 1},
+        {"p": 11, "norm": 11, "e": 1, "f": 1}
+      ],
+      "class_group": [4]
+    }
+  ]
+}

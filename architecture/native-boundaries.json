@@ -16,7 +16,7 @@
     "classified-native-file": 95,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
-    "napi-export": 311,
+    "napi-export": 313,
     "runtime-intrinsic": 137,
     "wasm-export": 46
   },
@@ -6751,6 +6751,16 @@
       "family": "polynomials"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:numberFieldSplittingTypes",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "numberFieldSplittingTypes",
+      "symbol": "sagejs_number_field_splitting_types",
+      "disposition": "retain-host-adapter",
+      "family": "algebraic"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:p1List",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -7378,6 +7388,16 @@
       "export": "qqbarIsReal",
       "symbol": "sagejs_qqbar_is_real",
       "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarLogAbsBall",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarLogAbsBall",
+      "symbol": "sagejs_qqbar_log_abs_ball",
+      "disposition": "retain-host-adapter",
       "family": "algebraic"
     },
     {

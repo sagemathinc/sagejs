@@ -196,6 +196,29 @@ def element_valuation(value: Any, prime_ideal: Any) -> int:
     element = field(value)
     if element.is_zero():
         raise ValueError("the valuation of zero is infinite")
+    if element in prime_ideal.ring():
+        # For an algebraic integer alpha, `(alpha)` is contained in `P^k`
+        # exactly when alpha is an element of `P^k`.  Testing lattice
+        # membership while multiplying successive integral powers avoids the
+        # colon-ideal inversions used by the fully general fractional-ideal
+        # routine below.  The rational norm gives an exact finite loop bound:
+        # every factor P contributes `f(P/p) * v_P(alpha)` to v_p(N(alpha)).
+        norm = element.norm()
+        if norm._denominator != 1:
+            raise ArithmeticError("an algebraic integer has nonintegral norm")
+        rational_prime = int(prime_ideal.rational_prime())
+        norm_valuation = _p_adic_valuation_integer(norm._numerator, rational_prime)
+        residue_degree = int(prime_ideal.residue_degree())
+        if residue_degree < 1:
+            raise ArithmeticError("a prime ideal has invalid residue degree")
+        maximum = norm_valuation // residue_degree
+        valuation = 0
+        powers = prime_ideal._valuation_power_cache
+        while len(powers) < maximum:
+            powers.append(powers[-1] * prime_ideal)
+        while valuation < maximum and element in powers[valuation]:
+            valuation += 1
+        return valuation
     return ideal_valuation(prime_ideal.ring().ideal(element), prime_ideal)
 
 

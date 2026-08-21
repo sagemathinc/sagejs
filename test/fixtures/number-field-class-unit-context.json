@@ -1,0 +1,115 @@
+{
+  "context": {
+    "algorithm": "buchmann-hecke",
+    "analytic_state": {"index_bound": 1, "log_residue": ["1", "2"], "schema": "test.analytic.v1"},
+    "class_group_state": {"invariants": [], "schema": "test.class-group.v1"},
+    "content_sha256": "7764c770d05257ef3c365b94a5c54cc5342ee3902dd21230686f21e1cbf2d2cd",
+    "diagnostics": {"relation_attempts": 4, "timing_micros": 1200},
+    "discriminant": 5,
+    "factor_base": [
+      {
+        "e": 1,
+        "f": 2,
+        "ideal_basis": [[[2, 1], [0, 1]], [[0, 1], [2, 1]]],
+        "index": 0,
+        "norm": 4,
+        "p": 2,
+        "schema": "test.factor-base.v1"
+      }
+    ],
+    "field_order_identity": {
+      "discriminant": 5,
+      "field": {
+        "defining_polynomial": [[-5, 1], [0, 1], [1, 1]],
+        "degree": 2,
+        "variable": "a"
+      },
+      "maximal_order_basis": [[[1, 2], [1, 2]], [[0, 1], [1, 1]]]
+    },
+    "limits": {
+      "content_sha256": "703a6f8d79484746703c1386b7aaf870e18e5005eca1a3c8c126d399b1292d31",
+      "extra": {"max_row_weight": 9},
+      "schema": "sagejs.number-fields.class-unit-limits.v1",
+      "values": {
+        "max_checkpoint_bytes": null,
+        "max_factor_base_size": 8,
+        "max_memory_bytes": 1048576,
+        "max_partial_relations": null,
+        "max_precision_bits": 256,
+        "max_proof_primes": null,
+        "max_relation_attempts": null,
+        "max_relations": 20,
+        "max_seconds": null
+      }
+    },
+    "matrix_state": {"rank": 1, "rows": [[1]], "schema": "test.matrix.v1"},
+    "precision_history": [80, 160],
+    "proof_progress": {"checked_prime_norm": 11, "complete": false},
+    "proof_state": {
+      "assumptions": ["GRH for the Dedekind zeta function"],
+      "content_sha256": "0acb45d7926e139d3dd9c5453d19da6eee78292925db7d9fb62cd37053113b70",
+      "evidence": {"index_one": true},
+      "factor_base_bound": 17,
+      "factor_base_theorem": "Bach bound",
+      "label": "exact-relations-conditional-grh",
+      "reason": "",
+      "schema": "sagejs.number-fields.class-unit-proof-state.v1"
+    },
+    "random_seed": 7,
+    "relations": [
+      {
+        "provenance": {"kind": "fixture"},
+        "row": [[0, 1]],
+        "schema": "test.relation.v1",
+        "witness": {
+          "content_sha256": "ac7b4a166714ec2a76cf2c3fc6f5c190cd41dca50fc6dda4f4d8936d52469fec",
+          "factors": [
+            {"element": [[-1, 1], [1, 1]], "exponent": -1},
+            {"element": [[1, 1], [1, 1]], "exponent": 1}
+          ],
+          "field": {
+            "defining_polynomial": [[-5, 1], [0, 1], [1, 1]],
+            "degree": 2,
+            "variable": "a"
+          },
+          "schema": "sagejs.number-fields.factored-element.v1"
+        }
+      }
+    ],
+    "saturation_history": [{"class_saturated": true, "prime": 2, "unit_saturated": true}],
+    "schema": "sagejs.number-fields.class-unit-context.v1",
+    "signature": [2, 0],
+    "unit_state": {
+      "generators": [
+        {
+          "content_sha256": "ac7b4a166714ec2a76cf2c3fc6f5c190cd41dca50fc6dda4f4d8936d52469fec",
+          "factors": [
+            {"element": [[-1, 1], [1, 1]], "exponent": -1},
+            {"element": [[1, 1], [1, 1]], "exponent": 1}
+          ],
+          "field": {
+            "defining_polynomial": [[-5, 1], [0, 1], [1, 1]],
+            "degree": 2,
+            "variable": "a"
+          },
+          "schema": "sagejs.number-fields.factored-element.v1"
+        }
+      ],
+      "rank": 1,
+      "schema": "test.unit.v1"
+    }
+  },
+  "factored_element": {
+    "content_sha256": "ac7b4a166714ec2a76cf2c3fc6f5c190cd41dca50fc6dda4f4d8936d52469fec",
+    "factors": [
+      {"element": [[-1, 1], [1, 1]], "exponent": -1},
+      {"element": [[1, 1], [1, 1]], "exponent": 1}
+    ],
+    "field": {
+      "defining_polynomial": [[-5, 1], [0, 1], [1, 1]],
+      "degree": 2,
+      "variable": "a"
+    },
+    "schema": "sagejs.number-fields.factored-element.v1"
+  }
+}

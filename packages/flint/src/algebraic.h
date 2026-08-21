@@ -36,5 +36,8 @@ napi_value sagejs_qqbar_minpoly_coefficients(
     napi_env env, napi_callback_info info);
 napi_value sagejs_qqbar_to_string(napi_env env, napi_callback_info info);
 napi_value sagejs_qqbar_approx(napi_env env, napi_callback_info info);
+napi_value sagejs_qqbar_log_abs_ball(napi_env env, napi_callback_info info);
+napi_value sagejs_number_field_splitting_types(
+    napi_env env, napi_callback_info info);
 
 #endif
