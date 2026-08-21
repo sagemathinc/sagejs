@@ -14,7 +14,6 @@ import json
 from typing import Any, Iterable
 
 import sagejs.runtime as runtime
-
 from sagejs.number_fields.factored_elements import field_fingerprint
 
 CONTEXT_SERIALIZATION_SCHEMA = "sagejs.number-fields.class-unit-context.v1"

@@ -6,7 +6,7 @@
     "migrate-to-declared-ffi": 214,
     "migrate-to-typed-python": 34,
     "retain-differential-oracle": 1,
-    "retain-host-adapter": 26,
+    "retain-host-adapter": 28,
     "retain-representation-primitive": 29
   },
   "exports": [
@@ -928,7 +928,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 370,
+        "line": 374,
         "lines": 82,
         "sha256": "1b5d0d90768f4b0581b2d2fcf7851950fbea895f8eebbdb72844f385c13c76cc",
         "calls": [
@@ -1197,7 +1197,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 313,
+        "line": 317,
         "lines": 56,
         "sha256": "c68d52102ef450b25bfd7d5d34629b757ddaec310886e792429b74ef3840d8b4",
         "calls": [
@@ -2472,6 +2472,7 @@
         "src/baselib/number_fields.py",
         "src/baselib/polynomial.py",
         "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
+        "src/lib/sagejs/number_fields/prime_ideals.py",
         "test/ffi.cjs"
       ],
       "declared_ffi": null
@@ -7878,6 +7879,60 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:numberFieldSplittingTypes",
+      "package": "@sagemath/sagejs-flint",
+      "export": "numberFieldSplittingTypes",
+      "callback": "sagejs_number_field_splitting_types",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/algebraic.c",
+        "line": 1034,
+        "lines": 117,
+        "sha256": "4ed390265108117ed0ef3e21d45891523a8ff3cf5ae5a81d66dbc90154c5bb14",
+        "calls": [
+          "_fmpz_vec_clear",
+          "_fmpz_vec_init",
+          "bigint_to_fmpz",
+          "check_napi",
+          "floor",
+          "fmpz_fdiv_ui",
+          "isfinite",
+          "n_is_prime",
+          "napi_create_array_with_length",
+          "napi_create_int64",
+          "napi_get_array_length",
+          "napi_get_element",
+          "napi_get_value_double",
+          "napi_set_element",
+          "napi_throw_range_error",
+          "nmod_poly_clear",
+          "nmod_poly_degree",
+          "nmod_poly_factor",
+          "nmod_poly_factor_clear",
+          "nmod_poly_factor_init",
+          "nmod_poly_init",
+          "nmod_poly_set_coeff_ui",
+          "require_arguments"
+        ]
+      },
+      "family": "algebraic",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Algebraic and cyclotomic values use FLINT qqbar and number-field storage behind native conversion boundaries.",
+      "fallback": "Strict Python algebraic-number operations retain capability diagnostics and portable semantic paths.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "packages/flint/test/test.cjs"
+      ],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:p1List",
       "package": "@sagemath/sagejs-flint",
       "export": "p1List",
@@ -10021,7 +10076,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 562,
+        "line": 566,
         "lines": 4,
         "sha256": "b24b03c9913a607bec17970bf95131bde16fb5cf42ecf71bb631560b90e38380",
         "calls": [
@@ -10053,7 +10108,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 478,
+        "line": 482,
         "lines": 4,
         "sha256": "1746b32299d72f3ba4b8395acdcc99b9bbd6d8cc315a47aad9153e17cacce649",
         "calls": [
@@ -10086,7 +10141,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 918,
+        "line": 922,
         "lines": 37,
         "sha256": "87ab3ab64e980202f6eff67efdaba613183a4be5df250b81e0fe7d0bd5e8aa7b",
         "calls": [
@@ -10135,7 +10190,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 674,
+        "line": 678,
         "lines": 23,
         "sha256": "e55c9fcde667eb55f35eb0df7a59da1e000bdd015dccd09c2c8bd6c05f8ce422",
         "calls": [
@@ -10174,7 +10229,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 557,
+        "line": 561,
         "lines": 4,
         "sha256": "f30b921f7a37ec629f1d83958f4c7df86775ed96201b96f061c35c79cdd92e0a",
         "calls": [
@@ -10206,7 +10261,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 708,
+        "line": 712,
         "lines": 13,
         "sha256": "36c6e93e01a14239bc38a92258fd73a79c299b0c77d1190912b59c03b5f33b4b",
         "calls": [
@@ -10243,7 +10298,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 493,
+        "line": 497,
         "lines": 23,
         "sha256": "58ce56a2900d74e519a0b25878bf2ee11f00f99a48eba32375fb889ec3d8cb0c",
         "calls": [
@@ -10284,7 +10339,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 658,
+        "line": 662,
         "lines": 15,
         "sha256": "bb9769870f6326e25679cdc931a1d72b26a9cc2a1ecf9e96a173b2d4f50ed985",
         "calls": [
@@ -10322,7 +10377,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 235,
+        "line": 239,
         "lines": 35,
         "sha256": "0650259ce6c57e769534cae20f085b00f197750cc0b3d84aea7ab05c389d33c9",
         "calls": [
@@ -10368,7 +10423,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 271,
+        "line": 275,
         "lines": 14,
         "sha256": "bb17c181cac171471452118cfaefcd4a31b0ec7ff6ed7430e48c3e2594db5c75",
         "calls": [
@@ -10405,7 +10460,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 552,
+        "line": 556,
         "lines": 4,
         "sha256": "a6136aed4f21e9924c6abfe5dbe75f842de9116c25d0704a95db6ab9b2246e10",
         "calls": [
@@ -10437,7 +10492,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 703,
+        "line": 707,
         "lines": 4,
         "sha256": "f4bf140b15713a80646e8d73ea5332d29a2911fdba47e86aab6f707608fec841",
         "calls": [
@@ -10470,7 +10525,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 698,
+        "line": 702,
         "lines": 4,
         "sha256": "e6fd033d742448dd96e6ddc556da29119fd10f2cd541d09df27d13d44baff26c",
         "calls": [
@@ -10491,6 +10546,63 @@
         "packages/flint/test/test.cjs",
         "src/baselib/number_fields.py",
         "src/baselib/polynomial.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarLogAbsBall",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarLogAbsBall",
+      "callback": "sagejs_qqbar_log_abs_ball",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/algebraic.c",
+        "line": 971,
+        "lines": 62,
+        "sha256": "d36b1df7980fc9dbb055b21a5249ba0a400edd66c010b7a775f46e503b6159fa",
+        "calls": [
+          "acb_abs",
+          "acb_clear",
+          "acb_init",
+          "arb_clear",
+          "arb_init",
+          "arb_is_positive",
+          "arb_log",
+          "arb_midref",
+          "arb_radref",
+          "arf_clear",
+          "arf_init",
+          "arf_set_mag",
+          "ceil",
+          "check_napi",
+          "floor",
+          "isfinite",
+          "napi_create_int64",
+          "napi_create_object",
+          "napi_get_value_double",
+          "napi_set_named_property",
+          "napi_throw_range_error",
+          "qqbar_get_acb",
+          "require_arguments",
+          "sagejs_decimal_from_arf",
+          "sagejs_qqbar_unwrap"
+        ]
+      },
+      "family": "algebraic",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Algebraic and cyclotomic values use FLINT qqbar and number-field storage behind native conversion boundaries.",
+      "fallback": "Strict Python algebraic-number operations retain capability diagnostics and portable semantic paths.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "packages/flint/test/test.cjs",
+        "src/lib/sagejs/number_fields/factored_elements.py"
       ],
       "declared_ffi": null
     },
@@ -10595,7 +10707,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 722,
+        "line": 726,
         "lines": 28,
         "sha256": "9ce1cb07811ba18aa8c8d2439b11bad7570b372ceb7a4b1890546ce85f3bea99",
         "calls": [
@@ -10637,7 +10749,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 488,
+        "line": 492,
         "lines": 4,
         "sha256": "331adb1263299ac43ce384adb5dc04660d81dee5915a4abe1c068480cfc005c7",
         "calls": [
@@ -10671,7 +10783,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 537,
+        "line": 541,
         "lines": 4,
         "sha256": "dc8196a16c0bccc5d85eaeb1b873020c3fa33c274e09dc6a5d78817ccdfc4942",
         "calls": [
@@ -10705,7 +10817,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 567,
+        "line": 571,
         "lines": 30,
         "sha256": "e998f190de4f4468a54b0d30428fc65b676d556dbdb64c943d7044afac4de23c",
         "calls": [
@@ -10749,7 +10861,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 598,
+        "line": 602,
         "lines": 43,
         "sha256": "f04260b53a78977d523c7ee8c890b7b7a834c10cc41b63411066d0d4a159c7b2",
         "calls": [
@@ -10796,7 +10908,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 547,
+        "line": 551,
         "lines": 4,
         "sha256": "a56fd151450d4aea5e73f548bc88ace426d59d99f21f2008efb1fecd50777c91",
         "calls": [
@@ -10828,7 +10940,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 286,
+        "line": 290,
         "lines": 26,
         "sha256": "667d688dc7486a465ede8605e813ffc83a4d93777ee853e98dc8d16fda435ab1",
         "calls": [
@@ -10867,7 +10979,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 542,
+        "line": 546,
         "lines": 4,
         "sha256": "4642e91e8e7e4c9e4a77565b78edc55099726b6b1fee99c75f2fa0cc1519e865",
         "calls": [
@@ -10900,7 +11012,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 483,
+        "line": 487,
         "lines": 4,
         "sha256": "113bc4aa31d43290fa19287a4a212429c2f97bb65bec194d4a7b86a3001d23ec",
         "calls": [
@@ -10933,7 +11045,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 751,
+        "line": 755,
         "lines": 166,
         "sha256": "c4ca0e0ea143c3c6d8bd6984aec2ddcb73597eec4e4078d369ace9c7383e4569",
         "calls": [
