@@ -1,0 +1,55 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fastmath-curves-modsym",
+  "title": "Wasm Fastmath Curves Modsym",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile public elliptic and modular-symbol Wasm workflows, close the highest-impact remaining portable hot path with isolated mature or source-transparent kernels, and prove exact routes and performance",
+  "base_commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+  "claims": [
+    "packages/flint-wasm/src/curves/",
+    "packages/flint-wasm/src/modsym.c",
+    "packages/flint-wasm/curve-backend.mjs",
+    "packages/flint-wasm/curve-backend.d.ts",
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint/src/elliptic_lfunction.c",
+    "packages/flint/include/sagejs/elliptic_lfunction_ffi.h",
+    "packages/flint-wasm/test/curve-parity.test.mjs",
+    "packages/flint-wasm/test/smalljac-coefficients.test.mjs",
+    "packages/flint-wasm/test/curves-modsym-fastmath.test.mjs",
+    "bench/wasm-curves-modsym-fastmath.mjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Native @sagemath/sagejs-flint ecLseriesDirectValues",
+      "ordinary elliptic L-series reference execution",
+      "smalljac native coefficient generation"
+    ],
+    "exceptions": [
+      "A compact handwritten Wasm adapter is required to copy bounded point, coefficient, and cutoff batches into the existing mature smalljac/Acb host-neutral cores; it contains no independent mathematical algorithm."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

@@ -12,7 +12,8 @@ enum
 {
     SAGEJS_WASM_EC_OUTPUT_DECIMAL_BALLS = 0,
     SAGEJS_WASM_EC_OUTPUT_PLAN = 1,
-    SAGEJS_WASM_EC_OUTPUT_PLOT = 2
+    SAGEJS_WASM_EC_OUTPUT_PLOT = 2,
+    SAGEJS_WASM_EC_OUTPUT_DIRECT_DECIMAL_BALLS = 3
 };
 
 enum
@@ -29,6 +30,9 @@ enum
  * instance, so a singleton avoids exporting allocator semantics. Inputs are
  * copied into linear memory once: exact signed coefficients, conductor text,
  * and all real/imaginary decimal components with a shared offset table.
+ * `planning_precision_bits` is used only for a first bounded parse; the
+ * host-neutral core selects the actual work precision from the full domain,
+ * after which the adapter reparses every point at that exact precision.
  */
 int32_t sagejs_wasm_ec_lseries_begin(
     uint32_t coefficient_count,
@@ -37,8 +41,20 @@ int32_t sagejs_wasm_ec_lseries_begin(
     uint32_t conductor_text_bytes,
     uint32_t target_bits,
     uint32_t refinement_bits,
-    uint32_t work_precision_bits,
+    uint32_t planning_precision_bits,
     uint32_t output_mode);
+
+/* Direct Dirichlet prefixes use the same copied point/coefficient/conductor
+ * buffers plus one checked cutoff per point.  Keeping a distinct entry point
+ * makes the ABI's coefficient and cutoff ownership explicit and prevents a
+ * direct request from being mistaken for a functional-equation request. */
+int32_t sagejs_wasm_ec_lseries_direct_begin(
+    uint32_t coefficient_count,
+    uint32_t point_count,
+    uint32_t point_text_bytes,
+    uint32_t conductor_text_bytes,
+    uint32_t target_bits,
+    uint32_t work_precision_bits);
 
 void sagejs_wasm_ec_lseries_clear(void);
 
@@ -46,8 +62,10 @@ uintptr_t sagejs_wasm_ec_lseries_coefficients(void);
 uintptr_t sagejs_wasm_ec_lseries_point_text(void);
 uintptr_t sagejs_wasm_ec_lseries_point_offsets(void);
 uintptr_t sagejs_wasm_ec_lseries_conductor_text(void);
+uintptr_t sagejs_wasm_ec_lseries_direct_cutoffs(void);
 
 int32_t sagejs_wasm_ec_lseries_compute(int32_t root_number);
+int32_t sagejs_wasm_ec_lseries_direct_compute(void);
 
 /* Decimal mode: offset_count is field_count*point_count+1. Field order is
  * fine completed ball and accuracy, fine raw ball and accuracy, the five
