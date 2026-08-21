@@ -1,0 +1,70 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fastmath-node-cli",
+  "title": "Production Node-Wasm evaluator CLI",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide a fail-closed Node CLI around the exact production Wasm evaluator and artifact with file/stdin execution, timeout/reset behavior, and optional JSON route diagnostics",
+  "base_commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+  "claims": [
+    "packages/flint-wasm/node-cli.mjs",
+    "packages/flint-wasm/test/node-cli.test.mjs",
+    "packages/flint-wasm/README.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "packages/flint-wasm production evaluator and Node kernel tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node --test packages/flint-wasm/test/node-cli.test.mjs packages/flint-wasm/test/node-kernel.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.526,
+      "started_at": "2026-08-21T00:26:35.446Z",
+      "commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+      "workspace_fingerprint": "e7c89c318e406a30d2f11357aca8008f772bf3de5fd62d23c395f3d294e899a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/node-cli.mjs --verify-only",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.293,
+      "started_at": "2026-08-21T00:26:39.579Z",
+      "commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+      "workspace_fingerprint": "e7c89c318e406a30d2f11357aca8008f772bf3de5fd62d23c395f3d294e899a4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Hardened the existing Node-Wasm launcher into a fail-closed production-artifact CLI. It authenticates the manifest, receipt, every selected artifact byte, and the package-root runtime sources; supports file, stdin, and -c input; forwards evaluation timeouts and waits for worker recovery; offers an explicit REPL reset; and emits evaluator-owned JSON route receipts separately from ordinary output. Focused unit and real production-evaluator tests pass against artifact sha256:c6cdf576202bdd955b95aa90222c2f604aeb8227e193edbaac2232842fbbd00c.",
+    "risks": [
+      "The complete distribution-lane portable/native/SEA matrix was not rerun; the repository build and exact Wasm artifact build passed, along with focused Node-Wasm tests.",
+      "Artifact verification intentionally hashes the full production asset set on each CLI process start; this harness favors exact evidence over startup latency."
+    ],
+    "next_steps": [
+      "Cherry-pick this narrow commit into the integration branch and rebuild packages/flint-wasm/dist so runtime/node-cli.mjs and the production receipt bind the merged source.",
+      "No package manifest or test-registry wiring is required: the existing sagejs-wasm bin entry already names node-cli.mjs, and package tests discover test/*.test.mjs."
+    ]
+  }
+}

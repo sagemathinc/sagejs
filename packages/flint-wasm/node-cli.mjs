@@ -1,87 +1,402 @@
 #!/usr/bin/env node
 
-import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import {
+  lstat,
+  readFile,
+  writeFile,
+} from "node:fs/promises";
+import { isDeepStrictEqual } from "node:util";
+import { dirname, isAbsolute, resolve, sep } from "node:path";
 import { createInterface } from "node:readline/promises";
-import { stdin, stdout } from "node:process";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { stdin, stdout, stderr } from "node:process";
 
 import { createSage } from "./node-kernel.mjs";
 
+const artifactSchema = "sagejs.wasm-production-artifact/v1";
+const buildReceiptSchema = "sagejs.wasm-build-receipt/v1";
+const diagnosticSchema = "sagejs.node-wasm-evaluation-receipt/v1";
+
 function usage() {
-  return `Sage.js WebAssembly kernel for Node
+  return `Sage.js production WebAssembly kernel for Node
 
 Usage:
-  sagejs-wasm [FILE]
-  sagejs-wasm -c SOURCE
-  echo 'factor(2026)' | sagejs-wasm
+  sagejs-wasm [OPTIONS] [FILE]
+  sagejs-wasm [OPTIONS] -c SOURCE
+  echo 'factor(2026)' | sagejs-wasm [OPTIONS]
 
-With no file or piped input, starts a line-oriented Sage REPL.  This command
-uses the same WebAssembly artifacts and isolated evaluator as the browser; it
-does not load the native Node addon.`;
+Options:
+  -c SOURCE                 Evaluate SOURCE.
+  --timeout MS              Replace the evaluator if a run exceeds MS.
+  --diagnostics             Write one JSON route receipt per run to stderr.
+  --diagnostics-file FILE   Write the final JSON route receipt to FILE.
+  --verify-only             Authenticate the production artifact and exit.
+  -h, --help                Show this help.
+
+With no file or piped input, starts a line-oriented Sage REPL.  Enter :reset
+to replace the evaluator, or :quit to exit.  This command runs the exact
+receipt-authenticated WebAssembly artifact used by the browser.  It is a
+mathematics test/debug harness, not a shell or a Unix compatibility layer.`;
 }
 
-function argumentsFrom(argv) {
-  if (argv.includes("-h") || argv.includes("--help")) return { help: true };
-  if (argv[0] === "-c") {
-    if (argv.length !== 2) throw new Error("-c requires exactly one source argument");
-    return { source: argv[1], filename: "<command>" };
+function positiveTimeout(value) {
+  const timeout = Number(value);
+  if (!Number.isFinite(timeout) || timeout <= 0) {
+    throw new Error("--timeout requires a positive number of milliseconds");
   }
-  if (argv.length > 1) throw new Error("expected at most one Sage source file");
-  return argv.length === 1 ? { file: argv[0] } : {};
+  return timeout;
 }
 
-async function evaluate(session, source, filename) {
-  const result = await session.evaluate(source, {
-    filename,
-    onOutput: (text) => stdout.write(text),
-    onError: (text) => process.stderr.write(text),
+export function argumentsFrom(argv) {
+  const options = {};
+  const positional = [];
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+    if (argument === "-h" || argument === "--help") {
+      options.help = true;
+    } else if (argument === "--verify-only") {
+      options.verifyOnly = true;
+    } else if (argument === "--diagnostics") {
+      options.diagnostics = true;
+    } else if (argument === "--diagnostics-file") {
+      index += 1;
+      if (index >= argv.length) {
+        throw new Error("--diagnostics-file requires a filename");
+      }
+      options.diagnosticsFile = argv[index];
+    } else if (argument === "--timeout") {
+      index += 1;
+      if (index >= argv.length) {
+        throw new Error("--timeout requires a value");
+      }
+      options.timeout = positiveTimeout(argv[index]);
+    } else if (argument.startsWith("--timeout=")) {
+      options.timeout = positiveTimeout(argument.slice("--timeout=".length));
+    } else if (argument === "-c") {
+      index += 1;
+      if (index >= argv.length) throw new Error("-c requires a source argument");
+      if (options.source !== undefined) throw new Error("-c may only be used once");
+      options.source = argv[index];
+      options.filename = "<command>";
+    } else if (argument.startsWith("-")) {
+      throw new Error(`unknown option ${argument}`);
+    } else {
+      positional.push(argument);
+    }
+  }
+  if (options.help) return { help: true };
+  if (positional.length > 1) throw new Error("expected at most one Sage source file");
+  if (options.source !== undefined && positional.length !== 0) {
+    throw new Error("a source file and -c cannot be used together");
+  }
+  if (options.verifyOnly && (options.source !== undefined || positional.length !== 0)) {
+    throw new Error("--verify-only does not accept Sage source");
+  }
+  if (positional.length === 1) options.file = positional[0];
+  return options;
+}
+
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) =>
+      `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function safeArtifactPath(root, name) {
+  if (
+    typeof name !== "string" ||
+    name.length === 0 ||
+    isAbsolute(name) ||
+    name.split(/[\\/]/).includes("..")
+  ) {
+    throw new Error(`unsafe production artifact path ${JSON.stringify(name)}`);
+  }
+  const filename = resolve(root, name);
+  if (!filename.startsWith(`${resolve(root)}${sep}`)) {
+    throw new Error(`production artifact path escapes distribution: ${name}`);
+  }
+  return filename;
+}
+
+async function exactRegularFile(filename, description) {
+  let status;
+  try {
+    status = await lstat(filename);
+  } catch (error) {
+    if (error?.code === "ENOENT") throw new Error(`${description} is missing`);
+    throw error;
+  }
+  if (!status.isFile() || status.isSymbolicLink()) {
+    throw new Error(`${description} must be a regular file`);
+  }
+  return { status, bytes: await readFile(filename) };
+}
+
+/**
+ * Authenticate every byte selected by the Node evaluator and prove that its
+ * package-root runtime sources are the exact copies named by the production
+ * receipt.  This second check matters because Node imports those sources
+ * directly, whereas browsers serve their `dist/runtime` copies.
+ */
+export async function verifyProductionArtifact({
+  packageRoot = dirname(fileURLToPath(import.meta.url)),
+  distDirectory = resolve(packageRoot, "dist"),
+  sourceRoot = packageRoot,
+} = {}) {
+  const manifestRecord = await exactRegularFile(
+    resolve(distDirectory, "production-manifest.json"),
+    "WebAssembly production manifest",
+  );
+  const receiptRecord = await exactRegularFile(
+    resolve(distDirectory, "build-receipt.json"),
+    "WebAssembly production build receipt",
+  );
+  let manifest;
+  let receipt;
+  try {
+    manifest = JSON.parse(manifestRecord.bytes);
+    receipt = JSON.parse(receiptRecord.bytes);
+  } catch {
+    throw new Error("WebAssembly production manifest or build receipt is invalid JSON");
+  }
+  if (manifest.schema !== artifactSchema) {
+    throw new Error(`unsupported WebAssembly production manifest schema ${manifest.schema}`);
+  }
+  if (receipt.schema !== buildReceiptSchema) {
+    throw new Error(`unsupported WebAssembly build receipt schema ${receipt.schema}`);
+  }
+  if (receipt.productionManifestSha256 !== sha256(manifestRecord.bytes)) {
+    throw new Error("WebAssembly build receipt does not authenticate the production manifest");
+  }
+  if (!isDeepStrictEqual(receipt.artifact, manifest)) {
+    throw new Error("WebAssembly production manifest and build receipt artifact differ");
+  }
+  const computedIdentity = `sha256:${sha256(canonicalJson({
+    layout: manifest.layout,
+    assets: manifest.assets,
+    capabilities: manifest.capabilities,
+  }))}`;
+  if (manifest.identity !== computedIdentity) {
+    throw new Error("WebAssembly production artifact identity differs");
+  }
+  for (const asset of manifest.assets ?? []) {
+    const filename = safeArtifactPath(distDirectory, asset.path);
+    const record = await exactRegularFile(filename, `WebAssembly asset ${asset.path}`);
+    if (record.status.size !== asset.bytes || sha256(record.bytes) !== asset.sha256) {
+      throw new Error(`WebAssembly asset digest differs: ${asset.path}`);
+    }
+    if (asset.path.startsWith("runtime/")) {
+      const sourceFilename = safeArtifactPath(sourceRoot, asset.servePath);
+      const source = await exactRegularFile(
+        sourceFilename,
+        `Node runtime source ${asset.servePath}`,
+      );
+      if (source.status.size !== asset.bytes || sha256(source.bytes) !== asset.sha256) {
+        throw new Error(
+          `Node runtime source does not match the production artifact: ${asset.servePath}`,
+        );
+      }
+    }
+  }
+  return Object.freeze({
+    artifactIdentity: manifest.identity,
+    manifestSha256: receipt.productionManifestSha256,
+    sourceRevision:
+      receipt.source?.gitCommit ?? receipt.source?.revision ?? null,
   });
-  if (result.repr && result.repr !== "None") stdout.write(`${result.repr}\n`);
 }
 
-async function main() {
-  const options = argumentsFrom(process.argv.slice(2));
-  if (options.help) {
-    stdout.write(`${usage()}\n`);
-    return;
+function sourceReceipt(source, filename) {
+  const bytes = Buffer.from(source);
+  return { filename, bytes: bytes.byteLength, sha256: sha256(bytes) };
+}
+
+function diagnosticReceipt({
+  artifact,
+  source,
+  timeout,
+  result,
+  elapsed,
+  error,
+  sessionRecovered,
+}) {
+  return {
+    schema: diagnosticSchema,
+    artifact_identity: artifact.artifactIdentity,
+    production_manifest_sha256: artifact.manifestSha256,
+    source_revision: artifact.sourceRevision,
+    source,
+    timeout_ms: timeout ?? null,
+    elapsed_ms: elapsed,
+    outcome: error === undefined ? "ok" : error.name === "SageSessionTimeoutError"
+      ? "timeout" : "error",
+    error: error === undefined ? null : { name: error.name, message: error.message },
+    session_recovered: sessionRecovered,
+    instrumentation: result?.instrumentation ?? null,
+  };
+}
+
+async function emitDiagnostic(receipt, options, errorOutput) {
+  const encoded = `${JSON.stringify(receipt)}\n`;
+  if (options.diagnostics) errorOutput.write(encoded);
+  if (options.diagnosticsFile !== undefined) {
+    await writeFile(options.diagnosticsFile, encoded, "utf8");
   }
-  const session = await createSage();
+}
+
+async function evaluate(session, source, filename, options, artifact, output, errorOutput) {
+  const started = performance.now();
+  let result;
+  let failure;
+  let sessionRecovered = null;
+  try {
+    result = await session.evaluate(source, {
+      filename,
+      timeout: options.timeout,
+      onOutput: (text) => output.write(text),
+      onError: (text) => errorOutput.write(text),
+    });
+    if (result.repr && result.repr !== "None") output.write(`${result.repr}\n`);
+    return result;
+  } catch (error) {
+    failure = error;
+    if (error?.name === "SageSessionTimeoutError" && typeof session.ready === "function") {
+      // The timeout rejects the evaluation as soon as the old worker is
+      // terminated. Wait for its replacement before closing or returning so
+      // the replacement's ready promise cannot become an unhandled rejection.
+      await session.ready();
+      sessionRecovered = true;
+    }
+    throw error;
+  } finally {
+    await emitDiagnostic(diagnosticReceipt({
+      artifact,
+      source: sourceReceipt(source, filename),
+      timeout: options.timeout,
+      result,
+      elapsed: Math.round((performance.now() - started) * 1000) / 1000,
+      error: failure,
+      sessionRecovered,
+    }), options, errorOutput);
+  }
+}
+
+async function readStandardInput(input) {
+  let source = "";
+  input.setEncoding?.("utf8");
+  for await (const chunk of input) source += chunk;
+  return source;
+}
+
+export async function runCli({
+  argv = process.argv.slice(2),
+  input = stdin,
+  output = stdout,
+  errorOutput = stderr,
+  createSession = createSage,
+  verifyArtifact = verifyProductionArtifact,
+} = {}) {
+  const options = argumentsFrom(argv);
+  if (options.help) {
+    output.write(`${usage()}\n`);
+    return { status: "help" };
+  }
+  const artifact = await verifyArtifact();
+  if (options.verifyOnly) {
+    output.write(`WebAssembly production artifact valid: ${artifact.artifactIdentity}\n`);
+    return { status: "verified", artifact };
+  }
+  const session = await createSession();
   try {
     if (options.source !== undefined) {
-      await evaluate(session, options.source, options.filename);
-      return;
+      await evaluate(
+        session,
+        options.source,
+        options.filename,
+        options,
+        artifact,
+        output,
+        errorOutput,
+      );
+      return { status: "evaluated", artifact };
     }
     if (options.file) {
-      await evaluate(session, await readFile(options.file, "utf8"), options.file);
-      return;
+      await evaluate(
+        session,
+        await readFile(options.file, "utf8"),
+        options.file,
+        options,
+        artifact,
+        output,
+        errorOutput,
+      );
+      return { status: "evaluated", artifact };
     }
-    if (!stdin.isTTY) {
-      let source = "";
-      stdin.setEncoding("utf8");
-      for await (const chunk of stdin) source += chunk;
-      await evaluate(session, source, "<stdin>");
-      return;
+    if (!input.isTTY) {
+      await evaluate(
+        session,
+        await readStandardInput(input),
+        "<stdin>",
+        options,
+        artifact,
+        output,
+        errorOutput,
+      );
+      return { status: "evaluated", artifact };
     }
-    stdout.write("Sage.js WebAssembly (Node host)\n");
-    const readline = createInterface({ input: stdin, output: stdout });
+    output.write("Sage.js production WebAssembly (Node host)\n");
+    const readline = createInterface({ input, output });
     try {
       while (true) {
         const source = await readline.question("sage: ");
-        if (source.trim() === "quit" || source.trim() === "exit") break;
+        const command = source.trim();
+        if (["quit", "exit", ":quit", ":exit"].includes(command)) break;
+        if (command === ":reset") {
+          await session.reset();
+          output.write("Session reset.\n");
+          continue;
+        }
         try {
-          await evaluate(session, source, "<repl>");
+          await evaluate(
+            session,
+            source,
+            "<repl>",
+            options,
+            artifact,
+            output,
+            errorOutput,
+          );
         } catch (error) {
-          process.stderr.write(`${error.stack ?? error}\n`);
+          errorOutput.write(`${error.stack ?? error}\n`);
         }
       }
     } finally {
       readline.close();
     }
+    return { status: "repl", artifact };
   } finally {
     await session.close();
   }
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error.stack ?? error}\n`);
-  process.exitCode = 1;
-});
+async function main() {
+  try {
+    await runCli();
+  } catch (error) {
+    stderr.write(`${error.stack ?? error}\n`);
+    process.exitCode = error?.name === "SageSessionTimeoutError" ? 124 : 1;
+  }
+}
+
+const invoked = process.argv[1] === undefined
+  ? false
+  : pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
+if (invoked) await main();
