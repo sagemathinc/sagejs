@@ -1,0 +1,92 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-unit-engine",
+  "title": "General class and unit group engine",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement the deterministic small-field class-and-unit vertical slice and adaptive Buchmann-Hecke orchestration, including unconditional motivating quintic C4",
+  "base_commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "test/number-field-class-unit-engine.cjs",
+    "test/fixtures/number-field-class-unit-engine.json"
+  ],
+  "dependencies": [
+    "class-unit-core",
+    "class-factor-base",
+    "class-relations",
+    "class-matrix",
+    "class-unit-analytic",
+    "class-maps-proof"
+  ],
+  "references": [
+    "/home/user/upstream/Hecke.jl",
+    "/home/user/upstream/pari-2.18.1.alpha"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage/PARI",
+      "Magma"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/number_fields/class_unit_groups.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.464,
+      "started_at": "2026-08-21T05:02:30.458Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "177986305d38d799d46978f31582469b6edb440caaf46e9fc42c20b071696d9b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.951,
+      "started_at": "2026-08-21T05:02:36.220Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "177986305d38d799d46978f31582469b6edb440caaf46e9fc42c20b071696d9b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_TEST_EXECUTABLE=/home/user/sagejs-worktrees/class-factor-base/bin/sagejs node --test test/number-field-class-unit-engine.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.458,
+      "started_at": "2026-08-21T05:03:08.484Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "177986305d38d799d46978f31582469b6edb440caaf46e9fc42c20b071696d9b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the ordinary-Python adaptive class/unit orchestrator and baselib-facing projections. The engine lazily composes exact factor-base planning, authenticated relation collection, persistent deterministic LLL/random-ideal search, FLINT/Python HNF-SNF presentations, exact ideal-class maps, relation-kernel unit recovery, rigorous regulator/zeta hR index validation, and separate unconditional Minkowski versus GRH-conditional terminal states. Specialized exact degree-one and supported cubic routes share one cached context. Focused tests cover complete coupled results, cache reuse, fail-closed missing producers and cancellation, exact C4 SNF ideal-map round trips, resource policies, and the external quintic target metadata.",
+    "risks": [
+      "The general component branches and valuation acceleration were intentionally not copied into this lane; the integrated motivating quintic has not yet run against their merged APIs.",
+      "The focused receipt used a sibling worktree executable because this worktree has no optional generated FLINT adapter. pnpm test:native and the full changed-file gate remain integration work.",
+      "Sage/PARI and Magma executables were not provisioned on this host, so the committed fixture records the reviewed target but this lane did not regenerate the external oracle answer or benchmark it."
+    ],
+    "next_steps": [
+      "Merge the six declared producer dependencies and valuation acceleration c26e3eba, then run proof=True and proof=False on the discriminant-380452 quintic and tune deterministic relation caps from the recorded stage diagnostics.",
+      "Wire the exported class_unit_context, class_group, class_number, unit_group, units, and regulator projections into the baselib and add class_unit_groups.py to pyrightconfig.json in the integration lane.",
+      "Run the focused test with the integrated local executable, pnpm test:changed, pnpm test:native, architecture gates, Sage/PARI and Magma oracles, and a warm quintic benchmark before changing this contract to review."
+    ]
+  }
+}
