@@ -4,7 +4,7 @@
   "id": "wasm-graph-heavy",
   "title": "Accelerate graph shortest paths in WebAssembly",
   "lane": "combinatorics-groups",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Profile public Graph shortest-path, all-pairs, clique, coloring, and isomorphism workloads, then route one or two measured Python-dominant Tier-2 shortest-path workflows through a bounded source-transparent packed WebAssembly kernel with exact fallback, authenticated route evidence, differential and direct/public Node/browser tests, interrupt safety, and a benchmark",
   "base_commit": "48eb9e843d454758de99e11820a2f3bc1e3482c8",
@@ -40,14 +40,84 @@
   "validation": [
     "pnpm test:baselib:strict",
     "pnpm test:compiler",
-    "SAGEJS_NATIVE_AUTOLOAD=0 node --test --test-reporter=spec test/graphs.cjs",
+    "env SAGEJS_NATIVE_AUTOLOAD=0 node --test --test-reporter=spec test/graphs.cjs",
     "node --test --test-reporter=spec test/wasm-graph-shortest-paths.cjs",
     "node bench/wasm-graph-shortest-paths.cjs --json"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.406,
+      "started_at": "2026-08-21T01:44:26.781Z",
+      "commit": "44bb0c91ca946343b28caa069169666065882bac",
+      "workspace_fingerprint": "a8a1e0a98c9b3d2776b19af5042e96ef7728ea66ee36e18677a0ebb6f63f766f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.278,
+      "started_at": "2026-08-21T01:44:53.836Z",
+      "commit": "44bb0c91ca946343b28caa069169666065882bac",
+      "workspace_fingerprint": "a8a1e0a98c9b3d2776b19af5042e96ef7728ea66ee36e18677a0ebb6f63f766f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 46.874,
+      "started_at": "2026-08-21T01:50:32.176Z",
+      "commit": "44bb0c91ca946343b28caa069169666065882bac",
+      "workspace_fingerprint": "a8a1e0a98c9b3d2776b19af5042e96ef7728ea66ee36e18677a0ebb6f63f766f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_NATIVE_AUTOLOAD=0 node --test --test-reporter=spec test/graphs.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.259,
+      "started_at": "2026-08-21T01:51:34.922Z",
+      "commit": "44bb0c91ca946343b28caa069169666065882bac",
+      "workspace_fingerprint": "a8a1e0a98c9b3d2776b19af5042e96ef7728ea66ee36e18677a0ebb6f63f766f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/wasm-graph-shortest-paths.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.445,
+      "started_at": "2026-08-21T01:51:46.222Z",
+      "commit": "44bb0c91ca946343b28caa069169666065882bac",
+      "workspace_fingerprint": "a8a1e0a98c9b3d2776b19af5042e96ef7728ea66ee36e18677a0ebb6f63f766f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/wasm-graph-shortest-paths.cjs --json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 50.699,
+      "started_at": "2026-08-21T01:52:11.415Z",
+      "commit": "44bb0c91ca946343b28caa069169666065882bac",
+      "workspace_fingerprint": "a8a1e0a98c9b3d2776b19af5042e96ef7728ea66ee36e18677a0ebb6f63f766f",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Follow-on to the connected-components slice already integrated at 48eb9e84. Adds source-transparent packed single-source and all-pairs unweighted shortest-path kernels, exact public Graph fallbacks, authenticated private route evidence, deterministic bounds/work-budget cancellation, CPython/native-disabled differential coverage, direct real-Wasm plus public Node/Chromium coverage, and a public-workload benchmark. Measured medians on linux-x64 were 7.24x for CycleGraph(5000).shortest_path and 2.46x for CycleGraph(500).distances_all_pairs; clique was input-sensitive, coloring remained Python-heavy but exponential, and isomorphism already used the mature optional igraph route.",
+    "risks": [
+      "The shared package graph, native-kernel inventory/capability rows, coverage corpus, and browser precompile manifest are intentionally deferred to the integration lane.",
+      "The focused Chromium test installs a private authenticated builtins bridge because the current browser runtime does not expose its resolver to sagejs.native._compiled; integration must land the shared resolver hook before removing that test-only bridge.",
+      "The conservative all-pairs limits (2048 vertices, 4000000 endpoint entries, 32 MiB output) prefer exact portable fallback for larger inputs."
+    ],
+    "next_steps": [
+      "Register packed-graph-shortest-paths-production and assign src/lib/sagejs/kernels/graph/shortest_paths.py to graph-native-kernels in the shared architecture manifests.",
+      "Precompile sagejs.kernels.graph, sagejs.kernels.graph.components, and sagejs.kernels.graph.shortest_paths for the public browser runtime.",
+      "Land the central browser resolver-to-builtins hook, then remove or simplify the focused test's temporary private host bridge.",
+      "Regenerate shared coverage/capability artifacts and run the integrated architecture and browser suites."
+    ]
   }
 }
