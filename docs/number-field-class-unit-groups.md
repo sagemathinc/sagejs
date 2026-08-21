@@ -143,6 +143,14 @@ principality, rigorous 100/200-bit regulator intervals, invalid inputs, and
 bounded hard cases. The developer harness is
 `bench/class-unit-groups/run-oracles.cjs`.
 
+The companion fixture
+`test/fixtures/number-field-class-unit-high-degree-oracles.json` covers
+`x^n-x-1` in degrees 6 through 10. It records signatures, discriminants,
+equation-order indices, class and unit invariants, regulators, and prime
+splitting through each exact Minkowski bound. Sage/PARI, Magma, and Hecke
+0.40.0 independently agree on the normalized data in conditional-GRH and
+unconditional modes. The one-sample timings are provenance, not gates.
+
 The oracle programs are compatibility tools, not runtime dependencies, and no
 upstream source is copied into Sage.js:
 
@@ -150,7 +158,7 @@ upstream source is copied into Sage.js:
 |---|---|---|
 | SageMath with PARI | Independent normalized oracle and Arb regulator capture | GPL-compatible Sage distribution; PARI/GP is GPL-2.0-or-later |
 | Magma 2.18-5 | Independent black-box class, unit, map, and regulator oracle | Proprietary; invoked only from a licensed local installation |
-| Hecke.jl / Oscar.jl | Optional third implementation family | Hecke BSD-2-Clause; Oscar GPL-3.0-or-later |
+| Hecke.jl / Oscar.jl | Independent high-degree oracle; separately instantiated compatibility check | Hecke BSD-2-Clause; Oscar GPL-3.0-or-later |
 
 Correctness checks compare stable mathematical projections and ignore timing.
 Each external system starts once per tier and constructs fresh fields for each

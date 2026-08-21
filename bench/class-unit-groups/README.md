@@ -35,23 +35,23 @@ only because putting its unconditional Magma computation in `all` would turn
 a deterministic developer check into a resource-limit test.
 
 Missing systems produce explicit `unavailable` records. `--require-sage` and
-`--require-magma` make those conditions fatal. Julia was absent on the capture
-host, so the pinned baseline does not count Hecke/Oscar as a third agreement;
-the exact upstream versions and commits remain recorded for a future adapter.
-The capture host specifically has no `julia` executable; both pinned local
-projects declare `julia = "1.10"`. After installing Julia 1.10 or newer under a
-task-scoped tool prefix, the reproducible dependency setup is:
+`--require-magma` make those conditions fatal. A separate compact corpus covers
+the Selmer family `x^n-x-1` in degrees 6 through 10, including every prime
+decomposition through the exact Minkowski bound. Run all three independent
+families with:
 
 ```bash
 JULIA_DEPOT_PATH=/home/user/upstream/julia-class-unit-depot \
-  /home/user/upstream/julia/bin/julia \
-  --project=/home/user/upstream/Hecke.jl \
-  -e 'using Pkg; Pkg.instantiate(); using Hecke; Pkg.status()'
+  node bench/class-unit-groups/run-high-degree-oracles.cjs --check \
+  --require-sage --require-magma --require-hecke
 ```
 
-An adapter must record the Julia, Hecke, Nemo/FLINT, and (if loaded) Oscar
-versions and normalized results before changing the baseline from
-`unavailable`; installing packages alone is not oracle agreement.
+The capture used Julia 1.10.10, Hecke 0.40.0, Nemo 0.56.1,
+AbstractAlgebra 0.50.2, and FLINT_jll 301.600.0+0. The checked-out Oscar
+1.9.0-DEV source also instantiated successfully, but its declared Hecke range
+is 0.39.22 through 0.39; it therefore uses Hecke 0.39.22 rather than the
+independently checked-out Hecke 0.40.0. This explicit compatibility boundary
+is why the committed third-family records are labelled Hecke, not Oscar.
 On POSIX hosts the harness wraps each external process in GNU `timeout`, sends
 `TERM` to its process group, and escalates to `KILL` after five seconds. The
 Node timeout remains a final fallback. Thus a failed capture cannot leave a

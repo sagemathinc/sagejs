@@ -7,11 +7,14 @@
   "status": "active",
   "owner": "user",
   "objective": "Integrate the deterministic class/unit oracle corpus into public acceptance tests and document proof semantics, provenance, capabilities, resource behavior, and benchmark policy",
-  "base_commit": "2927be79ed98f5fb6c2514a4a744e5ca34daee6b",
+  "base_commit": "e28e63bdda5c834dbf63030dd0758777cb944277",
   "claims": [
     "bench/class-unit-groups/",
     "test/fixtures/number-field-class-unit-oracles.json",
+    "test/fixtures/number-field-class-unit-high-degree-oracles.json",
+    "test/number-field-class-unit-engine.cjs",
     "test/number-field-class-unit-public.cjs",
+    "test/number-field-quadratic-class-units.cjs",
     "test/node-test-manifest.cjs",
     "docs/number-field-class-unit-groups.md",
     "docs/algebraic-number-fields-computational-foundations.md",
@@ -40,14 +43,15 @@
   "platforms": {
     "linux-x64": "required",
     "linux-arm64": "required",
-    "windows-x64": "not-applicable",
+    "windows-x64": "required",
     "macos-arm64": "required"
   },
   "validation": [
     "pnpm docs:check",
     "pnpm test:tutorial",
-    "node bench/class-unit-groups/run-oracles.cjs --tier quick --check --require-sage --require-magma",
-    "node --test test/number-field-class-unit-public.cjs test/test-manifest.test.cjs test/website.cjs"
+    "node bench/class-unit-groups/run-high-degree-oracles.cjs --check --require-sage --require-magma --require-hecke",
+    "node --test --test-name-pattern=offline test/number-field-class-unit-public.cjs",
+    "node --check bench/class-unit-groups/run-high-degree-oracles.cjs"
   ],
   "runs": [
     {
@@ -69,20 +73,49 @@
       "commit": "2927be79ed98f5fb6c2514a4a744e5ca34daee6b",
       "workspace_fingerprint": "4d9e9b6266ee129921a8100afc50b134f7062e06c8c1ea55348f14f10618ab08",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/run-high-degree-oracles.cjs --check --require-sage --require-magma --require-hecke",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 29.107,
+      "started_at": "2026-08-21T10:13:55.635Z",
+      "commit": "e28e63bdda5c834dbf63030dd0758777cb944277",
+      "workspace_fingerprint": "f664469490f5d0e9f4149954ef28b42f2d21907adb0bb2763257a768716166af",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=offline test/number-field-class-unit-public.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.104,
+      "started_at": "2026-08-21T10:14:28.485Z",
+      "commit": "e28e63bdda5c834dbf63030dd0758777cb944277",
+      "workspace_fingerprint": "f664469490f5d0e9f4149954ef28b42f2d21907adb0bb2763257a768716166af",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/class-unit-groups/run-high-degree-oracles.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.029,
+      "started_at": "2026-08-21T10:14:29.205Z",
+      "commit": "e28e63bdda5c834dbf63030dd0758777cb944277",
+      "workspace_fingerprint": "f664469490f5d0e9f4149954ef28b42f2d21907adb0bb2763257a768716166af",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Integrated the committed 16-field Sage/PARI and Magma corpus into the host test manifest and added public conditional/unconditional acceptance coverage. The discriminant-12 quadratic runs in the ordinary suite; the discriminant-380452 C4 quintic runs only with SAGEJS_SLOW_CLASS_UNIT=1 while its normalized target remains checked offline by default. Added user documentation for proof and GRH labels, distinct cache identities, exact ideal maps and principality, factored units, rigorous regulator balls, limits, cancellation, authenticated checkpoints, oracle licensing/provenance, and benchmark methodology. Updated public capability, benchmark, and competitive-audit records from planned to executable evidence. The harness now applies process-group timeout escalation on POSIX hosts.",
+    "summary": "Added a normalized degree 6 through 10 corpus for x^n-x-1 with exact signatures, discriminants, equation-order indices, class and unit invariants, regulators, and prime splitting through every exact Minkowski bound. A persistent timeout-safe harness obtains independent agreement from Sage/PARI, Magma, and Julia/Hecke and ignores timing drift in correctness comparisons. Installed Julia 1.10.10 in a task-scoped prefix, instantiated Hecke 0.40.0 and Oscar 1.9.0-DEV, and documented Oscar's Hecke 0.39 compatibility boundary. Focused class/unit test helpers now invoke bin/sagejs-source.cjs through process.execPath on native Windows instead of relying on extensionless or temporary cmd launchers.",
     "risks": [
-      "The capture host has no Julia executable. Local Hecke 0.40.0 and Oscar 1.9.0-DEV both require Julia 1.10; the README records a task-scoped JULIA_DEPOT_PATH and exact instantiate/status command. The baseline therefore continues to mark Hecke/Oscar unavailable rather than claiming unrun agreement.",
+      "At e28e63bd a stale local FLINT addon makes the general D=12 public acceptance return incomplete with reason FLINT did not return exact outward dyadic endpoints. Root independently confirmed that an explicit FLINT rebuild passes the new endpoint tests; a separate build-cache lane owns that infrastructure fix. Specialized K.class_group() and K.unit_group() pass.",
+      "The independent algorithm=minkowski D=12 path returns incomplete with integer modulo by zero for its empty factor base; the engine lane owns the imminent fix.",
       "Magma 2.18-5 Cputime is coarse and its retained one-sample timings are historical context, not gates.",
-      "pnpm docs:check completed its seven-stage build but reported that the generated API reference was already stale relative to origin/main; this lane did not claim or modify docs/reference/api.md. Focused public, manifest, website, syntax, contract, and quick two-oracle checks pass.",
       "The x^5-1009 unconditional Magma computation is metadata-only after an intentional 60-second interruption and is excluded from ordinary tiers."
     ],
     "next_steps": [
       "Run SAGEJS_SLOW_CLASS_UNIT=1 node --test test/number-field-class-unit-public.cjs on a dedicated host to record both quintic proof-mode timings without burdening ordinary CI.",
-      "Install Julia 1.10 or newer at the documented task-scoped prefix, instantiate the pinned local Hecke project in the documented depot, add an adapter, and record Julia/Hecke/Nemo/FLINT versions before claiming a third agreement family.",
-      "Regenerate docs/reference/api.md in the lane that owns generated reference output, then rerun pnpm docs:check.",
+      "Validate the process.execPath Windows launcher against the final integrated source after the engine and build-cache commits land.",
       "Ratchet the directional warm thresholds only from uncontended five-sample Sage.js implementation measurements."
     ]
   }

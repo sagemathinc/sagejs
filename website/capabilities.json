@@ -315,7 +315,7 @@
       },
       "summary": "General absolute number fields support certified class groups, exact ideal maps, complete unit groups, and regulator enclosures.",
       "implementation": "Deterministic Python orchestration over exact maximal-order, ideal, matrix, FLINT/Arb, relation, saturation, and analytic-index components.",
-      "evidence": "Public quadratic and quintic acceptance tests plus a committed 16-field normalized Sage/PARI and Magma oracle corpus.",
+      "evidence": "Public quadratic and quintic acceptance tests, a committed 16-field normalized Sage/PARI and Magma corpus, and an independent Sage/PARI, Magma, and Hecke corpus in degrees 6 through 10.",
       "target": "Expand scale frontiers, hard-case relation search, and cross-platform performance evidence without weakening proof labels.",
       "priority": "now"
     },

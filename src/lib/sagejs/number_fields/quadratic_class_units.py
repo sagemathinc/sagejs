@@ -9,7 +9,10 @@ orientation class.
 
 The reduction conventions are those of Buchmann--Vollmer, Chapter 6.  PARI's
 `Qfb.c` and `buch1.c` were used as algorithmic oracles; no PARI code or runtime
-dependency is included here.
+dependency is included here.  Exhaustive forms are deliberately capability
+bounded: the public adapter routes larger ordinary groups to the shared
+Buchmann--Hecke relation engine.  Narrow groups still require exhaustive real
+forms, because that relation engine currently presents ordinary classes only.
 """
 
 from __future__ import annotations
@@ -26,6 +29,10 @@ _IDENTITY_MATRIX: Matrix2 = ((1, 0), (0, 1))
 _PI_LOWER_NUMERATOR = 103_993
 _PI_LOWER_DENOMINATOR = 33_102
 _DEFAULT_MAX_ENUMERATION_CHECKS = 5_000_000
+# The largest same-host pilot case, |D| = 1,000,000,007, took 0.011 seconds for
+# full cyclic structure with the native certified form enumerator.  Requests
+# beyond this measured range route to the non-materializing relation engine.
+IMAGINARY_QUADRATIC_FORM_THRESHOLD = 1_000_000_007
 _QUADRATIC_ALGORITHMS = ("auto", "quadratic-forms", "minkowski", "buchmann-hecke")
 
 
@@ -533,9 +540,25 @@ class RealQuadraticFieldUnitGroupResult:
         self.algorithm = arithmetic.algorithm
 
     def regulator(self, prec: int = 53) -> Any:
-        from sagejs.number_fields.units import RegulatorResult
+        from sagejs.number_fields.class_unit_analytic import (
+            regulator_from_factored_units,
+        )
+        from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
 
-        return RegulatorResult(self.arithmetic.regulator(), int(prec), True, 1)
+        precision = int(prec)
+        if precision < 16:
+            raise ValueError("regulator precision must be at least 16 bits")
+        factored = FactoredNumberFieldElement.from_element(
+            self.field, self.generators[0]
+        )
+        result = regulator_from_factored_units(
+            (factored,),
+            unit_rank=1,
+            precision_bits=max(100, precision),
+            absolute_tolerance_bits=max(32, precision - 8),
+            maximum_precision_bits=max(4096, 2 * precision),
+        )
+        return result
 
     def verify_completion(self) -> bool:
         return (
@@ -685,6 +708,51 @@ class QuadraticClassGroupPlan:
                 + " candidate checks, exceeding max_enumeration_checks="
                 + str(self.max_enumeration_checks)
                 + "; use a future buchmann-hecke backend or raise the explicit cap"
+            )
+
+
+@dataclass(frozen=True)
+class QuadraticClassRoutingPlan:
+    """Inspectable public routing decision for one quadratic class request."""
+
+    discriminant: int
+    narrow: bool
+    requested_algorithm: str
+    backend: str
+    reason: str
+    benchmark_threshold: int | None
+    enumeration_checks: int | None
+    max_enumeration_checks: int | None
+    materializes_all_reduced_forms: bool
+    supported: bool = True
+    proof_status: str = "exact-unconditional"
+    benchmark_source: str = (
+        "bench/compare-quadratic-class-groups.cjs and "
+        "website/performance/quadratic-class-groups-pilot.json"
+    )
+
+    def diagnostics(self) -> dict[str, Any]:
+        return {
+            "discriminant": self.discriminant,
+            "narrow": self.narrow,
+            "requested_algorithm": self.requested_algorithm,
+            "backend": self.backend,
+            "reason": self.reason,
+            "benchmark_threshold": self.benchmark_threshold,
+            "enumeration_checks": self.enumeration_checks,
+            "max_enumeration_checks": self.max_enumeration_checks,
+            "materializes_all_reduced_forms": self.materializes_all_reduced_forms,
+            "supported": self.supported,
+            "proof_status": self.proof_status,
+            "benchmark_source": self.benchmark_source,
+        }
+
+    def require_supported(self) -> None:
+        if not self.supported:
+            raise ValueError(
+                self.reason
+                + "; use algorithm='auto' or 'buchmann-hecke', or raise the "
+                "explicit real quadratic forms cap"
             )
 
 
@@ -848,7 +916,8 @@ def quadratic_form_from_ideal_lattice(
     `omega = (D % 2 + sqrt(D))/2`.  Public number-field adapters should first
     transport their maximal-order basis to this presentation-independent basis.
     """
-    _require_real_fundamental_discriminant(discriminant)
+    if not is_fundamental_discriminant(discriminant):
+        raise ValueError("a fundamental quadratic discriminant is required")
     if len(rows) != 2 or any(len(row) != 2 for row in rows):
         raise ValueError("a quadratic ideal lattice needs a 2 by 2 basis")
     row0 = (int(rows[0][0]), int(rows[0][1]))
@@ -876,6 +945,114 @@ def quadratic_form_from_ideal_lattice(
     if not form.is_primitive():
         raise ValueError("the ideal lattice produced an imprimitive form")
     return form
+
+
+class MinkowskiTrivialClassElement:
+    """The unique ideal class certified by an empty Minkowski factor base."""
+
+    def __init__(self, parent: MinkowskiTrivialClassGroup) -> None:
+        self._parent = parent
+
+    def parent(self) -> MinkowskiTrivialClassGroup:
+        return self._parent
+
+    def form(self) -> QuadraticForm:
+        return _principal_form(self._parent.discriminant)
+
+    def ideal_basis(self) -> QuadraticIdealBasis:
+        form = self.form()
+        return QuadraticIdealBasis(self._parent.discriminant, form.a, form.b)
+
+    ideal = ideal_basis
+
+    def is_one(self) -> bool:
+        return True
+
+    is_principal = is_one
+
+    def order(self) -> int:
+        return 1
+
+    additive_order = order
+
+    def __mul__(self, other: object) -> MinkowskiTrivialClassElement:
+        if not isinstance(other, MinkowskiTrivialClassElement):
+            return NotImplemented
+        if other._parent is not self._parent:
+            raise TypeError("ideal classes must have the same parent")
+        return self
+
+    def __invert__(self) -> MinkowskiTrivialClassElement:
+        return self
+
+    inverse = __invert__
+
+    def __pow__(self, exponent: int) -> MinkowskiTrivialClassElement:
+        int(exponent)
+        return self
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, MinkowskiTrivialClassElement)
+            and other._parent is self._parent
+        )
+
+    def __hash__(self) -> int:
+        return hash(id(self._parent))
+
+    def __repr__(self) -> str:
+        return "trivial quadratic ideal class (exact Minkowski bound)"
+
+
+class MinkowskiTrivialClassGroup:
+    """A trivial quadratic class group proved before any form enumeration."""
+
+    def __init__(self, discriminant: int) -> None:
+        certificate = quadratic_minkowski_triviality(discriminant)
+        if not certificate.proves_triviality:
+            raise ValueError("the exact Minkowski bound does not prove triviality")
+        self.discriminant = discriminant
+        self.narrow = False
+        self.algorithm = "minkowski"
+        self.proof_status = "exact-unconditional"
+        self.certificate = certificate
+        self._one = MinkowskiTrivialClassElement(self)
+
+    def order(self) -> int:
+        return 1
+
+    cardinality = order
+
+    def invariants(self) -> tuple[int, ...]:
+        return ()
+
+    def one(self) -> MinkowskiTrivialClassElement:
+        return self._one
+
+    def gens(self) -> tuple[MinkowskiTrivialClassElement, ...]:
+        return ()
+
+    def gen(self, index: int = 0) -> MinkowskiTrivialClassElement:
+        raise IndexError("the trivial class group has no generators")
+
+    def list(self) -> list[MinkowskiTrivialClassElement]:
+        return [self._one]
+
+    def __iter__(self) -> Iterator[MinkowskiTrivialClassElement]:
+        return iter(self.list())
+
+    def __call__(self, form: object) -> MinkowskiTrivialClassElement:
+        if isinstance(form, tuple):
+            form = QuadraticForm(*form)
+        if isinstance(form, QuadraticForm) and form.discriminant() != self.discriminant:
+            raise ValueError("the form must have the group discriminant")
+        return self._one
+
+    def verify(self) -> bool:
+        return self.certificate.verify()
+
+    def __repr__(self) -> str:
+        return "Trivial class group certified by " + self.certificate.exact_inequality
 
 
 class QuadraticClassElement:
@@ -1341,10 +1518,13 @@ def real_quadratic_class_group(
 __all__ = [
     "ContinuedFractionUnitCertificate",
     "MinkowskiTrivialityCertificate",
+    "MinkowskiTrivialClassElement",
+    "MinkowskiTrivialClassGroup",
     "QuadraticClassElement",
     "QuadraticClassGroup",
     "QuadraticClassGroupCertificate",
     "QuadraticClassGroupPlan",
+    "QuadraticClassRoutingPlan",
     "QuadraticForm",
     "QuadraticIdealBasis",
     "QuadraticUnit",
@@ -1353,6 +1533,7 @@ __all__ = [
     "RealQuadraticUnitResult",
     "exact_minkowski_triviality",
     "is_fundamental_discriminant",
+    "IMAGINARY_QUADRATIC_FORM_THRESHOLD",
     "quadratic_minkowski_triviality",
     "quadratic_form_from_ideal_lattice",
     "real_quadratic_class_group",

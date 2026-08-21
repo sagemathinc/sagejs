@@ -8,9 +8,23 @@ const { join } = require("node:path");
 const test = require("node:test");
 
 const root = join(__dirname, "..");
-const executable = process.env.SAGEJS_TEST_EXECUTABLE || join(root, "bin", "sagejs");
+function sagejsInvocation(args) {
+  if (process.env.SAGEJS_TEST_EXECUTABLE) {
+    return [process.env.SAGEJS_TEST_EXECUTABLE, args];
+  }
+  if (process.platform === "win32") {
+    return [process.execPath, [join(root, "bin", "sagejs-source.cjs"), ...args]];
+  }
+  return [join(root, "bin", "sagejs"), args];
+}
 const fixture = JSON.parse(
   readFileSync(join(__dirname, "fixtures", "number-field-class-unit-oracles.json"), "utf8"),
+);
+const highDegreeFixture = JSON.parse(
+  readFileSync(
+    join(__dirname, "fixtures", "number-field-class-unit-high-degree-oracles.json"),
+    "utf8",
+  ),
 );
 
 function oracleRecord(id) {
@@ -24,7 +38,8 @@ function runPublic(source, timeout) {
   try {
     const filename = join(directory, "acceptance.py");
     writeFileSync(filename, source, "utf8");
-    const result = spawnSync(executable, ["--python", filename], {
+    const [executable, arguments_] = sagejsInvocation(["--python", filename]);
+    const result = spawnSync(executable, arguments_, {
       cwd: root,
       encoding: "utf8",
       timeout,
@@ -57,6 +72,25 @@ test("offline class/unit corpus fixes the public acceptance targets", () => {
   }
   assert.deepEqual(quintic.proof_modes.unconditional.class_group.invariant_factors, ["4"]);
   assert.equal(quintic.proof_modes.unconditional.unit_group.rank, 2);
+});
+
+test("offline high-degree corpus records independent exact agreement", () => {
+  assert.equal(highDegreeFixture.schema_version, 1);
+  assert.deepEqual(
+    highDegreeFixture.cases.map((entry) => entry.degree),
+    [6, 7, 8, 9, 10],
+  );
+  for (const entry of highDegreeFixture.cases) {
+    assert.equal(entry.polynomial_family, "x^n-x-1");
+    assert.equal(entry.equation_discriminant, entry.field_discriminant);
+    assert.equal(entry.equation_order_index, "1");
+    assert.deepEqual(entry.class_group.invariant_factors, []);
+    assert.equal(entry.class_group.order, "1");
+    assert.equal(entry.unit_group.rank, entry.signature[0] + entry.signature[1] - 1);
+    assert.equal(entry.unit_group.torsion_order, "2");
+    assert.ok(entry.prime_splitting.length > 0);
+  }
+  assert.deepEqual(highDegreeFixture.oracle_agreement, ["sage_pari", "magma", "hecke"]);
 });
 
 test("public quadratic class/unit context preserves proof and analytic contracts", () => {
