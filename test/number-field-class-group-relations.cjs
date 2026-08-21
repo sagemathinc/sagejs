@@ -25,6 +25,7 @@ from sagejs.number_fields.class_group_relations import (
     _integer_determinant,
     _matrix_times_rows,
     _nearest_integer,
+    AutomorphismOrbitPlan,
     ExactRelationCollector,
     FactorBaseIdealReconstructor,
     FactoredPrincipalWitness,
@@ -334,13 +335,126 @@ for actual_row, expected_row in zip(
         assert abs(actual - expected) < cubic_case["absolute_tolerance"]
 assert cubic_plan.verify(CO.ideal(1))
 
+# Inert and ramified primes are fixed by quadratic conjugation.  The exact
+# capability exists, but the collector deterministically declines a redundant
+# orbit relation.
 orbit_plan = plan_automorphism_orbits(K, factor_base)
-assert not orbit_plan.available
-assert orbit_plan.strategy == "independent-minkowski-relation-search"
-assert not any(orbit_plan.detected.values())
+assert orbit_plan.available and not orbit_plan.useful and orbit_plan.verify()
+assert orbit_plan.strategy == "quadratic-conjugation-factor-base-permutation"
+assert orbit_plan.permutation == (0, 1)
+assert orbit_plan.derive(initial[0].record) is None
+assert collector.admit_automorphism_orbit(initial[0].record, plan=orbit_plan) is None
+assert AutomorphismOrbitPlan.from_dict(
+    K, factor_base, orbit_plan.to_dict()
+).to_dict() == orbit_plan.to_dict()
+
+# SageMath/PARI differential oracle: 11 splits in Q(sqrt(5)).  For the model
+# a^2-a-1=0, the nontrivial automorphism is a -> 1-a, so it swaps the two
+# primes, maps 4*a+1 to 5-4*a, and preserves trace and norm exactly.
+orbit_case = case["quadratic_conjugation"]
+split_base = O.factor_rational_prime(orbit_case["split_prime"]).prime_ideals()
+split_plan = plan_automorphism_orbits(K, split_base)
+assert split_plan.available and split_plan.useful and split_plan.verify()
+assert list(split_plan.permutation) == orbit_case["permutation"]
+assert split_plan.conjugate_element(K.gen()) == K(1) - K.gen()
+parent_element = K(R(orbit_case["parent_element_coefficients"]))
+conjugate_element = K(R(orbit_case["conjugate_element_coefficients"]))
+assert split_plan.conjugate_element(parent_element) == conjugate_element
+assert split_plan.conjugate_element(conjugate_element) == parent_element
+assert conjugate_element.trace() == parent_element.trace()
+assert conjugate_element.norm() == parent_element.norm()
+for index, prime in enumerate(split_base):
+    assert split_plan.conjugate_ideal(prime) == split_base[split_plan.permutation[index]]
+
+# The same public construction covers imaginary quadratics: 3 splits in
+# Q(sqrt(-5)), conjugation is b -> -b, and the two exact prime ideals swap.
+I = NumberField(x**2 + 5, "i")
+IO = I.maximal_order()
+imaginary_base = IO.factor_rational_prime(3).prime_ideals()
+imaginary_plan = plan_automorphism_orbits(I, imaginary_base)
+assert imaginary_plan.available and imaginary_plan.useful
+assert imaginary_plan.verify() and imaginary_plan.permutation == (1, 0)
+assert imaginary_plan.conjugate_element(I.gen()) == -I.gen()
+for index, prime in enumerate(imaginary_base):
+    assert imaginary_plan.conjugate_ideal(prime) == imaginary_base[
+        imaginary_plan.permutation[index]
+    ]
+
+orbit_collector = ExactRelationCollector(O, split_base)
+orbit_parent = orbit_collector.admit_witness(
+    parent_element, provenance={"algorithm": "quadratic-orbit-parent-oracle"}
+)
+assert list(orbit_parent.record.row) == orbit_case["parent_row"]
+orbit_derived = orbit_collector.admit_automorphism_orbit(
+    orbit_parent, plan=split_plan
+)
+assert orbit_derived is not None
+assert list(orbit_derived.record.row) == orbit_case["derived_row"]
+assert orbit_derived.record.provenance["algorithm"] == (
+    "quadratic-conjugation-orbit"
+)
+assert RelationRecord.from_dict(orbit_derived.record.to_dict()).verify(
+    O, split_base
+)["certified"]
+mapped_witness = FactoredPrincipalWitness.from_dict(
+    K, orbit_derived.record.witness
+)
+assert mapped_witness.evaluate() == conjugate_element
+
+# A rational-prime row is fixed even when the factor-base action is useful.
+fixed_split_relation = orbit_collector.admit_witness(K(11))
+assert orbit_collector.admit_automorphism_orbit(
+    fixed_split_relation, plan=split_plan
+) is None
+
+# Mutation differential: both a stale hash and a maliciously rehashed wrong
+# permutation are rejected against fresh exact ideal images.  A derived record
+# with its mapped row changed also fails detached relation replay.
+stale_plan = json.loads(json.dumps(split_plan.to_dict()))
+stale_plan["permutation"] = [0, 1]
 try:
-    orbit_plan.derive(initial[0].record)
-    raise AssertionError("unavailable automorphism orbits produced a relation")
+    AutomorphismOrbitPlan.from_dict(K, split_base, stale_plan)
+    raise AssertionError("accepted a mutated automorphism permutation")
+except ValueError:
+    pass
+rehashed_plan = json.loads(json.dumps(stale_plan))
+rehashed_body = dict(rehashed_plan)
+del rehashed_body["content_sha256"]
+rehashed_plan["content_sha256"] = hashlib.sha256(
+    json.dumps(
+        rehashed_body,
+        allow_nan=False,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+).hexdigest()
+try:
+    AutomorphismOrbitPlan.from_dict(K, split_base, rehashed_plan)
+    raise AssertionError("accepted a rehashed false automorphism permutation")
+except ValueError:
+    pass
+mutated_orbit_relation = json.loads(json.dumps(orbit_derived.record.to_dict()))
+mutated_orbit_relation["row"] = orbit_case["parent_row"]
+assert not verify_relation_record(
+    O, split_base, mutated_orbit_relation
+)["certified"]
+
+# Omitting one prime from a split orbit is an explicit unavailable capability;
+# unsupported degrees keep the independent Minkowski-search fallback.
+incomplete_plan = plan_automorphism_orbits(K, split_base[:1])
+assert not incomplete_plan.available and not incomplete_plan.useful
+assert "complete supplied factor base" in incomplete_plan.reason
+assert ExactRelationCollector(O, split_base[:1]).admit_automorphism_orbit(
+    orbit_parent.record, plan=incomplete_plan
+) is None
+cubic_orbit_plan = plan_automorphism_orbits(C, ())
+assert not cubic_orbit_plan.available
+assert cubic_orbit_plan.strategy == "independent-minkowski-relation-search"
+assert "generic field self-map API" in cubic_orbit_plan.reason
+try:
+    cubic_orbit_plan.derive(initial[0].record)
+    raise AssertionError("unsupported automorphism orbits produced a relation")
 except NotImplementedError:
     pass
 

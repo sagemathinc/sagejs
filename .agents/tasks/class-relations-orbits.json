@@ -1,0 +1,83 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-relations-orbits",
+  "title": "Exact quadratic relation orbits",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement authenticated quadratic-conjugation factor-base permutations and exact derived relation admission with deterministic capability fallback, mutation differentials, and benchmark",
+  "base_commit": "7700c3f1d5358ca7224198f96b417824baa6265f",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_group_relations.py",
+    "test/number-field-class-group-relations.cjs",
+    "test/fixtures/number-field-class-group-relations.json",
+    "bench/number-field-class-group-relations.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/number-field-class-group-relations.cjs",
+    "node bench/number-field-class-group-relations.cjs --check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-class-group-relations.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.493,
+      "started_at": "2026-08-21T18:33:07.947Z",
+      "commit": "7700c3f1d5358ca7224198f96b417824baa6265f",
+      "workspace_fingerprint": "76c931bba6d87df4d7259ec2eed06d4921d4ef08bac9b0864716cdf36d9158fd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-class-group-relations.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.433,
+      "started_at": "2026-08-21T18:33:25.163Z",
+      "commit": "7700c3f1d5358ca7224198f96b417824baa6265f",
+      "workspace_fingerprint": "76c931bba6d87df4d7259ec2eed06d4921d4ef08bac9b0864716cdf36d9158fd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 28.642,
+      "started_at": "2026-08-21T18:34:02.926Z",
+      "commit": "7700c3f1d5358ca7224198f96b417824baa6265f",
+      "workspace_fingerprint": "76c931bba6d87df4d7259ec2eed06d4921d4ef08bac9b0864716cdf36d9158fd",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds exact real/imaginary quadratic conjugation plans, SHA-authenticated factor-base permutations, exact element/ideal/row maps, mapped factored-witness admission through ExactRelationCollector, detached replay, deterministic fixed/incomplete/unsupported fallbacks, mutation differentials, and a representative orbit benchmark.",
+    "risks": [
+      "Orbit admission is intentionally opt-in and skips conjugation-fixed rows; callers decide which admitted relations merit an orbit attempt.",
+      "Degree greater than two remains unavailable until the field layer exposes exact self-maps with element images and enough public evidence to map ideals and authenticate the map identity."
+    ],
+    "next_steps": [
+      "Integrate the commit without automatic orbit expansion in the engine; call collector.admit_automorphism_orbit only when the plan reports available and useful.",
+      "Run the lane-mandatory pnpm test:native receipt in central integration, then move this contract to review.",
+      "If generic automorphisms are later added, extend the same authenticated plan protocol rather than interpreting abstract Galois permutations."
+    ]
+  }
+}
