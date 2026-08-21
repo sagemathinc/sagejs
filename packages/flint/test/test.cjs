@@ -336,10 +336,19 @@ const logarithmBall100 = flint.qqbarLogAbsBall(algebraicTwo, 100);
 for (const enclosure of [logarithmBall40, logarithmBall100]) {
   const midpoint = Number(enclosure.midpoint);
   const radius = Number(enclosure.radius);
+  const lower =
+    Number(BigInt(enclosure.lowerMantissa)) *
+    2 ** Number(BigInt(enclosure.lowerExponent));
+  const upper =
+    Number(BigInt(enclosure.upperMantissa)) *
+    2 ** Number(BigInt(enclosure.upperExponent));
   assert.equal(enclosure.precisionBits >= 40, true);
+  assert.equal(enclosure.endpointEncoding, "mantissa-times-two-power");
   assert.equal(Number.isFinite(midpoint), true);
   assert.equal(radius > 0, true);
   assert.equal(Math.abs(midpoint - Math.LN2) <= radius + Number.EPSILON, true);
+  assert.equal(lower <= Math.LN2, true);
+  assert.equal(Math.LN2 <= upper, true);
 }
 assert.equal(
   Number(logarithmBall100.radius) < Number(logarithmBall40.radius),

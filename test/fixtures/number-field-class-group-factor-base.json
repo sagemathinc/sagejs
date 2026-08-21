@@ -28,6 +28,160 @@
     "host": "Linux x64 shared development host",
     "policy": "timer excludes maximal-order and bound construction; result equality is checked before accepting the sample"
   },
+  "high_degree_benchmark": {
+    "workload": "exact Minkowski factor bases for one field in every degree 6 through 10",
+    "reference_seconds": 13.71,
+    "selective_replay_reference_seconds": 1.96,
+    "maximum_seconds": 30.0,
+    "warm_cache_maximum_seconds": 0.05,
+    "baseline_materialized_siblings": 78,
+    "selected_prime_ideals": 36,
+    "host": "Linux x64 shared development host",
+    "policy": "offline plans and exact ideals are checked before timing is accepted; maximal-order construction and independent full-decomposition differentials are excluded"
+  },
+  "high_degree_cases": [
+    {
+      "id": "degree-6-index-two",
+      "polynomial": [-64, -32, 0, 0, 0, 0, 1],
+      "degree": 6,
+      "signature": [2, 2],
+      "discriminant": 49781,
+      "equation_index_squared": 1073741824,
+      "minkowski_bound": 5,
+      "factor_base": [
+        {"p": 5, "norm": 5, "e": 1, "f": 1}
+      ],
+      "baseline_materialized_siblings": 2,
+      "exact_prime": {
+        "index": 0,
+        "p": 5,
+        "norm": 5,
+        "e": 1,
+        "f": 1,
+        "second_generator": [[4, 1], [1, 1], [0, 1], [0, 1], [0, 1], [0, 1]],
+        "residue_modulus": [4, 1]
+      }
+    },
+    {
+      "id": "degree-7-mixed",
+      "polynomial": [-1, -1, 0, 0, 0, 0, 0, 1],
+      "degree": 7,
+      "signature": [1, 3],
+      "discriminant": -776887,
+      "equation_index_squared": 1,
+      "minkowski_bound": 11,
+      "factor_base": [
+        {"p": 5, "norm": 5, "e": 1, "f": 1},
+        {"p": 3, "norm": 9, "e": 1, "f": 2},
+        {"p": 11, "norm": 11, "e": 1, "f": 1}
+      ],
+      "baseline_materialized_siblings": 6,
+      "exact_prime": {
+        "index": 1,
+        "p": 3,
+        "norm": 9,
+        "e": 1,
+        "f": 2,
+        "second_generator": [[2, 1], [1, 1], [1, 1], [0, 1], [0, 1], [0, 1], [0, 1]],
+        "residue_modulus": [2, 1, 1]
+      }
+    },
+    {
+      "id": "degree-8-mixed",
+      "polynomial": [-1, -1, 0, 0, 0, 0, 0, 0, 1],
+      "degree": 8,
+      "signature": [2, 3],
+      "discriminant": -17600759,
+      "equation_index_squared": 1,
+      "minkowski_bound": 20,
+      "factor_base": [
+        {"p": 2, "norm": 4, "e": 1, "f": 2},
+        {"p": 11, "norm": 11, "e": 2, "f": 1},
+        {"p": 19, "norm": 19, "e": 1, "f": 1}
+      ],
+      "baseline_materialized_siblings": 6,
+      "exact_prime": {
+        "index": 0,
+        "p": 2,
+        "norm": 4,
+        "e": 1,
+        "f": 2,
+        "second_generator": [[1, 1], [1, 1], [1, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]],
+        "residue_modulus": [1, 1, 1]
+      }
+    },
+    {
+      "id": "degree-9-mixed",
+      "polynomial": [-1, -1, 0, 0, 0, 0, 0, 0, 0, 1],
+      "degree": 9,
+      "signature": [1, 4],
+      "discriminant": 370643273,
+      "equation_index_squared": 1,
+      "minkowski_bound": 47,
+      "factor_base": [
+        {"p": 7, "norm": 7, "e": 2, "f": 1},
+        {"p": 11, "norm": 11, "e": 2, "f": 1},
+        {"p": 11, "norm": 11, "e": 1, "f": 1},
+        {"p": 13, "norm": 13, "e": 2, "f": 1},
+        {"p": 23, "norm": 23, "e": 1, "f": 1},
+        {"p": 3, "norm": 27, "e": 1, "f": 3},
+        {"p": 29, "norm": 29, "e": 1, "f": 1},
+        {"p": 31, "norm": 31, "e": 1, "f": 1},
+        {"p": 37, "norm": 37, "e": 1, "f": 1},
+        {"p": 41, "norm": 41, "e": 1, "f": 1},
+        {"p": 41, "norm": 41, "e": 1, "f": 1},
+        {"p": 43, "norm": 43, "e": 2, "f": 1},
+        {"p": 47, "norm": 47, "e": 1, "f": 1},
+        {"p": 47, "norm": 47, "e": 1, "f": 1}
+      ],
+      "baseline_materialized_siblings": 32,
+      "exact_prime": {
+        "index": 5,
+        "p": 3,
+        "norm": 27,
+        "e": 1,
+        "f": 3,
+        "second_generator": [[1, 1], [2, 1], [0, 1], [1, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]],
+        "residue_modulus": [1, 2, 0, 1]
+      }
+    },
+    {
+      "id": "degree-10-mixed",
+      "polynomial": [-1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+      "degree": 10,
+      "signature": [2, 4],
+      "discriminant": 10387420489,
+      "equation_index_squared": 1,
+      "minkowski_bound": 97,
+      "factor_base": [
+        {"p": 5, "norm": 5, "e": 1, "f": 1},
+        {"p": 7, "norm": 7, "e": 1, "f": 1},
+        {"p": 2, "norm": 8, "e": 1, "f": 3},
+        {"p": 3, "norm": 9, "e": 1, "f": 2},
+        {"p": 31, "norm": 31, "e": 1, "f": 1},
+        {"p": 41, "norm": 41, "e": 1, "f": 1},
+        {"p": 47, "norm": 47, "e": 1, "f": 1},
+        {"p": 47, "norm": 47, "e": 1, "f": 1},
+        {"p": 59, "norm": 59, "e": 1, "f": 1},
+        {"p": 59, "norm": 59, "e": 1, "f": 1},
+        {"p": 71, "norm": 71, "e": 1, "f": 1},
+        {"p": 73, "norm": 73, "e": 1, "f": 1},
+        {"p": 73, "norm": 73, "e": 1, "f": 1},
+        {"p": 79, "norm": 79, "e": 1, "f": 1},
+        {"p": 79, "norm": 79, "e": 1, "f": 1}
+      ],
+      "baseline_materialized_siblings": 32,
+      "exact_prime": {
+        "index": 2,
+        "p": 2,
+        "norm": 8,
+        "e": 1,
+        "f": 3,
+        "second_generator": [[1, 1], [1, 1], [0, 1], [1, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]],
+        "residue_modulus": [1, 1, 0, 1]
+      }
+    }
+  ],
   "cases": [
     {
       "id": "real-quadratic-d5",
