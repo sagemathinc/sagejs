@@ -71,12 +71,15 @@ C(I) == c
 # True
 C.discrete_log(I)[0]
 # (1,)
-c.order(), C.is_principal(I)
+c.order(), C.is_principal(I, proof=False)
 # (4, False)
 ```
 
 `C.discrete_log(I)` returns coordinates and a principal witness for the
-reduction. `C.gens_ideals()` returns representative generator ideals. Generator
+reduction. A conditional group requires `proof=False` for principality;
+requesting the default unconditional proof from it raises instead of silently
+upgrading the GRH-dependent completeness theorem. `C.gens_ideals()` returns
+representative generator ideals. Generator
 ideals and coordinates are tied to one presentation; they are not canonical
 across Sage.js, Sage/PARI, Magma, or Hecke. Compare abstract invariant factors,
 orders, replayed ideal relations, and normalized lattice data rather than
