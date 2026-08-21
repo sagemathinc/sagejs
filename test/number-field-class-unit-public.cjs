@@ -8,7 +8,9 @@ const { join } = require("node:path");
 const test = require("node:test");
 const {
   compareRationals,
+  decimalRoundingCell,
   rationalFromText,
+  regulatorOverlapsRoundedDecimal,
   regulatorWidthIsSmall,
 } = require("../bench/class-unit-groups/run-live-high-degree-sagejs.cjs");
 
@@ -98,17 +100,34 @@ test("offline high-degree corpus records independent exact agreement", () => {
   assert.deepEqual(highDegreeFixture.oracle_agreement, ["sage_pari", "magma", "hecke"]);
 });
 
-test("live high-degree harness compares rational regulator endpoints exactly", () => {
+test("live high-degree harness interprets rounded regulator decimals exactly", () => {
   const target = rationalFromText("0.740631472629114333933568746575");
   const lower = rationalFromText(
     "252023830522375276431101801533304089015/340282366920938463463374607431768211456",
   );
   const upper = rationalFromText(
-    "252023830522375276431101801533404089015/340282366920938463463374607431768211456",
+    "252023830522375276431101801533304089457/340282366920938463463374607431768211456",
   );
   assert.ok(compareRationals(lower, target) <= 0);
-  assert.ok(compareRationals(target, upper) <= 0);
+  assert.ok(compareRationals(target, upper) > 0);
+  assert.ok(
+    regulatorOverlapsRoundedDecimal(
+      lower,
+      upper,
+      "0.740631472629114333933568746575",
+    ),
+  );
   assert.ok(regulatorWidthIsSmall(lower, upper, target));
+});
+
+test("rounded decimal regulator cells include exact half-ulp boundaries", () => {
+  const [lower, upper] = decimalRoundingCell("1.00");
+  assert.equal(compareRationals(lower, [199n, 200n]), 0);
+  assert.equal(compareRationals(upper, [201n, 200n]), 0);
+  assert.ok(regulatorOverlapsRoundedDecimal(lower, lower, "1.00"));
+  assert.ok(regulatorOverlapsRoundedDecimal(upper, upper, "1.00"));
+  assert.ok(!regulatorOverlapsRoundedDecimal([994n, 1000n], [994n, 1000n], "1.00"));
+  assert.ok(!regulatorOverlapsRoundedDecimal([1006n, 1000n], [1006n, 1000n], "1.00"));
 });
 
 test("public quadratic class/unit context preserves proof and analytic contracts", () => {
