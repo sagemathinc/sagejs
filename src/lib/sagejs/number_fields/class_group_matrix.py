@@ -722,9 +722,9 @@ class DeferredPresentationPolicy:
                 raise RelationMatrixError(
                     "last_exact_prefix_fingerprint must contain two integers"
                 )
-            answer.last_exact_prefix_fingerprint = tuple(
-                _nonnegative_integer(entry, "prefix fingerprint")
-                for entry in fingerprint
+            answer.last_exact_prefix_fingerprint = (
+                _nonnegative_integer(fingerprint[0], "prefix fingerprint"),
+                _nonnegative_integer(fingerprint[1], "prefix fingerprint"),
             )
         answer.extraction_count = _nonnegative_integer(
             value["extraction_count"], "extraction_count"
