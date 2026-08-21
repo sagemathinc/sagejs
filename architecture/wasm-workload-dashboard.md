@@ -12,10 +12,10 @@ Trusted route receipts: 0; rejected receipts: 0.
 
 | Class | Expected requirements | Observed calls |
 | --- | ---: | ---: |
-| `wasm-library` | 36 | 0 |
+| `wasm-library` | 41 | 0 |
 | `wasm-compiled-source` | 1 | 0 |
 | `portable-orchestration` | 3 | 0 |
-| `portable-computation` | 5 | 0 |
+| `portable-computation` | 0 | 0 |
 
 ## Families
 
@@ -25,7 +25,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | analytic-functions | 4 | 4 | 0 | 4 | 0 | 0 |
 | elliptic-curves | 3 | 3 | 0 | 3 | 0 | 0 |
 | exact-arithmetic | 3 | 1 | 0 | 1 | 0 | 2 |
-| modular-symbols | 1 | 0 | 0 | 0 | 1 | 0 |
+| modular-symbols | 1 | 0 | 0 | 0 | 0 | 1 |
 | number-fields | 4 | 2 | 0 | 2 | 0 | 2 |
 | plotting | 2 | 2 | 0 | 2 | 0 | 0 |
 | runtime | 1 | 0 | 0 | 0 | 0 | 1 |
@@ -40,7 +40,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `parity:exact-matrix-and-finite-field-polynomial` | exact-arithmetic | no | unmeasured | `wasm-library` | — |
 | `parity:sagepack-exact-roundtrip` | serialization | no | unmeasured | `portable-orchestration` | — |
 | `parity:exact-algebraic-roots` | algebraic-numbers | no | unmeasured | `wasm-library` | — |
-| `parity:modular-symbols-weight-two` | modular-symbols | no | reviewed-fallback | `portable-computation` | — |
+| `parity:modular-symbols-weight-two` | modular-symbols | no | unmeasured | `wasm-library` | — |
 | `parity:number-field-maximal-order-prime-zeta` | number-fields | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:number-field-cubic-headline` | number-fields | no | unmeasured | `wasm-library` | — |
 | `parity:number-field-ideal-certificate-sagepack` | number-fields | no | unmeasured | `portable-orchestration` | — |

@@ -13,6 +13,11 @@
         "elliptic-lseries-plot",
         "elliptic-lseries-values",
         "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
+        "napi:@sagemath/sagejs-flint:p1List",
+        "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
+        "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
+        "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
+        "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
         "specialist:integer-factorization-wasm"
       ],
       "capabilities": [

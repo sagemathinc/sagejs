@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "ba62b86c51b1347c688c4734a069834e0d224299981709d9e03d2ef1dc6d9fe5",
+  "source_sha256": "3238ef71cebb03244262be2f6e66f1f0ac8915e65f182972e18fd97e69453878",
   "counts": {
     "total": 943,
     "by_kind": {
@@ -16,13 +16,13 @@
       "compiled-source": 32,
       "desktop-only": 14,
       "generated-wasm": 268,
-      "portable-fallback": 594,
-      "shared-core": 35
+      "portable-fallback": 589,
+      "shared-core": 40
     },
     "by_status": {
-      "available": 467,
+      "available": 472,
       "desktop-only": 14,
-      "fallback": 462
+      "fallback": 457
     }
   },
   "workflow_aliases": {
@@ -8110,14 +8110,14 @@
     {
       "id": "napi:@sagemath/sagejs-flint:p1List",
       "family": "modular-symbols",
-      "disposition": "portable-fallback",
-      "status": "fallback",
+      "disposition": "shared-core",
+      "status": "available",
       "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "P1 enumeration runs in the receipt-authenticated FLINT WebAssembly artifact with an ordinary exact fallback."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListApplyI",
@@ -8170,14 +8170,14 @@
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
       "family": "modular-symbols",
-      "disposition": "portable-fallback",
-      "status": "fallback",
+      "disposition": "shared-core",
+      "status": "available",
       "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Modular-symbol boundary data runs in the receipt-authenticated FLINT WebAssembly artifact with an ordinary exact fallback."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeMatrix",
@@ -8218,14 +8218,14 @@
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
       "family": "modular-symbols",
-      "disposition": "portable-fallback",
-      "status": "fallback",
+      "disposition": "shared-core",
+      "status": "available",
       "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Cuspidal-basis computation runs in the receipt-authenticated FLINT WebAssembly artifact with an ordinary exact fallback."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListDegeneracyMatrix",
@@ -8254,14 +8254,14 @@
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
       "family": "modular-symbols",
-      "disposition": "portable-fallback",
-      "status": "fallback",
+      "disposition": "shared-core",
+      "status": "available",
       "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Hecke-matrix construction runs in the receipt-authenticated FLINT WebAssembly artifact with an ordinary exact fallback."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListHigherWeightDegeneracyMatrix",
@@ -8326,14 +8326,14 @@
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
       "family": "modular-symbols",
-      "disposition": "portable-fallback",
-      "status": "fallback",
+      "disposition": "shared-core",
+      "status": "available",
       "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Manin-presentation construction runs in the receipt-authenticated FLINT WebAssembly artifact with an ordinary exact fallback."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListManinRelations",

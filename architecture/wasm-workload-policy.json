@@ -14,47 +14,6 @@
     "require_private_instrumentation": true,
     "source_revision_policy": "match-if-present"
   },
-  "portable_route_reviews": [
-    {
-      "workload": "parity:modular-symbols-weight-two",
-      "capability": "napi:@sagemath/sagejs-flint:p1List",
-      "classification": "portable-computation",
-      "normal_domain": "the current level-37 routine parity example",
-      "heavy_policy": "prohibited",
-      "reason": "The ordinary exact Manin-symbol implementation is a known temporary browser fallback, not evidence of fast-mathematics completion."
-    },
-    {
-      "workload": "parity:modular-symbols-weight-two",
-      "capability": "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
-      "classification": "portable-computation",
-      "normal_domain": "the current level-37 routine parity example",
-      "heavy_policy": "prohibited",
-      "reason": "Presentation construction remains reviewed portable mathematics only for the routine corpus while its Wasm core is unfinished."
-    },
-    {
-      "workload": "parity:modular-symbols-weight-two",
-      "capability": "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
-      "classification": "portable-computation",
-      "normal_domain": "the current level-37 routine parity example",
-      "heavy_policy": "prohibited",
-      "reason": "Boundary computation is mathematically substantial and therefore cannot be silently accepted in a heavyweight workload."
-    },
-    {
-      "workload": "parity:modular-symbols-weight-two",
-      "capability": "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
-      "classification": "portable-computation",
-      "normal_domain": "the current level-37 routine parity example",
-      "heavy_policy": "prohibited",
-      "reason": "Cuspidal-basis computation is a reviewed correctness fallback pending a receipt-backed Wasm implementation."
-    },
-    {
-      "workload": "parity:modular-symbols-weight-two",
-      "capability": "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
-      "classification": "portable-computation",
-      "normal_domain": "the current level-37 routine parity example",
-      "heavy_policy": "prohibited",
-      "reason": "Hecke-matrix construction is a hot mathematical algorithm and remains explicit acceleration debt."
-    }
-  ],
+  "portable_route_reviews": [],
   "default_receipt_directories": [".artifacts/wasm-workload-receipts"]
 }

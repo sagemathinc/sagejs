@@ -85,11 +85,11 @@
       "workflow": "modular-symbols-weight-two",
       "tier": "routine",
       "requires": [
-        { "id": "napi:@sagemath/sagejs-flint:p1List", "route": "portable-fallback" },
-        { "id": "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo", "route": "portable-fallback" },
-        { "id": "napi:@sagemath/sagejs-flint:p1ListBoundaryData", "route": "portable-fallback" },
-        { "id": "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis", "route": "portable-fallback" },
-        { "id": "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix", "route": "portable-fallback" }
+        { "id": "napi:@sagemath/sagejs-flint:p1List", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListBoundaryData", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "M = ModularSymbols(37, 2)\nprint(M)\nprint(M.dimension())\nC = M.cuspidal_subspace()\nprint(C.dimension())\nprint(M.hecke_matrix(2).trace())",
       "timeout_ms": 30000,
