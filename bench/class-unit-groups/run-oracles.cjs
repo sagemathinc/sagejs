@@ -138,13 +138,36 @@ function unavailable(family, executable, reason) {
   };
 }
 
+function runExternal(executable, args, options = {}) {
+  const timeoutMilliseconds = options.timeout || 600_000;
+  const spawnOptions = { ...options };
+  delete spawnOptions.timeout;
+  if (process.platform !== "win32" && fs.existsSync("/usr/bin/timeout")) {
+    const timeoutSeconds = Math.max(1, Math.ceil(timeoutMilliseconds / 1000));
+    const run = childProcess.spawnSync(
+      "/usr/bin/timeout",
+      ["--signal=TERM", "--kill-after=5s", `${timeoutSeconds}s`, executable, ...args],
+      { ...spawnOptions, timeout: timeoutMilliseconds + 10_000, killSignal: "SIGKILL" },
+    );
+    if (run.status === 124 || run.status === 137) {
+      run.error = new Error(`external oracle timed out after ${timeoutSeconds}s`);
+    }
+    return run;
+  }
+  return childProcess.spawnSync(executable, args, {
+    ...spawnOptions,
+    timeout: timeoutMilliseconds,
+    killSignal: "SIGKILL",
+  });
+}
+
 function runSage(options) {
   if (!options.runSage) return unavailable("Sage/PARI", options.sage, "disabled");
   if (!fs.existsSync(options.sage)) {
     return unavailable("Sage/PARI", options.sage, "executable does not exist");
   }
   const started = process.hrtime.bigint();
-  const run = childProcess.spawnSync(
+  const run = runExternal(
     options.sage,
     [
       "-python",
@@ -431,7 +454,7 @@ function runMagma(options, cases) {
     return unavailable("Magma", options.magma, "executable does not exist");
   }
   const started = process.hrtime.bigint();
-  const run = childProcess.spawnSync(options.magma, ["-b"], {
+  const run = runExternal(options.magma, ["-b"], {
     cwd: repositoryRoot,
     input: magmaProgram(cases, options.samples),
     encoding: "utf8",

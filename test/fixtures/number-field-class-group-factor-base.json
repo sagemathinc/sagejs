@@ -18,10 +18,32 @@
       "command": "smallest integer x >= 2 satisfying the strict Belabas--Diaz y Diaz--Friedman inequality"
     }
   },
+  "benchmark": {
+    "workload": "discriminant-380452 quintic, exact Minkowski bound 38, 12 norm-ordered prime ideals",
+    "baseline_seconds": 10.98,
+    "maximum_seconds": 7.0,
+    "baseline_materialized_siblings": 21,
+    "selected_prime_ideals": 12,
+    "warm_cache_maximum_seconds": 0.05,
+    "host": "Linux x64 shared development host",
+    "policy": "timer excludes maximal-order and bound construction; result equality is checked before accepting the sample"
+  },
   "cases": [
     {
       "id": "real-quadratic-d5",
       "polynomial": [-1, -1, 1],
+      "signature": [2, 0],
+      "discriminant": 5,
+      "bounds": {"minkowski": 1, "bach": 16, "bdf": 7},
+      "bdf_factor_base": [
+        {"p": 2, "norm": 4, "e": 1, "f": 2},
+        {"p": 5, "norm": 5, "e": 2, "f": 1}
+      ],
+      "class_group": []
+    },
+    {
+      "id": "real-quadratic-index-two",
+      "polynomial": [-5, 0, 1],
       "signature": [2, 0],
       "discriminant": 5,
       "bounds": {"minkowski": 1, "bach": 16, "bdf": 7},
@@ -93,6 +115,20 @@
         {"p": 2, "norm": 4, "e": 1, "f": 2},
         {"p": 5, "norm": 5, "e": 1, "f": 1},
         {"p": 11, "norm": 11, "e": 1, "f": 1}
+      ],
+      "minkowski_factor_base": [
+        {"p": 2, "norm": 2, "e": 3, "f": 1},
+        {"p": 3, "norm": 3, "e": 1, "f": 1},
+        {"p": 3, "norm": 3, "e": 1, "f": 1},
+        {"p": 2, "norm": 4, "e": 1, "f": 2},
+        {"p": 5, "norm": 5, "e": 1, "f": 1},
+        {"p": 11, "norm": 11, "e": 1, "f": 1},
+        {"p": 17, "norm": 17, "e": 1, "f": 1},
+        {"p": 23, "norm": 23, "e": 1, "f": 1},
+        {"p": 3, "norm": 27, "e": 1, "f": 3},
+        {"p": 29, "norm": 29, "e": 1, "f": 1},
+        {"p": 29, "norm": 29, "e": 1, "f": 1},
+        {"p": 31, "norm": 31, "e": 1, "f": 1}
       ],
       "class_group": [4]
     }
