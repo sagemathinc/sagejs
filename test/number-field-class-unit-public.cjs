@@ -140,7 +140,7 @@ for proof, status in [(False, "exact-relations-conditional-grh"), (True, "exact-
     ideal = generator.ideal()
     coordinates, witness = C.discrete_log(ideal)
     assert coordinates == (1,) and C(ideal) == generator
-    assert generator.order() == 4 and not C.is_principal(ideal)
+    assert generator.order() == 4 and not C.is_principal(ideal, proof=proof)
     assert witness.verify_principal_ideal(ideal / generator.ideal())
     assert U.complete and U.unit_rank == 2 and U.torsion.order == 2
     assert len(result.units()) == 2 and all(unit.norm() in (-1, 1) for unit in result.units())
