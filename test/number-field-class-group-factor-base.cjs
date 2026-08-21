@@ -200,6 +200,35 @@ try:
 except ValueError:
     pass
 
+# Auto planning tries the cheap exact Minkowski theorem before entering the
+# expensive BDF search.  The motivating quintic is below the deliberately
+# small practical cutoff, so its proof=False plan is already unconditional.
+original_grh_bound = factor_bases.grh_bound
+def forbidden_grh_bound(*args, **kwargs):
+    raise AssertionError("the small auto plan unnecessarily entered BDF")
+factor_bases.grh_bound = forbidden_grh_bound
+try:
+    automatic_quintic = factor_base_plan(large_field, proof=False, theorem="auto")
+finally:
+    factor_bases.grh_bound = original_grh_bound
+assert automatic_quintic.bound == 38
+assert automatic_quintic.bound <= factor_bases.DEFAULT_AUTO_MINKOWSKI_MAX_BOUND
+assert automatic_quintic.theorem == "Minkowski"
+assert automatic_quintic.assumptions == ()
+
+# Caps still take precedence over the automatic preference.  When the larger
+# Minkowski factor base cannot fit, planning falls through to the smaller GRH
+# theorem and reports its own feasibility result normally.
+capped_automatic = factor_base_plan(
+    large_field,
+    proof=False,
+    theorem="auto",
+    max_prime_ideals=40,
+)
+assert capped_automatic.theorem == "Belabas--Diaz y Diaz--Friedman"
+assert capped_automatic.assumptions == ("GRH for the Dedekind zeta function",)
+assert capped_automatic.fits_caps
+
 # Representative construction benchmark and differential oracle.  Every
 # quintic prime here is on the p-maximal Dedekind--Kummer path, so construction
 # must create exactly the 12 eligible ideals and no irrelevant siblings or

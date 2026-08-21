@@ -41,6 +41,8 @@ IDEAL_REDUCTION_STATE_SCHEMA = "sagejs.number-fields/ideal-reduction-state-v1"
 MINKOWSKI_LATTICE_SCHEMA = "sagejs.number-fields/minkowski-lll-lattice-v1"
 AUTOMORPHISM_PLAN_SCHEMA = "sagejs.number-fields/automorphism-orbit-plan-v1"
 DEFAULT_RANK_PRIME = 2_147_483_647
+DEFAULT_RECONSTRUCTION_ROW_CACHE_SIZE = 512
+DEFAULT_FACTOR_POWER_CACHE_SIZE = 512
 _U64_MASK = (1 << 64) - 1
 
 
@@ -361,6 +363,99 @@ def _relation_reconstructor(
     if callable(reconstructor):
         return reconstructor
     raise TypeError("relation reconstructor must be callable or expose reconstruct")
+
+
+class FactorBaseIdealReconstructor:
+    """Reconstruct ideals with bounded collector-local row and power caches.
+
+    The order and factor-base tuple are immutable for the lifetime of a
+    relation collector.  Reusing their exact ideal products avoids rebuilding
+    the same source and quotient ideals for adjacent candidates.  The cache is
+    only a construction accelerator: callers retain every final exact ideal
+    equality that authenticates a relation.
+    """
+
+    def __init__(
+        self,
+        order: Any,
+        factor_base: Iterable[Any],
+        *,
+        max_rows: int = DEFAULT_RECONSTRUCTION_ROW_CACHE_SIZE,
+        max_powers: int = DEFAULT_FACTOR_POWER_CACHE_SIZE,
+    ) -> None:
+        self.order = order
+        self.factor_base = _validate_factor_base(order, factor_base)
+        self.max_rows = _checked_nonnegative(max_rows, "reconstruction row cache size")
+        self.max_powers = _checked_nonnegative(max_powers, "factor-power cache size")
+        self._rows: dict[tuple[int, ...], Any] = {}
+        self._powers: dict[tuple[int, int], Any] = {}
+        self._statistics = {
+            "row_requests": 0,
+            "row_hits": 0,
+            "row_misses": 0,
+            "row_evictions": 0,
+            "power_requests": 0,
+            "power_hits": 0,
+            "power_misses": 0,
+            "power_evictions": 0,
+        }
+        if self.max_rows:
+            self._rows[(0,) * len(self.factor_base)] = self.order.ideal(1)
+
+    @staticmethod
+    def _retain(cache: dict[Any, Any], key: Any, value: Any, limit: int) -> bool:
+        if limit == 0:
+            return False
+        if len(cache) >= limit:
+            oldest = next(iter(cache))
+            cache.pop(oldest)
+        cache[key] = value
+        return True
+
+    def reconstruct(self, row: Iterable[int]) -> Any:
+        exponents = tuple(int(value) for value in row)
+        if len(exponents) != len(self.factor_base):
+            raise ValueError("a relation row has the wrong factor-base width")
+        self._statistics["row_requests"] += 1
+        cached = self._rows.get(exponents)
+        if cached is not None:
+            self._statistics["row_hits"] += 1
+            return cached
+        self._statistics["row_misses"] += 1
+        answer = self.order.ideal(1)
+        for index, (prime_ideal, exponent) in enumerate(
+            zip(self.factor_base, exponents, strict=True)
+        ):
+            if not exponent:
+                continue
+            self._statistics["power_requests"] += 1
+            key = (index, exponent)
+            power = self._powers.get(key)
+            if power is None:
+                self._statistics["power_misses"] += 1
+                power = _ideal_power(prime_ideal, exponent)
+                evicted = self.max_powers > 0 and len(self._powers) >= self.max_powers
+                if self._retain(self._powers, key, power, self.max_powers) and evicted:
+                    self._statistics["power_evictions"] += 1
+            else:
+                self._statistics["power_hits"] += 1
+            answer *= power
+        evicted = self.max_rows > 0 and len(self._rows) >= self.max_rows
+        if self._retain(self._rows, exponents, answer, self.max_rows) and evicted:
+            self._statistics["row_evictions"] += 1
+        return answer
+
+    def diagnostics(self) -> dict[str, int]:
+        """Return deterministic cache bounds, occupancy, and hit counters."""
+        return {
+            **self._statistics,
+            "row_entries": len(self._rows),
+            "power_entries": len(self._powers),
+            "max_row_entries": self.max_rows,
+            "max_power_entries": self.max_powers,
+            "retained_ideal_objects": len(self._rows) + len(self._powers),
+            "max_retained_ideal_objects": self.max_rows + self.max_powers,
+        }
 
 
 def factor_ideal_over_base(ideal: Any, factor_base: Iterable[Any]) -> tuple[int, ...]:
@@ -701,14 +796,38 @@ class ExactRelationCollector:
         *,
         rank_prime: int = DEFAULT_RANK_PRIME,
         context: Any = None,
+        max_reconstructed_ideals: int = DEFAULT_RECONSTRUCTION_ROW_CACHE_SIZE,
+        max_factor_powers: int = DEFAULT_FACTOR_POWER_CACHE_SIZE,
     ) -> None:
         self.order = order
         self.factor_base = _validate_factor_base(order, factor_base)
+        self._reconstructor = FactorBaseIdealReconstructor(
+            order,
+            self.factor_base,
+            max_rows=max_reconstructed_ideals,
+            max_powers=max_factor_powers,
+        )
         self.rank_screen = ModularRankScreen(len(self.factor_base), rank_prime)
         self.records: list[RelationRecord] = []
         self.admissions: list[RelationAdmission] = []
         self.context = context
         self._keys: set[str] = set()
+
+    def reconstruct_factor_base_ideal(self, row: Iterable[int]) -> Any:
+        """Reconstruct one row through this collector's bounded exact cache."""
+        return self._reconstructor.reconstruct(row)
+
+    def reconstruction_diagnostics(self) -> dict[str, int]:
+        """Return bounded-cache occupancy and reuse counters."""
+        return self._reconstructor.diagnostics()
+
+    def _factor_ideal_over_base(self, ideal: Any) -> tuple[int, ...]:
+        row = tuple(int(ideal.valuation(prime)) for prime in self.factor_base)
+        if self.reconstruct_factor_base_ideal(row) != ideal:
+            raise RelationNotSmoothError(
+                "the ideal has support outside the supplied factor base", ideal=ideal
+            )
+        return row
 
     def add_relation(
         self, record: RelationRecord | dict[str, Any]
@@ -762,15 +881,10 @@ class ExactRelationCollector:
                     "a relation source must be a nonzero ideal of the order"
                 )
         if source_row is None:
-            computed_source_row = factor_ideal_over_base(source, self.factor_base)
+            computed_source_row = self._factor_ideal_over_base(source)
         else:
             computed_source_row = tuple(int(value) for value in source_row)
-            if (
-                reconstruct_factor_base_ideal(
-                    self.order, self.factor_base, computed_source_row
-                )
-                != source
-            ):
+            if self.reconstruct_factor_base_ideal(computed_source_row) != source:
                 raise ArithmeticError(
                     "the supplied source row does not reconstruct its ideal"
                 )
@@ -787,17 +901,13 @@ class ExactRelationCollector:
             total - source_exponent
             for total, source_exponent in zip(row, computed_source_row, strict=False)
         )
-        reconstructed_principal = reconstruct_factor_base_ideal(
-            self.order, self.factor_base, row
-        )
+        reconstructed_principal = self.reconstruct_factor_base_ideal(row)
         if reconstructed_principal != principal:
             raise RelationNotSmoothError(
                 "the principal witness has support outside the supplied factor base",
                 ideal=principal,
             )
-        quotient = reconstruct_factor_base_ideal(
-            self.order, self.factor_base, quotient_row
-        )
+        quotient = self.reconstruct_factor_base_ideal(quotient_row)
         if source * quotient != principal:
             raise ArithmeticError(
                 "the source and quotient do not reconstruct principal"
@@ -1778,6 +1888,7 @@ __all__ = [
     "AutomorphismOrbitPlan",
     "DEFAULT_RANK_PRIME",
     "ExactRelationCollector",
+    "FactorBaseIdealReconstructor",
     "FactoredPrincipalWitness",
     "IdealReductionCancelled",
     "IdealReductionResourceLimit",
