@@ -7,11 +7,12 @@
   "status": "active",
   "owner": "user",
   "objective": "Implement the deterministic small-field class-and-unit vertical slice and adaptive Buchmann-Hecke orchestration, including unconditional motivating quintic C4",
-  "base_commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+  "base_commit": "2927be79ed98f5fb6c2514a4a744e5ca34daee6b",
   "claims": [
     "src/lib/sagejs/number_fields/class_unit_groups.py",
     "test/number-field-class-unit-engine.cjs",
-    "test/fixtures/number-field-class-unit-engine.json"
+    "test/fixtures/number-field-class-unit-engine.json",
+    "bench/class-unit-groups/engine.cjs"
   ],
   "dependencies": [
     "class-unit-core",

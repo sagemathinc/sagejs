@@ -202,3 +202,252 @@ print("ok")
 `);
   assert.equal(output, "ok");
 });
+
+test("phase timings, progress, and resource diagnostics are observable", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "a")
+events = []
+result = class_unit_context(K, progress=events.append)
+assert result.complete
+assert result.diagnostics["elapsed_seconds"] >= 0
+assert result.diagnostics["phase_timings"]["specialized"] >= 0
+assert result.diagnostics["phase_timings"]["total"] >= 0
+assert "limits" in result.diagnostics
+assert "resources" in result.diagnostics
+assert any(event["event"] == "stage" for event in events)
+assert all(event["elapsed_seconds"] >= 0 for event in events)
+print("observable")
+`);
+  assert.equal(output, "observable");
+});
+
+test("one-large-prime partials combine through exact relation replay", () => {
+  const output = run(String.raw`
+relations = __import__(
+    "sagejs.number_fields.class_group_relations",
+    fromlist=["class_group_relations"],
+)
+
+class Components:
+    context = None
+    factored = None
+    factor_base = object()
+    relations = relations
+    matrix = object()
+    analytic = object()
+    def missing(self):
+        return ()
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "a")
+O = K.maximal_order()
+P2 = O.factor_rational_prime(2)[0][0]
+collector = relations.ExactRelationCollector(O, (P2,))
+engine = ClassUnitGroupEngine(K, algorithm="buchmann-hecke", components=Components())
+one = O.ideal(1)
+first = engine._try_large_prime_partial(
+    collector,
+    relations.FactoredPrincipalWitness.from_element(K(3)),
+    one,
+    (0,),
+    {"sequence": 0},
+    7,
+)
+second = engine._try_large_prime_partial(
+    collector,
+    relations.FactoredPrincipalWitness.from_element(K(6)),
+    P2,
+    (1,),
+    {"sequence": 1},
+    7,
+)
+assert first is None
+assert second is not None
+assert second.record.row == (-1,)
+assert second.record.verify(O, (P2,))["certified"]
+assert second.record.provenance["algorithm"] == "one-large-prime-match"
+assert engine._resource_usage["partial_matches"] == 1
+assert len(engine._partials) == 0
+print("matched")
+`);
+  assert.equal(output, "matched");
+});
+
+test("checkpoint controllers receive stages, diagnostics, saves, and cancellation", () => {
+  const output = run(String.raw`
+class Controller:
+    def __init__(self):
+        self.stages = []
+        self.payloads = []
+        self.saves = []
+        self.cancel = False
+    def stage(self, name, state, details=None):
+        self.stages.append((name, state, details))
+    def capture(self, payload):
+        self.payloads.append(payload)
+    def save(self, payload=None, force=False):
+        self.saves.append(force)
+        return "checkpoint"
+    def check_cancelled(self, stage="", details=None):
+        if self.cancel:
+            raise RuntimeError("class/unit computation cancelled")
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "a")
+controller = Controller()
+result = compute_class_unit_group(K, checkpoint_controller=controller)
+assert result.complete
+assert controller.stages[-1][0:2] == ("terminal", "complete")
+assert any("diagnostics" in payload for payload in controller.payloads)
+assert controller.saves[-1] is True
+cancelled = Controller()
+cancelled.cancel = True
+incomplete = compute_class_unit_group(K, checkpoint_controller=cancelled)
+assert not incomplete.complete
+assert incomplete.reason == "class/unit computation cancelled"
+assert cancelled.saves[-1] is True
+print("checkpointed")
+`);
+  assert.equal(output, "checkpointed");
+});
+
+test("public checkpoint entry saves, authenticates, and resumes", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "a")
+payloads = []
+first = compute_class_unit_group(K, checkpoint=payloads.append)
+assert first.complete
+assert len(payloads) >= 1
+checkpoint = payloads[-1]
+assert checkpoint["content_sha256"]
+resumed = compute_class_unit_group(K, resume_from=checkpoint)
+assert resumed.complete
+assert resumed.class_number() == first.class_number()
+assert resumed.diagnostics["phase_timings"]["total"] >= 0
+cancelled_payloads = []
+cancelled = compute_class_unit_group(
+    K,
+    cancelled=lambda: True,
+    checkpoint=cancelled_payloads.append,
+)
+assert not cancelled.complete
+assert cancelled.reason == "class/unit computation cancelled"
+assert cancelled_payloads[-1]["diagnostics"]["stage"] == "terminal"
+print("resumed")
+`);
+  assert.equal(output, "resumed");
+});
+
+test("relation search starts with deterministic targeted prime ideals", () => {
+  const output = run(String.raw`
+relations = __import__(
+    "sagejs.number_fields.class_group_relations",
+    fromlist=["class_group_relations"],
+)
+matrix = __import__(
+    "sagejs.number_fields.class_group_matrix",
+    fromlist=["class_group_matrix"],
+)
+
+class Components:
+    context = None
+    factored = None
+    factor_base = object()
+    relations = relations
+    matrix = matrix
+    analytic = object()
+    def missing(self):
+        return ()
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "a")
+O = K.maximal_order()
+P2 = O.factor_rational_prime(2)[0][0]
+events = []
+limits = ClassUnitEngineLimits(
+    max_relation_attempts=4,
+    max_candidates_per_ideal=8,
+    max_relations=16,
+)
+engine = ClassUnitGroupEngine(
+    K,
+    algorithm="buchmann-hecke",
+    components=Components(),
+    limits=limits,
+    progress=events.append,
+)
+collector, presentation = engine._relations((P2,), 0)
+assert presentation.rank == 1
+assert len(presentation.dependency_transforms) >= 2
+relation_events = [event for event in events if event["event"] == "relation-search"]
+assert relation_events[0]["strategy"] == "single-prime-sweep"
+assert relation_events[0]["search_state"]["ideals_tested"] == 1
+assert engine._resource_usage["relation_attempts"] <= 4
+assert all(record.verify(O, (P2,))["certified"] for record in collector.records)
+print("targeted")
+`);
+  assert.equal(output, "targeted");
+});
+
+test("explicit Minkowski mode selects an unconditional discovery base", () => {
+  const output = run(String.raw`
+class ProbeComponents:
+    context = None
+    factored = None
+    factor_base = object()
+    relations = object()
+    matrix = object()
+    analytic = object()
+    def missing(self):
+        return ()
+
+class ProbeEngine(ClassUnitGroupEngine):
+    def _factor_base(self, *, proof, record_stage=True):
+        self.discovery_proof = proof
+        raise ValueError("factor-base probe complete")
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**5 + x**3 - x**2 + 4*x + 1, "a")
+observed = []
+for algorithm, expected in (
+    ("auto", False),
+    ("buchmann-hecke", False),
+    ("minkowski", True),
+):
+    engine = ProbeEngine(K, algorithm=algorithm, components=ProbeComponents())
+    result = engine.run()
+    assert not result.complete
+    assert result.reason == "factor-base probe complete"
+    assert engine.discovery_proof is expected
+    observed.append((algorithm, expected))
+print(observed)
+`);
+  assert.equal(
+    output,
+    "[('auto', False), ('buchmann-hecke', False), ('minkowski', True)]",
+  );
+});
+
+test("public class_group preserves specialized groups without presentations", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "a")
+result = class_unit_context(K)
+raw = result.class_group()
+public = class_group(K)
+assert public is raw
+assert public.invariants() == ()
+assert public.order() == 1
+print("specialized")
+`);
+  assert.equal(output, "specialized");
+});
