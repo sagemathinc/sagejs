@@ -163,11 +163,12 @@ test("native Dirichlet L-functions include actual derivatives", () => {
 });
 
 test("native Riemann zeta jets, xi, and batches preserve precision", () => {
-  const real = (value, precision = 160) =>
+  const complex = (realValue, imaginaryValue = 0, precision = 160) =>
     flint.complexFromReals(
-      flint.realFromString(String(value), precision),
-      flint.realFromBigInt(0n, precision),
+      flint.realFromString(String(realValue), precision),
+      flint.realFromString(String(imaginaryValue), precision),
     );
+  const real = (value, precision = 160) => complex(value, 0, precision);
   const argument = real(2);
   const jet = flint.riemannZetaJet(argument, 0, 2, false, 160);
   assert.equal(jet.length, 2);
@@ -202,6 +203,24 @@ test("native Riemann zeta jets, xi, and batches preserve precision", () => {
   );
   assert.equal(flint.complexRealDouble(gammaValues[1]), 1);
   assert.equal(flint.complexRealDouble(gammaValues[2]), 2);
+  const nonrealGamma = flint.complexGammaValues(
+    [complex(1, 1), complex(2, 1)],
+    160,
+  );
+  const gammaOneReal = flint.complexRealDouble(nonrealGamma[0]);
+  const gammaOneImag = flint.complexImagDouble(nonrealGamma[0]);
+  assert.ok(
+    Math.abs(
+      flint.complexRealDouble(nonrealGamma[1]) -
+        (gammaOneReal - gammaOneImag),
+    ) < 1e-14,
+  );
+  assert.ok(
+    Math.abs(
+      flint.complexImagDouble(nonrealGamma[1]) -
+        (gammaOneReal + gammaOneImag),
+    ) < 1e-14,
+  );
   const xiValues = flint.riemannXiValues(
     [real(0), real(1), real(0.5)],
     160,
@@ -212,6 +231,40 @@ test("native Riemann zeta jets, xi, and batches preserve precision", () => {
   assert.ok(
     Math.abs(flint.complexRealDouble(xiValues[2]) - 0.4971207781883141) <
       1e-15,
+  );
+  const symmetricXi = flint.riemannXiValues(
+    [complex(0.25, 1.5), complex(0.75, -1.5)],
+    160,
+  );
+  assert.ok(
+    Math.abs(
+      flint.complexRealDouble(symmetricXi[0]) -
+        flint.complexRealDouble(symmetricXi[1]),
+    ) < 1e-15,
+  );
+  assert.ok(
+    Math.abs(
+      flint.complexImagDouble(symmetricXi[0]) -
+        flint.complexImagDouble(symmetricXi[1]),
+    ) < 1e-15,
+  );
+  for (const invalidPrecision of [15, 53.5, 1048577]) {
+    assert.throws(
+      () => flint.complexGammaValues([real(1)], invalidPrecision),
+      /precision must be an integer between 16 and 1048576 bits/,
+    );
+    assert.throws(
+      () => flint.riemannXiValues([real(1)], invalidPrecision),
+      /precision must be an integer between 16 and 1048576 bits/,
+    );
+  }
+  assert.throws(
+    () => flint.complexGammaValues([complex("nan")], 160),
+    /points must contain only finite complex values/,
+  );
+  assert.throws(
+    () => flint.riemannXiValues([complex("inf")], 160),
+    /points must contain only finite complex values/,
   );
 
   const points = [real(2), real(3), real(-2)];

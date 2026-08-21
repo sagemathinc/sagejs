@@ -517,14 +517,14 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 1105,
+        "line": 1135,
         "lines": 20,
-        "sha256": "88e9951d5ec7c12f52da62c76a8b075a3f4772d7e5a5b01de96ebb63c6140cc6",
+        "sha256": "05c498d81c871207cd1ee6726ee2c395a6b24ddd83a8db6b83d10b23cfd4df2c",
         "calls": [
           "_acb_vec_clear",
           "acb_gamma",
           "complex_array_from_acb",
-          "get_precision",
+          "get_batch_precision",
           "require_arguments",
           "require_complex_array"
         ]
@@ -1309,7 +1309,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 1232,
+        "line": 1262,
         "lines": 81,
         "sha256": "124d1b4382c55bedfeccfc0ce4d01a97a4555afed056d5e8efe642cf72d746d0",
         "calls": [
@@ -1368,7 +1368,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 421,
+        "line": 444,
         "lines": 63,
         "sha256": "5e140823646e51412554293890b03df4fae4feb53ee5ef2fc4f5fe91c142316a",
         "calls": [
@@ -1419,7 +1419,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 485,
+        "line": 508,
         "lines": 39,
         "sha256": "2eae42487b597c9eea5e6f1f61e219ab348d16a20db81a39aa6dcf2b131050e5",
         "calls": [
@@ -1464,7 +1464,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 525,
+        "line": 548,
         "lines": 63,
         "sha256": "4f8a0b30b7057857ace6edf6a86cd00be1d2dd61284fded111984453342dd890",
         "calls": [
@@ -1513,7 +1513,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 657,
+        "line": 680,
         "lines": 78,
         "sha256": "0608f44563cae821da4363d7aa02fba97e004dc2b2a60707e00259bee369c1ed",
         "calls": [
@@ -1564,7 +1564,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 589,
+        "line": 612,
         "lines": 67,
         "sha256": "80c34b3d5c6c73f760b3d99b6de948353b2f9e8bcc6c7c934d55f54350615ab5",
         "calls": [
@@ -1612,7 +1612,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 304,
+        "line": 327,
         "lines": 34,
         "sha256": "b0d49601c2698633b2901227e8743ad900f60b676bbc3d0d5399eb6472b806e7",
         "calls": [
@@ -1655,7 +1655,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 339,
+        "line": 362,
         "lines": 31,
         "sha256": "6299a9723049540b7b62d5b2d4bcb8b2684c74777820da28d382fed52dbaa448",
         "calls": [
@@ -1691,7 +1691,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 371,
+        "line": 394,
         "lines": 49,
         "sha256": "6745e73241ad63ef2ae3324bddcc9d0ab75fcc445ed7db20cbe3ee961cabdf1a",
         "calls": [
@@ -1734,7 +1734,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 792,
+        "line": 815,
         "lines": 35,
         "sha256": "094541c91a163d4f8baa4eeeec6ee77d705b3415ea77947e7de8cc166e0c5507",
         "calls": [
@@ -1775,7 +1775,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 736,
+        "line": 759,
         "lines": 55,
         "sha256": "db06cc4774934f688f0dc14adc39012fae56cec3722f8d9033e5a444f797c93e",
         "calls": [
@@ -1820,7 +1820,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 865,
+        "line": 888,
         "lines": 57,
         "sha256": "0895d1bd5622cbc438e15a26710d501b7ab072fa40a0c81ba0160018c57a98df",
         "calls": [
@@ -1872,7 +1872,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 1147,
+        "line": 1177,
         "lines": 59,
         "sha256": "ca810ce8c1b413ae296974844a7b3860c32ed12e244545bc8c2646d39d6a76b2",
         "calls": [
@@ -1921,7 +1921,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 828,
+        "line": 851,
         "lines": 36,
         "sha256": "67dafcbebf9a8031d54cd39ed84e8067d1b17c8013b08d374e885f9a8a2b0596",
         "calls": [
@@ -12067,7 +12067,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 1207,
+        "line": 1237,
         "lines": 24,
         "sha256": "439bd29f64ef930262117adec4da33a76eac2335ed97fd3c9832cf23a01b89f0",
         "calls": [
@@ -12108,14 +12108,14 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 1126,
+        "line": 1156,
         "lines": 20,
-        "sha256": "aec775d2b9b8bac56cff44b494d0f41c67053b3cfd0505e1f28e4837f0f32445",
+        "sha256": "6ad2a6579b5d990f26365f8903ddeaa10f50537d95248df21fd7440af1971a70",
         "calls": [
           "_acb_vec_clear",
           "acb_dirichlet_xi",
           "complex_array_from_acb",
-          "get_precision",
+          "get_batch_precision",
           "require_arguments",
           "require_complex_array"
         ]
@@ -12145,7 +12145,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 923,
+        "line": 946,
         "lines": 87,
         "sha256": "d58fbee9dd21a8d4823c857b06131f67c5ed3ad057069315e9768be0f0ef9838",
         "calls": [
@@ -12200,7 +12200,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 1084,
+        "line": 1114,
         "lines": 20,
         "sha256": "53876dc9a8cc26a230a9080bc7ed1cfa0667f724021e38bd0669c6ed883d2100",
         "calls": [

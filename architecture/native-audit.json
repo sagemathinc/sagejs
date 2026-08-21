@@ -46,8 +46,8 @@
     },
     {
       "path": "packages/flint/src/dirichlet.c",
-      "lines": 1312,
-      "bytes": 37971,
+      "lines": 1342,
+      "bytes": 38934,
       "decision": "split-and-migrate",
       "priority": "medium",
       "responsibilities": [
