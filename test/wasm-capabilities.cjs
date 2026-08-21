@@ -99,7 +99,7 @@ test("shared mathematical cores cannot contain Node-API symbols", () => {
 test("compiled and shared capabilities cannot claim unreceipted availability", () => {
   const changed = structuredClone(manifest);
   const kernel = changed.capabilities.find((entry) =>
-    entry.kind === "production-kernel"
+    entry.kind === "production-kernel" && entry.status === "fallback"
   );
   kernel.status = "available";
   assert.throws(
