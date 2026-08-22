@@ -5,105 +5,95 @@ const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
 
-test("finite reductions certify S-saturation without claiming rank", async () => {
+const rationalFixture = String.raw`
+from sagejs.hyperelliptic_curves.saturation import (
+    ASSUMPTION_SCHEMA,
+    SaturationResult,
+    division_search_exhaustion_value,
+    index_bound_from_height,
+    index_bound_from_regulator,
+    reduction_constraint,
+    saturate_subgroup,
+    search_rational_mumford_division,
+    verify_division_search_certificate,
+    verify_reduction_constraint,
+)
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+C = HyperellipticCurve(x**5 + x + 1)
+J = C.jacobian()
+Q = J((0,1))
+
+def typed_assumption(kind, value, source):
+    return {
+        "schema": ASSUMPTION_SCHEMA,
+        "kind": kind,
+        "value": value,
+        "verifier_id": "fixture-verifier",
+        "source": source,
+        "proved": True,
+    }
+
+def verify_fixture(certificate, context):
+    return (
+        certificate["schema"] == ASSUMPTION_SCHEMA
+        and certificate["verifier_id"] == "fixture-verifier"
+        and context["curve_digest"] is not None
+        and context["basis_digest"] is not None
+    )
+
+verifiers = {"fixture-verifier": verify_fixture}
+`;
+
+test("unverified injected reductions remain conditional evidence", async () => {
   const session = await createSage();
   try {
     const result = await session.evaluate(
-      String.raw`
+      `${rationalFixture}
 import json
-from sagejs.hyperelliptic_curves.saturation import (
-    reduction_constraint,
-    saturate_subgroup,
-    verify_reduction_constraint,
-)
-
-class ToyPoint:
-    def __init__(self, parent, coordinates):
-        self._parent = parent
-        self.coordinates = tuple(QQ(value) for value in coordinates)
-    def parent(self):
-        return self._parent
-    def __add__(self, other):
-        return ToyPoint(self._parent, [a+b for a,b in zip(self.coordinates, other.coordinates)])
-    def __sub__(self, other):
-        return self + (-other)
-    def __neg__(self):
-        return ToyPoint(self._parent, [-value for value in self.coordinates])
-    def __rmul__(self, scalar):
-        return ToyPoint(self._parent, [scalar*value for value in self.coordinates])
-    def __mul__(self, scalar):
-        return scalar*self
-    def __eq__(self, other):
-        return isinstance(other, ToyPoint) and self._parent is other._parent and self.coordinates == other.coordinates
-    def is_zero(self):
-        return all(value == 0 for value in self.coordinates)
-    def __repr__(self):
-        return "ToyPoint" + repr(self.coordinates)
-
-class ToyJacobian:
-    def __init__(self, dimension):
-        self.dimension = dimension
-    def zero(self):
-        return ToyPoint(self, [0 for _ in range(self.dimension)])
-    def __call__(self, point):
-        if isinstance(point, ToyPoint) and point.parent() is self:
-            return point
-        return ToyPoint(self, point)
 
 constraint = reduction_constraint(2, 3, (4, 12), ((1, 3), (1, 5)))
 assert constraint["equation_rows"] == ((1,1), (1,1))
 assert constraint["equation_rank"] == 1
 assert constraint["kernel_basis"] == ((1,1),)
+assert constraint["verification_status"] == "conditional-unverified"
 assert verify_reduction_constraint(constraint)
 assert verify_reduction_constraint(json.loads(json.dumps(constraint)))
 
-J = ToyJacobian(2)
-P = J((1,0))
-Q = J((0,1))
-def reductions(jacobian, basis, prime):
-    if prime == 3:
-        return {"invariants": (2,), "point_coordinates": ((1,), (1,))}
-    return {"invariants": (2,), "point_coordinates": ((0,), (1,))}
+def forged_provider(jacobian, basis, prime):
+    # Full-rank coordinates alone are not a good-reduction or group-map proof.
+    return {
+        "invariants": (2,2),
+        "point_coordinates": ((1,0),),
+        "curve_digest": "forged",
+        "basis_digest": "forged",
+        "good_reduction_certificate": {"replayed": True},
+        "map_certificate": {"map_verified": True},
+    }
 
-S = saturate_subgroup(
+result = saturate_subgroup(
     J,
-    (P,Q),
+    (Q,),
     primes=(2,),
-    reduction_primes=(3,5),
-    reduction_provider=reductions,
-    independence_certificate={"proved": True, "source": "exact toy basis"},
+    reduction_primes=(3,),
+    reduction_provider=forged_provider,
+    independence_certificate=typed_assumption("independence", 1, "fixture"),
+    assumption_verifiers=verifiers,
 )
-assert S.s_saturated_primes == (2,)
-assert S.ambient_saturated_primes == (2,)
-assert S.free_quotient_saturated_primes == ()
-assert not S.rank_status["full_rank_proved"]
-assert not S.global_saturation_proved
-assert not S.full_mordell_weil_group_proved
-assert S.prime_results[0]["status"] == "ambient_subgroup_saturated_torsion_unresolved"
-assert S.verify()
-payload = S.to_dict()
-assert payload["schema"] == "sagejs.hyperelliptic.saturation-result.v1"
-assert json.loads(json.dumps(payload))["rank_status"]["analytic_rank_used"] is False
-
-Sfree = saturate_subgroup(
-    J,
-    (P,Q),
-    primes=(2,),
-    reduction_primes=(3,5),
-    reduction_provider=reductions,
-    independence_certificate={"proved": True, "source": "exact toy basis"},
-    algebraic_rank=2,
-    algebraic_rank_provenance={"proved": True, "source": "2-Selmer computation"},
-    torsion_order=1,
-    torsion_provenance={"proved": True, "source": "certified reductions"},
-    global_index_bound=2,
-    global_index_bound_provenance={"proved": True, "source": "height bound"},
-)
-assert Sfree.free_quotient_saturated_primes == (2,)
-assert Sfree.rank_status["full_rank_proved"]
-assert Sfree.global_saturation_proved
-assert Sfree.full_mordell_weil_group_proved
-assert Sfree.global_status["required_primes"] == (2,)
+row = result.prime_results[0]
+assert row["constraint_rank"] == 0
+assert row["conditional_constraint_rank"] == 1
+assert len(row["reduction_certificates"]) == 0
+assert len(row["conditional_reduction_constraints"]) == 1
+assert not row["ell_division_relations_ruled_out"]
+assert not row["free_quotient_saturated"]
+assert result.s_saturated_primes == ()
+assert result.ell_division_relations_ruled_out_primes == ()
+assert result.rank_status["full_rank_proved"] is False
+assert result.rank_status["analytic_rank_used"] is False
+payload = result.to_dict()
+assert payload["schema"] == "sagejs.hyperelliptic.saturation-result.v2"
+assert SaturationResult.from_dict(J, payload, assumption_verifiers=verifiers).to_dict() == payload
 True`,
     );
     assert.equal(result.repr, "True");
@@ -112,75 +102,98 @@ True`,
   }
 });
 
-test("exact small-prime division records an index chain", async () => {
+test("classical Mumford division enlarges an exact rational basis", async () => {
   const session = await createSage();
   try {
     const result = await session.evaluate(
-      String.raw`
+      `${rationalFixture}
 import json
-from sagejs.hyperelliptic_curves.saturation import saturate_subgroup
 
-class ToyPoint:
-    def __init__(self, parent, value):
-        self._parent = parent
-        self.value = QQ(value)
-    def parent(self):
-        return self._parent
-    def __add__(self, other):
-        return ToyPoint(self._parent, self.value + other.value)
-    def __sub__(self, other):
-        return ToyPoint(self._parent, self.value - other.value)
-    def __neg__(self):
-        return ToyPoint(self._parent, -self.value)
-    def __rmul__(self, scalar):
-        return ToyPoint(self._parent, scalar*self.value)
-    def __mul__(self, scalar):
-        return scalar*self
-    def __eq__(self, other):
-        return isinstance(other, ToyPoint) and self._parent is other._parent and self.value == other.value
-    def is_zero(self):
-        return self.value == 0
-    def __repr__(self):
-        return "ToyPoint(" + str(self.value) + ")"
-
-class ToyJacobian:
-    def zero(self):
-        return ToyPoint(self, 0)
-    def __call__(self, point):
-        if isinstance(point, ToyPoint) and point.parent() is self:
-            return point
-        return ToyPoint(self, point)
-
-J = ToyJacobian()
-Q = J(1)
 P = Q.__rmul__(2)
+search = search_rational_mumford_division(
+    J, P, 2, numerator_bound=1, denominator_bound=1, max_candidate_tuples=100
+)
+assert search["status"] == "found", "bounded search did not find the root"
+assert search["point"] == Q, "bounded search found the wrong root"
+assert search["global_complete"] is False, "finite box claimed global completion"
+assert verify_division_search_certificate(J, P, search), "search did not replay"
+
 result = saturate_subgroup(
     J,
     (P,),
     primes=(2,),
-    division_candidates={2: (Q,)},
-    independence_certificate={"proved": True, "source": "exact toy lattice"},
+    division_search_bound={
+        "numerator_bound": 1,
+        "denominator_bound": 1,
+        "max_candidate_tuples": 100,
+    },
+    independence_certificate=typed_assumption("independence", 1, "fixture"),
     algebraic_rank=1,
-    algebraic_rank_provenance={"proved": True, "source": "descent"},
+    algebraic_rank_provenance=typed_assumption("algebraic-rank", 1, "descent"),
     exact_subgroup_index=2,
-    exact_subgroup_index_provenance={"proved": True, "source": "oracle lattice"},
+    exact_subgroup_index_provenance=typed_assumption("exact-subgroup-index", 2, "height bound"),
     torsion_order=1,
-    torsion_provenance={"proved": True, "source": "certified reductions"},
+    torsion_provenance=typed_assumption("rational-torsion-order", 1, "reduction bound"),
+    assumption_verifiers=verifiers,
 )
-assert result.basis == (Q,)
-assert result.index_factor_from_input == 2
-assert len(result.basis_steps) == 1
-step = result.basis_steps[0]
-assert step["old_basis_from_new"] == ((2,),)
-assert step["index_factor"] == 2
-assert result.global_status["remaining_index_bound"] == 1
-assert result.global_saturation_proved
-assert result.full_mordell_weil_group_proved
-assert result.verify()
+assert result.basis == (Q,), "saturation returned the wrong basis"
+assert result.index_factor_from_input == 2, "wrong accumulated index factor"
+assert len(result.basis_steps) == 1, "wrong basis-chain length"
+assert result.basis_steps[0]["old_basis_from_new"] == ((2,),), "wrong basis matrix"
+assert result.global_status["remaining_index_bound"] == 1, "wrong residual index"
+assert result.global_free_quotient_saturation_proved, "global free quotient not proved"
+assert result.full_mordell_weil_group_proved, "full Mordell-Weil group not proved"
+assert result.verify(), "live result did not replay"
+
 payload = result.to_dict()
-assert "_old_basis" not in payload["basis_steps"][0]
-assert "_new_basis" not in payload["basis_steps"][0]
-json.dumps(payload)
+roundtrip = SaturationResult.from_dict(J, json.loads(json.dumps(payload)), assumption_verifiers=verifiers)
+assert roundtrip.to_dict() == payload, "JSON roundtrip changed payload"
+try:
+    result.rank_status["full_rank_proved"] = False
+    mutation_blocked = False
+except TypeError:
+    mutation_blocked = True
+assert mutation_blocked, "immutable result accepted mutation"
+forged = json.loads(json.dumps(payload))
+forged["derived"]["rank_status"]["full_rank_proved"] = False
+try:
+    SaturationResult.from_dict(J, forged, assumption_verifiers=verifiers)
+    forgery_blocked = False
+except ArithmeticError:
+    forgery_blocked = True
+assert forgery_blocked, "derived-field forgery was accepted"
+forged = json.loads(json.dumps(payload))
+forged["derived"]["prime_results"][0]["kernel_basis"] = []
+try:
+    SaturationResult.from_dict(J, forged, assumption_verifiers=verifiers)
+    kernel_forgery_blocked = False
+except ArithmeticError:
+    kernel_forgery_blocked = True
+assert kernel_forgery_blocked, "kernel forgery was accepted"
+forged = json.loads(json.dumps(payload))
+forged["derived"]["prime_results"][0]["status"] = "free_quotient_saturated"
+try:
+    SaturationResult.from_dict(J, forged, assumption_verifiers=verifiers)
+    status_forgery_blocked = False
+except ArithmeticError:
+    status_forgery_blocked = True
+assert status_forgery_blocked, "status forgery was accepted"
+forged = json.loads(json.dumps(payload))
+forged["derived"]["global_status"]["global_saturation_proved"] = False
+try:
+    SaturationResult.from_dict(J, forged, assumption_verifiers=verifiers)
+    global_forgery_blocked = False
+except ArithmeticError:
+    global_forgery_blocked = True
+assert global_forgery_blocked, "global-saturation forgery was accepted"
+forged = json.loads(json.dumps(payload))
+forged["derived"]["full_mordell_weil_group_proved"] = False
+try:
+    SaturationResult.from_dict(J, forged, assumption_verifiers=verifiers)
+    full_group_forgery_blocked = False
+except ArithmeticError:
+    full_group_forgery_blocked = True
+assert full_group_forgery_blocked, "full-Mordell-Weil forgery was accepted"
 True`,
     );
     assert.equal(result.repr, "True");
@@ -189,82 +202,174 @@ True`,
   }
 });
 
-test("bounds and resource exits retain proof provenance", async () => {
+test("negative boxes and external proved booleans do not certify", async () => {
   const session = await createSage();
   try {
     const result = await session.evaluate(
-      String.raw`
-from sagejs.hyperelliptic_curves.saturation import (
-    index_bound_from_height,
-    index_bound_from_regulator,
-    saturate_subgroup,
+      `${rationalFixture}
+negative = search_rational_mumford_division(
+    J, Q, 2, numerator_bound=0, denominator_bound=1, max_candidate_tuples=3
 )
+assert negative["status"] == "not_found_in_box"
+assert negative["box_complete"]
+assert not negative["global_complete"]
+assert verify_division_search_certificate(J, Q, negative)
 
-regulator = index_bound_from_regulator(
-    QQ(100), QQ(4), provenance={"proved": True, "source": "rigorous balls"}
+conditional = saturate_subgroup(
+    J,
+    (Q,),
+    primes=(2,),
+    division_search_bound={
+        "numerator_bound": 0,
+        "denominator_bound": 1,
+        "max_candidate_tuples": 3,
+    },
+    independence_certificate={"proved": True, "source": "bare assertion"},
+    algebraic_rank=1,
+    algebraic_rank_provenance={"proved": True, "source": "bare assertion"},
+    global_index_bound=2,
+    global_index_bound_provenance={"proved": True, "source": "bare assertion"},
 )
-assert regulator["value"] == 5
+assert not conditional.independence["proved"]
+assert not conditional.rank_status["full_rank_proved"]
+assert not conditional.prime_results[0]["ell_division_relations_ruled_out"]
+assert not conditional.global_saturation_proved
+assert conditional.prime_results[0]["division_searches"][0]["certificate"]["box_complete"]
+assert conditional.prime_results[0]["division_searches"][0]["exhaustive"] is False
+
+exhaustion_value = division_search_exhaustion_value(J, Q, negative)
+exhaustion = typed_assumption(
+    "global-division-search-bound",
+    exhaustion_value,
+    "proved global height-to-Mumford-coefficient bound",
+)
+certified = saturate_subgroup(
+    J,
+    (Q,),
+    primes=(2,),
+    division_search_bound={
+        "numerator_bound": 0,
+        "denominator_bound": 1,
+        "max_candidate_tuples": 3,
+    },
+    division_exhaustion_provenance={
+        exhaustion_value["target_digest"]: exhaustion
+    },
+    independence_certificate=typed_assumption("independence", 1, "fixture"),
+    torsion_order=1,
+    torsion_provenance=typed_assumption(
+        "rational-torsion-order", 1, "certified reduction gcd"
+    ),
+    assumption_verifiers=verifiers,
+)
+assert certified.prime_results[0]["division_searches"][0]["exhaustive"]
+assert certified.prime_results[0]["ell_division_relations_ruled_out"]
+assert certified.prime_results[0]["free_quotient_saturated"]
+assert certified.verify()
+True`,
+    );
+    assert.equal(result.repr, "True");
+  } finally {
+    await session.close();
+  }
+});
+
+test("real genus-2 reductions certify only torsion-controlled saturation", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      `${rationalFixture}
+torsion_unknown = saturate_subgroup(
+    J,
+    (Q,),
+    primes=(2,),
+    reduction_primes=(5,),
+    independence_certificate=typed_assumption("independence", 1, "fixture"),
+    assumption_verifiers=verifiers,
+    max_group_operations=1000000,
+    max_baby_steps=100000,
+)
+assert torsion_unknown.prime_results[0]["ell_division_relations_ruled_out"]
+assert not torsion_unknown.prime_results[0]["free_quotient_saturated"]
+assert torsion_unknown.s_saturated_primes == ()
+
+result = saturate_subgroup(
+    J,
+    (Q,),
+    primes=(2,),
+    reduction_primes=(3,5),
+    independence_certificate=typed_assumption("independence", 1, "fixture"),
+    torsion_order=1,
+    torsion_provenance=typed_assumption(
+        "rational-torsion-order", 1, "certified reduction gcd"
+    ),
+    assumption_verifiers=verifiers,
+    max_group_operations=1000000,
+    max_baby_steps=100000,
+)
+row = result.prime_results[0]
+assert row["constraint_rank"] == 1
+assert row["ell_division_relations_ruled_out"]
+assert row["free_quotient_saturated"]
+assert row["status"] == "free_quotient_saturated"
+assert len(row["reduction_certificates"]) == 1
+certificate = row["reduction_certificates"][0]
+assert certificate["reduction_prime"] == 5
+assert certificate["verification_status"] == "internally-replayed"
+assert certificate["binding"]["curve_digest"] == result.to_dict()["curve_digest"]
+assert certificate["binding"]["finite_map_verified"]
+assert certificate["binding"]["good_reduction_certificate"]["replayed"]
+assert len(row["reduction_failures"]) == 1
+assert row["reduction_failures"][0]["prime"] == 3
+assert "bad reduction" in row["reduction_failures"][0]["reason"]
+assert result.s_saturated_primes == (2,)
+assert result.verify()
+True`,
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "True");
+  } finally {
+    await session.close();
+  }
+});
+
+test("typed bounds work and contradictory proved rank claims fail", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      `${rationalFixture}
+regulator = index_bound_from_regulator(
+    QQ(100), QQ(4),
+    provenance=typed_assumption("regulator-index-bound", None, "rigorous balls"),
+    assumption_verifiers=verifiers,
+    context={"curve_digest": "fixture", "basis_digest": "fixture"},
+)
+assert regulator["value"] == 5 and regulator["verified"]
 height = index_bound_from_height(
     QQ(100), QQ(2), 2, QQ(2),
-    provenance={"proved": True, "source": "height lower-bound theorem"},
+    provenance=typed_assumption("height-index-bound", None, "height theorem"),
+    assumption_verifiers=verifiers,
+    context={"curve_digest": "fixture", "basis_digest": "fixture"},
 )
-assert height["value"] == 10
+assert height["value"] == 10 and height["verified"]
 try:
-    index_bound_from_regulator(QQ(100), QQ(4), provenance={"proved": False})
+    index_bound_from_regulator(QQ(100), QQ(4), provenance={"proved": True})
     assert False
 except ValueError:
     pass
 
-class Point:
-    def __init__(self, parent, value):
-        self._parent = parent
-        self.value = QQ(value)
-    def parent(self):
-        return self._parent
-    def __add__(self, other):
-        return Point(self._parent, self.value + other.value)
-    def __sub__(self, other):
-        return Point(self._parent, self.value - other.value)
-    def __neg__(self):
-        return Point(self._parent, -self.value)
-    def __rmul__(self, scalar):
-        return Point(self._parent, scalar*self.value)
-    def __eq__(self, other):
-        return isinstance(other, Point) and other._parent is self._parent and other.value == self.value
-    def __repr__(self):
-        return "Point(" + str(self.value) + ")"
-
-class Group:
-    def zero(self):
-        return Point(self, 0)
-    def __call__(self, value):
-        return value if isinstance(value, Point) else Point(self, value)
-
-J = Group()
-P = J(1)
-limited = saturate_subgroup(
-    J,
-    (P,),
-    primes=(2,),
-    independence_certificate={"proved": True, "source": "exact"},
-    max_division_vectors=0,
-)
-assert limited.prime_results[0]["status"] == "resource_limit"
-assert limited.prime_results[0]["resource_limit"]["diagnostics"]["kernel_dimension"] == 1
-assert not limited.global_saturation_proved
-
-unproved_rank = saturate_subgroup(
-    J,
-    (P,),
-    algebraic_rank=1,
-    algebraic_rank_provenance={"proved": False, "source": "analytic rank only"},
-    independence_certificate={"proved": True, "source": "exact"},
-    exact_subgroup_index=1,
-    exact_subgroup_index_provenance={"proved": True, "source": "conditional input"},
-)
-assert not unproved_rank.rank_status["full_rank_proved"]
-assert unproved_rank.rank_status["analytic_rank_used"] is False
-assert not unproved_rank.global_saturation_proved
+try:
+    saturate_subgroup(
+        J,
+        (Q,),
+        algebraic_rank=2,
+        algebraic_rank_provenance={"proved": True, "source": "claimed exact rank"},
+        selmer_rank_upper_bound=1,
+        selmer_provenance={"proved": True, "source": "claimed Selmer bound"},
+    )
+    assert False
+except ArithmeticError:
+    pass
 True`,
     );
     assert.equal(result.repr, "True");
