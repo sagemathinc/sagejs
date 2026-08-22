@@ -63,6 +63,31 @@ class Genus3HeightNumericalIndeterminacyError(ArithmeticError):
         self.diagnostics = dict(diagnostics)
 
 
+class _AutomaticFiniteVerification:
+    """Internal replay witness bound to one curve and horizontal divisor pair."""
+
+    def __init__(self, curve_key: Any, divisor_key: Any, reduction_key: Any) -> None:
+        self.curve_key = curve_key
+        self.divisor_key = divisor_key
+        self.reduction_key = reduction_key
+
+
+class _CandidateSupportVerification:
+    """Internal exact-factorization witness for a complete candidate set."""
+
+    def __init__(self, curve_key: Any, divisor_key: Any) -> None:
+        self.curve_key = curve_key
+        self.divisor_key = divisor_key
+
+
+class _AutomaticArchimedeanVerification:
+    """Internal numerical-refinement witness; never a rigorous enclosure."""
+
+    def __init__(self, precision: int, convention: str) -> None:
+        self.precision = precision
+        self.convention = convention
+
+
 def _positive_integer(value: Any, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise ValueError(name + " must be a positive integer")
@@ -132,6 +157,38 @@ def _qq_string(value: Any) -> str:
     return str(numerator) + "/" + str(denominator)
 
 
+def _curve_key(curve: Any) -> tuple[Any, ...]:
+    f_value, h_value = curve.hyperelliptic_polynomials()
+    return (
+        int(curve.genus()),
+        tuple(_qq_string(value) for value in f_value.list()),
+        tuple(_qq_string(value) for value in h_value.list()),
+    )
+
+
+def _divisor_pair_key(
+    left_terms: Any,
+    right_terms: Any,
+    left_infinity: Any,
+    right_infinity: Any,
+) -> tuple[Any, ...]:
+    def terms_key(terms: Any) -> tuple[Any, ...]:
+        return tuple(
+            (
+                _qq_string(term[0]),
+                tuple(_qq_string(coordinate) for coordinate in term[1]),
+            )
+            for term in terms
+        )
+
+    return (
+        terms_key(left_terms),
+        terms_key(right_terms),
+        _qq_string(left_infinity),
+        _qq_string(right_infinity),
+    )
+
+
 def _mpf_qq(value: Any) -> Any:
     """Embed one exact Sage rational into the active `mpmath` context."""
     rational = _qq(value)
@@ -140,8 +197,12 @@ def _mpf_qq(value: Any) -> Any:
 
 def _mpf_value(value: Any) -> Any:
     if hasattr(value, "_numerator") and hasattr(value, "_denominator"):
-        return _mpf_qq(value)
-    return mp.mpf(value)
+        result = _mpf_qq(value)
+    else:
+        result = mp.mpf(value)
+    if not mp.isfinite(result):
+        raise ValueError("a numerical height value must be finite")
+    return result
 
 
 def _matrix_rows(values: Any, name: str) -> list[list[Any]]:
@@ -286,11 +347,18 @@ class RegularModelPrimeData:
             )
         if not _is_symmetric(self.intersection_matrix):
             raise ValueError("the component intersection matrix must be symmetric")
-        for row in self.intersection_matrix:
+        for row_index, row in enumerate(self.intersection_matrix):
             if sum(row) != 0:
                 raise ValueError(
                     "a scaled component intersection matrix must annihilate the fibre vector"
                 )
+            for column, value in enumerate(row):
+                if row_index == column and value > 0:
+                    raise ValueError("component self-intersections must be nonpositive")
+                if row_index != column and value < 0:
+                    raise ValueError(
+                        "distinct component intersections must be nonnegative"
+                    )
         reduced = [
             [
                 self.intersection_matrix[row][column]
@@ -300,14 +368,23 @@ class RegularModelPrimeData:
             for row in range(self.component_count)
             if row != identity_component
         ]
-        if reduced and _determinant_exact(reduced) == 0:
-            raise ValueError("the reduced component intersection matrix is singular")
+        if reduced:
+            negative_reduced = [[-value for value in row] for row in reduced]
+            for size in range(1, len(negative_reduced) + 1):
+                leading = [row[:size] for row in negative_reduced[:size]]
+                if _determinant_exact(leading) <= 0:
+                    raise ValueError(
+                        "the component matrix must be negative semidefinite with fibre kernel"
+                    )
         if not isinstance(model_certified, bool):
             raise TypeError("model_certified must be boolean")
         if not provenance:
             raise ValueError("regular-model data requires nonempty provenance")
         self.identity_component = identity_component
-        self.model_certified = model_certified
+        # Explicit matrices are exact conditional input.  A boolean assertion
+        # cannot turn them into a curve-bound regular-model certificate.
+        self.model_certified = False
+        self.model_certification_claimed = bool(model_certified)
         self.provenance = dict(provenance)
         self.resource_diagnostics = {
             "components": self.component_count,
@@ -413,6 +490,8 @@ class RegularModelPrimeData:
             "component_multiplicities": self.multiplicities,
             "identity_component": self.identity_component,
             "model_certified": self.model_certified,
+            "model_certification_claimed": self.model_certification_claimed,
+            "verification_status": "conditional_unverified_regular_model_input",
             "provenance": dict(self.provenance),
             "resource_diagnostics": dict(self.resource_diagnostics),
         }
@@ -562,6 +641,7 @@ class FinitePlacePairing:
         right_components: Any,
         model_certified: bool,
         certificate: Mapping[str, Any],
+        _verification: Any = None,
     ) -> None:
         self.prime = _checked_prime(prime)
         self.horizontal_intersection = _qq(horizontal_intersection)
@@ -570,7 +650,9 @@ class FinitePlacePairing:
         self.left_components = tuple(_qq(value) for value in left_components)
         self.right_components = tuple(_qq(value) for value in right_components)
         self.exact = True
-        self.model_certified = bool(model_certified)
+        self.model_certification_claimed = bool(model_certified)
+        self.model_certified = isinstance(_verification, _AutomaticFiniteVerification)
+        self._verification = _verification if self.model_certified else None
         self.certificate = dict(certificate)
 
     def to_dict(self) -> dict[str, Any]:
@@ -588,6 +670,12 @@ class FinitePlacePairing:
             ),
             "exact": True,
             "model_certified": self.model_certified,
+            "model_certification_claimed": self.model_certification_claimed,
+            "verification_status": (
+                "automatic_curve_and_divisor_bound_replay"
+                if self.model_certified
+                else "conditional_unverified_input"
+            ),
             "certificate": dict(self.certificate),
         }
 
@@ -756,6 +844,43 @@ def rational_horizontal_intersection(
     }
 
 
+def _replay_local_reduction(curve: Any, local_reduction: Any) -> Any:
+    module = __import__(
+        "sagejs.hyperelliptic_curves.bad_reduction",
+        fromlist=["LocalReductionData", "local_reduction"],
+    )
+    if not isinstance(local_reduction, module.LocalReductionData):
+        raise Genus3HeightCapabilityError(
+            "finite certification requires a typed LocalReductionData record",
+            {"received_type": type(local_reduction).__name__},
+        )
+    prime = int(local_reduction.prime)
+    replayed = module.local_reduction(curve, prime, "auto")
+    fields = (
+        "prime",
+        "genus",
+        "coefficients",
+        "conductor_exponent",
+        "reduction_type",
+        "curve_good_reduction",
+        "semistable",
+        "toric_rank",
+        "backend",
+        "certificate",
+    )
+    mismatches = tuple(
+        name
+        for name in fields
+        if getattr(local_reduction, name) != getattr(replayed, name)
+    )
+    if mismatches:
+        raise Genus3HeightCapabilityError(
+            "the supplied local-reduction record failed curve-bound replay",
+            {"prime": prime, "mismatched_fields": mismatches},
+        )
+    return replayed
+
+
 def smooth_identity_finite_pairing(
     curve: Any,
     left_terms: Any,
@@ -774,6 +899,7 @@ def smooth_identity_finite_pairing(
     vertical correction is exactly zero.  This theorem path avoids pretending
     that the existing cluster certificate contains missing blow-up charts.
     """
+    local_reduction = _replay_local_reduction(curve, local_reduction)
     prime = int(local_reduction.prime)
     if int(local_reduction.genus) != 3 or not bool(local_reduction.certified):
         raise Genus3HeightCapabilityError(
@@ -805,23 +931,18 @@ def smooth_identity_finite_pairing(
         and local_certificate.get("normalization_branch_mod_p") is not None
     )
     if not local_reduction.curve_good_reduction and not unique_nodal_component:
-        if (
-            identity_component_witness is None
-            or identity_component_witness.get("all_sections_on_identity_component")
-            is not True
-            or not identity_component_witness.get("model_certificate")
-        ):
-            raise Genus3HeightCapabilityError(
-                "smooth points on a reducible fibre need a certified component map",
-                {
-                    "prime": prime,
-                    "reduction_type": local_reduction.reduction_type,
-                    "needs": (
-                        "all_sections_on_identity_component=True",
-                        "regular-model component-map certificate",
-                    ),
-                },
-            )
+        raise Genus3HeightCapabilityError(
+            "the automatic path has no replayable component map for a reducible fibre",
+            {
+                "prime": prime,
+                "reduction_type": local_reduction.reduction_type,
+                "supplied_witness_ignored": identity_component_witness is not None,
+                "needs": (
+                    "a typed regular-model certificate bound to this curve",
+                    "a replayable section-to-component map bound to both divisors",
+                ),
+            },
+        )
     left = [(_qq(term[0]), tuple(term[1])) for term in left_terms]
     right = [(_qq(term[0]), tuple(term[1])) for term in right_terms]
     left_infinity = _qq(left_infinity_multiplicity)
@@ -848,6 +969,12 @@ def smooth_identity_finite_pairing(
     horizontal, horizontal_certificate = rational_horizontal_intersection(
         curve, left, right, prime
     )
+    divisor_key = _divisor_pair_key(left, right, left_infinity, right_infinity)
+    reduction_key = (
+        prime,
+        local_reduction.reduction_type,
+        tuple(int(value) for value in local_reduction.coefficients),
+    )
     return FinitePlacePairing(
         prime,
         horizontal_intersection=horizontal,
@@ -855,6 +982,9 @@ def smooth_identity_finite_pairing(
         left_components=(_qq(0),),
         right_components=(_qq(0),),
         model_certified=True,
+        _verification=_AutomaticFiniteVerification(
+            _curve_key(curve), divisor_key, reduction_key
+        ),
         certificate={
             "theorem": (
                 "degree-zero horizontal divisors supported on the smooth "
@@ -883,6 +1013,11 @@ def smooth_identity_finite_pairing(
             "horizontal_intersection": horizontal_certificate,
             "vertical_coefficients": ("0",),
             "exact": True,
+            "binding": {
+                "curve_key": _curve_key(curve),
+                "divisor_pair_key": divisor_key,
+                "reduction_key": reduction_key,
+            },
         },
     )
 
@@ -1170,12 +1305,18 @@ class SplitMumfordCandidateSupport:
         sources: Any,
         factor_work_bits: int,
         max_factor_bits: int,
+        _verification: Any = None,
     ) -> None:
         self.primes = tuple(sorted(_checked_prime(int(prime)) for prime in primes))
         self.sources = tuple(dict(source) for source in sources)
         self.factor_work_bits = int(factor_work_bits)
         self.max_factor_bits = int(max_factor_bits)
-        self.complete = True
+        self._verification = (
+            _verification
+            if isinstance(_verification, _CandidateSupportVerification)
+            else None
+        )
+        self.complete = self._verification is not None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1188,7 +1329,12 @@ class SplitMumfordCandidateSupport:
                 "the integral completed branch model is smooth, every rational "
                 "section is integral, and opposite supports have distinct reductions"
             ),
-            "complete": True,
+            "verification_status": (
+                "exact_curve_and_divisor_bound_factorization"
+                if self.complete
+                else "conditional_unverified_candidate_support"
+            ),
+            "complete": self.complete,
         }
 
 
@@ -1281,11 +1427,20 @@ def split_mumford_candidate_primes(
                     "prime_support": tuple(str(prime) for prime in factors),
                 }
             )
+    divisor_key = _divisor_pair_key(
+        move.left_affine_terms,
+        move.right_affine_terms,
+        -move.degree,
+        0,
+    )
     return SplitMumfordCandidateSupport(
         primes,
         sources=source_records,
         factor_work_bits=work,
         max_factor_bits=limits.max_factor_bits,
+        _verification=_CandidateSupportVerification(
+            _curve_key(move.curve), divisor_key
+        ),
     )
 
 
@@ -1301,10 +1456,23 @@ class SplitMumfordFinitePlan:
         self.support = support
         self.pairings = tuple(sorted(pairings, key=lambda item: item.prime))
         self.unsupported = tuple(dict(item) for item in unsupported)
+        support_verification = support._verification
+        bindings_match = support_verification is not None
+        if support_verification is not None:
+            for item in self.pairings:
+                item_verification = item._verification
+                if (
+                    item_verification is None
+                    or item_verification.curve_key != support_verification.curve_key
+                    or item_verification.divisor_key != support_verification.divisor_key
+                ):
+                    bindings_match = False
         self.complete = bool(
-            not self.unsupported
+            support.complete
+            and not self.unsupported
             and {item.prime for item in self.pairings} == set(support.primes)
             and all(item.model_certified for item in self.pairings)
+            and bindings_match
         )
 
     def require_complete(self) -> SplitMumfordFinitePlan:
@@ -1444,16 +1612,53 @@ def split_mumford_archimedean_pairing(
         if period_result is None
         else period_result
     )
+    if int(active_period_result.precision_bits) < int(prec):
+        raise Genus3HeightCapabilityError(
+            "the period matrix has insufficient precision for the theta request",
+            {
+                "requested_precision_bits": int(prec),
+                "period_precision_bits": int(active_period_result.precision_bits),
+            },
+        )
+    period_verification = active_period_result.verify()
+    if period_verification.get("verified") is not True:
+        raise Genus3HeightCapabilityError(
+            "the period result failed its structural/refinement replay",
+            {"period_verification": dict(period_verification)},
+        )
     period_matrix = active_period_result.siegel_matrix_pairs()
+    full_period_matrix = active_period_result.period_matrix_pairs()
+    abel_jacobi_records = []
 
     def vector(point_or_points: Any) -> Any:
-        return periods.abel_jacobi(
+        abel_result = periods.abel_jacobi(
             move.curve,
             point_or_points,
             period_result=active_period_result,
             basepoint="infinity",
             prec=prec,
-        ).vector_pairs()
+        )
+        raw_vector = abel_result.vector_pairs()
+        abel_verification = abel_result.verify()
+        if abel_verification.get("verified") is not True:
+            raise Genus3HeightCapabilityError(
+                "an Abel--Jacobi result failed its curve/refinement replay",
+                {"abel_verification": dict(abel_verification)},
+            )
+        normalized = normalize_abel_jacobi_coordinates(
+            raw_vector,
+            full_period_matrix,
+            prec=prec,
+        )
+        abel_jacobi_records.append(
+            {
+                "support": tuple(abel_result.to_dict().get("support", ())),
+                "raw_model_basis_vector": tuple(tuple(value) for value in raw_vector),
+                "normalized_theta_vector": normalized,
+                "transformation": "z_theta = A^-1 * integral(omega_model)",
+            }
+        )
+        return normalized
 
     d_terms = [(1, vector(point)) for point in move.points]
     d_terms.append((-move.degree, [0, 0, 0]))
@@ -1480,6 +1685,16 @@ def split_mumford_archimedean_pairing(
         certificate={
             "move": move.to_dict(),
             "period_result": active_period_result.to_dict(),
+            "abel_jacobi_normalization": {
+                "full_period_convention": "[A|B] in the model differential basis",
+                "theta_period_matrix": "tau = A^-1*B",
+                "theta_coordinate_convention": (
+                    "z = A^-1*integral(omega_model); raw Abel--Jacobi vectors "
+                    "must not be paired directly with tau"
+                ),
+                "records": tuple(abel_jacobi_records),
+                "period_verification": dict(period_verification),
+            },
             "theta_pieces": tuple(piece.to_dict() for piece in pieces),
             "right_class_relation": "[E] = -"
             + str(move.negative_class_multiple)
@@ -1487,6 +1702,9 @@ def split_mumford_archimedean_pairing(
             "height_scale": _qq_string(move.height_scale),
             "rigorous": False,
         },
+        _verification=_AutomaticArchimedeanVerification(
+            prec, "period/Abel refinement plus normalized-coordinate theta refinement"
+        ),
     )
 
 
@@ -1502,6 +1720,8 @@ def _complex_vector(values: Any, size: int, name: str) -> list[Any]:
             answer.append(mp.mpc(value[0], value[1]))
         else:
             answer.append(mp.mpc(value))
+        if not mp.isfinite(mp.re(answer[-1])) or not mp.isfinite(mp.im(answer[-1])):
+            raise ValueError(name + " entries must be finite")
     return answer
 
 
@@ -1512,6 +1732,78 @@ def _complex_matrix(values: Any, size: int, name: str) -> list[list[Any]]:
             name + " must be a " + str(size) + " by " + str(size) + " matrix"
         )
     return [_complex_vector(row, size, name) for row in rows]
+
+
+def _solve_complex_three(matrix: list[list[Any]], right: list[Any]) -> list[Any]:
+    working = [list(matrix[row]) + [right[row]] for row in range(3)]
+    for column in range(3):
+        pivot = max(range(column, 3), key=lambda row: abs(working[row][column]))
+        if working[pivot][column] == 0:
+            raise ArithmeticError("the A-period matrix is singular")
+        if pivot != column:
+            working[pivot], working[column] = working[column], working[pivot]
+        scale = working[column][column]
+        working[column] = [value / scale for value in working[column]]
+        for row in range(3):
+            if row == column:
+                continue
+            factor = working[row][column]
+            working[row] = [
+                working[row][entry] - factor * working[column][entry]
+                for entry in range(4)
+            ]
+    return [working[row][3] for row in range(3)]
+
+
+def _complex_pairs(values: Any, precision: int) -> tuple[tuple[str, str], ...]:
+    digits = max(20, int(precision * 0.30103) + 5)
+    return tuple(
+        (str(mp.nstr(mp.re(value), digits)), str(mp.nstr(mp.im(value), digits)))
+        for value in values
+    )
+
+
+def normalize_abel_jacobi_coordinates(
+    raw_vector: Any,
+    full_period_matrix: Any,
+    *,
+    prec: int = 128,
+) -> tuple[tuple[str, str], ...]:
+    """Convert model-basis Abel integrals to coordinates for `tau=A^-1 B`.
+
+    `full_period_matrix` must use the periods module's `g x 2g` `[A|B]`
+    convention.  If `w=integral(omega_model)`, theta functions with normalized
+    period matrix `tau=A^-1 B` require `z=A^-1 w`.
+    """
+    precision = _positive_integer(prec, "prec")
+    rows = [list(row) for row in full_period_matrix]
+    if len(rows) != 3 or any(len(row) != 6 for row in rows):
+        raise ValueError("full_period_matrix must be a 3 by 6 [A|B] matrix")
+    with mp.workprec(precision + 32):
+        a_matrix = [_complex_vector(row[:3], 3, "A-period matrix") for row in rows]
+        source = _complex_vector(raw_vector, 3, "raw Abel--Jacobi vector")
+        normalized = _solve_complex_three(a_matrix, source)
+        residual = [
+            sum(a_matrix[row][column] * normalized[column] for column in range(3))
+            - source[row]
+            for row in range(3)
+        ]
+        tolerance = mp.power(2, -max(32, precision - 20)) * max(
+            [mp.mpf(1)] + [abs(value) for value in source]
+        )
+        if max(abs(value) for value in residual) > tolerance:
+            raise Genus3HeightNumericalIndeterminacyError(
+                "A-period coordinate normalization failed its residual check",
+                {
+                    "precision_bits": precision,
+                    "maximum_residual": mp.nstr(
+                        max(abs(value) for value in residual), 20
+                    ),
+                    "tolerance": mp.nstr(tolerance, 20),
+                    "convention": "z=A^-1*integral(omega_model)",
+                },
+            )
+        return _complex_pairs(normalized, precision)
 
 
 def _real_determinant(values: list[list[Any]]) -> Any:
@@ -1737,11 +2029,20 @@ class ArchimedeanPairing:
         rigorous: bool,
         algorithm: str,
         certificate: Mapping[str, Any],
+        _verification: Any = None,
     ) -> None:
         self.value = _mpf_value(value)
-        self.precision = int(precision)
-        self.refinement_stable = bool(refinement_stable)
-        self.rigorous = bool(rigorous)
+        if not mp.isfinite(self.value):
+            raise ValueError("an archimedean pairing must be finite")
+        self.precision = _positive_integer(precision, "precision")
+        self.refinement_stability_claimed = bool(refinement_stable)
+        self.refinement_stable = bool(
+            isinstance(_verification, _AutomaticArchimedeanVerification)
+            and _verification.precision >= self.precision
+        )
+        self.rigorous_claimed = bool(rigorous)
+        # No current Phase-8 analytic path returns ball enclosures.
+        self.rigorous = False
         self.algorithm = str(algorithm)
         self.certificate = dict(certificate)
 
@@ -1752,7 +2053,9 @@ class ArchimedeanPairing:
             "value": mp.nstr(self.value, digits),
             "precision_bits": self.precision,
             "refinement_stable": self.refinement_stable,
+            "refinement_stability_claimed": self.refinement_stability_claimed,
             "rigorous": self.rigorous,
+            "rigorous_claimed": self.rigorous_claimed,
             "algorithm": self.algorithm,
             "certificate": dict(self.certificate),
         }
@@ -1765,16 +2068,24 @@ def supplied_archimedean_pairing(
     rigorous: bool,
     provenance: Mapping[str, Any],
 ) -> ArchimedeanPairing:
-    """Record an independently supplied real-place local Neron symbol."""
+    """Record a conditional supplied real-place local Neron symbol.
+
+    `rigorous=True` is retained as a claim in the provenance but cannot promote
+    this unbound scalar to a rigorous Phase-8 result.
+    """
     if not provenance:
         raise ValueError("a supplied archimedean pairing needs provenance")
     return ArchimedeanPairing(
         value,
         precision=_positive_integer(prec, "prec"),
-        refinement_stable=True,
+        refinement_stable=False,
         rigorous=bool(rigorous),
-        algorithm="supplied",
-        certificate={"provenance": dict(provenance)},
+        algorithm="supplied-conditional",
+        certificate={
+            "provenance": dict(provenance),
+            "supplied_rigorous_claim": bool(rigorous),
+            "verification_status": "conditional_unverified_archimedean_input",
+        },
     )
 
 
@@ -1900,6 +2211,9 @@ def archimedean_green_pairing(
                     "and rounding errors are not enclosed"
                 ),
             },
+            _verification=_AutomaticArchimedeanVerification(
+                precision, "theta radius refinement with normalized tau coordinates"
+            ),
         )
 
 
@@ -1914,6 +2228,7 @@ class FaltingsHriljacPairingResult:
         complete_prime_set: bool,
         unsupported_primes: Any,
         prec: int,
+        finite_plan: Any = None,
     ) -> None:
         self.finite_places = tuple(finite_places)
         if any(not isinstance(item, FinitePlacePairing) for item in self.finite_places):
@@ -1924,13 +2239,30 @@ class FaltingsHriljacPairingResult:
         if not isinstance(archimedean, ArchimedeanPairing):
             raise TypeError("archimedean must be an ArchimedeanPairing")
         self.archimedean = archimedean
-        self.complete_prime_set = bool(complete_prime_set)
+        self.complete_prime_set_claimed = bool(complete_prime_set)
         self.unsupported_primes = tuple(
             sorted(_checked_prime(int(p)) for p in unsupported_primes)
         )
-        if self.complete_prime_set and self.unsupported_primes:
-            raise ValueError("a complete prime set cannot contain unsupported primes")
+        self.finite_plan = (
+            finite_plan if isinstance(finite_plan, SplitMumfordFinitePlan) else None
+        )
+        self.finite_support_verified = bool(
+            self.finite_plan is not None
+            and self.finite_plan.complete
+            and tuple(item.prime for item in self.finite_places)
+            == tuple(item.prime for item in self.finite_plan.pairings)
+            and not self.unsupported_primes
+        )
+        self.complete_prime_set = self.finite_support_verified
         self.precision = _positive_integer(prec, "prec")
+        if archimedean.precision < self.precision:
+            raise Genus3HeightCapabilityError(
+                "the archimedean pairing has insufficient precision",
+                {
+                    "requested_precision_bits": self.precision,
+                    "archimedean_precision_bits": archimedean.precision,
+                },
+            )
         with mp.workprec(self.precision + 32):
             self.finite_value = mp.fsum(
                 _mpf_qq(item.coefficient) * mp.log(item.prime)
@@ -1974,6 +2306,8 @@ class FaltingsHriljacPairingResult:
             "neron_symbol": mp.nstr(self.neron_symbol, digits),
             "canonical_pairing": mp.nstr(self.canonical_pairing, digits),
             "complete_prime_set": self.complete_prime_set,
+            "complete_prime_set_claimed": self.complete_prime_set_claimed,
+            "finite_support_verified": self.finite_support_verified,
             "unsupported_primes": tuple(str(p) for p in self.unsupported_primes),
             "finite_exact": self.finite_exact,
             "finite_models_certified": self.finite_models_certified,
@@ -1990,6 +2324,7 @@ def faltings_hriljac_pairing(
     complete_prime_set: bool,
     unsupported_primes: Any = (),
     prec: int = 128,
+    finite_plan: SplitMumfordFinitePlan | None = None,
 ) -> FaltingsHriljacPairingResult:
     """Assemble exact finite coefficients and one numerical real local symbol."""
     return FaltingsHriljacPairingResult(
@@ -1998,6 +2333,7 @@ def faltings_hriljac_pairing(
         complete_prime_set=complete_prime_set,
         unsupported_primes=unsupported_primes,
         prec=prec,
+        finite_plan=finite_plan,
     )
 
 
@@ -2047,6 +2383,7 @@ def split_mumford_canonical_height(
     complete_prime_set: bool,
     unsupported_primes: Any = (),
     prec: int = 128,
+    finite_plan: SplitMumfordFinitePlan | None = None,
 ) -> Genus3CanonicalHeightResult:
     """Assemble the canonical height of a split Mumford divisor."""
     pairing = faltings_hriljac_pairing(
@@ -2055,6 +2392,7 @@ def split_mumford_canonical_height(
         complete_prime_set=complete_prime_set,
         unsupported_primes=unsupported_primes,
         prec=prec,
+        finite_plan=finite_plan,
     )
     return Genus3CanonicalHeightResult(move, pairing)
 
@@ -2105,6 +2443,7 @@ def automatic_split_mumford_canonical_height(
         archimedean,
         complete_prime_set=True,
         prec=prec,
+        finite_plan=finite_plan,
     )
     result.finite_plan = finite_plan
     return result
@@ -2159,6 +2498,10 @@ class HeightPairingMatrixResult:
             self.regulator = +determinant
         self.rank = len(source)
         self.provenance = dict(provenance)
+        self.input_completeness = str(
+            self.provenance.get("input_completeness", "not_recorded")
+        )
+        self.input_rigor = str(self.provenance.get("input_rigor", "not_recorded"))
         self.rigorous = False
 
     def to_dict(self) -> dict[str, Any]:
@@ -2173,6 +2516,8 @@ class HeightPairingMatrixResult:
             "precision_bits": self.precision,
             "positive_definite": True,
             "rigorous": False,
+            "input_completeness": self.input_completeness,
+            "input_rigor": self.input_rigor,
             "provenance": dict(self.provenance),
         }
 
@@ -2214,17 +2559,44 @@ def pairing_matrix_from_heights(
             "the height-pairing rank exceeds its declared limit",
             {"rank": len(values), "max_pairing_rank": limits.max_pairing_rank},
         )
-    diagonals = [height_function(point) for point in values]
+    evaluations = []
+
+    def evaluate(point: Any, label: str) -> Any:
+        result = height_function(point)
+        numeric = result.value if hasattr(result, "value") else result
+        complete = bool(
+            isinstance(result, Genus3CanonicalHeightResult)
+            and result.pairing.finite_support_verified
+        )
+        rigorous = bool(
+            isinstance(result, Genus3CanonicalHeightResult) and result.rigorous
+        )
+        evaluations.append(
+            {
+                "label": label,
+                "result_type": type(result).__name__,
+                "complete": complete,
+                "rigorous": rigorous,
+                "provenance": (
+                    result.to_dict() if hasattr(result, "to_dict") else None
+                ),
+            }
+        )
+        return _mpf_value(numeric)
+
+    diagonals = [
+        evaluate(point, "height(P_" + str(index) + ")")
+        for index, point in enumerate(values)
+    ]
     entries = [[mp.mpf(0) for _column in values] for _row in values]
     for row in range(len(values)):
         entries[row][row] = _mpf_value(diagonals[row])
         for column in range(row):
-            combined = height_function(values[row] + values[column])
-            pairing = (
-                _mpf_value(combined)
-                - _mpf_value(diagonals[row])
-                - _mpf_value(diagonals[column])
-            ) / 2
+            combined = evaluate(
+                values[row] + values[column],
+                "height(P_" + str(row) + "+P_" + str(column) + ")",
+            )
+            pairing = (combined - diagonals[row] - diagonals[column]) / 2
             entries[row][column] = pairing
             entries[column][row] = pairing
     return regulator_from_pairing_matrix(
@@ -2233,6 +2605,17 @@ def pairing_matrix_from_heights(
         provenance={
             "algorithm": "polarization from canonical heights",
             "point_count": len(values),
+            "input_completeness": (
+                "verified_complete"
+                if evaluations and all(item["complete"] for item in evaluations)
+                else "not_verified_complete"
+            ),
+            "input_rigor": (
+                "rigorous"
+                if evaluations and all(item["rigorous"] for item in evaluations)
+                else "non_rigorous_or_unverified"
+            ),
+            "height_evaluations": tuple(evaluations),
         },
         limits=limits,
     )
@@ -2266,6 +2649,7 @@ __all__ = [
     "regulator_from_pairing_matrix",
     "supplied_archimedean_pairing",
     "move_split_mumford_divisor",
+    "normalize_abel_jacobi_coordinates",
     "smooth_identity_finite_pairing",
     "split_mumford_archimedean_pairing",
     "split_mumford_candidate_primes",
