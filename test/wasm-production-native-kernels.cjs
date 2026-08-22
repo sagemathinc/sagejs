@@ -371,10 +371,10 @@ function words(values) {
   return Array.from(values, String);
 }
 
-test("number-field GMP Wasm cores execute the same exact sources as fallbacks", {
-  skip: gmpToolchainAvailable
+test("number-field Wasm cores execute the same exact sources as fallbacks", {
+  skip: flintToolchainAvailable
     ? false
-    : "set SAGEJS_WASI_CLANG, SAGEJS_WASI_SYSROOT, and SAGEJS_WASM_GMP_PREFIX",
+    : "set the complete SAGEJS WASI FLINT/GMP/MPFR/MPC toolchain",
   timeout: 180_000,
 }, async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-wasm-kernel-run-"));
@@ -400,15 +400,15 @@ test("number-field GMP Wasm cores execute the same exact sources as fallbacks", 
       root,
       manifestPath,
       outputRoot,
-      domains: ["gmp"],
+      domains: ["gmp", "flint"],
       emitOnly: false,
       toolchain: {
         clang,
         sysroot,
         gmpPrefix,
-        flintPrefix: "unused",
-        mpfrPrefix: "unused",
-        mpcPrefix: "unused",
+        flintPrefix,
+        mpfrPrefix,
+        mpcPrefix,
       },
     });
     const runtime = await instantiateKernelRuntime(manifest, outputRoot);
@@ -481,7 +481,7 @@ test("number-field GMP Wasm cores execute the same exact sources as fallbacks", 
     );
     const bfTranscendentalOutput = Array(12).fill(0n);
     const bfTranscendentalResult = bfTranscendentals(
-      bfTranscendentalOutput,
+      { values: bfTranscendentalOutput, wordCapacity: 8 },
       [1n, 2n, 3n],
       64n,
     );

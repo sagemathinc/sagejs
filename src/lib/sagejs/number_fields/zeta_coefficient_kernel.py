@@ -517,6 +517,7 @@ def assemble_zeta_coefficients_from_factors(
 ) -> bool:
     """Fill `output[n-1]` directly from packed residue degrees."""
     bound = len(output)
+    one: uint64 = 1
     if (
         bound < 1
         or degree < 1
@@ -564,10 +565,12 @@ def assemble_zeta_coefficients_from_factors(
         for exponent in range(1, maximum_exponent + 1):
             local_coefficient = local[exponent]
             if local_coefficient != 0:
-                largest_base = bound // power
-                for base in range(1, largest_base + 1):
+                largest_base: uint64 = bound // power
+                base: uint64 = one
+                while base <= largest_base:
                     if base % prime != 0 and output[base - 1] != 0:
                         output[base * power - 1] = output[base - 1] * local_coefficient
+                    base = base + one
             power = power * prime
     return True
 
