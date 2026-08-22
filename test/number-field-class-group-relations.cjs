@@ -221,6 +221,51 @@ assert list(source_relation.record.row) == uniformizer_case["relation_row"]
 assert source_relation.record.log_precision == 100
 assert source_relation.record.verify(O, factor_base)["certified"]
 
+# An integral search generator does not need a producer-side principal-ideal
+# rebuild: integrality, exact valuations, a nonnegative quotient row, and exact
+# norm equality rule out every omitted prime-ideal factor.  Its serialized
+# record is identical and detached replay still performs the full independent
+# ideal check.
+integral_collector = ExactRelationCollector(O, factor_base)
+integral_relation = integral_collector.admit_witness(
+    uniformizer,
+    source_ideal=ramified,
+    source_row=uniformizer_case["source_row"],
+    integral_generator=uniformizer,
+    archimedean_logs=["offline-oracle-placeholder"],
+    log_precision=100,
+    provenance={"algorithm": "prime-uniformizer"},
+)
+assert integral_relation.record.to_dict() == source_relation.record.to_dict()
+assert integral_relation.record.verify(O, factor_base)["certified"]
+integral_admission = integral_collector.admission_receipt_diagnostics()
+assert integral_admission["integral_norm_certificates"] == 1
+assert integral_admission["integral_norm_fallbacks"] == 0
+assert integral_collector.reconstruction_diagnostics()["row_requests"] == 1
+try:
+    integral_collector.admit_witness(
+        uniformizer,
+        source_ideal=ramified,
+        source_row=uniformizer_case["source_row"],
+        integral_generator=uniformizer + 1,
+    )
+    raise AssertionError("a mismatched integral generator was trusted")
+except ValueError:
+    pass
+
+# Fractional witnesses are outside the norm certificate and retain the old
+# full principal-ideal path.
+fractional_collector = ExactRelationCollector(O, factor_base)
+fractional_relation = fractional_collector.admit_witness(
+    K(1) / 2,
+    integral_generator=K(1) / 2,
+    provenance={"algorithm": "fractional-fallback"},
+)
+fractional_admission = fractional_collector.admission_receipt_diagnostics()
+assert fractional_admission["integral_norm_certificates"] == 0
+assert fractional_admission["integral_norm_fallbacks"] == 1
+assert fractional_relation.record.verify(O, factor_base)["certified"]
+
 live_reconstruction_rows = []
 def live_reconstructor(row):
     live_reconstruction_rows.append(tuple(row))

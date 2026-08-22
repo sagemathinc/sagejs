@@ -930,6 +930,8 @@ class ExactRelationCollector:
             "hits": 0,
             "misses": 0,
             "evictions": 0,
+            "integral_norm_certificates": 0,
+            "integral_norm_fallbacks": 0,
         }
 
     @staticmethod
@@ -1039,10 +1041,21 @@ class ExactRelationCollector:
         source_ideal: Any = None,
         source_row: Iterable[int] | None = None,
         principal_row: Iterable[int] | None = None,
+        integral_generator: Any = None,
         archimedean_logs: Iterable[Any] = (),
         log_precision: int = 0,
         provenance: dict[str, Any] | None = None,
     ) -> RelationAdmission:
+        """Admit one exact principal relation.
+
+        `integral_generator` enables a producer-only theorem for the common
+        short-element path.  When it is the single exponent-one witness,
+        belongs to the order, has an integral source, and every source,
+        principal, and quotient valuation is nonnegative, exact norm equality
+        proves that no omitted prime ideal divides its principal ideal.
+        Detached replay deliberately retains the full independent ideal
+        reconstruction.
+        """
         factored = _coerce_witness(self.order, witness)
         if source_ideal is None:
             source = self.order.ideal(1)
@@ -1074,17 +1087,42 @@ class ExactRelationCollector:
             raise RelationNotSmoothError(
                 "the principal witness norm has support outside the factor base"
             )
-        principal = factored.principal_ideal(self.order)
         quotient_row = tuple(
             total - source_exponent
             for total, source_exponent in zip(row, computed_source_row, strict=False)
         )
-        reconstructed_principal = self.reconstruct_factor_base_ideal(row)
-        if reconstructed_principal != principal:
-            raise RelationNotSmoothError(
-                "the principal witness has support outside the supplied factor base",
-                ideal=principal,
+        integral_norm_certificate = False
+        if integral_generator is not None:
+            generator = self.order.number_field()(integral_generator)
+            witness_factors = factored.factors()
+            if (
+                len(witness_factors) != 1
+                or witness_factors[0][1] != 1
+                or witness_factors[0][0] != generator
+            ):
+                raise ValueError(
+                    "an integral relation generator must be the exact single witness"
+                )
+            integral_norm_certificate = bool(
+                source.is_integral()
+                and generator in self.order
+                and all(value >= 0 for value in computed_source_row)
+                and all(value >= 0 for value in row)
+                and all(value >= 0 for value in quotient_row)
             )
+        principal = None
+        if integral_norm_certificate:
+            self._admission_receipt_statistics["integral_norm_certificates"] += 1
+        else:
+            if integral_generator is not None:
+                self._admission_receipt_statistics["integral_norm_fallbacks"] += 1
+            principal = factored.principal_ideal(self.order)
+            reconstructed_principal = self.reconstruct_factor_base_ideal(row)
+            if reconstructed_principal != principal:
+                raise RelationNotSmoothError(
+                    "the principal witness has support outside the supplied factor base",
+                    ideal=principal,
+                )
         # The compact producer record retains exponent rows instead of three
         # duplicate ideal lattices.  Detached replay reconstructs source,
         # quotient, and principal ideals and checks their product independently.
@@ -1102,7 +1140,8 @@ class ExactRelationCollector:
             log_precision=log_precision,
             provenance=provenance,
         )
-        record._remember_principal_ideal(self.order, principal)
+        if principal is not None:
+            record._remember_principal_ideal(self.order, principal)
         # Everything used to construct this record was checked above with
         # exact ideal equality.  Avoid the public deserialization replay here:
         # it would refactor the same source, quotient, and principal ideals a

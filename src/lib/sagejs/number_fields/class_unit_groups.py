@@ -1632,6 +1632,7 @@ class ClassUnitGroupEngine:
                     witness,
                     source_ideal=ideal,
                     source_row=source_row,
+                    integral_generator=element,
                     provenance=candidate_provenance,
                 )
             except self.components.relations.RelationNotSmoothError:
