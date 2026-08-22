@@ -1,8 +1,13 @@
 {
   "schema_version": 1,
   "policy": {
-    "owned_source_roots": ["src/baselib", "src/lib"],
-    "owned_typescript_roots": ["tools/serialization-codecs"],
+    "owned_source_roots": [
+      "src/baselib",
+      "src/lib"
+    ],
+    "owned_typescript_roots": [
+      "tools/serialization-codecs"
+    ],
     "new_domains_default_to": "lazy",
     "bootstrap_growth_requires_budget_change": true
   },
@@ -42,7 +47,10 @@
       "startup": "bootstrap",
       "max_source_bytes": 674000,
       "depends_on": [],
-      "modules": ["sagejs", "sagejs.runtime"],
+      "modules": [
+        "sagejs",
+        "sagejs.runtime"
+      ],
       "files": [
         "src/baselib/__future__.py",
         "src/baselib/builtins.py",
@@ -66,20 +74,31 @@
       "layer": 1,
       "startup": "lazy",
       "max_source_bytes": 875000,
-      "depends_on": ["core-runtime"],
-      "modules": ["sagejs.native", "sagejs.ffi"],
+      "depends_on": [
+        "core-runtime"
+      ],
+      "modules": [
+        "sagejs.native",
+        "sagejs.ffi"
+      ],
       "files": [
         "src/lib/sagejs/native.py",
         "src/lib/sagejs/kernels/__init__.py"
       ],
-      "prefixes": ["src/baselib/sagejs/ffi/", "src/lib/sagejs/ffi/"]
+      "prefixes": [
+        "src/baselib/sagejs/ffi/",
+        "src/lib/sagejs/ffi/"
+      ]
     },
     {
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
       "max_source_bytes": 700000,
-      "depends_on": ["core-runtime", "native-integration"],
+      "depends_on": [
+        "core-runtime",
+        "native-integration"
+      ],
       "files": [
         "src/baselib/algebra.py",
         "src/baselib/exact_rational.py",
@@ -106,11 +125,17 @@
       "layer": 3,
       "startup": "bootstrap",
       "max_source_bytes": 410000,
-      "depends_on": ["core-runtime", "native-integration", "arithmetic"],
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic"
+      ],
       "files": [
         "src/baselib/matrix.py"
       ],
-      "typescript_files": ["tools/serialization-codecs/linear-algebra.ts"],
+      "typescript_files": [
+        "tools/serialization-codecs/linear-algebra.ts"
+      ],
       "prefixes": []
     },
     {
@@ -118,8 +143,14 @@
       "layer": 3,
       "startup": "lazy",
       "max_source_bytes": 100000,
-      "depends_on": ["core-runtime", "native-integration", "arithmetic"],
-      "modules": ["sagejs.kernels.polynomial"],
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic"
+      ],
+      "modules": [
+        "sagejs.kernels.polynomial"
+      ],
       "files": [
         "src/lib/sagejs/kernels/polynomial/__init__.py",
         "src/lib/sagejs/kernels/polynomial/arbitrary_prime_flint.py",
@@ -143,9 +174,13 @@
         "native-integration",
         "arithmetic"
       ],
-      "modules": ["sagejs.kernels.arithmetic"],
+      "modules": [
+        "sagejs.kernels.arithmetic"
+      ],
       "files": [],
-      "prefixes": ["src/lib/sagejs/kernels/arithmetic/"]
+      "prefixes": [
+        "src/lib/sagejs/kernels/arithmetic/"
+      ]
     },
     {
       "id": "matrix-native-kernels",
@@ -158,7 +193,9 @@
         "arithmetic",
         "linear-algebra"
       ],
-      "modules": ["sagejs.kernels.matrix"],
+      "modules": [
+        "sagejs.kernels.matrix"
+      ],
       "files": [
         "src/lib/sagejs/kernels/matrix/__init__.py",
         "src/lib/sagejs/kernels/matrix/combinatorial.py",
@@ -189,9 +226,13 @@
         "polynomial-native-kernels",
         "python-stdlib"
       ],
-      "modules": ["sagejs.number_fields"],
+      "modules": [
+        "sagejs.number_fields"
+      ],
       "files": [],
-      "prefixes": ["src/lib/sagejs/number_fields/"]
+      "prefixes": [
+        "src/lib/sagejs/number_fields/"
+      ]
     },
     {
       "id": "number-field-prime-arithmetic",
@@ -314,13 +355,32 @@
         "polynomial-native-kernels",
         "python-stdlib"
       ],
-      "modules": ["sagejs.polynomial_algorithms"],
+      "modules": [
+        "sagejs.polynomial_algorithms"
+      ],
       "files": [
         "src/lib/conway_polynomials/__init__.py",
         "src/lib/sage/databases/__init__.py",
         "src/lib/sage/databases/conway.py"
       ],
-      "prefixes": ["src/lib/sagejs/polynomial_algorithms/"]
+      "prefixes": [
+        "src/lib/sagejs/polynomial_algorithms/"
+      ]
+    },
+    {
+      "id": "numerical-optimization",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 120000,
+      "depends_on": [
+        "core-runtime",
+        "python-stdlib",
+        "symbolics"
+      ],
+      "files": [],
+      "prefixes": [
+        "src/lib/sagejs/optimization/"
+      ]
     },
     {
       "id": "linear-algebra-algorithms",
@@ -334,17 +394,26 @@
         "linear-algebra",
         "python-stdlib"
       ],
-      "modules": ["sagejs.linear_algebra"],
+      "modules": [
+        "sagejs.linear_algebra"
+      ],
       "files": [],
-      "prefixes": ["src/lib/sagejs/linear_algebra/"]
+      "prefixes": [
+        "src/lib/sagejs/linear_algebra/"
+      ]
     },
     {
       "id": "symbolics",
       "layer": 3,
       "startup": "bootstrap",
       "max_source_bytes": 95000,
-      "depends_on": ["core-runtime", "arithmetic"],
-      "files": ["src/baselib/symbolic.py"],
+      "depends_on": [
+        "core-runtime",
+        "arithmetic"
+      ],
+      "files": [
+        "src/baselib/symbolic.py"
+      ],
       "prefixes": []
     },
     {
@@ -352,8 +421,14 @@
       "layer": 4,
       "startup": "bootstrap",
       "max_source_bytes": 38000,
-      "depends_on": ["core-runtime", "arithmetic", "linear-algebra"],
-      "files": ["src/baselib/groups.py"],
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra"
+      ],
+      "files": [
+        "src/baselib/groups.py"
+      ],
       "prefixes": []
     },
     {
@@ -366,7 +441,9 @@
         "native-integration",
         "groups-combinatorics"
       ],
-      "modules": ["sagejs.kernels.groups"],
+      "modules": [
+        "sagejs.kernels.groups"
+      ],
       "files": [
         "src/lib/sagejs/kernels/groups/__init__.py",
         "src/lib/sagejs/kernels/groups/permutation.py"
@@ -378,7 +455,12 @@
       "layer": 4,
       "startup": "bootstrap",
       "max_source_bytes": 330000,
-      "depends_on": ["core-runtime", "native-integration", "linear-algebra", "python-stdlib"],
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "linear-algebra",
+        "python-stdlib"
+      ],
       "files": [
         "src/baselib/graph_reference_data.py",
         "src/baselib/graphs.py",
@@ -391,8 +473,14 @@
       "layer": 5,
       "startup": "lazy",
       "max_source_bytes": 30000,
-      "depends_on": ["core-runtime", "native-integration", "graph-theory"],
-      "modules": ["sagejs.kernels.graph"],
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "graph-theory"
+      ],
+      "modules": [
+        "sagejs.kernels.graph"
+      ],
       "files": [
         "src/lib/sagejs/kernels/graph/__init__.py",
         "src/lib/sagejs/kernels/graph/components.py",
@@ -405,9 +493,16 @@
       "layer": 3,
       "startup": "bootstrap",
       "max_source_bytes": 112000,
-      "depends_on": ["core-runtime", "arithmetic"],
-      "files": ["src/baselib/elliptic_curves.py"],
-      "typescript_files": ["tools/serialization-codecs/elliptic-curves.ts"],
+      "depends_on": [
+        "core-runtime",
+        "arithmetic"
+      ],
+      "files": [
+        "src/baselib/elliptic_curves.py"
+      ],
+      "typescript_files": [
+        "tools/serialization-codecs/elliptic-curves.ts"
+      ],
       "prefixes": []
     },
     {
@@ -415,8 +510,14 @@
       "layer": 4,
       "startup": "lazy",
       "max_source_bytes": 30000,
-      "depends_on": ["core-runtime", "arithmetic", "elliptic-curves"],
-      "files": ["src/lib/sagejs_elliptic_advanced.py"],
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "elliptic-curves"
+      ],
+      "files": [
+        "src/lib/sagejs_elliptic_advanced.py"
+      ],
       "prefixes": []
     },
     {
@@ -424,8 +525,14 @@
       "layer": 4,
       "startup": "lazy",
       "max_source_bytes": 12000,
-      "depends_on": ["core-runtime", "arithmetic", "elliptic-curves"],
-      "files": ["src/lib/sagejs_elliptic_descent.py"],
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "elliptic-curves"
+      ],
+      "files": [
+        "src/lib/sagejs_elliptic_descent.py"
+      ],
       "prefixes": []
     },
     {
@@ -434,19 +541,29 @@
       "startup": "lazy",
       "max_source_bytes": 130000,
       "depends_on": [
-        "core-runtime", "python-stdlib", "arithmetic", "elliptic-curves",
+        "core-runtime",
+        "python-stdlib",
+        "arithmetic",
+        "elliptic-curves",
         "numeric-compat"
       ],
       "files": [],
-      "prefixes": ["src/lib/sagejs/elliptic_curves/"]
+      "prefixes": [
+        "src/lib/sagejs/elliptic_curves/"
+      ]
     },
     {
       "id": "hyperelliptic-curves",
       "layer": 3,
       "startup": "bootstrap",
       "max_source_bytes": 40000,
-      "depends_on": ["core-runtime", "arithmetic"],
-      "files": ["src/baselib/hyperelliptic_curves.py"],
+      "depends_on": [
+        "core-runtime",
+        "arithmetic"
+      ],
+      "files": [
+        "src/baselib/hyperelliptic_curves.py"
+      ],
       "prefixes": []
     },
     {
@@ -455,25 +572,41 @@
       "startup": "lazy",
       "max_source_bytes": 590000,
       "depends_on": [
-        "core-runtime", "native-integration", "python-stdlib", "arithmetic",
-        "linear-algebra", "numeric-compat", "hyperelliptic-curves"
+        "core-runtime",
+        "native-integration",
+        "python-stdlib",
+        "arithmetic",
+        "linear-algebra",
+        "numeric-compat",
+        "hyperelliptic-curves"
       ],
-      "modules": ["sagejs.hyperelliptic_curves"],
+      "modules": [
+        "sagejs.hyperelliptic_curves"
+      ],
       "files": [],
-      "prefixes": ["src/lib/sagejs/hyperelliptic_curves/"]
+      "prefixes": [
+        "src/lib/sagejs/hyperelliptic_curves/"
+      ]
     },
     {
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",
       "max_source_bytes": 260000,
-      "depends_on": ["core-runtime", "native-integration", "arithmetic", "linear-algebra"],
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic",
+        "linear-algebra"
+      ],
       "files": [
         "src/baselib/dirichlet.py",
         "src/baselib/modular.py",
         "src/lib/sagejs/kernels/p1.py"
       ],
-      "typescript_files": ["tools/serialization-codecs/modular-forms.ts"],
+      "typescript_files": [
+        "tools/serialization-codecs/modular-forms.ts"
+      ],
       "prefixes": []
     },
     {
@@ -481,8 +614,13 @@
       "layer": 2,
       "startup": "lazy",
       "max_source_bytes": 400000,
-      "depends_on": ["core-runtime", "python-stdlib"],
-      "modules": ["sagejs.plotting"],
+      "depends_on": [
+        "core-runtime",
+        "python-stdlib"
+      ],
+      "modules": [
+        "sagejs.plotting"
+      ],
       "files": [
         "src/lib/sage/plot/__init__.py",
         "src/lib/sage/plot/arrow.py",
@@ -495,15 +633,25 @@
         "src/lib/sage/plot/polygon.py",
         "src/lib/sage/plot/text.py"
       ],
-      "prefixes": ["src/lib/sagejs/plotting/"]
+      "prefixes": [
+        "src/lib/sagejs/plotting/"
+      ]
     },
     {
       "id": "graphics",
       "layer": 4,
       "startup": "bootstrap",
       "max_source_bytes": 400000,
-      "depends_on": ["core-runtime", "arithmetic", "symbolics", "plot-spec"],
-      "files": ["src/baselib/graphics.py", "src/baselib/graphics3d.py"],
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "symbolics",
+        "plot-spec"
+      ],
+      "files": [
+        "src/baselib/graphics.py",
+        "src/baselib/graphics3d.py"
+      ],
       "prefixes": []
     },
     {
@@ -511,38 +659,203 @@
       "layer": 1,
       "startup": "lazy",
       "max_source_bytes": 1050000,
-      "depends_on": ["core-runtime"],
+      "depends_on": [
+        "core-runtime"
+      ],
       "modules": [
-        "_dummy_thread", "_thread", "abc", "aes", "annotationlib", "argparse", "array", "ast", "atexit", "base64", "bdb", "bisect", "calendar", "cmath", "codecs", "collections", "colorsys", "contextlib", "copy", "decimal",
-        "csv", "dataclasses", "datetime", "elementmaker", "encodings", "enum", "errno", "fnmatch", "functools", "gc",
-        "genericpath", "gettext", "glob", "gzip", "hashlib", "heapq", "html", "inspect", "itertools", "linecache", "locale", "logging", "marshal",
-        "http", "importlib", "io", "js", "json", "keyword", "math", "multiprocessing", "ntpath", "numbers",
-        "operator", "os", "pathlib", "pdb", "pickle", "platform", "posixpath", "pprint", "pythonize", "random",
-        "re", "reprlib", "sage", "sagejs_serialization", "shlex", "shutil", "socket", "string",
-        "sagejs.javascript", "sqlite3", "stat", "statistics", "struct", "subprocess", "sys", "tempfile", "textwrap", "threading", "time",
-        "tokenize", "traceback", "types", "unicodedata", "unittest", "urllib", "uuid", "warnings", "weakref", "xml", "zlib"
+        "_dummy_thread",
+        "_thread",
+        "abc",
+        "aes",
+        "annotationlib",
+        "argparse",
+        "array",
+        "ast",
+        "atexit",
+        "base64",
+        "bdb",
+        "bisect",
+        "calendar",
+        "cmath",
+        "codecs",
+        "collections",
+        "colorsys",
+        "contextlib",
+        "copy",
+        "decimal",
+        "csv",
+        "dataclasses",
+        "datetime",
+        "elementmaker",
+        "encodings",
+        "enum",
+        "errno",
+        "fnmatch",
+        "functools",
+        "gc",
+        "genericpath",
+        "gettext",
+        "glob",
+        "gzip",
+        "hashlib",
+        "heapq",
+        "html",
+        "inspect",
+        "itertools",
+        "linecache",
+        "locale",
+        "logging",
+        "marshal",
+        "http",
+        "importlib",
+        "io",
+        "js",
+        "json",
+        "keyword",
+        "math",
+        "multiprocessing",
+        "ntpath",
+        "numbers",
+        "operator",
+        "os",
+        "pathlib",
+        "pdb",
+        "pickle",
+        "platform",
+        "posixpath",
+        "pprint",
+        "pythonize",
+        "random",
+        "re",
+        "reprlib",
+        "sage",
+        "sagejs_serialization",
+        "shlex",
+        "shutil",
+        "socket",
+        "string",
+        "sagejs.javascript",
+        "sqlite3",
+        "stat",
+        "statistics",
+        "struct",
+        "subprocess",
+        "sys",
+        "tempfile",
+        "textwrap",
+        "threading",
+        "time",
+        "tokenize",
+        "traceback",
+        "types",
+        "unicodedata",
+        "unittest",
+        "urllib",
+        "uuid",
+        "warnings",
+        "weakref",
+        "xml",
+        "zlib"
       ],
       "files": [
         "src/lib/sagejs/javascript.py",
-        "src/lib/_dummy_thread.py", "src/lib/_thread.py", "src/lib/abc.py", "src/lib/aes.py", "src/lib/annotationlib.py", "src/lib/argparse.py", "src/lib/array.py", "src/lib/ast.py", "src/lib/atexit.py", "src/lib/base64.py", "src/lib/bdb.py", "src/lib/calendar.py", "src/lib/cmath.py", "src/lib/colorsys.py", "src/lib/copy.py", "src/lib/datetime.py", "src/lib/decimal.py", "src/lib/enum.py",
+        "src/lib/_dummy_thread.py",
+        "src/lib/_thread.py",
+        "src/lib/abc.py",
+        "src/lib/aes.py",
+        "src/lib/annotationlib.py",
+        "src/lib/argparse.py",
+        "src/lib/array.py",
+        "src/lib/ast.py",
+        "src/lib/atexit.py",
+        "src/lib/base64.py",
+        "src/lib/bdb.py",
+        "src/lib/calendar.py",
+        "src/lib/cmath.py",
+        "src/lib/colorsys.py",
+        "src/lib/copy.py",
+        "src/lib/datetime.py",
+        "src/lib/decimal.py",
+        "src/lib/enum.py",
         "src/lib/codecs.py",
-        "src/lib/bisect.py", "src/lib/collections.py", "src/lib/contextlib.py",
-        "src/lib/csv.py", "src/lib/dataclasses.py", "src/lib/elementmaker.py", "src/lib/encodings.py", "src/lib/errno.py",
-        "src/lib/fnmatch.py", "src/lib/functools.py", "src/lib/gc.py",
-        "src/lib/genericpath.py", "src/lib/gettext.py", "src/lib/glob.py",
-        "src/lib/gzip.py", "src/lib/hashlib.py", "src/lib/heapq.py",
-        "src/lib/inspect.py", "src/lib/io.py", "src/lib/itertools.py", "src/lib/js.py", "src/lib/json.py", "src/lib/keyword.py", "src/lib/linecache.py", "src/lib/locale.py", "src/lib/logging.py", "src/lib/marshal.py", "src/lib/math.py",
-        "src/lib/multiprocessing.py", "src/lib/ntpath.py", "src/lib/numbers.py", "src/lib/operator.py",
-        "src/lib/os.py", "src/lib/pathlib.py", "src/lib/pdb.py", "src/lib/pickle.py", "src/lib/platform.py", "src/lib/posixpath.py", "src/lib/pprint.py",
-        "src/lib/pythonize.py", "src/lib/random.py", "src/lib/re.py", "src/lib/reprlib.py",
-        "src/lib/sagejs_serialization.py", "src/lib/shlex.py", "src/lib/shutil.py", "src/lib/string.py",
-        "src/lib/socket.py", "src/lib/sqlite3.py", "src/lib/stat.py", "src/lib/statistics.py", "src/lib/struct.py",
-        "src/lib/subprocess.py", "src/lib/sys.py", "src/lib/tempfile.py", "src/lib/textwrap.py", "src/lib/threading.py",
-        "src/lib/time.py", "src/lib/tokenize.py", "src/lib/traceback.py", "src/lib/types.py", "src/lib/typing.py", "src/lib/unicodedata.py",
-        "src/lib/uuid.py", "src/lib/warnings.py", "src/lib/weakref.py", "src/lib/zlib.py"
+        "src/lib/bisect.py",
+        "src/lib/collections.py",
+        "src/lib/contextlib.py",
+        "src/lib/csv.py",
+        "src/lib/dataclasses.py",
+        "src/lib/elementmaker.py",
+        "src/lib/encodings.py",
+        "src/lib/errno.py",
+        "src/lib/fnmatch.py",
+        "src/lib/functools.py",
+        "src/lib/gc.py",
+        "src/lib/genericpath.py",
+        "src/lib/gettext.py",
+        "src/lib/glob.py",
+        "src/lib/gzip.py",
+        "src/lib/hashlib.py",
+        "src/lib/heapq.py",
+        "src/lib/inspect.py",
+        "src/lib/io.py",
+        "src/lib/itertools.py",
+        "src/lib/js.py",
+        "src/lib/json.py",
+        "src/lib/keyword.py",
+        "src/lib/linecache.py",
+        "src/lib/locale.py",
+        "src/lib/logging.py",
+        "src/lib/marshal.py",
+        "src/lib/math.py",
+        "src/lib/multiprocessing.py",
+        "src/lib/ntpath.py",
+        "src/lib/numbers.py",
+        "src/lib/operator.py",
+        "src/lib/os.py",
+        "src/lib/pathlib.py",
+        "src/lib/pdb.py",
+        "src/lib/pickle.py",
+        "src/lib/platform.py",
+        "src/lib/posixpath.py",
+        "src/lib/pprint.py",
+        "src/lib/pythonize.py",
+        "src/lib/random.py",
+        "src/lib/re.py",
+        "src/lib/reprlib.py",
+        "src/lib/sagejs_serialization.py",
+        "src/lib/shlex.py",
+        "src/lib/shutil.py",
+        "src/lib/string.py",
+        "src/lib/socket.py",
+        "src/lib/sqlite3.py",
+        "src/lib/stat.py",
+        "src/lib/statistics.py",
+        "src/lib/struct.py",
+        "src/lib/subprocess.py",
+        "src/lib/sys.py",
+        "src/lib/tempfile.py",
+        "src/lib/textwrap.py",
+        "src/lib/threading.py",
+        "src/lib/time.py",
+        "src/lib/tokenize.py",
+        "src/lib/traceback.py",
+        "src/lib/types.py",
+        "src/lib/typing.py",
+        "src/lib/unicodedata.py",
+        "src/lib/uuid.py",
+        "src/lib/warnings.py",
+        "src/lib/weakref.py",
+        "src/lib/zlib.py"
       ],
       "prefixes": [
-        "src/lib/collections/", "src/lib/html/", "src/lib/http/", "src/lib/importlib/", "src/lib/os/", "src/lib/sage/", "src/lib/unittest/", "src/lib/urllib/", "src/lib/xml/"
+        "src/lib/collections/",
+        "src/lib/html/",
+        "src/lib/http/",
+        "src/lib/importlib/",
+        "src/lib/os/",
+        "src/lib/sage/",
+        "src/lib/unittest/",
+        "src/lib/urllib/",
+        "src/lib/xml/"
       ]
     },
     {
@@ -550,10 +863,22 @@
       "layer": 4,
       "startup": "lazy",
       "max_source_bytes": 2100000,
-      "depends_on": ["core-runtime", "python-stdlib", "arithmetic", "linear-algebra"],
-      "modules": ["mpmath", "numpy"],
-      "files": ["src/lib/numpy.py"],
-      "prefixes": ["src/lib/mpmath/"]
+      "depends_on": [
+        "core-runtime",
+        "python-stdlib",
+        "arithmetic",
+        "linear-algebra"
+      ],
+      "modules": [
+        "mpmath",
+        "numpy"
+      ],
+      "files": [
+        "src/lib/numpy.py"
+      ],
+      "prefixes": [
+        "src/lib/mpmath/"
+      ]
     },
     {
       "id": "polyglot",
@@ -561,12 +886,25 @@
       "startup": "lazy",
       "max_source_bytes": 120000,
       "depends_on": [
-        "core-runtime", "python-stdlib", "arithmetic", "symbolics",
-        "numeric-compat", "graphics"
+        "core-runtime",
+        "python-stdlib",
+        "arithmetic",
+        "symbolics",
+        "numeric-compat",
+        "graphics"
       ],
-      "modules": ["macaulay2", "magma", "maple", "matlab", "wolfram"],
+      "modules": [
+        "macaulay2",
+        "magma",
+        "maple",
+        "matlab",
+        "wolfram"
+      ],
       "files": [
-        "src/lib/macaulay2.py", "src/lib/magma.py", "src/lib/maple.py", "src/lib/matlab.py",
+        "src/lib/macaulay2.py",
+        "src/lib/magma.py",
+        "src/lib/maple.py",
+        "src/lib/matlab.py",
         "src/lib/wolfram.py"
       ],
       "prefixes": []
@@ -577,7 +915,10 @@
       "id": "sagejs",
       "path": ".",
       "name": "@sagemath/sagejs",
-      "depends_on": ["sagejs-flint", "sagejs-graph"]
+      "depends_on": [
+        "sagejs-flint",
+        "sagejs-graph"
+      ]
     },
     {
       "id": "sagejs-flint",
