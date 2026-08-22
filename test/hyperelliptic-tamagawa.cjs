@@ -284,6 +284,15 @@ test("cluster replay rejects tree, basis, metric, and binding tampering", async 
             "bad['certificate']['source']['model_binding']['integral_f_coefficients'][0] += 1",
             "rows.append(bad)",
             "bad = fresh()",
+            "replay = bad['certificate']['source']['cluster_replay']['certificate']",
+            "replay['completed_branch_coefficients_ascending'] = [p*c for c in replay['completed_branch_coefficients_ascending']]",
+            "binding = bad['certificate']['source']['model_binding']",
+            "binding['integral_f_coefficients'] = [p*c for c in binding['integral_f_coefficients']]",
+            "rows.append(bad)",
+            "bad = fresh()",
+            "bad['certificate']['source']['cluster_replay']['certificate']['component_curves'][0]['nu'] += 2",
+            "rows.append(bad)",
+            "bad = fresh()",
             "bad['certificate']['pairing_matrix'][0][0] += 1",
             "rows.append(bad)",
             "bad = fresh()",
@@ -299,7 +308,7 @@ test("cluster replay rejects tree, basis, metric, and binding tampering", async 
         )
       ).repr,
       "(True, [False, False, False, False, False, False, False, False, " +
-        "False, False, False, False, False, False, False])",
+        "False, False, False, False, False, False, False, False, False])",
     );
   } finally {
     await session.close();
@@ -334,6 +343,14 @@ test("good-reduction proofs require a bound recognized local record", async () =
             "    bad = json.loads(payload)",
             "    bad['certificate']['model_binding']['prime'] += 2",
             "    rows.append(bad)",
+            "bad = json.loads(json.dumps(good.to_dict()))",
+            "bad['certificate']['model_binding']['integral_f_coefficients'] = [0,0,0,0,0,1]",
+            "bad['certificate']['model_binding']['integral_h_coefficients'] = []",
+            "rows.append(bad)",
+            "bad = json.loads(json.dumps(almost.to_dict()))",
+            "bad['certificate']['model_binding']['integral_f_coefficients'] = [0,0,0,0,0,1]",
+            "bad['certificate']['model_binding']['integral_h_coefficients'] = []",
+            "rows.append(bad)",
             "([T.verify_tamagawa_certificate(good),",
             "  T.verify_tamagawa_certificate(almost)],",
             " [T.verify_tamagawa_certificate(row) for row in rows])",
@@ -341,7 +358,7 @@ test("good-reduction proofs require a bound recognized local record", async () =
           { timeout: 120_000 },
         )
       ).repr,
-      "([True, True], [False, False, False, False, False, False])",
+      "([True, True], [False, False, False, False, False, False, False, False])",
     );
   } finally {
     await session.close();
