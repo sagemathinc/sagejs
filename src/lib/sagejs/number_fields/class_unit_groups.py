@@ -3240,6 +3240,10 @@ class ClassUnitGroupEngine:
         required_primes = set(_prime_divisors(initial_bound))
         attempts: list[Any] = []
         artifacts: list[tuple[Any, Sequence[Any], Any, Any]] = []
+        prefer_relation_saturation = bool(
+            int(self.field.degree()) == 3
+            and self._resource_usage["cubic_relation_seed_uses"] > 0
+        )
 
         def current_generation_authority() -> tuple[Any, Any]:
             if plan is not None:
@@ -3259,13 +3263,8 @@ class ClassUnitGroupEngine:
 
             return evidence, verifier
 
-        for round_index in range(self.limits.max_saturation_rounds):
-            if index.index_one:
-                break
-            self._check_cancelled()
-            self._resource_usage["saturation_rounds"] = round_index + 1
-            bound = max(1, int(index.upper_index))
-            required_primes.update(_prime_divisors(bound))
+        def try_unit_saturation(round_index: int) -> bool:
+            nonlocal units, torsion, regulator, index
             before_units = units
             generation_evidence, generation_verifier = current_generation_authority()
             saturated_units, artifact, attempt = self._try_unit_saturation(
@@ -3287,11 +3286,25 @@ class ClassUnitGroupEngine:
                 torsion, regulator, index = self._analytic_index(
                     presentation, units, unit_rank
                 )
+                return True
+            return False
+
+        for round_index in range(self.limits.max_saturation_rounds):
+            if index.index_one:
+                break
+            self._check_cancelled()
+            self._resource_usage["saturation_rounds"] = round_index + 1
+            bound = max(1, int(index.upper_index))
+            required_primes.update(_prime_divisors(bound))
+            if not prefer_relation_saturation:
+                try_unit_saturation(round_index)
                 if index.index_one:
                     break
 
             relation_progress = False
             for prime in _prime_divisors(max(1, int(index.upper_index))):
+                if int(index.upper_index) % prime:
+                    continue
                 relation_count = len(collector.records)
                 before_order = _value(presentation, ("order",), None)
                 dependency_target = (
@@ -3349,7 +3362,21 @@ class ClassUnitGroupEngine:
                 if index.index_one:
                     break
             if not relation_progress and not index.index_one:
+                unit_progress = (
+                    try_unit_saturation(round_index)
+                    if prefer_relation_saturation
+                    else False
+                )
+                if unit_progress and not index.index_one:
+                    continue
                 break
+            if (
+                prefer_relation_saturation
+                and relation_progress
+                and not index.index_one
+                and round_index + 1 == self.limits.max_saturation_rounds
+            ):
+                try_unit_saturation(round_index)
 
         analytic_validation = self._analytic_validation_payload(index, regulator)
         final_generation_evidence, final_generation_verifier = (

@@ -416,6 +416,56 @@ print("cubic-relation-seed-ok")
   assert.equal(output, "cubic-relation-seed-ok");
 });
 
+test("cubic saturation enlarges exact relations before searching for unit roots", () => {
+  const output = runPublic(String.raw`
+import sagejs.number_fields.class_unit_analytic as analytic_module
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 + 9*x - 21, "a")
+
+# LMFDB 3.1.2856.1 starts with a rigorous hR index bound greater than one.
+# Its authenticated cubic relation prefix can close that index by exact
+# targeted p-relation batches.  The much more expensive bounded p-th-root
+# search is therefore only a fallback and must not run on this path.
+original_saturate_unit_lattice = analytic_module.saturate_unit_lattice
+unit_root_searches = 0
+def forbidden_unit_root_search(*args, **kwargs):
+    global unit_root_searches
+    unit_root_searches += 1
+    raise AssertionError("unnecessary unit-root saturation search")
+analytic_module.saturate_unit_lattice = forbidden_unit_root_search
+try:
+    assert K.class_number(proof=False) == 7
+finally:
+    analytic_module.saturate_unit_lattice = original_saturate_unit_lattice
+
+assert unit_root_searches == 0
+result = K.class_unit_group(proof=False)
+assert result.complete
+assert result.proof_status == "exact-unconditional"
+assert result.saturation_record.complete
+assert result.saturation_record.verify()
+resources = result.diagnostics["resources"]
+assert resources["cubic_relation_seed_uses"] == 1
+assert resources["cubic_relation_seed_relations"] == 7
+assert resources["saturation_rounds"] == 3
+assert resources["relation_attempts"] == 6
+assert resources["relation_candidates"] == 12
+assert [attempt["prime"] for attempt in result.saturation_record.attempts] == [2, 3, 2]
+assert all(
+    attempt["relations_admitted"] == 4
+    for attempt in result.saturation_record.attempts
+)
+
+# The completed unconditional computation also satisfies proof=True without a
+# second relation or analytic pass.
+assert K.class_number(proof=True) == 7
+print("cubic-relation-first-saturation-ok")
+`, 180_000);
+  assert.equal(output, "cubic-relation-first-saturation-ok");
+});
+
 test("default cubic fallback reuses only measured-size Minkowski prefixes", () => {
   const output = runPublic(String.raw`
 R = PolynomialRing(QQ, "x")
