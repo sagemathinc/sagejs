@@ -76,10 +76,30 @@
       "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
       "workspace_fingerprint": "e5f941eb5336d2100826767ee8f9be4981ef797449485cd9f5ba944c495e9892",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/torsion.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.476,
+      "started_at": "2026-08-22T06:22:51.841Z",
+      "commit": "07b2384c81e9df75b2fda3d410e50f8ea0cc5231",
+      "workspace_fingerprint": "418ee55fde237a5f65cb763c5fff3920bce904f6d3c32dc1821efcb0aaadb18a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-jacobian-torsion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.426,
+      "started_at": "2026-08-22T06:22:57.855Z",
+      "commit": "07b2384c81e9df75b2fda3d410e50f8ea0cc5231",
+      "workspace_fingerprint": "418ee55fde237a5f65cb763c5fff3920bce904f6d3c32dc1821efcb0aaadb18a",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added an ordinary strict-Python certified rational-torsion engine for odd-degree genus-2/3 Jacobians over QQ. It computes residue-characteristic-correct good-reduction upper bounds with replayable local-polynomial certificates and progressive histories, exact branch-factor rational 2-torsion with generators, canonical QQ Mumford serialization, exact supplied-divisor order proofs with reduction witnesses and factor stripping, exact generated-subgroup invariants, and claims the full group only when lower equals upper. Focused genus-2/3 tests include PARI-pinned local polynomials and certificate-tampering checks.",
+    "summary": "Added an ordinary strict-Python certified rational-torsion engine for odd-degree genus-2/3 Jacobians over QQ. It computes residue-characteristic-correct good-reduction upper bounds with fully replayed algorithm/search/skipped-prime certificates and progressive histories, exact branch-factor rational 2-torsion with generators, canonical QQ Mumford serialization, and exact supplied-divisor order proofs. Supplied input sequences are retained and deterministically replayed into the returned invariant-factor basis; reduction witnesses distinguish nonintegral representatives from unsupported operations and check divisibility by #J(F_p) plus the p-primary specialization kernel. The full group is claimed only when lower equals upper. Focused tests include PARI-pinned local polynomials, an explicit rational order-3 divisor with dependent/duplicate supplied inputs, primary-bound properties, and certificate tampering.",
     "risks": [
       "No bounded search for previously unknown odd torsion is included; callers must supply odd-torsion divisors.",
       "Automatic local-factor verification uses the available auto backend, with exhaustive dynamic fallback; very large explicit verification primes can therefore be expensive without a native backend.",
