@@ -1,0 +1,101 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "bsd-saturation",
+  "title": "Bsd Saturation",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement honest genus-2/3 Mordell-Weil subgroup saturation and index certificates",
+  "base_commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/saturation.py",
+    "test/hyperelliptic-bsd-saturation.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/hyperelliptic-bsd-arithmetic-plan.md Phase 6",
+    "Nils Bruin and Michael Stoll, The Mordell-Weil sieve: proving non-existence of rational points on curves",
+    "Samir Siksek, Infinite descent on elliptic curves"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "existing certified finite-field Jacobian invariant-factor maps",
+      "exact toy lattices with independently known saturation and index",
+      "Magma/Sage saturation corpora at integration"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm exec ruff format --check src/lib/sagejs/hyperelliptic_curves/saturation.py",
+    "pnpm exec ruff check src/lib/sagejs/hyperelliptic_curves/saturation.py",
+    "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/saturation.py",
+    "node --test test/hyperelliptic-bsd-saturation.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm exec ruff format --check src/lib/sagejs/hyperelliptic_curves/saturation.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.488,
+      "started_at": "2026-08-22T06:12:50.337Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "9593570c1c02a114525c19b4fd1014e55439984aab9ca54f8055c4ad69c2c9a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check src/lib/sagejs/hyperelliptic_curves/saturation.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.498,
+      "started_at": "2026-08-22T06:12:51.490Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "9593570c1c02a114525c19b4fd1014e55439984aab9ca54f8055c4ad69c2c9a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/saturation.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.462,
+      "started_at": "2026-08-22T06:12:52.645Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "9593570c1c02a114525c19b4fd1014e55439984aab9ca54f8055c4ad69c2c9a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-bsd-saturation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.817,
+      "started_at": "2026-08-22T06:12:54.778Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "9593570c1c02a114525c19b4fd1014e55439984aab9ca54f8055c4ad69c2c9a4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds an ordinary-Python, Wasm-safe saturation engine with exact finite-reduction constraints, bounded rational division/enlargement, basis/index chains, proved rank/index provenance, regulator/height index bounds, and structured unsupported/resource outcomes. The result separately labels independence, full rank, ambient S-saturation, free-quotient saturation, global index, torsion completion, and full Mordell-Weil determination.",
+    "risks": [
+      "The default real-Jacobian reduction provider needs the integration lane's native-addon build for an end-to-end local run; its pure coordinate mathematics and provider boundary are covered here.",
+      "A failed bounded division candidate search is intentionally unresolved unless the provider supplies a certified exhaustive result.",
+      "Public Jacobian methods, strict-module registry entries, and forthcoming height/torsion adapters are integration-owned and intentionally not edited in this narrow lane."
+    ],
+    "next_steps": [
+      "Wire HyperellipticJacobian.saturate lazily to saturate_subgroup and add saturation.py to pyrightconfig.json.",
+      "Run the default reduction provider against genus-2/3 rational fixtures with native addons available.",
+      "Connect certified height lower bounds and exact torsion-subgroup records through the documented duck-typed inputs."
+    ]
+  }
+}
