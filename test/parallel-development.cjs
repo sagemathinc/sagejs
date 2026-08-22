@@ -255,6 +255,25 @@ test("changed-file checks rebuild native code before testing it", () => {
       ["pnpm", "test:integration"],
     ],
   );
+  assert.deepEqual(
+    validationCommandsForFiles([
+      "architecture/native-code.json",
+      "docs/hyperelliptic-bsd-arithmetic.md",
+      "scripts/parallel-development.cjs",
+      "src/baselib/integer.py",
+      "src/lib/sagejs/number_fields/om_auto_selector.py",
+    ]),
+    [
+      ["pnpm", "build"],
+      ["pnpm", "architecture:check"],
+      ["pnpm", "test:unit"],
+      ["pnpm", "test:baselib:strict"],
+      ["pnpm", "test:compiler"],
+      ["pnpm", "docs:check"],
+      ["pnpm", "python:precompile:run"],
+      ["pnpm", "test:integration"],
+    ],
+  );
 });
 
 test("task contracts enforce source-transparent compiler policy", () => {

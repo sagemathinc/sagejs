@@ -452,6 +452,23 @@ function validationCommandsForFiles(files) {
     );
     commands.splice(updatedDocsIndex + 1, 0, precompile);
   }
+  const updatedPrecompileIndex = commands.findIndex((command) =>
+    command[0] === "pnpm" && command[1] === "python:precompile:run"
+  );
+  const integrationIndex = commands.findIndex((command) =>
+    command[0] === "pnpm" && command[1] === "test:integration"
+  );
+  if (
+    updatedPrecompileIndex !== -1 &&
+    integrationIndex !== -1 &&
+    integrationIndex < updatedPrecompileIndex
+  ) {
+    const [integration] = commands.splice(integrationIndex, 1);
+    const finalPrecompileIndex = commands.findIndex((command) =>
+      command[0] === "pnpm" && command[1] === "python:precompile:run"
+    );
+    commands.splice(finalPrecompileIndex + 1, 0, integration);
+  }
   if (files.length > 0 && commands.length === 0) add("pnpm", "test:portable");
   return commands;
 }
