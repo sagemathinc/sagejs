@@ -83,6 +83,11 @@
     },
     "recipeOverrides": [
       {
+        "path": "sagemath/gmp/Makefile",
+        "urlFrom": "https://gmplib.org/download/gmp/gmp-${VERSION}.tar.bz2",
+        "urlTo": "https://ftp.gnu.org/gnu/gmp/gmp-${VERSION}.tar.bz2"
+      },
+      {
         "path": "sagemath/flint/Makefile",
         "versionFrom": "3.5.0",
         "versionTo": "3.6.0",

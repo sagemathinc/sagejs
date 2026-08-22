@@ -56,6 +56,21 @@ function loadToolchainLock(filename = lockFilename) {
       throw new Error(`${name} has an incomplete portable-smalljac recipe`);
     }
   }
+  for (const override of lock.build?.recipeOverrides ?? []) {
+    if (!override.path || override.path.startsWith("/") || override.path.includes("..")) {
+      throw new Error("a toolchain recipe override has an unsafe path");
+    }
+    for (const field of ["version", "digest", "url"]) {
+      if ((override[`${field}From`] === undefined) !==
+          (override[`${field}To`] === undefined)) {
+        throw new Error(`${override.path} has an incomplete ${field} override`);
+      }
+    }
+    if (override.urlFrom !== undefined &&
+        (!override.urlFrom.startsWith("https://") || !override.urlTo.startsWith("https://"))) {
+      throw new Error(`${override.path} source URL overrides must use HTTPS`);
+    }
+  }
   return lock;
 }
 
@@ -193,18 +208,30 @@ function applyRecipeOverrides(cowasmRoot, lock) {
   for (const override of lock.build.recipeOverrides) {
     const filename = join(cowasmRoot, ...override.path.split("/"));
     let source = readFileSync(filename, "utf8");
-    source = replaceExactly(
-      source,
-      `VERSION = ${override.versionFrom}`,
-      `VERSION = ${override.versionTo}`,
-      `${override.path} version pin`,
-    );
-    source = replaceExactly(
-      source,
-      `TARBALL_SHA256 = ${override.digestFrom}`,
-      `TARBALL_SHA256 = ${override.digestTo}`,
-      `${override.path} source digest`,
-    );
+    if (override.versionFrom !== undefined || override.versionTo !== undefined) {
+      source = replaceExactly(
+        source,
+        `VERSION = ${override.versionFrom}`,
+        `VERSION = ${override.versionTo}`,
+        `${override.path} version pin`,
+      );
+    }
+    if (override.digestFrom !== undefined || override.digestTo !== undefined) {
+      source = replaceExactly(
+        source,
+        `TARBALL_SHA256 = ${override.digestFrom}`,
+        `TARBALL_SHA256 = ${override.digestTo}`,
+        `${override.path} source digest`,
+      );
+    }
+    if (override.urlFrom !== undefined || override.urlTo !== undefined) {
+      source = replaceExactly(
+        source,
+        `URL = ${override.urlFrom}`,
+        `URL = ${override.urlTo}`,
+        `${override.path} source URL`,
+      );
+    }
     writeFileSync(filename, source);
   }
 }

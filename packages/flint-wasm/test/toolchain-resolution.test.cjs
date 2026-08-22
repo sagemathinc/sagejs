@@ -158,7 +158,11 @@ test("source dependency pin verification detects exact version and digest drift"
       const expectedDigest = dependency.recipeBaseSourceSha256 ?? dependency.sourceSha256;
       writeFileSync(
         join(directory, "Makefile"),
-        `VERSION = ${expectedVersion}\nTARBALL_SHA256 = ${expectedDigest}\n`,
+        `VERSION = ${expectedVersion}\n` +
+          (name === "gmp"
+            ? "URL = https://gmplib.org/download/gmp/gmp-${VERSION}.tar.bz2\n"
+            : "") +
+          `TARBALL_SHA256 = ${expectedDigest}\n`,
       );
     }
     const sdkDirectory = join(temporary, "core", "build", "src", "wasi-sdk");
@@ -167,6 +171,10 @@ test("source dependency pin verification detects exact version and digest drift"
     assert.deepEqual(verifySourcePins(temporary, lock, { recipeBase: true }), []);
     applyRecipeOverrides(temporary, lock);
     assert.deepEqual(verifySourcePins(temporary, lock), []);
+    assert.match(
+      readFileSync(join(temporary, "sagemath", "gmp", "Makefile"), "utf8"),
+      /URL = https:\/\/ftp\.gnu\.org\/gnu\/gmp\/gmp-\$\{VERSION\}\.tar\.bz2/,
+    );
     const flintMakefile = join(temporary, "sagemath", "flint", "Makefile");
     writeFileSync(flintMakefile, readFileSync(flintMakefile, "utf8").replace("VERSION = 3.6.0", "VERSION = 0"));
     assert.match(verifySourcePins(temporary, lock).join("\n"), /flint: version 0 != 3.6.0/);
