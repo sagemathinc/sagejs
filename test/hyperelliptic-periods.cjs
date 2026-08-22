@@ -22,12 +22,23 @@ const oraclePeriodRows = [
 ].map(({ id, model, real_period }) => ({
   id,
   model: {
-    f: model.f.map((value) => Number(value)),
-    h: model.h.map((value) => Number(value)),
+    f: model.f.map(exactRationalText),
+    h: model.h.map(exactRationalText),
   },
   real_period,
 }));
 const oraclePeriodRowsJson = JSON.stringify(oraclePeriodRows);
+
+function exactRationalText(value) {
+  assert.equal(typeof value, "string");
+  assert.match(value, /^-?(?:0|[1-9][0-9]*)(?:\/[1-9][0-9]*)?$/);
+  return value;
+}
+
+const exactLoaderRegressionJson = JSON.stringify({
+  f: ["900719925474099312345678901234567890", "-7/13", "1"],
+  h: ["-900719925474099312345678901234567891", "5/17"],
+});
 
 test(
   "hyperelliptic periods recover the real lattice and preserve honest status",
@@ -64,8 +75,25 @@ record["period_matrix"][0][0] = ("999", "999")
 record["conjugation_matrix"][0][0] = 999
 diagnostics = P.diagnostics()
 diagnostics["refinement_runs"][0]["branch_order"] = [999]
+private_model = P._model_data
+private_model["model_real_period"] = "999"
+private_model["period_matrix"][0][0] = ["999", "999"]
+private_model["siegel_matrix"][0][0] = ["999", "999"]
 assert P.verify()["verified"] and Q.verify()["verified"]
 assert Q.to_dict()["period_matrix"][0][0] != ("999", "999")
+assert P.to_dict()["model_real_period"] != "999"
+sealed_model_rejected = False
+try:
+    P._model_data = private_model
+except (AttributeError, TypeError):
+    sealed_model_rejected = True
+assert sealed_model_rejected
+precision_rejected = False
+try:
+    P.precision_bits = 999
+except (AttributeError, TypeError):
+    precision_rejected = True
+assert precision_rejected
 N = real_period(
     C,
     prec=64,
@@ -84,6 +112,8 @@ negative = real_period(
     provenance=provenance,
 )
 provenance["nested"]["sources"][0] = "poisoned"
+private_normalization = negative._normalization
+private_normalization["determinant_parts"] = [999, 1]
 assert abs(float(negative.neron_period() / P.model_period()) - 0.5) < 1e-14
 assert negative.to_dict()["normalization"]["provenance"]["nested"]["sources"][0] == "orientation"
 try:
@@ -166,8 +196,18 @@ assert not u.to_dict()["rigorous"]
 record = u.to_dict()
 record["vector"][0] = ("999", "999")
 record["support"][0] = "poisoned"
+private_data = u._data
+private_data["vector"][0] = ["999", "999"]
+private_data["support"][0] = "poisoned"
+private_data["refinement_runs"][-1]["quadrature_panels"] = 999
 assert u.verify()["verified"] and again.verify()["verified"]
 assert again.to_dict()["vector"][0] != ("999", "999")
+sealed_abel_rejected = False
+try:
+    u._data = private_data
+except (AttributeError, TypeError):
+    sealed_abel_rejected = True
+assert sealed_abel_rejected
 try:
     abel_jacobi(C, positive, period_result=periods, prec=96)
     raise AssertionError("Abel--Jacobi silently exceeded the period precision")
@@ -200,6 +240,12 @@ assert 0 < periods.achieved_stability_bits <= record["work_precision_bits"]
 assert record["achieved_stability_bits"] == periods.achieved_stability_bits
 assert len(record["refinement_runs"][0]["quadrature_attempts"]) >= 1
 assert periods.verify()["verified"]
+point = C([0, 1])
+try:
+    periods.abel_jacobi(point, prec=periods.achieved_stability_bits + 1)
+    raise AssertionError("Abel--Jacobi exceeded achieved period stability")
+except Exception as error:
+    assert getattr(error, "code", None) == "period_precision_too_low"
 True
 `);
       assert.equal(result.repr, "True");
@@ -222,9 +268,17 @@ R = PolynomialRing(QQ, "x")
 # Loaded from the pinned PARI/GP 2.18.1.alpha corpus by the Node harness.
 rows = ${oraclePeriodRowsJson}
 field = RealField(64)
+def exact_rational(text):
+    pieces = text.split("/")
+    if len(pieces) == 1:
+        return QQ(int(pieces[0]))
+    return QQ(int(pieces[0])) / QQ(int(pieces[1]))
 for row in rows:
     identifier = row["id"]
-    curve = HyperellipticCurve(R(row["model"]["f"]), R(row["model"]["h"]))
+    curve = HyperellipticCurve(
+        R([exact_rational(value) for value in row["model"]["f"]]),
+        R([exact_rational(value) for value in row["model"]["h"]]),
+    )
     periods = real_period(curve, prec=64)
     expected = field(row["real_period"])
     relative_error = abs(periods.model_period() - expected) / expected
@@ -238,3 +292,26 @@ True
     }
   },
 );
+
+test("period oracle loader preserves large and rational coefficients exactly", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(String.raw`
+row = ${exactLoaderRegressionJson}
+def exact_rational(text):
+    pieces = text.split("/")
+    if len(pieces) == 1:
+        return QQ(int(pieces[0]))
+    return QQ(int(pieces[0])) / QQ(int(pieces[1]))
+f = [exact_rational(value) for value in row["f"]]
+h = [exact_rational(value) for value in row["h"]]
+assert f[0] == 900719925474099312345678901234567890
+assert f[1] == -7/13 and h[1] == 5/17
+assert h[0] == -900719925474099312345678901234567891
+True
+`);
+    assert.equal(result.repr, "True");
+  } finally {
+    await session.close();
+  }
+});
