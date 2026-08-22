@@ -18,15 +18,24 @@ from typing import Any, Iterator
 
 import sagejs as sage
 import sagejs.runtime as runtime
+from sagejs.native import (
+    integer_buffer_values,
+    kernel_integer_buffer,
+    kernel_integer_zeros,
+)
 
 _nf = __import__("sagejs._baselib.number_fields", fromlist=["number_fields"])
 _maximal = __import__("sagejs.number_fields.maximal_order", fromlist=["maximal_order"])
 _om = __import__("sagejs.number_fields.om_types", fromlist=["om_types"])
+_candidate_kernel = __import__(
+    "sagejs.number_fields.bl_composite_kernel", fromlist=["bl_composite_kernel"]
+)
 
 NumberFieldIdeal = _nf.NumberFieldIdeal
 _nf_coordinates = _nf._nf_coordinates
 _nf_element_from_row = _nf._nf_element_from_row
 _nf_global = _nf._nf_global
+_nf_lcm = _nf._nf_lcm
 
 SCHEMA = "sagejs.number-fields.prime-decomposition.v1"
 SERIALIZATION_SCHEMA = "sagejs.number-fields.prime-ideal.v1"
@@ -42,6 +51,7 @@ COMPACT_FACTOR_BATCH_SIZE = 8192
 
 _decomposition_cache: list[tuple[Any, int, Any]] = []
 _identity_tokens: list[Any] = []
+_PACKED_CANDIDATE_TOKEN = object()
 
 
 def _native_factor_degree_data(
@@ -700,6 +710,103 @@ def _ideal_from_modular_subspace(
     return NumberFieldIdeal(order, rows)
 
 
+def _packed_candidate_rows(
+    order: Any, subspace: list[list[int]], prime: int
+) -> list[list[Any]] | None:
+    """Return canonical HNF rows through the bounded candidate kernel."""
+    degree = order.degree()
+    if len(subspace) > degree or any(len(row) != degree for row in subspace):
+        return None
+    denominator = runtime.bigint(1)
+    for row in order._basis_rows:
+        for value in row:
+            denominator = _nf_lcm(denominator, value._denominator)
+    if denominator <= 0:
+        return None
+    basis_numerators: list[int] = []
+    for row in order._basis_rows:
+        for value in row:
+            scaled = value * denominator
+            if scaled._denominator != 1:
+                return None
+            basis_numerators.append(int(scaled._numerator))
+    modular = [int(value) for row in subspace for value in row]
+    maximum_bits = max(
+        [
+            abs(int(prime)).bit_length(),
+            abs(int(denominator)).bit_length(),
+        ]
+        + [abs(value).bit_length() for value in basis_numerators]
+        + [abs(value).bit_length() for value in modular]
+    )
+    word_capacity = max(16, (maximum_bits + 63) // 64 + 8 * degree)
+    kernel = _candidate_kernel.packed_prime_ideal_candidate_hnf_in_place
+    row_count = degree + len(subspace)
+    entry_count = row_count * degree
+    try:
+        basis_buffer = kernel_integer_buffer(kernel, basis_numerators)
+        subspace_buffer = kernel_integer_buffer(kernel, modular)
+        source = kernel_integer_zeros(kernel, entry_count, word_capacity)
+        output = kernel_integer_zeros(kernel, entry_count, word_capacity)
+        workspace = kernel_integer_zeros(kernel, 2 * degree, word_capacity)
+        if not kernel(
+            output,
+            source,
+            workspace,
+            basis_buffer,
+            subspace_buffer,
+            prime,
+            degree,
+            len(subspace),
+        ):
+            return None
+        values = integer_buffer_values(output)
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+    return [
+        [
+            sage.QQ(int(values[row * degree + column])) / sage.QQ(denominator)
+            for column in range(degree)
+        ]
+        for row in range(degree)
+    ]
+
+
+def _prime_candidate_from_modular_subspace(
+    order: Any,
+    subspace: list[list[int]],
+    prime: int,
+    ramification: int,
+    residue_degree: int,
+    presentation: dict[str, Any],
+    *,
+    use_packed: bool,
+) -> NumberFieldPrimeIdeal:
+    """Materialize one candidate, retaining the readable checked fallback."""
+    rows = _packed_candidate_rows(order, subspace, prime) if use_packed else None
+    if rows is None:
+        ideal = _ideal_from_modular_subspace(order, subspace, prime)
+        return NumberFieldPrimeIdeal(
+            order,
+            ideal._basis_rows,
+            prime,
+            ramification,
+            residue_degree,
+            presentation,
+        )
+    answer = NumberFieldPrimeIdeal(
+        order,
+        rows,
+        prime,
+        ramification,
+        residue_degree,
+        presentation,
+        _candidate_token=_PACKED_CANDIDATE_TOKEN,
+    )
+    answer._packed_candidate_pending_replay = True
+    return answer
+
+
 def _ideal_mod_p_subspace(ideal: Any, prime: int) -> list[list[int]]:
     order = ideal.ring()
     inverse = order.basis_matrix().inverse()
@@ -713,6 +820,30 @@ def _ideal_mod_p_subspace(ideal: Any, prime: int) -> list[list[int]]:
             modular.append(int(value._numerator) % prime)
         rows.append(modular)
     return _row_basis(rows, order.degree(), prime)
+
+
+def canonical_two_generator_witness(
+    prime_ideal: NumberFieldPrimeIdeal,
+) -> Any | None:
+    """Find the first basis witness for `(p, alpha)` by exact modular replay."""
+    order = prime_ideal.ring()
+    prime = int(prime_ideal.rational_prime())
+    degree = order.degree()
+    cached = getattr(prime_ideal, "_verified_modular_algebra", None)
+    if cached is not None and cached[0] == prime:
+        table = cached[1]
+    else:
+        table = _modular_table(order, prime)
+    target = _ideal_mod_p_subspace(prime_ideal, prime)
+    for element in prime_ideal.basis():
+        coordinates = _field_element_order_coordinates(order, element)
+        if any(value._denominator != 1 for value in coordinates):
+            continue
+        modular = [int(value._numerator) % prime for value in coordinates]
+        generated = _subspace_ideal_generated_by([modular], degree, table, prime)
+        if generated == target:
+            return element
+    return None
 
 
 def _field_element_order_coordinates(order: Any, value: Any) -> list[Any]:
@@ -751,8 +882,18 @@ class NumberFieldPrimeIdeal(NumberFieldIdeal):
         ramification_index: int,
         residue_degree: int,
         presentation: dict[str, Any] | None = None,
+        *,
+        _candidate_token: Any = None,
     ) -> None:
-        super().__init__(order, rows)
+        if _candidate_token is _PACKED_CANDIDATE_TOKEN:
+            self._order = order
+            self._field = order.number_field()
+            self._basis_rows = rows
+            self._membership_inverse_cache = runtime.undefined
+        elif _candidate_token is not None:
+            raise ValueError("invalid canonical prime-ideal candidate token")
+        else:
+            super().__init__(order, rows)
         self._rational_prime = int(rational_prime)
         self._ramification_index = int(ramification_index)
         self._residue_degree = int(residue_degree)
@@ -946,12 +1087,17 @@ class PrimeIdealDecomposition(sage.Factorization):
 
 def _residue_presentation_for_prime(
     prime_ideal: NumberFieldPrimeIdeal,
+    *,
+    table: list[list[list[int]]] | None = None,
+    one: list[int] | None = None,
 ) -> dict[str, Any]:
     order = prime_ideal.ring()
     prime = prime_ideal._rational_prime
     degree = order.degree()
-    table = _modular_table(order, prime)
-    one = [value % prime for value in _order_one_coordinates(order)]
+    if table is None:
+        table = _modular_table(order, prime)
+    if one is None:
+        one = [value % prime for value in _order_one_coordinates(order)]
     kernel = _ideal_mod_p_subspace(prime_ideal, prime)
     return _primitive_presentation(
         degree,
@@ -1004,7 +1150,11 @@ def _dedekind_kummer(order: Any, prime: int) -> list[NumberFieldPrimeIdeal] | No
 
 
 def _finite_algebra_fallback(
-    order: Any, prime: int, max_candidates: int
+    order: Any,
+    prime: int,
+    max_candidates: int,
+    *,
+    use_packed_candidates: bool = False,
 ) -> list[NumberFieldPrimeIdeal]:
     degree = order.degree()
     table = _modular_table(order, prime)
@@ -1038,15 +1188,15 @@ def _finite_algebra_fallback(
         if local_dimension < 1 or local_dimension % residue_degree:
             raise ArithmeticError("a local algebra has inconsistent e/f dimensions")
         ramification = local_dimension // residue_degree
-        ideal = _ideal_from_modular_subspace(order, maximal_subspace, prime)
         answer.append(
-            NumberFieldPrimeIdeal(
+            _prime_candidate_from_modular_subspace(
                 order,
-                ideal._basis_rows,
+                maximal_subspace,
                 prime,
                 ramification,
                 residue_degree,
                 presentation,
+                use_packed=use_packed_candidates,
             )
         )
     return answer
@@ -1112,7 +1262,12 @@ def factor_rational_prime(
         elif algorithm == "dedekind-kummer":
             raise ValueError("the equation order is not certified p-maximal")
     if factors is None:
-        factors = _finite_algebra_fallback(order, p, max_primitive_candidates)
+        factors = _finite_algebra_fallback(
+            order,
+            p,
+            max_primitive_candidates,
+            use_packed_candidates=verify,
+        )
     factors.sort(key=_prime_sort_key)
     result = PrimeIdealDecomposition(order, p, factors, producer)
     if verify:
@@ -1129,15 +1284,23 @@ def primes_above(order: Any, prime: Any) -> tuple[NumberFieldPrimeIdeal, ...]:
 
 
 def _quotient_is_field(
-    order: Any, ideal: NumberFieldPrimeIdeal, prime: int, residue_degree: int
+    order: Any,
+    ideal: NumberFieldPrimeIdeal,
+    prime: int,
+    residue_degree: int,
+    *,
+    table: list[list[list[int]]] | None = None,
+    one: list[int] | None = None,
 ) -> bool:
     degree = order.degree()
     subspace = _ideal_mod_p_subspace(ideal, prime)
     coordinate_matrix, lifts = _quotient_map(subspace, degree, prime)
     if len(lifts) != residue_degree:
         return False
-    table = _modular_table(order, prime)
-    one = [value % prime for value in _order_one_coordinates(order)]
+    if table is None:
+        table = _modular_table(order, prime)
+    if one is None:
+        one = [value % prime for value in _order_one_coordinates(order)]
     frobenius_rows = [
         _row_times_matrix(
             _modular_power(lift, prime, one, table, prime),
@@ -1173,6 +1336,16 @@ def verify_prime_decomposition(
         return {"certified": False, "failures": [str(error)]}
     if not order.is_maximal():
         failures.append("the order is not independently certified maximal")
+    # This table is recomputed at the verifier boundary and is never accepted
+    # from the producer.  Reusing that independent exact input within one
+    # replay avoids rebuilding the same maximal-order products four times.
+    replay_table: list[list[list[int]]] | None = None
+    replay_one: list[int] | None = None
+    try:
+        replay_table = _modular_table(order, p)
+        replay_one = [value % p for value in _order_one_coordinates(order)]
+    except Exception as error:
+        failures.append("finite-algebra replay setup failed: " + str(error))
     factors = list(decomposition)
     if not factors:
         failures.append("the decomposition has no prime factors")
@@ -1206,10 +1379,21 @@ def verify_prime_decomposition(
         if ideal.norm() != expected_norm:
             failures.append("a prime lattice has the wrong exact norm")
         try:
-            if not _quotient_is_field(order, ideal, p, residue_degree):
+            if not _quotient_is_field(
+                order,
+                ideal,
+                p,
+                residue_degree,
+                table=replay_table,
+                one=replay_one,
+            ):
                 failures.append("a prime quotient is not a field")
             presentation = ideal._require_residue_presentation()
-            recomputed_presentation = _residue_presentation_for_prime(ideal)
+            recomputed_presentation = _residue_presentation_for_prime(
+                ideal,
+                table=replay_table,
+                one=replay_one,
+            )
             for key in (
                 "primitive",
                 "quotient_matrix",
@@ -1250,6 +1434,10 @@ def verify_prime_decomposition(
         failures.append("the exact product lattice is not p*O")
     if degree_sum != order.degree():
         failures.append("the sum of e*f does not equal the field degree")
+    if not failures and replay_table is not None and replay_one is not None:
+        for ideal in seen:
+            ideal._verified_modular_algebra = (p, replay_table, replay_one)
+            ideal._packed_candidate_pending_replay = False
     return {
         "certified": not failures,
         "schema": SCHEMA,

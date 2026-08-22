@@ -1026,6 +1026,17 @@ def _factor_base_record_memory_bytes(record: Any) -> int:
 def _two_generator_data(prime_ideal: Any) -> dict[str, Any] | None:
     order = prime_ideal.ring()
     prime = int(prime_ideal.rational_prime())
+    try:
+        witness = _prime_ideals.canonical_two_generator_witness(prime_ideal)
+    except (ArithmeticError, RuntimeError, TypeError, ValueError):
+        witness = None
+    if witness is not None:
+        return {
+            "rational_prime": prime,
+            "second_generator": [list(pair) for pair in _encode_element(witness)],
+        }
+    # The readable ideal-equality search remains the fail-closed fallback for
+    # unusual presentations outside the bounded modular witness path.
     for element in prime_ideal.basis():
         if order.ideal(prime, element) == prime_ideal:
             return {
