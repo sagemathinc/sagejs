@@ -338,6 +338,7 @@ const integration = [
   "test/polynomial-ideals.cjs",
   "test/optimization.cjs",
   "test/optimization-global.cjs",
+  "test/optimization-fitting.cjs",
   "test/symbolic.cjs",
   "test/algebraic-numbers.cjs",
   "test/spectral-linear-algebra.cjs",
