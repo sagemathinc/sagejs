@@ -1,0 +1,84 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-class-number-live-auth",
+  "title": "Authenticate live cubic class-number artifacts",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Separate producer-issued live cubic class-number authentication from mandatory detached certificate replay so public caching is cheap and forge-resistant",
+  "base_commit": "62afd585cacae7b543bbe36a50fd39ac1cea9405",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number.py",
+    "src/baselib/number_fields.py",
+    "test/number-field-global-arithmetic.cjs",
+    "test/number-field-class-unit-public.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Full detached cubic class-number certificate replay",
+      "Producer-issued immutable live snapshot"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm exec pyright src/lib/sagejs/number_fields/cubic_class_number.py src/baselib/number_fields.py",
+    "node --test --test-name-pattern=public cubic class number uses cached unconditional Minkowski evidence test/number-field-class-unit-public.cjs",
+    "node --test --test-name-pattern=bounded cubic class numbers replay every quotient p-line test/number-field-global-arithmetic.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.58,
+      "started_at": "2026-08-22T00:43:40.481Z",
+      "commit": "62afd585cacae7b543bbe36a50fd39ac1cea9405",
+      "workspace_fingerprint": "bd143fc6c472e7c576f7c4d7ed64f1acad4265fc436eae1b7dd4445aab1802ae",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=public cubic class number uses cached unconditional Minkowski evidence test/number-field-class-unit-public.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.849,
+      "started_at": "2026-08-22T00:44:14.263Z",
+      "commit": "62afd585cacae7b543bbe36a50fd39ac1cea9405",
+      "workspace_fingerprint": "bd143fc6c472e7c576f7c4d7ed64f1acad4265fc436eae1b7dd4445aab1802ae",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=bounded cubic class numbers replay every quotient p-line test/number-field-global-arithmetic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.574,
+      "started_at": "2026-08-22T00:44:31.282Z",
+      "commit": "62afd585cacae7b543bbe36a50fd39ac1cea9405",
+      "workspace_fingerprint": "bd143fc6c472e7c576f7c4d7ed64f1acad4265fc436eae1b7dd4445aab1802ae",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Producer-complete cubic class-number results now carry an immutable module-issued live seal bound to their exact field, source result, certificate, factor base, relations, presentation, and diagnostics. Public class_number validates that seal on initial insertion and every cache read without invoking detached arithmetic replay. Direct constructors, transferred seals, detached wrappers, and later mutation fail closed; from_dict retains full exact replay.",
+    "risks": [
+      "Live acceptance relies on the same module-private issuance-token convention as AuthenticatedBuchmannLenstraProjection; detached or cross-process artifacts deliberately require full replay.",
+      "The source snapshot serializes live relation metadata on each cache read; measured cached acceptance is 0.224s for the h=3 cubic, versus about 41s for detached replay."
+    ],
+    "next_steps": [
+      "Central integration should rerun the broad number-field and platform gates.",
+      "The producer itself remains about 7.45s on the measured h=3 cubic; this change removes replay overhead rather than optimizing relation collection."
+    ]
+  }
+}
