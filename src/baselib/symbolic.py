@@ -33,6 +33,20 @@ _CONSTANT_NAMES = {
 }
 
 
+_optimization_module_cache = runtime.undefined
+
+
+def _optimization_module() -> Any:
+    """Load the lazy numerical optimization package on first use."""
+    global _optimization_module_cache
+    if _optimization_module_cache is runtime.undefined:
+        _optimization_module_cache = __import__(
+            "sagejs.optimization.sage_api",
+            fromlist=["sage_api"],
+        )
+    return _optimization_module_cache
+
+
 def _backend() -> Any:
     backend = _backend_state["value"]
     if backend is None:
@@ -674,26 +688,19 @@ class Expression(sage.Element):
             if accelerated is not runtime.undefined:
                 return float(accelerated)
         evaluator = fast_callable(expression, vars=variables)
-        left_value = float(evaluator(left))
-        right_value = float(evaluator(right))
-        if left_value == 0:
-            return left
-        if right_value == 0:
-            return right
-        if left_value * right_value > 0:
-            raise RuntimeError("f appears to have no zero on the interval")
-        for _index in range(int(maxiter)):
-            middle = (left + right) / 2.0
-            middle_value = float(evaluator(middle))
-            if middle_value == 0 or abs(right - left) <= float(xtol):
-                return middle
-            if left_value * middle_value <= 0:
-                right = middle
-                right_value = middle_value
-            else:
-                left = middle
-                left_value = middle_value
-        return (left + right) / 2.0
+
+        def value_at(point: float) -> float:
+            return float(evaluator(point))
+
+        return float(
+            _optimization_module().find_root(
+                value_at,
+                left,
+                right,
+                xtol=float(xtol),
+                maxiter=int(maxiter),
+            )
+        )
 
     def _relation(self, head: str, other: Any) -> Expression:
         return Expression(
@@ -2579,12 +2586,38 @@ def solve(
 
 
 def find_root(
-    expression: Any,
-    lower: Any,
-    upper: Any,
+    f: Any,
+    a: Any,
+    b: Any,
     **options: Any,
-) -> float:
-    return SR(expression).find_root(lower, upper, **options)
+) -> Any:
+    return _optimization_module().find_root(f, a, b, **options)
+
+
+def find_local_minimum(
+    f: Any,
+    a: Any,
+    b: Any,
+    **options: Any,
+) -> tuple[float, float]:
+    return _optimization_module().find_local_minimum(f, a, b, **options)
+
+
+def find_local_maximum(
+    f: Any,
+    a: Any,
+    b: Any,
+    **options: Any,
+) -> tuple[float, float]:
+    return _optimization_module().find_local_maximum(f, a, b, **options)
+
+
+def minimize(
+    func: Any,
+    x0: Any,
+    **options: Any,
+) -> Any:
+    return _optimization_module().minimize(func, x0, **options)
 
 
 def numerical_approx(

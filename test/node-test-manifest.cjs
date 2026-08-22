@@ -336,6 +336,7 @@ const integration = [
   "test/number-field-zeta-coefficients.cjs",
   "test/number-field-zeta-wasm-dispatch.cjs",
   "test/polynomial-ideals.cjs",
+  "test/optimization.cjs",
   "test/symbolic.cjs",
   "test/algebraic-numbers.cjs",
   "test/spectral-linear-algebra.cjs",
