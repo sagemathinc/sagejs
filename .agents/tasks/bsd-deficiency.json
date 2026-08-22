@@ -44,10 +44,61 @@
     "node bin/sagejs src/lib/sagejs/hyperelliptic_curves/_test_deficiency.py",
     "python3 -m json.tool src/lib/sagejs/hyperelliptic_curves/testdata/deficiency.json"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "python3 -I -m py_compile src/lib/sagejs/hyperelliptic_curves/deficiency.py src/lib/sagejs/hyperelliptic_curves/_test_deficiency.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.076,
+      "started_at": "2026-08-22T06:08:57.530Z",
+      "commit": "c7953e6aa12c7b0eea419b574d17552c55be617a",
+      "workspace_fingerprint": "cff884ef4eacc84d2df2dd4a6fd567b64b5014ccc4cfb61f9c1dd314a3a18c00",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/deficiency.py src/lib/sagejs/hyperelliptic_curves/_test_deficiency.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.599,
+      "started_at": "2026-08-22T06:08:58.321Z",
+      "commit": "c7953e6aa12c7b0eea419b574d17552c55be617a",
+      "workspace_fingerprint": "cff884ef4eacc84d2df2dd4a6fd567b64b5014ccc4cfb61f9c1dd314a3a18c00",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bin/sagejs src/lib/sagejs/hyperelliptic_curves/_test_deficiency.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.029,
+      "started_at": "2026-08-22T06:09:00.609Z",
+      "commit": "c7953e6aa12c7b0eea419b574d17552c55be617a",
+      "workspace_fingerprint": "cff884ef4eacc84d2df2dd4a6fd567b64b5014ccc4cfb61f9c1dd314a3a18c00",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m json.tool src/lib/sagejs/hyperelliptic_curves/testdata/deficiency.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.055,
+      "started_at": "2026-08-22T06:09:02.408Z",
+      "commit": "c7953e6aa12c7b0eea419b574d17552c55be617a",
+      "workspace_fingerprint": "cff884ef4eacc84d2df2dd4a6fd567b64b5014ccc4cfb61f9c1dd314a3a18c00",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented replayable local deficiency certificates for genus-2/3 curves over QQ and exact global Poonen--Stoll parity assembly. The local envelope includes the odd-genus degree-2 fibre theorem, exact real genus-2 Sturm decisions, rational local-point/Hensel witnesses, good-reduction component witnesses, split-cluster and ordinary-nodal semistable witnesses, and odd-prime Poonen--Stoll Lemmas 15--16 including certified obstructions. Published examples agree at every recorded place with Magma IsDeficient. The API freezes local_deficiency/is_deficient and GlobalDeficiencyDiagnostic schemas; integration owns public model bindings.",
+    "risks": [
+      "Bad 2-adic places are certified only when an explicit local point witness is found; wild deficiency otherwise remains unsupported.",
+      "A nonsplit two-component ordinary-nodal certificate is left unsupported because current reduction data omits node thicknesses needed to replay Theorem 12.4 safely.",
+      "Almost-good cases use the exact Poonen--Stoll criteria on the normalized branch model; inconclusive exceptional-square cases remain unsupported.",
+      "The required repository-wide architecture, strict-baselib, and native gates are deliberately deferred to integration per coordination; focused source, type, runtime, and fixture receipts pass."
+    ],
+    "next_steps": [
+      "Expose the frozen result objects and curve methods from the integration lane and include their modules in the repository strict-Pyright registry.",
+      "Attach the global deficiency diagnostic to the BSD result without inspecting or rounding the analytic quotient.",
+      "Enrich semistable certificates with cluster Frobenius orbits, epsilon signs, and node depths/thicknesses to implement the remaining Theorem 12.4 cases.",
+      "Extend the local engine to regular-model and certified wild 2-adic envelopes."
+    ]
   }
 }
