@@ -1502,15 +1502,23 @@ class ClassUnitGroupEngine:
     def _specialized(self) -> ClassUnitComputation | None:
         if self.algorithm != "auto" or self.field.degree() > 3:
             return None
-        if (
-            self.field.degree() == 3
-            and self._authenticated_cubic_relation_seed() is not None
+        cubic_artifact = getattr(
+            self.field, "_bounded_cubic_class_number_artifact", None
+        )
+        cubic_size_decline = bool(
+            getattr(cubic_artifact, "diagnostics", {}).get(
+                "relation_seed_size_policy_exceeded", False
+            )
+        )
+        if self.field.degree() == 3 and (
+            self._authenticated_cubic_relation_seed() is not None or cubic_size_decline
         ):
             # The public bounded cubic producer has already completed the
-            # same small-field decision and retained an exact relation prefix.
-            # Re-running the unrelated bounded class enumeration and 125-term
-            # unit box cannot complete this field and only delays the general
-            # relation engine that consumes that authenticated prefix.
+            # same small-field decision and either retained an exact relation
+            # prefix or proved that its unconditional factor base exceeds the
+            # conditional reuse policy.  Re-running the unrelated bounded
+            # class enumeration and 125-term unit box cannot complete this
+            # field and only delays the general relation engine.
             self._resource_usage["cubic_specialized_seed_skips"] += 1
             return None
         started = self._phase_start()
