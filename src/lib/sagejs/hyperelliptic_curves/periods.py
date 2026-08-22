@@ -41,6 +41,7 @@ capability checks succeed.
 
 from __future__ import annotations
 
+import json
 from itertools import permutations
 from math import ceil, isfinite
 from typing import Any
@@ -83,6 +84,21 @@ def _clone_data(value: Any) -> Any:
     if isinstance(value, tuple):
         return tuple(_clone_data(item) for item in value)
     return value
+
+
+def _sealed_payload(value: Any) -> str:
+    """Freeze one JSON-like result tree into an immutable canonical string."""
+    return json.dumps(
+        _clone_data(value), sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    )
+
+
+def _payload_data(value: str) -> dict[str, Any]:
+    """Return a detached mutable view without exposing sealed result state."""
+    answer = json.loads(value)
+    if not isinstance(answer, dict):
+        raise TypeError("a sealed hyperelliptic result payload must be a record")
+    return answer
 
 
 def _validated_provenance(value: Any, path: str = "provenance") -> Any:
@@ -1347,14 +1363,45 @@ class AbelJacobiResult:
         period_result: HyperellipticPeriodResult,
         cache_hit: bool,
     ) -> None:
-        self._curve = curve
-        self._points = tuple(points)
-        self._data = _clone_data(data)
-        self.period_result = period_result
-        self.precision_bits = int(data["precision_bits"])
-        self.genus = int(data["genus"])
-        self.cache_hit = bool(cache_hit)
-        self.rigorous = False
+        self.__curve = curve
+        self.__points = tuple(points)
+        self.__data_payload = _sealed_payload(data)
+        self.__period_result = period_result
+        self.__precision_bits = int(data["precision_bits"])
+        self.__genus = int(data["genus"])
+        self.__cache_hit = bool(cache_hit)
+
+    @property
+    def _curve(self) -> Any:
+        return self.__curve
+
+    @property
+    def _points(self) -> tuple[Any, ...]:
+        return self.__points
+
+    @property
+    def _data(self) -> dict[str, Any]:
+        return _payload_data(self.__data_payload)
+
+    @property
+    def period_result(self) -> HyperellipticPeriodResult:
+        return self.__period_result
+
+    @property
+    def precision_bits(self) -> int:
+        return self.__precision_bits
+
+    @property
+    def genus(self) -> int:
+        return self.__genus
+
+    @property
+    def cache_hit(self) -> bool:
+        return self.__cache_hit
+
+    @property
+    def rigorous(self) -> bool:
+        return False
 
     def __repr__(self) -> str:
         return (
@@ -1389,7 +1436,7 @@ class AbelJacobiResult:
                 and self.genus == self.period_result.genus
             )
             checks["period_precision_sufficient"] = (
-                self.precision_bits <= self.period_result.precision_bits
+                self.precision_bits <= self.period_result.achieved_stability_bits
             )
             support = [_point_key(point) for point in self._points]
             checks["support_bound"] = support == self._data["support"]
@@ -1496,16 +1543,54 @@ class HyperellipticPeriodResult:
         normalization_data: dict[str, Any],
         cache_hit: bool,
     ) -> None:
-        self._curve = curve
-        self._model_data = _clone_data(model_data)
-        self._normalization = _clone_data(normalization_data)
-        self.cache_hit = bool(cache_hit)
-        self.rigorous = False
-        self.arithmetic_balls_rigorous = False
-        self.precision_bits = int(model_data["requested_precision_bits"])
-        self.achieved_stability_bits = int(model_data["achieved_stability_bits"])
-        self.genus = int(model_data["genus"])
-        self.normalization_status = str(normalization_data["status"])
+        self.__curve = curve
+        self.__model_payload = _sealed_payload(model_data)
+        self.__normalization_payload = _sealed_payload(normalization_data)
+        self.__cache_hit = bool(cache_hit)
+        self.__precision_bits = int(model_data["requested_precision_bits"])
+        self.__achieved_stability_bits = int(model_data["achieved_stability_bits"])
+        self.__genus = int(model_data["genus"])
+        self.__normalization_status = str(normalization_data["status"])
+
+    @property
+    def _curve(self) -> Any:
+        return self.__curve
+
+    @property
+    def _model_data(self) -> dict[str, Any]:
+        return _payload_data(self.__model_payload)
+
+    @property
+    def _normalization(self) -> dict[str, Any]:
+        return _payload_data(self.__normalization_payload)
+
+    @property
+    def cache_hit(self) -> bool:
+        return self.__cache_hit
+
+    @property
+    def rigorous(self) -> bool:
+        return False
+
+    @property
+    def arithmetic_balls_rigorous(self) -> bool:
+        return False
+
+    @property
+    def precision_bits(self) -> int:
+        return self.__precision_bits
+
+    @property
+    def achieved_stability_bits(self) -> int:
+        return self.__achieved_stability_bits
+
+    @property
+    def genus(self) -> int:
+        return self.__genus
+
+    @property
+    def normalization_status(self) -> str:
+        return self.__normalization_status
 
     def __repr__(self) -> str:
         value = self.value()
@@ -1885,13 +1970,14 @@ def abel_jacobi(
         "model_key"
     ] != _model_key(curve):
         raise ValueError("the supplied period result belongs to a different curve")
-    elif requested_bits > period_result.precision_bits:
+    elif requested_bits > period_result.achieved_stability_bits:
         raise HyperellipticPeriodCapabilityError(
             "period_precision_too_low",
-            "Abel--Jacobi precision cannot exceed the supplied period-lattice precision",
+            "Abel--Jacobi precision cannot exceed the achieved stability of the supplied period lattice",
             {
                 "requested_precision_bits": requested_bits,
                 "period_precision_bits": period_result.precision_bits,
+                "period_achieved_stability_bits": period_result.achieved_stability_bits,
             },
         )
     points = _split_points(curve, point_or_split_mumford)
