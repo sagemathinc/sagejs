@@ -348,6 +348,17 @@ assert isinstance(certificate1083, CubicMinkowskiClassNumberCertificate)
 assert len(certificate1083.obstructions) == 1
 assert certificate1083.obstructions[0]["modulus"] == 19
 assert certificate1083.verify()
+# The presentation was replayed once when the immutable certificate was
+# constructed; reading its certified order must not deserialize the SNF again.
+matrix_module = __import__(
+    "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
+)
+presentation_from_dict = matrix_module.RelationPresentation.from_dict
+def forbidden_presentation_replay(value):
+    raise AssertionError("class_number replayed its immutable presentation")
+matrix_module.RelationPresentation.from_dict = forbidden_presentation_replay
+assert certificate1083.class_number == 3
+matrix_module.RelationPresentation.from_dict = presentation_from_dict
 try:
     certificate1083.verify(cancelled=lambda: True)
     raise AssertionError("detached cubic proof replay ignored cancellation")

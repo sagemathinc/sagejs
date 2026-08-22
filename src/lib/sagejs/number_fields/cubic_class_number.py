@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from typing import Any, Callable
@@ -339,7 +340,40 @@ class CubicMinkowskiClassNumberCertificate:
         self._caps_json = _canonical_json(caps)
         self.proof_status = "exact-unconditional"
         self.source = "exact Minkowski relations with modular cubic norm obstructions"
-        self._content_sha256 = _content_hash(self._body_dict())
+        # Keep one canonical immutable body instead of reparsing all six
+        # component strings and serializing the resulting tree again whenever
+        # the certificate is hashed or exported.  The explicit key order below
+        # is the lexicographic order used by `_canonical_json`, so this remains
+        # byte-for-byte compatible with the detached certificate format.
+        self._body_json = (
+            '{"caps":'
+            + self._caps_json
+            + ',"factor_base":'
+            + self._factor_base_json
+            + ',"obstructions":'
+            + self._obstructions_json
+            + ',"plan":'
+            + self._plan_json
+            + ',"presentation":'
+            + self._presentation_json
+            + ',"proof_status":'
+            + _canonical_json(self.proof_status)
+            + ',"relations":'
+            + self._relations_json
+            + ',"schema":'
+            + _canonical_json(CUBIC_CLASS_NUMBER_CERTIFICATE_SCHEMA)
+            + "}"
+        )
+        self._content_sha256 = hashlib.sha256(
+            self._body_json.encode("utf-8")
+        ).hexdigest()
+        matrix_module = __import__(
+            "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
+        )
+        presentation_replay = matrix_module.RelationPresentation.from_dict(presentation)
+        if presentation_replay.order is None:
+            raise ValueError("a cubic class-number certificate must have finite order")
+        self._class_number = int(presentation_replay.order)
         runtime.object.freeze(self)
 
     @property
@@ -368,24 +402,10 @@ class CubicMinkowskiClassNumberCertificate:
 
     @property
     def class_number(self) -> int:
-        matrix_module = __import__(
-            "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
-        )
-        return int(
-            matrix_module.RelationPresentation.from_dict(self.presentation).order
-        )
+        return self._class_number
 
     def _body_dict(self) -> dict[str, Any]:
-        return {
-            "schema": CUBIC_CLASS_NUMBER_CERTIFICATE_SCHEMA,
-            "plan": self.plan,
-            "factor_base": self.factor_base,
-            "relations": self.relations,
-            "presentation": self.presentation,
-            "obstructions": self.obstructions,
-            "caps": self.caps,
-            "proof_status": self.proof_status,
-        }
+        return json.loads(self._body_json)
 
     def to_dict(self) -> dict[str, Any]:
         body = self._body_dict()
@@ -397,7 +417,10 @@ class CubicMinkowskiClassNumberCertificate:
 
     def verify(self, *, cancelled: Callable[[], bool] | None = None) -> bool:
         try:
-            if _content_hash(self._body_dict()) != self._content_sha256:
+            if (
+                hashlib.sha256(self._body_json.encode("utf-8")).hexdigest()
+                != self._content_sha256
+            ):
                 return False
             caps = self.caps
             replay_limits = {
@@ -665,6 +688,8 @@ def _cubic_class_number_result_snapshot(result: CubicClassNumberResult) -> Any:
                 "presentation_json": certificate._presentation_json,
                 "obstructions_json": certificate._obstructions_json,
                 "caps_json": certificate._caps_json,
+                "body_json": certificate._body_json,
+                "class_number": certificate._class_number,
                 "proof_status": certificate.proof_status,
                 "source": certificate.source,
                 "content_sha256": certificate._content_sha256,
