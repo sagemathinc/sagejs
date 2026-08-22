@@ -1679,6 +1679,7 @@ def split_mumford_archimedean_pairing(
     period_result: Any | None = None,
     prec: int = 128,
     theta_radius: int | None = None,
+    abel_max_refinements: int = 3,
     limits: Genus3HeightLimits = DEFAULT_HEIGHT_LIMITS,
 ) -> ArchimedeanPairing:
     """Compute the real symbol for a split Mumford Holmes representative.
@@ -1689,6 +1690,10 @@ def split_mumford_archimedean_pairing(
     chosen Abel--Jacobi lift is sufficient because the complete
     theta/quadratic expression is lattice-invariant.
     """
+    abel_refinements = _positive_integer(
+        abel_max_refinements,
+        "abel_max_refinements",
+    )
     if not move.automatic_archimedean_supported:
         raise Genus3HeightCapabilityError(
             "the automatic theta path currently requires Mumford degree three",
@@ -1732,6 +1737,7 @@ def split_mumford_archimedean_pairing(
             period_result=active_period_result,
             basepoint="infinity",
             prec=prec,
+            max_refinements=abel_refinements,
         )
         raw_vector = abel_result.vector_pairs()
         abel_verification = abel_result.verify()
@@ -1770,7 +1776,8 @@ def split_mumford_archimedean_pairing(
                 limits=limits,
             )
         )
-    value = mp.fsum(piece.value for piece in pieces)
+    with mp.workprec(prec + 32):
+        value = +mp.fsum(piece.value for piece in pieces)
     return ArchimedeanPairing(
         value,
         precision=prec,
@@ -2129,10 +2136,11 @@ class ArchimedeanPairing:
         certificate: Mapping[str, Any],
         _verification: Any = None,
     ) -> None:
-        self.value = _mpf_value(value)
+        self.precision = _positive_integer(precision, "precision")
+        with mp.workprec(self.precision + 32):
+            self.value = +_mpf_value(value)
         if not mp.isfinite(self.value):
             raise ValueError("an archimedean pairing must be finite")
-        self.precision = _positive_integer(precision, "precision")
         self.refinement_stability_claimed = bool(refinement_stable)
         self._verification = (
             _verification
@@ -2589,6 +2597,7 @@ def automatic_split_mumford_canonical_height(
     extra_primes: Any = (),
     prec: int = 128,
     theta_radius: int | None = None,
+    abel_max_refinements: int = 3,
     limits: Genus3HeightLimits = DEFAULT_HEIGHT_LIMITS,
 ) -> Genus3CanonicalHeightResult:
     """Run the complete supported split-Mumford height pipeline.
@@ -2612,6 +2621,7 @@ def automatic_split_mumford_canonical_height(
             period_result=period_result,
             prec=prec,
             theta_radius=theta_radius,
+            abel_max_refinements=abel_max_refinements,
             limits=limits,
         )
         if supplied_archimedean is None

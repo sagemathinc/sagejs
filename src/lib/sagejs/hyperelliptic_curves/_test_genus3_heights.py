@@ -196,6 +196,17 @@ def test_split_mumford_move():
         provenance={"fixture": "normalization only"},
     )
     assert not archimedean.rigorous and not archimedean.refinement_stable
+    with mp.workprec(180):
+        high_precision_value = mp.mpf("1.123456789012345678901234567890123456789")
+        high_precision_archimedean = supplied_archimedean_pairing(
+            high_precision_value,
+            prec=128,
+            rigorous=False,
+            provenance={"fixture": "precision preservation"},
+        )
+    assert mp.nstr(high_precision_archimedean.value, 39) == (
+        "1.12345678901234567890123456789012345679"
+    )
     try:
         split_mumford_canonical_height(
             move,
@@ -213,6 +224,15 @@ def test_split_mumford_move():
         jacobian([x_value * (x_value - 1), ring(1)]), moving_x=4
     )
     assert not degree_two.automatic_archimedean_supported
+    try:
+        split_mumford_archimedean_pairing(
+            degree_two,
+            abel_max_refinements=0,
+        )
+    except ValueError as error:
+        assert "positive integer" in str(error)
+    else:
+        raise AssertionError("an invalid Abel--Jacobi refinement budget was accepted")
     try:
         split_mumford_archimedean_pairing(degree_two)
     except Genus3HeightCapabilityError as error:

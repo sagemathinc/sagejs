@@ -325,6 +325,27 @@ intersection plan, and compatible period/theta data.  Missing component maps,
 bad reduction at `2`, nonsplit support, or unresolved theta data produce a
 structured capability error rather than an incomplete height.
 
+The Abel--Jacobi and theta refinement budgets are explicit.  A difficult
+supported divisor can be retried without changing the mathematics:
+
+```python
+hP = P.canonical_height(
+    moving_x=3,
+    prec=64,
+    abel_max_refinements=6,
+    theta_radius=6,
+)
+```
+
+The checked Magma V2.18-5 genus-3 oracle in
+`test/hyperelliptic-bsd-oracles/` compares exactly this bounded public route
+with Magma after the polarization-preserving change `Y=2*y+1`.  The finite
+support is certified at six primes, and the complete numerical height agrees
+with Magma to about 20 significant decimal digits.  This is a
+refinement-stable numerical comparison, not a rigorous analytic enclosure;
+the default smaller refinement budget still fails closed on that deliberately
+difficult fixture.
+
 ## Saturation and subgroup indices
 
 Saturation keeps distinct the following statements:
@@ -352,6 +373,31 @@ remain conditional.  A probable analytic rank is never used as a full-rank
 proof.  Proved algebraic-rank, Selmer, torsion, or index inputs use the
 explicit `*_provenance` and registered `assumption_verifiers` interface; a
 mapping containing only `proved=True` is intentionally insufficient.
+
+When a saturation result proves the full Mordell--Weil group using only the
+closed Sage.js verifier authorities, it can unlock `analytic_sha()` without a
+free-form certificate:
+
+```python
+from sagejs.hyperelliptic_curves.bsd import (
+    subgroup_index_certificate_from_saturation,
+)
+
+certificate = subgroup_index_certificate_from_saturation(
+    report.arithmetic_input(),
+    S,
+)
+proved = report.with_subgroup_index(
+    S.index_factor_from_input,
+    certificate=certificate,
+)
+print(proved.analytic_sha())
+```
+
+The replay reconstructs the exact `QQ` curve, ordered Mumford basis,
+regulator binding, rank/full-group proof, and original-basis index.  A
+saturation run depending on an arbitrary caller callback remains
+`external_unverified`; it can be stored, but cannot enable `analytic_sha()`.
 
 ## Deterministic persistence
 
