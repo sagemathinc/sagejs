@@ -204,6 +204,20 @@ const PYTHON_KEYWORDS = new Set([
   "while", "with", "yield",
 ]);
 
+/**
+ * Wolfram global-optimization heads that lower straight to their `wolfram`
+ * module counterparts. Their second argument names the optimization
+ * variables, which are declared as Sage symbols the way plot ranges are.
+ */
+const OPTIMIZATION_HEADS = new Set([
+  "NArgMax",
+  "NArgMin",
+  "NMaxValue",
+  "NMaximize",
+  "NMinValue",
+  "NMinimize",
+]);
+
 class SageLowerer {
   private readonly names = new Map<string, string>();
   private readonly plotVariables = new Set<string>();
@@ -377,6 +391,9 @@ class SageLowerer {
       return this.graphicsCall(expression, head);
     }
     if (head === "Show") return this.showCall(expression);
+    if (OPTIMIZATION_HEADS.has(head)) {
+      return this.optimizationCall(expression, head);
+    }
     const graphicsHeads: Record<string, string> = {
       Arrow: "Arrow",
       Circle: "Circle",
@@ -671,6 +688,57 @@ class SageLowerer {
     return `_wolfram.${operation}(${items}, ${
       this.optionRecords(expression.arguments.slice(1))
     }, ${this.intentLiteral(expression, operation)})`;
+  }
+
+  /**
+   * Collect the variable symbols named by an `NMinimize`-style second
+   * argument: a bare symbol, `{x, y}`, or `{{x, a, b}, ...}`. The numbers in
+   * a `{x, a, b}` specification are skipped, so only real variables are
+   * declared.
+   */
+  private optimizationVariables(node: WolframExpression): string[] {
+    if (node.kind === "symbol") return [node.name];
+    if (node.kind !== "list") return [];
+    const names: string[] = [];
+    for (const element of node.elements) {
+      if (element.kind === "symbol") {
+        names.push(element.name);
+      } else if (
+        element.kind === "list" && element.elements[0]?.kind === "symbol"
+      ) {
+        names.push(element.elements[0].name);
+      }
+    }
+    return names;
+  }
+
+  private optimizationCall(
+    expression: CallExpression,
+    head: string,
+  ): string {
+    if (expression.arguments.length < 2) {
+      throw new WolframSyntaxError(
+        `${head} requires an objective and a variable specification`,
+        expression.span,
+      );
+    }
+    if (expression.arguments.length > 2) {
+      // Rule expressions are lowered only inside plot and graphics option
+      // lists, so `Method -> "NelderMead"` has nowhere to go here. Say so
+      // rather than dropping the option silently; the Python entry points
+      // in `wolfram.py` take `method=` and `method_options=` directly.
+      throw new WolframSyntaxError(
+        `${head} options are not supported yet: Rule expressions do not ` +
+          `lower to keyword arguments outside plot options`,
+        expression.span,
+      );
+    }
+    for (const symbol of this.optimizationVariables(expression.arguments[1])) {
+      this.plotVariables.add(this.name(symbol));
+    }
+    return `_wolfram.${head}(${
+      this.expression(expression.arguments[0])
+    }, ${this.expression(expression.arguments[1])})`;
   }
 
   private showCall(expression: CallExpression): string {
