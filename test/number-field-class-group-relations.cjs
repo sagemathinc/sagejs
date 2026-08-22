@@ -147,7 +147,18 @@ class Context: pass
 context = Context()
 context.relations = []
 context.add_relation = lambda relation: context.relations.append(relation)
-collector = ExactRelationCollector(O, factor_base, context=context)
+factor_base_validation_calls = 0
+saved_validate_factor_base = relation_module._validate_factor_base
+def counted_validate_factor_base(*args, **kwargs):
+    global factor_base_validation_calls
+    factor_base_validation_calls += 1
+    return saved_validate_factor_base(*args, **kwargs)
+relation_module._validate_factor_base = counted_validate_factor_base
+try:
+    collector = ExactRelationCollector(O, factor_base, context=context)
+finally:
+    relation_module._validate_factor_base = saved_validate_factor_base
+assert factor_base_validation_calls == 1
 order_type = type(O)
 saved_factor_rational_prime = order_type.factor_rational_prime
 def forbidden_refactor(self, rational_prime, *args, **kwargs):
@@ -172,6 +183,30 @@ assert collector_cache["retained_ideal_objects"] <= (
     collector_cache["max_retained_ideal_objects"]
 )
 assert collector.admission_receipt_diagnostics()["integral_norm_certificates"] == len(initial)
+
+# Exact order-basis coordinates prove integrality by construction while
+# retaining the identical relation record and detached replay payload.
+coordinate_collector = ExactRelationCollector(O, factor_base)
+saved_order_contains = order_type.__contains__
+def forbidden_order_membership(self, value):
+    raise AssertionError("order-coordinate admission repeated membership")
+order_type.__contains__ = forbidden_order_membership
+try:
+    coordinate_admission = coordinate_collector.admit_integral_order_basis_row(
+        (2, 0),
+        initial[0].record.row,
+        provenance=initial[0].record.provenance,
+    )
+finally:
+    order_type.__contains__ = saved_order_contains
+assert coordinate_admission.record.to_dict() == initial[0].record.to_dict()
+try:
+    coordinate_collector.admit_integral_order_basis_row(
+        (2,), initial[0].record.row
+    )
+    raise AssertionError("a short order-coordinate row was accepted")
+except ValueError:
+    pass
 
 # Live admission receipts bind the collector's exact order and factor-base
 # objects plus the complete canonical record payload.  Public/detached replay

@@ -47,6 +47,7 @@ DEFAULT_RANK_PRIME = 2_147_483_647
 DEFAULT_RECONSTRUCTION_ROW_CACHE_SIZE = 512
 DEFAULT_FACTOR_POWER_CACHE_SIZE = 512
 DEFAULT_ADMISSION_RECEIPT_CACHE_SIZE = 64
+_VALIDATED_FACTOR_BASE_TOKEN = object()
 _U64_MASK = (1 << 64) - 1
 _IDEAL_REDUCTION_STATE_KEYS = {
     "schema",
@@ -464,9 +465,14 @@ class FactorBaseIdealReconstructor:
         *,
         max_rows: int = DEFAULT_RECONSTRUCTION_ROW_CACHE_SIZE,
         max_powers: int = DEFAULT_FACTOR_POWER_CACHE_SIZE,
+        _validated_token: Any = None,
     ) -> None:
         self.order = order
-        self.factor_base = _validate_factor_base(order, factor_base)
+        self.factor_base = (
+            tuple(factor_base)
+            if _validated_token is _VALIDATED_FACTOR_BASE_TOKEN
+            else _validate_factor_base(order, factor_base)
+        )
         self.max_rows = _checked_nonnegative(max_rows, "reconstruction row cache size")
         self.max_powers = _checked_nonnegative(max_powers, "factor-power cache size")
         self._rows: dict[tuple[int, ...], Any] = {}
@@ -975,11 +981,13 @@ class ExactRelationCollector:
             self.factor_base,
             max_rows=max_reconstructed_ideals,
             max_powers=max_factor_powers,
+            _validated_token=_VALIDATED_FACTOR_BASE_TOKEN,
         )
         self.rank_screen = ModularRankScreen(len(self.factor_base), rank_prime)
         self.records: list[RelationRecord] = []
         self.admissions: list[RelationAdmission] = []
         self.context = context
+        self._order_basis: tuple[Any, ...] | None = None
         self._keys: set[str] = set()
         self.max_admission_receipts = _checked_nonnegative(
             max_admission_receipts, "admission receipt cache size"
@@ -1232,8 +1240,55 @@ class ExactRelationCollector:
         order, retain the general reconstructed-ideal check.  Detached replay
         remains unchanged and rebuilds the complete principal ideal again.
         """
-        element = self.order.number_field()(generator)
-        if element.is_zero() or element not in self.order:
+        return self._admit_integral_generator_row(
+            self.order.number_field()(generator),
+            principal_row,
+            provenance=provenance,
+            known_order_element=False,
+        )
+
+    def admit_integral_order_basis_row(
+        self,
+        coordinates: Iterable[int],
+        principal_row: Iterable[int],
+        *,
+        provenance: dict[str, Any] | None = None,
+    ) -> RelationAdmission:
+        """Admit an integral generator constructed from exact order coordinates.
+
+        The coordinate construction itself proves order membership.  Every
+        norm, factor-base row, and prime-power containment check remains the
+        same as `admit_integral_generator_row`, and detached replay still
+        rebuilds the complete principal ideal independently.
+        """
+        values = tuple(
+            _checked_integer(value, "an order-basis coordinate")
+            for value in coordinates
+        )
+        if len(values) != int(self.order.degree()):
+            raise ValueError("an integral generator has the wrong coordinate width")
+        if self._order_basis is None:
+            self._order_basis = tuple(self.order.basis())
+        field = self.order.number_field()
+        element = field(0)
+        for coefficient, basis_element in zip(values, self._order_basis, strict=True):
+            element += coefficient * basis_element
+        return self._admit_integral_generator_row(
+            element,
+            principal_row,
+            provenance=provenance,
+            known_order_element=True,
+        )
+
+    def _admit_integral_generator_row(
+        self,
+        element: Any,
+        principal_row: Iterable[int],
+        *,
+        provenance: dict[str, Any] | None,
+        known_order_element: bool,
+    ) -> RelationAdmission:
+        if element.is_zero() or (not known_order_element and element not in self.order):
             raise ValueError(
                 "a sieved relation generator must be a nonzero order element"
             )

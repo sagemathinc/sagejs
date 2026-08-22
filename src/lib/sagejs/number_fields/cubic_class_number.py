@@ -360,14 +360,30 @@ def _select_cubic_relation_candidates(
         )
         if any(index < 0 or index >= len(candidates) for index in selected_indices):
             return None
+        target_index = (
+            abs(matrix_module._determinant_exact(basis)) if rank == width else None
+        )
         cursor = 0
         while cursor < len(selected_indices):
             trial_indices = selected_indices[:cursor] + selected_indices[cursor + 1 :]
             trial_rows = list(initial_rows) + [
                 candidates[index][0] for index in trial_indices
             ]
-            trial_basis = matrix_module.exact_relation_hnf_basis(trial_rows, width)
-            if trial_basis == basis:
+            if len(trial_rows) < rank:
+                cursor += 1
+                continue
+            if target_index is not None and len(trial_rows) == width:
+                # These rows generate a sublattice of the authenticated full
+                # source lattice.  Equal nonzero determinant gives equal
+                # index in `Z^width`, hence the same lattice, without another
+                # HNF and transform construction for every deletion trial.
+                same_lattice = (
+                    abs(matrix_module._determinant_exact(trial_rows)) == target_index
+                )
+            else:
+                trial_basis = matrix_module.exact_relation_hnf_basis(trial_rows, width)
+                same_lattice = trial_basis == basis
+            if same_lattice:
                 selected_indices = trial_indices
             else:
                 cursor += 1
@@ -1556,19 +1572,14 @@ def bounded_cubic_minkowski_class_number(
     sieve_admitted = 0
     if selected_sieve_candidates is not None:
         try:
-            basis = tuple(engine.order.basis())
-            for row, coordinates, expected_norm in selected_sieve_candidates:
-                element = engine.order.number_field()(0)
-                for coefficient, basis_element in zip(coordinates, basis, strict=True):
-                    element += coefficient * basis_element
-                if abs(
-                    _integer_rational(element.norm(), "a sieved element norm")
-                ) != abs(expected_norm):
-                    raise ArithmeticError(
-                        "packed cubic relation has the wrong exact element norm"
-                    )
-                collector.admit_integral_generator_row(
-                    element,
+            for row, coordinates, _expected_norm in selected_sieve_candidates:
+                # The packed norm only selected this proposal.  Integral
+                # admission independently recomputes the exact element norm,
+                # matches it to the complete factor-base row, and checks every
+                # required prime-power containment; do not repeat that norm
+                # computation here.
+                collector.admit_integral_order_basis_row(
+                    coordinates,
                     row,
                     provenance={
                         "algorithm": "packed-cubic-integral-relation-sieve",
@@ -1688,20 +1699,12 @@ def bounded_cubic_minkowski_class_number(
         if not dependency_candidates:
             return
         started = time.perf_counter()
-        basis = tuple(engine.order.basis())
         admitted = 0
-        for row, coordinates, expected_norm in dependency_candidates:
+        for row, coordinates, _expected_norm in dependency_candidates:
             _check_cubic_cancelled(cancelled)
             try:
-                element = engine.order.number_field()(0)
-                for coefficient, basis_element in zip(coordinates, basis, strict=True):
-                    element += coefficient * basis_element
-                if abs(
-                    _integer_rational(element.norm(), "a sieved element norm")
-                ) != abs(expected_norm):
-                    continue
-                collector.admit_integral_generator_row(
-                    element,
+                collector.admit_integral_order_basis_row(
+                    coordinates,
                     row,
                     provenance={
                         "algorithm": "packed-cubic-unit-dependency-seed",
