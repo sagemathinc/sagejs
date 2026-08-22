@@ -305,6 +305,7 @@ print("cubic-class-number-fast-ok")
 test("public cubic fallback resumes its authenticated exact relation prefix", () => {
   const output = runPublic(String.raw`
 import sagejs.number_fields.cubic_class_number as cubic_module
+import sagejs.number_fields.class_unit_groups as class_unit_module
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -322,7 +323,23 @@ assert resources["cubic_relation_seed_relations"] == 3
 assert resources["relation_attempts"] == 6
 assert resources["relation_candidates"] == 6
 assert resources["presentation_extractions"] == 1
+assert resources["saturation_live_authentication_requests"] == 1
+assert resources["saturation_live_authentication_hits"] == 1
+assert resources["saturation_live_authentication_fallback_replays"] == 0
 assert result.diagnostics["relations"] == 7
+record = result.saturation_record
+assert "_live_authentication" not in record.__dict__
+assert not class_unit_module._authenticated_live_saturation_record_matches(
+    record, K, K.maximal_order()
+)
+
+# The authority is only a live optimization hint.  Any mutation invalidates
+# it, and the public verifier still fails closed against the content hash.
+record.reason += " (mutated)"
+assert not class_unit_module._authenticated_live_saturation_record_matches(
+    record, K, K.maximal_order()
+)
+assert not record.verify(K, K.maximal_order())
 
 # A mutated live prefix is only a failed optimization hint.  It cannot enter
 # the engine, and the independent exact computation still returns the answer.
