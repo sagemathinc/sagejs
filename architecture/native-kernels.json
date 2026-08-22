@@ -477,6 +477,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "prime-ideal-candidate-materializer-production",
+      "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+      "functions": ["packed_prime_ideal_candidate_hnf_in_place"],
+      "semantic_domain": "bounded exact construction and canonical row HNF of pO plus a modular maximal-order subspace over compiler-owned IntegerBuffer storage",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "pari"],
+      "benchmark": "bench:number-field-prime-ideal-candidate-kernel",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "number-field-discriminant-prefactor-production",
       "source": "src/lib/sagejs/number_fields/discriminant_prefactor_kernel.py",
       "functions": ["packed_composite_polynomial_split_hint_in_place"],
