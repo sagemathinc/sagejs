@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { existsSync } = require("node:fs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const test = require("node:test");
@@ -9,6 +10,15 @@ const { pathToFileURL } = require("node:url");
 const root = path.resolve(__dirname, "..");
 const packageRoot = path.join(root, "packages", "flint-wasm");
 const requiredRoutes = ["analytic:complex-gamma", "analytic:riemann-xi"];
+const releaseArtifactAvailable = [
+  "wasi-runtime.mjs",
+  "flint-factor.wasm",
+  "production-manifest.json",
+  "build-receipt.json",
+].every((name) => existsSync(path.join(packageRoot, "dist", name)));
+const releaseArtifactSkip = releaseArtifactAvailable
+  ? false
+  : "build the FLINT Wasm release artifact first";
 
 const publicSource = `
 gamma_points = [["0.5","0"],["1","1"],["2.5","-3"],["-0.25","2"]]
@@ -85,7 +95,9 @@ async function importPackage(relative) {
   return import(pathToFileURL(path.join(packageRoot, relative)).href);
 }
 
-test("the real analytic reactor preserves exact and ball evidence", async () => {
+test("the real analytic reactor preserves exact and ball evidence", {
+  skip: releaseArtifactSkip,
+}, async () => {
   const [{ createWasiHost }, { createAnalyticWasmBackend }] = await Promise.all([
     importPackage("dist/wasi-runtime.mjs"),
     importPackage("analytic-backend.mjs"),
@@ -142,7 +154,9 @@ test("the real analytic reactor preserves exact and ball evidence", async () => 
   assert.equal(instance.exports.sagejs_analytic_output_capacity(), 0);
 });
 
-test("public Node-Wasm gamma and xi use two coarse private routes", async () => {
+test("public Node-Wasm gamma and xi use two coarse private routes", {
+  skip: releaseArtifactSkip,
+}, async () => {
   assert.doesNotMatch(publicSource, /runtime|flint_backend|_native/);
   const { createSage } = await importPackage("node-kernel.mjs");
   const sage = await createSage();
@@ -155,7 +169,9 @@ test("public Node-Wasm gamma and xi use two coarse private routes", async () => 
   }
 });
 
-test("public Chromium gamma and xi use the same production reactor", async () => {
+test("public Chromium gamma and xi use the same production reactor", {
+  skip: releaseArtifactSkip,
+}, async () => {
   const [{ chromium }, browserSupport] = await Promise.all([
     import("playwright-core"),
     importPackage("test/browser-wasm-support.mjs"),

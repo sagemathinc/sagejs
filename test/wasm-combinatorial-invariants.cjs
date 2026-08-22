@@ -57,7 +57,12 @@ const descriptors = [
 ];
 
 function discoverToolchain() {
-  const status = resolveToolchain({ root });
+  let status;
+  try {
+    status = resolveToolchain({ root });
+  } catch {
+    return null;
+  }
   if (!status.ready) return null;
   return {
     clang: status.paths.clang,
@@ -164,8 +169,11 @@ async function syntheticManifest(temporary) {
 const toolchain = discoverToolchain();
 
 test("public heavy exact workflows retain an explicit portable route", async () => {
-  const session = await createSage();
+  const previousNativeDisable = process.env.SAGEJS_NATIVE_DISABLE;
+  process.env.SAGEJS_NATIVE_DISABLE = "1";
+  let session;
   try {
+    session = await createSage();
     const result = await session.evaluate([
       "from sagejs.linear_algebra.combinatorial import matrix_permanent, matrix_minors",
       "answer=[]",
@@ -184,7 +192,12 @@ test("public heavy exact workflows retain an explicit portable route", async () 
         "['3', 700, 'portable-computation', 'portable-computation']]",
     );
   } finally {
-    await session.close();
+    await session?.close();
+    if (previousNativeDisable === undefined) {
+      delete process.env.SAGEJS_NATIVE_DISABLE;
+    } else {
+      process.env.SAGEJS_NATIVE_DISABLE = previousNativeDisable;
+    }
   }
 });
 
