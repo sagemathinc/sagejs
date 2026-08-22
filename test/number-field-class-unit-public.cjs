@@ -416,7 +416,7 @@ print("cubic-relation-seed-ok")
   assert.equal(output, "cubic-relation-seed-ok");
 });
 
-test("cubic saturation enlarges exact relations before searching for unit roots", () => {
+test("cubic fallback retains a packed duplicate pair before unit saturation", () => {
   const output = runPublic(String.raw`
 import sagejs.number_fields.class_unit_analytic as analytic_module
 
@@ -424,10 +424,13 @@ R = PolynomialRing(QQ, "x")
 x = R.gen()
 K = NumberField(x**3 - x**2 + 9*x - 21, "a")
 
-# LMFDB 3.1.2856.1 starts with a rigorous hR index bound greater than one.
-# Its authenticated cubic relation prefix can close that index by exact
-# targeted p-relation batches.  The much more expensive bounded p-th-root
-# search is therefore only a fallback and must not run on this path.
+# LMFDB 3.1.2856.1 needed a targeted saturation batch when the packed cubic
+# relation sieve retained only the minimal class-presentation support.  Once
+# the bounded class proof fails, the producer may retain both generators of a
+# duplicate valuation row from its packed candidates (and widen the box only
+# if the primary candidates have none).  The resulting unit quotient is
+# fundamental here, so neither LLL relation saturation nor the much more
+# expensive bounded p-th-root search should run.
 original_saturate_unit_lattice = analytic_module.saturate_unit_lattice
 unit_root_searches = 0
 def forbidden_unit_root_search(*args, **kwargs):
@@ -447,26 +450,31 @@ assert result.proof_status == "exact-unconditional"
 assert result.saturation_record.complete
 assert result.saturation_record.verify()
 resources = result.diagnostics["resources"]
+artifact = K._bounded_cubic_class_number_artifact
+artifact_search = artifact.diagnostics["relation_search"]
+assert artifact_search["integral_sieve_dependency_candidates"] == 2
+assert artifact_search["integral_sieve_dependency_relations"] == 2
+assert artifact_search["integral_sieve_dependency_coefficient_bound"] == 2
+assert artifact.relation_records[-1].provenance["coefficient_bound"] == 2
 assert resources["cubic_relation_seed_uses"] == 1
-assert resources["cubic_relation_seed_relations"] == 7
-assert resources["saturation_rounds"] == 1
-assert resources["relation_attempts"] == 6
-assert resources["relation_candidates"] == 12
+assert resources["cubic_relation_seed_relations"] == 9
+assert resources["saturation_rounds"] == 0
+assert resources["relation_attempts"] == 0
+assert resources["relation_candidates"] == 0
 assert (
     resources["relation_witness_logarithm_requests"]
     - resources["relation_witness_logarithm_cache_hits"]
 ) == resources["relations"]
-assert resources["dependency_unit_materializations"] == 2
+assert resources["dependency_unit_materializations"] == 1
 assert resources["relation_witness_decode_requests"] <= 3 * resources["relations"]
-assert [attempt["prime"] for attempt in result.saturation_record.attempts] == [2]
-assert result.saturation_record.attempts[0]["relations_admitted"] == 12
+assert result.saturation_record.attempts == ()
 
 # The completed unconditional computation also satisfies proof=True without a
 # second relation or analytic pass.
 assert K.class_number(proof=True) == 7
-print("cubic-relation-first-saturation-ok")
+print("cubic-packed-fundamental-unit-ok")
 `, 180_000);
-  assert.equal(output, "cubic-relation-first-saturation-ok");
+  assert.equal(output, "cubic-packed-fundamental-unit-ok");
 });
 
 test("default cubic fallback reuses only measured-size Minkowski prefixes", () => {

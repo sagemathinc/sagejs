@@ -75,6 +75,19 @@ for function in (candidate_dynamic, candidate_packed):
         128,
     )
     assert tuple(integer_buffer_values(metadata)) == (23, 62, 0, 2)
+    widened_metadata = kernel_integer_zeros(function, 4, 1)
+    widened_coefficients = kernel_integer_zeros(function, 128 * 3, 16)
+    widened_norms = kernel_integer_zeros(function, 128, 16)
+    assert function(
+        widened_metadata,
+        widened_coefficients,
+        widened_norms,
+        kernel_integer_buffer(function, norm_form),
+        kernel_integer_buffer(function, [2, 3, 5]),
+        3,
+        128,
+    )
+    assert tuple(integer_buffer_values(widened_metadata)) == (50, 171, 0, 3)
 
 for function in (row_dynamic, row_packed):
     metadata = kernel_integer_zeros(function, 3, 1)

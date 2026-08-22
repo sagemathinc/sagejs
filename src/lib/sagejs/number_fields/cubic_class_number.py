@@ -52,6 +52,7 @@ _CUBIC_CLASS_NUMBER_REPLAY_MAX_MODULUS = 257
 _CUBIC_CLASS_NUMBER_REPLAY_MAX_RESIDUE_STATES = 20_000_000
 _CUBIC_NORM_FORM_X_SLICE = 8
 _CUBIC_RELATION_SIEVE_BOUND = 2
+_CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND = 3
 _CUBIC_RELATION_SIEVE_MAX_CANDIDATES = 128
 _CUBIC_RELATION_SIEVE_MAX_PRIME_POWERS = 256
 _cubic_norm_form_kernel_override: Any = None
@@ -139,6 +140,7 @@ def _packed_cubic_relation_candidates(
     factor_base: tuple[Any, ...],
     *,
     maximum_candidates: int,
+    coefficient_bound: int = _CUBIC_RELATION_SIEVE_BOUND,
     cancelled: Callable[[], bool] | None,
 ) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
     """Propose small integral relations through two packed exact kernels.
@@ -149,7 +151,14 @@ def _packed_cubic_relation_candidates(
     lattice pass.  These rows are only proposals: the collector independently
     proves generator containment and equal ideal norm before admission.
     """
-    if not factor_base or len(factor_base) > 16 or maximum_candidates < 1:
+    coefficient_bound = int(coefficient_bound)
+    if (
+        not factor_base
+        or len(factor_base) > 16
+        or maximum_candidates < 1
+        or coefficient_bound < 1
+        or coefficient_bound > _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND
+    ):
         return None
     _check_cubic_cancelled(cancelled)
     kernel_module = __import__(
@@ -221,7 +230,7 @@ def _packed_cubic_relation_candidates(
             norm_output,
             native_module.kernel_integer_buffer(candidate_kernel, coefficients),
             native_module.kernel_integer_buffer(candidate_kernel, rational_primes),
-            _CUBIC_RELATION_SIEVE_BOUND,
+            coefficient_bound,
             capacity,
         ):
             return None
@@ -231,7 +240,7 @@ def _packed_cubic_relation_candidates(
         if (
             len(metadata_values) != 4
             or metadata_values[2] != 0
-            or metadata_values[3] != _CUBIC_RELATION_SIEVE_BOUND
+            or metadata_values[3] != coefficient_bound
         ):
             return None
         candidate_count = runtime.number(metadata_values[0])
@@ -408,7 +417,9 @@ def _select_cubic_dependency_candidates(
     have a unit quotient.  The class-number-only presentation does not need
     such duplicate rows, but a coupled class/unit fallback does.  Keep them
     only after the class-number proof has already failed, and let the ordinary
-    exact relation admission boundary authenticate every proposed element.
+    exact relation admission boundary authenticate every proposed element.  A
+    duplicate of an already-selected row costs one new relation; otherwise
+    retain a pair of new generators with the same row.
     """
     limit = max(0, int(maximum))
     if limit == 0 or not selected:
@@ -449,6 +460,39 @@ def _select_cubic_dependency_candidates(
             answer.append(candidate)
             break
         if len(answer) >= limit:
+            break
+    dependencies = len(answer)
+    if dependencies >= limit:
+        return tuple(answer)
+
+    # A wider fallback box can expose a useful duplicate row that was not part
+    # of the minimal class-presentation support.  Retain both generators of
+    # such a pair.  Their exact rows may enlarge the presentation lattice, but
+    # every row is independently admitted before the incomplete seed is
+    # issued, and the coupled engine recomputes the presentation from the
+    # resulting authenticated prefix.
+    grouped: dict[
+        tuple[int, ...],
+        list[tuple[tuple[int, ...], tuple[int, ...], int]],
+    ] = {}
+    retained_identities = set(retained_coordinates)
+    selected_row_set = set(selected_rows)
+    for candidate in candidates:
+        row, coordinates, _norm = candidate
+        identity = (
+            tuple(int(value) for value in row),
+            tuple(int(value) for value in coordinates),
+        )
+        if identity in retained_identities or identity[0] in selected_row_set:
+            continue
+        grouped.setdefault(identity[0], []).append(candidate)
+        retained_identities.add(identity)
+    for duplicate_candidates in grouped.values():
+        if len(duplicate_candidates) < 2:
+            continue
+        answer.extend(duplicate_candidates[:2])
+        dependencies += 1
+        if dependencies >= limit:
             break
     return tuple(answer)
 
@@ -1707,14 +1751,43 @@ def bounded_cubic_minkowski_class_number(
         # cheap unit dependencies; the coupled engine independently checks
         # their logarithmic rank and continues its ordinary search if needed.
         unit_rank_bound = 1 if int(engine.order.discriminant()) < 0 else 2
+        dependency_sieve_bound = _CUBIC_RELATION_SIEVE_BOUND
         dependency_candidates = _select_cubic_dependency_candidates(
             selected_sieve_candidates,
             sieve_candidates,
             min(remaining, unit_rank_bound),
         )
+        if not dependency_candidates:
+            # Keep the class-number producer's small canonical coefficient
+            # box unchanged.  Only after its proof has failed, widen the
+            # packed enumeration once to look for a duplicate valuation row.
+            # Two independently admitted generators with that same row have
+            # a unit quotient.  For the small complex cubics this frequently
+            # exposes the fundamental unit directly and avoids a later LLL
+            # relation/saturation round, while successful class-number-only
+            # computations never pay for or serialize this fallback search.
+            widened_candidates = _packed_cubic_relation_candidates(
+                engine.order,
+                factor_base,
+                maximum_candidates=sieve_capacity,
+                coefficient_bound=_CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND,
+                cancelled=cancelled,
+            )
+            if widened_candidates is not None:
+                dependency_candidates = _select_cubic_dependency_candidates(
+                    selected_sieve_candidates,
+                    widened_candidates,
+                    min(remaining, unit_rank_bound),
+                )
+                if dependency_candidates:
+                    dependency_sieve_bound = _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND
         relation_metrics["integral_sieve_dependency_candidates"] = len(
             dependency_candidates
         )
+        if dependency_candidates:
+            relation_metrics["integral_sieve_dependency_coefficient_bound"] = (
+                dependency_sieve_bound
+            )
         if not dependency_candidates:
             return
         started = time.perf_counter()
@@ -1727,7 +1800,7 @@ def bounded_cubic_minkowski_class_number(
                     row,
                     provenance={
                         "algorithm": "packed-cubic-unit-dependency-seed",
-                        "coefficient_bound": _CUBIC_RELATION_SIEVE_BOUND,
+                        "coefficient_bound": dependency_sieve_bound,
                         "order_basis_coordinates": list(coordinates),
                     },
                 )
