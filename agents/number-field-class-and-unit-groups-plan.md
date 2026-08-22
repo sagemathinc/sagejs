@@ -564,6 +564,17 @@ same polynomial, prepared-field boundary, proof policy, and requested output,
 and must report library/process initialization separately from mathematical
 work.
 
+The canonical executable gate for the pinned LMFDB cubic ladder is:
+
+```bash
+pnpm bench:number-field-class-number-lmfdb -- --samples 5 --proof both \
+  --require-sage --output /tmp/lmfdb-class-number-timings.json
+```
+
+Its receipt is the source of the per-case ratios and geometric-mean, median,
+p90, p95, and worst-case figures below.  A timing claim made without this
+matched prepared-field receipt is profiling evidence only, not P7 acceptance.
+
 For every material gap, optimize in this order:
 
 1. compare the mathematical algorithm and stopping criterion with PARI/Hecke;
