@@ -88,6 +88,61 @@ for _ in range(4):
     multiple_g = 2*multiple_g
     assert Kg == kummer_coordinates(multiple_g)
 
+# Regression for the full h2 != 0 Kummer isomorphism.  The h1*h2*k3 term
+# that once appeared here is extraneous under Y=2*y+h.
+hr = x**2 + x + 1
+ur = x**2 + x + 1
+vr = x
+qr = x**3 + 2*x + 3
+fr = vr**2 + hr*vr + ur*qr
+Jr = HyperellipticJacobian(HeightTestCurve(fr, hr))
+Dr = Jr([ur, vr])
+assert duplicate_kummer(Dr).coordinates() == (4, -1, -3, 1)
+assert duplicate_kummer(Dr) == kummer_coordinates(2*Dr)
+
+# Seeded constructed-divisor differential corpus.  Since
+# f=v^2+h*v+u*q, every (u,v) below is an exact Mumford divisor.  Comparing
+# several direct quartic iterates with Cantor keeps both the generalized
+# transform and the classical coefficient tables independently covered.
+state = 1729
+generalized_checked = 0
+classical_checked = 0
+for case_index in range(18):
+    values = []
+    for _coefficient_index in range(9):
+        state = (1103515245*state + 12345) % (2**31)
+        values.append((state % 7) - 3)
+    a, b, c, d, e, r, g, i, j = values
+    h_seed = x**2 + a*x + b
+    u_seed = x**2 + c*x + d
+    v_seed = e*x + r
+    q_seed = x**3 + g*x**2 + i*x + j
+    f_seed = v_seed**2 + h_seed*v_seed + u_seed*q_seed
+    if (4*f_seed + h_seed**2).discriminant() != 0:
+        J_seed = HyperellipticJacobian(HeightTestCurve(f_seed, h_seed))
+        D_seed = J_seed([u_seed, v_seed])
+        K_seed = kummer_coordinates(D_seed)
+        M_seed = D_seed
+        for _step in range(3):
+            K_seed = K_seed.duplicate()
+            M_seed = 2*M_seed
+            assert K_seed == kummer_coordinates(M_seed)
+        generalized_checked += 1
+
+    f_classical = v_seed**2 + u_seed*q_seed
+    if f_classical.discriminant() != 0:
+        J_classical = HyperellipticJacobian(HeightTestCurve(f_classical))
+        D_classical = J_classical([u_seed, v_seed])
+        K_classical = kummer_coordinates(D_classical)
+        M_classical = D_classical
+        for _step in range(3):
+            K_classical = K_classical.duplicate()
+            M_classical = 2*M_classical
+            assert K_classical == kummer_coordinates(M_classical)
+        classical_checked += 1
+assert generalized_checked >= 12
+assert classical_checked >= 12
+
 R3 = PolynomialRing(QQ, "z")
 z = R3.gen()
 J3 = HyperellipticJacobian(HeightTestCurve(z**7 + z + 1))
@@ -287,23 +342,33 @@ hP = canonical_height(P, steps=8, precision=100, context=context)
 hQ = canonical_height(Q, steps=8, precision=100, context=context)
 pair = height_pairing([P, Q], steps=8, precision=100, context=context)
 reg = regulator([P, Q], steps=8, precision=100, context=context)
+# Independent seeded degree-two Mumford fixture, constructed in Magma as
+# J![x^2-2*x+3, -3*x-1].
+u_seed = x**2 - 2*x + 3
+v_seed = -3*x - 1
+q_seed = x**3 - 3*x**2 + 2*x + 2
+J_seed = HyperellipticJacobian(HeightTestCurve(v_seed**2 + u_seed*q_seed))
+seeded_height = canonical_height(J_seed([u_seed, v_seed]), steps=6, precision=100)
 magma_hP = "0.55175981952139493925311708933354526634108654109670"
 magma_hQ = "0.16986232826351184005994273179501892342244604109528"
 magma_pair = "-0.066251639356115110899930110247405391341603180513356"
 magma_reg = "0.089333927868786494835785498946943974108234120001758"
+magma_seeded = "2.5155984869871381291510973670868432324986670033572"
 assert hP.ball.contains(magma_hP)
 assert hQ.ball.contains(magma_hQ)
 assert pair[0][1].contains(magma_pair)
 assert reg.ball.contains(magma_reg)
+assert seeded_height.ball.contains(magma_seeded)
 [
     hP.ball.contains(magma_hP),
     pair[0][1].contains(magma_pair),
     reg.ball.contains(magma_reg),
+    seeded_height.ball.contains(magma_seeded),
 ]
 `,
       { timeout: 120_000 },
     );
-    assert.equal(result.repr, "[True, True, True]");
+    assert.equal(result.repr, "[True, True, True, True]");
   } finally {
     await session.close();
   }

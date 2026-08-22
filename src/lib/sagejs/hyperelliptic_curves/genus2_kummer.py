@@ -552,7 +552,7 @@ def _direct_duplication_values(
     f_value = jacobian.f()
     h_value = jacobian.h()
     base = jacobian.base_ring()
-    h0, h1, h2 = _polynomial_coefficients(h_value, 3)
+    h0, _h1, h2 = _polynomial_coefficients(h_value, 3)
     k1, k2, k3, k4 = tuple(base(value) for value in coordinates)
 
     if h_value.is_zero():
@@ -568,12 +568,12 @@ def _direct_duplication_values(
         k1,
         k2,
         k3,
-        4 * k4 - 2 * (h0 * h2 * k1 + h1 * h2 * k3),
+        4 * k4 - 2 * h0 * h2 * k1,
     )
     d1, d2, d3, d4_classical = _classical_duplication_values(
         classical_coordinates, classical_coefficients
     )
-    d4 = (d4_classical + 2 * (h0 * h2 * d1 + h1 * h2 * d3)) / 4
+    d4 = (d4_classical + 2 * h0 * h2 * d1) / 4
     return d1, d2, d3, d4
 
 

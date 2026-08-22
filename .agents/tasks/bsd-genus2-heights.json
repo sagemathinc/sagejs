@@ -58,10 +58,30 @@
       "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
       "workspace_fingerprint": "8838f3c1fd2c3ebf94d822f13882c21c9525cbe62bcbfd8eddeb653b6b8a3e32",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/genus2_kummer.py src/lib/sagejs/hyperelliptic_curves/genus2_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.683,
+      "started_at": "2026-08-22T07:00:56.446Z",
+      "commit": "abaf7a61bd1ba48111227c883adc1527c81d527a",
+      "workspace_fingerprint": "d50035f77c4a8db6a57cbe13124ba9e56841f05cff613d738e5f5aa6b83d524b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-genus2-heights.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.248,
+      "started_at": "2026-08-22T07:00:58.792Z",
+      "commit": "abaf7a61bd1ba48111227c883adc1527c81d527a",
+      "workspace_fingerprint": "d50035f77c4a8db6a57cbe13124ba9e56841f05cff613d738e5f5aa6b83d524b",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Implements exact QQ Mumford serialization, Cassels--Flynn/Mueller Kummer coordinates, direct sparse Flynn quartic duplication, cached certified canonical heights, pairings and regulators. Primitive integral classical quintics use an exact model-specific duplication L1 audit, Stoll root-partition bounds, certified archimedean correction partial sums/tails, and the factorization-free modular-gcd finite correction of Mueller--Stoll Section 14. Tests cover torsion zero, scaling, basis transforms, generalized h exact duplication, nontrivial finite gcd content, and genuine Magma V2.18 CanonicalHeight/HeightPairing/regulator values.",
+    "summary": "Implements exact QQ Mumford serialization, Cassels--Flynn/Mueller Kummer coordinates, direct sparse Flynn quartic duplication, cached certified canonical heights, pairings and regulators. Primitive integral classical quintics use an exact model-specific duplication L1 audit, Stoll root-partition bounds, certified archimedean correction partial sums/tails, and the factorization-free modular-gcd finite correction of Mueller--Stoll Section 14. Tests cover torsion zero, scaling, basis transforms, the full h2!=0 generalized Kummer transform, seeded constructed-divisor differential corpora against Cantor, nontrivial finite gcd content, and genuine Magma V2.18 CanonicalHeight/HeightPairing/regulator values.",
     "risks": [
       "Automatic certification and local-correction decomposition require a primitive integral odd quintic with h=0; generalized h remains exact direct Kummer arithmetic but numerical unless a proved caller bound is supplied.",
       "Even-degree transformations, number fields, and genus 3 are deliberately outside this lane.",
