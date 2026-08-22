@@ -225,6 +225,7 @@ T = Jt([x, 0])
 zero = canonical_height(T, torsion_order=2, precision=80)
 assert zero.status == "exact-torsion-zero" and zero.ball.contains_zero()
 assert zero.ball.width().numerator == 0
+assert zero.verify(T)
 [
     h2.status,
     h2.ball.width() > h4.ball.width() > h6.ball.width(),
@@ -264,11 +265,13 @@ recomputed = height_pairing([P, P + Q], steps=6, precision=80, context=context)
 for i in range(2):
     for j in range(2):
         assert transformed[i][j].intersection(recomputed[i][j])
+assert transformed.verify([P, Q])
 
 reg = regulator([P, Q], steps=6, precision=80, context=context)
 assert reg.rigorous and reg.status == "certified-positive" and reg.ball.is_positive()
 scaled = reg.transform_index(3)
 assert scaled.ball.intersection(reg.ball * RealBall(9, precision_bits=80))
+assert scaled.verify([P, Q])
 
 dependent_rejected = False
 try:
@@ -309,6 +312,13 @@ assert conditional.bounds.diagnostics["proof_status"] == (
 assert conditional.diagnostics["local_corrections"]["status"] == (
     "unavailable-for-undifferentiated-supplied-total-bound"
 )
+conditional_sealed = False
+try:
+    conditional._rigorous = True
+except AttributeError:
+    conditional_sealed = True
+assert conditional_sealed and not conditional.rigorous
+assert conditional.verify(D, height_difference_bound=100)
 
 unsupported = False
 try:
@@ -421,6 +431,24 @@ kdata["divisor"]["model"]["equation"] = "poisoned"
 assert K.coordinates() == coordinates_before
 assert K.to_dict()["divisor"]["model"]["equation"] != "poisoned"
 
+cached_K = context.kummer(P)
+cached_kummer_sealed = False
+try:
+    cached_K._coordinates = (0, 0, 0, 1)
+except AttributeError:
+    cached_kummer_sealed = True
+assert cached_kummer_sealed
+assert context.kummer(P).coordinates() == coordinates_before
+assert canonical_height(P, steps=2, precision=80, context=context).status != (
+    "exact-torsion-zero"
+)
+private_provenance_sealed = False
+try:
+    cached_K._provenance["model"] = "poisoned"
+except TypeError:
+    private_provenance_sealed = True
+assert private_provenance_sealed
+
 capability = exact_model_capability(J)
 capdata = capability.diagnostics
 capdata["algorithm"] = "poisoned"
@@ -429,6 +457,7 @@ assert capability.diagnostics["algorithm"] != "poisoned"
 bounds = context.automatic_bounds(80)
 lower_before = bounds.correction_lower.lower
 bounds.correction_lower.lower = RealBall(999).lower
+bounds._correction_lower.lower = RealBall(999).lower
 bounds_data = bounds.diagnostics
 bounds_data["automatic_bound"] = "poisoned"
 assert bounds.correction_lower.lower == lower_before
@@ -441,6 +470,7 @@ assert context.chain(P, 4)[0] == kummer_coordinates(P)
 height = canonical_height(P, steps=4, precision=80, context=context)
 height_lower = height.ball.lower
 height.ball.lower = RealBall(999).lower
+height._ball.lower = RealBall(999).lower
 height_data = height.diagnostics
 height_data["algorithm"] = "poisoned"
 provenance = height.provenance
@@ -448,21 +478,41 @@ provenance["model"]["equation"] = "poisoned"
 assert height.ball.lower == height_lower
 assert height.diagnostics["algorithm"] != "poisoned"
 assert height.provenance["model"]["equation"] != "poisoned"
+private_diagnostics_sealed = False
+try:
+    height._diagnostics["algorithm"] = "poisoned"
+except TypeError:
+    private_diagnostics_sealed = True
+assert private_diagnostics_sealed
 height_verified = height.verify(P)
 assert height_verified
 
 pair = height_pairing([P, Q], steps=4, precision=80)
 matrix_copy = pair.matrix
 matrix_copy[0][0].lower = RealBall(999).lower
+pair._matrix[0][0].lower = RealBall(999).lower
 assert pair[0][0].lower != RealBall(999).lower
 pair_verified = pair.verify([P, Q])
 assert pair_verified
+pair_sealed = False
+try:
+    pair._rigorous = False
+except AttributeError:
+    pair_sealed = True
+assert pair_sealed and pair.rigorous
 
 reg = regulator([P, Q], steps=6, precision=80)
 reg.ball.lower = RealBall(999).lower
+reg._ball.lower = RealBall(999).lower
 assert reg.ball.lower != RealBall(999).lower
 reg_verified = reg.verify([P, Q])
 assert reg_verified
+regulator_sealed = False
+try:
+    reg._rigorous = False
+except AttributeError:
+    regulator_sealed = True
+assert regulator_sealed and reg.rigorous
 
 limited = False
 try:
@@ -475,11 +525,45 @@ try:
 except Genus2HeightResourceLimitError as error:
     limited = error.diagnostics["max_exact_coordinate_bits"] == 1024
 assert limited
-[height_verified, pair_verified, reg_verified, limited, context_immutable]
+
+# Regression: rational coefficient denominators participate in the resource
+# estimate, and a post-duplication exact check prevents an underestimated
+# quartic from entering the persistent chain cache.
+denominator = 2**5000
+Jr = HyperellipticJacobian(HeightTestCurve(x**5 + x/denominator + 1))
+Pr = Jr([x, 1])
+rational_limited = False
+try:
+    HeightContext(Jr, max_exact_coordinate_bits=1024).chain(Pr, 1)
+except Genus2HeightResourceLimitError as error:
+    rational_limited = (
+        error.diagnostics["max_exact_coordinate_bits"] == 1024
+        and error.diagnostics["resource_check_stage"] in (
+            "pre-duplication-estimate",
+            "post-duplication-exact",
+        )
+    )
+assert rational_limited
+[
+    height_verified,
+    pair_verified,
+    reg_verified,
+    limited,
+    context_immutable,
+    cached_kummer_sealed,
+    pair_sealed,
+    regulator_sealed,
+    rational_limited,
+    private_provenance_sealed,
+    private_diagnostics_sealed,
+]
 `,
       { timeout: 120_000 },
     );
-    assert.equal(result.repr, "[True, True, True, True, True]");
+    assert.equal(
+      result.repr,
+      "[True, True, True, True, True, True, True, True, True, True, True]",
+    );
   } finally {
     await session.close();
   }
