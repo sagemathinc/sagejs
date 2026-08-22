@@ -218,6 +218,7 @@ const integration = [
   "test/dense-qq-host-views-v1.cjs",
   "test/dense-qq-bulk-construction.cjs",
   "test/exact-rational-matrix-polynomials.cjs",
+  "test/logarithmic-integral.cjs",
   "test/math-module.cjs",
   "test/factorization-negative-powers.cjs",
   "test/datetime-module.cjs",
