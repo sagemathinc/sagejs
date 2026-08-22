@@ -32,12 +32,19 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
   assert.match(workflow, /gh run download "\$SOURCE_RUN_ID"[\s\S]+--name wasm-clean-build-a/);
   const receipt = workflow.indexOf("production-receipt.cjs validate");
   const stage = workflow.indexOf("website/live/scripts/stage.mjs");
+  const prepare = workflow.indexOf("prepare-release.mjs");
+  const upload = workflow.indexOf("upload-r2.mjs");
   const deploy = workflow.indexOf("cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd");
-  assert.ok(receipt >= 0 && receipt < stage && stage < deploy, "receipt validation and staging must precede deployment");
+  assert.ok(
+    receipt >= 0 && receipt < stage && stage < prepare && prepare < upload && upload < deploy,
+    "receipt validation, staging, preparation, and R2 upload must precede Worker activation",
+  );
   assert.match(workflow, /node --test website\/live\/test\/\*\.test\.mjs/);
   assert.match(workflow, /node --test test\/wasm-deployment-workflow\.cjs/);
-  assert.match(workflow, /pages deploy website\/live\/dist/);
+  assert.match(workflow, /deploy --config build\/cloudflare-deploy\/wrangler\.json/);
+  assert.doesNotMatch(workflow, /pages deploy/);
   assert.match(workflow, /website\/live\/dist\n\s+if-no-files-found: error/);
+  assert.match(workflow, /build\/cloudflare-deploy\/deployment\.json/);
 });
 
 test("Cloudflare deployment fails closed and checks both remote origins", async () => {
@@ -46,22 +53,32 @@ test("Cloudflare deployment fails closed and checks both remote origins", async 
   for (const required of [
     "CLOUDFLARE_API_TOKEN",
     "CLOUDFLARE_ACCOUNT_ID",
-    "CLOUDFLARE_PAGES_PROJECT",
+    "CLOUDFLARE_WORKER_NAME",
+    "R2_BUCKET_NAME",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "SAGEJS_PUBLIC_ORIGIN",
   ]) {
     assert.match(workflow, new RegExp(`Missing(?: or invalid)? ${required}`));
   }
   assert.match(workflow, /environment:\n\s+name: sagejs-app-\$\{\{ inputs\.target \}\}/);
   assert.match(workflow, /browser-wasm-deployment\.cjs[\s\S]+\$DEPLOYMENT_URL/);
-  assert.match(workflow, /--origin https:\/\/app\.sagejs\.org/);
+  assert.match(workflow, /--origin "\$SAGEJS_PUBLIC_ORIGIN"/);
+  assert.match(workflow, /\.workers\\\.dev/);
   assert.match(workflow, /website\/live\/dist\/_headers/);
-  assert.doesNotMatch(workflow, /echo[^\n]*(?:CLOUDFLARE_API_TOKEN|CLOUDFLARE_ACCOUNT_ID)[^\n]*>>/);
+  assert.doesNotMatch(
+    workflow,
+    /echo[^\n]*(?:CLOUDFLARE_API_TOKEN|R2_ACCESS_KEY_ID|R2_SECRET_ACCESS_KEY)[^\n]*>>/,
+  );
 });
 
 test("deployment documentation names the non-credentialed origin and external activation boundary", async () => {
   const documentation = await readFile(documentationFile, "utf8");
 
   assert.match(documentation, /https:\/\/app\.sagejs\.org/);
-  assert.match(documentation, /Direct Upload project/);
+  assert.match(documentation, /private R2 bucket/);
+  assert.match(documentation, /25 MiB/);
+  assert.match(documentation, /Brotli/);
   assert.match(documentation, /no authentication cookies|not covered by Cloudflare Access/);
   assert.match(documentation, /sagejs-app-preview/);
   assert.match(documentation, /sagejs-app-production/);

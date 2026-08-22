@@ -26,9 +26,12 @@ directly does not work: staging verifies every file in
 the identical artifact, and publishes it below its SHA-256 identity.
 
 The staged directory is `website/live/dist/` and is intentionally ignored by
-Git. It contains only static files. Deploy that directory, including its
-checked-in `_headers` copy, to Cloudflare Pages or an equivalent static host.
-Configure the custom domain as a dedicated execution origin with:
+Git. It contains only static files. Production publication prepares identity
+and Brotli representations under immutable release keys in a private R2
+bucket, then atomically deploys the Worker in `cloudflare/worker.mjs`. Direct
+Cloudflare Pages deployment is not supported because authenticated runtime
+files exceed its 25 MiB per-file limit. Configure the custom domain as a
+dedicated execution origin with:
 
 - no authentication cookies or ambient credentials;
 - no privileged API routes;
