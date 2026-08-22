@@ -31,6 +31,7 @@ from typing import Any, Iterable, Mapping, Sequence
 BSD_INPUT_SCHEMA = "sagejs.hyperelliptic-bsd-input/v1"
 BSD_QUOTIENT_SCHEMA = "sagejs.hyperelliptic-bsd-quotient/v1"
 BSD_SQLITE_SCHEMA = "sagejs.hyperelliptic-bsd-sqlite/v1"
+SUBGROUP_INDEX_CERTIFICATE_SCHEMA = "sagejs.bsd-subgroup-index-certificate/v1"
 
 _PROVENANCE_STATUSES = {
     "bounded",
@@ -107,6 +108,19 @@ def _require_integer(value: Any, name: str, *, minimum: int | None = 0) -> int:
     return answer
 
 
+def _require_bool(value: Any, name: str) -> bool:
+    if not isinstance(value, bool):
+        raise BSDValidationError(name + " must be a boolean")
+    return value
+
+
+def _require_string(value: Any, name: str, *, nonempty: bool = False) -> str:
+    if not isinstance(value, str) or (nonempty and not value):
+        qualifier = "a nonempty string" if nonempty else "a string"
+        raise BSDValidationError(name + " must be " + qualifier)
+    return value
+
+
 def _integer_from_record(value: Any, name: str, *, minimum: int | None = 0) -> int:
     if not isinstance(value, str) or not value:
         raise BSDValidationError(name + " must be a decimal integer string")
@@ -117,6 +131,8 @@ def _integer_from_record(value: Any, name: str, *, minimum: int | None = 0) -> i
     if not digits.isdigit() or (len(digits) > 1 and digits[0] == "0"):
         raise BSDValidationError(name + " is not a canonical decimal integer")
     answer = int(value)
+    if str(answer) != value:
+        raise BSDValidationError(name + " is not a canonical decimal integer")
     if minimum is not None and answer < minimum:
         raise BSDValidationError(name + " must be at least " + str(minimum))
     return answer
@@ -308,6 +324,9 @@ class Provenance:
             raise BSDValidationError("unknown provenance status " + repr(self.status))
         if not isinstance(self.source, str) or not self.source:
             raise BSDValidationError("provenance source must be a nonempty string")
+        object.__setattr__(
+            self, "reference", _require_string(self.reference, "provenance reference")
+        )
         checked = {} if self.details is None else _json_safe(self.details)
         object.__setattr__(self, "details", checked)
 
@@ -332,9 +351,9 @@ class Provenance:
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> Provenance:
         return cls(
-            str(value["status"]),
-            str(value["source"]),
-            str(value.get("reference", "")),
+            _require_string(value["status"], "provenance status"),
+            _require_string(value["source"], "provenance source", nonempty=True),
+            _require_string(value.get("reference", ""), "provenance reference"),
             value.get("details", {}),
         )
 
@@ -359,6 +378,7 @@ class ArithmeticScalar:
     rigorous: bool = False
 
     def __post_init__(self) -> None:
+        _require_bool(self.rigorous, "scalar rigor")
         if self.kind == "exact":
             numerator = _require_integer(self.numerator, "numerator", minimum=None)
             denominator = _require_integer(self.denominator, "denominator", minimum=1)
@@ -430,7 +450,7 @@ class ArithmeticScalar:
             lower=str(lower),
             upper=str(upper),
             precision_bits=precision_bits,
-            rigorous=bool(rigorous),
+            rigorous=_require_bool(rigorous, "interval rigor"),
         )
 
     @classmethod
@@ -465,22 +485,31 @@ class ArithmeticScalar:
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> ArithmeticScalar:
-        kind = str(value["kind"])
+        kind = _require_string(value["kind"], "scalar kind")
         if kind == "exact":
+            if _require_bool(value["rigorous"], "exact scalar rigor") is not True:
+                raise BSDValidationError("an exact scalar must be rigorous")
             return cls.exact(
                 _integer_from_record(value["numerator"], "numerator", minimum=None),
                 _integer_from_record(value["denominator"], "denominator", minimum=1),
             )
         if kind == "decimal":
+            if _require_bool(value["rigorous"], "decimal scalar rigor") is not False:
+                raise BSDValidationError("a point decimal cannot claim rigor")
             return cls.decimal(
-                value["value"], precision_bits=int(value["precision_bits"])
+                _require_string(value["value"], "decimal value"),
+                precision_bits=_require_integer(
+                    value["precision_bits"], "precision_bits", minimum=2
+                ),
             )
         if kind == "interval":
             return cls.interval(
-                value["lower"],
-                value["upper"],
-                precision_bits=int(value["precision_bits"]),
-                rigorous=bool(value["rigorous"]),
+                _require_string(value["lower"], "interval lower endpoint"),
+                _require_string(value["upper"], "interval upper endpoint"),
+                precision_bits=_require_integer(
+                    value["precision_bits"], "precision_bits", minimum=2
+                ),
+                rigorous=_require_bool(value["rigorous"], "interval rigor"),
             )
         raise BSDValidationError("unknown scalar kind " + repr(kind))
 
@@ -552,7 +581,7 @@ class ArithmeticScalar:
                 _ratio_negate(_decimal_ratio(self.lower)), self.precision_bits
             ),
             precision_bits=self.precision_bits,
-            rigorous=self.rigorous,
+            rigorous=False,
         )
 
     def subtract(self, other: ArithmeticScalar) -> ArithmeticScalar:
@@ -626,6 +655,12 @@ class ArithmeticScalar:
         )
 
     def absolute(self) -> ArithmeticScalar:
+        if self.kind == "exact":
+            return (
+                self.negate()
+                if self.numerator < 0
+                else ArithmeticScalar.exact(self.numerator, self.denominator)
+            )
         if self.is_negative():
             return self.negate()
         if self.contains_zero() and not self.is_zero():
@@ -646,7 +681,16 @@ class ArithmeticScalar:
                 precision_bits=self.precision_bits,
                 rigorous=False,
             )
-        return self
+        if self.kind == "interval":
+            return ArithmeticScalar.interval(
+                self.lower,
+                self.upper,
+                precision_bits=self.precision_bits,
+                rigorous=False,
+            )
+        return ArithmeticScalar.decimal(
+            self.value, precision_bits=self.precision_bits, rigorous=False
+        )
 
     def is_zero(self) -> bool:
         if self.kind == "exact":
@@ -724,8 +768,8 @@ class RankEvidence:
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> RankEvidence:
         return cls(
-            str(value["status"]),
-            int(value["value"]),
+            _require_string(value["status"], "rank status"),
+            _require_integer(value["value"], "rank", minimum=-1),
             Provenance.from_dict(value["provenance"]),
         )
 
@@ -820,7 +864,6 @@ class LeadingTermData:
         cls,
         initialized_lfunction: Any,
         *,
-        precision_bits: int,
         provenance: Provenance | None = None,
     ) -> LeadingTermData:
         """Extract a probable raw leading derivative from `LFunctionInit`.
@@ -830,8 +873,34 @@ class LeadingTermData:
         already rejects an unstabilized or unisolated central jet.
         """
         try:
+            diagnostics = initialized_lfunction.diagnostics()
+            if not isinstance(diagnostics, dict):
+                raise BSDValidationError("LFunctionInit diagnostics are not a record")
+            precision_bits = _require_integer(
+                diagnostics["precision_bits"], "prepared precision_bits", minimum=2
+            )
+            central = diagnostics["central"]
+            if not isinstance(central, dict):
+                raise BSDValidationError("central diagnostics are not a record")
+            if not _require_bool(
+                central["refinement_stable"], "central refinement stability"
+            ):
+                raise BSDValidationError("the prepared central jet is not stable")
             rank_value, derivative_value = initialized_lfunction.leading_derivative()
-            sign = int(initialized_lfunction.curve().root_number())
+            rank = _require_integer(rank_value, "prepared analytic rank", minimum=0)
+            sign = _require_integer(
+                initialized_lfunction.curve().root_number(),
+                "prepared functional equation sign",
+                minimum=-1,
+            )
+            algorithm = _require_string(
+                central["algorithm"], "central algorithm", nonempty=True
+            )
+            analytic_error_status = _require_string(
+                central["analytic_error_status"],
+                "central analytic error status",
+                nonempty=True,
+            )
         except Exception as error:
             raise BSDValidationError(
                 "unable to extract a stabilized leading derivative from LFunctionInit"
@@ -843,13 +912,16 @@ class LeadingTermData:
                 details={
                     "precision_bits": precision_bits,
                     "normalization": "raw L-function derivative at s=1",
+                    "algorithm": algorithm,
+                    "analytic_error_status": analytic_error_status,
+                    "refinement_stable": True,
                 },
             )
             if provenance is None
             else provenance
         )
         return cls(
-            RankEvidence("probable", int(rank_value), source),
+            RankEvidence("probable", rank, source),
             ArithmeticScalar.decimal(
                 _real_part_as_string(derivative_value),
                 precision_bits=precision_bits,
@@ -888,8 +960,12 @@ class LeadingTermData:
         return cls(
             RankEvidence.from_dict(value["rank"]),
             ArithmeticScalar.from_dict(value["derivative"]),
-            int(value["functional_equation_sign"]),
-            str(value["refinement_status"]),
+            _require_integer(
+                value["functional_equation_sign"],
+                "functional equation sign",
+                minimum=-1,
+            ),
+            _require_string(value["refinement_status"], "refinement status"),
             ArithmeticScalar.from_dict(value["comparison_derivative"]),
             Provenance.from_dict(value["provenance"]),
         )
@@ -902,6 +978,7 @@ class PeriodData:
     value: ArithmeticScalar
     normalization: str
     real_component_factor: int
+    component_factor_included: bool
     differential_basis: str
     provenance: Provenance
 
@@ -912,10 +989,21 @@ class PeriodData:
             self.real_component_factor, "real component factor", minimum=1
         )
         object.__setattr__(self, "real_component_factor", components)
+        included = _require_bool(
+            self.component_factor_included, "period component-factor inclusion"
+        )
+        object.__setattr__(self, "component_factor_included", included)
         if not self.value.is_positive():
             raise BSDValidationError("the real period is not strictly positive")
-        if not self.differential_basis:
-            raise BSDValidationError("the period differential basis must be recorded")
+        object.__setattr__(
+            self,
+            "differential_basis",
+            _require_string(
+                self.differential_basis,
+                "period differential basis",
+                nonempty=True,
+            ),
+        )
 
     @classmethod
     def supplied_neron(
@@ -923,8 +1011,9 @@ class PeriodData:
         value: ArithmeticScalar | Any,
         *,
         provenance: Provenance | None = None,
-        real_component_factor: int = 1,
-        differential_basis: str = "Neron top differential",
+        real_component_factor: int,
+        differential_basis: str,
+        total_omega: bool,
     ) -> PeriodData:
         scalar = (
             value
@@ -935,6 +1024,7 @@ class PeriodData:
             scalar,
             "neron",
             real_component_factor,
+            total_omega,
             differential_basis,
             Provenance.supplied() if provenance is None else provenance,
         )
@@ -944,6 +1034,7 @@ class PeriodData:
             "value": self.value.to_dict(),
             "normalization": self.normalization,
             "real_component_factor": str(self.real_component_factor),
+            "component_factor_included": self.component_factor_included,
             "differential_basis": self.differential_basis,
             "provenance": self.provenance.to_dict(),
         }
@@ -952,11 +1043,19 @@ class PeriodData:
     def from_dict(cls, value: Mapping[str, Any]) -> PeriodData:
         return cls(
             ArithmeticScalar.from_dict(value["value"]),
-            str(value["normalization"]),
+            _require_string(value["normalization"], "period normalization"),
             _integer_from_record(
                 value["real_component_factor"], "real component factor", minimum=1
             ),
-            str(value["differential_basis"]),
+            _require_bool(
+                value["component_factor_included"],
+                "period component-factor inclusion",
+            ),
+            _require_string(
+                value["differential_basis"],
+                "period differential basis",
+                nonempty=True,
+            ),
             Provenance.from_dict(value["provenance"]),
         )
 
@@ -997,6 +1096,36 @@ def _coerce_matrix(
     return tuple(answer)
 
 
+def _validated_pairing_determinants(
+    matrix: tuple[tuple[ArithmeticScalar, ...], ...],
+    rank: int,
+    symmetric: bool,
+) -> tuple[ArithmeticScalar, ArithmeticScalar]:
+    if len(matrix) != rank:
+        raise BSDRankMismatchError(
+            "pairing dimension does not equal the supplied/analytic rank"
+        )
+    if any(len(row) != rank for row in matrix):
+        raise BSDRankMismatchError("the height pairing matrix must be square")
+    if symmetric:
+        for row in range(rank):
+            for column in range(row):
+                if not matrix[row][column].consistent_with(matrix[column][row]):
+                    raise BSDValidationError(
+                        "the height pairing matrix is not symmetric"
+                    )
+        for size in range(1, rank + 1):
+            leading = _determinant(tuple(tuple(row[:size]) for row in matrix[:size]))
+            if not leading.is_positive():
+                raise BSDValidationError(
+                    "the symmetric height pairing is not positive definite"
+                )
+    signed = _determinant(matrix)
+    if signed.contains_zero():
+        raise BSDValidationError("the supplied pairing matrix is singular")
+    return signed, signed.absolute()
+
+
 @dataclass(frozen=True)
 class RegulatorData:
     """A supplied regulator or determinant of a supplied pairing matrix."""
@@ -1013,19 +1142,47 @@ class RegulatorData:
     def __post_init__(self) -> None:
         rank = _require_integer(self.rank, "regulator rank", minimum=0)
         object.__setattr__(self, "rank", rank)
+        object.__setattr__(
+            self, "symmetric", _require_bool(self.symmetric, "regulator symmetry")
+        )
         if self.source_kind not in ("pairing_determinant", "supplied_scalar"):
             raise BSDValidationError("unknown regulator source kind")
+        object.__setattr__(
+            self,
+            "pairing_convention",
+            _require_string(
+                self.pairing_convention,
+                "regulator pairing convention",
+                nonempty=True,
+            ),
+        )
         if not self.value.is_positive():
             raise BSDValidationError("the regulator is not strictly positive")
-        if rank == 0 and not self.value.consistent_with(ArithmeticScalar.exact(1)):
+        if rank == 0 and self.value.to_dict() != ArithmeticScalar.exact(1).to_dict():
             raise BSDValidationError("the rank-zero regulator must be 1")
-        if (
-            self.source_kind == "pairing_determinant"
-            and len(self.pairing_matrix) != rank
-        ):
-            raise BSDRankMismatchError(
-                "pairing dimension does not equal the supplied/analytic rank"
+        if self.source_kind == "pairing_determinant":
+            checked = _coerce_matrix(self.pairing_matrix)
+            object.__setattr__(self, "pairing_matrix", checked)
+            signed, regulator = _validated_pairing_determinants(
+                checked, rank, self.symmetric
             )
+            if self.signed_determinant.to_dict() != signed.to_dict():
+                raise BSDValidationError(
+                    "stored signed pairing determinant does not match the matrix"
+                )
+            if self.value.to_dict() != regulator.to_dict():
+                raise BSDValidationError(
+                    "stored regulator does not match the pairing determinant"
+                )
+        else:
+            if self.pairing_matrix:
+                raise BSDValidationError(
+                    "a supplied scalar regulator cannot contain a pairing matrix"
+                )
+            if self.signed_determinant.to_dict() != self.value.to_dict():
+                raise BSDValidationError(
+                    "a scalar regulator has inconsistent cached determinant data"
+                )
 
     @classmethod
     def supplied_scalar(
@@ -1063,33 +1220,13 @@ class RegulatorData:
     ) -> RegulatorData:
         checked = _coerce_matrix(pairing_matrix)
         expected = _require_integer(rank, "regulator rank", minimum=0)
-        if len(checked) != expected:
-            raise BSDRankMismatchError(
-                "pairing dimension does not equal the supplied/analytic rank"
-            )
-        if symmetric:
-            for row in range(expected):
-                for column in range(row):
-                    if not checked[row][column].consistent_with(checked[column][row]):
-                        raise BSDValidationError(
-                            "the height pairing matrix is not symmetric"
-                        )
-            for size in range(1, expected + 1):
-                leading = _determinant(
-                    tuple(tuple(row[:size]) for row in checked[:size])
-                )
-                if not leading.is_positive():
-                    raise BSDValidationError(
-                        "the symmetric height pairing is not positive definite"
-                    )
-        signed = _determinant(checked)
-        if signed.contains_zero():
-            raise BSDValidationError("the supplied pairing matrix is singular")
-        value = signed.absolute()
+        signed, regulator = _validated_pairing_determinants(
+            checked, expected, symmetric
+        )
         source = Provenance.supplied() if provenance is None else provenance
         return cls(
             expected,
-            value,
+            regulator,
             signed,
             "pairing_determinant",
             checked,
@@ -1122,16 +1259,28 @@ class RegulatorData:
             tuple(ArithmeticScalar.from_dict(entry) for entry in row)
             for row in value.get("pairing_matrix", [])
         )
-        return cls(
-            int(value["rank"]),
-            ArithmeticScalar.from_dict(value["value"]),
-            ArithmeticScalar.from_dict(value["signed_determinant"]),
-            str(value["source_kind"]),
-            matrix,
-            bool(value["symmetric"]),
-            str(value["pairing_convention"]),
-            Provenance.from_dict(value["provenance"]),
-        )
+        rank = _require_integer(value["rank"], "regulator rank", minimum=0)
+        symmetric = _require_bool(value["symmetric"], "regulator symmetry")
+        provenance = Provenance.from_dict(value["provenance"])
+        source_kind = _require_string(value["source_kind"], "regulator source kind")
+        if source_kind == "pairing_determinant":
+            result = cls.from_pairing(
+                rank, matrix, symmetric=symmetric, provenance=provenance
+            )
+        elif source_kind == "supplied_scalar":
+            result = cls.supplied_scalar(
+                rank,
+                ArithmeticScalar.from_dict(value["value"]),
+                symmetric=symmetric,
+                provenance=provenance,
+            )
+        else:
+            raise BSDValidationError("unknown regulator source kind")
+        if result.to_dict() != dict(value):
+            raise BSDValidationError(
+                "serialized regulator fields do not match exact recomputation"
+            )
+        return result
 
 
 @dataclass(frozen=True)
@@ -1140,20 +1289,37 @@ class TorsionData:
 
     order: int
     provenance: Provenance
+    completeness: str = "exact"
 
     def __post_init__(self) -> None:
         object.__setattr__(
             self, "order", _require_integer(self.order, "torsion order", minimum=1)
         )
+        if self.completeness != "exact":
+            raise BSDValidationError("a BSD torsion factor must be an exact order")
+        if self.provenance.status not in {
+            "certified",
+            "computed",
+            "proved",
+            "supplied",
+        }:
+            raise BSDValidationError(
+                "an exact torsion order cannot have bounded or indeterminate provenance"
+            )
 
     def to_dict(self) -> dict[str, Any]:
-        return {"order": str(self.order), "provenance": self.provenance.to_dict()}
+        return {
+            "order": str(self.order),
+            "completeness": self.completeness,
+            "provenance": self.provenance.to_dict(),
+        }
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> TorsionData:
         return cls(
             _integer_from_record(value["order"], "torsion order", minimum=1),
             Provenance.from_dict(value["provenance"]),
+            _require_string(value["completeness"], "torsion completeness"),
         )
 
 
@@ -1306,9 +1472,199 @@ class TamagawaData:
                 _integer_from_record(item, "bad prime", minimum=2)
                 for item in value["certified_bad_primes"]
             ),
-            str(value["coverage"]),
+            _require_string(value["coverage"], "Tamagawa coverage"),
             Provenance.from_dict(value["provenance"]),
             Provenance.from_dict(value["override_provenance"]),
+        )
+
+
+def _record_sha256(value: Any) -> str:
+    return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _subgroup_binding_digests(
+    *,
+    object_kind: str,
+    model_status: str,
+    curve_model: Mapping[str, Any],
+    rank: int,
+    subgroup_status: str,
+    basis_status: str,
+    subgroup_basis: Sequence[Any],
+    regulator: RegulatorData,
+) -> tuple[str, str, str]:
+    object_record = {
+        "object_kind": object_kind,
+        "model_status": model_status,
+        "object_model": _json_safe(curve_model, "curve model"),
+    }
+    basis_record = {
+        "rank": rank,
+        "subgroup_status": subgroup_status,
+        "basis_status": basis_status,
+        "basis": _json_safe(list(subgroup_basis), "subgroup basis"),
+    }
+    return (
+        _record_sha256(object_record),
+        _record_sha256(basis_record),
+        _record_sha256(regulator.to_dict()),
+    )
+
+
+@dataclass(frozen=True)
+class SubgroupIndexCertificate:
+    """Typed binding of an index verification to object, basis, and regulator."""
+
+    method: str
+    verifier: str
+    certified_index: int
+    object_sha256: str
+    basis_sha256: str
+    regulator_sha256: str
+    evidence: Mapping[str, Any]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "method", _require_string(self.method, "index method", nonempty=True)
+        )
+        object.__setattr__(
+            self,
+            "verifier",
+            _require_string(self.verifier, "index verifier", nonempty=True),
+        )
+        object.__setattr__(
+            self,
+            "certified_index",
+            _require_integer(
+                self.certified_index, "certified subgroup index", minimum=1
+            ),
+        )
+        for field_name in ("object_sha256", "basis_sha256", "regulator_sha256"):
+            digest = _require_string(
+                getattr(self, field_name), field_name, nonempty=True
+            )
+            if len(digest) != 64 or any(
+                character not in "0123456789abcdef" for character in digest
+            ):
+                raise BSDValidationError(field_name + " must be a lowercase SHA-256")
+        object.__setattr__(
+            self, "evidence", _json_safe(self.evidence, "index evidence")
+        )
+
+    @classmethod
+    def bind_components(
+        cls,
+        *,
+        object_kind: str,
+        model_status: str,
+        curve_model: Mapping[str, Any],
+        rank: int,
+        subgroup_status: str,
+        basis_status: str,
+        subgroup_basis: Sequence[Any],
+        regulator: RegulatorData,
+        certified_index: Any,
+        method: str,
+        verifier: str,
+        evidence: Mapping[str, Any],
+    ) -> SubgroupIndexCertificate:
+        if basis_status != "supplied":
+            raise BSDValidationError(
+                "an index certificate must bind an explicit subgroup basis"
+            )
+        object_digest, basis_digest, regulator_digest = _subgroup_binding_digests(
+            object_kind=object_kind,
+            model_status=model_status,
+            curve_model=curve_model,
+            rank=rank,
+            subgroup_status=subgroup_status,
+            basis_status=basis_status,
+            subgroup_basis=subgroup_basis,
+            regulator=regulator,
+        )
+        return cls(
+            method,
+            verifier,
+            _require_integer(certified_index, "certified subgroup index", minimum=1),
+            object_digest,
+            basis_digest,
+            regulator_digest,
+            evidence,
+        )
+
+    @classmethod
+    def bind(
+        cls,
+        arithmetic_input: BSDArithmeticInput,
+        *,
+        certified_index: Any,
+        method: str,
+        verifier: str,
+        evidence: Mapping[str, Any],
+    ) -> SubgroupIndexCertificate:
+        return cls.bind_components(
+            object_kind=arithmetic_input.object_kind,
+            model_status=arithmetic_input.model_status,
+            curve_model=arithmetic_input.curve_model,
+            rank=arithmetic_input.leading_term.rank.value,
+            subgroup_status=arithmetic_input.subgroup_status,
+            basis_status=arithmetic_input.basis_status,
+            subgroup_basis=arithmetic_input.subgroup_basis,
+            regulator=arithmetic_input.regulator,
+            certified_index=certified_index,
+            method=method,
+            verifier=verifier,
+            evidence=evidence,
+        )
+
+    def verify_binding(self, arithmetic_input: BSDArithmeticInput) -> None:
+        expected = _subgroup_binding_digests(
+            object_kind=arithmetic_input.object_kind,
+            model_status=arithmetic_input.model_status,
+            curve_model=arithmetic_input.curve_model,
+            rank=arithmetic_input.leading_term.rank.value,
+            subgroup_status=arithmetic_input.subgroup_status,
+            basis_status=arithmetic_input.basis_status,
+            subgroup_basis=arithmetic_input.subgroup_basis,
+            regulator=arithmetic_input.regulator,
+        )
+        if expected != (
+            self.object_sha256,
+            self.basis_sha256,
+            self.regulator_sha256,
+        ):
+            raise BSDValidationError(
+                "subgroup-index certificate is bound to another object, basis, or regulator"
+            )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": SUBGROUP_INDEX_CERTIFICATE_SCHEMA,
+            "method": self.method,
+            "verifier": self.verifier,
+            "certified_index": str(self.certified_index),
+            "object_sha256": self.object_sha256,
+            "basis_sha256": self.basis_sha256,
+            "regulator_sha256": self.regulator_sha256,
+            "evidence": dict(self.evidence),
+        }
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> SubgroupIndexCertificate:
+        if value.get("schema") != SUBGROUP_INDEX_CERTIFICATE_SCHEMA:
+            raise BSDValidationError("unknown subgroup-index certificate schema")
+        return cls(
+            _require_string(value["method"], "index method", nonempty=True),
+            _require_string(value["verifier"], "index verifier", nonempty=True),
+            _integer_from_record(
+                value["certified_index"], "certified subgroup index", minimum=1
+            ),
+            _require_string(value["object_sha256"], "object_sha256", nonempty=True),
+            _require_string(value["basis_sha256"], "basis_sha256", nonempty=True),
+            _require_string(
+                value["regulator_sha256"], "regulator_sha256", nonempty=True
+            ),
+            value["evidence"],
         )
 
 
@@ -1318,7 +1674,7 @@ class SubgroupIndexData:
 
     status: str
     value: int
-    certificate: Mapping[str, Any]
+    certificate: SubgroupIndexCertificate | None
     provenance: Provenance
 
     def __post_init__(self) -> None:
@@ -1328,18 +1684,32 @@ class SubgroupIndexData:
         checked = _require_integer(self.value, "subgroup index", minimum=minimum)
         if self.status == "unknown" and checked != 0:
             raise BSDValidationError("an unknown subgroup index uses explicit value 0")
-        checked_certificate = _json_safe(self.certificate, "subgroup certificate")
-        if self.status == "certified" and not checked_certificate:
-            raise BSDValidationError("a certified subgroup index needs a certificate")
+        if self.status == "certified" and not isinstance(
+            self.certificate, SubgroupIndexCertificate
+        ):
+            raise BSDValidationError(
+                "a certified subgroup index needs a typed binding certificate"
+            )
+        if (
+            self.status == "certified"
+            and isinstance(self.certificate, SubgroupIndexCertificate)
+            and self.certificate.certified_index != checked
+        ):
+            raise BSDValidationError(
+                "the typed certificate does not authenticate this subgroup index"
+            )
+        if self.status == "unknown" and self.certificate is not None:
+            raise BSDValidationError(
+                "an unknown subgroup index cannot have a certificate"
+            )
         object.__setattr__(self, "value", checked)
-        object.__setattr__(self, "certificate", checked_certificate)
 
     @classmethod
     def unknown(cls) -> SubgroupIndexData:
         return cls(
             "unknown",
             0,
-            {},
+            None,
             Provenance("indeterminate", "subgroup-index-not-certified"),
         )
 
@@ -1347,7 +1717,7 @@ class SubgroupIndexData:
     def certified(
         cls,
         value: Any,
-        certificate: Mapping[str, Any],
+        certificate: SubgroupIndexCertificate,
         *,
         provenance: Provenance | None = None,
     ) -> SubgroupIndexData:
@@ -1364,16 +1734,31 @@ class SubgroupIndexData:
         return {
             "status": self.status,
             "value": str(self.value),
-            "certificate": dict(self.certificate),
+            "certificate_status": ("absent" if self.certificate is None else "present"),
+            "certificate": (
+                {} if self.certificate is None else self.certificate.to_dict()
+            ),
             "provenance": self.provenance.to_dict(),
         }
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> SubgroupIndexData:
+        status = _require_string(value["status"], "subgroup-index status")
+        certificate_status = _require_string(
+            value["certificate_status"], "subgroup certificate status"
+        )
+        if certificate_status == "absent":
+            certificate = None
+            if value["certificate"] != {}:
+                raise BSDValidationError("an absent subgroup certificate must be empty")
+        elif certificate_status == "present":
+            certificate = SubgroupIndexCertificate.from_dict(value["certificate"])
+        else:
+            raise BSDValidationError("unknown subgroup certificate status")
         return cls(
-            str(value["status"]),
+            status,
             _integer_from_record(value["value"], "subgroup index", minimum=0),
-            value["certificate"],
+            certificate,
             Provenance.from_dict(value["provenance"]),
         )
 
@@ -1388,6 +1773,11 @@ class PolarizationData:
     provenance: Provenance
 
     def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "principal",
+            _require_bool(self.principal, "principal polarization status"),
+        )
         if self.kind not in ("canonical_jacobian", "generic", "supplied_principal"):
             raise BSDValidationError("unknown polarization kind")
         degree = _require_integer(self.degree, "polarization degree", minimum=0)
@@ -1421,8 +1811,8 @@ class PolarizationData:
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> PolarizationData:
         return cls(
-            str(value["kind"]),
-            bool(value["principal"]),
+            _require_string(value["kind"], "polarization kind"),
+            _require_bool(value["principal"], "principal polarization status"),
             _integer_from_record(value["degree"], "polarization degree", minimum=0),
             Provenance.from_dict(value["provenance"]),
         )
@@ -1445,6 +1835,8 @@ class BSDArithmeticInput:
     polarization: PolarizationData
     subgroup_status: str
     subgroup_provenance: Provenance
+    basis_status: str
+    subgroup_basis: tuple[Any, ...]
     subgroup_index: SubgroupIndexData
     backend_versions: Mapping[str, Any]
 
@@ -1473,6 +1865,44 @@ class BSDArithmeticInput:
             )
         if self.subgroup_status not in _SUBGROUP_STATUSES:
             raise BSDValidationError("unknown Mordell--Weil subgroup status")
+        if self.basis_status not in {"not_supplied", "supplied"}:
+            raise BSDValidationError("unknown subgroup-basis status")
+        checked_basis = tuple(_json_safe(list(self.subgroup_basis), "subgroup basis"))
+        object.__setattr__(self, "subgroup_basis", checked_basis)
+        if self.basis_status == "not_supplied" and checked_basis:
+            raise BSDValidationError("a non-supplied subgroup basis must be empty")
+        if self.basis_status == "supplied" and len(checked_basis) != rank:
+            raise BSDRankMismatchError(
+                "the supplied subgroup basis size does not equal the rank"
+            )
+        if self.subgroup_index.status == "certified":
+            certificate = self.subgroup_index.certificate
+            if certificate is None:
+                raise BSDValidationError("certified subgroup index has no certificate")
+            certificate.verify_binding(self)
+        if self.subgroup_status == "full_mordell_weil" and (
+            self.subgroup_index.status != "certified" or self.subgroup_index.value != 1
+        ):
+            raise BSDValidationError(
+                "a full Mordell--Weil basis must carry certified subgroup index 1"
+            )
+        if (
+            self.object_kind == "abelian_variety"
+            and self.subgroup_status != "full_mordell_weil"
+        ):
+            raise BSDValidationError(
+                "generic BSD input currently requires full A and Adual Mordell--Weil bases"
+            )
+        if self.object_kind == "abelian_variety" and self.basis_status == "supplied":
+            for basis_pair in checked_basis:
+                if (
+                    not isinstance(basis_pair, dict)
+                    or "a" not in basis_pair
+                    or "adual" not in basis_pair
+                ):
+                    raise BSDValidationError(
+                        "each generic basis record must contain separate 'a' and 'adual' entries"
+                    )
         if self.object_kind == "hyperelliptic_jacobian":
             if not self.polarization.principal:
                 raise BSDValidationError(
@@ -1484,6 +1914,55 @@ class BSDArithmeticInput:
                 )
             if not self.regulator.symmetric:
                 raise BSDValidationError("a Jacobian height pairing must be symmetric")
+
+    @staticmethod
+    def _checked_basis(
+        rank: int, subgroup_basis: Sequence[Any] | None
+    ) -> tuple[str, tuple[Any, ...]]:
+        if subgroup_basis is None:
+            if rank == 0:
+                return "supplied", ()
+            return "not_supplied", ()
+        checked = tuple(_json_safe(list(subgroup_basis), "subgroup basis"))
+        if len(checked) != rank:
+            raise BSDRankMismatchError(
+                "the supplied subgroup basis size does not equal the rank"
+            )
+        return "supplied", checked
+
+    @staticmethod
+    def _resolved_index(
+        supplied_index: SubgroupIndexData | None,
+        *,
+        object_kind: str,
+        model_status: str,
+        curve_model: Mapping[str, Any],
+        rank: int,
+        subgroup_status: str,
+        basis_status: str,
+        subgroup_basis: Sequence[Any],
+        regulator: RegulatorData,
+        provenance: Provenance,
+    ) -> SubgroupIndexData:
+        if supplied_index is not None:
+            return supplied_index
+        if subgroup_status != "full_mordell_weil":
+            return SubgroupIndexData.unknown()
+        certificate = SubgroupIndexCertificate.bind_components(
+            object_kind=object_kind,
+            model_status=model_status,
+            curve_model=curve_model,
+            rank=rank,
+            subgroup_status=subgroup_status,
+            basis_status=basis_status,
+            subgroup_basis=subgroup_basis,
+            regulator=regulator,
+            certified_index=1,
+            method="declared-full-mordell-weil-basis",
+            verifier="supplied-arithmetic-data",
+            evidence={"index": "1", "reason": "basis declared full Mordell--Weil"},
+        )
+        return SubgroupIndexData.certified(1, certificate, provenance=provenance)
 
     @staticmethod
     def _regulator(
@@ -1506,7 +1985,7 @@ class BSDArithmeticInput:
             )
         return RegulatorData.supplied_scalar(
             rank,
-            ArithmeticScalar.exact(1) if rank == 0 else regulator,
+            regulator,
             symmetric=symmetric,
             provenance=provenance,
         )
@@ -1521,10 +2000,14 @@ class BSDArithmeticInput:
         bad_primes: Iterable[Any],
         torsion_order: Any,
         dual_torsion_order: Any,
+        real_component_factor: Any,
+        period_differential_basis: str,
+        real_period_is_total: bool,
         regulator: ArithmeticScalar | Any | None = None,
         height_pairing: Sequence[Sequence[ArithmeticScalar | Any]] | None = None,
         algebraic_rank: RankEvidence | None = None,
-        subgroup_status: str = "full_rank_finite_index",
+        subgroup_status: str = "full_mordell_weil",
+        subgroup_basis: Sequence[Any] | None = None,
         subgroup_index: SubgroupIndexData | None = None,
         curve_model: Mapping[str, Any] | None = None,
         backend_versions: Mapping[str, Any] | None = None,
@@ -1534,20 +2017,55 @@ class BSDArithmeticInput:
     ) -> BSDArithmeticInput:
         source = Provenance.supplied() if provenance is None else provenance
         rank = leading_term.rank.value
+        if subgroup_status != "full_mordell_weil":
+            raise BSDValidationError(
+                "generic BSD input currently requires full A and Adual Mordell--Weil bases"
+            )
+        model_status = "not_supplied" if curve_model is None else "supplied"
+        model = {} if curve_model is None else curve_model
+        basis_status, basis = cls._checked_basis(rank, subgroup_basis)
+        period = PeriodData.supplied_neron(
+            real_period,
+            provenance=source,
+            real_component_factor=_require_integer(
+                real_component_factor, "real component factor", minimum=1
+            ),
+            differential_basis=_require_string(
+                period_differential_basis,
+                "period differential basis",
+                nonempty=True,
+            ),
+            total_omega=_require_bool(
+                real_period_is_total, "real period total-Omega status"
+            ),
+        )
+        regulator_data = cls._regulator(
+            rank,
+            regulator,
+            height_pairing,
+            symmetric=False,
+            provenance=source,
+        )
+        index_data = cls._resolved_index(
+            subgroup_index,
+            object_kind="abelian_variety",
+            model_status=model_status,
+            curve_model=model,
+            rank=rank,
+            subgroup_status=subgroup_status,
+            basis_status=basis_status,
+            subgroup_basis=basis,
+            regulator=regulator_data,
+            provenance=source,
+        )
         return cls(
             "abelian_variety",
-            "not_supplied" if curve_model is None else "supplied",
-            {} if curve_model is None else curve_model,
+            model_status,
+            model,
             leading_term,
             RankEvidence.indeterminate() if algebraic_rank is None else algebraic_rank,
-            PeriodData.supplied_neron(real_period, provenance=source),
-            cls._regulator(
-                rank,
-                regulator,
-                height_pairing,
-                symmetric=False,
-                provenance=source,
-            ),
+            period,
+            regulator_data,
             TamagawaData.supplied(
                 tamagawa_numbers,
                 bad_primes=bad_primes,
@@ -1560,7 +2078,9 @@ class BSDArithmeticInput:
             PolarizationData.generic(),
             subgroup_status,
             source,
-            SubgroupIndexData.unknown() if subgroup_index is None else subgroup_index,
+            basis_status,
+            basis,
+            index_data,
             {} if backend_versions is None else backend_versions,
         )
 
@@ -1573,10 +2093,14 @@ class BSDArithmeticInput:
         tamagawa_numbers: Mapping[Any, Any],
         bad_primes: Iterable[Any],
         torsion_order: Any,
+        real_component_factor: Any,
+        period_differential_basis: str,
+        real_period_is_total: bool,
         regulator: ArithmeticScalar | Any | None = None,
         height_pairing: Sequence[Sequence[ArithmeticScalar | Any]] | None = None,
         algebraic_rank: RankEvidence | None = None,
-        subgroup_status: str = "full_rank_finite_index",
+        subgroup_status: str = "auto",
+        subgroup_basis: Sequence[Any] | None = None,
         subgroup_index: SubgroupIndexData | None = None,
         curve_model: Mapping[str, Any] | None = None,
         backend_versions: Mapping[str, Any] | None = None,
@@ -1586,21 +2110,61 @@ class BSDArithmeticInput:
     ) -> BSDArithmeticInput:
         source = Provenance.supplied() if provenance is None else provenance
         rank = leading_term.rank.value
+        resolved_subgroup_status = (
+            "full_mordell_weil"
+            if subgroup_status == "auto" and rank == 0
+            else (
+                "full_rank_finite_index"
+                if subgroup_status == "auto"
+                else subgroup_status
+            )
+        )
+        model_status = "not_supplied" if curve_model is None else "supplied"
+        model = {} if curve_model is None else curve_model
+        basis_status, basis = cls._checked_basis(rank, subgroup_basis)
+        period = PeriodData.supplied_neron(
+            real_period,
+            provenance=source,
+            real_component_factor=_require_integer(
+                real_component_factor, "real component factor", minimum=1
+            ),
+            differential_basis=_require_string(
+                period_differential_basis,
+                "period differential basis",
+                nonempty=True,
+            ),
+            total_omega=_require_bool(
+                real_period_is_total, "real period total-Omega status"
+            ),
+        )
+        regulator_data = cls._regulator(
+            rank,
+            regulator,
+            height_pairing,
+            symmetric=True,
+            provenance=source,
+        )
+        index_data = cls._resolved_index(
+            subgroup_index,
+            object_kind="hyperelliptic_jacobian",
+            model_status=model_status,
+            curve_model=model,
+            rank=rank,
+            subgroup_status=resolved_subgroup_status,
+            basis_status=basis_status,
+            subgroup_basis=basis,
+            regulator=regulator_data,
+            provenance=source,
+        )
         torsion = TorsionData(torsion_order, source)
         return cls(
             "hyperelliptic_jacobian",
-            "not_supplied" if curve_model is None else "supplied",
-            {} if curve_model is None else curve_model,
+            model_status,
+            model,
             leading_term,
             RankEvidence.indeterminate() if algebraic_rank is None else algebraic_rank,
-            PeriodData.supplied_neron(real_period, provenance=source),
-            cls._regulator(
-                rank,
-                regulator,
-                height_pairing,
-                symmetric=True,
-                provenance=source,
-            ),
+            period,
+            regulator_data,
             TamagawaData.supplied(
                 tamagawa_numbers,
                 bad_primes=bad_primes,
@@ -1611,9 +2175,11 @@ class BSDArithmeticInput:
             torsion,
             torsion,
             PolarizationData.canonical_jacobian(),
-            subgroup_status,
+            resolved_subgroup_status,
             source,
-            SubgroupIndexData.unknown() if subgroup_index is None else subgroup_index,
+            basis_status,
+            basis,
+            index_data,
             {} if backend_versions is None else backend_versions,
         )
 
@@ -1632,14 +2198,32 @@ class BSDArithmeticInput:
             self.polarization,
             self.subgroup_status,
             self.subgroup_provenance,
+            self.basis_status,
+            self.subgroup_basis,
             index,
             self.backend_versions,
         )
 
     def validate_complete(self) -> None:
+        if self.model_status != "supplied" or not self.curve_model:
+            raise BSDIncompleteDataError(
+                "a complete BSD quotient requires a reproducible nonempty object model"
+            )
+        if not self.backend_versions:
+            raise BSDIncompleteDataError(
+                "a complete BSD quotient requires backend/version provenance"
+            )
         if self.period.normalization != "neron":
             raise BSDIncompleteDataError(
                 "the BSD quotient requires a Neron-normalized real period"
+            )
+        if not self.period.component_factor_included:
+            raise BSDIncompleteDataError(
+                "the supplied real period must be total Omega including its component factor"
+            )
+        if self.basis_status != "supplied":
+            raise BSDIncompleteDataError(
+                "a complete BSD quotient requires a reproducible subgroup basis"
             )
         if self.subgroup_status == "arbitrary":
             raise BSDIncompleteDataError(
@@ -1663,6 +2247,8 @@ class BSDArithmeticInput:
             "polarization": self.polarization.to_dict(),
             "subgroup_status": self.subgroup_status,
             "subgroup_provenance": self.subgroup_provenance.to_dict(),
+            "basis_status": self.basis_status,
+            "subgroup_basis": list(self.subgroup_basis),
             "subgroup_index": self.subgroup_index.to_dict(),
             "backend_versions": dict(self.backend_versions),
         }
@@ -1675,8 +2261,8 @@ class BSDArithmeticInput:
         if value.get("schema") != BSD_INPUT_SCHEMA:
             raise BSDValidationError("unknown BSD arithmetic input schema")
         return cls(
-            str(value["object_kind"]),
-            str(value["model_status"]),
+            _require_string(value["object_kind"], "BSD object kind"),
+            _require_string(value["model_status"], "object-model status"),
             value["curve_model"],
             LeadingTermData.from_dict(value["leading_term"]),
             RankEvidence.from_dict(value["algebraic_rank"]),
@@ -1686,8 +2272,10 @@ class BSDArithmeticInput:
             TorsionData.from_dict(value["torsion_a"]),
             TorsionData.from_dict(value["torsion_adual"]),
             PolarizationData.from_dict(value["polarization"]),
-            str(value["subgroup_status"]),
+            _require_string(value["subgroup_status"], "subgroup status"),
             Provenance.from_dict(value["subgroup_provenance"]),
+            _require_string(value["basis_status"], "basis status"),
+            tuple(value["subgroup_basis"]),
             SubgroupIndexData.from_dict(value["subgroup_index"]),
             value["backend_versions"],
         )
@@ -1766,7 +2354,7 @@ class BSDAnalyticQuotient:
         self,
         value: Any,
         *,
-        certificate: Mapping[str, Any],
+        certificate: SubgroupIndexCertificate,
         provenance: Provenance | None = None,
     ) -> BSDAnalyticQuotient:
         index = SubgroupIndexData.certified(value, certificate, provenance=provenance)
@@ -1777,6 +2365,11 @@ class BSDAnalyticQuotient:
         certified = {"certified", "proved"}
         return (
             self.input.leading_term.rigorous
+            and self._leading_taylor.rigorous
+            and self._torsion_product.rigorous
+            and self._numerator.rigorous
+            and self._denominator.rigorous
+            and self._quotient.rigorous
             and self.input.algebraic_rank.status == "proved"
             and self.input.period.value.rigorous
             and self.input.period.provenance.status in certified
@@ -1800,7 +2393,10 @@ class BSDAnalyticQuotient:
             warnings.append(
                 "the analytic leading term is numerical/probable, not a proved enclosure"
             )
-        if self.input.subgroup_index.status == "unknown":
+        if (
+            self.input.object_kind == "hyperelliptic_jacobian"
+            and self.input.subgroup_index.status == "unknown"
+        ):
             warnings.append(
                 "the quotient is #Sha divided by the unknown subgroup index squared"
             )
@@ -1930,6 +2526,7 @@ __all__ = [
     "Provenance",
     "RankEvidence",
     "RegulatorData",
+    "SubgroupIndexCertificate",
     "SubgroupIndexData",
     "TamagawaData",
     "TamagawaFactor",
