@@ -220,6 +220,17 @@ _CLASSICAL_DELTA_4 = (
 )
 
 
+def _copy_data(value: Any) -> Any:
+    """Copy the JSON-like proof/provenance records used in this module."""
+    if isinstance(value, dict):
+        return {key: _copy_data(entry) for key, entry in value.items()}
+    if isinstance(value, tuple):
+        return tuple(_copy_data(entry) for entry in value)
+    if isinstance(value, list):
+        return [_copy_data(entry) for entry in value]
+    return value
+
+
 class Genus2KummerCapabilityError(NotImplementedError):
     """The model or divisor lies outside the checked Kummer envelope."""
 
@@ -237,9 +248,21 @@ class Genus2KummerCapability:
         reason: str,
         diagnostics: dict[str, Any],
     ) -> None:
-        self.supported = bool(supported)
-        self.reason = str(reason)
-        self.diagnostics = dict(diagnostics)
+        self._supported = bool(supported)
+        self._reason = str(reason)
+        self._diagnostics = _copy_data(diagnostics)
+
+    @property
+    def diagnostics(self) -> dict[str, Any]:
+        return cast(dict[str, Any], _copy_data(self._diagnostics))
+
+    @property
+    def supported(self) -> bool:
+        return self._supported
+
+    @property
+    def reason(self) -> str:
+        return self._reason
 
     def require(self) -> None:
         if not self.supported:
@@ -250,7 +273,7 @@ class Genus2KummerCapability:
             "schema": "sagejs.hyperelliptic.genus2-kummer-capability.v1",
             "supported": self.supported,
             "reason": self.reason,
-            "diagnostics": dict(self.diagnostics),
+            "diagnostics": self.diagnostics,
         }
 
     def __bool__(self) -> bool:
@@ -689,7 +712,7 @@ class KummerCoordinates:
         self._divisor = divisor
         self._jacobian = divisor.parent()
         self._coordinates = _primitive_integer_coordinates(values)
-        self._provenance = divisor_provenance(divisor)
+        self._provenance = _copy_data(divisor_provenance(divisor))
         self._duplication_steps = 0
         self._raw_from_previous: tuple[Any, ...] | None = None
 
@@ -701,7 +724,7 @@ class KummerCoordinates:
         answer._divisor = None
         answer._jacobian = source._jacobian
         answer._coordinates = _primitive_integer_coordinates(values)
-        answer._provenance = source._provenance
+        answer._provenance = _copy_data(source._provenance)
         answer._duplication_steps = source._duplication_steps + 1
         answer._raw_from_previous = values
         return answer
@@ -735,7 +758,7 @@ class KummerCoordinates:
         return {
             "schema": "sagejs.hyperelliptic.genus2-kummer-point.v1",
             "coordinates": tuple(str(value) for value in self._coordinates),
-            "divisor": self._provenance,
+            "divisor": _copy_data(self._provenance),
             "normalization": "primitive-integral-first-nonzero-positive",
             "theta_normalization": "Cassels-Flynn 2Theta Kummer embedding",
             "direct_duplication_steps": self._duplication_steps,

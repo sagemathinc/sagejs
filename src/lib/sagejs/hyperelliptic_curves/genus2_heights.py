@@ -13,12 +13,19 @@ The production envelope in this module is intentionally explicit.
   root-partition bound at infinity with an audited coefficient bound for the
   classical Flynn duplication quartics.
 * Other checked odd-degree models retain a source-transparent repeated-
-  doubling reference path.  It is labelled non-rigorous unless the caller
-  supplies a proved absolute bound for `|h_K-hhat|`.
+  doubling reference path. A caller-supplied absolute bound is retained as
+  an explicit unverified assumption and never promoted to rigorous output.
 
 Generalized `h` models use exact direct Kummer quartics but remain a clearly
-labelled numerical reference unless the caller supplies a proved global
-height-difference bound. Even-degree transformations are not inferred.
+labelled numerical reference; a supplied global height-difference assumption
+produces only a conditional enclosure. Even-degree transformations are not
+inferred.
+
+The real-place iterator is exact and projectively gcd-normalized, but its
+coordinate bit size still grows by roughly a factor of four per step. A
+configurable pre-duplication budget prevents accidental runaway work. This is
+therefore a certified bounded-exact path, not yet the arbitrary-precision
+floating/ball archimedean engine of a complete optimized phase exit.
 """
 
 from __future__ import annotations
@@ -37,12 +44,74 @@ from sagejs.hyperelliptic_curves.genus2_kummer import (
 from sagejs.number_fields.class_unit_analytic import IntervalBallField, RealBall
 
 
+def _copy_data(value: Any) -> Any:
+    """Return a defensive copy of a JSON-like diagnostic record."""
+    if isinstance(value, dict):
+        return {key: _copy_data(entry) for key, entry in value.items()}
+    if isinstance(value, tuple):
+        return tuple(_copy_data(entry) for entry in value)
+    if isinstance(value, list):
+        return [_copy_data(entry) for entry in value]
+    return value
+
+
+def _copy_ball(value: RealBall) -> RealBall:
+    return RealBall(
+        value.lower,
+        value.upper,
+        precision_bits=value.precision_bits,
+        rigorous=value.rigorous,
+        source=value.source,
+    )
+
+
+def _same_ball(left: RealBall, right: RealBall) -> bool:
+    return (
+        left.lower == right.lower
+        and left.upper == right.upper
+        and left.rigorous == right.rigorous
+        and left.precision_bits == right.precision_bits
+    )
+
+
+def _enclosure_width_bits(value: RealBall) -> int:
+    """Return the largest `b` with interval width at most `2^-b`."""
+    width = value.width()
+    numerator = int(width.numerator)
+    denominator = int(width.denominator)
+    if numerator == 0:
+        return value.precision_bits
+    if numerator > denominator:
+        return -1
+    bits = 0
+    while 2 * numerator <= denominator:
+        numerator *= 2
+        bits += 1
+    return bits
+
+
 class Genus2HeightCapabilityError(NotImplementedError):
     """The requested rigorous height operation is outside its envelope."""
 
     def __init__(self, message: str, diagnostics: dict[str, Any]) -> None:
         super().__init__(message)
-        self.diagnostics = dict(diagnostics)
+        self._diagnostics = _copy_data(diagnostics)
+
+    @property
+    def diagnostics(self) -> dict[str, Any]:
+        return cast(dict[str, Any], _copy_data(self._diagnostics))
+
+
+class Genus2HeightResourceLimitError(RuntimeError):
+    """Exact Kummer iteration would exceed its configured bit budget."""
+
+    def __init__(self, message: str, diagnostics: dict[str, Any]) -> None:
+        super().__init__(message)
+        self._diagnostics = _copy_data(diagnostics)
+
+    @property
+    def diagnostics(self) -> dict[str, Any]:
+        return cast(dict[str, Any], _copy_data(self._diagnostics))
 
 
 class Genus2HeightResolutionError(ArithmeticError):
@@ -50,7 +119,11 @@ class Genus2HeightResolutionError(ArithmeticError):
 
     def __init__(self, message: str, diagnostics: dict[str, Any]) -> None:
         super().__init__(message)
-        self.diagnostics = dict(diagnostics)
+        self._diagnostics = _copy_data(diagnostics)
+
+    @property
+    def diagnostics(self) -> dict[str, Any]:
+        return cast(dict[str, Any], _copy_data(self._diagnostics))
 
 
 def _gcd(left: int, right: int) -> int:
@@ -74,7 +147,7 @@ def _rational_pair(value: Any) -> tuple[int, int]:
 def _exact_ball(value: Any, precision: int, source: str) -> RealBall:
     if isinstance(value, RealBall):
         if not value.rigorous:
-            raise ValueError("a supplied rigorous height bound must be rigorous")
+            raise ValueError("a supplied bound must have certified exact endpoints")
         if value.lower < RealBall(0).lower:
             raise ValueError("a supplied absolute height bound must be nonnegative")
         return value
@@ -118,17 +191,34 @@ class AutomaticHeightBounds:
         correction_upper: RealBall,
         diagnostics: dict[str, Any],
     ) -> None:
-        self.correction_lower = correction_lower
-        self.correction_upper = correction_upper
-        self.diagnostics = dict(diagnostics)
+        self._correction_lower = _copy_ball(correction_lower)
+        self._correction_upper = _copy_ball(correction_upper)
+        self._diagnostics = _copy_data(diagnostics)
+
+    @property
+    def correction_lower(self) -> RealBall:
+        return _copy_ball(self._correction_lower)
+
+    @property
+    def correction_upper(self) -> RealBall:
+        return _copy_ball(self._correction_upper)
+
+    @property
+    def diagnostics(self) -> dict[str, Any]:
+        return cast(dict[str, Any], _copy_data(self._diagnostics))
+
+    def copy(self) -> AutomaticHeightBounds:
+        return AutomaticHeightBounds(
+            self._correction_lower, self._correction_upper, self._diagnostics
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema": "sagejs.hyperelliptic.genus2-height-bounds.v1",
             "meaning": "correction_lower <= h_K(P)-hhat(P) <= correction_upper",
-            "correction_lower": self.correction_lower.to_dict(),
-            "correction_upper": self.correction_upper.to_dict(),
-            "diagnostics": dict(self.diagnostics),
+            "correction_lower": self._correction_lower.to_dict(),
+            "correction_upper": self._correction_upper.to_dict(),
+            "diagnostics": self.diagnostics,
         }
 
     def __repr__(self) -> str:
@@ -152,24 +242,48 @@ class FiniteHeightCorrectionResult:
         steps: int,
         diagnostics: dict[str, Any],
     ) -> None:
-        self.ball = ball
-        self.partial_sum = partial_sum
-        self.tail_bound = tail_bound
-        self.steps = int(steps)
-        self.diagnostics = dict(diagnostics)
-        self.rigorous = True
+        self._ball = _copy_ball(ball)
+        self._partial_sum = _copy_ball(partial_sum)
+        self._tail_bound = _copy_ball(tail_bound)
+        self._steps = int(steps)
+        self._diagnostics = _copy_data(diagnostics)
+        self._rigorous = True
+
+    @property
+    def ball(self) -> RealBall:
+        return _copy_ball(self._ball)
+
+    @property
+    def partial_sum(self) -> RealBall:
+        return _copy_ball(self._partial_sum)
+
+    @property
+    def tail_bound(self) -> RealBall:
+        return _copy_ball(self._tail_bound)
+
+    @property
+    def diagnostics(self) -> dict[str, Any]:
+        return cast(dict[str, Any], _copy_data(self._diagnostics))
+
+    @property
+    def steps(self) -> int:
+        return self._steps
+
+    @property
+    def rigorous(self) -> bool:
+        return self._rigorous
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema": "sagejs.hyperelliptic.genus2-finite-height-correction.v1",
             "meaning": "sum_p mu_p(P)*log(p)",
-            "algorithm": "mueller-stoll-proposition-14.2-factorization-free",
+            "algorithm": "mueller-stoll-proposition-14.1-factorization-free",
             "rigorous": True,
-            "steps": self.steps,
-            "enclosure": self.ball.to_dict(),
-            "partial_sum": self.partial_sum.to_dict(),
-            "tail_bound": self.tail_bound.to_dict(),
-            "diagnostics": dict(self.diagnostics),
+            "steps": self._steps,
+            "enclosure": self._ball.to_dict(),
+            "partial_sum": self._partial_sum.to_dict(),
+            "tail_bound": self._tail_bound.to_dict(),
+            "diagnostics": self.diagnostics,
         }
 
     def __repr__(self) -> str:
@@ -343,7 +457,7 @@ def factorization_free_finite_correction(
     """Certify the finite height correction without factoring a discriminant.
 
     This is the modular gcd algorithm preceding Müller--Stoll Proposition
-    14.2. For a primitive integral quintic, the raw duplication content at
+    14.1. For a primitive integral quintic, the raw duplication content at
     every stage divides `D=16*abs(disc(f))`. Working modulo `D^(m+2)` keeps
     all intermediate integers polynomial in the requested accuracy. The
     omitted tail is enclosed by `log(D)/(3*4^m)`.
@@ -424,7 +538,7 @@ def factorization_free_finite_correction(
             "tail_formula": "log(D)/(3*4^steps)",
             "reference": (
                 "Mueller--Stoll, Canonical Heights on Genus Two Jacobians, "
-                "Section 14 and Proposition 14.2"
+                "Section 14 and Proposition 14.1"
             ),
         }
     )
@@ -434,10 +548,27 @@ def factorization_free_finite_correction(
 class HeightContext:
     """Reusable exact doubling chains, Kummer points, logs, and model bounds."""
 
-    def __init__(self, jacobian: Any) -> None:
+    def __init__(
+        self, jacobian: Any, *, max_exact_coordinate_bits: int = 100000
+    ) -> None:
         capability = exact_model_capability(jacobian)
         capability.require()
+        max_exact_coordinate_bits = int(max_exact_coordinate_bits)
+        if max_exact_coordinate_bits < 1024:
+            raise ValueError("the exact-coordinate bit budget must be at least 1024")
         self.jacobian = jacobian
+        self.max_exact_coordinate_bits = max_exact_coordinate_bits
+        try:
+            l1_bound = classical_duplication_l1_bound(jacobian)
+            self._duplication_overhead_bits_upper = 4 * len(str(l1_bound)) + 8
+        except Exception:
+            coefficient_digits = 1
+            for polynomial, length in ((jacobian.f(), 7), (jacobian.h(), 4)):
+                for coefficient in _integer_coefficients(polynomial, length) or ():
+                    coefficient_digits = max(
+                        coefficient_digits, len(str(abs(coefficient)))
+                    )
+            self._duplication_overhead_bits_upper = 16 * coefficient_digits + 64
         self._chains: dict[Any, list[KummerCoordinates]] = {}
         self._kummer: dict[Any, Any] = {}
         self._fields: dict[int, IntervalBallField] = {}
@@ -479,7 +610,7 @@ class HeightContext:
         self._kummer[key] = answer
         return answer
 
-    def chain(self, divisor: Any, steps: int) -> list[KummerCoordinates]:
+    def chain(self, divisor: Any, steps: int) -> tuple[KummerCoordinates, ...]:
         steps = int(steps)
         if steps < 0:
             raise ValueError("height doubling steps must be nonnegative")
@@ -492,14 +623,38 @@ class HeightContext:
         else:
             self._chain_hits += 1
         while len(chain) <= steps:
+            current_bits_upper = max(
+                1,
+                max(4 * len(str(abs(value))) for value in chain[-1].coordinates()),
+            )
+            predicted_bits_upper = (
+                4 * current_bits_upper + self._duplication_overhead_bits_upper
+            )
+            if predicted_bits_upper > self.max_exact_coordinate_bits:
+                raise Genus2HeightResourceLimitError(
+                    "exact Kummer coordinates exceed the configured bit budget; "
+                    "use fewer steps or the bounded local-correction engines",
+                    {
+                        "requested_steps": steps,
+                        "completed_steps": len(chain) - 1,
+                        "current_coordinate_bits_upper": current_bits_upper,
+                        "predicted_next_coordinate_bits_upper": predicted_bits_upper,
+                        "max_exact_coordinate_bits": self.max_exact_coordinate_bits,
+                        "fallbacks": (
+                            "factorization_free_finite_correction",
+                            "reduce exact doubling steps",
+                        ),
+                    },
+                )
             chain.append(chain[-1].duplicate())
             self._doublings += 1
-        return chain
+        return tuple(chain[: steps + 1])
 
     def automatic_bounds(self, precision: int) -> AutomaticHeightBounds | None:
         precision = int(precision)
         if precision in self._automatic_bounds:
-            return self._automatic_bounds[precision]
+            cached = self._automatic_bounds[precision]
+            return None if cached is None else cached.copy()
         try:
             answer = automatic_height_bounds(self.jacobian, precision=precision)
             self._automatic_bound_errors[precision] = {}
@@ -507,11 +662,16 @@ class HeightContext:
             answer = None
             self._automatic_bound_errors[precision] = dict(error.diagnostics)
         self._automatic_bounds[precision] = answer
-        return answer
+        return None if answer is None else answer.copy()
 
     def diagnostics(self) -> dict[str, Any]:
         return {
             "schema": "sagejs.hyperelliptic.genus2-height-context.v1",
+            "archimedean_engine_capability": (
+                "certified-bounded-exact-projective-iteration"
+            ),
+            "max_exact_coordinate_bits": self.max_exact_coordinate_bits,
+            "duplication_overhead_bits_upper": self._duplication_overhead_bits_upper,
             "chain_cache_entries": len(self._chains),
             "chain_cache_hits": self._chain_hits,
             "chain_cache_misses": self._chain_misses,
@@ -551,29 +711,98 @@ class CanonicalHeightResult:
         bounds: AutomaticHeightBounds | None,
         diagnostics: dict[str, Any],
     ) -> None:
-        self.ball = ball
-        self.status = str(status)
-        self.steps = int(steps)
-        self.provenance = dict(provenance)
-        self.bounds = bounds
-        self.diagnostics = dict(diagnostics)
-        self.rigorous = bool(ball.rigorous)
+        self._ball = _copy_ball(ball)
+        self._status = str(status)
+        self._steps = int(steps)
+        self._provenance = _copy_data(provenance)
+        self._bounds = None if bounds is None else bounds.copy()
+        self._diagnostics = _copy_data(diagnostics)
+        self._rigorous = bool(ball.rigorous)
+
+    @property
+    def ball(self) -> RealBall:
+        return _copy_ball(self._ball)
+
+    @property
+    def status(self) -> str:
+        return self._status
+
+    @property
+    def steps(self) -> int:
+        return self._steps
+
+    @property
+    def provenance(self) -> dict[str, Any]:
+        return cast(dict[str, Any], _copy_data(self._provenance))
+
+    @property
+    def bounds(self) -> AutomaticHeightBounds | None:
+        return None if self._bounds is None else self._bounds.copy()
+
+    @property
+    def diagnostics(self) -> dict[str, Any]:
+        return cast(dict[str, Any], _copy_data(self._diagnostics))
+
+    @property
+    def rigorous(self) -> bool:
+        return self._rigorous
 
     def midpoint(self) -> Any:
-        return self.ball.midpoint()
+        return self._ball.midpoint()
+
+    def verify(
+        self,
+        divisor: Any,
+        *,
+        height_difference_bound: Any = None,
+    ) -> bool:
+        """Strictly replay this result from its exact divisor and parameters."""
+        if divisor_provenance(divisor) != self._provenance:
+            raise Genus2HeightResolutionError(
+                "canonical-height replay divisor does not match provenance",
+                {"expected": self.provenance, "actual": divisor_provenance(divisor)},
+            )
+        if (
+            self._status == "conditional-supplied-bound"
+            and height_difference_bound is None
+        ):
+            raise Genus2HeightResolutionError(
+                "conditional replay requires the original supplied bound assumption",
+                {"status": self._status},
+            )
+        context_data = self._diagnostics.get("context", {})
+        replay_context = HeightContext(
+            divisor.parent(),
+            max_exact_coordinate_bits=int(
+                context_data.get("max_exact_coordinate_bits", 100000)
+            ),
+        )
+        replay = canonical_height(
+            divisor,
+            steps=self._steps,
+            precision=self._ball.precision_bits,
+            height_difference_bound=height_difference_bound,
+            context=replay_context,
+        )
+        if replay.status != self._status or not _same_ball(replay._ball, self._ball):
+            raise Genus2HeightResolutionError(
+                "canonical-height strict replay did not reproduce the record",
+                {"stored": self.to_dict(), "replayed": replay.to_dict()},
+            )
+        return True
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema": "sagejs.hyperelliptic.genus2-canonical-height.v1",
             "normalization": "Cassels-Flynn 2Theta Kummer canonical height",
             "pairing_convention": "<P,Q>=(hhat(P+Q)-hhat(P)-hhat(Q))/2",
-            "status": self.status,
-            "rigorous": self.rigorous,
-            "steps": self.steps,
-            "enclosure": self.ball.to_dict(),
+            "status": self._status,
+            "rigorous": self._rigorous,
+            "steps": self._steps,
+            "enclosure": self._ball.to_dict(),
             "divisor": self.provenance,
-            "height_bounds": None if self.bounds is None else self.bounds.to_dict(),
-            "diagnostics": dict(self.diagnostics),
+            "height_bounds": None if self._bounds is None else self._bounds.to_dict(),
+            "diagnostics": self.diagnostics,
         }
 
     def __repr__(self) -> str:
@@ -586,7 +815,7 @@ class CanonicalHeightResult:
         )
 
 
-def _find_kummer_repeat(chain: list[KummerCoordinates]) -> bool:
+def _find_kummer_repeat(chain: tuple[KummerCoordinates, ...]) -> bool:
     seen: set[tuple[int, int, int, int]] = set()
     for point in chain:
         coordinates = point.coordinates()
@@ -602,7 +831,7 @@ def _find_kummer_repeat(chain: list[KummerCoordinates]) -> bool:
 
 def _local_correction_breakdown(
     context: HeightContext,
-    chain: list[KummerCoordinates],
+    chain: tuple[KummerCoordinates, ...],
     bounds: AutomaticHeightBounds | None,
     precision: int,
 ) -> dict[str, Any]:
@@ -622,6 +851,14 @@ def _local_correction_breakdown(
             return dict(cached)
     context._local_correction_misses += 1
     jacobian = context.jacobian
+    if bounds is not None and bounds.diagnostics.get("automatic_bound") != "certified":
+        return {
+            "status": "unavailable-for-undifferentiated-supplied-total-bound",
+            "reason": (
+                "a total |h_K-hhat| assumption does not separately bound "
+                "finite and archimedean corrections"
+            ),
+        }
     if (
         bounds is None
         or not jacobian.h().is_zero()
@@ -732,11 +969,11 @@ def canonical_height(
 ) -> CanonicalHeightResult:
     """Compute a genus-2 canonical-height enclosure by exact doubling.
 
-    `height_difference_bound`, when supplied, must be a proved exact bound for
-    `|h_K-hhat|`; binary floating-point values are rejected.  The default
-    classical integral envelope derives a generally sharper asymmetric bound
-    automatically.  Outside those two cases the returned point estimate is
-    explicitly non-rigorous.
+    `height_difference_bound`, when supplied, is treated as an unverified
+    caller assumption about `|h_K-hhat|`; exact syntax is required, but syntax
+    is not a proof certificate. The resulting enclosure is therefore marked
+    conditional and non-rigorous. The default classical integral envelope
+    derives a theorem-backed asymmetric bound automatically.
     """
     capability = exact_divisor_capability(divisor)
     capability.require()
@@ -795,29 +1032,30 @@ def canonical_height(
     field = context.field(precision)
     naive_height = field.log_integer(height_integer)
     scale = RealBall(4**steps, precision_bits=precision)
+    terminal_approximation = naive_height / scale
     bounds = None
     if height_difference_bound is not None:
         absolute = _exact_ball(
             height_difference_bound,
             precision,
-            "caller-supplied-proved-absolute-height-difference-bound",
+            "caller-supplied-unverified-absolute-height-difference-assumption",
         )
         bounds = AutomaticHeightBounds(
             -absolute,
             absolute,
             {
                 "automatic_bound": "caller-supplied",
-                "required_meaning": "proved |h_K-hhat| bound",
+                "proof_status": "unverified-caller-assumption",
+                "required_meaning": "assumed |h_K-hhat| bound",
             },
         )
     else:
         bounds = context.automatic_bounds(precision)
 
     if bounds is None:
-        estimate = naive_height / scale
         ball = RealBall(
-            estimate.lower,
-            estimate.upper,
+            terminal_approximation.lower,
+            terminal_approximation.upper,
             precision_bits=precision,
             rigorous=False,
             source=(
@@ -830,17 +1068,21 @@ def canonical_height(
         raw_upper = (naive_height - bounds.correction_lower) / scale
         zero = _zero_ball(precision)
         lower = zero.lower if raw_lower.lower < zero.lower else raw_lower.lower
+        conditional = bounds.diagnostics.get("automatic_bound") == "caller-supplied"
         ball = RealBall(
             lower,
             raw_upper.upper,
             precision_bits=precision,
-            rigorous=True,
+            rigorous=not conditional,
             source=(
                 "exact Kummer repeated doubling plus certified global "
                 "naive/canonical height-difference bounds"
+                if not conditional
+                else "exact Kummer repeated doubling conditional on an "
+                "unverified caller-supplied height-difference assumption"
             ),
         )
-        status = "certified-enclosure"
+        status = "conditional-supplied-bound" if conditional else "certified-enclosure"
 
     return CanonicalHeightResult(
         ball,
@@ -855,6 +1097,26 @@ def canonical_height(
             ),
             "scale": str(4**steps),
             "algorithm": "direct-flynn-kummer-quartic-limit",
+            "projective_normalization": (
+                "primitive-integral-gcd-after-every-exact-duplication"
+            ),
+            "terminal_coordinate_decimal_digits": max(
+                len(str(abs(value))) for value in terminal.coordinates()
+            ),
+            "terminal_coordinate_bits_upper": max(
+                4 * len(str(abs(value))) for value in terminal.coordinates()
+            ),
+            "terminal_limit_approximation": terminal_approximation.to_dict(),
+            "enclosure_width_bits": _enclosure_width_bits(ball),
+            "accuracy_interpretation": (
+                "the enclosure_width_bits value is theorem-backed"
+                if ball.rigorous
+                else "the displayed width is conditional/numerical, not a proof of accuracy"
+            ),
+            "asymptotic_exact_growth": (
+                "coordinate bit size is expected to quadruple per exact step; "
+                "HeightContext enforces a pre-duplication resource budget"
+            ),
             "local_corrections": _local_correction_breakdown(
                 context, chain, bounds, precision
             ),
@@ -872,14 +1134,32 @@ class HeightPairingResult:
         height_results: tuple[CanonicalHeightResult, ...],
         diagnostics: dict[str, Any],
     ) -> None:
-        self.matrix = matrix
-        self.height_results = height_results
-        self.diagnostics = dict(diagnostics)
-        self.rigorous = all(entry.rigorous for row in self.matrix for entry in row)
+        self._matrix = tuple(
+            tuple(_copy_ball(entry) for entry in row) for row in matrix
+        )
+        self._height_results = tuple(height_results)
+        self._diagnostics = _copy_data(diagnostics)
+        self._rigorous = all(entry.rigorous for row in self._matrix for entry in row)
+
+    @property
+    def matrix(self) -> tuple[tuple[RealBall, ...], ...]:
+        return tuple(tuple(_copy_ball(entry) for entry in row) for row in self._matrix)
+
+    @property
+    def height_results(self) -> tuple[CanonicalHeightResult, ...]:
+        return tuple(self._height_results)
+
+    @property
+    def diagnostics(self) -> dict[str, Any]:
+        return cast(dict[str, Any], _copy_data(self._diagnostics))
+
+    @property
+    def rigorous(self) -> bool:
+        return self._rigorous
 
     def transform(self, basis_matrix: Any) -> HeightPairingResult:
         """Return `M^T H M` for an exact integral change-of-basis matrix."""
-        size = len(self.matrix)
+        size = len(self._matrix)
         rows = [list(row) for row in basis_matrix]
         if len(rows) != size or any(len(row) != size for row in rows):
             raise ValueError("a pairing basis transform must be square of full rank")
@@ -896,7 +1176,7 @@ class HeightPairingResult:
             integers.append(values)
         precision = 100
         if size:
-            precision = self.matrix[0][0].precision_bits
+            precision = self._matrix[0][0].precision_bits
         transformed: list[list[RealBall]] = []
         for left in range(size):
             output_row: list[RealBall] = []
@@ -906,38 +1186,81 @@ class HeightPairingResult:
                     for second in range(size):
                         coefficient = integers[first][left] * integers[second][right]
                         if coefficient:
-                            total = total + self.matrix[first][second] * RealBall(
+                            total = total + self._matrix[first][second] * RealBall(
                                 coefficient, precision_bits=precision
                             )
                 output_row.append(total)
             transformed.append(output_row)
         return HeightPairingResult(
             tuple(tuple(row) for row in transformed),
-            self.height_results,
+            self._height_results,
             {
                 "algorithm": "exact-integral-M-transpose-H-M",
                 "basis_matrix": tuple(tuple(row) for row in integers),
-                "source_pairing": dict(self.diagnostics),
+                "source_pairing": self.diagnostics,
             },
         )
+
+    def verify(
+        self,
+        points: Any,
+        *,
+        height_difference_bound: Any = None,
+    ) -> bool:
+        """Strictly replay every height used to construct this pairing."""
+        steps = int(self._diagnostics.get("steps", 0))
+        precision = int(self._diagnostics.get("precision_bits", 100))
+        context_data = self._diagnostics.get("context", {})
+        point_values = tuple(points)
+        if not point_values:
+            replay_context = None
+        else:
+            replay_context = HeightContext(
+                point_values[0].parent(),
+                max_exact_coordinate_bits=int(
+                    context_data.get("max_exact_coordinate_bits", 100000)
+                ),
+            )
+        replay = height_pairing(
+            point_values,
+            steps=steps,
+            precision=precision,
+            height_difference_bound=height_difference_bound,
+            context=replay_context,
+        )
+        if len(replay._matrix) != len(self._matrix):
+            raise Genus2HeightResolutionError(
+                "height-pairing strict replay changed matrix size",
+                {"stored": self.to_dict(), "replayed": replay.to_dict()},
+            )
+        for row in range(len(self._matrix)):
+            for column in range(len(self._matrix)):
+                if not _same_ball(
+                    replay._matrix[row][column], self._matrix[row][column]
+                ):
+                    raise Genus2HeightResolutionError(
+                        "height-pairing strict replay did not reproduce the record",
+                        {"stored": self.to_dict(), "replayed": replay.to_dict()},
+                    )
+        return True
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema": "sagejs.hyperelliptic.genus2-height-pairing.v1",
             "normalization": "Cassels-Flynn 2Theta principal-polarization pairing",
             "convention": "<P,Q>=(hhat(P+Q)-hhat(P)-hhat(Q))/2",
-            "rigorous": self.rigorous,
+            "rigorous": self._rigorous,
             "matrix": tuple(
-                tuple(entry.to_dict() for entry in row) for row in self.matrix
+                tuple(entry.to_dict() for entry in row) for row in self._matrix
             ),
-            "diagnostics": dict(self.diagnostics),
+            "diagnostics": self.diagnostics,
         }
 
     def __getitem__(self, index: int) -> tuple[RealBall, ...]:
-        return self.matrix[index]
+        return tuple(_copy_ball(entry) for entry in self._matrix[index])
 
     def __len__(self) -> int:
-        return len(self.matrix)
+        return len(self._matrix)
 
     def __repr__(self) -> str:
         return "HeightPairingResult(" + repr(self.matrix) + ")"
@@ -1051,11 +1374,31 @@ class RegulatorResult:
         status: str,
         diagnostics: dict[str, Any],
     ) -> None:
-        self.ball = ball
-        self.pairing = pairing
-        self.status = str(status)
-        self.diagnostics = dict(diagnostics)
-        self.rigorous = bool(ball.rigorous)
+        self._ball = _copy_ball(ball)
+        self._pairing = pairing
+        self._status = str(status)
+        self._diagnostics = _copy_data(diagnostics)
+        self._rigorous = bool(ball.rigorous)
+
+    @property
+    def ball(self) -> RealBall:
+        return _copy_ball(self._ball)
+
+    @property
+    def pairing(self) -> HeightPairingResult:
+        return self._pairing
+
+    @property
+    def status(self) -> str:
+        return self._status
+
+    @property
+    def diagnostics(self) -> dict[str, Any]:
+        return cast(dict[str, Any], _copy_data(self._diagnostics))
+
+    @property
+    def rigorous(self) -> bool:
+        return self._rigorous
 
     def transform_index(self, index: Any) -> RegulatorResult:
         """Scale for a subgroup basis of determinant/index `index`."""
@@ -1064,29 +1407,63 @@ class RegulatorResult:
         value = int(index)
         if value <= 0 or value != index:
             raise ValueError("a subgroup index must be a positive exact integer")
-        scaled = self.ball * RealBall(
-            value * value, precision_bits=self.ball.precision_bits
+        scaled = self._ball * RealBall(
+            value * value, precision_bits=self._ball.precision_bits
         )
         return RegulatorResult(
             scaled,
-            self.pairing,
-            self.status,
+            self._pairing,
+            self._status,
             {
                 "algorithm": "regulator-index-square-scaling",
                 "subgroup_index": str(value),
-                "source_regulator": dict(self.diagnostics),
+                "source_regulator": self.diagnostics,
             },
         )
+
+    def verify(
+        self,
+        points: Any,
+        *,
+        height_difference_bound: Any = None,
+    ) -> bool:
+        """Strictly replay the pairing and determinant behind this regulator."""
+        steps = int(self._pairing._diagnostics.get("steps", 0))
+        precision = int(self._pairing._diagnostics.get("precision_bits", 100))
+        context_data = self._pairing._diagnostics.get("context", {})
+        point_values = tuple(points)
+        if not point_values:
+            replay_context = None
+        else:
+            replay_context = HeightContext(
+                point_values[0].parent(),
+                max_exact_coordinate_bits=int(
+                    context_data.get("max_exact_coordinate_bits", 100000)
+                ),
+            )
+        replay = regulator(
+            point_values,
+            steps=steps,
+            precision=precision,
+            height_difference_bound=height_difference_bound,
+            context=replay_context,
+        )
+        if replay._status != self._status or not _same_ball(replay._ball, self._ball):
+            raise Genus2HeightResolutionError(
+                "regulator strict replay did not reproduce the record",
+                {"stored": self.to_dict(), "replayed": replay.to_dict()},
+            )
+        return True
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema": "sagejs.hyperelliptic.genus2-regulator.v1",
-            "status": self.status,
-            "rigorous": self.rigorous,
-            "rank": len(self.pairing),
-            "enclosure": self.ball.to_dict(),
-            "pairing": self.pairing.to_dict(),
-            "diagnostics": dict(self.diagnostics),
+            "status": self._status,
+            "rigorous": self._rigorous,
+            "rank": len(self._pairing),
+            "enclosure": self._ball.to_dict(),
+            "pairing": self._pairing.to_dict(),
+            "diagnostics": self.diagnostics,
         }
 
     def __repr__(self) -> str:
@@ -1115,7 +1492,8 @@ def regulator(
     if pairing.rigorous and determinant.contains_zero():
         raise Genus2HeightResolutionError(
             "the certified pairing enclosure does not prove independence; "
-            "increase doubling steps or supply a sharper proved height bound",
+            "increase doubling steps within the exact bit budget or improve "
+            "the theorem-backed automatic model bound",
             {
                 "status": "unresolved-independence",
                 "determinant": determinant.to_dict(),
@@ -1127,7 +1505,15 @@ def regulator(
             "the computed pairing is provably not positive semidefinite",
             {"determinant": determinant.to_dict(), "pairing": pairing.to_dict()},
         )
-    status = "certified-positive" if pairing.rigorous else "numerical-reference"
+    conditional = any(
+        result.status == "conditional-supplied-bound"
+        for result in pairing.height_results
+    )
+    status = (
+        "certified-positive"
+        if pairing.rigorous
+        else ("conditional-supplied-bound" if conditional else "numerical-reference")
+    )
     return RegulatorResult(
         determinant,
         pairing,
@@ -1135,6 +1521,7 @@ def regulator(
         {
             "algorithm": "subset-dynamic-programming-interval-determinant",
             "pairing_rigorous": pairing.rigorous,
+            "conditional_on_supplied_bound": conditional,
         },
     )
 

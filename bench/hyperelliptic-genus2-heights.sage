@@ -8,6 +8,7 @@ import time
 
 from sagejs.hyperelliptic_curves.genus2_heights import (
     HeightContext,
+    Genus2HeightResourceLimitError,
     canonical_height,
     factorization_free_finite_correction,
     height_pairing,
@@ -37,6 +38,12 @@ started = time.perf_counter()
 cold = canonical_height(P, steps=6, precision=100, context=context)
 print("cold certified height seconds:", time.perf_counter() - started)
 print("cold enclosure:", cold.ball, "width:", cold.ball.width())
+print(
+    "cold certified width bits:",
+    cold.diagnostics["enclosure_width_bits"],
+    "terminal coordinate digits:",
+    cold.diagnostics["terminal_coordinate_decimal_digits"],
+)
 
 benchmark(
     "warm cached certified height",
@@ -57,4 +64,8 @@ started = time.perf_counter()
 finite = factorization_free_finite_correction(P, precision=100)
 print("factorization-free finite correction seconds:", time.perf_counter() - started)
 print("finite correction steps:", finite.steps, "enclosure:", finite.ball)
+try:
+    canonical_height(P, steps=9, precision=100, context=context)
+except Genus2HeightResourceLimitError as error:
+    print("exact-growth guard:", error.diagnostics)
 print("context diagnostics:", context.diagnostics())

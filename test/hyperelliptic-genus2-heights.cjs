@@ -18,6 +18,7 @@ from sagejs.hyperelliptic_curves.genus2_kummer import (
 )
 from sagejs.hyperelliptic_curves.genus2_heights import (
     Genus2HeightCapabilityError,
+    Genus2HeightResourceLimitError,
     Genus2HeightResolutionError,
     HeightContext,
     automatic_height_bounds,
@@ -288,7 +289,7 @@ assert dependent_rejected
   }
 });
 
-test("unsupported automatic models remain numerical unless a proof bound is supplied", async () => {
+test("caller-supplied bounds remain explicit unverified assumptions", async () => {
   const session = await createSage();
   try {
     const result = await session.evaluate(
@@ -298,9 +299,16 @@ x = R.gen()
 J = HyperellipticJacobian(HeightTestCurve(x**5 - x**4 + x**2 - x, 1))
 D = J([x**2 + x, x])
 reference = canonical_height(D, steps=3, precision=80)
-certified = canonical_height(D, steps=3, precision=80, height_difference_bound=100)
+conditional = canonical_height(D, steps=3, precision=80, height_difference_bound=100)
 assert reference.status == "numerical-reference" and not reference.rigorous
-assert certified.status == "certified-enclosure" and certified.rigorous
+assert conditional.status == "conditional-supplied-bound"
+assert not conditional.rigorous
+assert conditional.bounds.diagnostics["proof_status"] == (
+    "unverified-caller-assumption"
+)
+assert conditional.diagnostics["local_corrections"]["status"] == (
+    "unavailable-for-undifferentiated-supplied-total-bound"
+)
 
 unsupported = False
 try:
@@ -315,12 +323,12 @@ try:
 except TypeError:
     float_rejected = True
 assert float_rejected
-[reference.status, certified.status, unsupported, float_rejected]
+[reference.status, conditional.status, unsupported, float_rejected]
 `,
     );
     assert.equal(
       result.repr,
-      "['numerical-reference', 'certified-enclosure', True, True]",
+      "['numerical-reference', 'conditional-supplied-bound', True, True]",
     );
   } finally {
     await session.close();
@@ -359,12 +367,109 @@ assert hQ.ball.contains(magma_hQ)
 assert pair[0][1].contains(magma_pair)
 assert reg.ball.contains(magma_reg)
 assert seeded_height.ball.contains(magma_seeded)
+approximation_data = hP.diagnostics["terminal_limit_approximation"]
+approximation = RealBall(
+    approximation_data["lower"],
+    approximation_data["upper"],
+    rigorous=False,
+)
+strong_oracle_tolerance = (
+    approximation.lower > RealBall("0.551744").lower
+    and approximation.upper < RealBall("0.551776").upper
+)
+assert strong_oracle_tolerance
+assert hP.diagnostics["enclosure_width_bits"] >= 9
 [
     hP.ball.contains(magma_hP),
     pair[0][1].contains(magma_pair),
     reg.ball.contains(magma_reg),
     seeded_height.ball.contains(magma_seeded),
+    strong_oracle_tolerance,
 ]
+`,
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "[True, True, True, True, True]");
+  } finally {
+    await session.close();
+  }
+});
+
+test("height records and caches resist mutation and support strict replay", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      `${setup}
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+J = HyperellipticJacobian(HeightTestCurve(x**5 - x + 1))
+P = J([x, 1])
+Q = J([x - 1, 1])
+context = HeightContext(J)
+
+K = kummer_coordinates(P)
+coordinates_before = K.coordinates()
+kdata = K.to_dict()
+kdata["coordinates"] = ("9", "9", "9", "9")
+kdata["divisor"]["model"]["equation"] = "poisoned"
+assert K.coordinates() == coordinates_before
+assert K.to_dict()["divisor"]["model"]["equation"] != "poisoned"
+
+capability = exact_model_capability(J)
+capdata = capability.diagnostics
+capdata["algorithm"] = "poisoned"
+assert capability.diagnostics["algorithm"] != "poisoned"
+
+bounds = context.automatic_bounds(80)
+lower_before = bounds.correction_lower.lower
+bounds.correction_lower.lower = RealBall(999).lower
+bounds_data = bounds.diagnostics
+bounds_data["automatic_bound"] = "poisoned"
+assert bounds.correction_lower.lower == lower_before
+assert context.automatic_bounds(80).diagnostics["automatic_bound"] == "certified"
+
+chain_copy = list(context.chain(P, 4))
+chain_copy[0] = kummer_coordinates(Q)
+assert context.chain(P, 4)[0] == kummer_coordinates(P)
+
+height = canonical_height(P, steps=4, precision=80, context=context)
+height_lower = height.ball.lower
+height.ball.lower = RealBall(999).lower
+height_data = height.diagnostics
+height_data["algorithm"] = "poisoned"
+provenance = height.provenance
+provenance["model"]["equation"] = "poisoned"
+assert height.ball.lower == height_lower
+assert height.diagnostics["algorithm"] != "poisoned"
+assert height.provenance["model"]["equation"] != "poisoned"
+height_verified = height.verify(P)
+assert height_verified
+
+pair = height_pairing([P, Q], steps=4, precision=80)
+matrix_copy = pair.matrix
+matrix_copy[0][0].lower = RealBall(999).lower
+assert pair[0][0].lower != RealBall(999).lower
+pair_verified = pair.verify([P, Q])
+assert pair_verified
+
+reg = regulator([P, Q], steps=6, precision=80)
+reg.ball.lower = RealBall(999).lower
+assert reg.ball.lower != RealBall(999).lower
+reg_verified = reg.verify([P, Q])
+assert reg_verified
+
+limited = False
+try:
+    canonical_height(
+        P,
+        steps=8,
+        precision=80,
+        context=HeightContext(J, max_exact_coordinate_bits=1024),
+    )
+except Genus2HeightResourceLimitError as error:
+    limited = error.diagnostics["max_exact_coordinate_bits"] == 1024
+assert limited
+[height_verified, pair_verified, reg_verified, limited]
 `,
       { timeout: 120_000 },
     );
