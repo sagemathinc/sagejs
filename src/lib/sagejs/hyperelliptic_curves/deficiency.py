@@ -39,7 +39,6 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Mapping
 
-
 POONEN_STOLL_REFERENCE = (
     "Poonen--Stoll, The Cassels--Tate Pairing on Polarized Abelian Varieties (1999)"
 )

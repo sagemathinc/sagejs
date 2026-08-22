@@ -34,7 +34,6 @@ from __future__ import annotations
 from itertools import combinations
 from typing import Any
 
-
 TAMAGAWA_CERTIFICATE_SCHEMA = "sagejs.hyperelliptic.tamagawa.v1"
 
 

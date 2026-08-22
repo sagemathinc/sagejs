@@ -28,7 +28,6 @@ import json
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
-
 BSD_INPUT_SCHEMA = "sagejs.hyperelliptic-bsd-input/v1"
 BSD_QUOTIENT_SCHEMA = "sagejs.hyperelliptic-bsd-quotient/v1"
 BSD_SQLITE_SCHEMA = "sagejs.hyperelliptic-bsd-sqlite/v1"
