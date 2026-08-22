@@ -31,6 +31,18 @@ before constructing SQL, and defaults to the public credentials documented at
 `https://beta.lmfdb.org/api/options`. Network access is never part of routine
 tests; committed fixtures remain the reproducible oracle boundary.
 
+Run the pinned cubic ladder through matched persistent Sage.js and Sage/PARI
+processes with fresh prepared fields on both sides:
+
+```bash
+pnpm bench:number-field-class-number-lmfdb -- --samples 5 --proof both \
+  --require-sage --output /tmp/lmfdb-class-number-timings.json
+```
+
+The receipt reports every per-case ratio, geometric mean, median, p90, p95,
+worst case, and the dominant Sage.js phase. Process startup is recorded
+separately and is not included in the prepared-field ratios.
+
 ## Run the harness
 
 The capture paths can be overridden with `SAGE_ORACLE` and `MAGMA_ORACLE` or
