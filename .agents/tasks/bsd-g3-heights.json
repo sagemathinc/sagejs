@@ -43,7 +43,38 @@
     "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
     "node bin/sagejs --python src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "python -m py_compile src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.08,
+      "started_at": "2026-08-22T06:39:58.126Z",
+      "commit": "1267491f1ab92495f17faf9b3530e50183a955fc",
+      "workspace_fingerprint": "3760da58536cf05487c6db8723079e9ae8d35277ac82c7f39c83bd85a907ee90",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.713,
+      "started_at": "2026-08-22T06:39:58.898Z",
+      "commit": "1267491f1ab92495f17faf9b3530e50183a955fc",
+      "workspace_fingerprint": "3760da58536cf05487c6db8723079e9ae8d35277ac82c7f39c83bd85a907ee90",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bin/sagejs --python src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.253,
+      "started_at": "2026-08-22T06:40:07.220Z",
+      "commit": "1267491f1ab92495f17faf9b3530e50183a955fc",
+      "workspace_fingerprint": "3760da58536cf05487c6db8723079e9ae8d35277ac82c7f39c83bd85a907ee90",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "Implemented a bounded ordinary-Python genus-3 Faltings--Hriljac reference engine: exact regular-model matrix validation and Cox--Zucker vertical solves; certified semistable graph and irreducible-nodal theorem paths; exact rational-section intersections; split-Mumford factorization and Holmes moving representatives; complete finite candidate-prime plans with supplied certified overrides and structured unsupported records; Muller theta Green functions with refinement witnesses; the frozen periods/Abel--Jacobi adapter; global pairing, canonical-height, pairing-matrix, and regulator assembly. The automatic theta envelope is odd-degree genus-3 QQ, rational infinity, split rational Mumford degree three. Lower Mumford degrees retain finite and supplied-archimedean support but explicitly reject the currently special theta move.",
     "risks": [
