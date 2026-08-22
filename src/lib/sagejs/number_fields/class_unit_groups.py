@@ -116,9 +116,14 @@ def _component_payload(value: Any) -> Any:
     raise TypeError("a class/unit proof component is not canonically serializable")
 
 
-def _content_hash(payload: dict[str, Any]) -> str:
+def _canonical_payload_hash(payload: Any) -> str:
+    """Hash a tree already projected to canonical JSON scalar containers."""
     encoded = json.dumps(
-        _component_payload(payload), sort_keys=True, separators=(",", ":")
+        payload,
+        allow_nan=False,
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
@@ -324,7 +329,18 @@ class ClassUnitSaturationRecord:
         self.attempts = tuple(_component_payload(value) for value in attempts)
         self.analytic_validation = _component_payload(analytic_validation)
         self._analytic_certificate = analytic_certificate
-        self._analytic_certificate_payload = _component_payload(analytic_certificate)
+        standard_certificate_type = getattr(
+            analytic_module, "UnitSaturationIndexCertificate", None
+        )
+        if (
+            standard_certificate_type is not None
+            and type(analytic_certificate) is standard_certificate_type
+        ):
+            self._analytic_certificate_payload = analytic_certificate.to_dict()
+        else:
+            self._analytic_certificate_payload = _component_payload(
+                analytic_certificate
+            )
         self._analytic_generation_verifier = analytic_generation_verifier
         self._producer_artifacts = tuple(
             (artifact, tuple(before), torsion, generation_verifier)
@@ -345,7 +361,7 @@ class ClassUnitSaturationRecord:
         self._field = field
         self._order = order
         body = self._body_dict()
-        self.content_sha256 = _content_hash(body)
+        self.content_sha256 = _canonical_payload_hash(body)
 
     def _unit_payload(self, unit: Any) -> Any:
         encode = getattr(unit, "to_dict", None)
@@ -395,7 +411,7 @@ class ClassUnitSaturationRecord:
             return False
         if original_units is not None and tuple(original_units) != self.original_units:
             return False
-        if _content_hash(self._body_dict()) != self.content_sha256:
+        if _canonical_payload_hash(self._body_dict()) != self.content_sha256:
             return False
         one = selected_order.ideal(1)
         try:
@@ -1997,7 +2013,7 @@ class ClassUnitGroupEngine:
     ) -> dict[str, str]:
         """Hash every exact dependency consumed by proof-prime replay."""
         return {
-            "relations": _content_hash(
+            "relations": _canonical_payload_hash(
                 {
                     "schema": "sagejs.number-fields/proof-relations-v1",
                     "records": [
@@ -2011,13 +2027,13 @@ class ClassUnitGroupEngine:
                     },
                 }
             ),
-            "presentation": _content_hash(
+            "presentation": _canonical_payload_hash(
                 {
                     "schema": "sagejs.number-fields/proof-presentation-v1",
                     "presentation": _component_payload(presentation),
                 }
             ),
-            "generators": _content_hash(
+            "generators": _canonical_payload_hash(
                 {
                     "schema": "sagejs.number-fields/proof-generators-v1",
                     "ideals": [
@@ -2829,6 +2845,8 @@ class ClassUnitGroupEngine:
         collector: Any,
         presentation: Any,
         proof_status: str,
+        *,
+        _defer_live_authentication: bool = False,
     ) -> tuple[dict[str, Any], Any]:
         """Bind the exact class-generation theorem consumed by `h*R`."""
         evidence = {
@@ -2842,7 +2860,7 @@ class ClassUnitGroupEngine:
             "presentation": _component_payload(presentation),
         }
         canonical = _component_payload(evidence)
-        cache_key = _content_hash(
+        cache_key = _canonical_payload_hash(
             {
                 "evidence": canonical,
                 "class_number": int(presentation.order),
@@ -2978,15 +2996,16 @@ class ClassUnitGroupEngine:
             except (AttributeError, TypeError, ValueError, ArithmeticError):
                 return False
 
-        if not verify_generation(
-            self.field,
-            self.order,
-            (),
-            presentation.order,
-            evidence,
-            proof_status,
-        ):
-            raise ArithmeticError("class-generation authority failed exact replay")
+        if not _defer_live_authentication:
+            if not verify_generation(
+                self.field,
+                self.order,
+                (),
+                presentation.order,
+                evidence,
+                proof_status,
+            ):
+                raise ArithmeticError("class-generation authority failed exact replay")
         return evidence, verify_generation
 
     def _try_unit_saturation(
@@ -3230,6 +3249,7 @@ class ClassUnitGroupEngine:
                     collector,
                     presentation,
                     proof_status,
+                    _defer_live_authentication=True,
                 )
             evidence = {"schema": "sagejs.number-fields/duck-generation-authority-v1"}
 
