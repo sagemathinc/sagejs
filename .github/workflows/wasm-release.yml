@@ -64,7 +64,7 @@ jobs:
       R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-      SAGEJS_WASM_SOURCE_MIRROR_DIR: ${{ runner.temp }}/sagejs-wasm-source-mirror
+      SAGEJS_WASM_SOURCE_MIRROR_DIR: /tmp/sagejs-wasm-source-mirror
     strategy:
       fail-fast: true
       matrix:

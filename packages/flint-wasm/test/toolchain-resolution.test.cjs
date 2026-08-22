@@ -113,6 +113,7 @@ test("the reproducible release is pinned to the private source mirror", () => {
   assert.match(workflow, /environment: sagejs-source-mirror/);
   assert.match(workflow, /source-mirror\.mjs fetch/);
   assert.match(workflow, /SAGEJS_WASM_SOURCE_MIRROR_DIR/);
+  assert.doesNotMatch(workflow, /SAGEJS_WASM_SOURCE_MIRROR_DIR:.*runner\.temp/);
   assert.match(workflow, /packages\/flint-wasm\/toolchain\/lock\.json/);
   assert.doesNotMatch(workflow, /packages\/flint-wasm\/release\/toolchain-lock\.json/);
 });
