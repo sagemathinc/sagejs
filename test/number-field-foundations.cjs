@@ -56,3 +56,32 @@ test("integral element valuations agree with exact prime-power ideals", async ()
     await session.close();
   }
 });
+
+test("ideal closure replay shares one exact membership coordinate map", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "import sagejs.runtime as runtime\n" +
+            "nf = __import__('sagejs._baselib.number_fields', " +
+            "fromlist=['number_fields'])\n" +
+            "R.<x> = QQ[]\n" +
+            "K.<a> = NumberField(x^3 - x^2 - 6*x - 12)\n" +
+            "O = K.maximal_order()\n" +
+            "I = O.ideal(a + 1)\n" +
+            "cached = I._membership_inverse_cache is not runtime.undefined\n" +
+            "rejected = False\n" +
+            "try:\n" +
+            "    nf.NumberFieldIdeal(O, [[1,0,0],[0,1,0],[0,0,2]])\n" +
+            "except ValueError as error:\n" +
+            "    rejected = 'not closed under the order' in str(error)\n" +
+            "[cached, rejected, a + 1 in I]",
+        )
+      ).repr,
+      "[True, True, True]",
+    );
+  } finally {
+    await session.close();
+  }
+});

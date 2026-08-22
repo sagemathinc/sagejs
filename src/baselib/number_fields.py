@@ -1453,16 +1453,26 @@ class NumberFieldIdeal:
         if len(self._basis_rows) not in [0, self._field.degree()]:
             raise ValueError("a nonzero number-field ideal must have full rank")
         if len(self._basis_rows):
-            for order_element in order.basis():
-                for ideal_element in self.basis():
+            # Closure replay and later membership tests use the same immutable
+            # canonical lattice.  Computing its inverse once avoids one exact
+            # matrix reconstruction and inversion for every basis product.
+            # This retains the full public closure check; it merely shares the
+            # coordinate map across that check and the ideal's lifetime.
+            basis_inverse = self.basis_matrix().inverse()
+            order_basis = order.basis()
+            ideal_basis = self.basis()
+            for order_element in order_basis:
+                for ideal_element in ideal_basis:
                     row = _nf_coordinates(
                         order_element * ideal_element,
                         self._field.degree(),
                     )
-                    if not _nf_row_in_lattice(row, self._basis_rows):
+                    coordinates = _nf_global("vector")(sage.QQ, row) * basis_inverse
+                    if not all(value._denominator == 1 for value in coordinates):
                         raise ValueError(
                             "the specified lattice is not closed under the order"
                         )
+            self._membership_inverse_cache = basis_inverse
 
     def ring(self) -> NumberFieldOrder:
         return self._order
