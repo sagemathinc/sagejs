@@ -2908,8 +2908,20 @@ class ClassUnitGroupEngine:
             discovery_proof = self.algorithm == "minkowski"
             plan, factor_base = self._factor_base(proof=discovery_proof)
             relation_seed = self._cubic_relation_seed(plan, factor_base)
+            # In low degree, retaining a second smooth witness from the same
+            # short-vector enumeration costs more exact ideal admission and
+            # replay work than it saves in lattice setup.  The stopping rule
+            # below still requires full relation rank, the full logarithmic
+            # unit rank, and rigorous index one.  Higher degrees keep two
+            # admissions per ideal because their LLL/enumeration setup is the
+            # dominant cost and should be amortized across useful witnesses.
+            initial_relations_per_ideal = 1 if int(self.field.degree()) <= 3 else 2
             if relation_seed is None:
-                collector, presentation = self._relations(factor_base, unit_rank)
+                collector, presentation = self._relations(
+                    factor_base,
+                    unit_rank,
+                    relations_per_ideal=initial_relations_per_ideal,
+                )
             else:
                 plan = relation_seed.plan
                 factor_base = relation_seed.factor_base
@@ -2923,6 +2935,7 @@ class ClassUnitGroupEngine:
                     unit_rank,
                     collector=relation_seed.collector,
                     presentation=relation_seed.presentation,
+                    relations_per_ideal=initial_relations_per_ideal,
                 )
             if presentation.rank != len(factor_base) or presentation.order is None:
                 return self._incomplete(

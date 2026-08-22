@@ -320,7 +320,9 @@ assert result.diagnostics["factor_base_size"] == 3
 assert resources["cubic_relation_seed_uses"] == 1
 assert resources["cubic_relation_seed_relations"] == 3
 assert resources["relation_attempts"] == 6
-assert result.diagnostics["relations"] == 11
+assert resources["relation_candidates"] == 6
+assert resources["presentation_extractions"] == 1
+assert result.diagnostics["relations"] == 7
 
 # A mutated live prefix is only a failed optimization hint.  It cannot enter
 # the engine, and the independent exact computation still returns the answer.
