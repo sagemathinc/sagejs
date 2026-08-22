@@ -1456,6 +1456,10 @@ class NumberFieldIdeal:
         # Cache their common-denominator integer representation lazily so
         # relation candidates do not repack every factor-base power.
         self._packed_basis_cache = runtime.undefined
+        # Prime decomposition and residue-map replay repeatedly reduce the
+        # same immutable ideal lattice modulo its rational prime.  Retain a
+        # few frozen row spaces locally; private callers receive fresh lists.
+        self._mod_p_subspace_cache: dict[int, Any] = {}
         if len(self._basis_rows) not in [0, self._field.degree()]:
             raise ValueError("a nonzero number-field ideal must have full rank")
         if len(self._basis_rows) and _check_closed:

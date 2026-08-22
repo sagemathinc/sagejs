@@ -809,6 +809,16 @@ def _prime_candidate_from_modular_subspace(
 
 def _ideal_mod_p_subspace(ideal: Any, prime: int) -> list[list[int]]:
     order = ideal.ring()
+    try:
+        cache = ideal._mod_p_subspace_cache
+    except AttributeError:
+        # A source checkout may temporarily reuse a runtime bootstrap built
+        # before this immutable cache slot was introduced.
+        cache = {}
+        ideal._mod_p_subspace_cache = cache
+    if prime in cache:
+        cached = cache[prime]
+        return [list(row) for row in cached]
     inverse = order._basis_inverse_matrix()
     rows: list[list[int]] = []
     for row in ideal._basis_rows:
@@ -819,7 +829,12 @@ def _ideal_mod_p_subspace(ideal: Any, prime: int) -> list[list[int]]:
                 raise ValueError("the ideal is not integral at the requested prime")
             modular.append(int(value._numerator) % prime)
         rows.append(modular)
-    return _row_basis(rows, order.degree(), prime)
+    answer = _row_basis(rows, order.degree(), prime)
+    frozen = tuple(tuple(value for value in row) for row in answer)
+    if len(cache) >= 8:
+        del cache[next(iter(cache))]
+    cache[prime] = frozen
+    return [list(row) for row in frozen]
 
 
 def canonical_two_generator_witness(

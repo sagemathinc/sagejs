@@ -134,6 +134,10 @@ assert all(getattr(ideal, "_verified_modular_algebra", None) is not None for ide
 # basis inverse.  Once prepared, none may reconstruct and invert a fresh basis
 # matrix for the same order.
 expected_subspace = prime_ideals._ideal_mod_p_subspace(p2[0], 2)
+cached_subspace = prime_ideals._ideal_mod_p_subspace(p2[0], 2)
+assert cached_subspace == expected_subspace and cached_subspace is not expected_subspace
+cached_subspace[0][0] = (cached_subspace[0][0] + 1) % 2
+assert prime_ideals._ideal_mod_p_subspace(p2[0], 2) == expected_subspace
 expected_coordinates = prime_ideals._field_element_order_coordinates(
     order, p2[0].basis()[0]
 )
