@@ -556,8 +556,8 @@ class HeightContext:
         max_exact_coordinate_bits = int(max_exact_coordinate_bits)
         if max_exact_coordinate_bits < 1024:
             raise ValueError("the exact-coordinate bit budget must be at least 1024")
-        self.jacobian = jacobian
-        self.max_exact_coordinate_bits = max_exact_coordinate_bits
+        self._jacobian = jacobian
+        self._max_exact_coordinate_bits = max_exact_coordinate_bits
         try:
             l1_bound = classical_duplication_l1_bound(jacobian)
             self._duplication_overhead_bits_upper = 4 * len(str(l1_bound)) + 8
@@ -582,6 +582,14 @@ class HeightContext:
         self._kummer_misses = 0
         self._local_correction_hits = 0
         self._local_correction_misses = 0
+
+    @property
+    def jacobian(self) -> Any:
+        return self._jacobian
+
+    @property
+    def max_exact_coordinate_bits(self) -> int:
+        return self._max_exact_coordinate_bits
 
     def _key(self, divisor: Any) -> Any:
         if divisor.parent() is not self.jacobian:

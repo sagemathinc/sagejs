@@ -118,6 +118,26 @@
       "commit": "ff47e6a79c7370e490d90a5e3d9e29492b5f672b",
       "workspace_fingerprint": "df07f35385575396fb9b04723ff9177fa3f283adb825335bd39fefc7976665fc",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/genus2_kummer.py src/lib/sagejs/hyperelliptic_curves/genus2_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.82,
+      "started_at": "2026-08-22T07:22:51.846Z",
+      "commit": "39d0c858d15f0f2c8d05c4e9f7d33992789f52dd",
+      "workspace_fingerprint": "b5514c2e25f82b0c77f461d27274873358a26593bc8d7b4ad1eff492959b9cd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-genus2-heights.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.038,
+      "started_at": "2026-08-22T07:22:54.331Z",
+      "commit": "39d0c858d15f0f2c8d05c4e9f7d33992789f52dd",
+      "workspace_fingerprint": "b5514c2e25f82b0c77f461d27274873358a26593bc8d7b4ad1eff492959b9cd0",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
