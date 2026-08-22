@@ -326,6 +326,15 @@
       "prefixes": ["src/lib/sagejs/polynomial_algorithms/"]
     },
     {
+      "id": "numerical-optimization",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 120000,
+      "depends_on": ["core-runtime", "python-stdlib", "symbolics"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/optimization/"]
+    },
+    {
       "id": "linear-algebra-algorithms",
       "layer": 4,
       "startup": "lazy",

@@ -14807,9 +14807,9 @@
         "name": "fast_callable",
         "qualified": "fast_callable",
         "path": "src/baselib/symbolic.py",
-        "line": 2650,
+        "line": 2682,
         "excerpt": {
-          "start_line": 2638,
+          "start_line": 2670,
           "text": ") -> Any:\n    if isinstance(value, Expression):\n        return value.n(prec=prec, digits=digits)\n    if hasattr(value, \"numerical_approx\"):\n        return value.numerical_approx(prec=prec, digits=digits)\n    return SR(value).n(prec=prec, digits=digits)\n\n\nn = numerical_approx\nN = numerical_approx\n\n\ndef fast_callable(\n    expression: Any,\n    vars: Sequence[Any] | None = None,\n) -> Any:\n    \"\"\"Compile a symbolic expression to a hot JavaScript numeric function.\"\"\"\n    symbolic_expression = SR(expression)\n    variables = symbolic_expression.variables() if vars is None else list(vars)\n    names = [_symbol_name(variable) for variable in variables]\n    return _call_backend(\"compile\", [symbolic_expression._tree, names])\n\n\npi = Expression(\"Pi\")\ne = Expression(\"ExponentialE\")"
         }
       },
@@ -28711,9 +28711,9 @@
         "name": "numerical_integral",
         "qualified": "numerical_integral",
         "path": "src/baselib/symbolic.py",
-        "line": 1790,
+        "line": 1796,
         "excerpt": {
-          "start_line": 1778,
+          "start_line": 1784,
           "text": "        for index in range(len(parameters)):\n            runtime.reflect.set(\n                substitutions,\n                _symbol_name(variables[index + 1]),\n                _expression_tree(parameters[index]),\n            )\n        function_value = Expression(\n            _call_backend(\"substitute\", [function_value._tree, substitutions])\n        )\n    return function_value._tree, _symbol_name(variables[0])\n\n\ndef numerical_integral(\n    function_value: Any,\n    a: Any,\n    b: Any = None,\n    algorithm: str = \"qag\",\n    max_points: int = 87,\n    params: Any = None,\n    eps_abs: float = 1e-6,\n    eps_rel: float = 1e-6,\n    rule: int = 6,\n) -> tuple[float, float]:\n    r\"\"\"Numerically integrate a real function and estimate absolute error.\n"
         }
       },
@@ -32947,16 +32947,16 @@
         "name": "solve",
         "qualified": "solve",
         "path": "src/baselib/symbolic.py",
-        "line": 2525,
+        "line": 2531,
         "excerpt": {
-          "start_line": 2513,
+          "start_line": 2519,
           "text": "                    Expression(\n                        [\n                            \"Equal\",\n                            _expression_tree(variables[index]),\n                            values[index]._tree,\n                        ]\n                    )\n                )\n            answers.append(relations)\n    return answers\n\n\ndef solve(\n    equations: Any,\n    *variables: Any,\n    **options: Any,\n) -> Any:\n    r\"\"\"\n    Solve supported elementary symbolic equations.\n\n    One equation or a list of equations may be supplied, followed by one or\n    more variables. Set `solution_dict=True` for dictionary-valued\n    solutions.\n\n    ### Examples"
         }
       },
       "examples": [
         {
           "id": "src/baselib/symbolic.py#92a64902788254ae-9c10500612dcb6f1",
-          "line": 2540,
+          "line": 2546,
           "source": "solve(x^2 == 4, x)",
           "want": "[x == -2, x == 2]\n",
           "tags": [],
