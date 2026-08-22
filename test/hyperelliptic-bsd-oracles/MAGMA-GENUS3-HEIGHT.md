@@ -88,19 +88,66 @@ and 160 requested decimal digits makes this a strong numerical oracle, not a
 proof or interval enclosure.
 
 At the captured Sage.js revision, the exact finite plan is complete but the
-one-call public archimedean path stops with
-`abel_jacobi_refinement_not_stable` at its default three refinements.  Raising
-the Abel--Jacobi budget to six stabilizes the integrals.  Theta radius 5 still
+default public archimedean settings stop with
+`abel_jacobi_refinement_not_stable` after three refinements.  Raising the
+Abel--Jacobi budget to six stabilizes the integrals.  Theta radius 5 still
 fails honestly with `theta radius refinement did not stabilize`; radius 6 is
-the first bounded setting observed to stabilize both theta pieces, but is
-substantially slower.  Consequently this fixture must not be described as a
-passing default public `canonical_height()` oracle until the checked numerical
-comparison is recorded by a focused acceptance test.
+the first bounded setting observed to stabilize both theta pieces.
+
+The slow opt-in replay in `sagejs-genus3-height-radius6.py` then gives
+
+```text
+archimedean =  9.6559667042322827251096725984884686590464412131603
+finite      = -5.3752784076841650024374320751533705516021590580731
+height      =  2.1403441482740588613361202616675490537221410775436
+Magma       =  2.1403441482740588613239647935853614209254966263662...
+absolute error = 1.21554680821876327966444511774e-20
+```
+
+Thus the complete Sage.js finite/archimedean normalization agrees with Magma
+to approximately 20 significant decimal digits (19 digits after the decimal
+point).  This replay includes the requested-precision capture of each
+archimedean pairing and the requested-precision sum of the theta pieces, so it
+does not silently round the assembled value at ambient machine precision.
+Both radius-6 theta pieces report stable refinement, the finite plan is
+complete and exact, and the global answer remains correctly labeled
+`rigorous=false` because neither numerical engine supplies an interval proof.
+
+Run the offline integrity check with
+
+```sh
+node test/hyperelliptic-bsd-oracles/verify-genus3-height-radius6.mjs
+```
+
+The several-minute numerical replay is deliberately opt in:
+
+```sh
+SAGEJS_RADIUS6=1 \
+  node test/hyperelliptic-bsd-oracles/verify-genus3-height-radius6.mjs
+```
+
+The public API now exposes the same bounded settings as
+
+```python
+P.canonical_height(
+    moving_x=3,
+    prec=64,
+    abel_max_refinements=6,
+    theta_radius=6,
+)
+```
+
+The recorded script calls this public API directly.  Its approximate
+six-minute runtime on the shared capture host is not a benchmark receipt.  The
+Magma transcript took approximately nine seconds, while the warmed exact
+Sage.js finite replay took approximately three seconds; period integration and
+theta evaluation dominate the Sage.js runtime.
 
 The external coverage provided now is therefore:
 
 - genuine Magma genus-3 canonical height and rank-one regulator;
 - exact model/divisor normalization under completion of the square;
 - complete Sage.js finite-prime support and local coefficients;
-- an explicit, reproducible numerical target for finishing the archimedean
-  performance/refinement gate.
+- a replayed end-to-end numerical agreement at the explicit radius-6 gate;
+- an explicit performance target for accelerating the archimedean path while
+  retaining its current honest refinement failures.
