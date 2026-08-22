@@ -470,8 +470,10 @@ def element_valuation(value: Any, prime_ideal: Any) -> int:
     return element_valuations(value, (prime_ideal,))[0]
 
 
-def element_valuations(value: Any, prime_ideals: Any) -> tuple[int, ...]:
-    """Return exact valuations of one element at several prime ideals.
+def _element_valuations_impl(
+    value: Any, prime_ideals: Any, *, return_norm: bool
+) -> Any:
+    """Return exact valuations and optionally the already-computed norm.
 
     The algebraic element, its absolute norm, and (for a fractional element)
     its principal ideal are constructed once.  Each returned entry retains
@@ -479,7 +481,7 @@ def element_valuations(value: Any, prime_ideals: Any) -> tuple[int, ...]:
     """
     primes = tuple(prime_ideals)
     if not primes:
-        return ()
+        return ((), None) if return_norm else ()
     reference = primes[0]
     if not isinstance(reference, NumberFieldIdeal):
         raise TypeError("element valuations require number-field prime ideals")
@@ -516,7 +518,7 @@ def element_valuations(value: Any, prime_ideals: Any) -> tuple[int, ...]:
             maxima.append(norm_valuation // residue_degree)
         packed = _packed_integral_element_valuations(element, primes, tuple(maxima))
         if packed is not None:
-            return packed
+            return (packed, norm) if return_norm else packed
         answer: list[int] = []
         for prime_ideal, maximum in zip(primes, maxima, strict=True):
             valuation = 0
@@ -526,9 +528,28 @@ def element_valuations(value: Any, prime_ideals: Any) -> tuple[int, ...]:
             while valuation < maximum and element in powers[valuation]:
                 valuation += 1
             answer.append(valuation)
-        return tuple(answer)
+        valuations = tuple(answer)
+        return (valuations, norm) if return_norm else valuations
     principal = order.ideal(element)
-    return tuple(ideal_valuation(principal, prime_ideal) for prime_ideal in primes)
+    valuations = tuple(
+        ideal_valuation(principal, prime_ideal) for prime_ideal in primes
+    )
+    return (valuations, element.norm()) if return_norm else valuations
+
+
+def element_valuations_with_norm(
+    value: Any, prime_ideals: Any
+) -> tuple[tuple[int, ...], Any]:
+    """Return exact valuations together with their internally computed norm."""
+    valuations, norm = _element_valuations_impl(value, prime_ideals, return_norm=True)
+    if norm is None:
+        raise ValueError("element valuations with norm require a nonempty prime base")
+    return valuations, norm
+
+
+def element_valuations(value: Any, prime_ideals: Any) -> tuple[int, ...]:
+    """Return exact valuations of one element at several prime ideals."""
+    return _element_valuations_impl(value, prime_ideals, return_norm=False)
 
 
 def factor_integral_ideal(ideal: Any) -> Any:

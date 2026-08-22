@@ -587,18 +587,30 @@ def factor_witness_over_base(
     smoothness certificate, so this is only a faster way to obtain the same
     candidate row.
     """
+    row, _norm = _factor_witness_over_base_and_norm(witness, factor_base)
+    return row
+
+
+def _factor_witness_over_base_and_norm(
+    witness: FactoredPrincipalWitness, factor_base: Iterable[Any]
+) -> tuple[tuple[int, ...], Any]:
+    """Return exact factor-base valuations and the shared witness norm."""
     factors = tuple(factor_base)
     if not factors:
-        return ()
+        return (), sage.QQ(witness.norm())
     ideal_module = __import__(
         "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
     )
     row = [0 for _prime in factors]
+    norm = sage.QQ(1)
     for element, exponent in witness.factors():
-        valuations = ideal_module.element_valuations(element, factors)
+        valuations, element_norm = ideal_module.element_valuations_with_norm(
+            element, factors
+        )
         for index, valuation in enumerate(valuations):
             row[index] += int(exponent) * int(valuation)
-    return tuple(row)
+        norm *= sage.QQ(element_norm) ** int(exponent)
+    return tuple(row), norm
 
 
 def _factor_base_row_norm(factor_base: Iterable[Any], row: Iterable[int]) -> Any:
@@ -1121,14 +1133,15 @@ class ExactRelationCollector:
                 raise ArithmeticError(
                     "the supplied source row does not reconstruct its ideal"
                 )
-        row = (
-            factor_witness_over_base(factored, self.factor_base)
-            if principal_row is None
-            else tuple(int(value) for value in principal_row)
-        )
+        if principal_row is None:
+            row, witness_norm = _factor_witness_over_base_and_norm(
+                factored, self.factor_base
+            )
+        else:
+            row = tuple(int(value) for value in principal_row)
+            witness_norm = sage.QQ(factored.norm())
         if len(row) != len(self.factor_base):
             raise ValueError("the supplied principal row has the wrong width")
-        witness_norm = sage.QQ(factored.norm())
         if witness_norm < 0:
             witness_norm = -witness_norm
         if (

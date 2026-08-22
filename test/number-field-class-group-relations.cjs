@@ -18,6 +18,7 @@ const source = String.raw`
 import json
 import hashlib
 import time
+import sagejs.number_fields.class_group_relations as relation_module
 
 from sagejs.number_fields.ideal_arithmetic import (
     element_valuation,
@@ -46,6 +47,7 @@ from sagejs.number_fields.class_group_relations import (
     RelationSearchState,
     exact_lll_reduce,
     factor_ideal_over_base,
+    factor_witness_over_base,
     initial_rational_prime_relations,
     minkowski_lll_lattice,
     plan_automorphism_orbits,
@@ -86,6 +88,32 @@ for value in (K(2), K.gen() + 1, K.gen() / 2):
         reversed(scalar_valuations)
     )
 assert element_valuations(K(2), ()) == ()
+
+# Relation admission reuses the exact element norms already computed while
+# bounding valuations instead of taking a second determinant per factor.
+shared_norm_witness = FactoredPrincipalWitness(
+    K, ((K(2), 1), (K.gen() + 1, 2))
+)
+shared_norm_expected = shared_norm_witness.norm()
+element_type = type(K.gen())
+original_element_norm = element_type.norm
+shared_norm_calls = 0
+def counted_element_norm(self):
+    global shared_norm_calls
+    shared_norm_calls += 1
+    return original_element_norm(self)
+element_type.norm = counted_element_norm
+try:
+    shared_norm_row, shared_norm_actual = (
+        relation_module._factor_witness_over_base_and_norm(
+            shared_norm_witness, factor_base
+        )
+    )
+finally:
+    element_type.norm = original_element_norm
+assert shared_norm_calls == len(shared_norm_witness.factors())
+assert shared_norm_actual == shared_norm_expected
+assert shared_norm_row == factor_witness_over_base(shared_norm_witness, factor_base)
 
 # The reconstruction accelerator is collector-local, bounded, and exactly
 # differential against the uncached public construction for signed rows.
@@ -401,7 +429,6 @@ for lll_rows in lll_cases:
         ) * actual_norms[row_index - 1]
 
 assert exact_lll_reduce([[1, 1], [1, -1]]) == [[1, 1], [1, -1]]
-import sagejs.number_fields.class_group_relations as relation_module
 saved_lll_kernel_override = relation_module._lll_kernel_override
 relation_module._lll_kernel_override = False
 try:
