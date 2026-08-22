@@ -424,39 +424,43 @@ def _select_cubic_dependency_candidates(
     limit = max(0, int(maximum))
     if limit == 0 or not selected:
         return ()
-    retained_coordinates = [
-        (tuple(int(value) for value in row), tuple(int(value) for value in coordinates))
-        for row, coordinates, _norm in selected
-    ]
     selected_rows = tuple(tuple(int(value) for value in entry[0]) for entry in selected)
+    retained_coordinates_by_row: dict[tuple[int, ...], dict[tuple[int, ...], bool]] = {}
+    for row, coordinates, _norm in selected:
+        normalized_row = tuple(int(value) for value in row)
+        normalized_coordinates = tuple(int(value) for value in coordinates)
+        retained_coordinates_by_row.setdefault(normalized_row, {})[
+            normalized_coordinates
+        ] = True
+    candidates_by_row: dict[
+        tuple[int, ...],
+        list[
+            tuple[
+                tuple[int, ...],
+                tuple[tuple[int, ...], tuple[int, ...], int],
+            ]
+        ],
+    ] = {}
+    indexed_coordinates_by_row: dict[tuple[int, ...], dict[tuple[int, ...], bool]] = {}
+    for candidate in candidates:
+        row, coordinates, _norm = candidate
+        normalized_row = tuple(int(value) for value in row)
+        normalized_coordinates = tuple(int(value) for value in coordinates)
+        indexed_coordinates = indexed_coordinates_by_row.setdefault(normalized_row, {})
+        if indexed_coordinates.get(normalized_coordinates, False):
+            continue
+        indexed_coordinates[normalized_coordinates] = True
+        candidates_by_row.setdefault(normalized_row, []).append(
+            (normalized_coordinates, candidate)
+        )
+
     answer: list[tuple[tuple[int, ...], tuple[int, ...], int]] = []
     for selected_row in selected_rows:
-        for candidate in candidates:
-            row, coordinates, _norm = candidate
-            identity = (
-                tuple(int(value) for value in row),
-                tuple(int(value) for value in coordinates),
-            )
-            same_row = len(identity[0]) == len(selected_row) and all(
-                left == right
-                for left, right in zip(identity[0], selected_row, strict=True)
-            )
-            already_retained = any(
-                len(known_row) == len(identity[0])
-                and len(known_coordinates) == len(identity[1])
-                and all(
-                    left == right
-                    for left, right in zip(known_row, identity[0], strict=True)
-                )
-                and all(
-                    left == right
-                    for left, right in zip(known_coordinates, identity[1], strict=True)
-                )
-                for known_row, known_coordinates in retained_coordinates
-            )
-            if not same_row or already_retained:
+        retained_coordinates = retained_coordinates_by_row.setdefault(selected_row, {})
+        for coordinates, candidate in candidates_by_row.get(selected_row, ()):
+            if retained_coordinates.get(coordinates, False):
                 continue
-            retained_coordinates.append(identity)
+            retained_coordinates[coordinates] = True
             answer.append(candidate)
             break
         if len(answer) >= limit:
@@ -475,18 +479,12 @@ def _select_cubic_dependency_candidates(
         tuple[int, ...],
         list[tuple[tuple[int, ...], tuple[int, ...], int]],
     ] = {}
-    retained_identities = set(retained_coordinates)
-    selected_row_set = set(selected_rows)
-    for candidate in candidates:
-        row, coordinates, _norm = candidate
-        identity = (
-            tuple(int(value) for value in row),
-            tuple(int(value) for value in coordinates),
-        )
-        if identity in retained_identities or identity[0] in selected_row_set:
+    selected_row_set = {row: True for row in selected_rows}
+    for row, indexed_candidates in candidates_by_row.items():
+        if selected_row_set.get(row, False):
             continue
-        grouped.setdefault(identity[0], []).append(candidate)
-        retained_identities.add(identity)
+        for _coordinates, candidate in indexed_candidates:
+            grouped.setdefault(row, []).append(candidate)
     for duplicate_candidates in grouped.values():
         if len(duplicate_candidates) < 2:
             continue
