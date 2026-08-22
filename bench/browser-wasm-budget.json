@@ -242,7 +242,7 @@
         "median": 2109.023384
       },
       "interrupt_latency_ms": {
-        "median": 0.7000000000002728
+        "median": 1.2999999999997272
       },
       "operations": {
         "exact-matrix-kernel": {

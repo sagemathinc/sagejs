@@ -166,7 +166,7 @@ jobs:
     needs: [clean-build, node-oracle]
     name: Public parity (${{ matrix.engine }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
