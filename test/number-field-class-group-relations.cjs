@@ -165,7 +165,8 @@ assert [[list(pair) for pair in item.record.sparse_row()] for item in initial] =
     [[1, 2]],
 ]
 collector_cache = collector.reconstruction_diagnostics()
-assert collector_cache["row_hits"] > 0
+assert collector_cache["row_requests"] == 0
+assert collector_cache["row_hits"] == 0
 assert collector_cache["row_misses"] == 0
 assert collector_cache["retained_ideal_objects"] <= (
     collector_cache["max_retained_ideal_objects"]
@@ -886,7 +887,7 @@ print(json.dumps({
     "automorphism_plan": orbit_plan.to_dict(),
     "search_rows": [list(item.record.row) for item in found],
     "reconstruction_cache": cache_diagnostics,
-    "collector_reconstruction_cache": collector.reconstruction_diagnostics(),
+    "collector_reconstruction_cache": collector_cache,
     "replay_ms": replay_ms,
 }, sort_keys=True))
 `;
@@ -915,6 +916,7 @@ test("exact class-group relations admit, replay, mutate, and search deterministi
   assert.deepEqual(report.factor_base, fixture.golden_ratio.factor_base);
   assert.equal(report.rank, fixture.golden_ratio.initial_modular_rank);
   assert.ok(report.reconstruction_cache.row_hits >= 5);
-  assert.ok(report.collector_reconstruction_cache.row_hits > 0);
+  assert.equal(report.collector_reconstruction_cache.row_requests, 0);
+  assert.equal(report.collector_reconstruction_cache.row_hits, 0);
   assert.ok(report.replay_ms < fixture.golden_ratio.replay_budget_ms);
 });

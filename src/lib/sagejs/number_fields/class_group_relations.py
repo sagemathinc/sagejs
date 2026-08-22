@@ -1339,18 +1339,17 @@ def initial_rational_prime_relations(
             row[index] = exponent
             local_degree += exponent * residue_degree
         # The factor base contains distinct, already certified prime ideals.
-        # Full local degree is a cheap coverage screen.  Admission below still
-        # requires the reconstructed row ideal to equal `(p)` exactly, so a
-        # stale or incomplete factor base fails closed without refactoring p.
+        # Full local degree is a cheap coverage screen.  Integral admission
+        # then checks `p` in every required prime power and equality of the
+        # proposed row norm with `|Norm(p)|`; together these prove exact ideal
+        # equality without multiplying the same prime powers a second time.
         if local_degree != int(collector.order.number_field().degree()):
             continue
         generator = collector.order.number_field()(rational_prime)
         answer.append(
-            collector.admit_witness(
+            collector.admit_integral_generator_row(
                 generator,
-                source_row=(0,) * len(collector.factor_base),
-                principal_row=row,
-                integral_generator=generator,
+                row,
                 provenance={
                     "algorithm": "rational-prime-decomposition",
                     "rational_prime": rational_prime,
