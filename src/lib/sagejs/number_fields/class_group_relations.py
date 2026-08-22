@@ -72,7 +72,11 @@ MAX_IDEAL_REDUCTION_REPLAY_CURSOR_STEPS = 65_536
 MAX_FLINT_LLL_DIMENSION = 64
 MAX_FLINT_LLL_VALUES = 4096
 MAX_FLINT_LLL_ENTRY_BITS = 16_384
+MAX_INTEGRAL_RELATION_BATCH_VALUES = 65_536
+MAX_INTEGRAL_RELATION_BATCH_PRIME_POWERS = 4096
+MAX_INTEGRAL_RELATION_BATCH_INTEGER_BITS = 4096
 _lll_kernel_override: Any = None
+_integral_relation_batch_kernel_override: Any = None
 
 
 class RelationNotSmoothError(ArithmeticError):
@@ -1000,6 +1004,9 @@ class ExactRelationCollector:
             "evictions": 0,
             "integral_norm_certificates": 0,
             "integral_norm_fallbacks": 0,
+            "integral_batch_calls": 0,
+            "integral_batch_rows": 0,
+            "integral_batch_fallbacks": 0,
         }
 
     @staticmethod
@@ -1146,7 +1153,10 @@ class ExactRelationCollector:
                 factored, self.factor_base
             )
         else:
-            row = tuple(int(value) for value in principal_row)
+            row = tuple(
+                _checked_integer(value, "a sieved relation exponent")
+                for value in principal_row
+            )
             witness_norm = sage.QQ(factored.norm())
         if len(row) != len(self.factor_base):
             raise ValueError("the supplied principal row has the wrong width")
@@ -1280,6 +1290,234 @@ class ExactRelationCollector:
             known_order_element=True,
         )
 
+    def admit_integral_order_basis_rows(
+        self,
+        proposals: Iterable[tuple[Iterable[int], Iterable[int], dict[str, Any] | None]],
+    ) -> tuple[RelationAdmission, ...] | None:
+        """Independently replay and admit a prevalidated packed integral batch.
+
+        Each proposal contains order-basis coordinates, a nonnegative
+        factor-base row, and optional provenance.  Exact element norms are
+        recomputed here.  One canonical packed lattice pass then checks every
+        prime-power containment and reconstructs every valuation row.  The
+        packed proposal producer is therefore not trusted, while avoiding a
+        separate ideal-membership call for every nonzero valuation.  Returning
+        `None` means the source-transparent kernel is unavailable and callers
+        should use `admit_integral_order_basis_row` unchanged.
+        """
+        raw_proposals = tuple(proposals)
+        if not raw_proposals:
+            return ()
+        self._admission_receipt_statistics["integral_batch_calls"] += 1
+        degree = int(self.order.degree())
+        count = len(raw_proposals)
+        width = len(self.factor_base)
+        if (
+            degree < 1
+            or degree > 16
+            or count > 4096
+            or width < 1
+            or width > 4096
+            or count * width > MAX_INTEGRAL_RELATION_BATCH_VALUES
+            or not self.order.is_maximal()
+        ):
+            self._admission_receipt_statistics["integral_batch_fallbacks"] += 1
+            return None
+        if _integral_relation_batch_kernel_override is False:
+            self._admission_receipt_statistics["integral_batch_fallbacks"] += 1
+            return None
+        try:
+            kernel_module = __import__(
+                "sagejs.number_fields.bl_composite_kernel",
+                fromlist=["bl_composite_kernel"],
+            )
+            row_kernel = getattr(
+                kernel_module, "packed_factor_base_rows_in_place", None
+            )
+            native_module = __import__("sagejs.native", fromlist=["native"])
+            ideal_module = __import__(
+                "sagejs.number_fields.ideal_arithmetic",
+                fromlist=["ideal_arithmetic"],
+            )
+        except (AttributeError, ImportError):
+            self._admission_receipt_statistics["integral_batch_fallbacks"] += 1
+            return None
+        if callable(_integral_relation_batch_kernel_override):
+            row_kernel = _integral_relation_batch_kernel_override
+        if not callable(row_kernel):
+            self._admission_receipt_statistics["integral_batch_fallbacks"] += 1
+            return None
+        if self._order_basis is None:
+            self._order_basis = tuple(self.order.basis())
+        field = self.order.number_field()
+        normalized: list[
+            tuple[tuple[int, ...], tuple[int, ...], dict[str, Any] | None, Any, Any]
+        ] = []
+        maxima = [0] * width
+        for coordinates, principal_row, provenance in raw_proposals:
+            values = tuple(
+                _checked_integer(value, "an order-basis coordinate")
+                for value in coordinates
+            )
+            if len(values) != degree:
+                raise ValueError("an integral generator has the wrong coordinate width")
+            if any(
+                abs(value).bit_length() > MAX_INTEGRAL_RELATION_BATCH_INTEGER_BITS
+                for value in values
+            ):
+                raise ValueError("an integral generator coordinate is too large")
+            row = tuple(int(value) for value in principal_row)
+            if len(row) != width or any(value < 0 for value in row):
+                raise ValueError(
+                    "a sieved integral relation row must be nonnegative and have factor-base width"
+                )
+            if any(value > MAX_INTEGRAL_RELATION_BATCH_PRIME_POWERS for value in row):
+                raise ValueError("a sieved integral relation exponent is too large")
+            element = field(0)
+            for coefficient, basis_element in zip(
+                values, self._order_basis, strict=True
+            ):
+                element += coefficient * basis_element
+            if element.is_zero():
+                raise ValueError("a sieved relation generator must be nonzero")
+            witness_norm = sage.QQ(element.norm())
+            if witness_norm < 0:
+                witness_norm = -witness_norm
+            if witness_norm <= 1:
+                raise ValueError("a sieved class relation must have nonunit norm")
+            if (
+                _factor_base_row_norm_from_norms(self._factor_base_norms, row)
+                != witness_norm
+            ):
+                raise RelationNotSmoothError(
+                    "the sieved relation norm has support outside the factor base"
+                )
+            for index, exponent in enumerate(row):
+                maxima[index] = max(maxima[index], exponent)
+            normalized.append((values, row, provenance, element, witness_norm))
+
+        if sum(maxima) > MAX_INTEGRAL_RELATION_BATCH_PRIME_POWERS:
+            raise ValueError(
+                "a packed integral relation batch has too many prime powers"
+            )
+
+        offsets = [0]
+        prime_power_numerators: list[int] = []
+        prime_power_denominators: list[int] = []
+        for prime_ideal, maximum in zip(self.factor_base, maxima, strict=True):
+            powers = prime_ideal._valuation_power_cache
+            while len(powers) < maximum:
+                powers.append(powers[-1] * prime_ideal)
+            for index in range(maximum):
+                packed_basis, denominator = ideal_module._packed_ideal_basis(
+                    powers[index]
+                )
+                prime_power_numerators.extend(packed_basis)
+                prime_power_denominators.append(int(denominator))
+            offsets.append(len(prime_power_denominators))
+        if not prime_power_denominators:
+            raise RelationNotSmoothError("a sieved relation row has no prime support")
+        order_basis_numerators, order_basis_denominator = (
+            ideal_module._packed_ideal_basis(self.order.ideal(1))
+        )
+        factor_norms = []
+        for norm in self._factor_base_norms:
+            if int(norm._denominator) != 1:
+                raise ArithmeticError("a factor-base norm is not integral")
+            factor_norms.append(int(norm._numerator))
+        absolute_norms = []
+        for _values, _row, _provenance, _element, norm in normalized:
+            if int(norm._denominator) != 1:
+                raise ArithmeticError("an integral element norm is not integral")
+            absolute_norms.append(int(norm._numerator))
+        metadata = native_module.kernel_integer_zeros(row_kernel, 3, 1)
+        row_output = native_module.kernel_integer_zeros(row_kernel, count * width, 16)
+        smooth_output = native_module.kernel_integer_zeros(row_kernel, count, 1)
+        if not row_kernel(
+            metadata,
+            row_output,
+            smooth_output,
+            native_module.kernel_integer_zeros(row_kernel, 2 * degree, 16),
+            native_module.kernel_integer_buffer(
+                row_kernel,
+                [value for proposal in normalized for value in proposal[0]],
+            ),
+            native_module.kernel_integer_buffer(row_kernel, absolute_norms),
+            native_module.kernel_integer_buffer(row_kernel, order_basis_numerators),
+            native_module.kernel_integer_buffer(row_kernel, prime_power_numerators),
+            native_module.kernel_integer_buffer(row_kernel, prime_power_denominators),
+            native_module.kernel_integer_buffer(row_kernel, offsets),
+            native_module.kernel_integer_buffer(row_kernel, factor_norms),
+            int(order_basis_denominator),
+            degree,
+            count,
+            width,
+            len(prime_power_denominators),
+        ):
+            self._admission_receipt_statistics["integral_batch_fallbacks"] += 1
+            return None
+        metadata_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(metadata)
+        )
+        row_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(row_output)
+        )
+        smooth_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(smooth_output)
+        )
+        if metadata_values != (count, count, len(prime_power_denominators)):
+            raise RelationNotSmoothError(
+                "packed relation replay did not certify every proposed row"
+            )
+        for index, (_values, row, _provenance, _element, _norm) in enumerate(
+            normalized
+        ):
+            start = index * width
+            if smooth_values[index] != 1 or row_values[start : start + width] != row:
+                raise RelationNotSmoothError(
+                    "packed relation replay disagrees with a proposed valuation row"
+                )
+
+        records = tuple(
+            self._integral_generator_record(element, row, norm, provenance)
+            for _values, row, provenance, element, norm in normalized
+        )
+        new_keys: dict[str, bool] = {}
+        for record in records:
+            key = record.canonical_key()
+            if key in self._keys or new_keys.get(key, False):
+                raise ValueError("the exact relation record was already admitted")
+            new_keys[key] = True
+        admissions = tuple(self._store_verified(record) for record in records)
+        self._admission_receipt_statistics["integral_norm_certificates"] += len(
+            admissions
+        )
+        self._admission_receipt_statistics["integral_batch_rows"] += len(admissions)
+        return admissions
+
+    def _integral_generator_record(
+        self,
+        element: Any,
+        row: tuple[int, ...],
+        witness_norm: Any,
+        provenance: dict[str, Any] | None,
+    ) -> RelationRecord:
+        """Construct the compact record after exact integral-row validation."""
+        factored = FactoredPrincipalWitness.from_element(element)
+        zero_row = (0,) * len(row)
+        return RelationRecord(
+            row=row,
+            quotient_row=row,
+            source_row=zero_row,
+            witness=factored.to_dict(),
+            norm_smoothness=_norm_smoothness_from_norms(
+                witness_norm,
+                row,
+                self._factor_base_norms,
+            ),
+            provenance=provenance,
+        )
+
     def _admit_integral_generator_row(
         self,
         element: Any,
@@ -1327,20 +1565,7 @@ class ExactRelationCollector:
                     "the sieved relation row does not contain its generator",
                     ideal=reconstructed,
                 )
-        factored = FactoredPrincipalWitness.from_element(element)
-        zero_row = (0,) * len(row)
-        record = RelationRecord(
-            row=row,
-            quotient_row=row,
-            source_row=zero_row,
-            witness=factored.to_dict(),
-            norm_smoothness=_norm_smoothness_from_norms(
-                witness_norm,
-                row,
-                self._factor_base_norms,
-            ),
-            provenance=provenance,
-        )
+        record = self._integral_generator_record(element, row, witness_norm, provenance)
         # The exact containment plus equal-norm argument above proves that
         # this retained lattice is precisely the witness principal ideal.
         if reconstructed is not None:

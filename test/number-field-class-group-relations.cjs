@@ -208,6 +208,67 @@ try:
 except ValueError:
     pass
 
+# The batched admission boundary recomputes exact norms and independently
+# replays all packed prime-power containments before storing anything.  Its
+# record is identical to scalar admission, unavailable kernels return a clean
+# fallback signal, and a successful-but-corrupt kernel cannot admit a row.
+batch_collector = ExactRelationCollector(O, factor_base)
+batch = batch_collector.admit_integral_order_basis_rows((
+    ((2, 0), initial[0].record.row, initial[0].record.provenance),
+))
+assert batch is not None and len(batch) == 1
+assert batch[0].record.to_dict() == initial[0].record.to_dict()
+assert batch_collector.admission_receipt_diagnostics()[
+    "integral_norm_certificates"
+] == 1
+assert batch_collector.admission_receipt_diagnostics()["integral_batch_calls"] == 1
+assert batch_collector.admission_receipt_diagnostics()["integral_batch_rows"] == 1
+assert batch_collector.admission_receipt_diagnostics()["integral_batch_fallbacks"] == 0
+
+saved_batch_kernel = relation_module._integral_relation_batch_kernel_override
+relation_module._integral_relation_batch_kernel_override = False
+try:
+    unavailable_collector = ExactRelationCollector(O, factor_base)
+    assert unavailable_collector.admit_integral_order_basis_rows((
+        ((2, 0), initial[0].record.row, initial[0].record.provenance),
+    )) is None
+    assert not unavailable_collector.records
+    assert unavailable_collector.admission_receipt_diagnostics()[
+        "integral_batch_fallbacks"
+    ] == 1
+finally:
+    relation_module._integral_relation_batch_kernel_override = saved_batch_kernel
+
+def corrupt_batch_kernel(metadata, rows, smooth, *arguments):
+    metadata[0] = 1
+    metadata[1] = 1
+    metadata[2] = arguments[-1]
+    smooth[0] = 1
+    return True
+relation_module._integral_relation_batch_kernel_override = corrupt_batch_kernel
+try:
+    corrupt_collector = ExactRelationCollector(O, factor_base)
+    try:
+        corrupt_collector.admit_integral_order_basis_rows((
+            ((2, 0), initial[0].record.row, initial[0].record.provenance),
+        ))
+        raise AssertionError("corrupt packed relation replay was accepted")
+    except RelationNotSmoothError:
+        pass
+    assert not corrupt_collector.records
+finally:
+    relation_module._integral_relation_batch_kernel_override = saved_batch_kernel
+
+oversized_collector = ExactRelationCollector(O, factor_base)
+try:
+    oversized_collector.admit_integral_order_basis_rows((
+        ((1 << 4096, 0), initial[0].record.row, initial[0].record.provenance),
+    ))
+    raise AssertionError("oversized packed integral coordinates were accepted")
+except ValueError:
+    pass
+assert not oversized_collector.records
+
 # Live admission receipts bind the collector's exact order and factor-base
 # objects plus the complete canonical record payload.  Public/detached replay
 # receives no verifier and therefore remains cold.

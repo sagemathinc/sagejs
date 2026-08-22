@@ -1896,35 +1896,38 @@ class ClassUnitGroupEngine:
             )
             if selected is None or len(selected) > remaining:
                 return collector
-            for row, coordinates, _expected_norm in selected:
-                trial.admit_integral_order_basis_row(
-                    coordinates,
-                    row,
-                    provenance={
-                        "algorithm": "packed-cubic-engine-relation-sieve",
-                        "coefficient_bound": coefficient_bound,
-                        "order_basis_coordinates": list(coordinates),
-                    },
-                )
             dependency_candidates: Any = select_dependencies(
                 selected,
                 candidates,
                 unit_rank,
             )
-            remaining = self.limits.max_relations - len(trial.records)
-            if len(dependency_candidates) <= remaining:
-                for row, coordinates, _expected_norm in dependency_candidates:
+            if len(dependency_candidates) > remaining - len(selected):
+                dependency_candidates = ()
+            proposals = tuple(
+                (
+                    coordinates,
+                    row,
+                    {
+                        "algorithm": algorithm,
+                        "coefficient_bound": coefficient_bound,
+                        "order_basis_coordinates": list(coordinates),
+                    },
+                )
+                for algorithm, candidates_group in (
+                    ("packed-cubic-engine-relation-sieve", selected),
+                    ("packed-cubic-engine-unit-seed", dependency_candidates),
+                )
+                for row, coordinates, _expected_norm in candidates_group
+            )
+            batch_admit = getattr(trial, "admit_integral_order_basis_rows", None)
+            batch = batch_admit(proposals) if callable(batch_admit) else None
+            if batch is None:
+                for coordinates, row, provenance in proposals:
                     trial.admit_integral_order_basis_row(
                         coordinates,
                         row,
-                        provenance={
-                            "algorithm": "packed-cubic-engine-unit-seed",
-                            "coefficient_bound": coefficient_bound,
-                            "order_basis_coordinates": list(coordinates),
-                        },
+                        provenance=provenance,
                     )
-            else:
-                dependency_candidates = ()
             self._resource_usage["cubic_integral_sieve_uses"] += 1
             self._resource_usage["cubic_integral_sieve_candidates"] += len(candidates)
             self._resource_usage["cubic_integral_sieve_relations"] += len(selected)

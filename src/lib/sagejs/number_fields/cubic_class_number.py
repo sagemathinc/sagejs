@@ -1646,22 +1646,33 @@ def bounded_cubic_minkowski_class_number(
     sieve_admitted = 0
     if selected_sieve_candidates is not None:
         try:
-            for row, coordinates, _expected_norm in selected_sieve_candidates:
-                # The packed norm only selected this proposal.  Integral
-                # admission independently recomputes the exact element norm,
-                # matches it to the complete factor-base row, and checks every
-                # required prime-power containment; do not repeat that norm
-                # computation here.
-                collector.admit_integral_order_basis_row(
+            proposals = tuple(
+                (
                     coordinates,
                     row,
-                    provenance={
+                    {
                         "algorithm": "packed-cubic-integral-relation-sieve",
                         "coefficient_bound": _CUBIC_RELATION_SIEVE_BOUND,
                         "order_basis_coordinates": list(coordinates),
                     },
                 )
-                sieve_admitted += 1
+                for row, coordinates, _expected_norm in selected_sieve_candidates
+            )
+            batch_admit = getattr(collector, "admit_integral_order_basis_rows", None)
+            batch: Any = batch_admit(proposals) if callable(batch_admit) else None
+            if batch is None:
+                for coordinates, row, provenance in proposals:
+                    # The packed norm only selected this proposal.  Integral
+                    # admission independently recomputes the exact element
+                    # norm and every required prime-power containment.
+                    collector.admit_integral_order_basis_row(
+                        coordinates,
+                        row,
+                        provenance=provenance,
+                    )
+                    sieve_admitted += 1
+            else:
+                sieve_admitted = len(batch)
         except (ArithmeticError, TypeError, ValueError):
             # A packed proposal is never proof evidence by itself.  Discard
             # every proposed row if its independent containment replay fails;
@@ -1803,23 +1814,41 @@ def bounded_cubic_minkowski_class_number(
             return
         started = time.perf_counter()
         admitted = 0
-        for row, coordinates, _expected_norm in dependency_candidates:
-            _check_cubic_cancelled(cancelled)
+        dependency_proposals = tuple(
+            (
+                coordinates,
+                row,
+                {
+                    "algorithm": "packed-cubic-unit-dependency-seed",
+                    "coefficient_bound": dependency_sieve_bound,
+                    "order_basis_coordinates": list(coordinates),
+                },
+            )
+            for row, coordinates, _expected_norm in dependency_candidates
+        )
+        batch_admit = getattr(collector, "admit_integral_order_basis_rows", None)
+        batch: Any = None
+        if callable(batch_admit):
             try:
-                collector.admit_integral_order_basis_row(
-                    coordinates,
-                    row,
-                    provenance={
-                        "algorithm": "packed-cubic-unit-dependency-seed",
-                        "coefficient_bound": dependency_sieve_bound,
-                        "order_basis_coordinates": list(coordinates),
-                    },
-                )
-                admitted += 1
+                batch = batch_admit(dependency_proposals)
             except (ArithmeticError, TypeError, ValueError):
-                # A rejected packed proposal is never evidence.  Successfully
-                # admitted earlier rows remain independently authenticated.
-                continue
+                batch = None
+        if batch is not None:
+            admitted = len(batch)
+        else:
+            for coordinates, row, provenance in dependency_proposals:
+                _check_cubic_cancelled(cancelled)
+                try:
+                    collector.admit_integral_order_basis_row(
+                        coordinates,
+                        row,
+                        provenance=provenance,
+                    )
+                    admitted += 1
+                except (ArithmeticError, TypeError, ValueError):
+                    # A rejected packed proposal is never evidence.  Successfully
+                    # admitted earlier rows remain independently authenticated.
+                    continue
         relation_metrics["integral_sieve_dependency_relations"] = admitted
         if admitted:
             relation_records = tuple(collector.records)
