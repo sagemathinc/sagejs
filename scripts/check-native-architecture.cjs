@@ -37,7 +37,7 @@ function repositoryPath(value, label) {
   return value;
 }
 
-function nativeFiles(root = ROOT, extensions = [".c", ".cc", ".cpp", ".h"]) {
+function nativeFiles(root = ROOT, extensions = [".c", ".cc", ".cpp", ".cu", ".h"]) {
   const tracked = execFileSync("git", ["ls-files", "-z"], {
     cwd: root,
     encoding: "utf8",

@@ -16,6 +16,8 @@ import os
 import time
 from typing import Any, Mapping
 
+import sagejs.runtime as runtime
+
 COEFFICIENT_CACHE_SCHEMA = "sagejs.hyperelliptic-coefficient-prefix/v1"
 CPU_FAMILY_ENGINE_SCHEMA = "sagejs.hyperelliptic-cpu-family-engine/v1"
 _CACHE_ALGORITHM = "global-euler-coefficients-v1"
@@ -60,15 +62,14 @@ def central_coefficient_cutoff(
     if conductor < 1 or genus not in (2, 3):
         raise ValueError("invalid hyperelliptic L-function normalization")
     try:
-        runtime_module = __import__("sagejs.runtime", fromlist=["flint_backend"])
-        backend = runtime_module.flint_backend()
-        function = runtime_module.reflect.get(backend, "hyperellipticCentralWeights")
-        if runtime_module.jstype(function) != "undefined":
-            planned = runtime_module.reflect.apply(
+        backend = runtime.flint_backend()
+        function = runtime.reflect.get(backend, "hyperellipticCentralWeights")
+        if runtime.jstype(function) != "undefined":
+            planned = runtime.reflect.apply(
                 function,
                 backend,
                 [
-                    runtime_module.bigint(conductor),
+                    runtime.bigint(conductor),
                     1,
                     genus,
                     [0, 1],
@@ -76,7 +77,7 @@ def central_coefficient_cutoff(
                     maximum_order,
                 ],
             )
-            required = int(runtime_module.reflect.get(planned, "requiredCutoff"))
+            required = int(runtime.reflect.get(planned, "requiredCutoff"))
             if required >= 1:
                 return required
     except Exception:
