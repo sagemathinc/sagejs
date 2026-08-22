@@ -1542,6 +1542,18 @@ def bounded_cubic_minkowski_class_number(
     try:
         _check_cubic_cancelled(cancelled)
         plan.require_feasible()
+        descriptor_scan = getattr(factor_base_module, "_eligible_descriptors", None)
+        if relation_seed_prime_ideal_cap is not None and callable(descriptor_scan):
+            descriptors: Any = descriptor_scan(plan)
+            if len(descriptors) > relation_seed_prime_ideal_cap:
+                phase_timings["factor_base"] = time.perf_counter() - factor_started
+                result = incomplete(
+                    "the exact Minkowski factor base exceeds the relation-seed size policy"
+                )
+                result.diagnostics["factor_base_size"] = len(descriptors)
+                result.diagnostics["factor_base_materialized"] = False
+                result.diagnostics["relation_seed_size_policy_exceeded"] = True
+                return result
         factor_records = factor_base_module.build_factor_base(plan)
     except RuntimeError:
         raise
@@ -1560,6 +1572,7 @@ def bounded_cubic_minkowski_class_number(
             "the exact Minkowski factor base exceeds the relation-seed size policy",
             factor_base=factor_base,
         )
+        result.diagnostics["factor_base_materialized"] = True
         result.diagnostics["relation_seed_size_policy_exceeded"] = True
         return result
 

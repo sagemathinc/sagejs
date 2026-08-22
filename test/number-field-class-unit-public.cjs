@@ -508,8 +508,10 @@ assert resources["relation_candidates"] == 0
 L = NumberField(x**3 - x**2 + 7*x + 8, "b")
 assert L.class_number(proof=False) == 6
 large_artifact = L._bounded_cubic_class_number_artifact
-assert len(large_artifact.factor_base) == 10
+assert len(large_artifact.factor_base) == 0
 assert len(large_artifact.relation_records) == 0
+assert large_artifact.diagnostics["factor_base_size"] == 10
+assert not large_artifact.diagnostics["factor_base_materialized"]
 assert large_artifact.diagnostics["relation_seed_size_policy_exceeded"]
 large_result = list(L._class_unit_engine_cache.values())[-1]
 large_resources = large_result.diagnostics["resources"]
