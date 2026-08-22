@@ -1442,6 +1442,7 @@ class NumberFieldIdeal:
         self,
         order: NumberFieldOrder,
         rows: list[list[Any]],
+        _check_closed: bool = True,
     ) -> None:
         self._order = order
         self._field = order.number_field()
@@ -1452,7 +1453,7 @@ class NumberFieldIdeal:
         self._membership_inverse_cache = runtime.undefined
         if len(self._basis_rows) not in [0, self._field.degree()]:
             raise ValueError("a nonzero number-field ideal must have full rank")
-        if len(self._basis_rows):
+        if len(self._basis_rows) and _check_closed:
             # Closure replay and later membership tests use the same immutable
             # canonical lattice.  Computing its inverse once avoids one exact
             # matrix reconstruction and inversion for every basis product.
@@ -1534,7 +1535,11 @@ class NumberFieldIdeal:
             return NotImplemented
         if other._order is not self._order:
             raise TypeError("ideals must belong to the same order")
-        return NumberFieldIdeal(self._order, self._basis_rows + other._basis_rows)
+        return NumberFieldIdeal(
+            self._order,
+            self._basis_rows + other._basis_rows,
+            _check_closed=False,
+        )
 
     def intersection(
         self,
@@ -1543,7 +1548,7 @@ class NumberFieldIdeal:
         if other._order is not self._order:
             raise TypeError("ideals must belong to the same order")
         if self.is_zero() or other.is_zero():
-            return NumberFieldIdeal(self._order, [])
+            return NumberFieldIdeal(self._order, [], _check_closed=False)
         denominator = runtime.bigint(1)
         for row in self._basis_rows + other._basis_rows:
             for value in row:
@@ -1567,7 +1572,7 @@ class NumberFieldIdeal:
                         relation[basis_index] * self._basis_rows[basis_index][column]
                     )
             rows.append(row)
-        return NumberFieldIdeal(self._order, rows)
+        return NumberFieldIdeal(self._order, rows, _check_closed=False)
 
     def __mul__(self, other: Any) -> NumberFieldIdeal:
         if isinstance(other, NumberFieldIdeal):
@@ -1577,7 +1582,7 @@ class NumberFieldIdeal:
             for left in self.basis():
                 for right in other.basis():
                     rows.append(_nf_coordinates(left * right, self._field.degree()))
-            return NumberFieldIdeal(self._order, rows)
+            return NumberFieldIdeal(self._order, rows, _check_closed=False)
         scalar = self._field(other)
         return NumberFieldIdeal(
             self._order,
@@ -1585,6 +1590,7 @@ class NumberFieldIdeal:
                 _nf_coordinates(scalar * element, self._field.degree())
                 for element in self.basis()
             ],
+            _check_closed=False,
         )
 
     def __rmul__(self, scalar: Any) -> NumberFieldIdeal:
@@ -1912,12 +1918,16 @@ class NumberFieldOrder(sage.Parent):
             values = [0]
         elements = [self._field(value) for value in values]
         if all(element.is_zero() for element in elements):
-            return NumberFieldIdeal(self, [])
+            return NumberFieldIdeal(self, [], _check_closed=False)
         rows = []
         for generator in elements:
             for basis_element in self.basis():
                 rows.append(_nf_coordinates(generator * basis_element, self.degree()))
-        return NumberFieldIdeal(self, rows)
+        # The O-span of arbitrary generators is an ideal by construction.
+        # Direct NumberFieldIdeal lattice construction retains its independent
+        # closure replay for untrusted rows; internal ideal operations use the
+        # same invariant-preserving boundary.
+        return NumberFieldIdeal(self, rows, _check_closed=False)
 
     def factor_rational_prime(
         self,
