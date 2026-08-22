@@ -13,8 +13,8 @@ every good finite-field Jacobian lies in ``ell*J(F_q)``.  Certified invariant
 factor coordinates turn this necessary condition into linear equations over
 ``F_ell``.  Full column rank rules out every nonzero coefficient vector.  A
 surviving vector is only a candidate: bounded rational division searches may
-find a larger subgroup, but failure to find a divisor is not a proof unless an
-explicit exhaustive provider certifies it.
+find a larger subgroup, but failure to find a divisor is not a proof unless a
+typed verifier certifies that the replayed search box is globally exhaustive.
 
 No analytic-rank input is accepted here.  Full-rank claims require a supplied
 proved algebraic rank/Selmer upper bound, with provenance.  The implementation
@@ -25,12 +25,18 @@ Jacobian and explicit abelian-group maps, which also have dynamic fallbacks.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any, Mapping
 
 
-SCHEMA = "sagejs.hyperelliptic.saturation-result.v1"
+SCHEMA = "sagejs.hyperelliptic.saturation-result.v2"
 REDUCTION_SCHEMA = "sagejs.hyperelliptic.saturation-reduction-constraint.v1"
 STEP_SCHEMA = "sagejs.hyperelliptic.saturation-basis-step.v1"
+VERIFIED_REDUCTION_SCHEMA = "sagejs.hyperelliptic.verified-reduction-record.v1"
+DIVISION_SEARCH_SCHEMA = "sagejs.hyperelliptic.rational-division-search.v1"
+ASSUMPTION_SCHEMA = "sagejs.hyperelliptic.verified-assumption.v1"
+EXHAUSTIVE_REDUCTION_GROUP_LIMIT = 512
 
 
 class SaturationResourceLimitError(RuntimeError):
@@ -39,6 +45,61 @@ class SaturationResourceLimitError(RuntimeError):
     def __init__(self, message: str, diagnostics: Mapping[str, Any] | None = None):
         super().__init__(message)
         self.diagnostics = {} if diagnostics is None else dict(diagnostics)
+
+
+class FrozenRecord:
+    """A tiny immutable mapping used by public certificate results."""
+
+    def __init__(self, values: Mapping[str, Any]) -> None:
+        self._values = {str(key): _freeze(value) for key, value in values.items()}
+
+    def __getitem__(self, name: str) -> Any:
+        return self._values[name]
+
+    def __iter__(self) -> Any:
+        yield from self._values
+
+    def __len__(self) -> int:
+        return len(self._values)
+
+    def get(self, name: str, default: Any = None) -> Any:
+        return self._values.get(name, default)
+
+    def items(self) -> Any:
+        return self._values.items()
+
+    def keys(self) -> Any:
+        return self._values.keys()
+
+    def values(self) -> Any:
+        return self._values.values()
+
+    def __repr__(self) -> str:
+        return repr(self._values)
+
+    def __setitem__(self, name: str, value: Any) -> None:
+        raise TypeError("certificate records are immutable")
+
+    def __delitem__(self, name: str) -> None:
+        raise TypeError("certificate records are immutable")
+
+
+def _freeze(value: Any) -> Any:
+    if type(value) is FrozenRecord:
+        return value
+    if hasattr(value, "items"):
+        return FrozenRecord(value)
+    if isinstance(value, tuple) or isinstance(value, list):
+        return tuple(_freeze(item) for item in value)
+    return value
+
+
+def _thaw(value: Any) -> Any:
+    if type(value) is FrozenRecord:
+        return {key: _thaw(item) for key, item in value.items()}
+    if isinstance(value, tuple) or isinstance(value, list):
+        return tuple(_thaw(item) for item in value)
+    return value
 
 
 def _canonical_integer(value: Any, name: str) -> int:
@@ -96,6 +157,15 @@ def _product(values: Any) -> int:
     return answer
 
 
+def _exception_name(error: BaseException) -> str:
+    """Return an exception label without depending on transpiled ``type``."""
+    exception_class = getattr(error, "__class__", None)
+    name = (
+        None if exception_class is None else getattr(exception_class, "__name__", None)
+    )
+    return "Exception" if name is None else str(name)
+
+
 def _proof(provenance: Any, kind: str, value: Any) -> dict[str, Any]:
     if provenance is None:
         return {"kind": kind, "value": value, "proved": False, "source": None}
@@ -115,6 +185,54 @@ def _proof(provenance: Any, kind: str, value: Any) -> dict[str, Any]:
     return result
 
 
+def _external_assumption(
+    provenance: Any,
+    kind: str,
+    value: Any,
+    verifiers: Mapping[str, Any] | None,
+    context: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Classify an external claim; bare ``proved`` booleans stay conditional."""
+    result = _proof(provenance, kind, value)
+    result["conditional"] = True
+    result["verified"] = False
+    result["assurance"] = "unverified-external-claim"
+    if not hasattr(provenance, "get"):
+        result["proved"] = False
+        return result
+    if provenance.get("schema") != ASSUMPTION_SCHEMA:
+        result["proved"] = False
+        return result
+    if provenance.get("kind") != kind or _wire(provenance.get("value")) != _wire(value):
+        result["proved"] = False
+        result["assurance"] = "typed-assumption-binding-mismatch"
+        return result
+    verifier_id = provenance.get("verifier_id")
+    verifier = None if verifiers is None else verifiers.get(verifier_id)
+    if verifier is None:
+        result["proved"] = False
+        result["assurance"] = "typed-assumption-verifier-unavailable"
+        return result
+    verification = verifier(dict(provenance), context)
+    verified = verification is True or (
+        hasattr(verification, "get") and verification.get("verified") is True
+    )
+    result["proved"] = verified
+    result["verified"] = verified
+    result["conditional"] = not verified
+    result["assurance"] = (
+        "verified-external-certificate"
+        if verified
+        else "typed-assumption-verification-failed"
+    )
+    verification_record: Any = verification
+    if verification_record is not True and hasattr(verification_record, "get"):
+        result["verification"] = {
+            str(key): value for key, value in verification_record.items()
+        }
+    return result
+
+
 def _wire(value: Any) -> Any:
     if value is None or isinstance(value, (bool, float, str)):
         return value
@@ -125,6 +243,36 @@ def _wire(value: Any) -> Any:
     if hasattr(value, "items"):
         return {str(key): _wire(item) for key, item in value.items()}
     return str(value)
+
+
+def _digest(payload: Any) -> str:
+    encoded = json.dumps(_wire(payload), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _curve_payload(jacobian: Any) -> dict[str, Any]:
+    curve = jacobian.curve()
+    f_value, h_value = curve.hyperelliptic_polynomials()
+    return {
+        "genus": int(curve.genus()),
+        "base_ring": str(curve.base_ring()),
+        "variable": str(f_value.parent().variable_name()),
+        "f_coefficients_ascending": tuple(str(value) for value in f_value.list()),
+        "h_coefficients_ascending": tuple(str(value) for value in h_value.list()),
+    }
+
+
+def _curve_digest(jacobian: Any) -> str:
+    return _digest(_curve_payload(jacobian))
+
+
+def _basis_digest(jacobian: Any, basis: Any) -> str:
+    return _digest(
+        {
+            "curve_digest": _curve_digest(jacobian),
+            "ordered_basis": tuple(_divisor_wire(point) for point in basis),
+        }
+    )
 
 
 def _matrix_rank_and_nullspace(
@@ -185,6 +333,8 @@ def reduction_constraint(
     point_coordinates: Any,
     *,
     map_certificate: Any = None,
+    verification_status: str = "conditional-unverified",
+    binding: Any = None,
 ) -> dict[str, Any]:
     """Build one exact finite-reduction divisibility constraint.
 
@@ -231,6 +381,8 @@ def reduction_constraint(
         "equation_rank": rank,
         "kernel_basis": kernel,
         "map_certificate": map_certificate,
+        "verification_status": verification_status,
+        "binding": binding,
         "proof": (
             "reduction of an ell-divisible rational class lies in "
             "ell*J(F_q); invariant coordinates test membership in ell*J(F_q)"
@@ -249,12 +401,18 @@ def verify_reduction_constraint(certificate: Mapping[str, Any]) -> bool:
         certificate["invariant_factors"],
         certificate["point_coordinates"],
         map_certificate=certificate.get("map_certificate"),
+        verification_status=str(
+            certificate.get("verification_status", "conditional-unverified")
+        ),
+        binding=certificate.get("binding"),
     )
     for key in (
         "ell_primary_factor_indices",
         "equation_rows",
         "equation_rank",
         "kernel_basis",
+        "verification_status",
+        "binding",
     ):
         if _wire(rebuilt[key]) != _wire(certificate[key]):
             raise ArithmeticError("reduction constraint has incorrect " + key)
@@ -282,15 +440,23 @@ def index_bound_from_regulator(
     full_lattice_regulator_lower_bound: Any,
     *,
     provenance: Any,
+    assumption_verifiers: Mapping[str, Any] | None = None,
+    context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Derive ``[MW:Gamma]`` from proved regulator inequalities.
 
     Since ``Reg(Gamma) = index^2*Reg(MW)``, proved bounds
     ``Reg(Gamma) <= R`` and ``Reg(MW) >= r`` imply
     ``index <= floor(sqrt(R/r))``.  This helper never upgrades unproved
-    numerical estimates: ``provenance['proved']`` must be exactly ``True``.
+    numerical estimates: a registered verifier must accept typed provenance.
     """
-    proof = _proof(provenance, "regulator-index-bound", None)
+    proof = _external_assumption(
+        provenance,
+        "regulator-index-bound",
+        None,
+        assumption_verifiers,
+        {} if context is None else context,
+    )
     if not proof["proved"]:
         raise ValueError("a regulator index bound requires proved provenance")
     bound = _floor_square_root_ratio(
@@ -312,6 +478,8 @@ def index_bound_from_height(
     hermite_constant_upper_bound: Any,
     *,
     provenance: Any,
+    assumption_verifiers: Mapping[str, Any] | None = None,
+    context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Derive an index bound using a supplied proved Hermite inequality.
 
@@ -324,7 +492,13 @@ def index_bound_from_height(
     rank_value = _canonical_integer(rank, "rank")
     if rank_value < 1:
         raise ValueError("the height index bound requires positive rank")
-    proof = _proof(provenance, "height-index-bound", None)
+    proof = _external_assumption(
+        provenance,
+        "height-index-bound",
+        None,
+        assumption_verifiers,
+        {} if context is None else context,
+    )
     if not proof["proved"]:
         raise ValueError("a height index bound requires proved provenance")
     if nonzero_height_lower_bound <= 0 or hermite_constant_upper_bound <= 0:
@@ -332,12 +506,15 @@ def index_bound_from_height(
     regulator_lower = (
         nonzero_height_lower_bound / hermite_constant_upper_bound
     ) ** rank_value
-    result = index_bound_from_regulator(
-        subgroup_regulator_upper_bound,
-        regulator_lower,
-        provenance=proof,
-    )
+    bound = _floor_square_root_ratio(subgroup_regulator_upper_bound, regulator_lower)
+    if bound < 1:
+        raise ArithmeticError("the height/regulator bounds imply an impossible index")
+    result = dict(proof)
+    result["value"] = bound
     result["kind"] = "height-index-bound"
+    result["subgroup_regulator_upper_bound"] = subgroup_regulator_upper_bound
+    result["full_lattice_regulator_lower_bound"] = regulator_lower
+    result["formula"] = "Reg(MW) >= (height_lower/Hermite_upper)^rank"
     result["nonzero_height_lower_bound"] = nonzero_height_lower_bound
     result["hermite_constant_upper_bound"] = hermite_constant_upper_bound
     result["rank"] = rank_value
@@ -506,8 +683,9 @@ def _normalize_division_answer(raw: Any) -> dict[str, Any]:
         return {
             "status": status,
             "candidates": tuple(candidates),
-            "exhaustive": raw.get("exhaustive") is True
-            and raw.get("certified") is True,
+            # Provider booleans are never a global negative certificate.
+            "exhaustive": False,
+            "provider_claimed_exhaustive": raw.get("exhaustive") is True,
             "certificate": raw.get("certificate"),
         }
     if isinstance(raw, tuple) or isinstance(raw, list):
@@ -525,12 +703,195 @@ def _normalize_division_answer(raw: Any) -> dict[str, Any]:
     }
 
 
+def _bounded_rationals(
+    field: Any, numerator_bound: int, denominator_bound: int
+) -> tuple[Any, ...]:
+    values = []
+    seen = set()
+    for denominator in range(1, denominator_bound + 1):
+        for numerator in range(-numerator_bound, numerator_bound + 1):
+            if _gcd(numerator, denominator) != 1 and numerator != 0:
+                continue
+            value = field(numerator) / field(denominator)
+            key = str(value)
+            if key not in seen:
+                seen.add(key)
+                values.append(value)
+    return tuple(values)
+
+
+def _coefficient_vectors(values: Any, length: int) -> Any:
+    values = tuple(values)
+    if length == 0:
+        yield ()
+        return
+    current = [values[0] for _index in range(length)]
+
+    def visit(index: int) -> Any:
+        if index == length:
+            yield tuple(current)
+            return
+        for value in values:
+            current[index] = value
+            yield from visit(index + 1)
+
+    yield from visit(0)
+
+
+def _division_search_public(certificate: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        key: value
+        for key, value in certificate.items()
+        if key not in ("point", "_target", "_jacobian")
+    }
+
+
+def search_rational_mumford_division(
+    jacobian: Any,
+    target: Any,
+    prime: Any,
+    *,
+    numerator_bound: Any,
+    denominator_bound: Any,
+    max_candidate_tuples: Any = 100_000,
+) -> dict[str, Any]:
+    """Search a replayable rational Mumford coefficient box exactly.
+
+    A positive result is unconditional after scalar verification.  A negative
+    result proves only that the finite coefficient box is empty; upgrading it
+    to global nondivisibility requires a separately verified height-to-
+    coefficient/search-bound theorem.
+    """
+    ell = _checked_prime(prime, "division prime")
+    if ell > 7:
+        raise NotImplementedError(
+            "the classical bounded division search supports ell<=7"
+        )
+    numerator = _canonical_integer(numerator_bound, "numerator_bound")
+    denominator = _canonical_integer(denominator_bound, "denominator_bound")
+    maximum = _canonical_integer(max_candidate_tuples, "max_candidate_tuples")
+    if numerator < 0 or denominator < 1 or maximum < 1:
+        raise ValueError("division-search bounds must be positive")
+    curve = jacobian.curve()
+    genus = int(curve.genus())
+    if genus not in (2, 3):
+        raise NotImplementedError("bounded Mumford division supports genus 2 or 3")
+    f_value, h_value = curve.hyperelliptic_polynomials()
+    if max(f_value.degree(), 2 * h_value.degree()) != 2 * genus + 1:
+        raise NotImplementedError("bounded division requires an odd-degree model")
+    field = jacobian.base_ring()
+    if str(field) != "Rational Field":
+        raise NotImplementedError("bounded rational division requires QQ")
+    values = _bounded_rationals(field, numerator, denominator)
+    value_count = len(values)
+    candidate_bound = 0
+    for degree in range(genus + 1):
+        candidate_bound += value_count ** (2 * degree)
+    if candidate_bound > maximum:
+        raise SaturationResourceLimitError(
+            "Mumford division box exceeds max_candidate_tuples=" + str(maximum),
+            {
+                "prime": ell,
+                "numerator_bound": numerator,
+                "denominator_bound": denominator,
+                "rational_value_count": value_count,
+                "candidate_bound": candidate_bound,
+                "max_candidate_tuples": maximum,
+            },
+        )
+    ring = jacobian.polynomial_ring()
+    one = field(1)
+    checked = 0
+    valid = 0
+    found = None
+    for degree in range(genus + 1):
+        for u_coefficients in _coefficient_vectors(values, degree):
+            u_value = ring(list(u_coefficients) + [one])
+            for v_coefficients in _coefficient_vectors(values, degree):
+                checked += 1
+                try:
+                    candidate = jacobian([u_value, ring(v_coefficients)])
+                except (ArithmeticError, ValueError, ZeroDivisionError):
+                    continue
+                valid += 1
+                if _scalar_multiple(candidate, ell) == target:
+                    found = candidate
+                    break
+            if found is not None:
+                break
+        if found is not None:
+            break
+    certificate = {
+        "schema": DIVISION_SEARCH_SCHEMA,
+        "algorithm": "classical-odd-degree-mumford-coefficient-box.v1",
+        "curve_digest": _curve_digest(jacobian),
+        "target_digest": _digest(_divisor_wire(target)),
+        "prime": ell,
+        "genus": genus,
+        "numerator_bound": numerator,
+        "denominator_bound": denominator,
+        "rational_value_count": value_count,
+        "candidate_bound": candidate_bound,
+        "checked_candidate_tuples": checked,
+        "valid_mumford_divisors": valid,
+        "box_complete": found is None and checked == candidate_bound,
+        "global_complete": False,
+        "status": "found" if found is not None else "not_found_in_box",
+        "point": found,
+        "point_data": None if found is None else _divisor_wire(found),
+        "_target": target,
+        "_jacobian": jacobian,
+    }
+    return certificate
+
+
+def verify_division_search_certificate(
+    jacobian: Any, target: Any, certificate: Mapping[str, Any]
+) -> bool:
+    """Replay a bounded rational Mumford search certificate exactly."""
+    if certificate.get("schema") != DIVISION_SEARCH_SCHEMA:
+        raise ValueError("unknown rational-division search schema")
+    if certificate.get("curve_digest") != _curve_digest(jacobian):
+        raise ValueError("the division search belongs to a different Jacobian")
+    if certificate.get("target_digest") != _digest(_divisor_wire(target)):
+        raise ValueError("the division search belongs to a different target")
+    rebuilt = search_rational_mumford_division(
+        jacobian,
+        target,
+        certificate["prime"],
+        numerator_bound=certificate["numerator_bound"],
+        denominator_bound=certificate["denominator_bound"],
+        max_candidate_tuples=certificate["candidate_bound"],
+    )
+    if _wire(_division_search_public(rebuilt)) != _wire(
+        _division_search_public(certificate)
+    ):
+        raise ArithmeticError("a rational-division search certificate is incorrect")
+    return True
+
+
+def division_search_exhaustion_value(
+    jacobian: Any, target: Any, certificate: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Return the exact binding required by a global search-bound theorem."""
+    verify_division_search_certificate(jacobian, target, certificate)
+    public_certificate = _division_search_public(certificate)
+    if public_certificate.get("box_complete") is not True:
+        raise ValueError("a nonempty search box cannot support exhaustion provenance")
+    return {
+        "prime": _checked_prime(public_certificate["prime"], "division prime"),
+        "target_digest": _digest(_divisor_wire(target)),
+        "search_certificate_digest": _digest(public_certificate),
+    }
+
+
 def _division_answer(
     jacobian: Any,
     target: Any,
     prime: int,
     division_search: Any,
     division_candidates: Any,
+    division_search_bound: Any,
     maximum: int,
 ) -> dict[str, Any]:
     raw = None
@@ -541,6 +902,21 @@ def _division_answer(
             raw = division_candidates.get(prime, ())
         else:
             raw = division_candidates
+    elif division_search_bound is not None:
+        if not hasattr(division_search_bound, "get"):
+            raise TypeError("division_search_bound must be a mapping")
+        requested_maximum = _canonical_integer(
+            division_search_bound.get("max_candidate_tuples", maximum),
+            "max_candidate_tuples",
+        )
+        raw = search_rational_mumford_division(
+            jacobian,
+            target,
+            prime,
+            numerator_bound=division_search_bound.get("numerator_bound"),
+            denominator_bound=division_search_bound.get("denominator_bound"),
+            max_candidate_tuples=min(maximum, requested_maximum),
+        )
     else:
         for name in (
             "division_points",
@@ -552,6 +928,15 @@ def _division_answer(
                 raw = method(target, prime, max_candidates=maximum)
                 break
     answer = _normalize_division_answer(raw)
+    search_certificate: Any = raw
+    if (
+        search_certificate is not None
+        and hasattr(search_certificate, "get")
+        and search_certificate.get("schema") == DIVISION_SEARCH_SCHEMA
+    ):
+        verify_division_search_certificate(jacobian, target, search_certificate)
+        answer["certificate"] = _division_search_public(search_certificate)
+        answer["box_exhaustive"] = search_certificate.get("box_complete") is True
     candidates = answer["candidates"]
     if len(candidates) > maximum:
         raise SaturationResourceLimitError(
@@ -596,39 +981,36 @@ def _reduce_coefficient(field: Any, value: Any, prime: int) -> Any:
     return field(value)
 
 
-def _default_reduction_data(
-    jacobian: Any,
-    points: Any,
-    reduction_prime: int,
-    *,
-    max_group_operations: int,
-    max_baby_steps: int,
-    max_memory_bytes: int,
-    seed: Any,
-) -> dict[str, Any]:
-    frobenius = __import__(
-        "sagejs.hyperelliptic_curves.frobenius",
-        fromlist=["_rational_reduction"],
-    )
-    jacobian_module = __import__(
-        "sagejs.hyperelliptic_curves.jacobian", fromlist=["Jacobian"]
-    )
-    reduced_curve = frobenius._rational_reduction(jacobian.curve(), reduction_prime)
-    reduced_jacobian = jacobian_module.Jacobian(reduced_curve)
-    group, homomorphism = reduced_jacobian.abelian_group(
-        max_group_operations=max_group_operations,
-        max_baby_steps=max_baby_steps,
-        max_memory_bytes=max_memory_bytes,
-        seed=seed,
-    )
+class VerifiedReductionRecord:
+    """A curve/basis-bound reduction record replayed from an explicit group map."""
+
+    def __init__(self, data: Mapping[str, Any]) -> None:
+        self._data = dict(data)
+
+    def __getitem__(self, name: str) -> Any:
+        return self._data[name]
+
+    def get(self, name: str, default: Any = None) -> Any:
+        return self._data.get(name, default)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            key: value
+            for key, value in self._data.items()
+            if key not in ("_homomorphism", "_group", "_reduced_jacobian")
+        }
+
+
+def _reduce_points(
+    points: Any, reduced_jacobian: Any, reduction_prime: int
+) -> tuple[Any, ...]:
     field = reduced_jacobian.base_ring()
     ring = reduced_jacobian.polynomial_ring()
-    coordinate_rows = []
     reduced_points = []
     for point in points:
         if not hasattr(point, "uv"):
             raise NotImplementedError(
-                "the default reduction provider requires Mumford divisors"
+                "the verified reduction provider requires Mumford divisors"
             )
         u_value, v_value = point.uv()
         reduced_u = ring(
@@ -643,23 +1025,214 @@ def _default_reduction_data(
                 for value in v_value.list()
             ]
         )
-        reduced_point = reduced_jacobian([reduced_u, reduced_v])
-        reduced_points.append(reduced_point)
-        coordinate_rows.append(tuple(homomorphism.preimage(reduced_point)))
+        reduced_points.append(reduced_jacobian([reduced_u, reduced_v]))
+    return tuple(reduced_points)
+
+
+def certify_reduction_record(
+    jacobian: Any,
+    points: Any,
+    reduction_prime: Any,
+    reduced_jacobian: Any,
+    group: Any,
+    homomorphism: Any,
+    *,
+    map_certificate: Any = None,
+) -> VerifiedReductionRecord:
+    """Replay and bind one finite group map to a rational curve and basis."""
+    prime = _checked_prime(reduction_prime, "reduction_prime")
+    frobenius = __import__(
+        "sagejs.hyperelliptic_curves.frobenius", fromlist=["_rational_reduction"]
+    )
+    jacobian_module = __import__(
+        "sagejs.hyperelliptic_curves.jacobian", fromlist=["Jacobian"]
+    )
+    expected_curve = frobenius._rational_reduction(jacobian.curve(), prime)
+    expected_jacobian = jacobian_module.Jacobian(expected_curve)
+    if _curve_payload(reduced_jacobian) != _curve_payload(expected_jacobian):
+        raise ValueError("a reduction record is bound to the wrong reduced model")
+    if (
+        homomorphism.domain() is not group
+        or homomorphism.codomain() is not reduced_jacobian
+    ):
+        raise ValueError("the finite abelian map has the wrong domain or codomain")
+    if tuple(group.invariants()) != tuple(homomorphism.domain().invariants()):
+        raise ArithmeticError("the finite group invariants and map disagree")
+    if not homomorphism.verify():
+        raise ArithmeticError("the finite abelian-group map did not verify")
+    reduced_points = _reduce_points(points, reduced_jacobian, prime)
+    coordinates = tuple(tuple(homomorphism.preimage(point)) for point in reduced_points)
+    for point, coordinate in zip(reduced_points, coordinates, strict=True):
+        if homomorphism(group(coordinate)) != point:
+            raise ArithmeticError("a finite inverse coordinate did not replay")
+    if map_certificate is not None and hasattr(
+        reduced_jacobian, "verify_group_structure_certificate"
+    ):
+        if not reduced_jacobian.verify_group_structure_certificate(map_certificate):
+            raise ArithmeticError("the finite group certificate did not replay")
+    reduced_payload = _curve_payload(reduced_jacobian)
+    data = {
+        "schema": VERIFIED_REDUCTION_SCHEMA,
+        "verification_status": "internally-replayed",
+        "curve_digest": _curve_digest(jacobian),
+        "basis_digest": _basis_digest(jacobian, points),
+        "reduction_prime": prime,
+        "reduced_model": reduced_payload,
+        "reduced_model_digest": _digest(reduced_payload),
+        "good_reduction_certificate": {
+            "method": "checked-smooth-hyperelliptic-reduction",
+            "prime": prime,
+            "replayed": True,
+        },
+        "invariants": tuple(group.invariants()),
+        "point_coordinates": coordinates,
+        "reduced_points": tuple(_divisor_wire(point) for point in reduced_points),
+        "map_certificate": map_certificate,
+        "finite_map_verified": True,
+        "_homomorphism": homomorphism,
+        "_group": group,
+        "_reduced_jacobian": reduced_jacobian,
+    }
+    return VerifiedReductionRecord(data)
+
+
+def _verify_reduction_record(
+    jacobian: Any, points: Any, record: Any
+) -> VerifiedReductionRecord:
+    if type(record) is not VerifiedReductionRecord:
+        raise TypeError("a verified reduction must be a VerifiedReductionRecord")
+    if record.get("schema") != VERIFIED_REDUCTION_SCHEMA:
+        raise ValueError("unknown verified-reduction schema")
+    return certify_reduction_record(
+        jacobian,
+        points,
+        record["reduction_prime"],
+        record["_reduced_jacobian"],
+        record["_group"],
+        record["_homomorphism"],
+        map_certificate=record.get("map_certificate"),
+    )
+
+
+def _default_reduction_data(
+    jacobian: Any,
+    points: Any,
+    reduction_prime: int,
+    *,
+    max_group_operations: int,
+    max_baby_steps: int,
+    max_memory_bytes: int,
+    seed: Any,
+) -> VerifiedReductionRecord:
+    frobenius = __import__(
+        "sagejs.hyperelliptic_curves.frobenius",
+        fromlist=["_rational_reduction"],
+    )
+    jacobian_module = __import__(
+        "sagejs.hyperelliptic_curves.jacobian", fromlist=["Jacobian"]
+    )
+    reduced_curve = frobenius._rational_reduction(jacobian.curve(), reduction_prime)
+    reduced_jacobian = jacobian_module.Jacobian(reduced_curve)
+    if int(reduced_jacobian.order()) <= EXHAUSTIVE_REDUCTION_GROUP_LIMIT:
+        group, homomorphism = _exhaustive_reduction_group_map(
+            reduced_jacobian,
+            max_group_operations=max_group_operations,
+            max_baby_steps=max_baby_steps,
+            max_memory_bytes=max_memory_bytes,
+        )
+    else:
+        group, homomorphism = reduced_jacobian.abelian_group(
+            max_group_operations=max_group_operations,
+            max_baby_steps=max_baby_steps,
+            max_memory_bytes=max_memory_bytes,
+            seed=seed,
+        )
     certificate = None
     try:
         certificate = reduced_jacobian.group_structure_certificate(seed=seed)
-    except (NotImplementedError, RuntimeError):
+    except (NotImplementedError, RuntimeError, TypeError):
         # The explicit map has already verified its group basis.  Retaining the
         # larger serialized certificate is useful but not required twice.
-        certificate = {"map_verified": bool(homomorphism.verify())}
-    return {
-        "reduction_prime": reduction_prime,
-        "invariants": tuple(group.invariants()),
-        "point_coordinates": tuple(coordinate_rows),
-        "map_certificate": certificate,
-        "reduced_points": tuple(_divisor_wire(point) for point in reduced_points),
-    }
+        certificate = None
+    return certify_reduction_record(
+        jacobian,
+        points,
+        reduction_prime,
+        reduced_jacobian,
+        group,
+        homomorphism,
+        map_certificate=certificate,
+    )
+
+
+def _exhaustive_reduction_group_map(
+    reduced_jacobian: Any,
+    *,
+    max_group_operations: int,
+    max_baby_steps: int,
+    max_memory_bytes: int,
+) -> tuple[Any, Any]:
+    """Build a deterministic exact map for genuinely small residue groups."""
+    order = int(reduced_jacobian.order())
+    if order > EXHAUSTIVE_REDUCTION_GROUP_LIMIT:
+        raise SaturationResourceLimitError(
+            "exhaustive reduction map exceeds the fixed small-group envelope",
+            {
+                "group_order": order,
+                "max_group_order": EXHAUSTIVE_REDUCTION_GROUP_LIMIT,
+            },
+        )
+    elements = tuple(
+        reduced_jacobian.points(
+            max_elements=EXHAUSTIVE_REDUCTION_GROUP_LIMIT,
+            max_candidates=max(10_000, 100 * EXHAUSTIVE_REDUCTION_GROUP_LIMIT),
+        )
+    )
+    if len(elements) != order:
+        raise ArithmeticError("finite Jacobian enumeration has the wrong order")
+    structure = __import__(
+        "sagejs.hyperelliptic_curves.group_structure",
+        fromlist=[
+            "GroupOperationBudget",
+            "basis_from_generators",
+            "factor_integer_bounded",
+        ],
+    )
+    abelian = __import__(
+        "sagejs.hyperelliptic_curves.abelian_group",
+        fromlist=["FiniteAbelianGroup", "JacobianAbelianMap"],
+    )
+    factors = structure.factor_integer_bounded(order, 1_000_000)
+    element_orders = tuple(point.order() for point in elements)
+    budget = structure.GroupOperationBudget(
+        max_group_operations,
+        max_baby_steps,
+        max_memory_bytes,
+        "reference",
+    )
+    descending_generators, descending_orders = structure.basis_from_generators(
+        elements,
+        element_orders,
+        factors,
+        budget,
+    )
+    generators = tuple(reversed(descending_generators))
+    invariants = tuple(reversed(descending_orders))
+    if _product(invariants) != order:
+        raise ArithmeticError("the exhaustive finite basis has the wrong order")
+    group = abelian.FiniteAbelianGroup(invariants)
+    homomorphism = abelian.JacobianAbelianMap(
+        group,
+        reduced_jacobian,
+        generators,
+        factorization=factors,
+        max_group_operations=max_group_operations,
+        max_baby_steps=max_baby_steps,
+        max_memory_bytes=max_memory_bytes,
+    )
+    if not homomorphism.verify():
+        raise ArithmeticError("the exhaustive finite group map did not verify")
+    return group, homomorphism
 
 
 def _combined_constraint(
@@ -675,7 +1248,11 @@ def _combined_constraint(
 
 
 def _obtain_independence(
-    jacobian: Any, points: Any, supplied: Any, use_height_pairing: bool
+    jacobian: Any,
+    points: Any,
+    supplied: Any,
+    use_height_pairing: bool,
+    assumption_verifiers: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
     if len(tuple(points)) == 0:
         return {
@@ -684,22 +1261,25 @@ def _obtain_independence(
             "source": "empty-basis",
             "rank": 0,
         }
-    proof = _proof(supplied, "independence", len(tuple(points)))
+    context = {
+        "curve_digest": _curve_digest(jacobian),
+        "basis_digest": _basis_digest(jacobian, points),
+    }
+    proof = _external_assumption(
+        supplied,
+        "independence",
+        len(tuple(points)),
+        assumption_verifiers,
+        context,
+    )
     if proof["proved"] or not use_height_pairing:
         return proof
     method = getattr(jacobian, "height_pairing", None)
-    if method is None:
+    verifier = getattr(jacobian, "verify_height_pairing_independence", None)
+    if method is None or verifier is None:
         return proof
     pairing = method(tuple(points))
-    proved = bool(
-        getattr(pairing, "independence_proved", False)
-        or getattr(pairing, "certified_positive_definite", False)
-    )
-    if hasattr(pairing, "get"):
-        proved = (
-            pairing.get("independence_proved") is True
-            or pairing.get("certified_positive_definite") is True
-        )
+    proved = verifier(tuple(points), pairing) is True
     if proved:
         return {
             "kind": "independence",
@@ -718,27 +1298,66 @@ def _rank_status(
     algebraic_rank_provenance: Any,
     selmer_rank_upper_bound: Any,
     selmer_provenance: Any,
+    assumption_verifiers: Mapping[str, Any] | None,
+    context: Mapping[str, Any],
 ) -> dict[str, Any]:
     claims = []
     exact_rank = None
     rank_upper = None
+    rank_verified = False
+    selmer_verified = False
     if algebraic_rank is not None:
         value = _canonical_integer(algebraic_rank, "algebraic_rank")
         if value < 0:
             raise ValueError("algebraic_rank must be nonnegative")
-        claim = _proof(algebraic_rank_provenance, "algebraic-rank", value)
+        claim = _external_assumption(
+            algebraic_rank_provenance,
+            "algebraic-rank",
+            value,
+            assumption_verifiers,
+            context,
+        )
         claims.append(claim)
         if claim["proved"]:
+            rank_verified = True
             exact_rank = value
             rank_upper = value
     if selmer_rank_upper_bound is not None:
         value = _canonical_integer(selmer_rank_upper_bound, "selmer_rank_upper_bound")
         if value < 0:
             raise ValueError("selmer_rank_upper_bound must be nonnegative")
-        claim = _proof(selmer_provenance, "selmer-rank-upper-bound", value)
+        claim = _external_assumption(
+            selmer_provenance,
+            "selmer-rank-upper-bound",
+            value,
+            assumption_verifiers,
+            context,
+        )
         claims.append(claim)
         if claim["proved"] and (rank_upper is None or value < rank_upper):
+            selmer_verified = True
             rank_upper = value
+    if algebraic_rank is not None and selmer_rank_upper_bound is not None:
+        supplied_rank = _canonical_integer(algebraic_rank, "algebraic_rank")
+        supplied_upper = _canonical_integer(
+            selmer_rank_upper_bound, "selmer_rank_upper_bound"
+        )
+        rank_claimed_proved = bool(
+            hasattr(algebraic_rank_provenance, "get")
+            and algebraic_rank_provenance.get("proved") is True
+        )
+        selmer_claimed_proved = bool(
+            hasattr(selmer_provenance, "get")
+            and selmer_provenance.get("proved") is True
+        )
+        if (
+            supplied_rank > supplied_upper
+            and (rank_claimed_proved or rank_verified)
+            and (selmer_claimed_proved or selmer_verified)
+        ):
+            raise ArithmeticError(
+                "the supplied proved algebraic rank exceeds the Selmer upper bound"
+            )
     if independence.get("proved") is True and rank_upper is not None:
         if rank_upper < point_count:
             raise ArithmeticError(
@@ -785,31 +1404,39 @@ class SaturationResult:
         index_bound: Any,
         global_status: Any,
         diagnostics: Any,
+        raw_inputs: Any,
+        assumption_verifiers: Mapping[str, Any] | None,
     ) -> None:
         self.jacobian = jacobian
         self.input_basis = tuple(input_basis)
         self.basis = tuple(basis)
-        self.independence = dict(independence)
-        self.rank_status = dict(rank_status)
-        self.prime_results = tuple(prime_results)
-        self.basis_steps = tuple(basis_steps)
+        self.independence = _freeze(independence)
+        self.rank_status = _freeze(rank_status)
+        self.prime_results = _freeze(tuple(prime_results))
+        self.basis_steps = _freeze(tuple(basis_steps))
         self.index_factor_from_input = _product(
             step["index_factor"] for step in self.basis_steps
         )
-        self.index_bound = None if index_bound is None else dict(index_bound)
-        self.global_status = dict(global_status)
-        self.diagnostics = dict(diagnostics)
+        self.index_bound = None if index_bound is None else _freeze(index_bound)
+        self.global_status = _freeze(global_status)
+        self.diagnostics = _freeze(diagnostics)
+        self._raw_inputs = _freeze(raw_inputs)
+        self._assumption_verifiers = assumption_verifiers
         self.s_saturated_primes = tuple(
             row["prime"]
             for row in self.prime_results
-            if row["ambient_subgroup_saturated"] is True
+            if row["free_quotient_saturated"] is True
         )
         self.free_quotient_saturated_primes = tuple(
             row["prime"]
             for row in self.prime_results
             if row["free_quotient_saturated"] is True
         )
-        self.ambient_saturated_primes = self.s_saturated_primes
+        self.ell_division_relations_ruled_out_primes = tuple(
+            row["prime"]
+            for row in self.prime_results
+            if row["ell_division_relations_ruled_out"] is True
+        )
         self.global_saturation_proved = (
             self.global_status.get("global_saturation_proved") is True
         )
@@ -833,26 +1460,61 @@ class SaturationResult:
             + ")"
         )
 
-    def to_dict(self) -> dict[str, Any]:
-        """Return a deterministic JSON/SQLite-friendly certificate record."""
+    def _derived_dict(self) -> dict[str, Any]:
         public_steps = []
         for step in self.basis_steps:
             public_steps.append(
-                {key: value for key, value in step.items() if not key.startswith("_")}
+                {
+                    key: _thaw(value)
+                    for key, value in step.items()
+                    if not key.startswith("_")
+                }
             )
         return {
-            "schema": SCHEMA,
-            "input_basis": tuple(_divisor_wire(point) for point in self.input_basis),
             "basis": tuple(_divisor_wire(point) for point in self.basis),
-            "independence": _wire(self.independence),
-            "rank_status": _wire(self.rank_status),
-            "prime_results": _wire(self.prime_results),
+            "independence": _wire(_thaw(self.independence)),
+            "rank_status": _wire(_thaw(self.rank_status)),
+            "prime_results": _wire(_thaw(self.prime_results)),
             "basis_steps": _wire(public_steps),
             "index_factor_from_input": str(self.index_factor_from_input),
-            "index_bound": _wire(self.index_bound),
-            "global_status": _wire(self.global_status),
-            "diagnostics": _wire(self.diagnostics),
+            "index_bound": _wire(_thaw(self.index_bound)),
+            "global_status": _wire(_thaw(self.global_status)),
+            "diagnostics": _wire(_thaw(self.diagnostics)),
+            "s_saturated_primes": tuple(
+                str(value) for value in self.s_saturated_primes
+            ),
+            "ell_division_relations_ruled_out_primes": tuple(
+                str(value) for value in self.ell_division_relations_ruled_out_primes
+            ),
+            "global_free_quotient_saturation_proved": (
+                self.global_free_quotient_saturation_proved
+            ),
+            "full_mordell_weil_group_proved": self.full_mordell_weil_group_proved,
         }
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return an immutable-state, replayable JSON/SQLite record."""
+        return {
+            "schema": SCHEMA,
+            "curve": _curve_payload(self.jacobian),
+            "curve_digest": _curve_digest(self.jacobian),
+            "input_basis": tuple(_divisor_wire(point) for point in self.input_basis),
+            "raw": _wire(_thaw(self._raw_inputs)),
+            "derived": self._derived_dict(),
+        }
+
+    @classmethod
+    def from_dict(
+        cls,
+        jacobian: Any,
+        payload: Mapping[str, Any],
+        *,
+        assumption_verifiers: Mapping[str, Any] | None = None,
+    ) -> Any:
+        """Replay a serialized result and reject every derived-field forgery."""
+        return _saturation_from_dict(
+            jacobian, payload, assumption_verifiers=assumption_verifiers
+        )
 
     def verify(self) -> bool:
         """Recheck every finite reduction and exact basis transformation."""
@@ -877,6 +1539,13 @@ class SaturationResult:
             basis = new_basis
         if basis != self.basis:
             raise ArithmeticError("the basis-step chain has the wrong final basis")
+        replayed = _saturation_from_dict(
+            self.jacobian,
+            self.to_dict(),
+            assumption_verifiers=self._assumption_verifiers,
+        )
+        if _wire(replayed._derived_dict()) != _wire(self._derived_dict()):
+            raise ArithmeticError("saturation result replay changed derived fields")
         return True
 
 
@@ -922,6 +1591,8 @@ def saturate_subgroup(
     reduction_provider: Any = None,
     division_search: Any = None,
     division_candidates: Any = None,
+    division_search_bound: Any = None,
+    division_exhaustion_provenance: Any = None,
     independence_certificate: Any = None,
     use_height_pairing: bool = True,
     algebraic_rank: Any = None,
@@ -943,6 +1614,8 @@ def saturate_subgroup(
     height_lower_bound: Any = None,
     hermite_constant_upper_bound: Any = None,
     index_bound_provenance: Any = None,
+    assumption_verifiers: Mapping[str, Any] | None = None,
+    torsion_ell_control: Any = None,
     max_division_vectors: int = 10_000,
     max_division_candidates: int = 100_000,
     max_enlargements: int = 64,
@@ -957,7 +1630,7 @@ def saturate_subgroup(
     The returned object can prove finite-prime saturation using only reduction
     maps.  Full rank and a global index are independent claims.  Bare supplied
     rank/index numbers are recorded but are used as proofs only when their
-    provenance mapping contains ``proved=True``.
+    typed provenance is accepted by a registered verifier.
     """
     basis = tuple(points)
     zero = jacobian.zero()
@@ -977,8 +1650,16 @@ def saturate_subgroup(
         if _canonical_integer(value, name) < 0:
             raise ValueError(name + " must be nonnegative")
 
+    assumption_context = {
+        "curve_digest": _curve_digest(jacobian),
+        "basis_digest": _basis_digest(jacobian, basis),
+    }
     independence = _obtain_independence(
-        jacobian, basis, independence_certificate, use_height_pairing
+        jacobian,
+        basis,
+        independence_certificate,
+        use_height_pairing,
+        assumption_verifiers,
     )
     rank_status = _rank_status(
         len(basis),
@@ -987,15 +1668,25 @@ def saturate_subgroup(
         algebraic_rank_provenance,
         selmer_rank_upper_bound,
         selmer_provenance,
+        assumption_verifiers,
+        assumption_context,
     )
     torsion_value = _canonical_integer(torsion_order, "torsion_order")
     if torsion_value < 1:
         raise ValueError("torsion_order must be positive")
-    torsion_proof = _proof(torsion_provenance, "rational-torsion-order", torsion_value)
-    torsion_inclusion = _proof(
+    torsion_proof = _external_assumption(
+        torsion_provenance,
+        "rational-torsion-order",
+        torsion_value,
+        assumption_verifiers,
+        assumption_context,
+    )
+    torsion_inclusion = _external_assumption(
         torsion_inclusion_provenance,
         "torsion-subgroup-included",
         bool(torsion_subgroup_included),
+        assumption_verifiers,
+        assumption_context,
     )
     torsion_complete = torsion_proof.get("proved") is True and (
         torsion_value == 1
@@ -1009,16 +1700,24 @@ def saturate_subgroup(
         exact_value = _canonical_integer(exact_subgroup_index, "exact_subgroup_index")
         if exact_value < 1:
             raise ValueError("exact_subgroup_index must be positive")
-        bound_record = _proof(
-            exact_subgroup_index_provenance, "exact-subgroup-index", exact_value
+        bound_record = _external_assumption(
+            exact_subgroup_index_provenance,
+            "exact-subgroup-index",
+            exact_value,
+            assumption_verifiers,
+            assumption_context,
         )
         bound_record["exact"] = True
     elif global_index_bound is not None:
         bound_value = _canonical_integer(global_index_bound, "global_index_bound")
         if bound_value < 1:
             raise ValueError("global_index_bound must be positive")
-        bound_record = _proof(
-            global_index_bound_provenance, "global-index-upper-bound", bound_value
+        bound_record = _external_assumption(
+            global_index_bound_provenance,
+            "global-index-upper-bound",
+            bound_value,
+            assumption_verifiers,
+            assumption_context,
         )
         bound_record["exact"] = False
     elif (
@@ -1029,6 +1728,8 @@ def saturate_subgroup(
             regulator_upper_bound,
             full_lattice_regulator_lower_bound,
             provenance=index_bound_provenance,
+            assumption_verifiers=assumption_verifiers,
+            context=assumption_context,
         )
         bound_record["exact"] = False
     elif (
@@ -1042,6 +1743,8 @@ def saturate_subgroup(
             len(basis),
             hermite_constant_upper_bound,
             provenance=index_bound_provenance,
+            assumption_verifiers=assumption_verifiers,
+            context=assumption_context,
         )
         bound_record["exact"] = False
     elif hasattr(jacobian, "subgroup_index_bound"):
@@ -1066,6 +1769,7 @@ def saturate_subgroup(
         prime = prime_values[requested_index]
         requested_index += 1
         reductions = []
+        conditional_reductions = []
         failures = []
         for reduction_index, residue_prime in enumerate(residue_primes):
             diagnostics["reduction_attempts"] += 1
@@ -1082,18 +1786,49 @@ def saturate_subgroup(
                     )
                 else:
                     data = reduction_provider(jacobian, basis, residue_prime)
+                verified = type(data) is VerifiedReductionRecord
+                if verified:
+                    data = _verify_reduction_record(jacobian, basis, data)
+                    binding = data.to_dict()
+                else:
+                    binding = {
+                        "curve_digest": data.get("curve_digest"),
+                        "basis_digest": data.get("basis_digest"),
+                        "claimed_good_reduction": data.get(
+                            "good_reduction_certificate"
+                        ),
+                        "reason": (
+                            "injected coordinates lack a replayed reduced model, "
+                            "good-reduction proof, and verified finite group map"
+                        ),
+                    }
                 certificate = reduction_constraint(
                     prime,
                     residue_prime,
                     data["invariants"],
                     data["point_coordinates"],
                     map_certificate=data.get("map_certificate"),
+                    verification_status=(
+                        "internally-replayed"
+                        if verified
+                        else "conditional-unverified-provider"
+                    ),
+                    binding=binding,
                 )
-                reductions.append(certificate)
-            except (ArithmeticError, NotImplementedError, RuntimeError) as error:
+                if verified:
+                    reductions.append(certificate)
+                else:
+                    conditional_reductions.append(certificate)
+            except (
+                ArithmeticError,
+                NotImplementedError,
+                RuntimeError,
+                TypeError,
+                ValueError,
+            ) as error:
                 failure = {
                     "prime": residue_prime,
-                    "type": type(error).__name__,
+                    "type": _exception_name(error),
                     "reason": str(error),
                 }
                 if hasattr(error, "diagnostics"):
@@ -1101,6 +1836,9 @@ def saturate_subgroup(
                 failures.append(failure)
                 diagnostics["reduction_failures"].append(failure)
         rank, kernel, combined_rows = _combined_constraint(prime, basis, reductions)
+        conditional_rank, conditional_kernel, conditional_rows = _combined_constraint(
+            prime, basis, tuple(reductions) + tuple(conditional_reductions)
+        )
         search_records = []
         resource = None
         enlarged = False
@@ -1119,8 +1857,37 @@ def saturate_subgroup(
                         prime,
                         division_search,
                         division_candidates,
+                        division_search_bound,
                         max_division_candidates,
                     )
+                    exhaustion_proof = None
+                    search_certificate = answer.get("certificate")
+                    if (
+                        search_certificate is not None
+                        and search_certificate.get("schema") == DIVISION_SEARCH_SCHEMA
+                        and search_certificate.get("box_complete") is True
+                    ):
+                        exhaustion_value = {
+                            "prime": prime,
+                            "target_digest": _digest(_divisor_wire(target)),
+                            "search_certificate_digest": _digest(search_certificate),
+                        }
+                        exhaustion_source = division_exhaustion_provenance
+                        if (
+                            hasattr(exhaustion_source, "get")
+                            and exhaustion_source.get("schema") != ASSUMPTION_SCHEMA
+                        ):
+                            exhaustion_source = exhaustion_source.get(
+                                exhaustion_value["target_digest"]
+                            )
+                        exhaustion_proof = _external_assumption(
+                            exhaustion_source,
+                            "global-division-search-bound",
+                            exhaustion_value,
+                            assumption_verifiers,
+                            assumption_context,
+                        )
+                        answer["exhaustive"] = exhaustion_proof.get("proved") is True
                     diagnostics["division_candidates_checked"] += answer[
                         "checked_candidates"
                     ]
@@ -1131,6 +1898,7 @@ def saturate_subgroup(
                             "checked_candidates": answer["checked_candidates"],
                             "exhaustive": answer["exhaustive"],
                             "certificate": answer["certificate"],
+                            "exhaustion_status": exhaustion_proof,
                         }
                     )
                     if answer["status"] == "found":
@@ -1149,7 +1917,7 @@ def saturate_subgroup(
                         exhaustive_not_found = False
             except SaturationResourceLimitError as error:
                 resource = {
-                    "type": type(error).__name__,
+                    "type": _exception_name(error),
                     "reason": str(error),
                     "diagnostics": error.diagnostics,
                 }
@@ -1163,18 +1931,29 @@ def saturate_subgroup(
             continue
         relation_obstruction = rank == len(basis)
         exact_search_proof = bool(kernel) and exhaustive_not_found and resource is None
-        ambient_saturated = independence.get("proved") is True and (
+        ell_relations_ruled_out = independence.get("proved") is True and (
             relation_obstruction or exact_search_proof
         )
-        free_quotient_saturated = (
-            ambient_saturated
-            and torsion_proof.get("proved") is True
-            and _gcd(torsion_value, prime) == 1
+        ell_torsion_source = None
+        if hasattr(torsion_ell_control, "get"):
+            ell_torsion_source = torsion_ell_control.get(prime)
+            if ell_torsion_source is None:
+                ell_torsion_source = torsion_ell_control.get(str(prime))
+        ell_torsion_proof = _external_assumption(
+            ell_torsion_source,
+            "ell-torsion-control",
+            prime,
+            assumption_verifiers,
+            assumption_context,
         )
+        torsion_controlled = torsion_proof.get("proved") is True and (
+            _gcd(torsion_value, prime) == 1 or ell_torsion_proof.get("proved") is True
+        )
+        free_quotient_saturated = ell_relations_ruled_out and torsion_controlled
         if free_quotient_saturated:
             status = "free_quotient_saturated"
-        elif ambient_saturated:
-            status = "ambient_subgroup_saturated_torsion_unresolved"
+        elif ell_relations_ruled_out:
+            status = "ell_division_relations_ruled_out_torsion_uncontrolled"
         elif resource is not None:
             status = "resource_limit"
         elif independence.get("proved") is not True and relation_obstruction:
@@ -1187,17 +1966,23 @@ def saturate_subgroup(
             {
                 "prime": prime,
                 "status": status,
-                "ambient_subgroup_saturated": ambient_saturated,
+                "ell_division_relations_ruled_out": ell_relations_ruled_out,
                 "free_quotient_saturated": free_quotient_saturated,
                 "constraint_rank": rank,
                 "generator_count": len(basis),
                 "kernel_basis": kernel,
                 "combined_equation_rows": combined_rows,
                 "reduction_certificates": tuple(reductions),
+                "conditional_reduction_constraints": tuple(conditional_reductions),
+                "conditional_constraint_rank": conditional_rank,
+                "conditional_kernel_basis": conditional_kernel,
+                "conditional_equation_rows": conditional_rows,
                 "reduction_failures": tuple(failures),
                 "division_searches": tuple(search_records),
                 "resource_limit": resource,
                 "torsion_coprime": _gcd(torsion_value, prime) == 1,
+                "torsion_controlled": torsion_controlled,
+                "ell_torsion_control_status": ell_torsion_proof,
             }
         )
 
@@ -1206,10 +1991,12 @@ def saturate_subgroup(
     possible_prime_proof = None
     if possible_index_primes is not None:
         possible_prime_values = tuple(possible_index_primes)
-        possible_prime_proof = _proof(
+        possible_prime_proof = _external_assumption(
             possible_index_primes_provenance,
             "possible-index-primes",
             possible_prime_values,
+            assumption_verifiers,
+            assumption_context,
         )
     global_status: dict[str, Any] = {
         "global_saturation_proved": False,
@@ -1285,7 +2072,7 @@ def saturate_subgroup(
                     )
                 except SaturationResourceLimitError as error:
                     resource = {
-                        "type": type(error).__name__,
+                        "type": _exception_name(error),
                         "reason": str(error),
                         "diagnostics": error.diagnostics,
                     }
@@ -1293,6 +2080,60 @@ def saturate_subgroup(
                     global_status["reason"] = "global prime enumeration resource limit"
                     global_status["resource_limit"] = resource
 
+    raw_inputs = {
+        "primes": prime_values,
+        "reduction_primes": residue_primes,
+        "reduction_provider_mode": (
+            "default-internal" if reduction_provider is None else "injected-conditional"
+        ),
+        "division_provider_mode": (
+            "classical-bounded"
+            if division_search_bound is not None
+            else (
+                "injected-search"
+                if division_search is not None
+                else (
+                    "injected-candidates"
+                    if division_candidates is not None
+                    else "jacobian-hook-or-unavailable"
+                )
+            )
+        ),
+        "division_search_bound": division_search_bound,
+        "division_exhaustion_provenance": division_exhaustion_provenance,
+        "independence_certificate": independence_certificate,
+        "use_height_pairing": use_height_pairing,
+        "algebraic_rank": algebraic_rank,
+        "algebraic_rank_provenance": algebraic_rank_provenance,
+        "selmer_rank_upper_bound": selmer_rank_upper_bound,
+        "selmer_provenance": selmer_provenance,
+        "torsion_order": torsion_order,
+        "torsion_provenance": torsion_provenance,
+        "torsion_subgroup_included": torsion_subgroup_included,
+        "torsion_inclusion_provenance": torsion_inclusion_provenance,
+        "torsion_ell_control": torsion_ell_control,
+        "global_index_bound": global_index_bound,
+        "global_index_bound_provenance": global_index_bound_provenance,
+        "exact_subgroup_index": exact_subgroup_index,
+        "exact_subgroup_index_provenance": exact_subgroup_index_provenance,
+        "possible_index_primes": possible_prime_values,
+        "possible_index_primes_provenance": possible_index_primes_provenance,
+        "regulator_upper_bound": regulator_upper_bound,
+        "full_lattice_regulator_lower_bound": full_lattice_regulator_lower_bound,
+        "height_lower_bound": height_lower_bound,
+        "hermite_constant_upper_bound": hermite_constant_upper_bound,
+        "index_bound_provenance": index_bound_provenance,
+        "resources": {
+            "max_division_vectors": max_division_vectors,
+            "max_division_candidates": max_division_candidates,
+            "max_enlargements": max_enlargements,
+            "max_global_primes": max_global_primes,
+            "max_group_operations": max_group_operations,
+            "max_baby_steps": max_baby_steps,
+            "max_memory_bytes": max_memory_bytes,
+            "seed": seed,
+        },
+    }
     return SaturationResult(
         jacobian,
         points,
@@ -1304,18 +2145,199 @@ def saturate_subgroup(
         bound_record,
         global_status,
         diagnostics,
+        raw_inputs,
+        assumption_verifiers,
     )
+
+
+def _divisor_from_wire(jacobian: Any, payload: Mapping[str, Any]) -> Any:
+    if payload.get("representation") != "mumford":
+        raise ValueError("serialized saturation bases require Mumford divisors")
+    ring = jacobian.polynomial_ring()
+    field = jacobian.base_ring()
+    u_value = ring(
+        [
+            _field_element_from_wire(field, value)
+            for value in payload["u_coefficients_ascending"]
+        ]
+    )
+    v_value = ring(
+        [
+            _field_element_from_wire(field, value)
+            for value in payload["v_coefficients_ascending"]
+        ]
+    )
+    return jacobian([u_value, v_value])
+
+
+def _field_element_from_wire(field: Any, value: Any) -> Any:
+    """Rebuild the canonical rational strings emitted by ``_divisor_wire``."""
+    if not isinstance(value, str):
+        return field(value)
+    pieces = value.split("/")
+    if len(pieces) == 1:
+        return field(_canonical_integer(pieces[0], "serialized coefficient"))
+    if len(pieces) != 2:
+        raise ValueError("a serialized coefficient is not rational")
+    numerator = _canonical_integer(pieces[0], "serialized numerator")
+    denominator = _canonical_integer(pieces[1], "serialized denominator")
+    if denominator <= 0 or _gcd(numerator, denominator) != 1:
+        raise ValueError("a serialized rational coefficient is not canonical")
+    return field(numerator) / field(denominator)
+
+
+def _serialized_conditional_provider(derived: Mapping[str, Any]) -> Any:
+    records: dict[int, dict[str, Any]] = {}
+    verified_count = 0
+    conditional_count = 0
+    for prime_result in derived.get("prime_results", ()):
+        verified_count += len(tuple(prime_result.get("reduction_certificates", ())))
+        for certificate in prime_result.get("conditional_reduction_constraints", ()):
+            conditional_count += 1
+            residue_prime = _canonical_integer(
+                certificate["reduction_prime"], "reduction_prime"
+            )
+            records[residue_prime] = {
+                "invariants": certificate["invariant_factors"],
+                "point_coordinates": certificate["point_coordinates"],
+                "map_certificate": certificate.get("map_certificate"),
+                "curve_digest": certificate.get("binding", {}).get("curve_digest"),
+                "basis_digest": certificate.get("binding", {}).get("basis_digest"),
+                "good_reduction_certificate": certificate.get("binding", {}).get(
+                    "claimed_good_reduction"
+                ),
+            }
+    if verified_count and conditional_count:
+        raise ValueError("mixed verified/conditional reduction replay is unsupported")
+    if verified_count:
+        return None
+
+    def provider(_jacobian: Any, _basis: Any, prime: int) -> Any:
+        if prime not in records:
+            raise NotImplementedError("serialized conditional reduction is unavailable")
+        return records[prime]
+
+    return provider
+
+
+def _saturation_from_dict(
+    jacobian: Any,
+    payload: Mapping[str, Any],
+    *,
+    assumption_verifiers: Mapping[str, Any] | None,
+) -> SaturationResult:
+    if payload.get("schema") != SCHEMA:
+        raise ValueError("unknown saturation-result schema")
+    if payload.get("curve_digest") != _curve_digest(jacobian):
+        raise ValueError("the saturation result belongs to a different Jacobian")
+    if _digest(payload.get("curve")) != _digest(_curve_payload(jacobian)):
+        raise ValueError("the serialized curve model is incorrect")
+    input_basis = tuple(
+        _divisor_from_wire(jacobian, item) for item in payload["input_basis"]
+    )
+    raw: Any = payload.get("raw")
+    derived: Any = payload.get("derived")
+    if not hasattr(raw, "get") or not hasattr(derived, "get"):
+        raise ValueError("a saturation result must contain raw and derived records")
+    resources = raw.get("resources", {})
+    reduction_provider = None
+    if raw.get("reduction_provider_mode") != "default-internal":
+        reduction_provider = _serialized_conditional_provider(derived)
+    division_candidates: dict[int, list[Any]] = {}
+    provider_mode = raw.get("division_provider_mode")
+    # A classical bounded search is itself a replayable raw computation.  Feeding
+    # the roots recorded in the derived basis chain back as candidates would
+    # bypass that computation and silently change its certificate on replay.
+    if provider_mode != "classical-bounded":
+        for step in derived.get("basis_steps", ()):
+            prime = _canonical_integer(step["prime"], "basis-step prime")
+            root = _divisor_from_wire(jacobian, step["division_point"])
+            division_candidates.setdefault(prime, []).append(root)
+    if not division_candidates:
+        division_candidates_value = None
+    else:
+        division_candidates_value = division_candidates
+    result = saturate_subgroup(
+        jacobian,
+        input_basis,
+        primes=raw.get("primes", ()),
+        reduction_primes=raw.get("reduction_primes", ()),
+        reduction_provider=reduction_provider,
+        division_candidates=division_candidates_value,
+        division_search_bound=raw.get("division_search_bound"),
+        division_exhaustion_provenance=raw.get("division_exhaustion_provenance"),
+        independence_certificate=raw.get("independence_certificate"),
+        use_height_pairing=raw.get("use_height_pairing") is True,
+        algebraic_rank=raw.get("algebraic_rank"),
+        algebraic_rank_provenance=raw.get("algebraic_rank_provenance"),
+        selmer_rank_upper_bound=raw.get("selmer_rank_upper_bound"),
+        selmer_provenance=raw.get("selmer_provenance"),
+        torsion_order=raw.get("torsion_order", 1),
+        torsion_provenance=raw.get("torsion_provenance"),
+        torsion_subgroup_included=raw.get("torsion_subgroup_included") is True,
+        torsion_inclusion_provenance=raw.get("torsion_inclusion_provenance"),
+        torsion_ell_control=raw.get("torsion_ell_control"),
+        global_index_bound=raw.get("global_index_bound"),
+        global_index_bound_provenance=raw.get("global_index_bound_provenance"),
+        exact_subgroup_index=raw.get("exact_subgroup_index"),
+        exact_subgroup_index_provenance=raw.get("exact_subgroup_index_provenance"),
+        possible_index_primes=raw.get("possible_index_primes"),
+        possible_index_primes_provenance=raw.get("possible_index_primes_provenance"),
+        regulator_upper_bound=raw.get("regulator_upper_bound"),
+        full_lattice_regulator_lower_bound=raw.get(
+            "full_lattice_regulator_lower_bound"
+        ),
+        height_lower_bound=raw.get("height_lower_bound"),
+        hermite_constant_upper_bound=raw.get("hermite_constant_upper_bound"),
+        index_bound_provenance=raw.get("index_bound_provenance"),
+        assumption_verifiers=assumption_verifiers,
+        max_division_vectors=_canonical_integer(
+            resources.get("max_division_vectors", 10_000), "max_division_vectors"
+        ),
+        max_division_candidates=_canonical_integer(
+            resources.get("max_division_candidates", 100_000),
+            "max_division_candidates",
+        ),
+        max_enlargements=_canonical_integer(
+            resources.get("max_enlargements", 64), "max_enlargements"
+        ),
+        max_global_primes=_canonical_integer(
+            resources.get("max_global_primes", 10_000), "max_global_primes"
+        ),
+        max_group_operations=_canonical_integer(
+            resources.get("max_group_operations", 10_000_000),
+            "max_group_operations",
+        ),
+        max_baby_steps=_canonical_integer(
+            resources.get("max_baby_steps", 1_000_000), "max_baby_steps"
+        ),
+        max_memory_bytes=_canonical_integer(
+            resources.get("max_memory_bytes", 256 * 1024 * 1024),
+            "max_memory_bytes",
+        ),
+        seed=resources.get("seed", 0),
+    )
+    if _wire(result._derived_dict()) != _wire(derived):
+        raise ArithmeticError("serialized saturation derived fields do not replay")
+    return result
 
 
 __all__ = [
     "REDUCTION_SCHEMA",
     "SCHEMA",
     "STEP_SCHEMA",
+    "ASSUMPTION_SCHEMA",
+    "DIVISION_SEARCH_SCHEMA",
     "SaturationResourceLimitError",
     "SaturationResult",
+    "VerifiedReductionRecord",
+    "certify_reduction_record",
+    "division_search_exhaustion_value",
     "index_bound_from_height",
     "index_bound_from_regulator",
     "reduction_constraint",
+    "search_rational_mumford_division",
     "saturate_subgroup",
+    "verify_division_search_certificate",
     "verify_reduction_constraint",
 ]
