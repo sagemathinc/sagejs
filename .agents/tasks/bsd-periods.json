@@ -1,0 +1,112 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "bsd-periods",
+  "title": "Hyperelliptic real periods and Neron normalization",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement an ordinary-Python genus-2/3 real-period engine with explicit model and Neron normalization status, precision refinement, caching, capability failures, and differential tests",
+  "base_commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/periods.py",
+    "test/hyperelliptic-periods.cjs",
+    "bench/hyperelliptic-periods.sage"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI hyperellperiods",
+    "Magma analytic Jacobians"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "PARI hyperellperiods(C,1) and hyperellperiods(C,2)",
+      "precision doubling and Riemann bilinear relations"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "python -m py_compile src/lib/sagejs/hyperelliptic_curves/periods.py bench/hyperelliptic-periods.sage",
+    "pnpm exec ruff format --check src/lib/sagejs/hyperelliptic_curves/periods.py",
+    "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/periods.py",
+    "node --check test/hyperelliptic-periods.cjs",
+    "node --test test/hyperelliptic-periods.cjs"
+  ],
+  "runs": [
+    {
+      "command": "python -m py_compile src/lib/sagejs/hyperelliptic_curves/periods.py bench/hyperelliptic-periods.sage",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.07,
+      "started_at": "2026-08-22T06:36:47.594Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "5432a5b8a8db0ea736d0ea94696fd06437f42142583393ab783f34a690222180",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff format --check src/lib/sagejs/hyperelliptic_curves/periods.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.507,
+      "started_at": "2026-08-22T06:36:48.302Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "5432a5b8a8db0ea736d0ea94696fd06437f42142583393ab783f34a690222180",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/periods.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.414,
+      "started_at": "2026-08-22T06:36:49.444Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "5432a5b8a8db0ea736d0ea94696fd06437f42142583393ab783f34a690222180",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check test/hyperelliptic-periods.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.029,
+      "started_at": "2026-08-22T06:36:52.509Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "5432a5b8a8db0ea736d0ea94696fd06437f42142583393ab783f34a690222180",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-periods.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 160.139,
+      "started_at": "2026-08-22T06:36:58.994Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "5432a5b8a8db0ea736d0ea94696fd06437f42142583393ab783f34a690222180",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a portable genus-2/3 real-period engine for QQ hyperelliptic models, including completed-model and differential conventions, branch-chain periods, exact real-lattice topology, explicit model/supplied Neron normalization, precision and quadrature refinement, deterministic conditioning adaptation, caches and structured failures. Also adds an odd-degree Abel--Jacobi lift for rational affine points and split-point sums, an eight-row PARI 2.18.1.alpha differential corpus, focused topology/generalized-model tests, and a cold/cached benchmark.",
+    "risks": [
+      "QQbar numerical centres and mpmath quadrature are refinement-stable but are not Arb/Acb enclosures; every result is deliberately rigorous=false.",
+      "Automatic Neron differential normalization is not implemented; callers must supply an exact determinant or lattice index with provenance.",
+      "Abel--Jacobi currently supports odd-degree QQ models with the unique infinity basepoint and rational split support only.",
+      "The finite noncrossing branch-chain search is practical only because this lane is restricted to genus 2 and 3."
+    ],
+    "next_steps": [
+      "Integration lane should register the public model/package graph, Pyright project, precompile, WebAssembly parity and documentation surfaces.",
+      "A future Arb/Acb backend can replace numerical root centres and quadrature estimates with genuine ball certificates without changing the result schema.",
+      "Extend Abel--Jacobi to explicit even-degree basepoints and nonsplit Mumford support when the heights lane needs those cases."
+    ]
+  }
+}
