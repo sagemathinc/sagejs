@@ -29,10 +29,17 @@ import json
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
+import sagejs as sage
+
 BSD_INPUT_SCHEMA = "sagejs.hyperelliptic-bsd-input/v1"
 BSD_QUOTIENT_SCHEMA = "sagejs.hyperelliptic-bsd-quotient/v1"
 BSD_SQLITE_SCHEMA = "sagejs.hyperelliptic-bsd-sqlite/v1"
 SUBGROUP_INDEX_CERTIFICATE_SCHEMA = "sagejs.bsd-subgroup-index-certificate/v1"
+SATURATION_INDEX_EVIDENCE_SCHEMA = "sagejs.bsd-saturation-index-evidence/v1"
+SATURATION_INDEX_VERIFIER = "sagejs.bsd.saturation-index-v1"
+BSD_SATURATION_ASSUMPTION_VERIFIER = "sagejs.bsd.bound-arithmetic-input-v1"
+BSD_SATURATION_ASSUMPTION_SCHEMA = "sagejs.hyperelliptic.verified-assumption.v1"
+REGULATOR_BASIS_BINDING_SCHEMA = "sagejs.bsd-regulator-basis-binding/v1"
 
 _PROVENANCE_STATUSES = {
     "bounded",
@@ -1483,6 +1490,36 @@ def _record_sha256(value: Any) -> str:
     return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
 
 
+def _embedded_record_safe(value: Any, name: str) -> Any:
+    """Encode another module's nullable record inside BSD JSON metadata."""
+    if value is None:
+        return {"__sagejs_bsd_embedded_none__": True}
+    if isinstance(value, bool) or isinstance(value, str):
+        return value
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, dict):
+        answer: dict[str, Any] = {}
+        for key in sorted(value.keys()):
+            if not isinstance(key, str):
+                raise BSDValidationError(name + " keys must be strings")
+            answer[key] = _embedded_record_safe(value[key], name + "." + key)
+        return answer
+    if isinstance(value, (list, tuple)):
+        return [_embedded_record_safe(item, name) for item in value]
+    raise BSDValidationError(name + " contains a non-serializable value")
+
+
+def _restore_embedded_record(value: Any) -> Any:
+    if isinstance(value, dict):
+        if value == {"__sagejs_bsd_embedded_none__": True}:
+            return None
+        return {str(key): _restore_embedded_record(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_restore_embedded_record(item) for item in value]
+    return value
+
+
 def _subgroup_binding_digests(
     *,
     object_kind: str,
@@ -1512,6 +1549,423 @@ def _subgroup_binding_digests(
     )
 
 
+def _saturation_module() -> Any:
+    """Load the independently replayable saturation implementation lazily."""
+    return __import__(
+        "sagejs.hyperelliptic_curves.saturation",
+        fromlist=["SaturationResult"],
+    )
+
+
+def _reconstruct_qq_jacobian(curve_model: Mapping[str, Any]) -> Any:
+    """Reconstruct the exact `QQ` Jacobian bound by a BSD input record.
+
+    The closed saturation verifier deliberately supports only the ordinary
+    coefficient model used by the hyperelliptic modules.  An opaque label or a
+    transformed-but-unrecorded model is not enough to replay rational Mumford
+    divisors.
+    """
+    if not isinstance(curve_model, dict):
+        raise BSDValidationError("a saturation certificate needs a curve-model record")
+    base_ring = curve_model.get("base_ring")
+    if base_ring not in ("QQ", "Rational Field"):
+        raise BSDValidationError(
+            "saturation index replay currently requires an exact QQ model"
+        )
+    f_values = curve_model.get("f_coefficients_ascending")
+    if f_values is None:
+        f_values = curve_model.get("f_coefficients")
+    h_values = curve_model.get("h_coefficients_ascending")
+    if h_values is None:
+        h_values = curve_model.get("h_coefficients", ["0"])
+    if not isinstance(f_values, (list, tuple)) or not f_values:
+        raise BSDValidationError(
+            "the curve model needs nonempty ascending f coefficients"
+        )
+    if not isinstance(h_values, (list, tuple)):
+        raise BSDValidationError("the curve model needs ascending h coefficients")
+    variable = curve_model.get("variable", "x")
+    variable_name = _require_string(variable, "curve variable", nonempty=True)
+    model_module = __import__(
+        "sagejs.hyperelliptic_curves.model",
+        fromlist=["HyperellipticCurve"],
+    )
+    ring = sage.PolynomialRing(sage.QQ, variable_name)
+
+    def rational(value: Any) -> Any:
+        if not isinstance(value, str):
+            return sage.QQ(_require_integer(value, "curve coefficient", minimum=None))
+        pieces = value.split("/")
+        if len(pieces) == 1:
+            return sage.QQ(
+                _integer_from_record(value, "curve coefficient", minimum=None)
+            )
+        if len(pieces) != 2:
+            raise BSDValidationError("a curve coefficient is not rational")
+        numerator = _integer_from_record(
+            pieces[0], "curve coefficient numerator", minimum=None
+        )
+        denominator = _integer_from_record(
+            pieces[1], "curve coefficient denominator", minimum=1
+        )
+        if _gcd(numerator, denominator) != 1:
+            raise BSDValidationError("a curve coefficient is not a reduced rational")
+        return sage.QQ(numerator) / sage.QQ(denominator)
+
+    try:
+        f_value = ring([rational(value) for value in f_values])
+        h_value = ring([rational(value) for value in h_values])
+        curve = model_module.HyperellipticCurve(f_value, h_value)
+    except (ArithmeticError, TypeError, ValueError) as error:
+        raise BSDValidationError(
+            "unable to reconstruct the exact QQ hyperelliptic model"
+        ) from error
+    recorded_genus = curve_model.get("genus")
+    if recorded_genus is not None:
+        genus_value = (
+            _integer_from_record(recorded_genus, "curve genus", minimum=2)
+            if isinstance(recorded_genus, str)
+            else _require_integer(recorded_genus, "curve genus", minimum=2)
+        )
+        if genus_value != int(curve.genus()):
+            raise BSDValidationError(
+                "the recorded genus does not match the curve model"
+            )
+    if int(curve.genus()) not in (2, 3):
+        raise BSDValidationError(
+            "saturation index replay currently supports genus 2 and 3"
+        )
+    return curve.jacobian()
+
+
+def _saturation_context_binding(
+    arithmetic_input: BSDArithmeticInput,
+) -> tuple[Any, tuple[Any, ...], dict[str, str]]:
+    """Return the reconstructed Jacobian, basis, and closed replay digests."""
+    if arithmetic_input.object_kind != "hyperelliptic_jacobian":
+        raise BSDValidationError(
+            "a saturation subgroup-index certificate requires a Jacobian"
+        )
+    if arithmetic_input.model_status != "supplied":
+        raise BSDValidationError(
+            "a saturation subgroup-index certificate requires an exact model"
+        )
+    if arithmetic_input.basis_status != "supplied":
+        raise BSDValidationError(
+            "a saturation subgroup-index certificate requires an ordered basis"
+        )
+    jacobian = _reconstruct_qq_jacobian(arithmetic_input.curve_model)
+    saturation = _saturation_module()
+    try:
+        basis = tuple(
+            saturation._divisor_from_wire(jacobian, item)
+            for item in arithmetic_input.subgroup_basis
+        )
+    except (ArithmeticError, KeyError, TypeError, ValueError) as error:
+        raise BSDValidationError(
+            "the BSD subgroup basis is not an ordered QQ Mumford basis"
+        ) from error
+    return (
+        jacobian,
+        basis,
+        {
+            "curve_digest": str(saturation._curve_digest(jacobian)),
+            "basis_digest": str(saturation._basis_digest(jacobian, basis)),
+        },
+    )
+
+
+def _regulator_basis_binding(
+    arithmetic_input: BSDArithmeticInput,
+) -> dict[str, Any]:
+    """Bind the regulator record to the original, ordered subgroup basis."""
+    return {
+        "schema": REGULATOR_BASIS_BINDING_SCHEMA,
+        "rank": str(arithmetic_input.regulator.rank),
+        "ordered_basis_sha256": _record_sha256(
+            _json_safe(
+                list(arithmetic_input.subgroup_basis),
+                "regulator ordered basis",
+            )
+        ),
+        "regulator_sha256": _record_sha256(arithmetic_input.regulator.to_dict()),
+        "combined_sha256": _record_sha256(
+            {
+                "ordered_basis": _json_safe(
+                    list(arithmetic_input.subgroup_basis),
+                    "regulator ordered basis",
+                ),
+                "regulator": arithmetic_input.regulator.to_dict(),
+            }
+        ),
+    }
+
+
+def _bsd_saturation_authority_binding(
+    arithmetic_input: BSDArithmeticInput,
+) -> dict[str, str]:
+    object_digest, basis_digest, regulator_digest = _subgroup_binding_digests(
+        object_kind=arithmetic_input.object_kind,
+        model_status=arithmetic_input.model_status,
+        curve_model=arithmetic_input.curve_model,
+        rank=arithmetic_input.leading_term.rank.value,
+        subgroup_status=arithmetic_input.subgroup_status,
+        basis_status=arithmetic_input.basis_status,
+        subgroup_basis=arithmetic_input.subgroup_basis,
+        regulator=arithmetic_input.regulator,
+    )
+    _jacobian, _basis, saturation_binding = _saturation_context_binding(
+        arithmetic_input
+    )
+    return {
+        "object_sha256": object_digest,
+        "basis_sha256": basis_digest,
+        "regulator_sha256": regulator_digest,
+        "saturation_curve_digest": saturation_binding["curve_digest"],
+        "saturation_basis_digest": saturation_binding["basis_digest"],
+    }
+
+
+def _verify_bsd_saturation_assumption(
+    arithmetic_input: BSDArithmeticInput,
+    certificate: Mapping[str, Any],
+    context: Mapping[str, Any],
+) -> bool:
+    """Closed verifier for the small set of claims already proved by BSD input."""
+    if (
+        certificate.get("schema") != BSD_SATURATION_ASSUMPTION_SCHEMA
+        or certificate.get("verifier_id") != BSD_SATURATION_ASSUMPTION_VERIFIER
+        or certificate.get("proved") is not True
+        or certificate.get("binding")
+        != _bsd_saturation_authority_binding(arithmetic_input)
+    ):
+        return False
+    expected_binding = _bsd_saturation_authority_binding(arithmetic_input)
+    if (
+        context.get("curve_digest") != expected_binding["saturation_curve_digest"]
+        or context.get("basis_digest") != expected_binding["saturation_basis_digest"]
+    ):
+        return False
+    kind = certificate.get("kind")
+    raw_value = certificate.get("value")
+    try:
+        value = (
+            _integer_from_record(raw_value, "saturation assumption value", minimum=0)
+            if isinstance(raw_value, str)
+            else _require_integer(raw_value, "saturation assumption value", minimum=0)
+        )
+    except BSDValidationError:
+        return False
+    certified_statuses = {"certified", "proved"}
+    rank = arithmetic_input.leading_term.rank.value
+    if kind == "algebraic-rank":
+        algebraic = arithmetic_input.algebraic_rank
+        return (
+            algebraic.status == "proved"
+            and algebraic.provenance.status in certified_statuses
+            and value == algebraic.value
+        )
+    if kind == "rational-torsion-order":
+        return (
+            arithmetic_input.torsion_a.order == arithmetic_input.torsion_adual.order
+            and arithmetic_input.torsion_a.provenance.status in certified_statuses
+            and arithmetic_input.torsion_adual.provenance.status in certified_statuses
+            and value == arithmetic_input.torsion_a.order
+        )
+    if kind == "independence":
+        regulator = arithmetic_input.regulator
+        return (
+            value == rank
+            and rank > 0
+            and regulator.rank == rank
+            and regulator.source_kind == "pairing_determinant"
+            and regulator.provenance.status in certified_statuses
+            and regulator.value.is_positive()
+        )
+    if kind == "exact-subgroup-index":
+        # This is a theorem, not a supplied index: the empty subgroup has
+        # free-part index one when the proved algebraic rank is zero.
+        algebraic = arithmetic_input.algebraic_rank
+        return (
+            value == 1
+            and rank == 0
+            and not arithmetic_input.subgroup_basis
+            and algebraic.status == "proved"
+            and algebraic.value == 0
+            and algebraic.provenance.status in certified_statuses
+        )
+    return False
+
+
+def bsd_saturation_verifier_authorities(
+    arithmetic_input: BSDArithmeticInput,
+) -> dict[str, Any]:
+    """Return Sage.js's fixed verifier authority for `saturate_subgroup`.
+
+    The returned callback is merely the adapter required by the saturation
+    API.  It is not an open trust hook: its identifier and decision procedure
+    are fixed here, it is bound to this exact BSD object/basis/regulator, and a
+    final subgroup-index certificate reconstructs this same authority without
+    accepting a callback from its caller.
+    """
+    _bsd_saturation_authority_binding(arithmetic_input)
+
+    def verifier(certificate: Mapping[str, Any], context: Mapping[str, Any]) -> bool:
+        return _verify_bsd_saturation_assumption(arithmetic_input, certificate, context)
+
+    return {BSD_SATURATION_ASSUMPTION_VERIFIER: verifier}
+
+
+def bsd_saturation_assumption_certificate(
+    arithmetic_input: BSDArithmeticInput,
+    kind: str,
+    value: Any,
+    *,
+    source: str = "BSD arithmetic input",
+) -> dict[str, Any]:
+    """Build one typed saturation assumption bound to exact BSD arithmetic data.
+
+    Only claims understood by the fixed authority are accepted.  In
+    particular this helper cannot turn an analytic rank, an arbitrary index,
+    or an unchecked scalar regulator into a saturation proof.
+    """
+    checked_kind = _require_string(kind, "saturation assumption kind", nonempty=True)
+    minimum = (
+        1
+        if checked_kind
+        in {"independence", "rational-torsion-order", "exact-subgroup-index"}
+        else 0
+    )
+    checked_value = _require_integer(
+        value, "saturation assumption value", minimum=minimum
+    )
+    certificate = {
+        "schema": BSD_SATURATION_ASSUMPTION_SCHEMA,
+        "kind": checked_kind,
+        "value": checked_value,
+        "verifier_id": BSD_SATURATION_ASSUMPTION_VERIFIER,
+        "source": _require_string(
+            source, "saturation assumption source", nonempty=True
+        ),
+        "proved": True,
+        "binding": _bsd_saturation_authority_binding(arithmetic_input),
+    }
+    _jacobian, _basis, context = _saturation_context_binding(arithmetic_input)
+    if not _verify_bsd_saturation_assumption(arithmetic_input, certificate, context):
+        raise BSDValidationError(
+            "the requested saturation assumption is not proved by this BSD input"
+        )
+    return certificate
+
+
+def _recorded_saturation_verifier_ids(value: Any) -> tuple[str, ...]:
+    identifiers: set[str] = set()
+
+    def visit(item: Any) -> None:
+        if isinstance(item, dict):
+            verifier_id = item.get("verifier_id")
+            if isinstance(verifier_id, str):
+                identifiers.add(verifier_id)
+            for child in item.values():
+                visit(child)
+        elif isinstance(item, (list, tuple)):
+            for child in item:
+                visit(child)
+
+    visit(value)
+    return tuple(sorted(identifiers))
+
+
+def _replay_saturation_index_evidence(
+    arithmetic_input: BSDArithmeticInput,
+    evidence: Mapping[str, Any],
+    certified_index: int,
+) -> Any:
+    if evidence.get("schema") != SATURATION_INDEX_EVIDENCE_SCHEMA:
+        raise BSDValidationError("unknown saturation index-evidence schema")
+    encoded_payload = evidence.get("saturation_result")
+    if not isinstance(encoded_payload, dict):
+        raise BSDValidationError("saturation index evidence lacks a result record")
+    authority_ids = _recorded_saturation_verifier_ids(encoded_payload)
+    recorded_ids = evidence.get("verifier_authorities")
+    if (
+        not isinstance(recorded_ids, (list, tuple))
+        or tuple(recorded_ids) != authority_ids
+    ):
+        raise BSDValidationError(
+            "saturation verifier authorities were not recorded exactly"
+        )
+    unsupported = tuple(
+        identifier
+        for identifier in authority_ids
+        if identifier != BSD_SATURATION_ASSUMPTION_VERIFIER
+    )
+    if unsupported:
+        raise BSDValidationError(
+            "saturation proof depends on an external verifier authority: "
+            + ", ".join(unsupported)
+        )
+    payload = _restore_embedded_record(encoded_payload)
+    if not isinstance(payload, dict):
+        raise BSDValidationError("saturation result decoding failed")
+    expected_basis = _json_safe(
+        list(arithmetic_input.subgroup_basis), "saturation original basis"
+    )
+    if payload.get("input_basis") != expected_basis:
+        raise BSDValidationError(
+            "the saturation proof does not start from the BSD regulator basis"
+        )
+    if evidence.get("original_ordered_basis") != expected_basis:
+        raise BSDValidationError("the recorded original saturation basis was changed")
+    if evidence.get("regulator_basis_binding") != _regulator_basis_binding(
+        arithmetic_input
+    ):
+        raise BSDValidationError(
+            "the saturation proof is not bound to this regulator and ordered basis"
+        )
+    if evidence.get("curve_model_sha256") != _record_sha256(
+        arithmetic_input.curve_model
+    ):
+        raise BSDValidationError("the saturation proof is bound to another curve model")
+    jacobian, _basis, _context = _saturation_context_binding(arithmetic_input)
+    saturation = _saturation_module()
+    authorities: Mapping[str, Any] | None = None
+    if authority_ids:
+        authorities = bsd_saturation_verifier_authorities(arithmetic_input)
+    try:
+        replayed = saturation.SaturationResult.from_dict(
+            jacobian,
+            payload,
+            assumption_verifiers=authorities,
+        )
+        replayed.verify()
+    except (
+        ArithmeticError,
+        KeyError,
+        NotImplementedError,
+        TypeError,
+        ValueError,
+    ) as error:
+        raise BSDValidationError("the saturation proof did not replay") from error
+    rank = arithmetic_input.leading_term.rank.value
+    if (
+        replayed.full_mordell_weil_group_proved is not True
+        or replayed.rank_status.get("full_rank_proved") is not True
+        or replayed.rank_status.get("supplied_generator_count") != rank
+        or len(tuple(replayed.input_basis)) != rank
+    ):
+        raise BSDValidationError(
+            "the saturation result does not prove the full Mordell--Weil rank and group"
+        )
+    if replayed.index_factor_from_input != certified_index:
+        raise BSDValidationError(
+            "the certified index is not the saturation index of the original basis"
+        )
+    if evidence.get("index_factor_from_input") != str(certified_index):
+        raise BSDValidationError("the recorded saturation index factor was changed")
+    return replayed
+
+
 @dataclass(frozen=True)
 class SubgroupIndexCertificate:
     """Authenticated binding, distinct from mathematical index verification."""
@@ -1530,6 +1984,7 @@ class SubgroupIndexCertificate:
         if self.verification_status not in (
             "deduced_from_proved_rank_zero",
             "external_unverified",
+            "replayed_full_mordell_weil_saturation",
         ):
             raise BSDValidationError("unknown index-certificate verification status")
         object.__setattr__(
@@ -1751,6 +2206,10 @@ class SubgroupIndexCertificate:
         )
 
     def verify_binding(self, arithmetic_input: BSDArithmeticInput) -> None:
+        if self.authentication_sha256 != _record_sha256(self._authenticated_fields()):
+            raise BSDValidationError(
+                "subgroup-index certificate metadata failed authentication"
+            )
         expected = _subgroup_binding_digests(
             object_kind=arithmetic_input.object_kind,
             model_status=arithmetic_input.model_status,
@@ -1787,10 +2246,26 @@ class SubgroupIndexCertificate:
                 raise BSDValidationError(
                     "rank-zero index certificate does not replay its proof"
                 )
+        elif self.verification_status == "replayed_full_mordell_weil_saturation":
+            if (
+                self.method != "full-mordell-weil-saturation-original-basis"
+                or self.verifier != SATURATION_INDEX_VERIFIER
+            ):
+                raise BSDValidationError(
+                    "saturation index certificate has a noncanonical verifier"
+                )
+            _replay_saturation_index_evidence(
+                arithmetic_input,
+                self.evidence,
+                self.certified_index,
+            )
 
     @property
     def mathematically_verified(self) -> bool:
-        return self.verification_status == "deduced_from_proved_rank_zero"
+        return self.verification_status in (
+            "deduced_from_proved_rank_zero",
+            "replayed_full_mordell_weil_saturation",
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -2523,6 +2998,128 @@ class BSDArithmeticInput:
         return cls.from_dict(record)
 
 
+def subgroup_index_certificate_from_saturation(
+    arithmetic_input: BSDArithmeticInput,
+    saturation_result: Any,
+) -> SubgroupIndexCertificate:
+    """Bind and close-replay a full-Mordell--Weil saturation result.
+
+    The returned certified index is always the index of the *original* ordered
+    basis supplied to `saturate_subgroup`, namely
+    `saturation_result.index_factor_from_input`.  A result which used an
+    arbitrary caller-provided assumption verifier is retained as an
+    `external_unverified` certificate; it therefore cannot promote
+    `sha_over_index_squared` to `analytic_sha`.
+    """
+    if not hasattr(saturation_result, "to_dict") or not hasattr(
+        saturation_result, "verify"
+    ):
+        raise BSDValidationError("expected a replayable SaturationResult")
+    try:
+        saturation_result.verify()
+    except (
+        ArithmeticError,
+        KeyError,
+        NotImplementedError,
+        TypeError,
+        ValueError,
+    ) as error:
+        raise BSDValidationError("the live saturation result did not verify") from error
+    if getattr(saturation_result, "full_mordell_weil_group_proved", False) is not True:
+        raise BSDValidationError(
+            "the saturation result does not prove the full Mordell--Weil group"
+        )
+    certified_index = _require_integer(
+        getattr(saturation_result, "index_factor_from_input", None),
+        "saturation index_factor_from_input",
+        minimum=1,
+    )
+    payload = _embedded_record_safe(
+        saturation_result.to_dict(), "serialized saturation result"
+    )
+    expected_basis = _json_safe(
+        list(arithmetic_input.subgroup_basis), "saturation original basis"
+    )
+    if payload.get("input_basis") != expected_basis:
+        raise BSDValidationError(
+            "the saturation result starts from another ordered subgroup basis"
+        )
+    jacobian, _basis, context = _saturation_context_binding(arithmetic_input)
+    if payload.get("curve_digest") != context["curve_digest"]:
+        raise BSDValidationError(
+            "the saturation result belongs to another exact curve model"
+        )
+    saturation = _saturation_module()
+    if saturation._digest(payload.get("curve")) != saturation._digest(
+        saturation._curve_payload(jacobian)
+    ):
+        raise BSDValidationError("the saturation curve record is not the BSD model")
+    authority_ids = _recorded_saturation_verifier_ids(payload)
+    evidence: dict[str, Any] = {
+        "schema": SATURATION_INDEX_EVIDENCE_SCHEMA,
+        "curve_model_sha256": _record_sha256(arithmetic_input.curve_model),
+        "original_ordered_basis": expected_basis,
+        "regulator_basis_binding": _regulator_basis_binding(arithmetic_input),
+        "index_factor_from_input": str(certified_index),
+        "verifier_authorities": list(authority_ids),
+        "saturation_result": payload,
+    }
+    unsupported = tuple(
+        identifier
+        for identifier in authority_ids
+        if identifier != BSD_SATURATION_ASSUMPTION_VERIFIER
+    )
+    if unsupported:
+        evidence["conditional_reason"] = (
+            "caller-provided saturation verifier authority is unavailable to "
+            "the closed BSD replay: " + ", ".join(unsupported)
+        )
+        return SubgroupIndexCertificate.bind(
+            arithmetic_input,
+            certified_index=certified_index,
+            method="conditional-full-mordell-weil-saturation",
+            verifier="external-saturation-authority",
+            evidence=evidence,
+        )
+    try:
+        _replay_saturation_index_evidence(
+            arithmetic_input,
+            evidence,
+            certified_index,
+        )
+    except BSDValidationError as error:
+        evidence["conditional_reason"] = str(error)
+        return SubgroupIndexCertificate.bind(
+            arithmetic_input,
+            certified_index=certified_index,
+            method="conditional-full-mordell-weil-saturation",
+            verifier="closed-saturation-replay-unavailable",
+            evidence=evidence,
+        )
+    object_digest, basis_digest, regulator_digest = _subgroup_binding_digests(
+        object_kind=arithmetic_input.object_kind,
+        model_status=arithmetic_input.model_status,
+        curve_model=arithmetic_input.curve_model,
+        rank=arithmetic_input.leading_term.rank.value,
+        subgroup_status=arithmetic_input.subgroup_status,
+        basis_status=arithmetic_input.basis_status,
+        subgroup_basis=arithmetic_input.subgroup_basis,
+        regulator=arithmetic_input.regulator,
+    )
+    certificate = SubgroupIndexCertificate._create(
+        verification_status="replayed_full_mordell_weil_saturation",
+        method="full-mordell-weil-saturation-original-basis",
+        verifier=SATURATION_INDEX_VERIFIER,
+        certified_index=certified_index,
+        object_sha256=object_digest,
+        basis_sha256=basis_digest,
+        regulator_sha256=regulator_digest,
+        evidence=evidence,
+    )
+    certificate.verify_binding(arithmetic_input)
+    return certificate
+
+
 class BSDAnalyticQuotient:
     """A complete factor-by-factor supplied-data BSD quotient."""
 
@@ -2769,4 +3366,7 @@ __all__ = [
     "TamagawaFactor",
     "TorsionData",
     "assemble_bsd_analytic_quotient",
+    "bsd_saturation_assumption_certificate",
+    "bsd_saturation_verifier_authorities",
+    "subgroup_index_certificate_from_saturation",
 ]
