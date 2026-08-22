@@ -14232,16 +14232,16 @@
         "name": "GF",
         "qualified": "GF",
         "path": "src/baselib/finite_fields.py",
-        "line": 1230,
+        "line": 1238,
         "excerpt": {
-          "start_line": 1218,
+          "start_line": 1226,
           "text": "        prime_field,\n        element_type,\n        explicit_modulus,\n        generated_resource_backend,\n    )\n    _extension_fields.set(key, field)\n    conversion = _field_coercion(field)\n    runtime.coercion_model.register(sage.ZZ, field, conversion)\n    runtime.coercion_model.register(prime_field, field, conversion)\n    return field\n\n\ndef GF(\n    order: Any,\n    name: Any = runtime.undefined,\n    modulus: Any = runtime.undefined,\n    names: Any = runtime.undefined,\n) -> Any:\n    r\"\"\"\n    Construct the finite field with `order` elements.\n\n    The order must be a prime power.  Prime fields and extension fields use\n    FLINT arithmetic and participate in Sage.js parent/coercion semantics.\n    `name` (or `names`) names an extension-field generator.\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/finite_fields.py#d5fed5b346a11651-bdf39be03f43bdb9",
-          "line": 1246,
+          "line": 1254,
           "source": "GF(7)",
           "want": "Finite Field of size 7\n",
           "tags": [],
@@ -14257,7 +14257,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#2680962aa3520480-e3b0c44298fc1c14",
-          "line": 1248,
+          "line": 1256,
           "source": "K.<a> = GF(9)",
           "want": "",
           "tags": [],
@@ -14273,7 +14273,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#b51192cce36ea46d-6b86b273ff34fce1",
-          "line": 1249,
+          "line": 1257,
           "source": "a^8",
           "want": "1\n",
           "tags": [],
@@ -14289,7 +14289,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#248946a81e60d7c2-5c17eac5f0f80928",
-          "line": 1251,
+          "line": 1259,
           "source": "K['x']",
           "want": "Univariate Polynomial Ring in x over Finite Field in a of size 3^2\n",
           "tags": [],
@@ -26190,9 +26190,9 @@
         "name": "Mod",
         "qualified": "Mod",
         "path": "src/baselib/finite_fields.py",
-        "line": 1342,
+        "line": 1350,
         "excerpt": {
-          "start_line": 1330,
+          "start_line": 1338,
           "text": "    ring = _residue_rings.get(key)\n    if ring is not runtime.undefined:\n        return ring\n    ring = IntegerModRing(order)\n    _residue_rings.set(key, ring)\n    runtime.coercion_model.register(sage.ZZ, ring, _field_coercion(ring))\n    return ring\n\n\nIntegers = Zmod\n\n\ndef Mod(value: Any, modulus: Any) -> IntegerModElement:\n    \"\"\"Construct `value` in the ring of integers modulo `modulus`.\"\"\"\n    return Zmod(modulus)(value)\n\n\nruntime.set_class_repr(FiniteFieldElement, \"<class 'FiniteFieldElement'>\")\nruntime.set_class_repr(\n    IntegerModElement, \"<class 'sage.rings.finite_rings.integer_mod.IntegerMod_int64'>\"\n)\nruntime.set_class_repr(\n    FiniteFieldExtensionElement,\n    \"<class 'sage.rings.finite_rings.element_givaro.\" + \"FiniteField_givaroElement'>\",\n)"
         }
       },
@@ -29935,16 +29935,16 @@
         "name": "random_matrix",
         "qualified": "random_matrix",
         "path": "src/baselib/matrix.py",
-        "line": 9579,
+        "line": 9590,
         "excerpt": {
-          "start_line": 9567,
+          "start_line": 9578,
           "text": "            return MatrixSpace(sage.QQ, rows, columns)._from_fmpq_matrix_resource(\n                resource\n            )\n        except Exception:\n            private_resource.close()\n            if resource is not runtime.undefined:\n                resource.close()\n            raise\n\n    return runtime.undefined\n\n\ndef random_matrix(\n    base: sage.Parent,\n    nrows: int,\n    ncols: Any = None,\n    algorithm: str = \"randomize\",\n    implementation: Any = None,\n    *args: Any,\n    **kwds: Any,\n) -> Matrix:\n    r\"\"\"\n    Construct a random dense matrix over `base`.\n\n    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b17ff7be6a528fc2-e3b0c44298fc1c14",
-          "line": 9603,
+          "line": 9614,
           "source": "A = random_matrix(ZZ, 3, 5, x=-10, y=11)",
           "want": "",
           "tags": [],
@@ -29960,7 +29960,7 @@
         },
         {
           "id": "src/baselib/matrix.py#97db44fc39945d18-41f2eaaeeeb24074",
-          "line": 9604,
+          "line": 9615,
           "source": "A.nrows(), A.ncols(), A.base_ring()",
           "want": "(3, 5, Integer Ring)\n",
           "tags": [],
@@ -29976,7 +29976,7 @@
         },
         {
           "id": "src/baselib/matrix.py#fa1961c5906b90ea-3cbc87c7681f34db",
-          "line": 9606,
+          "line": 9617,
           "source": "random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')",
           "want": "True\n",
           "tags": [],
@@ -31096,16 +31096,16 @@
         "name": "Zmod",
         "qualified": "Zmod",
         "path": "src/baselib/finite_fields.py",
-        "line": 1307,
+        "line": 1315,
         "excerpt": {
-          "start_line": 1295,
+          "start_line": 1303,
           "text": "    generator = runtime.bigint(1)\n    if primitive:\n        generator = backend.wordPrimitiveRootPrime(order)\n    field = FiniteField_prime_modn(order, generator)\n    _prime_fields.set(key, field)\n    runtime.coercion_model.register(sage.ZZ, field, _field_coercion(field))\n    return field\n\n\nFiniteField = GF\n\n\ndef Zmod(order: Any) -> IntegerModRing:\n    r\"\"\"\n    Construct the ring of integers modulo `order`.\n\n    Elements support exact arithmetic, inversion of units, iteration, and\n    matrices and polynomial rings over the resulting parent.\n\n    ### Examples\n\n    ```sage\n    sage: R = Zmod(15)\n    sage: R(17)\n    2"
         }
       },
       "examples": [
         {
           "id": "src/baselib/finite_fields.py#a4efb6c82ad07055-e3b0c44298fc1c14",
-          "line": 1317,
+          "line": 1325,
           "source": "R = Zmod(15)",
           "want": "",
           "tags": [],
@@ -31121,7 +31121,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#27cc52590769f211-d4735e3a265e16ee",
-          "line": 1318,
+          "line": 1326,
           "source": "R(17)",
           "want": "2\n",
           "tags": [],
@@ -31137,7 +31137,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#3fe317b5859522f8-6b86b273ff34fce1",
-          "line": 1320,
+          "line": 1328,
           "source": "R(2)^4",
           "want": "1\n",
           "tags": [],
