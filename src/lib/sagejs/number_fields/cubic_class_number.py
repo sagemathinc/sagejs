@@ -30,7 +30,11 @@ CUBIC_CLASS_NUMBER_CERTIFICATE_SCHEMA = (
 AUTHENTICATED_CUBIC_CLASS_NUMBER_SCHEMA = (
     "sagejs.number-fields/authenticated-cubic-class-number-result-v1"
 )
+AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA = (
+    "sagejs.number-fields/authenticated-cubic-relation-seed-v1"
+)
 _AUTHENTICATED_CUBIC_CLASS_NUMBER_TOKEN = object()
+_AUTHENTICATED_CUBIC_RELATION_SEED_TOKEN = object()
 DEFAULT_CUBIC_CLASS_NUMBER_MAX_RELATION_ATTEMPTS = 64
 DEFAULT_CUBIC_CLASS_NUMBER_MAX_RELATIONS = 128
 DEFAULT_CUBIC_CLASS_NUMBER_MAX_CANDIDATES_PER_IDEAL = 64
@@ -651,6 +655,145 @@ class CubicClassNumberResult:
         return "Incomplete cubic class-number search (" + self.reason + ")"
 
 
+def _cubic_relation_seed_snapshot(seed: Any) -> Any:
+    """Snapshot every proof-bearing object in one live relation prefix."""
+    result = seed._source_result
+    return _freeze_authentication_value(
+        {
+            "schema": AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA,
+            "result": {
+                "complete": result.complete,
+                "reason": result.reason,
+                "minkowski_bound": result.minkowski_bound,
+                "proof_status": result.proof_status,
+                "diagnostics": result.diagnostics,
+            },
+            "plan": seed.plan.to_dict(),
+            "factor_records": [record.to_dict() for record in seed.factor_records],
+            "factor_base": [ideal.to_dict() for ideal in result.factor_base],
+            "relations": [record.to_dict() for record in result.relation_records],
+            "presentation": result.presentation.to_dict(),
+            "search_state": seed.search_state.to_dict(),
+        }
+    )
+
+
+class _AuthenticatedCubicRelationSeed:
+    """Producer-issued live relation prefix for the coupled engine."""
+
+    def __init__(
+        self,
+        token: object,
+        result: CubicClassNumberResult,
+        plan: Any,
+        factor_records: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        search_state: Any,
+    ) -> None:
+        if token is not _AUTHENTICATED_CUBIC_RELATION_SEED_TOKEN:
+            raise TypeError("cubic relation seeds are module-issued")
+        if type(result) is not CubicClassNumberResult or result.complete:
+            raise ValueError("a cubic relation seed needs an incomplete result")
+        self.schema = AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA
+        self._source_result = result
+        self.field = result.field
+        self.plan = plan
+        self.factor_records = tuple(factor_records)
+        self.factor_base = tuple(result.factor_base)
+        self.collector = collector
+        self.presentation = presentation
+        self.search_state = search_state
+        self._snapshot = _cubic_relation_seed_snapshot(self)
+        self.__dict__["_frozen"] = True
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if self.__dict__.get("_frozen", False):
+            raise AttributeError("authenticated cubic relation seeds are immutable")
+        self.__dict__[name] = value
+
+    @property
+    def certified(self) -> bool:
+        try:
+            result = self._source_result
+            order = self.field.maximal_order()
+            return bool(
+                type(result) is CubicClassNumberResult
+                and result.field is self.field
+                and not result.complete
+                and self.plan.order is order
+                and not tuple(self.plan.assumptions)
+                and "Minkowski" in str(self.plan.theorem)
+                and tuple(result.factor_base) == self.factor_base
+                and len(self.factor_records) == len(self.factor_base)
+                and all(
+                    record.prime_ideal is ideal
+                    for record, ideal in zip(
+                        self.factor_records, self.factor_base, strict=True
+                    )
+                )
+                and self.collector.order is order
+                and len(self.collector.factor_base) == len(self.factor_base)
+                and all(
+                    retained is supplied
+                    for retained, supplied in zip(
+                        self.collector.factor_base, self.factor_base, strict=True
+                    )
+                )
+                and len(self.collector.records) == len(result.relation_records)
+                and all(
+                    retained is supplied
+                    for retained, supplied in zip(
+                        self.collector.records,
+                        result.relation_records,
+                        strict=True,
+                    )
+                )
+                and result.presentation is self.presentation
+                and self._snapshot == _cubic_relation_seed_snapshot(self)
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+
+def _issue_cubic_relation_seed(
+    result: CubicClassNumberResult,
+    plan: Any,
+    factor_records: tuple[Any, ...],
+    collector: Any,
+    presentation: Any,
+    search_state: Any,
+) -> CubicClassNumberResult:
+    seed = _AuthenticatedCubicRelationSeed(
+        _AUTHENTICATED_CUBIC_RELATION_SEED_TOKEN,
+        result,
+        plan,
+        factor_records,
+        collector,
+        presentation,
+        search_state,
+    )
+    if not seed.certified:
+        raise ArithmeticError("failed to seal a cubic relation prefix")
+    result.__dict__["_live_relation_seed"] = seed
+    return result
+
+
+def authenticated_cubic_relation_seed(result: Any, field: Any) -> Any:
+    """Return a valid live relation prefix, or `None` for detached evidence."""
+    if type(result) is not CubicClassNumberResult or result.field is not field:
+        return None
+    seed = result.__dict__.get("_live_relation_seed")
+    if (
+        type(seed) is _AuthenticatedCubicRelationSeed
+        and seed._source_result is result
+        and seed.field is field
+        and seed.certified
+    ):
+        return seed
+    return None
+
+
 def _cubic_class_number_result_snapshot(result: CubicClassNumberResult) -> Any:
     """Snapshot every mutable proof-bearing field of one live result."""
     certificate = result.certificate
@@ -860,6 +1003,10 @@ def bounded_cubic_minkowski_class_number(
         raise ValueError("maximum modulus must be at least two")
     phase_timings: dict[str, float] = {}
     relation_metrics: dict[str, int] = {}
+    live_factor_records: tuple[Any, ...] = ()
+    live_collector: Any = None
+    live_search_state: Any = None
+    live_has_partials = False
     total_started = time.perf_counter()
     factor_base_module = __import__(
         "sagejs.number_fields.class_group_factor_base",
@@ -887,7 +1034,7 @@ def bounded_cubic_minkowski_class_number(
         residue_states: int = 0,
     ) -> CubicClassNumberResult:
         phase_timings["total"] = time.perf_counter() - total_started
-        return CubicClassNumberResult(
+        result = CubicClassNumberResult(
             field,
             False,
             reason,
@@ -907,6 +1054,21 @@ def bounded_cubic_minkowski_class_number(
                 "caps": dict(checked_caps),
             },
         )
+        if (
+            live_collector is not None
+            and presentation is not None
+            and live_search_state is not None
+            and not live_has_partials
+        ):
+            return _issue_cubic_relation_seed(
+                result,
+                plan,
+                live_factor_records,
+                live_collector,
+                presentation,
+                live_search_state,
+            )
+        return result
 
     try:
         _check_cubic_cancelled(cancelled)
@@ -991,6 +1153,10 @@ def bounded_cubic_minkowski_class_number(
         )
     phase_timings["relations"] = time.perf_counter() - relation_started
     relation_records = tuple(collector.records)
+    live_factor_records = tuple(factor_records)
+    live_collector = collector
+    live_search_state = engine._relation_search_state
+    live_has_partials = bool(engine._partials)
     engine_diagnostics = engine._diagnostics()
     engine_resources = engine_diagnostics.get("resources", {})
     for name in (
@@ -1102,5 +1268,6 @@ __all__ = [
     "CubicClassNumberResult",
     "CubicMinkowskiClassNumberCertificate",
     "authenticated_cubic_class_number_result_matches",
+    "authenticated_cubic_relation_seed",
     "bounded_cubic_minkowski_class_number",
 ]
