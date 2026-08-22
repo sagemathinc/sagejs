@@ -8,10 +8,10 @@ This module deliberately separates four assertions that are often conflated:
 * a proved global index bound makes those local tests globally sufficient.
 
 The reduction obstruction is elementary and exact.  If
-``D = sum(a_i P_i)`` is divisible by a prime ``ell`` over ``QQ``, its image in
-every good finite-field Jacobian lies in ``ell*J(F_q)``.  Certified invariant
+`D = sum(a_i P_i)` is divisible by a prime `ell` over `QQ`, its image in
+every good finite-field Jacobian lies in `ell*J(F_q)`.  Certified invariant
 factor coordinates turn this necessary condition into linear equations over
-``F_ell``.  Full column rank rules out every nonzero coefficient vector.  A
+`F_ell`.  Full column rank rules out every nonzero coefficient vector.  A
 surviving vector is only a candidate: bounded rational division searches may
 find a larger subgroup, but failure to find a divisor is not a proof unless an
 explicit exhaustive provider certifies it.
@@ -27,7 +27,6 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-
 SCHEMA = "sagejs.hyperelliptic.saturation-result.v1"
 REDUCTION_SCHEMA = "sagejs.hyperelliptic.saturation-reduction-constraint.v1"
 STEP_SCHEMA = "sagejs.hyperelliptic.saturation-basis-step.v1"
@@ -36,7 +35,9 @@ STEP_SCHEMA = "sagejs.hyperelliptic.saturation-basis-step.v1"
 class SaturationResourceLimitError(RuntimeError):
     """A bounded saturation operation exhausted an explicit resource limit."""
 
-    def __init__(self, message: str, diagnostics: Mapping[str, Any] | None = None):
+    def __init__(
+        self, message: str, diagnostics: Mapping[str, Any] | None = None
+    ) -> None:
         super().__init__(message)
         self.diagnostics = {} if diagnostics is None else dict(diagnostics)
 
@@ -130,7 +131,7 @@ def _wire(value: Any) -> Any:
 def _matrix_rank_and_nullspace(
     rows: Any, column_count: int, prime: int
 ) -> tuple[int, tuple[tuple[int, ...], ...]]:
-    """Return rank and a canonical right-nullspace basis modulo ``prime``."""
+    """Return rank and a canonical right-nullspace basis modulo `prime`."""
     matrix = []
     for raw_row in rows:
         row = [int(value) % prime for value in raw_row]
@@ -188,11 +189,11 @@ def reduction_constraint(
 ) -> dict[str, Any]:
     """Build one exact finite-reduction divisibility constraint.
 
-    ``point_coordinates[i]`` is the invariant-factor coordinate vector of the
-    reduction of the ``i``-th rational generator.  Only cyclic factors whose
-    order is divisible by ``saturation_prime`` contribute: in ``Z/nZ``, an
-    element is in ``ell*(Z/nZ)`` exactly when its coordinate is zero modulo
-    ``ell`` when ``ell`` divides ``n``.
+    `point_coordinates[i]` is the invariant-factor coordinate vector of the
+    reduction of the `i`-th rational generator.  Only cyclic factors whose
+    order is divisible by `saturation_prime` contribute: in `Z/nZ`, an
+    element is in `ell*(Z/nZ)` exactly when its coordinate is zero modulo
+    `ell` when `ell` divides `n`.
     """
     prime = _checked_prime(saturation_prime, "saturation_prime")
     residue_prime = _checked_prime(reduction_prime, "reduction_prime")
@@ -283,12 +284,12 @@ def index_bound_from_regulator(
     *,
     provenance: Any,
 ) -> dict[str, Any]:
-    """Derive ``[MW:Gamma]`` from proved regulator inequalities.
+    """Derive `[MW:Gamma]` from proved regulator inequalities.
 
-    Since ``Reg(Gamma) = index^2*Reg(MW)``, proved bounds
-    ``Reg(Gamma) <= R`` and ``Reg(MW) >= r`` imply
-    ``index <= floor(sqrt(R/r))``.  This helper never upgrades unproved
-    numerical estimates: ``provenance['proved']`` must be exactly ``True``.
+    Since `Reg(Gamma) = index^2*Reg(MW)`, proved bounds
+    `Reg(Gamma) <= R` and `Reg(MW) >= r` imply
+    `index <= floor(sqrt(R/r))`.  This helper never upgrades unproved
+    numerical estimates: `provenance['proved']` must be exactly `True`.
     """
     proof = _proof(provenance, "regulator-index-bound", None)
     if not proof["proved"]:
@@ -315,9 +316,9 @@ def index_bound_from_height(
 ) -> dict[str, Any]:
     """Derive an index bound using a supplied proved Hermite inequality.
 
-    If every nonzero Mordell--Weil vector has canonical height at least ``h``
-    and ``gamma`` is a proved upper bound for the rank-``r`` Hermite constant,
-    then ``Reg(MW) >= (h/gamma)^r``.  The caller must provide the theorem and
+    If every nonzero Mordell--Weil vector has canonical height at least `h`
+    and `gamma` is a proved upper bound for the rank-`r` Hermite constant,
+    then `Reg(MW) >= (h/gamma)^r`.  The caller must provide the theorem and
     hypotheses in proved provenance; this module does not infer them from a
     floating-point height search.
     """
@@ -957,7 +958,7 @@ def saturate_subgroup(
     The returned object can prove finite-prime saturation using only reduction
     maps.  Full rank and a global index are independent claims.  Bare supplied
     rank/index numbers are recorded but are used as proofs only when their
-    provenance mapping contains ``proved=True``.
+    provenance mapping contains `proved=True`.
     """
     basis = tuple(points)
     zero = jacobian.zero()
@@ -1097,7 +1098,8 @@ def saturate_subgroup(
                     "reason": str(error),
                 }
                 if hasattr(error, "diagnostics"):
-                    failure["diagnostics"] = getattr(error, "diagnostics")
+                    diagnostic_error: Any = error
+                    failure["diagnostics"] = diagnostic_error.diagnostics
                 failures.append(failure)
                 diagnostics["reduction_failures"].append(failure)
         rank, kernel, combined_rows = _combined_constraint(prime, basis, reductions)
