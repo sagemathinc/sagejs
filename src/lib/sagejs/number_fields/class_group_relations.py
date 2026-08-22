@@ -437,11 +437,14 @@ def reconstruct_factor_base_ideal(
     exponents = tuple(int(value) for value in row)
     if len(factors) != len(exponents):
         raise ValueError("a relation row has the wrong factor-base width")
-    answer = order.ideal(1)
+    answer = None
     for prime_ideal, exponent in zip(factors, exponents, strict=False):
         if exponent:
-            answer *= _ideal_power(prime_ideal, exponent)
-    return answer
+            power = (
+                prime_ideal if exponent == 1 else _ideal_power(prime_ideal, exponent)
+            )
+            answer = power if answer is None else answer * power
+    return order.ideal(1) if answer is None else answer
 
 
 class FactorBaseIdealReconstructor:
@@ -501,7 +504,7 @@ class FactorBaseIdealReconstructor:
             self._statistics["row_hits"] += 1
             return cached
         self._statistics["row_misses"] += 1
-        answer = self.order.ideal(1)
+        answer = None
         for index, (prime_ideal, exponent) in enumerate(
             zip(self.factor_base, exponents, strict=True)
         ):
@@ -512,13 +515,19 @@ class FactorBaseIdealReconstructor:
             power = self._powers.get(key)
             if power is None:
                 self._statistics["power_misses"] += 1
-                power = _ideal_power(prime_ideal, exponent)
+                power = (
+                    prime_ideal
+                    if exponent == 1
+                    else _ideal_power(prime_ideal, exponent)
+                )
                 evicted = self.max_powers > 0 and len(self._powers) >= self.max_powers
                 if self._retain(self._powers, key, power, self.max_powers) and evicted:
                     self._statistics["power_evictions"] += 1
             else:
                 self._statistics["power_hits"] += 1
-            answer *= power
+            answer = power if answer is None else answer * power
+        if answer is None:
+            answer = self.order.ideal(1)
         evicted = self.max_rows > 0 and len(self._rows) >= self.max_rows
         if self._retain(self._rows, exponents, answer, self.max_rows) and evicted:
             self._statistics["row_evictions"] += 1

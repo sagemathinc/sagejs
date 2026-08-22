@@ -1640,18 +1640,20 @@ class ClassUnitGroupEngine:
                 "candidate_sequence": sequence,
             }
             candidate_provenance.update(provenance)
-            witness = self.components.relations.FactoredPrincipalWitness.from_element(
-                element
-            )
             try:
                 admission = search.collector.admit_witness(
-                    witness,
+                    element,
                     source_ideal=ideal,
                     source_row=source_row,
                     integral_generator=element,
                     provenance=candidate_provenance,
                 )
             except self.components.relations.RelationNotSmoothError:
+                witness = (
+                    self.components.relations.FactoredPrincipalWitness.from_element(
+                        element
+                    )
+                )
                 admission = self._try_large_prime_partial(
                     search.collector,
                     witness,

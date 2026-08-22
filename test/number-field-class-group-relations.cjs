@@ -92,6 +92,12 @@ assert element_valuations(K(2), ()) == ()
 cached_reconstructor = FactorBaseIdealReconstructor(
     O, factor_base, max_rows=3, max_powers=2
 )
+# A one-prime exponent-one row is already in canonical ideal form.  Reuse the
+# immutable authenticated factor-base object instead of computing P^1 and
+# multiplying the unit ideal by it.
+assert reconstruct_factor_base_ideal(O, factor_base, (1, 0)) is factor_base[0]
+identity_reconstructor = FactorBaseIdealReconstructor(O, factor_base)
+assert identity_reconstructor.reconstruct((1, 0)) is factor_base[0]
 cache_rows = ((0, 0), (1, 0), (0, -1), (2, 1), (-1, 2))
 for cache_row in cache_rows:
     expected = reconstruct_factor_base_ideal(O, factor_base, cache_row)
