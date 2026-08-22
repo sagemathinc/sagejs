@@ -500,6 +500,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "number-field-cubic-norm-obstruction-production",
+      "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+      "functions": ["packed_cubic_norm_form_target_slice"],
+      "semantic_domain": "bounded exhaustive target search for exact ternary cubic norm forms modulo a proved rational prime",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "readable-exact-controls"],
+      "benchmark": "bench:number-field-cubic-norm-obstruction",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "number-field-discriminant-prefactor-production",
       "source": "src/lib/sagejs/number_fields/discriminant_prefactor_kernel.py",
       "functions": ["packed_composite_polynomial_split_hint_in_place"],

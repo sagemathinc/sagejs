@@ -256,6 +256,7 @@
     "bench:number-field-prime-ideal-candidate-kernel": "node bench/number-field-prime-ideal-candidate-kernel.cjs",
     "bench:number-field-ideal-product-kernel": "node bench/number-field-ideal-product-kernel.cjs",
     "bench:number-field-element-valuations": "node bench/number-field-element-valuations.cjs",
+    "bench:number-field-cubic-norm-obstruction": "node bench/number-field-cubic-norm-obstruction.cjs",
     "bench:number-field-om-maxmin": "node bench/number-field-om-maxmin.cjs",
     "bench:number-field-om-p2-tail": "node bench/number-field-om-p2-tail.cjs",
     "bench:number-field-om-auto-selector": "node bench/number-field-om-auto-selector.cjs",

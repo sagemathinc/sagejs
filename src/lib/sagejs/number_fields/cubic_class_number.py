@@ -49,6 +49,8 @@ _CUBIC_CLASS_NUMBER_REPLAY_MAX_QUOTIENT_ORDER = 1_000_000
 _CUBIC_CLASS_NUMBER_REPLAY_MAX_PROJECTIVE_LINES = 4096
 _CUBIC_CLASS_NUMBER_REPLAY_MAX_MODULUS = 257
 _CUBIC_CLASS_NUMBER_REPLAY_MAX_RESIDUE_STATES = 20_000_000
+_CUBIC_NORM_FORM_X_SLICE = 8
+_cubic_norm_form_kernel_override: Any = None
 
 
 def _freeze_authentication_value(value: Any) -> Any:
@@ -124,6 +126,82 @@ def _cubic_norm_form_value(
         + c102 * x * z * z
         + c012 * y * z * z
         + c111 * x * y * z
+    )
+
+
+def _readable_cubic_norm_form_represents_targets(
+    coefficients: tuple[int, ...],
+    modulus: int,
+    positive_target: int,
+    negative_target: int,
+    *,
+    cancelled: Callable[[], bool] | None,
+) -> bool:
+    sequence = 0
+    for x in range(modulus):
+        for y in range(modulus):
+            for z in range(modulus):
+                if sequence % 256 == 0:
+                    _check_cubic_cancelled(cancelled)
+                sequence += 1
+                value = _cubic_norm_form_value(coefficients, x, y, z) % modulus
+                if value == positive_target or value == negative_target:
+                    return True
+    return False
+
+
+def _cubic_norm_form_represents_targets(
+    coefficients: tuple[int, ...],
+    modulus: int,
+    positive_target: int,
+    negative_target: int,
+    *,
+    cancelled: Callable[[], bool] | None,
+) -> bool:
+    """Use the packed exact kernel, or the same readable exhaustive search."""
+    kernel_module = __import__(
+        "sagejs.number_fields.bl_composite_kernel", fromlist=["bl_composite_kernel"]
+    )
+    kernel = (
+        kernel_module.packed_cubic_norm_form_target_slice
+        if _cubic_norm_form_kernel_override is None
+        else _cubic_norm_form_kernel_override
+    )
+    if kernel is not False:
+        try:
+            native_module = __import__("sagejs.native", fromlist=["native"])
+            packed_coefficients = native_module.kernel_integer_buffer(
+                kernel, coefficients
+            )
+            x_start = 0
+            while x_start < modulus:
+                _check_cubic_cancelled(cancelled)
+                x_stop = min(modulus, x_start + _CUBIC_NORM_FORM_X_SLICE)
+                status = int(
+                    kernel(
+                        packed_coefficients,
+                        modulus,
+                        x_start,
+                        x_stop,
+                        positive_target,
+                        negative_target,
+                    )
+                )
+                if status == 2:
+                    return True
+                if status != 1:
+                    break
+                x_start = x_stop
+            if x_start == modulus:
+                return False
+        except (OverflowError, RuntimeError, TypeError, ValueError):
+            pass
+    return _readable_cubic_norm_form_represents_targets(
+        coefficients,
+        modulus,
+        positive_target,
+        negative_target,
+        cancelled=cancelled,
     )
 
 
@@ -203,25 +281,15 @@ def _find_cubic_norm_obstruction(
         states = modulus**3
         if used + states > remaining_states:
             return None, used
-        targets = {norm % modulus, (-norm) % modulus}
-        represented = False
-        sequence = 0
-        for x in range(modulus):
-            for y in range(modulus):
-                for z in range(modulus):
-                    if sequence % 256 == 0:
-                        _check_cubic_cancelled(cancelled)
-                    sequence += 1
-                    if (
-                        _cubic_norm_form_value(coefficients, x, y, z) % modulus
-                        in targets
-                    ):
-                        represented = True
-                        break
-                if represented:
-                    break
-            if represented:
-                break
+        positive_target = norm % modulus
+        negative_target = (-norm) % modulus
+        represented = _cubic_norm_form_represents_targets(
+            coefficients,
+            modulus,
+            positive_target,
+            negative_target,
+            cancelled=cancelled,
+        )
         used += states
         if not represented:
             return (
@@ -284,20 +352,15 @@ def _verify_cubic_norm_obstruction(
             coefficients
         ):
             return False
-        targets = {norm % modulus, (-norm) % modulus}
-        sequence = 0
-        for x in range(modulus):
-            for y in range(modulus):
-                for z in range(modulus):
-                    if sequence % 256 == 0:
-                        _check_cubic_cancelled(cancelled)
-                    sequence += 1
-                    if (
-                        _cubic_norm_form_value(coefficients, x, y, z) % modulus
-                        in targets
-                    ):
-                        return False
-        return True
+        # Detached verification deliberately keeps the readable exhaustive
+        # loop independent of the producer's compiled search boundary.
+        return not _readable_cubic_norm_form_represents_targets(
+            coefficients,
+            modulus,
+            norm % modulus,
+            (-norm) % modulus,
+            cancelled=cancelled,
+        )
     except (
         ImportError,
         AttributeError,

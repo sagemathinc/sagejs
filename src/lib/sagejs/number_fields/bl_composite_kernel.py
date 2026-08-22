@@ -11,6 +11,64 @@ from __future__ import annotations
 from sagejs.native import IntegerBuffer, native, uint64
 
 
+@native
+def packed_cubic_norm_form_target_slice(
+    coefficients: IntegerBuffer,
+    modulus: uint64,
+    x_start: uint64,
+    x_stop: uint64,
+    positive_target: uint64,
+    negative_target: uint64,
+) -> uint64:
+    """Search one bounded `x`-slice of a ternary cubic norm form.
+
+    Return `0` for an invalid packed call, `1` when neither target is
+    represented, and `2` as soon as either target is represented.  The caller
+    keeps cancellation between bounded slices and independently replays the
+    resulting obstruction when verifying the class-number certificate.
+    """
+    invalid: uint64 = 0
+    absent: uint64 = 1
+    represented: uint64 = 2
+    if (
+        len(coefficients) != 10
+        or modulus < 2
+        or x_start > x_stop
+        or x_stop > modulus
+        or positive_target >= modulus
+        or negative_target >= modulus
+    ):
+        return invalid
+    c300 = coefficients[0] % modulus
+    c030 = coefficients[1] % modulus
+    c003 = coefficients[2] % modulus
+    c210 = coefficients[3] % modulus
+    c201 = coefficients[4] % modulus
+    c120 = coefficients[5] % modulus
+    c021 = coefficients[6] % modulus
+    c102 = coefficients[7] % modulus
+    c012 = coefficients[8] % modulus
+    c111 = coefficients[9] % modulus
+    for x in range(x_start, x_stop):
+        for y in range(modulus):
+            for z in range(modulus):
+                value = (
+                    c300 * x * x * x
+                    + c030 * y * y * y
+                    + c003 * z * z * z
+                    + c210 * x * x * y
+                    + c201 * x * x * z
+                    + c120 * x * y * y
+                    + c021 * y * y * z
+                    + c102 * x * z * z
+                    + c012 * y * z * z
+                    + c111 * x * y * z
+                ) % modulus
+                if value == positive_target or value == negative_target:
+                    return represented
+    return absent
+
+
 def _packed_modular_inverse_or_zero(value: int, modulus: int) -> int:
     old_remainder = modulus
     remainder = value % modulus

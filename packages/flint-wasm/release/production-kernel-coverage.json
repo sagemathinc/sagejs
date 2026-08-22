@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 39,
-    "production_kernels": 32,
-    "compiled_functions": 234,
+    "registered_kernels": 40,
+    "production_kernels": 33,
+    "compiled_functions": 235,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -169,6 +169,15 @@
       "compiled_functions": 3,
       "fallback_functions": 0,
       "total_functions": 3,
+      "fallback_reasons": []
+    },
+    {
+      "id": "number-field-cubic-norm-obstruction-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
       "fallback_reasons": []
     },
     {
