@@ -9269,16 +9269,27 @@ def _bulk_sparse_random_matrix(
             [draw_value() for _index in range(rows * columns)],
         )
 
-    if _uses_m4ri_resource(base) and lower is None:
+    if (
+        _uses_m4ri_resource(base)
+        and lower is None
+        and _native_kernel_available(executors.sparse_random_m4ri)
+    ):
         spec = policy.sage_binary_sparse_random_spec(rows, columns, density)
         normalized_density = float(spec[3])
         if rows == 0 or columns == 0 or normalized_density <= 0:
             return MatrixSpace(base, rows, columns)(0)
         if normalized_density != normalized_density:
             return portable(spec)
-        kernel = executors.sparse_random_m4ri
-        if not _native_kernel_available(kernel):
+        # A portable release may expose the generated M4RI resource surface
+        # through a stub library while the optional executor itself is absent.
+        # Decide this before drawing the seed so the same-source fallback
+        # preserves Sage's exact random stream.
+        try:
+            if not _m4ri_ffi_module().available():
+                return portable(spec)
+        except Exception:
             return portable(spec)
+        kernel = executors.sparse_random_m4ri
         final_state = _dense_integer_zeros(kernel, 1)
         resource = _m4ri_ffi_module().matrix(rows, columns)
         try:

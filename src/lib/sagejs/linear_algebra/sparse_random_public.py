@@ -424,7 +424,13 @@ def sparse_random_m4ri(
 
 
 try:
-    _sparse_random_m4ri_available = bool(m4ri_available())
+    from sagejs.linear_algebra.sparse_random_m4ri import (
+        sparse_random_m4ri_native as _sparse_random_m4ri_native,
+    )
+
+    _sparse_random_m4ri_available = bool(m4ri_available()) and bool(
+        getattr(_sparse_random_m4ri_native, "nativeAvailable", False)
+    )
 except Exception:
     _sparse_random_m4ri_available = False
 sparse_random_m4ri.nativeAvailable = _sparse_random_m4ri_available  # type: ignore[attr-defined]
