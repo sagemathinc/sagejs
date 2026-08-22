@@ -306,6 +306,15 @@ test("public cubic fallback resumes its authenticated exact relation prefix", ()
   const output = runPublic(String.raw`
 import sagejs.number_fields.cubic_class_number as cubic_module
 import sagejs.number_fields.class_unit_groups as class_unit_module
+import sagejs.number_fields.class_unit_analytic as analytic_module
+
+analytic_replays = 0
+original_compute_unit_index_proof = analytic_module._compute_unit_index_proof
+def counted_compute_unit_index_proof(*args, **kwargs):
+    global analytic_replays
+    analytic_replays += 1
+    return original_compute_unit_index_proof(*args, **kwargs)
+analytic_module._compute_unit_index_proof = counted_compute_unit_index_proof
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -351,6 +360,10 @@ assert "_live_authentication" not in record.__dict__
 assert not class_unit_module._authenticated_live_saturation_record_matches(
     record, K, K.maximal_order()
 )
+assert analytic_replays == 0
+assert record.verify(K, K.maximal_order())
+assert analytic_replays == 1
+analytic_module._compute_unit_index_proof = original_compute_unit_index_proof
 
 # The authority is only a live optimization hint.  Any mutation invalidates
 # it, and the public verifier still fails closed against the content hash.

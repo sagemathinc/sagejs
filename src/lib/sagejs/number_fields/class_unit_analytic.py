@@ -4925,8 +4925,18 @@ def certify_unit_saturation_index(
     generation_evidence: Any = None,
     generation_verifier: Callable[..., Any] | None = None,
     proof_status: str = "",
+    _precomputed_regulator: Any = None,
+    _precomputed_zeta_log_residue: Any = None,
+    _precomputed_index: Any = None,
 ) -> UnitSaturationIndexCertificate:
-    """Construct a replayable analytic index certificate for exact units."""
+    """Construct a replayable analytic index certificate for exact units.
+
+    The private precomputed arguments are a live producer optimization.  They
+    reuse the exact regulator, zeta enclosure, and `h*R` interval computed by
+    the immediately preceding engine stage.  Serialized certificates retain
+    no such authority: `verify()` always recomputes the analytic proof from
+    the field, order, units, and configuration.
+    """
     selected_limits = zeta_limits or ZetaLogResidueLimits(
         maximum_precision_bits=maximum_precision_bits
     )
@@ -4984,13 +4994,46 @@ def certify_unit_saturation_index(
     )
     construction_started = time.perf_counter_ns()
     try:
-        index_bound, proof = _compute_unit_index_proof(
-            field,
-            order,
-            initial_units,
-            configuration,
-            workspace=selected_workspace,
+        supplied_live_proof = (
+            _precomputed_regulator,
+            _precomputed_zeta_log_residue,
+            _precomputed_index,
         )
+        if any(value is not None for value in supplied_live_proof):
+            if not all(value is not None for value in supplied_live_proof):
+                raise AnalyticCertificationError(
+                    "a precomputed analytic proof must supply all three components"
+                )
+            regulator = _precomputed_regulator
+            zeta = _precomputed_zeta_log_residue
+            index = _precomputed_index
+            if (
+                type(regulator) is not RegulatorEnclosure
+                or type(zeta) is not ZetaLogResidueEnclosure
+                or type(index) is not HRIndexValidationResult
+                or regulator.unit_rank != len(initial_units)
+                or not regulator.rigorous
+                or not zeta.rigorous
+                or zeta.discriminant != int(order.discriminant())
+                or zeta.degree != int(field.degree())
+                or not index.rigorous
+                or index.unique_index is None
+                or index.lower_index != index.upper_index
+                or index.analytic_log_residue.to_dict() != zeta.ball.to_dict()
+            ):
+                raise AnalyticCertificationError(
+                    "precomputed analytic proof components are inconsistent"
+                )
+            index_bound = int(index.unique_index)
+            proof = _unit_index_proof_payload(regulator, zeta, index)
+        else:
+            index_bound, proof = _compute_unit_index_proof(
+                field,
+                order,
+                initial_units,
+                configuration,
+                workspace=selected_workspace,
+            )
     finally:
         selected_workspace._record_certificate_construction(construction_started)
     return UnitSaturationIndexCertificate(

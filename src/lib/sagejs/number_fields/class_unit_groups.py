@@ -1346,6 +1346,7 @@ class ClassUnitGroupEngine:
         }
         self._generation_verification_cache: dict[str, bool] = {}
         self._generation_verification_cache_active = True
+        self._live_analytic_proof: tuple[Any, ...] | None = None
         self._unit_logarithm_cache: dict[tuple[int, str], tuple[Any, ...]] = {}
         self._relation_log_record_prefix: tuple[Any, ...] = ()
         self._relation_dependency_unit_hashes: dict[tuple[int, ...], str] = {}
@@ -2790,6 +2791,14 @@ class ClassUnitGroupEngine:
             zeta_log_residue=zeta,
             precision_bits=self.limits.precision_bits,
         )
+        self._live_analytic_proof = (
+            tuple(units),
+            int(presentation.order),
+            int(torsion.order),
+            regulator,
+            zeta,
+            index,
+        )
         self._phase_finish("analytic-index", started)
         self._stage(
             "analytic-index",
@@ -3138,19 +3147,50 @@ class ClassUnitGroupEngine:
                 maximum_precision_bits=self.limits.max_precision_bits,
             )
         )
+        options: dict[str, Any] = {
+            "class_number": class_number,
+            "roots_of_unity": int(_value(torsion, ("order",), 0)),
+            "precision_bits": self.limits.precision_bits,
+            "maximum_precision_bits": self.limits.max_precision_bits,
+            "zeta_limits": zeta_limits,
+            "workspace": self._analytic_workspace,
+            "generation_evidence": generation_evidence,
+            "generation_verifier": generation_verifier,
+            "proof_status": proof_status,
+        }
+        live_proof = self._live_analytic_proof
+        standard_analytic = _optional_module("sagejs.number_fields.class_unit_analytic")
+        if (
+            live_proof is not None
+            and self.components.analytic is standard_analytic
+            and certificate_factory
+            is getattr(standard_analytic, "certify_unit_saturation_index", None)
+        ):
+            (
+                live_units,
+                live_class_number,
+                live_torsion_order,
+                live_regulator,
+                live_zeta,
+                live_index,
+            ) = live_proof
+            if (
+                len(live_units) == len(units)
+                and all(
+                    retained is supplied
+                    for retained, supplied in zip(live_units, units, strict=True)
+                )
+                and live_class_number == int(class_number)
+                and live_torsion_order == int(_value(torsion, ("order",), 0))
+            ):
+                options["_precomputed_regulator"] = live_regulator
+                options["_precomputed_zeta_log_residue"] = live_zeta
+                options["_precomputed_index"] = live_index
         return certificate_factory(
             self.field,
             self.order,
             units,
-            class_number=class_number,
-            roots_of_unity=int(_value(torsion, ("order",), 0)),
-            precision_bits=self.limits.precision_bits,
-            maximum_precision_bits=self.limits.max_precision_bits,
-            zeta_limits=zeta_limits,
-            workspace=self._analytic_workspace,
-            generation_evidence=generation_evidence,
-            generation_verifier=generation_verifier,
-            proof_status=proof_status,
+            **options,
         )
 
     def _unit_logarithmic_rank_from_units(
