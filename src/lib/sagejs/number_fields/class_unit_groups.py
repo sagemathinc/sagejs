@@ -35,6 +35,7 @@ MAX_DIRECT_CUBIC_RELATION_SEED_SIZE = 7
 MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 
 _AUTHENTICATED_CLASS_UNIT_SATURATION_TOKEN = object()
+_AUTHENTICATED_ENGINE_CLASS_GROUP_TOKEN = object()
 _CUBIC_RELATION_SEED_UNREAD = object()
 
 
@@ -856,6 +857,18 @@ class _EngineClassGroup:
             )
             if relation_rows != presentation_rows:
                 return False
+            positions = tuple(self._presentation.invariant_positions)
+            expected_generator_rows = tuple(
+                tuple(
+                    int(value)
+                    for value in self._presentation.smith_right_inverse[position]
+                )
+                for position in positions
+            )
+            if self._generator_rows != expected_generator_rows or len(
+                self._generator_ideals
+            ) != len(expected_generator_rows):
+                return False
             for record in self._relations:
                 if self._relation_reconstructor is None:
                     replay = record.verify(self._order, self._factor_base)
@@ -872,6 +885,96 @@ class _EngineClassGroup:
                 if self(generator.ideal()) != generator:
                     return False
                 if not (generator ** generator.order()).is_one():
+                    return False
+            return True
+        except (KeyError, AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+    def _verify_live_construction(self, token: object) -> bool:
+        """Authenticate the exact producer state without generic map replay.
+
+        The engine has just built each generator ideal from its authenticated
+        factor-base row.  Factoring that same ideal through the public map is
+        a useful detached check, but it repeats exact ideal arithmetic at the
+        live producer boundary.  Here we instead bind the retained collector,
+        its admission receipts, the verified presentation, and every
+        generator ideal to the exact row which constructed it.  Public and
+        detached calls to `verify()` continue to exercise the generic ideal
+        maps above.
+        """
+        if token is not _AUTHENTICATED_ENGINE_CLASS_GROUP_TOKEN:
+            return False
+        try:
+            collector = self._relation_reconstructor
+            if (
+                collector is None
+                or getattr(collector, "order", None) is not self._order
+            ):
+                return False
+            retained_factors = tuple(getattr(collector, "factor_base", ()))
+            if len(retained_factors) != len(self._factor_base) or any(
+                retained is not supplied
+                for retained, supplied in zip(
+                    retained_factors, self._factor_base, strict=True
+                )
+            ):
+                return False
+            retained_relations = tuple(getattr(collector, "records", ()))
+            if len(retained_relations) != len(self._relations) or any(
+                retained is not supplied
+                for retained, supplied in zip(
+                    retained_relations, self._relations, strict=True
+                )
+            ):
+                return False
+            if not self._presentation.verify():
+                return False
+            presentation_rows = tuple(
+                tuple(int(value) for value in row.dense())
+                for row in self._presentation.relation_rows
+            )
+            relation_rows = tuple(
+                tuple(int(value) for value in record.row) for record in self._relations
+            )
+            if relation_rows != presentation_rows:
+                return False
+            verify_admission = getattr(collector, "verify_admission_receipt", None)
+            if not callable(verify_admission) or not all(
+                verify_admission(self._order, self._factor_base, record)
+                for record in self._relations
+            ):
+                return False
+
+            positions = tuple(self._presentation.invariant_positions)
+            expected_rows = tuple(
+                tuple(
+                    int(value)
+                    for value in self._presentation.smith_right_inverse[position]
+                )
+                for position in positions
+            )
+            if expected_rows != self._generator_rows:
+                return False
+            reconstruct = getattr(collector, "reconstruct_factor_base_ideal", None)
+            if not callable(reconstruct):
+                return False
+            if len(self._generator_ideals) != len(self._generator_rows):
+                return False
+            for index, (row, ideal) in enumerate(
+                zip(self._generator_rows, self._generator_ideals, strict=True)
+            ):
+                if reconstruct(row) != ideal:
+                    return False
+                coordinates = tuple(
+                    int(value) for value in self._presentation.class_coordinates(row)
+                )
+                expected_coordinates = tuple(
+                    1 if coordinate == index else 0
+                    for coordinate in range(len(self._invariants))
+                )
+                if coordinates != expected_coordinates:
+                    return False
+                if self._gens[index].order() != self._invariants[index]:
                     return False
             return True
         except (KeyError, AttributeError, TypeError, ValueError, ArithmeticError):
@@ -1222,6 +1325,9 @@ class ClassUnitGroupEngine:
             "generation_reconstruction_cache_hits": 0,
             "generation_admission_receipt_requests": 0,
             "generation_admission_receipt_hits": 0,
+            "class_group_live_authentication_requests": 0,
+            "class_group_live_authentication_hits": 0,
+            "class_group_live_authentication_fallback_replays": 0,
             "cubic_relation_seed_uses": 0,
             "cubic_relation_seed_relations": 0,
             "cubic_factor_base_seed_uses": 0,
@@ -3272,7 +3378,17 @@ class ClassUnitGroupEngine:
             theorem,
             collector,
         )
-        if not group.verify():
+        self._resource_usage["class_group_live_authentication_requests"] += 1
+        live_verified = group._verify_live_construction(
+            _AUTHENTICATED_ENGINE_CLASS_GROUP_TOKEN
+        )
+        if live_verified:
+            self._resource_usage["class_group_live_authentication_hits"] += 1
+        else:
+            self._resource_usage[
+                "class_group_live_authentication_fallback_replays"
+            ] += 1
+        if not live_verified and not group.verify():
             raise ArithmeticError("class-group ideal maps failed exact replay")
         self._phase_finish("class-group", started)
         self._stage(

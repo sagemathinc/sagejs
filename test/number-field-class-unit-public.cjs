@@ -335,7 +335,17 @@ assert resources["presentation_extractions"] == 0
 assert resources["saturation_live_authentication_requests"] == 1
 assert resources["saturation_live_authentication_hits"] == 1
 assert resources["saturation_live_authentication_fallback_replays"] == 0
+assert resources["class_group_live_authentication_requests"] == 1
+assert resources["class_group_live_authentication_hits"] == 1
+assert resources["class_group_live_authentication_fallback_replays"] == 0
 assert result.diagnostics["relations"] == 4
+group = result.class_group()
+assert group.verify()
+retained_generator_rows = group._generator_rows
+group._generator_rows = ((retained_generator_rows[0][0] + 1,) + retained_generator_rows[0][1:],)
+assert not group.verify()
+group._generator_rows = retained_generator_rows
+assert group.verify()
 record = result.saturation_record
 assert "_live_authentication" not in record.__dict__
 assert not class_unit_module._authenticated_live_saturation_record_matches(
@@ -373,6 +383,21 @@ U._bounded_cubic_class_number_artifact = valid_limited
 limited_result = U.class_unit_group(proof=False, max_relations=1024)
 assert limited_result.complete and limited_result.class_number() == 2
 assert limited_result.diagnostics["resources"]["cubic_factor_base_seed_uses"] == 0
+
+# A failed live construction hint falls back to the unchanged full map replay.
+original_live_verifier = class_unit_module._EngineClassGroup._verify_live_construction
+class_unit_module._EngineClassGroup._verify_live_construction = lambda self, token: False
+try:
+    V = NumberField(x**3 + 4*x - 1, "v")
+    assert V.class_number(proof=False) == 2
+    replayed = V.class_unit_group(proof=False)
+    replay_resources = replayed.diagnostics["resources"]
+    assert replay_resources["class_group_live_authentication_requests"] == 1
+    assert replay_resources["class_group_live_authentication_hits"] == 0
+    assert replay_resources["class_group_live_authentication_fallback_replays"] == 1
+    assert replayed.class_group().verify()
+finally:
+    class_unit_module._EngineClassGroup._verify_live_construction = original_live_verifier
 print("cubic-relation-seed-ok")
 `, 180_000);
   assert.equal(output, "cubic-relation-seed-ok");
