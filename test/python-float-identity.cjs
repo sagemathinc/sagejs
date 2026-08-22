@@ -139,6 +139,51 @@ test("float() accepts real protocols and rejects complex values", async (t) => {
   ].join("\n"));
 });
 
+test("float literals and float() honor PEP 515 digit group separators", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "a = 1_000_000.0",
+    "print(repr(a), type(a) is float, repr(1_0.0_1), repr(1_0e1_0), repr(1_000_000))",
+    "accepted = ['1_000_000.0', '1_0.0_1', '1_0e1_0', '1_000', '  1_0.5  ']",
+    "accepted += ['-1_0.5', '+1_0']",
+    "print([repr(float(text)) for text in accepted])",
+    "print(float('1_0.5e-1_0') == 1.05e-9, float('1_000_000.0') == 1e6)",
+    "rejected = ['_1', '1_', '1__0', '1._0', '1_.0', '_', '1_e5', '1e_5']",
+    "rejected += ['1_.', '._1', '_1.0', '1.0_', '1_.0_', '0x_1', 'in_f', 'na_n']",
+    "for text in rejected:",
+    "    try:",
+    "        print('accepted', text, float(text))",
+    "    except ValueError as error:",
+    "        print(error)",
+    "print(float('inf') > 0, float('-inf') < 0, float('nan') != float('nan'))",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), [
+    "1000000.0 True 10.01 100000000000.0 1000000",
+    "['1000000.0', '10.01', '100000000000.0', '1000.0', '10.5', '-10.5', '10.0']",
+    "True True",
+    ...[
+      "_1",
+      "1_",
+      "1__0",
+      "1._0",
+      "1_.0",
+      "_",
+      "1_e5",
+      "1e_5",
+      "1_.",
+      "._1",
+      "_1.0",
+      "1.0_",
+      "1_.0_",
+      "0x_1",
+      "in_f",
+      "na_n",
+    ].map((text) => `Could not convert string to float: ${text}`),
+    "True True True",
+  ].join("\n"));
+});
+
 test("complex() honors Python numeric conversion protocols", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());

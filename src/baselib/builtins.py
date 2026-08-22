@@ -2269,6 +2269,32 @@ def ρσ_int(value: Any = 0, base: Any = runtime.undefined) -> Any:
     return runtime.number(answer)
 
 
+_BUILTINS_DECIMAL_DIGITS = "0123456789"
+
+
+def _builtins_pep515_digit_groups(text: _Str) -> _Bool:
+    """Check that every `_` in *text* separates two decimal digits.
+
+    PEP 515 allows underscores in numeric text only *between* digits, so
+    `"1_000.5"` and `"1_0e1_0"` are legal while `"_1"`, `"1_"`, `"1__0"`,
+    `"1_.0"`, `"1._0"`, `"1_e5"` and `"1e_5"` are not.  Returns `True` for
+    text without any underscore.
+    """
+    groups = text.split("_")
+    index = 1
+    while index < len(groups):
+        before = groups[index - 1]
+        after = groups[index]
+        if len(before) == 0 or len(after) == 0:
+            return False
+        if runtime.string_find(_BUILTINS_DECIMAL_DIGITS, before[len(before) - 1]) == -1:
+            return False
+        if runtime.string_find(_BUILTINS_DECIMAL_DIGITS, after[0]) == -1:
+            return False
+        index += 1
+    return True
+
+
 def ρσ_float(value: Any = 0) -> Any:
     if _builtins_is_boxed_float(value):
         return value
@@ -2290,8 +2316,15 @@ def ρσ_float(value: Any = 0) -> Any:
             return runtime.number.NaN
         if normalized == "":
             raise ValueError("Could not convert string to float: " + str(value))
+        text = value
+        if runtime.string_find(text, "_") != -1:
+            # PEP 515 digit group separators: Number() reports NaN for them,
+            # so drop them once the placement matches what CPython accepts.
+            if not _builtins_pep515_digit_groups(text):
+                raise ValueError("Could not convert string to float: " + str(value))
+            text = text.replace(runtime.regexp("_", "g"), "")
         # Number() rejects trailing junk which JavaScript parseFloat accepts.
-        answer = runtime.number(value)
+        answer = runtime.number(text)
         reject_nan = True
     elif _builtins_member_is_function(value, "decode") and _builtins_member_is_function(
         value, "__len__"
