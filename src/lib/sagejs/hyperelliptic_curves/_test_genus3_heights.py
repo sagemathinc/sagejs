@@ -225,7 +225,7 @@ def test_split_mumford_move():
     # the local-reduction algorithms.  Production callers cannot create a
     # complete plan through the public constructors without replaying the
     # curve and divisor support.
-    def empty_complete_plan(active_move: Any):
+    def certified_pairing(active_move: Any, prime: int = 3):
         curve_key = heights_module._curve_key(active_move.curve)
         divisor_key = heights_module._divisor_pair_key(
             active_move.left_affine_terms,
@@ -233,8 +233,35 @@ def test_split_mumford_move():
             -active_move.degree,
             0,
         )
+        return heights_module.FinitePlacePairing(
+            prime,
+            horizontal_intersection=0,
+            vertical_correction=0,
+            left_components=(0,),
+            right_components=(0,),
+            model_certified=True,
+            certificate={
+                "fixture": "same-prime exact-binding attack",
+                "divisor_pair_key": divisor_key,
+            },
+            _verification=heights_module._AutomaticFiniteVerification(
+                curve_key,
+                divisor_key,
+                (prime, "internal fixture"),
+            ),
+        )
+
+    def complete_plan(active_move: Any, pairings: Any):
+        curve_key = heights_module._curve_key(active_move.curve)
+        divisor_key = heights_module._divisor_pair_key(
+            active_move.left_affine_terms,
+            active_move.right_affine_terms,
+            -active_move.degree,
+            0,
+        )
+        pairings = tuple(pairings)
         support = heights_module.SplitMumfordCandidateSupport(
-            (),
+            tuple(pairing.prime for pairing in pairings),
             sources=(),
             factor_work_bits=0,
             max_factor_bits=512,
@@ -244,7 +271,7 @@ def test_split_mumford_move():
         )
         return heights_module.SplitMumfordFinitePlan(
             support,
-            (),
+            pairings,
             (),
             _verification=heights_module._FinitePlanVerification(
                 curve_key,
@@ -256,8 +283,10 @@ def test_split_mumford_move():
     conjugate_move = move_split_mumford_divisor(
         jacobian([u_value, ring(-1)]), moving_x=4
     )
-    plan = empty_complete_plan(move)
-    conjugate_plan = empty_complete_plan(conjugate_move)
+    finite = certified_pairing(move)
+    conjugate_finite = certified_pairing(conjugate_move)
+    plan = complete_plan(move, (finite,))
+    conjugate_plan = complete_plan(conjugate_move, (conjugate_finite,))
     assert plan.complete and plan.belongs_to(move)
     assert not plan.belongs_to(conjugate_move)
     bound_archimedean = heights_module.ArchimedeanPairing(
@@ -276,7 +305,7 @@ def test_split_mumford_move():
     )
     bound_result = split_mumford_canonical_height(
         move,
-        (),
+        (finite,),
         bound_archimedean,
         complete_prime_set=True,
         prec=100,
@@ -285,9 +314,24 @@ def test_split_mumford_move():
     assert bound_result.archimedean_move_verified
     assert bound_result.archimedean_refinement_stable
     try:
+        faltings_hriljac_pairing(
+            (conjugate_finite,),
+            bound_archimedean,
+            complete_prime_set=True,
+            prec=100,
+            finite_plan=plan,
+        )
+    except Genus3HeightCapabilityError as error:
+        assert "exact pairings" in str(error)
+        assert error.diagnostics["supplied_primes"] == (3,)
+        assert error.diagnostics["planned_primes"] == (3,)
+        assert error.diagnostics["same_prime_objects"] == ((3, False),)
+    else:
+        raise AssertionError("a same-prime pairing from another move was accepted")
+    try:
         split_mumford_canonical_height(
             conjugate_move,
-            (),
+            (finite,),
             bound_archimedean,
             complete_prime_set=True,
             prec=100,
@@ -300,7 +344,7 @@ def test_split_mumford_move():
     try:
         split_mumford_canonical_height(
             conjugate_move,
-            (),
+            (conjugate_finite,),
             bound_archimedean,
             complete_prime_set=True,
             prec=100,
@@ -312,7 +356,7 @@ def test_split_mumford_move():
         raise AssertionError("an automatic real symbol certified a different move")
     conditional_result = split_mumford_canonical_height(
         conjugate_move,
-        (),
+        (conjugate_finite,),
         archimedean,
         complete_prime_set=True,
         prec=100,

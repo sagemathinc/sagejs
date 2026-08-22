@@ -2345,10 +2345,12 @@ class FaltingsHriljacPairingResult:
         prec: int,
         finite_plan: Any = None,
     ) -> None:
-        self.finite_places = tuple(finite_places)
-        if any(not isinstance(item, FinitePlacePairing) for item in self.finite_places):
+        supplied_finite_places = tuple(finite_places)
+        if any(
+            not isinstance(item, FinitePlacePairing) for item in supplied_finite_places
+        ):
             raise TypeError("finite_places must contain FinitePlacePairing objects")
-        primes = [item.prime for item in self.finite_places]
+        primes = [item.prime for item in supplied_finite_places]
         if len(set(primes)) != len(primes):
             raise ValueError("a finite prime occurs more than once")
         if not isinstance(archimedean, ArchimedeanPairing):
@@ -2361,11 +2363,44 @@ class FaltingsHriljacPairingResult:
         self.finite_plan = (
             finite_plan if isinstance(finite_plan, SplitMumfordFinitePlan) else None
         )
+        self.finite_places_derived_from_plan = self.finite_plan is not None
+        if self.finite_plan is not None:
+            supplied_by_prime = {item.prime: item for item in supplied_finite_places}
+            planned_by_prime = {item.prime: item for item in self.finite_plan.pairings}
+            exact_plan_pairings = bool(
+                set(supplied_by_prime) == set(planned_by_prime)
+                and all(
+                    supplied_by_prime[prime] is planned_by_prime[prime]
+                    for prime in planned_by_prime
+                )
+            )
+            if not exact_plan_pairings:
+                raise Genus3HeightCapabilityError(
+                    "finite_places must be the exact pairings computed by finite_plan",
+                    {
+                        "supplied_primes": tuple(sorted(supplied_by_prime)),
+                        "planned_primes": tuple(sorted(planned_by_prime)),
+                        "same_prime_objects": tuple(
+                            (
+                                prime,
+                                prime in supplied_by_prime
+                                and supplied_by_prime[prime] is planned_by_prime[prime],
+                            )
+                            for prime in sorted(planned_by_prime)
+                        ),
+                        "needs": (
+                            "pass finite_plan.pairings without substituting or "
+                            "reconstructing local symbols"
+                        ),
+                    },
+                )
+            # The plan is the sole source of finite symbols once supplied.
+            self.finite_places = self.finite_plan.pairings
+        else:
+            self.finite_places = supplied_finite_places
         self.finite_support_verified = bool(
             self.finite_plan is not None
             and self.finite_plan.complete
-            and tuple(item.prime for item in self.finite_places)
-            == tuple(item.prime for item in self.finite_plan.pairings)
             and not self.unsupported_primes
         )
         self.complete_prime_set = self.finite_support_verified
@@ -2423,6 +2458,7 @@ class FaltingsHriljacPairingResult:
             "complete_prime_set": self.complete_prime_set,
             "complete_prime_set_claimed": self.complete_prime_set_claimed,
             "finite_support_verified": self.finite_support_verified,
+            "finite_places_derived_from_plan": self.finite_places_derived_from_plan,
             "unsupported_primes": tuple(str(p) for p in self.unsupported_primes),
             "finite_exact": self.finite_exact,
             "finite_models_certified": self.finite_models_certified,
