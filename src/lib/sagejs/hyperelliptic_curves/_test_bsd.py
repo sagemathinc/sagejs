@@ -74,6 +74,12 @@ def _parse_input_record(value: dict[str, object]) -> BSDArithmeticInput:
     return BSDArithmeticInput.from_dict(value)
 
 
+def _parse_index_certificate_record(
+    value: dict[str, object],
+) -> SubgroupIndexCertificate:
+    return SubgroupIndexCertificate.from_dict(value)
+
+
 class _MockCurve:
     def root_number(self) -> int:
         return -1
@@ -155,7 +161,7 @@ def run() -> dict[str, int | bool]:
     assert _exact(generic_result.bsd_quotient()) == (6, 5)
     _expect(BSDValidationError, generic_result.sha_over_index_squared)
     assert generic.subgroup_status == "full_mordell_weil"
-    assert generic.subgroup_index.status == "certified"
+    assert generic.subgroup_index.status == "external_unverified"
     assert generic.subgroup_index.value == 1
     assert all(
         "Sha" not in warning for warning in generic_result.diagnostics()["warnings"]
@@ -193,8 +199,8 @@ def run() -> dict[str, int | bool]:
     assert _exact(nonsymmetric.signed_determinant) == (-2, 1)
     assert _exact(nonsymmetric.value) == (2, 1)
 
-    # A certified index promotes Q_Gamma to analytic Sha.  An unknown index
-    # remains explicit and never triggers integer recognition or rounding.
+    # A typed external binding records an index claim but does not prove it.
+    # Unknown and external indices never trigger analytic-Sha promotion.
     _expect(BSDSubgroupIndexUnknownError, rank_two.analytic_sha)
     index_certificate = SubgroupIndexCertificate.bind(
         rank_two.input,
@@ -207,10 +213,11 @@ def run() -> dict[str, int | bool]:
         3,
         certificate=index_certificate,
     )
-    assert _exact(indexed.analytic_sha()) == (36, 1)
-    assert rank_zero.input.subgroup_status == "full_mordell_weil"
-    assert rank_zero.input.subgroup_index.status == "certified"
-    assert rank_zero.input.subgroup_index.value == 1
+    assert indexed.input.subgroup_index.status == "external_unverified"
+    _expect(BSDSubgroupIndexUnknownError, indexed.analytic_sha)
+    assert rank_zero.input.subgroup_status == "full_rank_finite_index"
+    assert rank_zero.input.subgroup_index.status == "unknown"
+    assert rank_zero.input.subgroup_index.value == 0
 
     # Certificates are typed records bound to the exact object, subgroup
     # basis, and regulator.  A certificate made for another basis cannot be
@@ -234,6 +241,37 @@ def run() -> dict[str, int | bool]:
         BSDValidationError,
         lambda: SubgroupIndexData.certified(3, {"method": "untyped"}),  # type: ignore[arg-type]
     )
+    _expect(
+        BSDValidationError,
+        lambda: SubgroupIndexData.certified(3, index_certificate),
+    )
+
+    # A hash-bound external claim remains unverified even when it says 999;
+    # it can never promote Q_Gamma to analytic Sha.
+    absurd_certificate = SubgroupIndexCertificate.bind(
+        rank_two.input,
+        certified_index=999,
+        method="external-claim",
+        verifier="not-replayed",
+        evidence={"claim": "trust me"},
+    )
+    absurd = rank_two.with_subgroup_index(999, certificate=absurd_certificate)
+    assert absurd.input.subgroup_index.status == "external_unverified"
+    _expect(BSDSubgroupIndexUnknownError, absurd.analytic_sha)
+
+    # Authentication covers method, verifier, and evidence as well as the
+    # object/basis/regulator hashes.
+    for field_name, replacement in (
+        ("method", "tampered-method"),
+        ("verifier", "tampered-verifier"),
+        ("evidence", {"claim": "tampered"}),
+    ):
+        tampered_certificate = index_certificate.to_dict()
+        tampered_certificate[field_name] = replacement
+        _expect(
+            BSDValidationError,
+            lambda: _parse_index_certificate_record(tampered_certificate),
+        )
 
     # Tamagawa assembly is atomic.  Missing a known bad prime and explicitly
     # incomplete global reduction both prevent construction of a quotient.
@@ -481,6 +519,10 @@ def run() -> dict[str, int | bool]:
         )
     )
     assert fully_certified.rigorous
+    assert fully_certified.input.subgroup_status == "full_mordell_weil"
+    assert fully_certified.input.subgroup_index.status == "certified"
+    assert fully_certified.input.subgroup_index.value == 1
+    assert _exact(fully_certified.analytic_sha()) == (6, 1)
 
     certified_interval_leading = LeadingTermData.supplied(
         0,

@@ -18,7 +18,8 @@ L^(r)(A, 1) / r! * #A(Q)_tors * #Adual(Q)_tors
 For a principally polarized Jacobian and a full-rank subgroup `Gamma`, this is
 named `sha_over_index_squared`: BSD predicts that it equals
 `#Sha(J) / [J(Q)/torsion : Gamma]^2`.  It is promoted to `analytic_sha` only
-when that index is accompanied by a certificate.
+when that index is accompanied by a replayed mathematical certificate.  A
+hash-bound external claim is preserved but remains explicitly unverified.
 """
 
 from __future__ import annotations
@@ -1514,8 +1515,9 @@ def _subgroup_binding_digests(
 
 @dataclass(frozen=True)
 class SubgroupIndexCertificate:
-    """Typed binding of an index verification to object, basis, and regulator."""
+    """Authenticated binding, distinct from mathematical index verification."""
 
+    verification_status: str
     method: str
     verifier: str
     certified_index: int
@@ -1523,8 +1525,14 @@ class SubgroupIndexCertificate:
     basis_sha256: str
     regulator_sha256: str
     evidence: Mapping[str, Any]
+    authentication_sha256: str
 
     def __post_init__(self) -> None:
+        if self.verification_status not in (
+            "deduced_from_proved_rank_zero",
+            "external_unverified",
+        ):
+            raise BSDValidationError("unknown index-certificate verification status")
         object.__setattr__(
             self, "method", _require_string(self.method, "index method", nonempty=True)
         )
@@ -1548,8 +1556,69 @@ class SubgroupIndexCertificate:
                 character not in "0123456789abcdef" for character in digest
             ):
                 raise BSDValidationError(field_name + " must be a lowercase SHA-256")
-        object.__setattr__(
-            self, "evidence", _json_safe(self.evidence, "index evidence")
+        checked_evidence = _json_safe(self.evidence, "index evidence")
+        object.__setattr__(self, "evidence", checked_evidence)
+        authentication = _require_string(
+            self.authentication_sha256,
+            "index-certificate authentication_sha256",
+            nonempty=True,
+        )
+        if len(authentication) != 64 or any(
+            character not in "0123456789abcdef" for character in authentication
+        ):
+            raise BSDValidationError(
+                "index-certificate authentication_sha256 must be a lowercase SHA-256"
+            )
+        if authentication != _record_sha256(self._authenticated_fields()):
+            raise BSDValidationError(
+                "subgroup-index certificate metadata failed authentication"
+            )
+
+    def _authenticated_fields(self) -> dict[str, Any]:
+        return {
+            "verification_status": self.verification_status,
+            "method": self.method,
+            "verifier": self.verifier,
+            "certified_index": str(self.certified_index),
+            "object_sha256": self.object_sha256,
+            "basis_sha256": self.basis_sha256,
+            "regulator_sha256": self.regulator_sha256,
+            "evidence": dict(self.evidence),
+        }
+
+    @classmethod
+    def _create(
+        cls,
+        *,
+        verification_status: str,
+        method: str,
+        verifier: str,
+        certified_index: int,
+        object_sha256: str,
+        basis_sha256: str,
+        regulator_sha256: str,
+        evidence: Mapping[str, Any],
+    ) -> SubgroupIndexCertificate:
+        authenticated = {
+            "verification_status": verification_status,
+            "method": method,
+            "verifier": verifier,
+            "certified_index": str(certified_index),
+            "object_sha256": object_sha256,
+            "basis_sha256": basis_sha256,
+            "regulator_sha256": regulator_sha256,
+            "evidence": _json_safe(evidence, "index evidence"),
+        }
+        return cls(
+            verification_status,
+            method,
+            verifier,
+            certified_index,
+            object_sha256,
+            basis_sha256,
+            regulator_sha256,
+            evidence,
+            _record_sha256(authenticated),
         )
 
     @classmethod
@@ -1583,14 +1652,78 @@ class SubgroupIndexCertificate:
             subgroup_basis=subgroup_basis,
             regulator=regulator,
         )
-        return cls(
-            method,
-            verifier,
-            _require_integer(certified_index, "certified subgroup index", minimum=1),
-            object_digest,
-            basis_digest,
-            regulator_digest,
-            evidence,
+        return cls._create(
+            verification_status="external_unverified",
+            method=method,
+            verifier=verifier,
+            certified_index=_require_integer(
+                certified_index, "certified subgroup index", minimum=1
+            ),
+            object_sha256=object_digest,
+            basis_sha256=basis_digest,
+            regulator_sha256=regulator_digest,
+            evidence=evidence,
+        )
+
+    @classmethod
+    def deduced_from_proved_rank_zero(
+        cls,
+        arithmetic_input: BSDArithmeticInput,
+    ) -> SubgroupIndexCertificate:
+        """Deduce free-part index one from a proved algebraic rank of zero."""
+        return cls.deduced_rank_zero_components(
+            object_kind=arithmetic_input.object_kind,
+            model_status=arithmetic_input.model_status,
+            curve_model=arithmetic_input.curve_model,
+            subgroup_status=arithmetic_input.subgroup_status,
+            basis_status=arithmetic_input.basis_status,
+            subgroup_basis=arithmetic_input.subgroup_basis,
+            regulator=arithmetic_input.regulator,
+            algebraic_rank=arithmetic_input.algebraic_rank,
+        )
+
+    @classmethod
+    def deduced_rank_zero_components(
+        cls,
+        *,
+        object_kind: str,
+        model_status: str,
+        curve_model: Mapping[str, Any],
+        subgroup_status: str,
+        basis_status: str,
+        subgroup_basis: Sequence[Any],
+        regulator: RegulatorData,
+        algebraic_rank: RankEvidence,
+    ) -> SubgroupIndexCertificate:
+        algebraic = algebraic_rank
+        if (
+            algebraic.status != "proved"
+            or algebraic.value != 0
+            or algebraic.provenance.status not in {"certified", "proved"}
+            or subgroup_status != "full_mordell_weil"
+        ):
+            raise BSDValidationError(
+                "rank-zero index deduction requires proved algebraic rank zero"
+            )
+        object_digest, basis_digest, regulator_digest = _subgroup_binding_digests(
+            object_kind=object_kind,
+            model_status=model_status,
+            curve_model=curve_model,
+            rank=0,
+            subgroup_status=subgroup_status,
+            basis_status=basis_status,
+            subgroup_basis=subgroup_basis,
+            regulator=regulator,
+        )
+        return cls._create(
+            verification_status="deduced_from_proved_rank_zero",
+            method="rank-zero-free-part-index",
+            verifier="sagejs.bsd.rank-zero-index-v1",
+            certified_index=1,
+            object_sha256=object_digest,
+            basis_sha256=basis_digest,
+            regulator_sha256=regulator_digest,
+            evidence={"algebraic_rank": algebraic.to_dict()},
         )
 
     @classmethod
@@ -1637,17 +1770,34 @@ class SubgroupIndexCertificate:
             raise BSDValidationError(
                 "subgroup-index certificate is bound to another object, basis, or regulator"
             )
+        if self.verification_status == "deduced_from_proved_rank_zero":
+            algebraic = arithmetic_input.algebraic_rank
+            if (
+                self.certified_index != 1
+                or algebraic.status != "proved"
+                or algebraic.value != 0
+                or algebraic.provenance.status not in {"certified", "proved"}
+                or self.method != "rank-zero-free-part-index"
+                or self.verifier != "sagejs.bsd.rank-zero-index-v1"
+                or dict(self.evidence)
+                != _json_safe(
+                    {"algebraic_rank": algebraic.to_dict()},
+                    "rank-zero index evidence",
+                )
+            ):
+                raise BSDValidationError(
+                    "rank-zero index certificate does not replay its proof"
+                )
+
+    @property
+    def mathematically_verified(self) -> bool:
+        return self.verification_status == "deduced_from_proved_rank_zero"
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema": SUBGROUP_INDEX_CERTIFICATE_SCHEMA,
-            "method": self.method,
-            "verifier": self.verifier,
-            "certified_index": str(self.certified_index),
-            "object_sha256": self.object_sha256,
-            "basis_sha256": self.basis_sha256,
-            "regulator_sha256": self.regulator_sha256,
-            "evidence": dict(self.evidence),
+            **self._authenticated_fields(),
+            "authentication_sha256": self.authentication_sha256,
         }
 
     @classmethod
@@ -1655,6 +1805,7 @@ class SubgroupIndexCertificate:
         if value.get("schema") != SUBGROUP_INDEX_CERTIFICATE_SCHEMA:
             raise BSDValidationError("unknown subgroup-index certificate schema")
         return cls(
+            _require_string(value["verification_status"], "index verification status"),
             _require_string(value["method"], "index method", nonempty=True),
             _require_string(value["verifier"], "index verifier", nonempty=True),
             _integer_from_record(
@@ -1666,12 +1817,17 @@ class SubgroupIndexCertificate:
                 value["regulator_sha256"], "regulator_sha256", nonempty=True
             ),
             value["evidence"],
+            _require_string(
+                value["authentication_sha256"],
+                "index-certificate authentication_sha256",
+                nonempty=True,
+            ),
         )
 
 
 @dataclass(frozen=True)
 class SubgroupIndexData:
-    """An explicit unknown index or a certified positive subgroup index."""
+    """An unknown, externally bound, or mathematically verified index."""
 
     status: str
     value: int
@@ -1679,7 +1835,7 @@ class SubgroupIndexData:
     provenance: Provenance
 
     def __post_init__(self) -> None:
-        if self.status not in ("unknown", "certified"):
+        if self.status not in ("unknown", "external_unverified", "certified"):
             raise BSDValidationError("unknown subgroup-index status")
         minimum = 0 if self.status == "unknown" else 1
         checked = _require_integer(self.value, "subgroup index", minimum=minimum)
@@ -1698,6 +1854,22 @@ class SubgroupIndexData:
         ):
             raise BSDValidationError(
                 "the typed certificate does not authenticate this subgroup index"
+            )
+        if (
+            self.status == "certified"
+            and isinstance(self.certificate, SubgroupIndexCertificate)
+            and not self.certificate.mathematically_verified
+        ):
+            raise BSDValidationError(
+                "a hash-bound external index is not a mathematical certificate"
+            )
+        if self.status == "external_unverified" and (
+            not isinstance(self.certificate, SubgroupIndexCertificate)
+            or self.certificate.mathematically_verified
+            or self.certificate.certified_index != checked
+        ):
+            raise BSDValidationError(
+                "an externally bound index needs a matching unverified certificate"
             )
         if self.status == "unknown" and self.certificate is not None:
             raise BSDValidationError(
@@ -1726,9 +1898,34 @@ class SubgroupIndexData:
             "certified",
             _require_integer(value, "subgroup index", minimum=1),
             certificate,
-            Provenance("certified", "supplied-index-certificate")
+            Provenance("certified", "replayed-index-certificate")
             if provenance is None
             else provenance,
+        )
+
+    @classmethod
+    def from_certificate(
+        cls,
+        value: Any,
+        certificate: SubgroupIndexCertificate,
+        *,
+        provenance: Provenance | None = None,
+    ) -> SubgroupIndexData:
+        status = (
+            "certified"
+            if certificate.mathematically_verified
+            else "external_unverified"
+        )
+        source = (
+            Provenance("certified", "replayed-index-certificate")
+            if certificate.mathematically_verified
+            else Provenance("supplied", "external-index-binding")
+        )
+        return cls(
+            status,
+            _require_integer(value, "subgroup index", minimum=1),
+            certificate,
+            source if provenance is None else provenance,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -1876,16 +2073,15 @@ class BSDArithmeticInput:
             raise BSDRankMismatchError(
                 "the supplied subgroup basis size does not equal the rank"
             )
-        if self.subgroup_index.status == "certified":
+        if self.subgroup_index.certificate is not None:
             certificate = self.subgroup_index.certificate
-            if certificate is None:
-                raise BSDValidationError("certified subgroup index has no certificate")
             certificate.verify_binding(self)
         if self.subgroup_status == "full_mordell_weil" and (
-            self.subgroup_index.status != "certified" or self.subgroup_index.value != 1
+            self.subgroup_index.status not in {"certified", "external_unverified"}
+            or self.subgroup_index.value != 1
         ):
             raise BSDValidationError(
-                "a full Mordell--Weil basis must carry certified subgroup index 1"
+                "a full Mordell--Weil basis must carry explicit subgroup index 1"
             )
         if (
             self.object_kind == "abelian_variety"
@@ -1943,12 +2139,32 @@ class BSDArithmeticInput:
         basis_status: str,
         subgroup_basis: Sequence[Any],
         regulator: RegulatorData,
+        algebraic_rank: RankEvidence,
         provenance: Provenance,
     ) -> SubgroupIndexData:
         if supplied_index is not None:
             return supplied_index
         if subgroup_status != "full_mordell_weil":
             return SubgroupIndexData.unknown()
+        if (
+            rank == 0
+            and algebraic_rank.status == "proved"
+            and algebraic_rank.value == 0
+            and algebraic_rank.provenance.status in {"certified", "proved"}
+        ):
+            certificate = SubgroupIndexCertificate.deduced_rank_zero_components(
+                object_kind=object_kind,
+                model_status=model_status,
+                curve_model=curve_model,
+                subgroup_status=subgroup_status,
+                basis_status=basis_status,
+                subgroup_basis=subgroup_basis,
+                regulator=regulator,
+                algebraic_rank=algebraic_rank,
+            )
+            return SubgroupIndexData.from_certificate(
+                1, certificate, provenance=algebraic_rank.provenance
+            )
         certificate = SubgroupIndexCertificate.bind_components(
             object_kind=object_kind,
             model_status=model_status,
@@ -1960,10 +2176,10 @@ class BSDArithmeticInput:
             regulator=regulator,
             certified_index=1,
             method="declared-full-mordell-weil-basis",
-            verifier="supplied-arithmetic-data",
+            verifier="external-supplied-data",
             evidence={"index": "1", "reason": "basis declared full Mordell--Weil"},
         )
-        return SubgroupIndexData.certified(1, certificate, provenance=provenance)
+        return SubgroupIndexData.from_certificate(1, certificate, provenance=provenance)
 
     @staticmethod
     def _regulator(
@@ -2018,6 +2234,9 @@ class BSDArithmeticInput:
     ) -> BSDArithmeticInput:
         source = Provenance.supplied() if provenance is None else provenance
         rank = leading_term.rank.value
+        algebraic = (
+            RankEvidence.indeterminate() if algebraic_rank is None else algebraic_rank
+        )
         if subgroup_status != "full_mordell_weil":
             raise BSDValidationError(
                 "generic BSD input currently requires full A and Adual Mordell--Weil bases"
@@ -2057,6 +2276,7 @@ class BSDArithmeticInput:
             basis_status=basis_status,
             subgroup_basis=basis,
             regulator=regulator_data,
+            algebraic_rank=algebraic,
             provenance=source,
         )
         return cls(
@@ -2064,7 +2284,7 @@ class BSDArithmeticInput:
             model_status,
             model,
             leading_term,
-            RankEvidence.indeterminate() if algebraic_rank is None else algebraic_rank,
+            algebraic,
             period,
             regulator_data,
             TamagawaData.supplied(
@@ -2111,9 +2331,18 @@ class BSDArithmeticInput:
     ) -> BSDArithmeticInput:
         source = Provenance.supplied() if provenance is None else provenance
         rank = leading_term.rank.value
+        algebraic = (
+            RankEvidence.indeterminate() if algebraic_rank is None else algebraic_rank
+        )
         resolved_subgroup_status = (
             "full_mordell_weil"
-            if subgroup_status == "auto" and rank == 0
+            if (
+                subgroup_status == "auto"
+                and rank == 0
+                and algebraic.status == "proved"
+                and algebraic.value == 0
+                and algebraic.provenance.status in {"certified", "proved"}
+            )
             else (
                 "full_rank_finite_index"
                 if subgroup_status == "auto"
@@ -2155,6 +2384,7 @@ class BSDArithmeticInput:
             basis_status=basis_status,
             subgroup_basis=basis,
             regulator=regulator_data,
+            algebraic_rank=algebraic,
             provenance=source,
         )
         torsion = TorsionData(torsion_order, source)
@@ -2163,7 +2393,7 @@ class BSDArithmeticInput:
             model_status,
             model,
             leading_term,
-            RankEvidence.indeterminate() if algebraic_rank is None else algebraic_rank,
+            algebraic,
             period,
             regulator_data,
             TamagawaData.supplied(
@@ -2347,7 +2577,7 @@ class BSDAnalyticQuotient:
         index = self.input.subgroup_index
         if index.status != "certified":
             raise BSDSubgroupIndexUnknownError(
-                "analytic_sha requires a certified Mordell--Weil subgroup index"
+                "analytic_sha requires a replayed mathematical subgroup-index certificate"
             )
         return self._quotient.multiply(ArithmeticScalar.exact(index.value**2))
 
@@ -2358,7 +2588,9 @@ class BSDAnalyticQuotient:
         certificate: SubgroupIndexCertificate,
         provenance: Provenance | None = None,
     ) -> BSDAnalyticQuotient:
-        index = SubgroupIndexData.certified(value, certificate, provenance=provenance)
+        index = SubgroupIndexData.from_certificate(
+            value, certificate, provenance=provenance
+        )
         return BSDAnalyticQuotient(self.input.with_subgroup_index(index))
 
     @property
@@ -2396,11 +2628,16 @@ class BSDAnalyticQuotient:
             )
         if (
             self.input.object_kind == "hyperelliptic_jacobian"
-            and self.input.subgroup_index.status == "unknown"
+            and self.input.subgroup_index.status in {"unknown", "external_unverified"}
         ):
-            warnings.append(
-                "the quotient is #Sha divided by the unknown subgroup index squared"
-            )
+            if self.input.subgroup_index.status == "unknown":
+                warnings.append(
+                    "the quotient is #Sha divided by the unknown subgroup index squared"
+                )
+            else:
+                warnings.append(
+                    "the recorded subgroup index is only an external hash-bound claim"
+                )
         if self.input.tamagawa.coverage == "override":
             warnings.append("global Tamagawa completeness uses an explicit override")
         return {
