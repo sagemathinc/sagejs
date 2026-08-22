@@ -32,6 +32,7 @@ INCOMPLETE_RESOURCE_LIMIT = "incomplete-resource-limit"
 # deliberately conservative live optimization policy.
 MAX_DIRECT_CUBIC_RELATION_SEED_BOUND = 20
 MAX_DIRECT_CUBIC_RELATION_SEED_SIZE = 7
+MAX_UNCONDITIONAL_CUBIC_RELATION_SEED_SIZE = 10
 MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 
 _AUTHENTICATED_CLASS_UNIT_SATURATION_TOKEN = object()
@@ -3524,12 +3525,17 @@ class ClassUnitGroupEngine:
         if seed is None:
             return None
         try:
+            maximum_size = (
+                MAX_UNCONDITIONAL_CUBIC_RELATION_SEED_SIZE
+                if self.proof
+                else MAX_DIRECT_CUBIC_RELATION_SEED_SIZE
+            )
             if (
                 seed.plan.order is self.order
                 and not tuple(seed.plan.assumptions)
                 and "Minkowski" in str(seed.plan.theorem)
                 and int(seed.plan.bound) <= MAX_DIRECT_CUBIC_RELATION_SEED_BOUND
-                and len(seed.factor_base) <= MAX_DIRECT_CUBIC_RELATION_SEED_SIZE
+                and len(seed.factor_base) <= maximum_size
             ):
                 return seed
         except (AttributeError, TypeError, ValueError, ArithmeticError):

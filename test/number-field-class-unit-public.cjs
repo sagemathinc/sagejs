@@ -492,7 +492,8 @@ assert resources["relation_candidates"] == 0
 
 # LMFDB 3.1.4027.2 needs ten primes in the unconditional producer.  That
 # prefix is valid, but deliberately outside the live reuse policy: measured
-# authenticated replay costs more than rebuilding its smaller BDF base.
+# authenticated replay costs more than rebuilding its smaller BDF base for a
+# conditional request.
 L = NumberField(x**3 - x**2 + 7*x + 8, "b")
 assert L.class_number(proof=False) == 6
 large_artifact = L._bounded_cubic_class_number_artifact
@@ -502,6 +503,25 @@ large_resources = large_result.diagnostics["resources"]
 assert large_result.proof_status == "exact-relations-conditional-grh"
 assert large_resources["cubic_factor_base_seed_uses"] == 0
 assert large_resources["cubic_relation_seed_uses"] == 0
+
+# For proof=True, the same ten-prime Minkowski prefix is much cheaper than
+# discovering a conditional BDF presentation and then expressing every
+# Minkowski prime in it during a separate unconditional proof pass.
+P = NumberField(x**3 - x**2 + 7*x + 8, "c")
+assert P.class_number(proof=True) == 6
+proof_result = list(P._class_unit_engine_cache.values())[-1]
+proof_resources = proof_result.diagnostics["resources"]
+assert proof_result.proof_status == "exact-unconditional"
+assert proof_result.diagnostics["factor_base_bound"] == 17
+assert proof_result.diagnostics["factor_base_size"] == 10
+assert proof_result.diagnostics["unconditional_prime_records"] == ()
+assert proof_resources["cubic_factor_base_seed_uses"] == 1
+assert proof_resources["cubic_relation_seed_uses"] == 1
+assert proof_resources["cubic_relation_seed_relations"] == 11
+assert proof_resources["relation_attempts"] == 0
+assert proof_resources["relation_candidates"] == 0
+assert proof_result.saturation_record.complete
+assert proof_result.saturation_record.verify()
 print("cubic-relation-seed-policy-ok")
 `, 180_000);
   assert.equal(output, "cubic-relation-seed-policy-ok");
