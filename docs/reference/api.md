@@ -6899,9 +6899,11 @@ Construct a random dense matrix over `base`.
 The dimensions are `nrows` by `ncols`; omitting `ncols` constructs
 a square matrix. The common Sage keywords `density`, `x`, `y`, and
 `distribution='uniform'` are supported where meaningful. Full-density
-matrices over `QQ` use FLINT's two-bit rational distribution and are
-constructed directly in their owned FLINT resource. This intentionally
-differs from SageMath's bounded default rational distribution.
+matrices over `QQ` use FLINT's two-bit rational distribution. A backend
+with the random-resource constructor fills the owned FLINT resource
+directly; otherwise the same bounded nonzero rational domain is built
+through ordinary packed matrix ingress. This intentionally differs from
+SageMath's bounded default rational distribution.
 
 ### Examples
 
