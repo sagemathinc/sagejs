@@ -29,10 +29,12 @@ _nf_lcm = _nf._nf_lcm
 
 SERIALIZATION_SCHEMA = "sagejs.number-fields.ideal.v1"
 MAX_PACKED_IDEAL_PRODUCT_DEGREE = 16
+MAX_PACKED_ELEMENT_VALUATION_LATTICES = 4096
 MAX_MULTIPLICATION_TENSOR_CACHE_ENTRIES = 32
 
 _multiplication_tensor_cache: list[tuple[Any, tuple[int, ...], int]] = []
 _ideal_product_kernel_override: Any = None
+_element_valuations_kernel_override: Any = None
 
 
 def _same_order(left: Any, right: Any) -> None:
@@ -99,7 +101,15 @@ def _field_multiplication_tensor(field: Any) -> tuple[tuple[int, ...], int]:
     return answer
 
 
-def _packed_ideal_basis(ideal: Any) -> tuple[list[int], int]:
+def _packed_ideal_basis(ideal: Any) -> tuple[tuple[int, ...], int]:
+    try:
+        cached = ideal._packed_basis_cache
+    except AttributeError:
+        # A source checkout can temporarily reuse a runtime bootstrap built
+        # before this immutable cache slot was introduced.
+        cached = runtime.undefined
+    if cached is not runtime.undefined:
+        return cached
     denominator = runtime.bigint(1)
     for row in ideal._basis_rows:
         for value in row:
@@ -111,7 +121,121 @@ def _packed_ideal_basis(ideal: Any) -> tuple[list[int], int]:
             if scaled._denominator != 1:
                 raise ArithmeticError("failed to clear an ideal-basis denominator")
             numerators.append(int(scaled._numerator))
+    answer = (tuple(numerators), int(denominator))
+    ideal._packed_basis_cache = answer
+    return answer
+
+
+def _packed_element_coordinates(element: Any, degree: int) -> tuple[list[int], int]:
+    coordinates = _nf_coordinates(element, degree)
+    denominator = runtime.bigint(1)
+    for value in coordinates:
+        denominator = _nf_lcm(denominator, value._denominator)
+    numerators = []
+    for value in coordinates:
+        scaled = value * denominator
+        if scaled._denominator != 1:
+            raise ArithmeticError("failed to clear an element denominator")
+        numerators.append(int(scaled._numerator))
     return numerators, int(denominator)
+
+
+def _packed_membership_word_capacity(
+    basis_values: list[tuple[tuple[int, ...], int]],
+    vector: list[int],
+    degree: int,
+) -> int:
+    """Bound every exact triangular-membership accumulator."""
+    maximum = 1
+    for numerator, denominator in basis_values:
+        bounds: list[int] = []
+        for coordinate in range(degree):
+            value = abs(denominator * vector[coordinate])
+            for source in range(coordinate):
+                value += bounds[source] * abs(numerator[source * degree + coordinate])
+            diagonal = abs(numerator[coordinate * degree + coordinate])
+            if diagonal == 0:
+                raise ArithmeticError("a nonzero ideal has a singular basis")
+            maximum = max(maximum, value)
+            bounds.append((value + diagonal - 1) // diagonal)
+            maximum = max(maximum, bounds[-1])
+    return max(16, (maximum.bit_length() + 63) // 64 + 1)
+
+
+def _packed_integral_element_valuations(
+    element: Any,
+    primes: tuple[Any, ...],
+    maxima: tuple[int, ...],
+) -> tuple[int, ...] | None:
+    """Return exact integral valuations through one packed membership batch."""
+    degree = int(element.parent().degree())
+    lattice_count = sum(maxima)
+    if (
+        degree < 1
+        or degree > MAX_PACKED_IDEAL_PRODUCT_DEGREE
+        or lattice_count == 0
+        or lattice_count > MAX_PACKED_ELEMENT_VALUATION_LATTICES
+    ):
+        return None
+    if _element_valuations_kernel_override is False:
+        return None
+    kernel_module = __import__(
+        "sagejs.number_fields.bl_composite_kernel", fromlist=["bl_composite_kernel"]
+    )
+    kernel = (
+        _element_valuations_kernel_override
+        if callable(_element_valuations_kernel_override)
+        else getattr(kernel_module, "packed_lattice_memberships_in_place", None)
+    )
+    if not callable(kernel):
+        return None
+    try:
+        packed_bases: list[tuple[tuple[int, ...], int]] = []
+        for prime_ideal, maximum in zip(primes, maxima, strict=True):
+            powers = prime_ideal._valuation_power_cache
+            while len(powers) < maximum:
+                powers.append(powers[-1] * prime_ideal)
+            for index in range(maximum):
+                packed_bases.append(_packed_ideal_basis(powers[index]))
+        vector, vector_denominator = _packed_element_coordinates(element, degree)
+        numerators = [value for basis, _denominator in packed_bases for value in basis]
+        denominators = [denominator for _basis, denominator in packed_bases]
+        word_capacity = _packed_membership_word_capacity(packed_bases, vector, degree)
+        output = kernel_integer_zeros(kernel, lattice_count, 1)
+        if not kernel(
+            output,
+            kernel_integer_zeros(kernel, degree, word_capacity),
+            kernel_integer_buffer(kernel, numerators),
+            kernel_integer_buffer(kernel, denominators),
+            kernel_integer_buffer(kernel, vector),
+            vector_denominator,
+            degree,
+            lattice_count,
+        ):
+            return None
+        memberships = tuple(int(value) for value in integer_buffer_values(output))
+        if len(memberships) != lattice_count or any(
+            value not in (0, 1) for value in memberships
+        ):
+            return None
+        answer: list[int] = []
+        cursor = 0
+        for maximum in maxima:
+            values = memberships[cursor : cursor + maximum]
+            cursor += maximum
+            valuation = 0
+            seen_failure = False
+            for member in values:
+                if member:
+                    if seen_failure:
+                        return None
+                    valuation += 1
+                else:
+                    seen_failure = True
+            answer.append(valuation)
+        return tuple(answer)
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
 
 
 def _packed_ideal_product(left: Any, right: Any) -> Any:
@@ -377,7 +501,7 @@ def element_valuations(value: Any, prime_ideals: Any) -> tuple[int, ...]:
         if norm._denominator != 1:
             raise ArithmeticError("an algebraic integer has nonintegral norm")
         norm_valuations: dict[int, int] = {}
-        answer: list[int] = []
+        maxima: list[int] = []
         for prime_ideal in primes:
             rational_prime = int(prime_ideal.rational_prime())
             norm_valuation = norm_valuations.get(rational_prime)
@@ -389,7 +513,12 @@ def element_valuations(value: Any, prime_ideals: Any) -> tuple[int, ...]:
             residue_degree = int(prime_ideal.residue_degree())
             if residue_degree < 1:
                 raise ArithmeticError("a prime ideal has invalid residue degree")
-            maximum = norm_valuation // residue_degree
+            maxima.append(norm_valuation // residue_degree)
+        packed = _packed_integral_element_valuations(element, primes, tuple(maxima))
+        if packed is not None:
+            return packed
+        answer: list[int] = []
+        for prime_ideal, maximum in zip(primes, maxima, strict=True):
             valuation = 0
             powers = prime_ideal._valuation_power_cache
             while len(powers) < maximum:

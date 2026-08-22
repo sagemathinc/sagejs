@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 38,
-    "production_kernels": 31,
-    "compiled_functions": 233,
+    "registered_kernels": 39,
+    "production_kernels": 32,
+    "compiled_functions": 234,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -173,6 +173,15 @@
     },
     {
       "id": "number-field-discriminant-prefactor-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
+      "fallback_reasons": []
+    },
+    {
+      "id": "number-field-element-valuations-production",
       "production": true,
       "status": "available",
       "compiled_functions": 1,

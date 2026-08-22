@@ -748,6 +748,86 @@ def packed_known_overorder_contains_vectors_in_place(
     return valid
 
 
+@native
+def packed_lattice_memberships_in_place(
+    output: IntegerBuffer,
+    workspace: IntegerBuffer,
+    numerators: IntegerBuffer,
+    basis_denominators: IntegerBuffer,
+    vector: IntegerBuffer,
+    vector_denominator: int,
+    degree: uint64,
+    basis_count: uint64,
+) -> bool:
+    """Test one rational vector against several upper-HNF lattices.
+
+    The `basis_count` numerator matrices are packed consecutively in
+    row-major order.  Basis and vector denominators are positive.  On a valid
+    fixed-shape input, `output[i]` is one exactly when the vector belongs to
+    lattice `i`; the boolean return value reports only whether the packed
+    computation was applicable.  This distinction lets callers retain a
+    readable exact fallback for malformed shapes or fixed-width overflow.
+    """
+    maximum_degree: uint64 = 16
+    maximum_bases: uint64 = 4096
+    square = degree * degree
+    valid = (
+        degree > 0
+        and degree <= maximum_degree
+        and basis_count > 0
+        and basis_count <= maximum_bases
+        and vector_denominator > 0
+        and len(output) == basis_count
+        and len(workspace) == degree
+        and len(numerators) == basis_count * square
+        and len(basis_denominators) == basis_count
+        and len(vector) == degree
+    )
+    basis_index = 0
+    while valid and basis_index < basis_count:
+        if basis_denominators[basis_index] <= 0:
+            valid = False
+        row = 0
+        while valid and row < degree:
+            column = 0
+            while column < row:
+                if numerators[basis_index * square + row * degree + column] != 0:
+                    valid = False
+                column += 1
+            if numerators[basis_index * square + row * degree + row] == 0:
+                valid = False
+            row += 1
+        basis_index += 1
+    basis_index = 0
+    while valid and basis_index < basis_count:
+        member = True
+        coordinate = 0
+        offset = basis_index * square
+        while member and coordinate < degree:
+            value = basis_denominators[basis_index] * vector[coordinate]
+            source = 0
+            while source < coordinate:
+                value -= (
+                    workspace[source]
+                    * numerators[offset + source * degree + coordinate]
+                )
+                source += 1
+            diagonal = numerators[offset + coordinate * degree + coordinate]
+            if value % diagonal != 0:
+                member = False
+            else:
+                workspace[coordinate] = value // diagonal
+                if workspace[coordinate] % vector_denominator != 0:
+                    member = False
+            coordinate += 1
+        if member:
+            output[basis_index] = 1
+        else:
+            output[basis_index] = 0
+        basis_index += 1
+    return valid
+
+
 def _packed_row_hnf_in_place(
     output: IntegerBuffer,
     source: IntegerBuffer,
@@ -1099,6 +1179,7 @@ def packed_composite_dedekind_basis_in_place(
 __all__ = [
     "packed_composite_dedekind_basis_in_place",
     "packed_composite_dedekind_enlargement_in_place",
+    "packed_lattice_memberships_in_place",
     "packed_known_overorder_contains_vectors_in_place",
     "packed_ideal_product_hnf_in_place",
     "packed_order_contains_vector_in_place",

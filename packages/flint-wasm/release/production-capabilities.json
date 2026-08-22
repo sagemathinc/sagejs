@@ -394,6 +394,7 @@
         "kernel:genus3-weil-candidate-production",
         "kernel:number-field-composite-analysis-production",
         "kernel:number-field-discriminant-prefactor-production",
+        "kernel:number-field-element-valuations-production",
         "kernel:number-field-om-proof-production",
         "kernel:number-field-zeta-coefficients-production",
         "kernel:packed-combinatorial-integer-rational-production",

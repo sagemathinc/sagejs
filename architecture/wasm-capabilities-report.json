@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "6ae37acb39ec3d5c7a8470991d6bcc292445d7e0baa173d9e0a9fffe823656d9",
+  "source_sha256": "713dbacb08a21de3c169b1d141d0a63f041451e67d8faf7318d913e1657229c5",
   "counts": {
-    "total": 958,
+    "total": 959,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
       "napi-export": 317,
-      "production-kernel": 38,
+      "production-kernel": 39,
       "runtime-intrinsic": 137,
       "specialist-capability": 25
     },
     "by_disposition": {
-      "compiled-source": 38,
+      "compiled-source": 39,
       "desktop-only": 14,
       "generated-wasm": 302,
       "portable-fallback": 560,
       "shared-core": 44
     },
     "by_status": {
-      "available": 516,
+      "available": 517,
       "desktop-only": 14,
       "fallback": 428
     }
@@ -5852,6 +5852,18 @@
       "wasm_module": "kernel-gmp",
       "public_consumers": [
         "number-field-discriminant-prefactor"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:number-field-element-valuations-production",
+      "family": "number-field-element-valuations",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "number-field-class-group-relations"
       ],
       "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },

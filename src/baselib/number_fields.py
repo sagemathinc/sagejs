@@ -1451,6 +1451,10 @@ class NumberFieldIdeal:
         # collection.  The canonical lattice never changes, so its inverse
         # coordinate matrix is safe to compute lazily once per ideal.
         self._membership_inverse_cache = runtime.undefined
+        # Packed exact kernels consume the same immutable canonical HNF rows.
+        # Cache their common-denominator integer representation lazily so
+        # relation candidates do not repack every factor-base power.
+        self._packed_basis_cache = runtime.undefined
         if len(self._basis_rows) not in [0, self._field.degree()]:
             raise ValueError("a nonzero number-field ideal must have full rank")
         if len(self._basis_rows) and _check_closed:

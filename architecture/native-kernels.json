@@ -489,6 +489,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "number-field-element-valuations-production",
+      "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+      "functions": ["packed_lattice_memberships_in_place"],
+      "semantic_domain": "batched exact triangular membership of one algebraic element in the prime-power HNF lattices that determine its factor-base valuations",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "readable-exact-controls"],
+      "benchmark": "bench:number-field-element-valuations",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "number-field-discriminant-prefactor-production",
       "source": "src/lib/sagejs/number_fields/discriminant_prefactor_kernel.py",
       "functions": ["packed_composite_polynomial_split_hint_in_place"],
