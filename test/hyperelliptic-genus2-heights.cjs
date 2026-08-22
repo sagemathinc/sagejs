@@ -406,6 +406,12 @@ J = HyperellipticJacobian(HeightTestCurve(x**5 - x + 1))
 P = J([x, 1])
 Q = J([x - 1, 1])
 context = HeightContext(J)
+context_immutable = False
+try:
+    context.max_exact_coordinate_bits = 999999999
+except AttributeError:
+    context_immutable = True
+assert context_immutable and context.max_exact_coordinate_bits == 100000
 
 K = kummer_coordinates(P)
 coordinates_before = K.coordinates()
@@ -469,11 +475,11 @@ try:
 except Genus2HeightResourceLimitError as error:
     limited = error.diagnostics["max_exact_coordinate_bits"] == 1024
 assert limited
-[height_verified, pair_verified, reg_verified, limited]
+[height_verified, pair_verified, reg_verified, limited, context_immutable]
 `,
       { timeout: 120_000 },
     );
-    assert.equal(result.repr, "[True, True, True, True]");
+    assert.equal(result.repr, "[True, True, True, True, True]");
   } finally {
     await session.close();
   }
