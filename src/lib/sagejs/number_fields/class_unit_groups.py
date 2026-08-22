@@ -1559,9 +1559,11 @@ class ClassUnitGroupEngine:
             )
             return ideal, random_row, "seeded-random-product"
         source_row = tuple(row)
-        ideal = self.components.relations.reconstruct_factor_base_ideal(
-            self.order, factor_base, source_row
-        )
+        # The collector immediately authenticates the same source row during
+        # witness admission.  Construct it through the collector-owned exact
+        # cache so that admission observes an identity-preserving row hit
+        # instead of rebuilding the prime powers and ideal product.
+        ideal = search.collector.reconstruct_factor_base_ideal(source_row)
         return ideal, source_row, strategy
 
     def _search_relation_ideal(
