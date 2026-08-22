@@ -29,13 +29,17 @@ under BSD.  `analytic_sha()` is available only after a replayable subgroup
 index proof is attached.  Merely binding an externally supplied index to the
 record is useful provenance, but is deliberately not a mathematical proof.
 
+Every fence marked `sage test` in this guide is executed by the documentation
+test suite.  The longer genus-3 height oracle is marked separately because its
+deliberately conservative period/theta refinement takes several minutes.
+
 ## A supplied-data quotient
 
 The supplied-data constructor is useful even when periods, Mordell--Weil
 data, or local arithmetic came from another program.  It records every
 normalization and remains portable ordinary Python:
 
-```python
+```sage test
 from sagejs.hyperelliptic_curves.bsd import (
     BSDAnalyticQuotient,
     BSDArithmeticInput,
@@ -55,7 +59,8 @@ leading = LeadingTermData.supplied(2, 12, +1, provenance=source)
 data = BSDArithmeticInput.supplied_jacobian(
     leading_term=leading,
     algebraic_rank=RankEvidence("supplied", 2, source),
-    real_period="2.0",
+    # Exact supplied factors use integers or rationals, not decimal strings.
+    real_period=2,
     real_component_factor=1,
     period_differential_basis="supplied Neron top differential",
     real_period_is_total=True,
@@ -79,6 +84,8 @@ print(B.regulator())
 print(B.tamagawa_product())
 print(B.sha_over_index_squared())
 print(B.diagnostics())
+assert B.sha_over_index_squared().to_dict()["numerator"] == "1"
+assert B.sha_over_index_squared().to_dict()["denominator"] == "4"
 ```
 
 Positive-rank records require a reproducible basis record of the same size as
@@ -98,12 +105,15 @@ numerical result.
 The reusable `LFunctionInit` object computes the central value and derivatives
 once and caches the central-weight plan:
 
-```python
+```sage test
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-C = HyperellipticCurve(x**5 - x + 1)
+# This generalized model has certified global data at every bad prime.
+# The tempting classical model y^2=x^5-x+1 is useful for heights below, but
+# its bad reduction at 2 is intentionally outside the current global engine.
+C_lseries = HyperellipticCurve(x, x**3 - x + 1)
 
-L = C.lseries().init(prec=160, max_order=4)
+L = C_lseries.lseries().init(prec=160, max_order=4)
 rank, derivative = L.leading_derivative()
 print(rank, derivative)
 
@@ -111,6 +121,7 @@ leading = LeadingTermData.from_lfunction_init(L)
 print(leading.rank.status)       # probable
 print(leading.taylor_coefficient())
 print(L.diagnostics())
+assert rank == 0 and leading.rank.status == "probable"
 ```
 
 `from_lfunction_init` requires a stabilized, isolated derivative and records
@@ -124,16 +135,16 @@ returns one `BSDPipelineReport`.  A complete report proxies the usual quotient
 methods; an incomplete report is a checkpoint containing the factors that did
 succeed and makes no BSD quotient claim:
 
-```python
+```sage test
 rank_source = Provenance.supplied(
     "independent Mordell--Weil computation",
     reference="research notebook, cell 27",
 )
 
-report = C.bsd_analytic_quotient(
+report = C_lseries.bsd_analytic_quotient(
     subgroup=[],
     rank=RankEvidence("supplied", 0, rank_source),
-    prec=160,
+    prec=80,
     overrides={
         # Sage.js computes the model period.  This supplied index is the
         # separately checked change to the global Neron differential lattice.
@@ -153,6 +164,8 @@ else:
     print(report.missing_factors())
     for name in report.missing_factors():
         print(name, report.factor(name).reason)
+
+assert report.complete or report.to_dict()["claim"] == "no_bsd_quotient_claimed"
 ```
 
 The automatically computed quotient is atomic.  An unsupported Tamagawa
@@ -179,37 +192,41 @@ x^i dx/(2y+h),  0 <= i < g.
 It returns the full period matrix, normalized Siegel matrix, exact real-locus
 topology, component factor, and refinement diagnostics:
 
-```python
-P = C.real_period(prec=128)
-print(P.model_period())
-print(P.period_matrix())
-print(P.siegel_matrix())
-print(P.real_components())
-print(P.verify())
+```sage test
+C_period = HyperellipticCurve(x**5 - x + 1)
+period = C_period.real_period(prec=64)
+print(period.model_period())
+print(period.period_matrix())
+print(period.siegel_matrix())
+print(period.real_components())
+print(period.verify())
+assert period.verify()["verified"] and not period.rigorous
 ```
 
 The model period is not automatically a BSD period.  A Neron-normalized
 period is returned only when the differential determinant or lattice index is
 supplied with provenance:
 
-```python
-PN = C.real_period(
-    prec=128,
+```sage test
+period_neron = C_period.real_period(
+    prec=64,
     normalization="neron",
     neron_lattice_index=2,
     provenance={"source": "independent integral-model computation"},
 )
-print(PN.neron_period())
+print(period_neron.neron_period())
+assert 2 * period_neron.neron_period() == period.model_period()
 ```
 
 Odd-degree models also support rational points and split rational Mumford
 support in the Abel--Jacobi map:
 
-```python
-Q = C([0, 1])
-z = C.abel_jacobi(Q, period_result=P, prec=128)
+```sage test
+Q_period = C_period([0, 1])
+z = C_period.abel_jacobi(Q_period, period_result=period, prec=64)
 print(z.vector())
 print(z.diagnostics())
+assert z.verify()["verified"] and not z.rigorous
 ```
 
 These analytic objects are refinement-stable, not claimed Arb enclosures;
@@ -220,17 +237,19 @@ their records say `rigorous=False`.
 At a supported prime, Sage.js distinguishes the geometric component group
 from its Frobenius-fixed rational subgroup:
 
-```python
-for p in C.bad_primes():
-    local = C.tamagawa_data(p)
-    print(
-        p,
-        local.geometric_invariants,
-        local.rational_invariants,
-        local.tamagawa_number(),
-    )
-
-print(C.tamagawa_product())
+```sage test
+p = 5
+f_tamagawa = x * (x - p**2) * (x - 1) * (x - 2) * (x - 3)
+C_tamagawa = HyperellipticCurve(f_tamagawa)
+local = C_tamagawa.tamagawa_data(p)
+print(
+    p,
+    local.geometric_invariants,
+    local.rational_invariants,
+    local.tamagawa_number(),
+)
+print(C_tamagawa.tamagawa_product(primes=(p,)))
+assert local.curve_certified and local.tamagawa_number() == 4
 ```
 
 The exact initial envelope includes good reduction, the implemented genus-2
@@ -238,19 +257,22 @@ almost-good cases, and certified split semistable genus-2/3 cluster pictures
 at odd primes.  Unsupported wild, bad characteristic-two, nonsplit, or
 insufficient regular-model cases return a structured capability result.  The
 global product is atomic: one unsupported bad prime prevents a complete
-answer.
+answer.  The explicit `primes=(5,)` above computes the product for that
+demonstration prime; omit `primes` only when the complete bad-prime set is in
+the supported envelope.
 
 Deficiency is a separate local arithmetic question:
 
-```python
-for place in ["infinity"] + list(C.bad_primes()):
-    result = C.local_deficiency(place)
+```sage test
+for place in ["infinity"] + list(C_lseries.bad_primes()):
+    result = C_lseries.local_deficiency(place)
     print(place, result.status, result.decision)
 
-diagnostic = C.global_deficiency_diagnostic(
+diagnostic = C_lseries.global_deficiency_diagnostic(
     canonical_principal_polarization=True,
 )
 print(diagnostic.to_dict())
+assert diagnostic.complete and diagnostic.sha_order_shape == "square_if_finite"
 ```
 
 The global diagnostic applies the Poonen--Stoll square/twice-square theorem
@@ -264,21 +286,23 @@ Several good reductions give a replayable upper bound.  Rational branch
 factorization gives the full rational 2-torsion, and supplied rational Mumford
 divisors are checked exactly:
 
-```python
-J = C.jacobian()
-upper = J.torsion_bound()
+```sage test
+C_torsion = HyperellipticCurve(x**5 - x + 1)
+J_torsion = C_torsion.jacobian()
+upper = J_torsion.torsion_bound()
 print(
     upper.upper_bound,
     [row["prime"] for row in upper.upper_bound_certificate["good_reductions"]],
 )
 
-two = J.rational_two_torsion()
+two = J_torsion.rational_two_torsion()
 print(two.invariants, two.generators)
 
-torsion = J.torsion_subgroup(two.generators)
+torsion = J_torsion.torsion_subgroup(two.generators)
 print(torsion.lower_bound, torsion.upper_bound, torsion.status)
 if torsion.exact:
     print(torsion.order())
+assert torsion.exact and torsion.order() == 1
 ```
 
 Failure to find an odd-torsion point never lowers the upper bound.
@@ -290,21 +314,22 @@ For an odd-degree integral genus-2 model in the certified classical envelope,
 the public divisor API computes Kummer canonical heights with explicit finite
 and archimedean correction diagnostics:
 
-```python
+```sage test
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-C = HyperellipticCurve(x**5 - x + 1)
-J = C.jacobian()
-P = J([x, 1])
-Q = J([x - 1, 1])
+C_height = HyperellipticCurve(x**5 - x + 1)
+J_height = C_height.jacobian()
+P_height = J_height([x, 1])
+Q_height = J_height([x - 1, 1])
 
-hP = P.canonical_height(precision=128)
-H = J.height_pairing([P, Q], precision=128)
-Reg = J.regulator([P, Q], precision=128)
+hP = P_height.canonical_height(precision=128)
+H = J_height.height_pairing([P_height, Q_height], precision=128)
+Reg = J_height.regulator([P_height, Q_height], precision=128)
 
 print(hP.ball, hP.rigorous)
 print(H.matrix)
 print(Reg.ball, Reg.status)
+assert hP.rigorous and H.rigorous and Reg.rigorous
 ```
 
 The convention is
@@ -325,16 +350,24 @@ intersection plan, and compatible period/theta data.  Missing component maps,
 bad reduction at `2`, nonsplit support, or unresolved theta data produce a
 structured capability error rather than an incomplete height.
 
-The Abel--Jacobi and theta refinement budgets are explicit.  A difficult
-supported divisor can be retried without changing the mathematics:
+The Abel--Jacobi and theta refinement budgets are explicit.  The following
+is the checked difficult oracle fixture.  It is genuinely executable, but is
+not part of the ordinary documentation test because it takes about six
+minutes on the development host:
 
-```python
-hP = P.canonical_height(
+```sage
+f3 = x**7 - 9*x**6 + 28*x**5 - 32*x**4 + x**3 + 17*x**2 - 6*x
+C3 = HyperellipticCurve(f3, 1)
+J3 = C3.jacobian()
+P3 = J3([x * (x - 1) * (x - 2), 0])
+hP3 = P3.canonical_height(
     moving_x=3,
     prec=64,
     abel_max_refinements=6,
     theta_radius=6,
 )
+print(hP3.value)
+# 2.1403441482740588613361202616675490537...
 ```
 
 The checked Magma V2.18-5 genus-3 oracle in
@@ -355,16 +388,19 @@ Saturation keeps distinct the following statements:
 - their free quotient is saturated at primes in `S`;
 - a separately proved global index bound makes this sufficient globally.
 
-```python
-S = J.saturate(
-    [P, Q],
-    primes=[2, 3, 5],
-    reduction_primes=[7, 11, 13],
+```sage test
+S_height = J_height.saturate(
+    [P_height],
+    primes=[2],
+    reduction_primes=[7],
+    use_height_pairing=False,
 )
-print(S.basis)
-print(S.prime_results)
-print(S.global_status)
-print(S.verify())
+print(S_height.basis)
+for result in S_height.prime_results:
+    print(result["prime"], result["status"], result["free_quotient_saturated"])
+print(S_height.global_status["reason"])
+print(S_height.verify())
+assert S_height.verify()
 ```
 
 Reduction maps and negative rational-division claims must have replayable
@@ -378,20 +414,25 @@ When a saturation result proves the full Mordell--Weil group using only the
 closed Sage.js verifier authorities, it can unlock `analytic_sha()` without a
 free-form certificate:
 
-```python
+The saturation result and BSD report must refer to the same curve and ordered
+basis.  A reusable helper makes that precondition visible without pretending
+that the independent examples above compose:
+
+```sage test
 from sagejs.hyperelliptic_curves.bsd import (
     subgroup_index_certificate_from_saturation,
 )
 
-certificate = subgroup_index_certificate_from_saturation(
-    report.arithmetic_input(),
-    S,
-)
-proved = report.with_subgroup_index(
-    S.index_factor_from_input,
-    certificate=certificate,
-)
-print(proved.analytic_sha())
+def close_sha_with_saturation(bsd_report, saturation):
+    certificate = subgroup_index_certificate_from_saturation(
+        bsd_report.arithmetic_input(),
+        saturation,
+    )
+    proved = bsd_report.with_subgroup_index(
+        saturation.index_factor_from_input,
+        certificate=certificate,
+    )
+    return proved.analytic_sha()
 ```
 
 The replay reconstructs the exact `QQ` curve, ordered Mumford basis,
@@ -404,7 +445,7 @@ saturation run depending on an arbitrary caller callback remains
 Every main result has a deterministic `to_dict()` record.  The BSD quotient
 also has canonical JSON and a flat SQLite row:
 
-```python
+```sage test
 payload = B.to_json()
 same = BSDAnalyticQuotient.from_json(payload)
 assert same.to_json() == payload
@@ -415,20 +456,26 @@ print(row["curve_sha256"], row["record_sha256"])
 
 For a small Sage.js-native snapshot, use SagePack:
 
-```python
+```sage test
+import os
+import tempfile
+
 packet = dumps(B.to_dict())
 assert loads(packet) == B.to_dict()
-save(B.to_dict(), "bsd-record")
-record = load("bsd-record")
+with tempfile.TemporaryDirectory() as directory:
+    filename = os.path.join(directory, "bsd-record")
+    save(B.to_dict(), filename)
+    record = load(filename)
+    assert record == B.to_dict()
 ```
 
 For an indexed research database, store the canonical JSON as the source of
 record and duplicate only useful query columns:
 
-```python
+```sage test
 import sqlite3
 
-db = sqlite3.connect("hyperelliptic-bsd.sqlite3")
+db = sqlite3.connect(":memory:")
 db.execute("""
     CREATE TABLE IF NOT EXISTS bsd_results (
         record_sha256 TEXT PRIMARY KEY,
@@ -453,6 +500,12 @@ db.execute(
     ),
 )
 db.commit()
+stored = db.execute(
+    "SELECT payload_json FROM bsd_results WHERE record_sha256=?",
+    (row["record_sha256"],),
+).fetchone()
+assert stored[0] == B.to_json()
+db.close()
 ```
 
 Unbounded integers are decimal strings in JSON, so JavaScript and SQLite
