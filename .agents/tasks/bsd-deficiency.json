@@ -84,14 +84,55 @@
       "commit": "c7953e6aa12c7b0eea419b574d17552c55be617a",
       "workspace_fingerprint": "cff884ef4eacc84d2df2dd4a6fd567b64b5014ccc4cfb61f9c1dd314a3a18c00",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I -m py_compile src/lib/sagejs/hyperelliptic_curves/deficiency.py src/lib/sagejs/hyperelliptic_curves/_test_deficiency.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.074,
+      "started_at": "2026-08-22T06:47:59.900Z",
+      "commit": "4fe94dee5d20ee22e5678a213f0b3291e020896b",
+      "workspace_fingerprint": "5ad8905099ae9648c48000a59763ecda507ce0117040ade0916405ab9d657358",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/deficiency.py src/lib/sagejs/hyperelliptic_curves/_test_deficiency.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.673,
+      "started_at": "2026-08-22T06:48:05.519Z",
+      "commit": "4fe94dee5d20ee22e5678a213f0b3291e020896b",
+      "workspace_fingerprint": "5ad8905099ae9648c48000a59763ecda507ce0117040ade0916405ab9d657358",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bin/sagejs src/lib/sagejs/hyperelliptic_curves/_test_deficiency.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.636,
+      "started_at": "2026-08-22T06:48:10.849Z",
+      "commit": "4fe94dee5d20ee22e5678a213f0b3291e020896b",
+      "workspace_fingerprint": "5ad8905099ae9648c48000a59763ecda507ce0117040ade0916405ab9d657358",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m json.tool src/lib/sagejs/hyperelliptic_curves/testdata/deficiency.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.063,
+      "started_at": "2026-08-22T06:48:29.548Z",
+      "commit": "4fe94dee5d20ee22e5678a213f0b3291e020896b",
+      "workspace_fingerprint": "5ad8905099ae9648c48000a59763ecda507ce0117040ade0916405ab9d657358",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Implemented replayable local deficiency certificates for genus-2/3 curves over QQ and exact global Poonen--Stoll parity assembly. The local envelope includes the odd-genus degree-2 fibre theorem, exact real genus-2 Sturm decisions, rational local-point/Hensel witnesses, good-reduction component witnesses, split-cluster and ordinary-nodal semistable witnesses, and odd-prime Poonen--Stoll Lemmas 15--16 including certified obstructions. Published examples agree at every recorded place with Magma IsDeficient. The API freezes local_deficiency/is_deficient and GlobalDeficiencyDiagnostic schemas; integration owns public model bindings.",
+    "summary": "Implemented replayable local deficiency certificates for genus-2/3 curves over QQ and exact global Poonen--Stoll parity assembly. Every v2 local/global record is recursively immutable, bound to the exact f/h curve model and SHA-256 fingerprint, and strictly deserializes only by recomputing its theorem. Supplied assertions remain unverified. Reduction-derived conclusions retain their full upstream certificate; mutable LocalReductionData is type-checked and replayed on a fresh curve before promotion. Global completion requires a typed, replayed exhaustive-bad-primes certificate, while the unconditional genus-3 degree-2 fibre theorem rejects contradictory inputs. The local envelope includes exact real genus-2 Sturm decisions, rational local-point/Hensel witnesses, good-reduction component witnesses, split-cluster and ordinary-nodal semistable witnesses, and odd-prime Poonen--Stoll Lemmas 15--16 including certified obstructions. Published examples agree at every recorded place with Magma IsDeficient; adversarial tests cover forged and cache-poisoned reductions, model/genus mismatches, mutation, serialized tampering, generalized h-model translations, and fixture drift. Integration owns public model bindings.",
     "risks": [
       "Bad 2-adic places are certified only when an explicit local point witness is found; wild deficiency otherwise remains unsupported.",
       "A nonsplit two-component ordinary-nodal certificate is left unsupported because current reduction data omits node thicknesses needed to replay Theorem 12.4 safely.",
       "Almost-good cases use the exact Poonen--Stoll criteria on the normalized branch model; inconclusive exceptional-square cases remain unsupported.",
+      "Strict replay intentionally recomputes local/global reduction data and may be more expensive than merely parsing a serialized record; this is the certification boundary, not a cache-loading API.",
       "The required repository-wide architecture, strict-baselib, and native gates are deliberately deferred to integration per coordination; focused source, type, runtime, and fixture receipts pass."
     ],
     "next_steps": [
