@@ -1480,7 +1480,12 @@ def _minkowski_integer_rows(
     ideal: Any, precision: int, scale_bits: int
 ) -> tuple[list[list[int]], tuple[int, int]]:
     field = ideal.number_field()
-    data = archimedean_data(field)
+    cached_archimedean_data = getattr(field, "archimedean_data", None)
+    data: Any = (
+        cached_archimedean_data()
+        if callable(cached_archimedean_data)
+        else archimedean_data(field)
+    )
     signature = data.signature()
     if signature[0] + 2 * signature[1] != field.degree():
         raise ArithmeticError("Minkowski embedding dimension is not the field degree")
@@ -1491,11 +1496,31 @@ def _minkowski_integer_rows(
         "1.41421356237309504880168872420969807856967187537694807317667973799"
         "0732478462107038850387534327641572735013846230912297024924836"
     )
+    # Approximate each generator image once, then evaluate every ideal-basis
+    # row in that numerical parent.  Evaluating an exact QQbar expression and
+    # converting it back to the same precision for every row is much more
+    # expensive in higher degree.  This matrix is only an LLL candidate
+    # selector: the returned unimodular transform is applied to exact ideal
+    # coordinates and every resulting relation is replayed algebraically.
+    numerical_embeddings: list[tuple[Any, Any, Any]] = []
+    for embedding in data.embeddings:
+        generator_image = embedding.generator_image.n(precision)
+        sqrt_two = None
+        if embedding.kind == "complex":
+            real_part = generator_image.real()
+            sqrt_two = real_part.parent()(sqrt_two_decimal)
+        numerical_embeddings.append((embedding, generator_image, sqrt_two))
     rows: list[list[int]] = []
     for element in ideal.basis():
+        coefficients = list(element.list())
         row: list[int] = []
-        for embedding in data.embeddings:
-            approximation = embedding.approximate(element, precision).value
+        for embedding, generator_image, sqrt_two in numerical_embeddings:
+            numerical_parent = generator_image.parent()
+            approximation = numerical_parent(0)
+            for coefficient in reversed(coefficients):
+                approximation = approximation * generator_image + numerical_parent(
+                    coefficient
+                )
             if embedding.kind == "real":
                 row.append(_scaled_real_integer(_real_part(approximation), scale_bits))
                 continue
@@ -1509,8 +1534,8 @@ def _minkowski_integer_rows(
             else:
                 real = approximation
                 imag = approximation.parent()(0)
-            real_field = real.parent()
-            sqrt_two = real_field(sqrt_two_decimal)
+            if sqrt_two is None:
+                raise ArithmeticError("a complex embedding lacks its sqrt(2) scale")
             row.append(_scaled_real_integer(sqrt_two * real, scale_bits))
             row.append(_scaled_real_integer(sqrt_two * imag, scale_bits))
         rows.append(row)

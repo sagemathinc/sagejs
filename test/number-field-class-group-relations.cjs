@@ -381,6 +381,49 @@ cubic_case = fixture["nonreal_cubic_minkowski"]
 C = NumberField(R(cubic_case["polynomial_low_to_high"]), "b")
 CO = C.maximal_order()
 cubic_plan = minkowski_lll_lattice(CO.ideal(1), precision=128)
+
+def direct_qqbar_minkowski_rows(ideal, plan):
+    sqrt_two_text = (
+        "1.41421356237309504880168872420969807856967187537694807317667973799"
+        "0732478462107038850387534327641572735013846230912297024924836"
+    )
+    rows = []
+    for element in ideal.basis():
+        row = []
+        for embedding in ideal.number_field().archimedean_data().embeddings:
+            approximation = embedding.approximate(element, plan.precision).value
+            if embedding.kind == "real":
+                row.append(
+                    relation_module._scaled_real_integer(
+                        relation_module._real_part(approximation), plan.scale_bits
+                    )
+                )
+                continue
+            real_method = getattr(approximation, "real", None)
+            imag_method = getattr(approximation, "imag", None)
+            if callable(real_method) and callable(imag_method):
+                real = real_method()
+                imag = imag_method()
+            else:
+                real = approximation
+                imag = approximation.parent()(0)
+            sqrt_two = real.parent()(sqrt_two_text)
+            row.append(
+                relation_module._scaled_real_integer(
+                    sqrt_two * real, plan.scale_bits
+                )
+            )
+            row.append(
+                relation_module._scaled_real_integer(
+                    sqrt_two * imag, plan.scale_bits
+                )
+            )
+        rows.append(row)
+    return rows
+
+assert direct_qqbar_minkowski_rows(CO.ideal(1), cubic_plan) == [
+    list(row) for row in cubic_plan.source_embedded_rows
+]
 scale = float(2 ** cubic_plan.scale_bits)
 actual_embedding = [
     [float(value) / scale for value in row] for row in cubic_plan.embedded_rows

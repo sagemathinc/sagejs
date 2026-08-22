@@ -262,7 +262,12 @@ class FactoredNumberFieldElement:
             "sagejs.number_fields.class_unit_analytic",
             fromlist=["class_unit_analytic"],
         )
-        data = embedding_module.archimedean_data(self._field)
+        cached_archimedean_data = getattr(self._field, "archimedean_data", None)
+        data: Any = (
+            cached_archimedean_data()
+            if callable(cached_archimedean_data)
+            else embedding_module.archimedean_data(self._field)
+        )
         result = [
             analytic_module.RealBall(0, precision_bits=prec)
             for _embedding in data.embeddings

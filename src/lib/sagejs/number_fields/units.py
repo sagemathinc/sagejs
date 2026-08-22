@@ -815,7 +815,12 @@ def subgroup_regulator(subgroup: UnitSubgroupResult, prec: int = 53) -> Regulato
         return RegulatorResult(1.0, prec, subgroup.complete, 0)
     if len(subgroup.generators) < rank:
         raise ValueError("not enough free generators to form a regulator")
-    data = archimedean_data(subgroup.field)
+    cached_archimedean_data = getattr(subgroup.field, "archimedean_data", None)
+    data: Any = (
+        cached_archimedean_data()
+        if callable(cached_archimedean_data)
+        else archimedean_data(subgroup.field)
+    )
     columns = [
         data.logarithmic_image(unit, prec)[:-1] for unit in subgroup.generators[:rank]
     ]
