@@ -148,8 +148,8 @@ test("large connected components use the packed exact traversal contract", async
     );
     assert.equal(
       result.repr,
-      "[True, True, 52, 50, 250, 'portable-computation', " +
-        "'compiled-source-unavailable', 6307, 'portable-computation', " +
+      "[True, True, 52, 50, 250, 'native-compiled-source', " +
+        "'normal-heavy-case', 6307, 'native-compiled-source', " +
         "'below-packed-threshold']",
     );
   });
