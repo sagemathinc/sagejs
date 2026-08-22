@@ -29,6 +29,7 @@ function parseArguments(argv) {
   ]);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
+    if (argument === "--") continue;
     if (argument === "--require-sage") options.requireSage = true;
     else if (argument === "--dry-run") options.dryRun = true;
     else if (values.has(argument)) {
@@ -146,7 +147,11 @@ for case_index in range(len(records)):
             coefficients = record["coefficients"]
             for exponent in range(len(coefficients)):
                 polynomial += int(coefficients[exponent]) * x**exponent
-            field = NumberField(polynomial, "a" + str(case_index) + "_" + str(sample))
+            mode = "proof" if proof else "conditional"
+            field = NumberField(
+                polynomial,
+                "a" + str(case_index) + "_" + str(sample) + "_" + mode,
+            )
             field.maximal_order()
             started = time.perf_counter_ns()
             answer = int(field.class_number(proof=proof))

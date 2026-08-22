@@ -42,6 +42,7 @@ test("offline LMFDB corpus check needs no database connection", () => {
 
 test("LMFDB comparison statistics expose the P7 ratio gates", () => {
   assert.deepEqual(benchmark.modesFor("both"), [false, true]);
+  assert.equal(benchmark.parseArguments(["--", "--samples", "3"]).samples, 3);
   assert.equal(benchmark.median([9, 1, 4]), 4);
   assert.equal(benchmark.percentile([1, 2, 3, 4, 5], 0.9), 5);
   const aggregate = benchmark.aggregateRatios([
@@ -63,4 +64,15 @@ test("LMFDB comparison statistics expose the P7 ratio gates", () => {
   assert.deepEqual(payload.records, ["3.1.23.1", "3.1.59.1"]);
   assert.deepEqual(payload.proof_modes, [false, true]);
   assert.equal(payload.samples, 5);
+});
+
+test("LMFDB comparison isolates conditional and proof field caches", () => {
+  const source = benchmark.benchmarkSource(
+    [{ coefficients: ["1", "0", "0", "1"] }],
+    1,
+    [false, true],
+    "sagejs",
+  );
+  assert.match(source, /mode = "proof" if proof else "conditional"/);
+  assert.match(source, /str\(sample\) \+ "_" \+ mode/);
 });
