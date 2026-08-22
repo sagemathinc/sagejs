@@ -55,6 +55,19 @@ def _content_hash(value: Any) -> str:
     return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
 
 
+def _json_clone(value: Any) -> Any:
+    """Copy canonical JSON data without invoking the runtime JSON parser."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_json_clone(item) for item in value]
+    if isinstance(value, dict):
+        if any(not isinstance(key, str) for key in value):
+            raise TypeError("canonical proof dictionaries require string keys")
+        return {key: _json_clone(item) for key, item in value.items()}
+    raise TypeError("a proof payload contains a non-JSON value")
+
+
 class AnalyticCertificationError(ArithmeticError):
     """Raised when data requested as rigorous has no complete proof boundary."""
 
@@ -4365,38 +4378,80 @@ class UnitSaturationIndexCertificate:
         generation_verifier: Callable[..., Any] | None = None,
         workspace: ZetaLogResidueWorkspace | None = None,
     ) -> None:
-        self.field_order_identity = json.loads(_canonical_json(field_order_identity))
-        self.initial_units = json.loads(_canonical_json(list(initial_units)))
-        self.configuration = json.loads(_canonical_json(configuration))
-        self.index_bound = int(index_bound)
-        self.analytic_proof = json.loads(_canonical_json(analytic_proof))
-        self.generation_evidence = json.loads(_canonical_json(generation_evidence))
-        self.proof_status = str(proof_status)
-        self._generation_verifier = generation_verifier
-        self._workspace = workspace
-        if self.index_bound < 1:
+        selected_index_bound = int(index_bound)
+        selected_proof_status = str(proof_status)
+        if selected_index_bound < 1:
             raise ValueError("a global index certificate needs a positive index")
-        if self.proof_status not in (
+        if selected_proof_status not in (
             "exact-unconditional",
             "exact-relations-conditional-grh",
         ):
             raise ValueError("a global index certificate needs an exact proof status")
+        body = {
+            "schema": "sagejs.number-fields.unit-saturation-index-certificate.v1",
+            "field_order_identity": field_order_identity,
+            "initial_units": list(initial_units),
+            "configuration": configuration,
+            "index_bound": selected_index_bound,
+            "analytic_proof": analytic_proof,
+            "generation_evidence": generation_evidence,
+            "proof_status": selected_proof_status,
+        }
+        # One canonical snapshot provides both mutation isolation and the
+        # authenticated byte sequence.  Structural copying is materially
+        # cheaper than sending this large exact-integer tree through the
+        # runtime JSON parser, while the canonical serialization above still
+        # validates and authenticates the complete payload.
+        self._body_json = _canonical_json(body)
+        snapshot = _json_clone(body)
+        self._body_snapshot = snapshot
+        self._field_order_identity = snapshot["field_order_identity"]
+        self._initial_units = snapshot["initial_units"]
+        self._configuration = snapshot["configuration"]
+        self._index_bound = int(snapshot["index_bound"])
+        self._analytic_proof = snapshot["analytic_proof"]
+        self._generation_evidence = snapshot["generation_evidence"]
+        self._proof_status = str(snapshot["proof_status"])
+        self._content_sha256 = hashlib.sha256(
+            self._body_json.encode("utf-8")
+        ).hexdigest()
+        self._generation_verifier = generation_verifier
+        self._workspace = workspace
+
+    @property
+    def field_order_identity(self) -> dict[str, Any]:
+        return _json_clone(self._field_order_identity)
+
+    @property
+    def initial_units(self) -> list[Any]:
+        return _json_clone(self._initial_units)
+
+    @property
+    def configuration(self) -> dict[str, Any]:
+        return _json_clone(self._configuration)
+
+    @property
+    def index_bound(self) -> int:
+        return self._index_bound
+
+    @property
+    def analytic_proof(self) -> dict[str, Any]:
+        return _json_clone(self._analytic_proof)
+
+    @property
+    def generation_evidence(self) -> Any:
+        return _json_clone(self._generation_evidence)
+
+    @property
+    def proof_status(self) -> str:
+        return self._proof_status
 
     def _body_dict(self) -> dict[str, Any]:
-        return {
-            "schema": "sagejs.number-fields.unit-saturation-index-certificate.v1",
-            "field_order_identity": self.field_order_identity,
-            "initial_units": self.initial_units,
-            "configuration": self.configuration,
-            "index_bound": self.index_bound,
-            "analytic_proof": self.analytic_proof,
-            "generation_evidence": self.generation_evidence,
-            "proof_status": self.proof_status,
-        }
+        return _json_clone(self._body_snapshot)
 
     def to_dict(self) -> dict[str, Any]:
         body = self._body_dict()
-        body["content_sha256"] = _content_hash(body)
+        body["content_sha256"] = self._content_sha256
         return body
 
     def workspace_diagnostics(self) -> dict[str, int] | None:
@@ -4457,7 +4512,7 @@ class UnitSaturationIndexCertificate:
     ) -> bool:
         replay_started = time.perf_counter_ns()
         try:
-            hr_payload = self.analytic_proof["hr_index"]
+            hr_payload = self._analytic_proof["hr_index"]
             lower_index = _payload_integer(
                 hr_payload["lower_index"], "authenticated hR lower index"
             )
@@ -4475,23 +4530,23 @@ class UnitSaturationIndexCertificate:
                     hr_payload["rigorous"], "authenticated hR rigor"
                 )
                 or not _payload_boolean(
-                    self.analytic_proof["regulator"]["rigorous"],
+                    self._analytic_proof["regulator"]["rigorous"],
                     "authenticated regulator rigor",
                 )
                 or not _payload_boolean(
-                    self.analytic_proof["zeta_log_residue"]["rigorous"],
+                    self._analytic_proof["zeta_log_residue"]["rigorous"],
                     "authenticated zeta rigor",
                 )
             ):
                 return False
-            if _canonical_json(self.field_order_identity) != _canonical_json(
-                _saturation_field_order_identity(field, order)
+            if self._field_order_identity != _saturation_field_order_identity(
+                field, order
             ):
                 return False
             unit_payloads = [
                 _element_payload(_ordinary_unit(unit)) for unit in initial_units
             ]
-            if _canonical_json(unit_payloads) != _canonical_json(self.initial_units):
+            if unit_payloads != self._initial_units:
                 return False
             verifier = generation_verifier or self._generation_verifier
             if not callable(verifier) or not bool(
@@ -4499,9 +4554,9 @@ class UnitSaturationIndexCertificate:
                     field,
                     order,
                     initial_units,
-                    int(self.configuration["class_number"]),
-                    self.generation_evidence,
-                    self.proof_status,
+                    int(self._configuration["class_number"]),
+                    _json_clone(self._generation_evidence),
+                    self._proof_status,
                 )
             ):
                 return False
@@ -4509,12 +4564,10 @@ class UnitSaturationIndexCertificate:
                 field,
                 order,
                 initial_units,
-                self.configuration,
+                self._configuration,
                 workspace=self._workspace,
             )
-            return index_bound == self.index_bound and _canonical_json(
-                proof
-            ) == _canonical_json(self.analytic_proof)
+            return index_bound == self._index_bound and proof == self._analytic_proof
         except (TypeError, ValueError, ArithmeticError, ZeroDivisionError):
             return False
         finally:

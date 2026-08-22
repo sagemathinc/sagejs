@@ -402,8 +402,14 @@ certificate = UnitSaturationIndexCertificate(
     {"generation": "focused-provenance-test"},
     "exact-relations-conditional-grh",
 )
+original_certificate_payload = certificate.to_dict()
 mutated = certificate.to_dict()
 mutated["analytic_proof"]["finite_term"]["source"] = "forged-provenance"
+mutated["generation_evidence"]["generation"] = "forged-generation"
+assert certificate.to_dict() == original_certificate_payload
+exposed_generation = certificate.generation_evidence
+exposed_generation["generation"] = "another-forgery"
+assert certificate.to_dict() == original_certificate_payload
 try:
     UnitSaturationIndexCertificate.from_dict(mutated)
     raise AssertionError("a finite-term provenance mutation retained authority")
