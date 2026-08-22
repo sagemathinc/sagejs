@@ -26,6 +26,6 @@ test("BSD quotient normalization and serialization fixture passes", () => {
 test("deficiency and Poonen--Stoll parity fixture passes", () => {
   const output = runFixture("_test_deficiency.py");
   assert.match(output, /'fixture_checks': 14/);
-  assert.match(output, /'global_checks': 4/);
+  assert.match(output, /'global_checks': 11/);
   assert.match(output, /'ok': True/);
 });

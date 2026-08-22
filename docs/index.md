@@ -24,6 +24,8 @@ Start with:
 - [Plotting](../PLOTTING.md)
 - [Hyperelliptic curves and local Frobenius data](hyperelliptic-curves.md)
 - [Hyperelliptic conductors, root numbers, and L-series](hyperelliptic-lseries.md)
+- [BSD arithmetic for genus-2 and genus-3 Jacobians](hyperelliptic-bsd-arithmetic.md)
+- [Jacobian arithmetic for genus-2 and genus-3 hyperelliptic curves](hyperelliptic-jacobian-arithmetic.md)
 - [Exploring elliptic-curve L-series](elliptic-curve-lseries.md)
 - [WebAssembly browser support and capabilities](webassembly-browser-support.md)
 - [Portable Node and browser examples](webassembly-examples.md)

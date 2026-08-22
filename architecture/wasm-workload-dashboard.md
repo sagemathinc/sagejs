@@ -4,7 +4,7 @@
 
 **Policy status:** failed
 
-Heavy workloads: 0/44 accelerated; 44 failed closed.
+Heavy workloads: 0/45 accelerated; 45 failed closed.
 
 Trusted route receipts: 0; rejected receipts: 0.
 
@@ -14,7 +14,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | --- | ---: | ---: |
 | `wasm-library` | 89 | 0 |
 | `wasm-compiled-source` | 14 | 0 |
-| `portable-orchestration` | 3 | 0 |
+| `portable-orchestration` | 4 | 0 |
 | `portable-computation` | 0 | 0 |
 
 ## Families
@@ -32,7 +32,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | extension-fields | 3 | 3 | 0 | 3 | 0 | 0 |
 | graphs | 4 | 4 | 0 | 4 | 0 | 0 |
 | groups-combinatorics | 2 | 2 | 0 | 2 | 0 | 0 |
-| hyperelliptic-curves | 2 | 2 | 0 | 2 | 0 | 0 |
+| hyperelliptic-curves | 3 | 3 | 0 | 3 | 0 | 0 |
 | modular-symbols | 2 | 1 | 0 | 1 | 0 | 1 |
 | multivariate-polynomials | 2 | 2 | 0 | 2 | 0 | 0 |
 | number-fields | 4 | 2 | 0 | 2 | 0 | 2 |
@@ -70,6 +70,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `parity:extension-field-polynomial-arithmetic` | extension-fields | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:extension-field-conway-data` | extension-fields | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:hyperelliptic-smalljac-local-factors` | hyperelliptic-curves | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `parity:hyperelliptic-bsd-supplied-quotient` | hyperelliptic-curves | yes | failed | `portable-orchestration` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:number-field-cubic-headline` | number-fields | no | unmeasured | `wasm-library`, `wasm-compiled-source` | — |
 | `parity:number-field-ideal-certificate-sagepack` | number-fields | no | unmeasured | `portable-orchestration` | — |
 | `parity:riemann-zeta-batch` | analytic-functions | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |

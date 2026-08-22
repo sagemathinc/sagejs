@@ -13,6 +13,11 @@ This document describes what is implemented, the mathematical representation,
 the available group operations, and where the current implementation is—or is
 not—intended to be fast.
 
+For rational torsion certificates, canonical heights, height pairings,
+regulators, subgroup saturation, and analytic BSD quotients over `QQ`, see
+[BSD arithmetic for genus-2 and genus-3
+Jacobians](hyperelliptic-bsd-arithmetic.md).
+
 ## Supported models
 
 The curve is written

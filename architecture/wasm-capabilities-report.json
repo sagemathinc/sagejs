@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "1b3b819f709533e40ffe42c9ab262ff0ed9c54428fdf7d6eb4052573716bb0b3",
+  "source_sha256": "2ac10653b29a62d45633e627405694937ee1304abbaaf138a4fa24348ee96a42",
   "counts": {
     "total": 958,
     "by_kind": {
@@ -91,6 +91,9 @@
     ],
     "group-permutation-center": [
       "kernel:packed-permutation-center-production"
+    ],
+    "hyperelliptic-bsd-sagepack-roundtrip": [
+      "specialist:sagepack"
     ],
     "hyperelliptic-smalljac-local-factors": [
       "specialist:smalljac"

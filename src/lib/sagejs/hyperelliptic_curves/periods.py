@@ -49,7 +49,6 @@ import sagejs as sage
 import sagejs.runtime as runtime
 from mpmath import mp
 
-
 __all__ = [
     "AbelJacobiResult",
     "HyperellipticPeriodCapabilityError",
@@ -403,7 +402,7 @@ def _edge_integrals(
         upper = mp.pi * (panel + 1) / panels
         panel_midpoint = (lower + upper) / 2
         panel_half = (upper - lower) / 2
-        for node, weight in zip(nodes, weights):
+        for node, weight in zip(nodes, weights, strict=True):
             theta = panel_midpoint + panel_half * node
             x_value = midpoint + half_edge * mp.cos(theta)
             residual = -leading
@@ -1088,7 +1087,7 @@ def _point_integrals_to_infinity(
         upper = mp.pi * (panel + 1) / (2 * panels)
         midpoint = (lower + upper) / 2
         half = (upper - lower) / 2
-        for node, weight in zip(nodes, weights):
+        for node, weight in zip(nodes, weights, strict=True):
             theta = midpoint + half * node
             tangent = mp.tan(theta)
             secant_squared = 1 + tangent * tangent
@@ -1417,7 +1416,9 @@ class AbelJacobiResult:
             )
             clearance_bound = True
             for recomputed_clearance, stored_clearance in zip(
-                recomputed["clearances"], self._data["ray_clearances"]
+                recomputed["clearances"],
+                self._data["ray_clearances"],
+                strict=True,
             ):
                 if recomputed_clearance == mp.inf:
                     clearance_bound = clearance_bound and stored_clearance == "infinity"

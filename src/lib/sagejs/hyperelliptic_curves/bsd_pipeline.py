@@ -1,17 +1,17 @@
 """Atomic automatic assembly of hyperelliptic BSD analytic quotients.
 
-The low-level :mod:`sagejs.hyperelliptic_curves.bsd` module deliberately
+The low-level `sagejs.hyperelliptic_curves.bsd` module deliberately
 accepts normalized arithmetic factors.  This module is the orchestration
 layer which computes those factors, records their independent provenance, and
 constructs a quotient only after every contract has succeeded.
 
-The resulting quantity for a supplied full-rank subgroup ``Gamma`` is
+The resulting quantity for a supplied full-rank subgroup `Gamma` is
 
-``#Sha(J) / [J(Q)/torsion : Gamma]^2``.
+`#Sha(J) / [J(Q)/torsion : Gamma]^2`.
 
 An analytic rank is never promoted to an algebraic-rank proof.  Callers must
 supply (or eventually obtain from a separate arithmetic implementation) an
-independent ``rank``.  Likewise, a model period is never silently relabelled
+independent `rank`.  Likewise, a model period is never silently relabelled
 as a Neron period.
 """
 
@@ -38,7 +38,6 @@ from sagejs.hyperelliptic_curves.bsd import (
     TamagawaFactor,
     TorsionData,
 )
-
 
 PIPELINE_SCHEMA = "sagejs.hyperelliptic-bsd-pipeline/v1"
 
@@ -938,14 +937,14 @@ def compute_bsd_analytic_quotient(
 ) -> BSDPipelineReport:
     """Compute every available BSD factor and assemble atomically.
 
-    ``rank`` is independent algebraic evidence and is never inferred from the
-    probable analytic leading order.  ``subgroup`` is a sequence of rational
-    Mumford divisors.  The optional ``overrides`` dictionary admits typed
+    `rank` is independent algebraic evidence and is never inferred from the
+    probable analytic leading order.  `subgroup` is a sequence of rational
+    Mumford divisors.  The optional `overrides` dictionary admits typed
     factor objects or explicitly provenanced arithmetic data; unknown keys are
     rejected so that misspellings cannot silently alter a scientific run.
 
-    With the default ``on_incomplete='return'`` the result is a structured
-    capability report.  ``on_incomplete='raise'`` raises
+    With the default `on_incomplete='return'` the result is a structured
+    capability report.  `on_incomplete='raise'` raises
     :class:`BSDPipelineIncompleteError` carrying that same report.
     """
     bits = _checked_integer(prec, "precision", minimum=32)

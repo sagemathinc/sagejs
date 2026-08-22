@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-workload-dashboard/v1",
   "status": "failed",
   "policy_result": {
-    "heavy_workloads": 44,
+    "heavy_workloads": 45,
     "accelerated_heavy_workloads": 0,
-    "failed_heavy_workloads": 44,
+    "failed_heavy_workloads": 45,
     "required_browser_engines": [
       "chromium",
       "firefox",
@@ -20,11 +20,11 @@
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "8ae2a374dd99a506236040138edc2c91a2bc281b796a4dba3c9b82607194d687"
+      "sha256": "dec477c40e0e4c22707a03e29c8cbbff007fa1ab5f54804abf61c6b017b6911c"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "e008be139d6ae170522c7471ef99f7a9dc773c53cde7ed9f0eff41187bf5fcd5"
+      "sha256": "5689b3f0c8e41701445ae64d65ad458618600124baad8576de85b76df52e54bc"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
@@ -39,7 +39,7 @@
     "source_revisions": []
   },
   "source_inventory": {
-    "parity_workloads": 32,
+    "parity_workloads": 33,
     "performance_workloads": 20,
     "capability_counts": {
       "total": 958,
@@ -77,7 +77,7 @@
     "expected_requirements": {
       "wasm-library": 89,
       "wasm-compiled-source": 14,
-      "portable-orchestration": 3,
+      "portable-orchestration": 4,
       "portable-computation": 0
     },
     "observed_calls": {
@@ -177,10 +177,10 @@
       "unmeasured_or_review_required": 0
     },
     "hyperelliptic-curves": {
-      "workloads": 2,
-      "heavy_workloads": 2,
+      "workloads": 3,
+      "heavy_workloads": 3,
       "accelerated": 0,
-      "failed": 2,
+      "failed": 3,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 0
     },
@@ -1494,6 +1494,53 @@
           "review": null,
           "capability_status": "available",
           "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:hyperelliptic-bsd-supplied-quotient",
+      "public_workflow": "hyperelliptic-bsd-sagepack-roundtrip",
+      "family": "hyperelliptic-curves",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "specialist:sagepack",
+          "legacy_route": "shared-runtime-js",
+          "route_class": "portable-orchestration",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "portable-fallback"
         }
       ],
       "engines": {

@@ -2112,7 +2112,7 @@ def _real_matrix_inverse_three(values: list[list[Any]]) -> list[list[Any]]:
                     for entry in range(4)
                 ]
         answer.append([working[column][-1] for column in range(3)])
-    return [list(row) for row in zip(*answer)]
+    return [list(row) for row in zip(*answer, strict=True)]
 
 
 class ArchimedeanPairing:

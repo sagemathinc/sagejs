@@ -21,7 +21,6 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-
 # Sparse specialization of Flynn, Appendix C, to the odd-degree case f6=0.
 # The source worksheet is published at
 # https://people.maths.ox.ac.uk/flynn/genus2/kummer/duplication and the paper

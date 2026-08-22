@@ -22,7 +22,7 @@ is ordinary CPython-parseable Python and has no native or host dependency; the
 default reduction provider lazily uses Sage.js's existing finite-field
 Jacobian and explicit abelian-group maps, which also have dynamic fallbacks.
 
-Registered ``assumption_verifiers`` are an explicit caller-provided trust
+Registered `assumption_verifiers` are an explicit caller-provided trust
 root.  This module binds their decisions to the curve, ordered basis, claim
 kind, and value, but it cannot authenticate a verifier chosen by the caller.
 """
@@ -184,7 +184,7 @@ def _product(values: Any) -> int:
 
 
 def _exception_name(error: BaseException) -> str:
-    """Return an exception label without depending on transpiled ``type``."""
+    """Return an exception label without depending on transpiled `type`."""
     exception_class = getattr(error, "__class__", None)
     name = (
         None if exception_class is None else getattr(exception_class, "__name__", None)
@@ -218,7 +218,7 @@ def _external_assumption(
     verifiers: Mapping[str, Any] | None,
     context: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Classify an external claim; bare ``proved`` booleans stay conditional."""
+    """Classify an external claim; bare `proved` booleans stay conditional."""
     result = _proof(provenance, kind, value)
     result["conditional"] = True
     result["verified"] = False
@@ -2250,7 +2250,7 @@ def _divisor_from_wire(jacobian: Any, payload: Mapping[str, Any]) -> Any:
 
 
 def _field_element_from_wire(field: Any, value: Any) -> Any:
-    """Rebuild the canonical rational strings emitted by ``_divisor_wire``."""
+    """Rebuild the canonical rational strings emitted by `_divisor_wire`."""
     if not isinstance(value, str):
         return field(value)
     pieces = value.split("/")

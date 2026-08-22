@@ -398,6 +398,21 @@
       }
     },
     {
+      "id": "hyperelliptic-bsd-supplied-quotient",
+      "family": "hyperelliptic-curves",
+      "workflow": "hyperelliptic-bsd-sagepack-roundtrip",
+      "tier": "release",
+      "requires": [
+        { "id": "specialist:sagepack", "route": "shared-runtime-js" }
+      ],
+      "source": "from sagejs.hyperelliptic_curves.bsd import BSDArithmeticInput, BSDAnalyticQuotient, LeadingTermData, RankEvidence, Provenance\nfrom sagejs_serialization import dumps, loads\nsource = Provenance.supplied('browser-parity-fixture')\ninput_data = BSDArithmeticInput.supplied_jacobian(leading_term=LeadingTermData.supplied(2, 12, 1, provenance=source), algebraic_rank=RankEvidence('supplied', 2, source), real_period=2, height_pairing=[[2,0],[0,3]], tamagawa_numbers={2:1,5:2}, bad_primes=(2,5), torsion_order=1, real_component_factor=1, period_differential_basis='supplied Neron top differential', real_period_is_total=True, subgroup_basis=[{'label':'P1'},{'label':'P2'}], curve_model={'base_ring':'QQ','f_coefficients':['1','-1','0','0','0','1'],'h_coefficients':['0']}, backend_versions={'sagejs':'browser-parity-fixture'})\nresult = BSDAnalyticQuotient(input_data)\nrecord = result.to_dict()\npacket = dumps(record)\nprint(str(result.sha_over_index_squared()), result.tamagawa_product(), result.rigorous, loads(packet) == record)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "1/4 2 False True\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "number-field-cubic-headline",
       "family": "number-fields",
       "workflow": "number-field-cubic-headline",

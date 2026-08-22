@@ -883,7 +883,7 @@ def _verify_cluster_components(
         fromlist=["_normalization_factor"],
     )
     abelian_coefficients = [1]
-    for node, record in zip(principal_nodes, records):
+    for node, record in zip(principal_nodes, records, strict=True):
         if not isinstance(record, dict):
             raise TypeError("a principal component assertion is not a record")
         roots_record = tuple(

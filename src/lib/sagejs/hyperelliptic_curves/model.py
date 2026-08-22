@@ -418,6 +418,90 @@ class HyperellipticCurve_generic(sage.Parent):
         """Return the certified global functional-equation sign."""
         return self.global_reduction().root_number
 
+    def tamagawa_data(self, p: Any, algorithm: str = "auto") -> Any:
+        """Return certified rational component-group data at `p`."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.tamagawa",
+            fromlist=["local_tamagawa_data"],
+        )
+        return module.local_tamagawa_data(self, p, algorithm)
+
+    def tamagawa_number(self, p: Any, algorithm: str = "auto") -> Any:
+        """Return the certified rational Tamagawa number at `p`."""
+        return self.tamagawa_data(p, algorithm).tamagawa_number()
+
+    def tamagawa_product(self, primes: Any = None, algorithm: str = "auto") -> Any:
+        """Return the atomic product of all requested Tamagawa numbers."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.tamagawa",
+            fromlist=["tamagawa_product"],
+        )
+        return module.tamagawa_product(self, primes, algorithm)
+
+    def local_deficiency(
+        self,
+        place: Any,
+        algorithm: str = "auto",
+        *,
+        reduction: Any = None,
+    ) -> Any:
+        """Return the structured local degree-`g-1` deficiency decision."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.deficiency",
+            fromlist=["local_deficiency"],
+        )
+        return module.local_deficiency(self, place, algorithm, reduction=reduction)
+
+    def is_deficient(
+        self,
+        place: Any,
+        algorithm: str = "auto",
+        *,
+        reduction: Any = None,
+    ) -> bool:
+        """Return a certified local deficiency boolean or raise."""
+        return self.local_deficiency(
+            place, algorithm, reduction=reduction
+        ).require_decision()
+
+    def global_deficiency_diagnostic(self, **options: Any) -> Any:
+        """Return the conditional Poonen--Stoll global parity diagnostic."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.deficiency",
+            fromlist=["global_deficiency_diagnostic"],
+        )
+        return module.global_deficiency_diagnostic(self, **options)
+
+    def real_period(self, **options: Any) -> Any:
+        """Return the model- or supplied-Neron-normalized real period."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.periods", fromlist=["real_period"]
+        )
+        return module.real_period(self, **options)
+
+    def abel_jacobi(self, point_or_split_mumford: Any, **options: Any) -> Any:
+        """Return a chosen Abel--Jacobi lift in the supported odd-degree envelope."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.periods", fromlist=["abel_jacobi"]
+        )
+        return module.abel_jacobi(self, point_or_split_mumford, **options)
+
+    def bsd_analytic_quotient(
+        self,
+        subgroup: Any = None,
+        **options: Any,
+    ) -> Any:
+        """Assemble every available BSD factor without hiding missing proofs."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.bsd_pipeline",
+            fromlist=["compute_bsd_analytic_quotient"],
+        )
+        return module.compute_bsd_analytic_quotient(
+            self,
+            subgroup=subgroup,
+            **options,
+        )
+
     def lseries(self) -> Any:
         """Return the cached numerical Hasse--Weil L-series."""
         if self._lseries_cache is None:
