@@ -12,8 +12,10 @@ interfaces.  A relation records and verifies the exact equality
 Here `source` is itself authenticated by `source_row`; consequently `row` is
 the principal relation consumed by relation-matrix code.  The optional source
 ideal is useful for LLL searches in a selected ideal without weakening the
-certificate.  Every admitted relation reconstructs all ideals before it can
-enter a collector.
+certificate.  Live admission checks the source and principal rows exactly;
+the compact serialized record retains their exponent rows, and detached replay
+reconstructs source, quotient, and principal ideals and multiplies them
+independently.
 
 The bounded short-vector search follows the readable first stage of Hecke's
 `Rel_LLL.jl`: reduce a Minkowski-embedded ideal basis, try basis vectors and
@@ -34,7 +36,7 @@ import sagejs as sage
 import sagejs.runtime as runtime
 from sagejs.number_fields.embeddings import archimedean_data
 
-RELATION_SCHEMA = "sagejs.number-fields/class-relation-v1"
+RELATION_SCHEMA = "sagejs.number-fields/class-relation-v2"
 WITNESS_SCHEMA = "sagejs.number-fields/factored-principal-witness-v1"
 IDEAL_SCHEMA = "sagejs.number-fields/relation-ideal-v1"
 SEARCH_STATE_SCHEMA = "sagejs.number-fields/relation-search-state-v1"
@@ -263,45 +265,16 @@ def _order_fingerprint(order: Any) -> dict[str, Any]:
     }
 
 
-def _ideal_payload(
-    ideal: Any,
-    *,
-    field_order: dict[str, Any] | None = None,
-    norm: Any = None,
-) -> dict[str, Any]:
+def _ideal_payload(ideal: Any) -> dict[str, Any]:
     return {
         "schema": IDEAL_SCHEMA,
-        "field_order": (
-            _order_fingerprint(ideal.ring()) if field_order is None else field_order
-        ),
+        "field_order": _order_fingerprint(ideal.ring()),
         "basis": [
             [_rational_pair(value) for value in row]
             for row in ideal.basis_matrix().rows()
         ],
-        "norm": _rational_pair(ideal.norm() if norm is None else norm),
+        "norm": _rational_pair(ideal.norm()),
     }
-
-
-def _ideal_from_payload(order: Any, payload: Any) -> Any:
-    if not isinstance(payload, dict) or payload.get("schema") != IDEAL_SCHEMA:
-        raise ValueError("unsupported relation-ideal schema")
-    if payload.get("field_order") != _order_fingerprint(order):
-        raise ValueError("a relation ideal belongs to a different field or order")
-    rows = payload.get("basis")
-    if not isinstance(rows, list) or len(rows) != order.degree():
-        raise ValueError("a nonzero relation ideal must have a full basis")
-    field = order.number_field()
-    elements = [
-        _field_element_from_coefficients(
-            field,
-            [_rational_from_pair(value, "ideal basis entry") for value in row],
-        )
-        for row in rows
-    ]
-    ideal = order.ideal(elements)
-    if _ideal_payload(ideal) != payload:
-        raise ValueError("a relation ideal payload is not canonical")
-    return ideal
 
 
 def _prime_fingerprint(prime_ideal: Any) -> dict[str, Any]:
@@ -633,29 +606,15 @@ def _factor_positive_integer(value: int) -> list[list[int]]:
 
 
 def _norm_smoothness(
-    principal: Any,
-    source: Any,
-    quotient: Any,
+    principal_norm: Any,
     row: tuple[int, ...],
     factor_base: tuple[Any, ...],
-    *,
-    principal_norm: Any = None,
-    source_norm: Any = None,
-    quotient_norm: Any = None,
 ) -> dict[str, Any]:
-    principal_pair = _rational_pair(
-        principal.norm() if principal_norm is None else principal_norm
-    )
-    source_pair = _rational_pair(source.norm() if source_norm is None else source_norm)
-    quotient_pair = _rational_pair(
-        quotient.norm() if quotient_norm is None else quotient_norm
-    )
+    principal_pair = _rational_pair(principal_norm)
     numerator = abs(principal_pair[0])
     denominator = principal_pair[1]
     return {
         "principal_norm": principal_pair,
-        "source_norm": source_pair,
-        "quotient_norm": quotient_pair,
         "principal_norm_factorization": {
             "numerator": _factor_positive_integer(numerator),
             "denominator": _factor_positive_integer(denominator),
@@ -682,12 +641,7 @@ class RelationRecord:
         quotient_row: Iterable[int],
         source_row: Iterable[int],
         witness: dict[str, Any],
-        principal_ideal: dict[str, Any],
-        source_ideal: dict[str, Any],
-        smooth_quotient: dict[str, Any],
         norm_smoothness: dict[str, Any],
-        field_order: dict[str, Any],
-        factor_base: Iterable[dict[str, Any]],
         archimedean_logs: Iterable[Any] = (),
         log_precision: int = 0,
         provenance: dict[str, Any] | None = None,
@@ -698,14 +652,7 @@ class RelationRecord:
         if not (len(self.row) == len(self.quotient_row) == len(self.source_row)):
             raise ValueError("relation rows must have equal width")
         self.witness = _json_value(witness)
-        self.principal_ideal = _json_value(principal_ideal)
-        self.source_ideal = _json_value(source_ideal)
-        self.smooth_quotient = _json_value(smooth_quotient)
         self.norm_smoothness = _json_value(norm_smoothness)
-        self.field_order = _json_value(field_order)
-        self.factor_base = tuple(_json_value(item) for item in factor_base)
-        if len(self.factor_base) != len(self.row):
-            raise ValueError("factor-base evidence has the wrong width")
         self.archimedean_logs = tuple(_json_value(value) for value in archimedean_logs)
         self.log_precision = _checked_nonnegative(log_precision, "log precision")
         self.provenance = _json_value({} if provenance is None else provenance)
@@ -738,15 +685,10 @@ class RelationRecord:
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema": RELATION_SCHEMA,
-            "field_order": self.field_order,
-            "factor_base": list(self.factor_base),
             "row": list(self.row),
             "quotient_row": list(self.quotient_row),
             "source_row": list(self.source_row),
             "witness": self.witness,
-            "principal_ideal": self.principal_ideal,
-            "source_ideal": self.source_ideal,
-            "smooth_quotient": self.smooth_quotient,
             "norm_smoothness": self.norm_smoothness,
             "archimedean": {
                 "precision": self.log_precision,
@@ -758,30 +700,44 @@ class RelationRecord:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> RelationRecord:
-        if payload.get("schema") != RELATION_SCHEMA:
+        if not isinstance(payload, dict) or payload.get("schema") != RELATION_SCHEMA:
             raise ValueError("unsupported class-relation schema")
+        expected = {
+            "schema",
+            "row",
+            "quotient_row",
+            "source_row",
+            "witness",
+            "norm_smoothness",
+            "archimedean",
+            "provenance",
+        }
+        if set(payload) != expected:
+            raise ValueError("class-relation evidence has unexpected fields")
         archimedean = payload.get("archimedean")
         if not isinstance(archimedean, dict):
             raise TypeError("relation archimedean evidence must be a dictionary")
-        if archimedean.get("complex_place_convention") != (
+        if set(archimedean) != {
+            "precision",
+            "logs",
+            "complex_place_convention",
+        } or archimedean.get("complex_place_convention") != (
             "one-place-log-absolute-value-times-two"
         ):
             raise ValueError("unknown relation archimedean convention")
-        return cls(
+        answer = cls(
             row=payload["row"],
             quotient_row=payload["quotient_row"],
             source_row=payload["source_row"],
             witness=payload["witness"],
-            principal_ideal=payload["principal_ideal"],
-            source_ideal=payload["source_ideal"],
-            smooth_quotient=payload["smooth_quotient"],
             norm_smoothness=payload["norm_smoothness"],
-            field_order=payload["field_order"],
-            factor_base=payload["factor_base"],
             archimedean_logs=archimedean["logs"],
             log_precision=archimedean["precision"],
             provenance=payload["provenance"],
         )
+        if answer.to_dict() != payload:
+            raise ValueError("class-relation evidence is not canonical")
+        return answer
 
     def verify(
         self,
@@ -807,12 +763,16 @@ class RelationRecord:
         )
 
     def replay(self, order: Any, factor_base: Iterable[Any]) -> dict[str, Any]:
-        verification = verify_relation_record(order, factor_base, self)
+        factors = tuple(factor_base)
+        reconstructor = FactorBaseIdealReconstructor(order, factors)
+        verification = verify_relation_record(
+            order, factors, self, reconstructor=reconstructor
+        )
         if verification["certified"] is not True:
             raise ArithmeticError(
                 "relation replay failed: " + "; ".join(verification["failures"])
             )
-        factors = tuple(factor_base)
+        principal = self._principal_from_witness(order)
         return {
             "certified": True,
             "row": self.row,
@@ -820,10 +780,10 @@ class RelationRecord:
             "witness": FactoredPrincipalWitness.from_dict(
                 order.number_field(), self.witness
             ),
-            "principal_ideal": _ideal_from_payload(order, self.principal_ideal),
-            "source_ideal": _ideal_from_payload(order, self.source_ideal),
-            "smooth_quotient": _ideal_from_payload(order, self.smooth_quotient),
-            "reconstructed": reconstruct_factor_base_ideal(order, factors, self.row),
+            "principal_ideal": principal,
+            "source_ideal": reconstructor.reconstruct(self.source_row),
+            "smooth_quotient": reconstructor.reconstruct(self.quotient_row),
+            "reconstructed": reconstructor.reconstruct(self.row),
         }
 
     def canonical_key(self) -> str:
@@ -852,11 +812,6 @@ def verify_relation_record(
         ):
             return {"certified": True, "failures": []}
         reconstruct = _relation_reconstructor(order, factors, reconstructor)
-        if relation.field_order != _order_fingerprint(order):
-            failures.append("field/order fingerprint mismatch")
-        expected_factors = tuple(_prime_fingerprint(prime) for prime in factors)
-        if relation.factor_base != expected_factors:
-            failures.append("factor-base fingerprints or ordering changed")
         if len(relation.row) != len(factors):
             failures.append("relation row width mismatch")
         if relation.row != tuple(
@@ -868,24 +823,17 @@ def verify_relation_record(
             failures.append("principal row is not source_row + quotient_row")
 
         principal = relation._principal_from_witness(order)
-        recorded_principal = _ideal_from_payload(order, relation.principal_ideal)
-        source = _ideal_from_payload(order, relation.source_ideal)
-        quotient = _ideal_from_payload(order, relation.smooth_quotient)
-        if principal != recorded_principal:
-            failures.append("factored witness does not generate the recorded ideal")
         reconstructed_source = reconstruct(relation.source_row)
         reconstructed_quotient = reconstruct(relation.quotient_row)
         reconstructed_principal = reconstruct(relation.row)
-        if source != reconstructed_source:
-            failures.append("source ideal does not match source_row")
-        if quotient != reconstructed_quotient:
-            failures.append("smooth quotient does not match quotient_row")
-        if principal != source * quotient:
+        if principal != reconstructed_source * reconstructed_quotient:
             failures.append("principal ideal is not source times smooth quotient")
         if principal != reconstructed_principal:
             failures.append("principal ideal does not match the matrix row")
         expected_norms = _norm_smoothness(
-            principal, source, quotient, relation.row, factors
+            abs(sage.QQ(principal.norm())),
+            relation.row,
+            factors,
         )
         if relation.norm_smoothness != expected_norms:
             failures.append("norm smoothness evidence is stale or incomplete")
@@ -966,10 +914,6 @@ class ExactRelationCollector:
             max_powers=max_factor_powers,
         )
         self.rank_screen = ModularRankScreen(len(self.factor_base), rank_prime)
-        self._field_order_fingerprint = _order_fingerprint(order)
-        self._factor_base_fingerprints = tuple(
-            _prime_fingerprint(prime) for prime in self.factor_base
-        )
         self.records: list[RelationRecord] = []
         self.admissions: list[RelationAdmission] = []
         self.context = context
@@ -1138,46 +1082,19 @@ class ExactRelationCollector:
                 "the principal witness has support outside the supplied factor base",
                 ideal=principal,
             )
-        quotient = self.reconstruct_factor_base_ideal(quotient_row)
-        # Each ideal has already been compared with the exact reconstruction
-        # of its exponent row, and `row = source_row + quotient_row`.  Their
-        # product identity follows exactly from those checks.  Detached replay
-        # still performs the independent ideal multiplication before accepting
-        # an exported relation.
-        source_norm = _factor_base_row_norm(self.factor_base, computed_source_row)
-        quotient_norm = _factor_base_row_norm(self.factor_base, quotient_row)
+        # The compact producer record retains exponent rows instead of three
+        # duplicate ideal lattices.  Detached replay reconstructs source,
+        # quotient, and principal ideals and checks their product independently.
         record = RelationRecord(
             row=row,
             quotient_row=quotient_row,
             source_row=computed_source_row,
             witness=factored.to_dict(),
-            principal_ideal=_ideal_payload(
-                principal,
-                field_order=self._field_order_fingerprint,
-                norm=witness_norm,
-            ),
-            source_ideal=_ideal_payload(
-                source,
-                field_order=self._field_order_fingerprint,
-                norm=source_norm,
-            ),
-            smooth_quotient=_ideal_payload(
-                quotient,
-                field_order=self._field_order_fingerprint,
-                norm=quotient_norm,
-            ),
             norm_smoothness=_norm_smoothness(
-                principal,
-                source,
-                quotient,
+                witness_norm,
                 row,
                 self.factor_base,
-                principal_norm=witness_norm,
-                source_norm=source_norm,
-                quotient_norm=quotient_norm,
             ),
-            field_order=self._field_order_fingerprint,
-            factor_base=self._factor_base_fingerprints,
             archimedean_logs=archimedean_logs,
             log_precision=log_precision,
             provenance=provenance,
@@ -1816,9 +1733,17 @@ class AutomorphismOrbitPlan:
                 for element, exponent in witness.factors()
             ],
         )
-        mapped_source = self._conjugate_ideal_unchecked(
-            _ideal_from_payload(self._order, parent.source_ideal)
+        parent_source = reconstruct_factor_base_ideal(
+            self._order, self._factor_base, parent.source_row
         )
+        mapped_source = self._conjugate_ideal_unchecked(parent_source)
+        reconstructed_mapped_source = collector.reconstruct_factor_base_ideal(
+            mapped_source_row
+        )
+        if mapped_source != reconstructed_mapped_source:
+            raise ArithmeticError(
+                "a conjugate source ideal did not match its permuted row"
+            )
         admission = collector.admit_witness(
             mapped_witness,
             source_ideal=mapped_source,

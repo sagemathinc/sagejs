@@ -239,13 +239,13 @@ mutated = json.loads(json.dumps(serialized[0]))
 mutated["witness"]["factors"][0]["element"][0][0] += 1
 mutations.append(mutated)
 mutated = json.loads(json.dumps(serialized[0]))
-mutated["principal_ideal"]["basis"][0][0][0] += 1
+mutated["source_row"][0] += 1
 mutations.append(mutated)
 mutated = json.loads(json.dumps(serialized[0]))
 mutated["norm_smoothness"]["principal_norm"][0] += 1
 mutations.append(mutated)
 mutated = json.loads(json.dumps(serialized[0]))
-mutated["field_order"]["discriminant"] += 1
+mutated["unexpected_ideal_payload"] = {}
 mutations.append(mutated)
 for mutation in mutations:
     assert not verify_relation_record(O, factor_base, mutation)["certified"]
