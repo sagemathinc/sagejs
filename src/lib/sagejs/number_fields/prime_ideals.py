@@ -1111,26 +1111,89 @@ def _residue_presentation_for_prime(
     )
 
 
-def _prime_from_ideal(
-    ideal: Any,
+def _dedekind_kummer_prime_candidate(
+    order: Any,
     prime: int,
-    ramification: int,
-    residue_degree: int,
+    factor: Any,
+    beta: Any,
+    table: list[list[list[int]]],
+    one: list[int],
     *,
-    table: list[list[list[int]]] | None = None,
-    one: list[int] | None = None,
-) -> NumberFieldPrimeIdeal:
-    result = NumberFieldPrimeIdeal(
-        ideal.ring(),
-        ideal._basis_rows,
+    verify_candidate: bool,
+    p_basis: tuple[Any, ...] = (),
+) -> tuple[NumberFieldPrimeIdeal, Any]:
+    """Materialize one Dedekind--Kummer prime from its modular ideal.
+
+    The generic `(p, g(beta))` ideal constructor first builds an exact ideal
+    lattice and then rediscovers the same modular subspace to construct the
+    residue presentation.  Here the irreducible modular factor already gives
+    that subspace.  Materialize its canonical HNF directly through the
+    source-transparent candidate kernel (with its readable fallback).
+
+    A selective factor-base caller does not subsequently replay the complete
+    rational-prime decomposition, so `verify_candidate=True` independently
+    binds the packed lattice to `(p, g(beta))`: it must contain `p*O` and the
+    exact second generator, have norm `p^f`, and retain a field quotient.  By
+    Dedekind--Kummer at a certified `p`-maximal equation order these checks
+    force equality with the intended prime ideal.  The full decomposition
+    producer instead leaves the candidate pending for its stronger ordinary
+    replay in `verify_prime_decomposition`.
+    """
+    residue_degree = len(factor.polynomial) - 1
+    second_generator = order.number_field().zero()
+    for coefficient in reversed(factor.polynomial):
+        second_generator = second_generator * beta + int(coefficient)
+    exact_coordinates = _field_element_order_coordinates(order, second_generator)
+    if any(value._denominator != 1 for value in exact_coordinates):
+        raise ArithmeticError("a Dedekind--Kummer generator is not integral")
+    modular_coordinates = [int(value._numerator) % prime for value in exact_coordinates]
+    degree = order.degree()
+    subspace = _subspace_ideal_generated_by([modular_coordinates], degree, table, prime)
+    presentation = _primitive_presentation(
+        degree,
         prime,
-        ramification,
+        table,
+        one,
+        subspace,
+        DEFAULT_MAX_PRIMITIVE_CANDIDATES,
+    )
+    candidate = _prime_candidate_from_modular_subspace(
+        order,
+        subspace,
+        prime,
+        int(factor.multiplicity),
         residue_degree,
+        presentation,
+        use_packed=True,
     )
-    result._residue_presentation = _residue_presentation_for_prime(
-        result, table=table, one=one
-    )
-    return result
+    if verify_candidate:
+        if not p_basis:
+            p_basis = tuple(order.ideal(prime).basis())
+        if not all(value in candidate for value in p_basis):
+            raise ArithmeticError("a packed Dedekind--Kummer ideal omits p*O")
+        if second_generator not in candidate:
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer ideal omits its exact generator"
+            )
+        expected_norm = runtime.bigint(prime) ** runtime.bigint(residue_degree)
+        if candidate.norm() != expected_norm:
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer ideal has the wrong exact norm"
+            )
+        if not _quotient_is_field(
+            order,
+            candidate,
+            prime,
+            residue_degree,
+            table=table,
+            one=one,
+        ):
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer ideal quotient is not a field"
+            )
+        candidate._packed_candidate_pending_replay = False
+        candidate._verified_modular_algebra = (prime, table, one)
+    return candidate, second_generator
 
 
 def _dedekind_kummer(order: Any, prime: int) -> list[NumberFieldPrimeIdeal] | None:
@@ -1146,20 +1209,16 @@ def _dedekind_kummer(order: Any, prime: int) -> list[NumberFieldPrimeIdeal] | No
     one = [value % prime for value in _order_one_coordinates(order)]
     answer: list[NumberFieldPrimeIdeal] = []
     for factor in factors:
-        value = field.zero()
-        for coefficient in reversed(factor.polynomial):
-            value = value * beta + int(coefficient)
-        ideal = order.ideal(prime, value)
-        answer.append(
-            _prime_from_ideal(
-                ideal,
-                prime,
-                int(factor.multiplicity),
-                len(factor.polynomial) - 1,
-                table=table,
-                one=one,
-            )
+        candidate, _second_generator = _dedekind_kummer_prime_candidate(
+            order,
+            prime,
+            factor,
+            beta,
+            table,
+            one,
+            verify_candidate=False,
         )
+        answer.append(candidate)
     return answer
 
 

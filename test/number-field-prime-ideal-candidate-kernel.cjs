@@ -218,6 +218,18 @@ try:
     except (ArithmeticError, ValueError):
         rejected = True
     assert rejected
+    # Selective Dedekind--Kummer construction has no later full decomposition
+    # replay, so its containment/norm/quotient checks reject the same output.
+    selective_order = NumberField(x**3 + 2*x + 1, "selective").maximal_order()
+    selective_plan = factor_bases.factor_base_plan(
+        selective_order, proof=True, theorem="minkowski"
+    )
+    rejected = False
+    try:
+        factor_bases.build_factor_base(selective_plan)
+    except (ArithmeticError, ValueError):
+        rejected = True
+    assert rejected
 finally:
     prime_ideals._candidate_kernel.packed_prime_ideal_candidate_hnf_in_place = saved
 print(hashlib.sha256(encoded).hexdigest())

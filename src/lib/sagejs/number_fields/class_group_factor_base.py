@@ -1381,6 +1381,7 @@ def _selective_dedekind_kummer(
     selected: list[tuple[Any, Any]] = []
     table = None
     one = None
+    p_basis: tuple[Any, ...] = ()
     for factor in modular_factors:
         residue_degree = len(factor.polynomial) - 1
         if residue_degree not in residue_degrees:
@@ -1390,17 +1391,16 @@ def _selective_dedekind_kummer(
             one = [
                 value % prime for value in _prime_ideals._order_one_coordinates(order)
             ]
-        second_generator = field.zero()
-        for coefficient in reversed(factor.polynomial):
-            second_generator = second_generator * beta + int(coefficient)
-        ideal = order.ideal(prime, second_generator)
-        prime_ideal = _prime_ideals._prime_from_ideal(
-            ideal,
+            p_basis = tuple(order.ideal(prime).basis())
+        prime_ideal, second_generator = _prime_ideals._dedekind_kummer_prime_candidate(
+            order,
             prime,
-            int(factor.multiplicity),
-            residue_degree,
-            table=table,
-            one=one,
+            factor,
+            beta,
+            table,
+            one,
+            verify_candidate=True,
+            p_basis=p_basis,
         )
         selected.append((prime_ideal, second_generator))
     selected.sort(key=lambda pair: _prime_ideals._prime_sort_key(pair[0]))

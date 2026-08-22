@@ -332,14 +332,14 @@ assert quintic_plan.estimated_rational_primes == 19
 assert quintic_plan.estimated_prime_ideals == 95
 assert quintic_plan.progress()["splitting_scan_complete"] is False
 assert quintic_plan.progress()["materialized_prime_ideals"] == 0
-original_prime_from_ideal = factor_bases._prime_ideals._prime_from_ideal
+original_prime_candidate = factor_bases._prime_ideals._dedekind_kummer_prime_candidate
 factor_calls = []
 prime_ideal_constructions = []
-def tracked_prime_from_ideal(*args, **kwargs):
+def tracked_prime_candidate(*args, **kwargs):
     prime_ideal_constructions.append(int(args[1]))
-    return original_prime_from_ideal(*args, **kwargs)
+    return original_prime_candidate(*args, **kwargs)
 factor_bases._prime_ideals.factor_rational_prime = tracked_factor
-factor_bases._prime_ideals._prime_from_ideal = tracked_prime_from_ideal
+factor_bases._prime_ideals._dedekind_kummer_prime_candidate = tracked_prime_candidate
 try:
     construction_started = time.perf_counter()
     interrupted_stream = prime_ideal_norm_stream(quintic_plan)
@@ -356,7 +356,7 @@ try:
     cache_seconds = time.perf_counter() - cache_started
 finally:
     factor_bases._prime_ideals.factor_rational_prime = original_factor
-    factor_bases._prime_ideals._prime_from_ideal = original_prime_from_ideal
+    factor_bases._prime_ideals._dedekind_kummer_prime_candidate = original_prime_candidate
 quintic_compact = [
     {
         "p": record.rational_prime,
@@ -459,18 +459,18 @@ for case in fixture["high_degree_cases"]:
     prepared.append((case, order))
 
 original_factor = factor_bases._prime_ideals.factor_rational_prime
-original_prime_from_ideal = factor_bases._prime_ideals._prime_from_ideal
+original_prime_candidate = factor_bases._prime_ideals._dedekind_kummer_prime_candidate
 factor_calls = []
 prime_ideal_constructions = []
 def tracked_factor(order, prime, *args, **kwargs):
     factor_calls.append(int(prime))
     return original_factor(order, prime, *args, **kwargs)
-def tracked_prime_from_ideal(*args, **kwargs):
+def tracked_prime_candidate(*args, **kwargs):
     prime_ideal_constructions.append(int(args[1]))
-    return original_prime_from_ideal(*args, **kwargs)
+    return original_prime_candidate(*args, **kwargs)
 
 factor_bases._prime_ideals.factor_rational_prime = tracked_factor
-factor_bases._prime_ideals._prime_from_ideal = tracked_prime_from_ideal
+factor_bases._prime_ideals._dedekind_kummer_prime_candidate = tracked_prime_candidate
 plans_and_records = []
 started = time.perf_counter()
 try:
@@ -514,7 +514,7 @@ try:
     replay_seconds = time.perf_counter() - replay_started
 finally:
     factor_bases._prime_ideals.factor_rational_prime = original_factor
-    factor_bases._prime_ideals._prime_from_ideal = original_prime_from_ideal
+    factor_bases._prime_ideals._dedekind_kummer_prime_candidate = original_prime_candidate
 
 # Only p=2 in the transformed sextic divides its equation-order index.  The
 # compact scan must use and cache one complete finite-algebra decomposition
