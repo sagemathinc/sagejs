@@ -2916,9 +2916,19 @@ class NumberFieldParent(sage.Parent):
             cubic_class_numbers = _nf_cubic_class_number_module()
             artifact = self._bounded_cubic_class_number_artifact
             uncached = artifact is runtime.undefined
-            if uncached:
+            requested_proof = True if proof is None else bool(proof)
+            conditional_decline = bool(
+                not uncached
+                and not artifact.complete
+                and artifact.diagnostics.get(
+                    "relation_seed_size_policy_exceeded", False
+                )
+            )
+            producer_ran = uncached or (requested_proof and conditional_decline)
+            if producer_ran:
                 artifact = cubic_class_numbers.bounded_cubic_minkowski_class_number(
-                    self
+                    self,
+                    max_relation_seed_prime_ideals=(None if requested_proof else 7),
                 )
             if artifact.complete:
                 matcher = getattr(
@@ -2930,16 +2940,20 @@ class NumberFieldParent(sage.Parent):
                     raise ArithmeticError(
                         "cached cubic class-number evidence lost authentication"
                     )
-                if uncached:
+                if producer_ran:
                     self._bounded_cubic_class_number_artifact = artifact
                 return int(artifact.order())
             seed_reader = getattr(
                 cubic_class_numbers, "authenticated_cubic_relation_seed", None
             )
             if (
-                uncached
+                producer_ran
                 and callable(seed_reader)
                 and seed_reader(artifact, self) is not None
+            ):
+                self._bounded_cubic_class_number_artifact = artifact
+            elif producer_ran and artifact.diagnostics.get(
+                "relation_seed_size_policy_exceeded", False
             ):
                 self._bounded_cubic_class_number_artifact = artifact
         if self.degree() == 2:

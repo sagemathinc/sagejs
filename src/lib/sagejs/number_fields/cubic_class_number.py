@@ -1380,6 +1380,7 @@ def bounded_cubic_minkowski_class_number(
     max_projective_lines: int = DEFAULT_CUBIC_CLASS_NUMBER_MAX_PROJECTIVE_LINES,
     max_modulus: int = DEFAULT_CUBIC_CLASS_NUMBER_MAX_MODULUS,
     max_residue_states: int = DEFAULT_CUBIC_CLASS_NUMBER_MAX_RESIDUE_STATES,
+    max_relation_seed_prime_ideals: int | None = None,
     cancelled: Callable[[], bool] | None = None,
 ) -> CubicClassNumberResult:
     """Prove a cubic class number without computing units or a regulator.
@@ -1417,6 +1418,14 @@ def bounded_cubic_minkowski_class_number(
     }
     if checked_caps["max_modulus"] < 2:
         raise ValueError("maximum modulus must be at least two")
+    relation_seed_prime_ideal_cap = (
+        None
+        if max_relation_seed_prime_ideals is None
+        else _positive_integer(
+            max_relation_seed_prime_ideals,
+            "maximum relation-seed prime ideals",
+        )
+    )
     phase_timings: dict[str, float] = {}
     relation_metrics: dict[str, int] = {}
     live_factor_records: tuple[Any, ...] = ()
@@ -1499,6 +1508,16 @@ def bounded_cubic_minkowski_class_number(
         )
     phase_timings["factor_base"] = time.perf_counter() - factor_started
     factor_base = tuple(record.prime_ideal for record in factor_records)
+    if (
+        relation_seed_prime_ideal_cap is not None
+        and len(factor_base) > relation_seed_prime_ideal_cap
+    ):
+        result = incomplete(
+            "the exact Minkowski factor base exceeds the relation-seed size policy",
+            factor_base=factor_base,
+        )
+        result.diagnostics["relation_seed_size_policy_exceeded"] = True
+        return result
 
     relation_module = __import__(
         "sagejs.number_fields.class_group_relations",

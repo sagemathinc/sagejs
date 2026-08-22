@@ -501,17 +501,22 @@ L = NumberField(x**3 - x**2 + 7*x + 8, "b")
 assert L.class_number(proof=False) == 6
 large_artifact = L._bounded_cubic_class_number_artifact
 assert len(large_artifact.factor_base) == 10
+assert len(large_artifact.relation_records) == 0
+assert large_artifact.diagnostics["relation_seed_size_policy_exceeded"]
 large_result = list(L._class_unit_engine_cache.values())[-1]
 large_resources = large_result.diagnostics["resources"]
 assert large_result.proof_status == "exact-relations-conditional-grh"
 assert large_resources["cubic_factor_base_seed_uses"] == 0
 assert large_resources["cubic_relation_seed_uses"] == 0
+assert L.class_number(proof=False) == 6
+assert L._bounded_cubic_class_number_artifact is large_artifact
 
 # For proof=True, the same ten-prime Minkowski prefix is much cheaper than
 # discovering a conditional BDF presentation and then expressing every
 # Minkowski prime in it during a separate unconditional proof pass.
-P = NumberField(x**3 - x**2 + 7*x + 8, "c")
+P = L
 assert P.class_number(proof=True) == 6
+assert P._bounded_cubic_class_number_artifact is not large_artifact
 proof_result = list(P._class_unit_engine_cache.values())[-1]
 proof_resources = proof_result.diagnostics["resources"]
 assert proof_result.proof_status == "exact-unconditional"
