@@ -136,6 +136,7 @@
     "src/lib/sagejs/hyperelliptic_curves/lseries.py",
     "src/lib/sagejs/hyperelliptic_curves/model.py",
     "src/lib/sagejs/hyperelliptic_curves/rforest.py",
+    "src/lib/sagejs/hyperelliptic_curves/saturation.py",
     "src/lib/sagejs/hyperelliptic_curves/statistics.py",
     "src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
     "src/lib/sagejs/hyperelliptic_curves/torsion.py",

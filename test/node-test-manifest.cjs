@@ -312,6 +312,8 @@ const integration = [
   "test/doc-examples.cjs",
   "test/elliptic-curves.cjs",
   "test/hyperelliptic-bad-reduction.cjs",
+  "test/hyperelliptic-bsd-arithmetic.cjs",
+  "test/hyperelliptic-bsd-saturation.cjs",
   "test/hyperelliptic-global-lseries.cjs",
   "test/hyperelliptic-genus3-completion.cjs",
   "test/hyperelliptic-genus3-certified-oracle.cjs",
