@@ -42,7 +42,7 @@ capability checks succeed.
 from __future__ import annotations
 
 from itertools import permutations
-from math import ceil
+from math import ceil, isfinite
 from typing import Any
 
 import sagejs as sage
@@ -73,6 +73,40 @@ _CACHE_STATS = {
     "abel_hits": 0,
     "computations": 0,
 }
+
+
+def _clone_data(value: Any) -> Any:
+    """Deep-copy the JSON-like records crossing the public/cache boundary."""
+    if isinstance(value, dict):
+        return {str(key): _clone_data(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_clone_data(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_clone_data(item) for item in value)
+    return value
+
+
+def _validated_provenance(value: Any, path: str = "provenance") -> Any:
+    """Validate and detach a deterministic JSON-compatible provenance tree."""
+    if value is None or isinstance(value, (bool, int, str)):
+        return value
+    if isinstance(value, float):
+        if not isfinite(value):
+            raise ValueError(path + " contains a non-finite floating-point value")
+        return value
+    if isinstance(value, (list, tuple)):
+        return [
+            _validated_provenance(item, path + "[" + str(index) + "]")
+            for index, item in enumerate(value)
+        ]
+    if isinstance(value, dict):
+        answer: dict[str, Any] = {}
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise TypeError(path + " object keys must be strings")
+            answer[key] = _validated_provenance(item, path + "." + key)
+        return answer
+    raise TypeError(path + " must be JSON-compatible")
 
 
 class HyperellipticPeriodCapabilityError(ArithmeticError):
@@ -659,28 +693,41 @@ def _run_period_computation(
             effective_panels *= 2
             effective_order = max(effective_order, 32)
         leading = _mp_exact(coefficients[-1])
-        edges = [
-            _edge_integrals(
-                roots,
-                leading,
-                edge,
-                genus,
-                effective_panels,
-                effective_order,
+        quadrature_attempts = []
+        periods = None
+        internal_tolerance = mp.mpf(0)
+        for _attempt in range(6):
+            edges = [
+                _edge_integrals(
+                    roots,
+                    leading,
+                    edge,
+                    genus,
+                    effective_panels,
+                    effective_order,
+                )
+                for edge in range(2 * genus)
+            ]
+            periods = _periods_from_edges(edges, genus)
+            scale = max(mp.mpf(1), _matrix_maximum(periods["period_matrix"]))
+            internal_tolerance = mp.power(2, -max(24, min(100, bits // 2))) * scale
+            quadrature_attempts.append(
+                {
+                    "order": effective_order,
+                    "panels": effective_panels,
+                    "riemann_relative_defect": str(periods["symmetry_relative_defect"]),
+                    "tolerance": str(internal_tolerance),
+                }
             )
-            for edge in range(2 * genus)
-        ]
-        periods = _periods_from_edges(edges, genus)
-        scale = max(mp.mpf(1), _matrix_maximum(periods["period_matrix"]))
-        internal_tolerance = mp.power(2, -max(24, min(100, bits // 2))) * scale
-        if periods["symmetry_relative_defect"] > internal_tolerance:
+            if periods["symmetry_relative_defect"] <= internal_tolerance:
+                break
+            effective_panels *= 2
+            effective_order = min(64, 2 * effective_order)
+        if periods is None or periods["symmetry_relative_defect"] > internal_tolerance:
             raise HyperellipticPeriodCapabilityError(
                 "riemann_relation_not_isolated",
-                "the Riemann symmetry relation did not stabilize",
-                {
-                    "relative_defect": str(periods["symmetry_relative_defect"]),
-                    "tolerance": str(internal_tolerance),
-                },
+                "the Riemann symmetry relation did not stabilize after adaptive quadrature refinement",
+                {"attempts": quadrature_attempts},
             )
         action = _conjugation_action(
             periods["period_matrix"], genus, 128 * internal_tolerance
@@ -698,6 +745,7 @@ def _run_period_computation(
             "requested_panels": panels,
             "requested_quadrature_order": quadrature_order,
             "relative_branch_clearance": relative_clearance,
+            "quadrature_attempts": quadrature_attempts,
             "geometry": geometry,
             "periods": periods,
             "action": action,
@@ -711,6 +759,13 @@ def _maximum_matrix_difference(left: Any, right: Any) -> Any:
         for row in range(left.rows)
         for column in range(left.cols)
     )
+
+
+def _stable_bits(relative_error: Any, cap: int) -> int:
+    if relative_error <= 0:
+        return int(cap)
+    bits = int(mp.floor(-mp.log(relative_error, 2)))
+    return max(0, min(int(cap), bits))
 
 
 def _serialize_model_result(
@@ -729,11 +784,22 @@ def _serialize_model_result(
     tau = run["periods"]["tau"]
     roots = run["geometry"]["points"]
     order = run["geometry"]["order"]
+    scale = max(
+        mp.mpf(1),
+        _matrix_maximum(period_matrix),
+        abs(run["lattice"]["model_period"]),
+    )
+    periods_relative = run["periods"]["symmetry_relative_defect"]
+    achieved_stability_bits = min(
+        _stable_bits(difference / scale, bits),
+        _stable_bits(periods_relative, bits),
+    )
     return {
         "model_key": _model_key(curve),
         "genus": genus,
         "requested_precision_bits": requested_bits,
         "work_precision_bits": bits,
+        "achieved_stability_bits": achieved_stability_bits,
         "completed_coefficients": [_exact_text(value) for value in coefficients],
         "completed_degree": len(coefficients) - 1,
         "differential_basis": [
@@ -781,7 +847,7 @@ def _serialize_model_result(
             run["periods"]["symmetry_defect"], requested_bits
         ),
         "riemann_symmetry_relative_defect": _real_text(
-            run["periods"]["symmetry_relative_defect"], requested_bits
+            periods_relative, requested_bits
         ),
         "riemann_minimum_eigenvalue": _real_text(
             run["periods"]["minimum_eigenvalue"], requested_bits
@@ -837,7 +903,7 @@ def _model_period_data(
     )
     if use_cache and cache_key in _MODEL_PERIOD_CACHE:
         _CACHE_STATS["model_hits"] += 1
-        return (_MODEL_PERIOD_CACHE[cache_key], True)
+        return (_clone_data(_MODEL_PERIOD_CACHE[cache_key]), True)
     _CACHE_STATS["computations"] += 1
     target_tolerance = mp.power(2, -max(20, min(80, requested_bits // 2)))
     previous = None
@@ -867,6 +933,7 @@ def _model_period_data(
                 "relative_branch_clearance": _real_text(
                     run["relative_branch_clearance"], requested_bits
                 ),
+                "quadrature_attempts": _clone_data(run["quadrature_attempts"]),
                 "branch_order": list(order),
                 "model_real_period": _real_text(
                     run["lattice"]["model_period"], requested_bits
@@ -902,7 +969,7 @@ def _model_period_data(
                 if use_cache:
                     if len(_MODEL_PERIOD_CACHE) >= _CACHE_LIMIT:
                         del _MODEL_PERIOD_CACHE[next(iter(_MODEL_PERIOD_CACHE))]
-                    _MODEL_PERIOD_CACHE[cache_key] = result
+                    _MODEL_PERIOD_CACHE[cache_key] = _clone_data(result)
                 return (result, False)
         previous = run
         previous_order = order
@@ -1118,7 +1185,7 @@ def _abel_data(
     )
     if use_cache and key in _ABEL_CACHE:
         _CACHE_STATS["abel_hits"] += 1
-        return (_ABEL_CACHE[key], True)
+        return (_clone_data(_ABEL_CACHE[key]), True)
     target_tolerance = mp.power(2, -max(20, min(80, prec // 2)))
     previous = None
     runs = []
@@ -1175,7 +1242,7 @@ def _abel_data(
                 if use_cache:
                     if len(_ABEL_CACHE) >= _CACHE_LIMIT:
                         del _ABEL_CACHE[next(iter(_ABEL_CACHE))]
-                    _ABEL_CACHE[key] = result
+                    _ABEL_CACHE[key] = _clone_data(result)
                 return (result, False)
         previous = run
     raise HyperellipticPeriodCapabilityError(
@@ -1212,10 +1279,11 @@ def _normalization_data(
         determinant = sage.QQ(1) / sage.QQ(lattice_index)
     elif neron_differential_determinant is not None:
         determinant = sage.QQ(neron_differential_determinant)
-        if determinant <= 0:
-            raise ValueError("the Neron differential determinant must be positive")
+        if determinant == 0:
+            raise ValueError("the Neron differential determinant must be nonzero")
     if determinant is not None and provenance is None:
         raise ValueError("a supplied Neron normalization requires provenance")
+    normalized_provenance = _validated_provenance(provenance)
     if normalization == "neron" and determinant is None:
         raise HyperellipticPeriodCapabilityError(
             "neron_normalization_unavailable",
@@ -1232,8 +1300,41 @@ def _normalization_data(
         ),
         "determinant_parts": determinant_parts,
         "lattice_index": lattice_index,
-        "provenance": provenance,
+        "provenance": normalized_provenance,
     }
+
+
+def _mp_matrix_from_pairs(rows: Any) -> Any:
+    row_count = len(rows)
+    column_count = 0 if row_count == 0 else len(rows[0])
+    answer = mp.matrix(row_count, column_count)
+    for row in range(row_count):
+        for column in range(column_count):
+            real, imaginary = rows[row][column]
+            answer[row, column] = mp.mpc(mp.mpf(real), mp.mpf(imaginary))
+    return answer
+
+
+def _anti_symplectic_action(action: list[list[int]], genus: int) -> bool:
+    dimension = 2 * genus
+    intersection = [
+        [
+            1
+            if row < genus and column == genus + row
+            else -1
+            if row >= genus and column == row - genus
+            else 0
+            for column in range(dimension)
+        ]
+        for row in range(dimension)
+    ]
+    transpose = [
+        [action[column][row] for column in range(dimension)] for row in range(dimension)
+    ]
+    transformed = _integer_matrix_product(
+        _integer_matrix_product(transpose, intersection), action
+    )
+    return transformed == [[-value for value in row] for row in intersection]
 
 
 class AbelJacobiResult:
@@ -1242,12 +1343,14 @@ class AbelJacobiResult:
     def __init__(
         self,
         curve: Any,
+        points: list[Any],
         data: dict[str, Any],
         period_result: HyperellipticPeriodResult,
         cache_hit: bool,
     ) -> None:
         self._curve = curve
-        self._data = dict(data)
+        self._points = tuple(points)
+        self._data = _clone_data(data)
         self.period_result = period_result
         self.precision_bits = int(data["precision_bits"])
         self.genus = int(data["genus"])
@@ -1275,43 +1378,111 @@ class AbelJacobiResult:
     def period_matrix(self) -> Any:
         return self.period_result.period_matrix()
 
-    def verify(self) -> dict[str, Any]:
-        stable = float(self._data["refinement_difference"]) <= float(
-            self._data["refinement_tolerance"]
-        )
-        compatible = (
-            self._data["model_key"] == self.period_result._model_data["model_key"]
-            and self.genus == self.period_result.genus
-        )
+    def internal_consistency(self) -> dict[str, Any]:
+        """Recompute and bind the stored lift; this is not a rigor certificate."""
+        checks: dict[str, bool] = {}
+        error = None
+        try:
+            checks["curve_model_bound"] = (
+                self._data["model_key"] == _model_key(self._curve)
+                and self._data["model_key"]
+                == self.period_result._model_data["model_key"]
+                and self.genus == self.period_result.genus
+            )
+            checks["period_precision_sufficient"] = (
+                self.precision_bits <= self.period_result.precision_bits
+            )
+            support = [_point_key(point) for point in self._points]
+            checks["support_bound"] = support == self._data["support"]
+            checks["basepoint_bound"] = self._data["basepoint"] == "infinity"
+            checks["refinement_stable"] = mp.mpf(
+                self._data["refinement_difference"]
+            ) <= mp.mpf(self._data["refinement_tolerance"])
+            runs = self._data["refinement_runs"]
+            final = runs[-1]
+            recomputed = _abel_run(
+                self._curve,
+                list(self._points),
+                int(final["work_precision_bits"]),
+                int(final["quadrature_panels"]),
+                int(final["quadrature_order"]),
+            )
+            checks["path_bound"] = (
+                tuple(recomputed["branch_order"]) == tuple(self._data["branch_order"])
+                and list(recomputed["directions"]) == list(self._data["ray_directions"])
+                and all(
+                    clearance == mp.inf or clearance > 0
+                    for clearance in recomputed["clearances"]
+                )
+            )
+            clearance_bound = True
+            for recomputed_clearance, stored_clearance in zip(
+                recomputed["clearances"], self._data["ray_clearances"]
+            ):
+                if recomputed_clearance == mp.inf:
+                    clearance_bound = clearance_bound and stored_clearance == "infinity"
+                else:
+                    stored_value = mp.mpf(stored_clearance)
+                    clearance_bound = clearance_bound and abs(
+                        recomputed_clearance - stored_value
+                    ) <= mp.mpf(self._data["refinement_tolerance"]) * max(
+                        mp.mpf(1), abs(stored_value)
+                    )
+            checks["path_clearance_recomputed"] = clearance_bound
+            stored = [
+                mp.mpc(mp.mpf(real), mp.mpf(imaginary))
+                for real, imaginary in self.vector_pairs()
+            ]
+            difference = max(
+                [mp.mpf(0)]
+                + [
+                    abs(recomputed["vector"][index] - stored[index])
+                    for index in range(self.genus)
+                ]
+            )
+            checks["vector_recomputed"] = difference <= 4 * mp.mpf(
+                self._data["refinement_tolerance"]
+            )
+        except Exception as caught:
+            error = type(caught).__name__ + ": " + str(caught)
+        consistent = error is None and all(checks.values())
         return {
-            "model_compatible": compatible,
-            "refinement_stable": stable,
+            **checks,
+            "internal_consistency": consistent,
+            "certificate_status": "nonrigorous_internal_consistency_only",
+            "error": error,
             "rigorous": False,
-            "verified": compatible and stable,
+            "verified": consistent,
         }
+
+    verify = internal_consistency
 
     def diagnostics(self) -> dict[str, Any]:
-        return {
-            "support": list(self._data["support"]),
-            "basepoint": "infinity",
-            "branch_order": list(self._data["branch_order"]),
-            "ray_directions": list(self._data["ray_directions"]),
-            "ray_clearances": list(self._data["ray_clearances"]),
-            "refinement_difference": self._data["refinement_difference"],
-            "refinement_tolerance": self._data["refinement_tolerance"],
-            "refinement_runs": list(self._data["refinement_runs"]),
-            "analytic_error_status": self._data["analytic_error_status"],
-            "cache_hit": self.cache_hit,
-            "rigorous": False,
-        }
+        return _clone_data(
+            {
+                "support": list(self._data["support"]),
+                "basepoint": "infinity",
+                "branch_order": list(self._data["branch_order"]),
+                "ray_directions": list(self._data["ray_directions"]),
+                "ray_clearances": list(self._data["ray_clearances"]),
+                "refinement_difference": self._data["refinement_difference"],
+                "refinement_tolerance": self._data["refinement_tolerance"],
+                "refinement_runs": list(self._data["refinement_runs"]),
+                "analytic_error_status": self._data["analytic_error_status"],
+                "cache_hit": self.cache_hit,
+                "rigorous": False,
+            }
+        )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "schema": PERIOD_SCHEMA + "/abel-jacobi-v1",
-            **dict(self._data),
-            "period_model_key": self.period_result._model_data["model_key"],
-            "cache_hit": self.cache_hit,
-        }
+        return _clone_data(
+            {
+                "schema": PERIOD_SCHEMA + "/abel-jacobi-v1",
+                **dict(self._data),
+                "period_model_key": self.period_result._model_data["model_key"],
+                "cache_hit": self.cache_hit,
+            }
+        )
 
 
 class HyperellipticPeriodResult:
@@ -1325,12 +1496,13 @@ class HyperellipticPeriodResult:
         cache_hit: bool,
     ) -> None:
         self._curve = curve
-        self._model_data = dict(model_data)
-        self._normalization = dict(normalization_data)
+        self._model_data = _clone_data(model_data)
+        self._normalization = _clone_data(normalization_data)
         self.cache_hit = bool(cache_hit)
         self.rigorous = False
         self.arithmetic_balls_rigorous = False
         self.precision_bits = int(model_data["requested_precision_bits"])
+        self.achieved_stability_bits = int(model_data["achieved_stability_bits"])
         self.genus = int(model_data["genus"])
         self.normalization_status = str(normalization_data["status"])
 
@@ -1360,7 +1532,7 @@ class HyperellipticPeriodResult:
             )
         numerator, denominator = determinant
         field = _global("RealField")(self.precision_bits)
-        return self.model_period() * field(numerator) / field(denominator)
+        return self.model_period() * field(abs(numerator)) / field(denominator)
 
     def value(self) -> Any:
         """Return the period in the requested model or Neron normalization."""
@@ -1441,51 +1613,126 @@ class HyperellipticPeriodResult:
     def real_components(self) -> int:
         return int(self._model_data["real_components"])
 
-    def verify(self) -> dict[str, Any]:
-        """Replay exact structural checks and report numerical status."""
-        action = self._model_data["conjugation_matrix"]
-        dimension = 2 * self.genus
-        identity = [
-            [1 if row == column else 0 for column in range(dimension)]
-            for row in range(dimension)
-        ]
-        involution = _integer_matrix_product(action, action) == identity
-        refinement = float(self._model_data["refinement_difference"]) <= float(
-            self._model_data["refinement_tolerance"]
-        )
-        riemann = float(self._model_data["riemann_minimum_eigenvalue"]) > 0 and float(
-            self._model_data["riemann_symmetry_relative_defect"]
-        ) <= 128 * float(self._model_data["refinement_tolerance"])
+    def internal_consistency(self) -> dict[str, Any]:
+        """Recompute structural identities; this is not an analytic enclosure."""
+        checks: dict[str, bool] = {}
+        error = None
+        try:
+            checks["curve_model_bound"] = self._model_data["model_key"] == _model_key(
+                self._curve
+            )
+            completed, coefficients = _completed_model(self._curve)
+            del completed
+            checks["completed_model_bound"] = [
+                _exact_text(value) for value in coefficients
+            ] == self._model_data["completed_coefficients"]
+            action = self._model_data["conjugation_matrix"]
+            dimension = 2 * self.genus
+            identity = [
+                [1 if row == column else 0 for column in range(dimension)]
+                for row in range(dimension)
+            ]
+            checks["exact_conjugation_involution"] = (
+                _integer_matrix_product(action, action) == identity
+            )
+            checks["anti_symplectic_conjugation"] = _anti_symplectic_action(
+                action, self.genus
+            )
+            work_bits = int(self._model_data["work_precision_bits"])
+            with mp.workprec(work_bits):
+                periods = _mp_matrix_from_pairs(self._model_data["period_matrix"])
+                a_matrix = periods[:, : self.genus]
+                b_matrix = periods[:, self.genus :]
+                tau = a_matrix**-1 * b_matrix
+                stored_tau = _mp_matrix_from_pairs(self._model_data["siegel_matrix"])
+                tolerance = 8 * mp.mpf(self._model_data["refinement_tolerance"])
+                checks["tau_recomputed"] = (
+                    _maximum_matrix_difference(tau, stored_tau) <= tolerance
+                )
+                symmetry = max(
+                    abs(tau[row, column] - tau[column, row])
+                    for row in range(self.genus)
+                    for column in range(self.genus)
+                )
+                imaginary_symmetric = mp.matrix(
+                    [
+                        [
+                            mp.im((tau[row, column] + tau[column, row]) / 2)
+                            for column in range(self.genus)
+                        ]
+                        for row in range(self.genus)
+                    ]
+                )
+                minimum = min(mp.eigsy(imaginary_symmetric, eigvals_only=True))
+                checks["riemann_relations"] = symmetry <= tolerance and minimum > 0
+                lattice = _real_lattice_data(
+                    periods,
+                    action,
+                    self.genus,
+                    16 * tolerance,
+                )
+                checks["fixed_anti_lattices_recomputed"] = (
+                    lattice["fixed_basis"]
+                    == self._model_data["real_invariant_lattice_basis"]
+                    and lattice["anti_basis"]
+                    == self._model_data["real_anti_invariant_lattice_basis"]
+                    and lattice["component_coordinates"]
+                    == self._model_data["real_component_coordinates"]
+                    and lattice["component_count"] == self.real_components()
+                )
+                stored_period = mp.mpf(self._model_data["model_real_period"])
+                period_scale = max(mp.mpf(1), abs(stored_period))
+                checks["model_period_recomputed"] = (
+                    abs(lattice["model_period"] - stored_period)
+                    <= tolerance * period_scale
+                )
+            checks["refinement_stable"] = mp.mpf(
+                self._model_data["refinement_difference"]
+            ) <= mp.mpf(self._model_data["refinement_tolerance"])
+            checks["achieved_stability_recorded"] = (
+                0 < self.achieved_stability_bits <= work_bits
+            )
+            checks["positive_real_components"] = self.real_components() > 0
+        except Exception as caught:
+            error = type(caught).__name__ + ": " + str(caught)
+        consistent = error is None and all(checks.values())
         return {
-            "exact_conjugation_involution": involution,
-            "positive_real_components": self.real_components() > 0,
-            "riemann_checks": riemann,
-            "refinement_stable": refinement,
+            **checks,
+            "internal_consistency": consistent,
+            "certificate_status": "nonrigorous_internal_consistency_only",
+            "error": error,
             "rigorous": False,
-            "verified": involution and riemann and refinement,
+            "verified": consistent,
         }
 
+    verify = internal_consistency
+
     def diagnostics(self) -> dict[str, Any]:
-        return {
-            "root_isolation_status": self._model_data["root_isolation_status"],
-            "branch_chain_clearance": self._model_data["branch_chain_clearance"],
-            "riemann_symmetry_relative_defect": self._model_data[
-                "riemann_symmetry_relative_defect"
-            ],
-            "riemann_minimum_eigenvalue": self._model_data[
-                "riemann_minimum_eigenvalue"
-            ],
-            "conjugation_integrality_defect": self._model_data[
-                "conjugation_integrality_defect"
-            ],
-            "refinement_difference": self._model_data["refinement_difference"],
-            "refinement_tolerance": self._model_data["refinement_tolerance"],
-            "refinement_runs": list(self._model_data["refinement_runs"]),
-            "refinement_stable": bool(self._model_data["refinement_stable"]),
-            "analytic_error_status": self._model_data["analytic_error_status"],
-            "cache_hit": self.cache_hit,
-            "rigorous": False,
-        }
+        return _clone_data(
+            {
+                "root_isolation_status": self._model_data["root_isolation_status"],
+                "branch_chain_clearance": self._model_data["branch_chain_clearance"],
+                "riemann_symmetry_relative_defect": self._model_data[
+                    "riemann_symmetry_relative_defect"
+                ],
+                "riemann_minimum_eigenvalue": self._model_data[
+                    "riemann_minimum_eigenvalue"
+                ],
+                "conjugation_integrality_defect": self._model_data[
+                    "conjugation_integrality_defect"
+                ],
+                "refinement_difference": self._model_data["refinement_difference"],
+                "refinement_tolerance": self._model_data["refinement_tolerance"],
+                "refinement_runs": list(self._model_data["refinement_runs"]),
+                "refinement_stable": bool(self._model_data["refinement_stable"]),
+                "requested_precision_bits": self.precision_bits,
+                "work_precision_bits": self._model_data["work_precision_bits"],
+                "achieved_stability_bits": self.achieved_stability_bits,
+                "analytic_error_status": self._model_data["analytic_error_status"],
+                "cache_hit": self.cache_hit,
+                "rigorous": False,
+            }
+        )
 
     def to_dict(self) -> dict[str, Any]:
         model = dict(self._model_data)
@@ -1493,29 +1740,31 @@ class HyperellipticPeriodResult:
         neron_period = None
         if determinant is not None:
             neron_period = str(self.neron_period())
-        return {
-            "schema": PERIOD_SCHEMA,
-            **model,
-            "normalization": {
-                "requested": self._normalization["requested"],
-                "status": self.normalization_status,
-                "model_top_differential": "wedge_(i=0)^(g-1) x^i dx/(2y+h)",
-                "neron_differential_determinant": (
-                    None
-                    if determinant is None
-                    else {
-                        "numerator": str(determinant[0]),
-                        "denominator": str(determinant[1]),
-                        "meaning": "eta_Neron=q*eta_model; Omega_Neron=abs(q)*Omega_model",
-                    }
-                ),
-                "neron_lattice_index": self._normalization["lattice_index"],
-                "provenance": self._normalization["provenance"],
-            },
-            "neron_real_period": neron_period,
-            "selected_real_period": str(self.value()),
-            "cache_hit": self.cache_hit,
-        }
+        return _clone_data(
+            {
+                "schema": PERIOD_SCHEMA,
+                **model,
+                "normalization": {
+                    "requested": self._normalization["requested"],
+                    "status": self.normalization_status,
+                    "model_top_differential": "wedge_(i=0)^(g-1) x^i dx/(2y+h)",
+                    "neron_differential_determinant": (
+                        None
+                        if determinant is None
+                        else {
+                            "numerator": str(determinant[0]),
+                            "denominator": str(determinant[1]),
+                            "meaning": "eta_Neron=q*eta_model; Omega_Neron=abs(q)*Omega_model",
+                        }
+                    ),
+                    "neron_lattice_index": self._normalization["lattice_index"],
+                    "provenance": self._normalization["provenance"],
+                },
+                "neron_real_period": neron_period,
+                "selected_real_period": str(self.value()),
+                "cache_hit": self.cache_hit,
+            }
+        )
 
 
 def real_period(
@@ -1635,6 +1884,15 @@ def abel_jacobi(
         "model_key"
     ] != _model_key(curve):
         raise ValueError("the supplied period result belongs to a different curve")
+    elif requested_bits > period_result.precision_bits:
+        raise HyperellipticPeriodCapabilityError(
+            "period_precision_too_low",
+            "Abel--Jacobi precision cannot exceed the supplied period-lattice precision",
+            {
+                "requested_precision_bits": requested_bits,
+                "period_precision_bits": period_result.precision_bits,
+            },
+        )
     points = _split_points(curve, point_or_split_mumford)
     data, cache_hit = _abel_data(
         curve,
@@ -1645,7 +1903,7 @@ def abel_jacobi(
         initial_panels,
         bool(use_cache),
     )
-    return AbelJacobiResult(curve, data, period_result, cache_hit)
+    return AbelJacobiResult(curve, points, data, period_result, cache_hit)
 
 
 def clear_period_cache() -> None:

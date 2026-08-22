@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Implement an ordinary-Python genus-2/3 real-period engine with explicit model and Neron normalization status, precision refinement, caching, capability failures, and differential tests",
-  "base_commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+  "base_commit": "a5f36602d6319b57da2142949656365f6b3bbbf0",
   "claims": [
     "src/lib/sagejs/hyperelliptic_curves/periods.py",
     "test/hyperelliptic-periods.cjs",
@@ -41,6 +41,7 @@
     "pnpm exec ruff format --check src/lib/sagejs/hyperelliptic_curves/periods.py",
     "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/periods.py",
     "node --check test/hyperelliptic-periods.cjs",
+    "node test/hyperelliptic-bsd-oracles/verify.mjs",
     "node --test test/hyperelliptic-periods.cjs"
   ],
   "runs": [
@@ -48,55 +49,65 @@
       "command": "python -m py_compile src/lib/sagejs/hyperelliptic_curves/periods.py bench/hyperelliptic-periods.sage",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 0.07,
-      "started_at": "2026-08-22T06:36:47.594Z",
-      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
-      "workspace_fingerprint": "5432a5b8a8db0ea736d0ea94696fd06437f42142583393ab783f34a690222180",
+      "seconds": 0.076,
+      "started_at": "2026-08-22T07:30:46.126Z",
+      "commit": "a5f366022411f45af6e7d62c6738de0b0a15144c",
+      "workspace_fingerprint": "d96d447d9f4de8d158f240dde2fd7222822db06178b48f1a323aaf19f4fb3a96",
       "platform": "linux-x64"
     },
     {
       "command": "pnpm exec ruff format --check src/lib/sagejs/hyperelliptic_curves/periods.py",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 0.507,
-      "started_at": "2026-08-22T06:36:48.302Z",
-      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
-      "workspace_fingerprint": "5432a5b8a8db0ea736d0ea94696fd06437f42142583393ab783f34a690222180",
+      "seconds": 0.521,
+      "started_at": "2026-08-22T07:30:46.833Z",
+      "commit": "a5f366022411f45af6e7d62c6738de0b0a15144c",
+      "workspace_fingerprint": "d96d447d9f4de8d158f240dde2fd7222822db06178b48f1a323aaf19f4fb3a96",
       "platform": "linux-x64"
     },
     {
       "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/periods.py",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 2.414,
-      "started_at": "2026-08-22T06:36:49.444Z",
-      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
-      "workspace_fingerprint": "5432a5b8a8db0ea736d0ea94696fd06437f42142583393ab783f34a690222180",
+      "seconds": 2.531,
+      "started_at": "2026-08-22T07:30:47.992Z",
+      "commit": "a5f366022411f45af6e7d62c6738de0b0a15144c",
+      "workspace_fingerprint": "d96d447d9f4de8d158f240dde2fd7222822db06178b48f1a323aaf19f4fb3a96",
       "platform": "linux-x64"
     },
     {
       "command": "node --check test/hyperelliptic-periods.cjs",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 0.029,
-      "started_at": "2026-08-22T06:36:52.509Z",
-      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
-      "workspace_fingerprint": "5432a5b8a8db0ea736d0ea94696fd06437f42142583393ab783f34a690222180",
+      "seconds": 0.028,
+      "started_at": "2026-08-22T07:30:51.177Z",
+      "commit": "a5f366022411f45af6e7d62c6738de0b0a15144c",
+      "workspace_fingerprint": "d96d447d9f4de8d158f240dde2fd7222822db06178b48f1a323aaf19f4fb3a96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/hyperelliptic-bsd-oracles/verify.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.04,
+      "started_at": "2026-08-22T07:30:51.829Z",
+      "commit": "a5f366022411f45af6e7d62c6738de0b0a15144c",
+      "workspace_fingerprint": "d96d447d9f4de8d158f240dde2fd7222822db06178b48f1a323aaf19f4fb3a96",
       "platform": "linux-x64"
     },
     {
       "command": "node --test test/hyperelliptic-periods.cjs",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 160.139,
-      "started_at": "2026-08-22T06:36:58.994Z",
-      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
-      "workspace_fingerprint": "5432a5b8a8db0ea736d0ea94696fd06437f42142583393ab783f34a690222180",
+      "seconds": 174.983,
+      "started_at": "2026-08-22T07:31:02.836Z",
+      "commit": "a5f366022411f45af6e7d62c6738de0b0a15144c",
+      "workspace_fingerprint": "d96d447d9f4de8d158f240dde2fd7222822db06178b48f1a323aaf19f4fb3a96",
       "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Adds a portable genus-2/3 real-period engine for QQ hyperelliptic models, including completed-model and differential conventions, branch-chain periods, exact real-lattice topology, explicit model/supplied Neron normalization, precision and quadrature refinement, deterministic conditioning adaptation, caches and structured failures. Also adds an odd-degree Abel--Jacobi lift for rational affine points and split-point sums, an eight-row PARI 2.18.1.alpha differential corpus, focused topology/generalized-model tests, and a cold/cached benchmark.",
+    "summary": "Hardens the portable genus-2/3 period and Abel--Jacobi engine: cache/result/provenance trees are detached at every public boundary, structural verification now recomputes and binds the period lattice and Abel path/vector, high-precision Riemann failures trigger adaptive quadrature, achieved stability is distinct from requested precision, Abel precision cannot exceed its period lattice, signed differential determinants scale periods by absolute value, and tests load the versioned PARI corpus directly.",
     "risks": [
       "QQbar numerical centres and mpmath quadrature are refinement-stable but are not Arb/Acb enclosures; every result is deliberately rigorous=false.",
       "Automatic Neron differential normalization is not implemented; callers must supply an exact determinant or lattice index with provenance.",
