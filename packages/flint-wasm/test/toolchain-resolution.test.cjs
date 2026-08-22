@@ -32,6 +32,7 @@ const {
 } = require("../scripts/wasm-toolchain.cjs");
 const {
   ffpolySources,
+  reproducibleSourceFlags,
   smalljacSources,
 } = require("../scripts/build-smalljac-toolchain.cjs");
 
@@ -199,6 +200,17 @@ test("the portable smalljac recipe includes the reviewed genus-two closure", () 
   ]) {
     assert.ok(lock.build.repositoryInputs.includes(input));
   }
+});
+
+test("portable smalljac compilation removes random extraction paths", () => {
+  assert.deepEqual(
+    reproducibleSourceFlags("/tmp/sagejs-wasm-smalljac-random/source"),
+    [
+      "-ffile-prefix-map=/tmp/sagejs-wasm-smalljac-random/source=/sagejs/native-source",
+      "-fdebug-prefix-map=/tmp/sagejs-wasm-smalljac-random/source=/sagejs/native-source",
+      "-fmacro-prefix-map=/tmp/sagejs-wasm-smalljac-random/source=/sagejs/native-source",
+    ],
+  );
 });
 
 test("prepared compiler wrappers survive an atomic checkout rename", () => {
