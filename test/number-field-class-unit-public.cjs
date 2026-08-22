@@ -449,20 +449,17 @@ assert result.saturation_record.verify()
 resources = result.diagnostics["resources"]
 assert resources["cubic_relation_seed_uses"] == 1
 assert resources["cubic_relation_seed_relations"] == 7
-assert resources["saturation_rounds"] == 3
+assert resources["saturation_rounds"] == 1
 assert resources["relation_attempts"] == 6
 assert resources["relation_candidates"] == 12
 assert (
     resources["relation_witness_logarithm_requests"]
     - resources["relation_witness_logarithm_cache_hits"]
 ) == resources["relations"]
-assert resources["dependency_unit_materializations"] == 4
+assert resources["dependency_unit_materializations"] == 2
 assert resources["relation_witness_decode_requests"] <= 3 * resources["relations"]
-assert [attempt["prime"] for attempt in result.saturation_record.attempts] == [2, 3, 2]
-assert all(
-    attempt["relations_admitted"] == 4
-    for attempt in result.saturation_record.attempts
-)
+assert [attempt["prime"] for attempt in result.saturation_record.attempts] == [2]
+assert result.saturation_record.attempts[0]["relations_admitted"] == 12
 
 # The completed unconditional computation also satisfies proof=True without a
 # second relation or analytic pass.

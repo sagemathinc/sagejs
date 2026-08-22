@@ -33,6 +33,7 @@ INCOMPLETE_RESOURCE_LIMIT = "incomplete-resource-limit"
 MAX_DIRECT_CUBIC_RELATION_SEED_BOUND = 20
 MAX_DIRECT_CUBIC_RELATION_SEED_SIZE = 7
 MAX_UNCONDITIONAL_CUBIC_RELATION_SEED_SIZE = 10
+DEFAULT_CUBIC_SATURATION_RELATION_BATCH = 12
 MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 
 _AUTHENTICATED_CLASS_UNIT_SATURATION_TOKEN = object()
@@ -3345,6 +3346,15 @@ class ClassUnitGroupEngine:
             int(self.field.degree()) == 3
             and self._resource_usage["cubic_relation_seed_uses"] > 0
         )
+        relation_saturation_batch = self.limits.saturation_relation_batch
+        if (
+            prefer_relation_saturation
+            and self.limits.to_dict() == ClassUnitEngineLimits().to_dict()
+        ):
+            relation_saturation_batch = max(
+                relation_saturation_batch,
+                DEFAULT_CUBIC_SATURATION_RELATION_BATCH,
+            )
 
         def current_generation_authority() -> tuple[Any, Any]:
             if plan is not None:
@@ -3409,8 +3419,7 @@ class ClassUnitGroupEngine:
                 relation_count = len(collector.records)
                 before_order = _value(presentation, ("order",), None)
                 dependency_target = (
-                    len(presentation.dependency_transforms)
-                    + self.limits.saturation_relation_batch
+                    len(presentation.dependency_transforms) + relation_saturation_batch
                 )
                 collector, presentation = self._relations(
                     factor_base,
