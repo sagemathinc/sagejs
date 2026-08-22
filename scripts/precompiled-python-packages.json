@@ -29,6 +29,7 @@
     "sagejs.number_fields.class_unit_analytic",
     "sagejs.number_fields.class_unit_context",
     "sagejs.number_fields.class_unit_groups",
+    "sagejs.number_fields.cubic_class_number",
     "sagejs.number_fields.dedekind_zeta",
     "sagejs.number_fields.embeddings",
     "sagejs.number_fields.euler_products",
