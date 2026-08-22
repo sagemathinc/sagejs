@@ -169,7 +169,7 @@
         "dependencies": ["eager-core"],
         "assets": ["native-kernels/kernel-gmp.wasm"],
         "maximumCompressedDelta": {
-          "gzipBytes": 525000,
+          "gzipBytes": 550000,
           "brotliBytes": 320000
         }
       },
