@@ -67,6 +67,181 @@ def _dyadic_divide_by_positive(
 
 
 @native
+def _bf_integer_square_root(value: int) -> int:
+    """Return `floor(sqrt(value))` by exact Newton iteration."""
+    if value < 0:
+        return -1
+    if value < 2:
+        return value
+    bits = 0
+    probe = value
+    while probe:
+        probe //= 2
+        bits += 1
+    current = 1
+    shift = 0
+    while shift < (bits + 1) // 2:
+        current *= 2
+        shift += 1
+    following = (current + value // current) // 2
+    while following < current:
+        current = following
+        following = (current + value // current) // 2
+    while (current + 1) * (current + 1) <= value:
+        current += 1
+    while current * current > value:
+        current -= 1
+    return current
+
+
+@native
+def _bf_atanh_log_bounds(
+    numerator: int, denominator: int, scale: int
+) -> tuple[int, int]:
+    """Enclose `2*atanh(numerator/denominator)` at one exact scale."""
+    if numerator < 0 or denominator <= numerator or scale <= 0:
+        return (1, 0)
+    if numerator == 0:
+        return (0, 0)
+    lower = 0
+    upper = 0
+    numerator_power = numerator
+    denominator_power = denominator
+    numerator_square = numerator * numerator
+    denominator_square = denominator * denominator
+    for index in range(4096):
+        odd = 2 * index + 1
+        term_denominator = odd * denominator_power
+        term_numerator = 2 * scale * numerator_power
+        lower += term_numerator // term_denominator
+        upper += _dyadic_ceiling_quotient(term_numerator, term_denominator)
+
+        next_numerator_power = numerator_power * numerator_square
+        next_denominator_power = denominator_power * denominator_square
+        tail_numerator = 2 * scale * next_numerator_power * denominator_square
+        tail_denominator = (
+            (odd + 2) * next_denominator_power * (denominator_square - numerator_square)
+        )
+        if tail_numerator < tail_denominator:
+            # The omitted positive tail is strictly below one scaled unit.
+            return (lower, upper + 1)
+        numerator_power = next_numerator_power
+        denominator_power = next_denominator_power
+    return (1, 0)
+
+
+@native
+def _bf_significand_grid_bounds(
+    lower: int, upper: int, precision_bits: int
+) -> tuple[int, int]:
+    """Round positive fixed-point endpoints to a `precision_bits` grid."""
+    if lower < 0 or upper < lower:
+        return (1, 0)
+    if upper == 0:
+        return (0, 0)
+    bits = 0
+    probe = upper
+    while probe:
+        probe //= 2
+        bits += 1
+    step = 1
+    shift = precision_bits
+    while shift < bits:
+        step *= 2
+        shift += 1
+    return (
+        (lower // step) * step,
+        _dyadic_ceiling_quotient(upper, step) * step,
+    )
+
+
+@native
+def assemble_bf_integer_transcendental_endpoints(
+    output: IntegerBuffer,
+    values: IntegerBuffer,
+    precision_bits: uint64,
+) -> bool:
+    """Batch rigorous `log(n)` and `sqrt(n)` dyadic endpoints.
+
+    Each output row is `(log_lower, log_upper, sqrt_lower, sqrt_upper)` at
+    scale `2^precision_bits`.  Logarithms use
+    `log(m)=2*atanh((m-1)/(m+1))` after exact power-of-two range reduction;
+    square roots use exact scaled integer square root.  Twenty guard bits make
+    the final outward significand rounding independent of term accumulation.
+    """
+    maximum_precision: uint64 = 1
+    maximum_precision = maximum_precision << 12
+    if (
+        precision_bits < 16
+        or precision_bits > maximum_precision
+        or len(values) > 1000000
+        or len(output) != 4 * len(values)
+    ):
+        return False
+    work_precision = precision_bits + 20
+    work_scale = 1
+    for _work_bit in range(work_precision):
+        work_scale *= 2
+    output_scale = 1
+    precision_integer = 0
+    for _output_bit in range(precision_bits):
+        output_scale *= 2
+        precision_integer += 1
+    guard_scale = 1
+    for _guard_bit in range(20):
+        guard_scale *= 2
+    log_two_lower, log_two_upper = _bf_atanh_log_bounds(1, 3, work_scale)
+    if log_two_upper < log_two_lower:
+        return False
+
+    for index in range(len(values)):
+        value = values[index]
+        if value < 1:
+            return False
+        exponent = 0
+        power_of_two = 1
+        while power_of_two * 2 <= value:
+            power_of_two *= 2
+            exponent += 1
+            if exponent > 63:
+                return False
+        normalized_lower, normalized_upper = _bf_atanh_log_bounds(
+            value - power_of_two, value + power_of_two, work_scale
+        )
+        if normalized_upper < normalized_lower:
+            return False
+        logarithm_lower = (exponent * log_two_lower + normalized_lower) // guard_scale
+        logarithm_upper = _dyadic_ceiling_quotient(
+            exponent * log_two_upper + normalized_upper, guard_scale
+        )
+        logarithm_lower, logarithm_upper = _bf_significand_grid_bounds(
+            logarithm_lower, logarithm_upper, precision_integer
+        )
+        if logarithm_upper < logarithm_lower:
+            return False
+
+        scaled_square = value * output_scale * output_scale
+        square_root_lower = _bf_integer_square_root(scaled_square)
+        if square_root_lower < 0:
+            return False
+        square_root_upper = square_root_lower
+        if square_root_lower * square_root_lower != scaled_square:
+            square_root_upper += 1
+        square_root_lower, square_root_upper = _bf_significand_grid_bounds(
+            square_root_lower, square_root_upper, precision_integer
+        )
+        if square_root_upper < square_root_lower:
+            return False
+
+        offset = 4 * index
+        output[offset] = logarithm_lower
+        output[offset + 1] = logarithm_upper
+        output[offset + 2] = square_root_lower
+        output[offset + 3] = square_root_upper
+    return True
+
+
+@native
 def assemble_bf_dyadic_finite_term(
     output: IntegerBuffer,
     term_data: IntegerBuffer,
@@ -274,5 +449,6 @@ def assemble_zeta_coefficients_from_factors(
 
 __all__ = [
     "assemble_bf_dyadic_finite_term",
+    "assemble_bf_integer_transcendental_endpoints",
     "assemble_zeta_coefficients_from_factors",
 ]

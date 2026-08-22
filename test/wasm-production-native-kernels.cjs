@@ -248,7 +248,7 @@ from sagejs.native import integer_buffer_values, kernel_integer_buffer, kernel_i
 from sagejs.number_fields.composite_field_analysis import packed_integer_square_root
 from sagejs.number_fields.om_maxmin import packed_maxmin_valuations_are_maximal
 from sagejs.number_fields.round4_state_kernel import packed_round4_padic_characteristic
-from sagejs.number_fields.zeta_coefficient_kernel import assemble_bf_dyadic_finite_term, assemble_zeta_coefficients_from_factors
+from sagejs.number_fields.zeta_coefficient_kernel import assemble_bf_dyadic_finite_term, assemble_bf_integer_transcendental_endpoints, assemble_zeta_coefficients_from_factors
 
 def words(buffer):
     return [str(value) for value in integer_buffer_values(buffer)]
@@ -316,6 +316,16 @@ bf_result = assemble_bf_dyadic_finite_term(
     1,
     16,
 )
+bf_transcendental_output = kernel_integer_zeros(
+    assemble_bf_integer_transcendental_endpoints, 12, 8
+)
+bf_transcendental_result = assemble_bf_integer_transcendental_endpoints(
+    bf_transcendental_output,
+    kernel_integer_buffer(
+        assemble_bf_integer_transcendental_endpoints, [1, 2, 3]
+    ),
+    64,
+)
 
 print(json.dumps({
     "om": [om_result, words(om_workspace)],
@@ -323,6 +333,9 @@ print(json.dumps({
     "composite": str(packed_integer_square_root(2**190 + 123456789)),
     "zeta": [zeta_result, words(zeta_output)],
     "bf": [bf_result, words(bf_output)],
+    "bf_transcendentals": [
+        bf_transcendental_result, words(bf_transcendental_output)
+    ],
 }))
 `,
     },
@@ -434,6 +447,10 @@ test("number-field GMP Wasm cores execute the same exact sources as fallbacks", 
       "sagejs/number_fields/zeta_coefficient_kernel.py",
       "assemble_bf_dyadic_finite_term",
     );
+    const bfTranscendentals = runtime.function(
+      "sagejs/number_fields/zeta_coefficient_kernel.py",
+      "assemble_bf_integer_transcendental_endpoints",
+    );
     const zetaOutput = Array(8).fill(0n);
     const zetaResult = zeta(
       zetaOutput,
@@ -460,6 +477,12 @@ test("number-field GMP Wasm cores execute the same exact sources as fallbacks", 
       1n,
       16n,
     );
+    const bfTranscendentalOutput = Array(12).fill(0n);
+    const bfTranscendentalResult = bfTranscendentals(
+      bfTranscendentalOutput,
+      [1n, 2n, 3n],
+      64n,
+    );
     const candidate = runtime.function(
       "sagejs/number_fields/bl_composite_kernel.py",
       "packed_prime_ideal_candidate_hnf_in_place",
@@ -484,6 +507,10 @@ test("number-field GMP Wasm cores execute the same exact sources as fallbacks", 
       composite: String(squareRoot(value)),
       zeta: [zetaResult, words(zetaOutput)],
       bf: [bfResult, words(bfOutput)],
+      bf_transcendentals: [
+        bfTranscendentalResult,
+        words(bfTranscendentalOutput),
+      ],
     };
     const oracle = numberFieldOracle();
     assert.deepEqual(actual, {
@@ -491,14 +518,24 @@ test("number-field GMP Wasm cores execute the same exact sources as fallbacks", 
       composite: oracle.composite,
       zeta: oracle.zeta,
       bf: oracle.bf,
+      bf_transcendentals: oracle.bf_transcendentals,
     });
     assert.deepEqual(actual, {
       om: [true, ["0", "2", "0", "0"]],
       composite: "39614081257132168796771975168",
       zeta: [true, ["1", "1", "0", "1", "1", "0", "0", "1"]],
       bf: oracle.bf,
+      bf_transcendentals: [true, [
+        "0", "0", "18446744073709551616", "18446744073709551616",
+        "12786308645202655659", "12786308645202655660",
+        "26087635650665564424", "26087635650665564426",
+        "20265819725292939638", "20265819725292939640",
+        "31950697969885030202", "31950697969885030204",
+      ]],
     });
-    for (const fn of [maxmin, squareRoot, zeta, bf, candidate]) {
+    for (const fn of [
+      maxmin, squareRoot, zeta, bf, bfTranscendentals, candidate,
+    ]) {
       assert.equal(fn.nativeAvailable, true);
       assert.equal(fn.executionTarget, "wasm");
       assert.equal(fn.sourceTransparent, true);
