@@ -452,6 +452,12 @@ assert resources["cubic_relation_seed_relations"] == 7
 assert resources["saturation_rounds"] == 3
 assert resources["relation_attempts"] == 6
 assert resources["relation_candidates"] == 12
+assert (
+    resources["relation_witness_logarithm_requests"]
+    - resources["relation_witness_logarithm_cache_hits"]
+) == resources["relations"]
+assert resources["dependency_unit_materializations"] == 4
+assert resources["relation_witness_decode_requests"] <= 3 * resources["relations"]
 assert [attempt["prime"] for attempt in result.saturation_record.attempts] == [2, 3, 2]
 assert all(
     attempt["relations_admitted"] == 4

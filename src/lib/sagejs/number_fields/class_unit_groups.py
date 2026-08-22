@@ -1328,6 +1328,9 @@ class ClassUnitGroupEngine:
             "relation_log_steering_fallbacks": 0,
             "relation_witness_decode_requests": 0,
             "relation_witness_decode_cache_hits": 0,
+            "relation_witness_logarithm_requests": 0,
+            "relation_witness_logarithm_cache_hits": 0,
+            "dependency_unit_materializations": 0,
             "unit_principal_authority_requests": 0,
             "unit_principal_authority_hits": 0,
             "unit_principal_authority_fallbacks": 0,
@@ -1370,6 +1373,9 @@ class ClassUnitGroupEngine:
         self._relation_seen_dependency_units: set[str] = set()
         self._relation_independent_logarithms: list[tuple[Any, ...]] = []
         self._relation_witness_cache: dict[int, tuple[Any, str, Any]] = {}
+        self._relation_witness_logarithm_cache: dict[
+            tuple[int, int], tuple[Any, str, tuple[Any, ...]]
+        ] = {}
         self._authenticated_dependency_units: set[str] = set()
         self._partials: dict[tuple[Any, ...], _LargePrimePartial] = {}
         self._relation_unit_log_rank = 0
@@ -2625,6 +2631,99 @@ class ClassUnitGroupEngine:
         self._unit_logarithm_cache[key] = answer
         return answer
 
+    def _relation_witness_logarithms(
+        self, record: Any, precision: int
+    ) -> tuple[Any, ...]:
+        """Return one mutation-safe cached logarithm vector for a witness."""
+        self._resource_usage["relation_witness_logarithm_requests"] += 1
+        witness_key = json.dumps(record.witness, sort_keys=True, separators=(",", ":"))
+        cache_key = (id(record), int(precision))
+        cached = self._relation_witness_logarithm_cache.get(cache_key)
+        if cached is not None and cached[0] is record and cached[1] == witness_key:
+            self._resource_usage["relation_witness_logarithm_cache_hits"] += 1
+            return cached[2]
+        witness = self._decode_relation_witness(record)
+        if self.components.factored is None:
+            unit = witness
+        else:
+            unit = self.components.factored.FactoredNumberFieldElement(
+                self.field, witness.factors()
+            )
+        answer = tuple(
+            _floating_value(value) for value in self._unit_logarithms(unit, precision)
+        )
+        if (
+            len(self._relation_witness_logarithm_cache)
+            >= MAX_RELATION_LOG_STEERING_RECORDS
+        ):
+            self._relation_witness_logarithm_cache.pop(
+                next(iter(self._relation_witness_logarithm_cache))
+            )
+        self._relation_witness_logarithm_cache[cache_key] = (
+            record,
+            witness_key,
+            answer,
+        )
+        return answer
+
+    def _dependency_logarithms(
+        self,
+        records: Sequence[Any],
+        dependency: Sequence[int],
+        precision: int,
+    ) -> tuple[Any, ...]:
+        """Combine cached witness logs without materializing a factored unit."""
+        answer: list[float] | None = None
+        for record, coefficient in zip(records, dependency, strict=True):
+            coefficient = int(coefficient)
+            if coefficient == 0:
+                continue
+            logarithms = self._relation_witness_logarithms(record, precision)
+            if answer is None:
+                answer = [0.0 for _value in logarithms]
+            for index, value in enumerate(logarithms):
+                answer[index] += value * coefficient
+        if answer is None:
+            raise ArithmeticError("a relation dependency cannot be the zero vector")
+        return tuple(answer)
+
+    def _select_dependency_unit_basis(
+        self,
+        records: Sequence[Any],
+        dependencies: Sequence[Sequence[int]],
+        unit_rank: int,
+    ) -> tuple[tuple[Any, ...], tuple[tuple[int, ...], ...]]:
+        """Select dependency rows by cached logs, then materialize only the basis."""
+        logarithms = [
+            list(self._dependency_logarithms(records, dependency, 80)[:-1])
+            for dependency in dependencies
+        ]
+        best: tuple[int, ...] = ()
+        best_volume: float | None = None
+        checked = 0
+        for indices in _index_combinations(len(dependencies), unit_rank):
+            checked += 1
+            if checked > 50_000:
+                break
+            volume = _floating_determinant_absolute(
+                [logarithms[index] for index in indices]
+            )
+            if volume <= 1e-12:
+                continue
+            if best_volume is None or volume < best_volume:
+                best = indices
+                best_volume = volume
+        if not best:
+            return (), ()
+        selected_dependencies = tuple(
+            tuple(int(value) for value in dependencies[index]) for index in best
+        )
+        units = tuple(
+            self._combine(records, dependency) for dependency in selected_dependencies
+        )
+        self._resource_usage["dependency_unit_materializations"] += len(units)
+        return units, selected_dependencies
+
     def _decode_relation_witness(self, record: Any) -> Any:
         """Decode one live witness with a bounded mutation-safe memo."""
         self._resource_usage["relation_witness_decode_requests"] += 1
@@ -2672,13 +2771,15 @@ class ClassUnitGroupEngine:
             admission_verifier(self.order, collector.factor_base, record)
             for record in records
         )
-        candidates: list[Any] = []
+        dependencies = tuple(presentation.dependency_transforms)
         for dependency in presentation.dependency_transforms:
             if len(dependency) != len(records):
                 raise ArithmeticError("a relation dependency has the wrong exact width")
-            unit = self._combine(records, dependency)
-            candidates.append(unit)
-            if live_relations_authenticated:
+        units, selected_dependencies = self._select_dependency_unit_basis(
+            records, dependencies, unit_rank
+        )
+        if live_relations_authenticated:
+            for dependency, unit in zip(selected_dependencies, units, strict=True):
                 relation_row = [0] * len(collector.factor_base)
                 for coefficient, record in zip(dependency, records, strict=True):
                     if len(record.row) != len(relation_row):
@@ -2692,14 +2793,13 @@ class ClassUnitGroupEngine:
                     if len(self._authenticated_dependency_units) >= 1024:
                         self._authenticated_dependency_units.pop()
                     self._authenticated_dependency_units.add(str(stable_hash()))
-        units = self._select_unit_basis(candidates, unit_rank)
         if not units:
             self._phase_finish("unit-recovery", started)
             self._stage(
                 "unit-recovery",
                 "bounded",
                 rank=unit_rank,
-                candidates=len(candidates),
+                candidates=len(dependencies),
             )
             return ()
         self._verify_exact_units(units)
@@ -2708,7 +2808,7 @@ class ClassUnitGroupEngine:
             "unit-recovery",
             "complete",
             rank=unit_rank,
-            candidates=len(candidates),
+            candidates=len(dependencies),
         )
         return units
 
