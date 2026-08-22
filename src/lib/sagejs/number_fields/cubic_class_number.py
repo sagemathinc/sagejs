@@ -1232,7 +1232,11 @@ def bounded_cubic_minkowski_class_number(
         # sufficient; the loop continues until the exact presentation reaches
         # full rank, and the detached certificate replays every retained row.
         collector, presentation = engine._relations(
-            factor_base, 0, relations_per_ideal=1
+            factor_base,
+            0,
+            relations_per_ideal=1,
+            independent_relations_per_ideal=True,
+            target_missing_pivots=True,
         )
     except RuntimeError:
         raise

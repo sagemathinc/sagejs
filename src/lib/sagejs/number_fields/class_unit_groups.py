@@ -1579,6 +1579,7 @@ class ClassUnitGroupEngine:
         coefficient_bound: int,
         *,
         saturation_prime: int | None = None,
+        target_missing_pivots: bool = False,
     ) -> tuple[Any, tuple[int, ...], str]:
         """Choose a targeted product ideal before falling back to the PRNG."""
         width = len(factor_base)
@@ -1594,7 +1595,11 @@ class ClassUnitGroupEngine:
                 row[(target + 1 + attempt) % width] = 1
             strategy = "targeted-class-p-saturation-" + str(prime)
         elif attempt < width:
-            index = (attempt + (self.seed % width)) % width
+            index = (
+                missing[0]
+                if target_missing_pivots and missing
+                else (attempt + (self.seed % width)) % width
+            )
             row[index] = 1
             strategy = "single-prime-sweep"
         elif attempt % 3 != 2:
@@ -1626,10 +1631,12 @@ class ClassUnitGroupEngine:
         provenance: dict[str, Any],
         large_prime_bound: int,
         stop_after: int = 2,
+        stop_after_independent: bool = False,
     ) -> int:
         """Search one ideal while retaining bounded exact partial relations."""
         search.state.ideals_tested += 1
         admitted = 0
+        independent_admitted = 0
         for sequence, element in enumerate(search.iter_short_elements(ideal)):
             self._check_cancelled()
             search.state.candidates_tested += 1
@@ -1668,8 +1675,11 @@ class ClassUnitGroupEngine:
                 admission = None
             if admission is not None:
                 admitted += 1
+                if admission.modular_independent:
+                    independent_admitted += 1
                 search.state.relations_admitted += 1
-                if admitted >= stop_after:
+                progress = independent_admitted if stop_after_independent else admitted
+                if progress >= stop_after:
                     break
         return admitted
 
@@ -2002,6 +2012,8 @@ class ClassUnitGroupEngine:
         minimum_dependencies: int | None = None,
         saturation_prime: int | None = None,
         relations_per_ideal: int = 2,
+        independent_relations_per_ideal: bool = False,
+        target_missing_pivots: bool = False,
     ) -> tuple[Any, Any]:
         """Collect exact relations, deferring dense transforms in safe batches."""
         relations_per_ideal = _positive(relations_per_ideal, "relations_per_ideal")
@@ -2182,8 +2194,15 @@ class ClassUnitGroupEngine:
             )
             search.coefficient_bound = coefficient_bound
             if saturation_prime is None:
+                relation_ideal_options: dict[str, Any] = {}
+                if target_missing_pivots:
+                    relation_ideal_options["target_missing_pivots"] = True
                 ideal, source_row, strategy = self._relation_ideal(
-                    search, factor_base, attempts, coefficient_bound
+                    search,
+                    factor_base,
+                    attempts,
+                    coefficient_bound,
+                    **relation_ideal_options,
                 )
             else:
                 ideal, source_row, strategy = self._relation_ideal(
@@ -2194,6 +2213,9 @@ class ClassUnitGroupEngine:
                     saturation_prime=saturation_prime,
                 )
             before = len(collector.records)
+            search_options: dict[str, Any] = {"stop_after": relations_per_ideal}
+            if independent_relations_per_ideal:
+                search_options["stop_after_independent"] = True
             self._search_relation_ideal(
                 search,
                 ideal,
@@ -2203,7 +2225,7 @@ class ClassUnitGroupEngine:
                     "ideal_strategy": strategy,
                 },
                 large_prime_bound,
-                stop_after=relations_per_ideal,
+                **search_options,
             )
             attempts += 1
             if len(collector.records) > self.limits.max_relations:

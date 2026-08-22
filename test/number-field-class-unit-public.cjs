@@ -319,16 +319,16 @@ assert result.proof_status == "exact-unconditional"
 assert result.diagnostics["factor_base_bound"] == 4
 assert result.diagnostics["factor_base_size"] == 3
 assert resources["cubic_relation_seed_uses"] == 1
-assert resources["cubic_relation_seed_relations"] == 3
+assert resources["cubic_relation_seed_relations"] == 4
 assert resources["cubic_factor_base_seed_uses"] == 1
 assert resources["cubic_specialized_seed_skips"] == 1
 assert resources["relation_attempts"] == 6
-assert resources["relation_candidates"] == 6
+assert resources["relation_candidates"] == 7
 assert resources["presentation_extractions"] == 1
 assert resources["saturation_live_authentication_requests"] == 1
 assert resources["saturation_live_authentication_hits"] == 1
 assert resources["saturation_live_authentication_fallback_replays"] == 0
-assert result.diagnostics["relations"] == 7
+assert result.diagnostics["relations"] == 8
 record = result.saturation_record
 assert "_live_authentication" not in record.__dict__
 assert not class_unit_module._authenticated_live_saturation_record_matches(
