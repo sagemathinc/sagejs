@@ -33,11 +33,20 @@ Every fence marked `sage test` in this guide is executed by the documentation
 test suite.  The longer genus-3 height oracle is marked separately because its
 deliberately conservative period/theta refinement takes several minutes.
 
-## A supplied-data quotient
+## A synthetic supplied-data quotient
 
-The supplied-data constructor is useful even when periods, Mordell--Weil
-data, or local arithmetic came from another program.  It records every
-normalization and remains portable ordinary Python:
+> **This first example uses deliberately unrealistic fake data.**  It does not
+> compute the invariants of the displayed curve and should not be interpreted
+> as a research calculation.  Its unusually tidy integers make the BSD
+> normalization, exact-factor bookkeeping, provenance, and serialization easy
+> to inspect: `L''(1)=12`, its Taylor coefficient is `12/2!=6`, and the
+> regulator is `det(diag(2,3))=6`.
+
+The point is to illustrate the supplied-data assembly interface used when
+periods, Mordell--Weil data, or local arithmetic come from another program.
+The interface records every normalization and remains portable ordinary
+Python.  The following section replaces these fake inputs by a genuine
+analytic computation.
 
 ```sage test
 from sagejs.hyperelliptic_curves.bsd import (
@@ -49,8 +58,8 @@ from sagejs.hyperelliptic_curves.bsd import (
 )
 
 source = Provenance.supplied(
-    "research computation",
-    reference="notebook 2026-08-22",
+    "synthetic documentation fixture",
+    reference="not a mathematical computation",
 )
 
 # This is L''(J,1), not its Taylor coefficient.  The quotient divides by 2!.
@@ -74,7 +83,7 @@ data = BSDArithmeticInput.supplied_jacobian(
         "f_coefficients": ["1", "-1", "0", "0", "0", "1"],
         "h_coefficients": ["0"],
     },
-    backend_versions={"source": "research computation v1"},
+    backend_versions={"source": "synthetic documentation fixture"},
 )
 
 B = BSDAnalyticQuotient(data)
