@@ -199,6 +199,8 @@
     "src/lib/sagejs/optimization/sage_api.py",
     "src/lib/sagejs/optimization/schedule.py",
     "src/lib/sagejs/optimization/simulated_annealing.py",
+    "src/lib/sagejs/optimization/cobyla.py",
+    "src/lib/sagejs/optimization/levenberg_marquardt.py",
     "src/lib/sagejs/plotting/__init__.py",
     "src/lib/sagejs/plotting/_json.py",
     "src/lib/sagejs/plotting/animation.py",
