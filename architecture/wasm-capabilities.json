@@ -2173,20 +2173,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpq_matrix_charpoly",
@@ -2457,20 +2460,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpq_matrix_is_zero",
@@ -2606,20 +2612,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpq_matrix_nrows",
@@ -2761,20 +2770,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpq_matrix_select_columns",
@@ -2864,20 +2876,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpq_matrix_set_entry",
@@ -2927,20 +2942,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpq_matrix_sub",
@@ -2967,20 +2985,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpq_matrix_swap_columns",
@@ -4553,20 +4574,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpz_matrix_charpoly",
@@ -4751,20 +4775,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpz_matrix_format",
@@ -4794,20 +4821,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpz_matrix_hnf",
@@ -4857,20 +4887,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpz_matrix_is_zero",
@@ -5176,20 +5209,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpz_matrix_select_rows",
@@ -5259,20 +5295,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpz_matrix_set_entry",
@@ -5342,20 +5381,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpz_matrix_sub",
@@ -5382,20 +5424,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpz_matrix_swap_columns",
@@ -5448,20 +5493,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpz_matrix_transpose",

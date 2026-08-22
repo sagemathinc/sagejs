@@ -31,6 +31,17 @@ function collectStrings(value, answer = new Set()) {
   return answer;
 }
 
+function enclosingPythonFunctionPrefix(lines, callIndex) {
+  const callIndent = lines[callIndex].match(/^\s*/)[0].length;
+  for (let index = callIndex; index >= 0; index -= 1) {
+    const match = lines[index].match(/^(\s*)(?:async\s+)?def\s+/);
+    if (match && match[1].length < callIndent) {
+      return lines.slice(index, callIndex + 2).join("\n");
+    }
+  }
+  return lines.slice(Math.max(0, callIndex - 96), callIndex + 2).join("\n");
+}
+
 test("public resource constructors cannot assume unshipped Wasm exports", () => {
   const root = join(__dirname, "..");
   const schema = JSON.parse(readFileSync(join(root, "ffi/flint.ffi.json"), "utf8"));
@@ -78,6 +89,58 @@ test("public resource constructors cannot assume unshipped Wasm exports", () => 
     }
   }
   assert.deepEqual(observedNativeOnly, reviewedNativeOnly);
+});
+
+test("public operations on shipped resources cannot assume omitted Wasm exports", () => {
+  const root = join(__dirname, "..");
+  const schema = JSON.parse(readFileSync(join(root, "ffi/flint.ffi.json"), "utf8"));
+  const production = JSON.parse(
+    readFileSync(
+      join(root, "packages/flint-wasm/release/production-capabilities.json"),
+      "utf8",
+    ),
+  );
+  const productionCapabilities = collectStrings(production);
+  const allResourceTypes = new Set(
+    schema.resources.map((resource) => resource.python_name),
+  );
+  const productionResourceTypes = new Set(
+    schema.resources
+      .filter((resource) =>
+        productionCapabilities.has(`ffi-resource:flint:${resource.id}`)
+      )
+      .map((resource) => resource.python_name),
+  );
+  const candidates = schema.functions.filter((fn) => {
+    if (productionCapabilities.has(`ffi:flint:${fn.id}`)) return false;
+    const usedResourceTypes = new Set(
+      fn.signature.parameters
+        .map((parameter) => parameter.type)
+        .filter((type) => allResourceTypes.has(type)),
+    );
+    if (allResourceTypes.has(fn.signature.return_type)) {
+      usedResourceTypes.add(fn.signature.return_type);
+    }
+    return usedResourceTypes.size > 0
+      && [...usedResourceTypes].every((type) => productionResourceTypes.has(type));
+  });
+
+  for (const path of sourceFiles(join(root, "src"))) {
+    const lines = readFileSync(path, "utf8").split("\n");
+    for (const fn of candidates) {
+      const needle = `.${fn.python_name}(`;
+      for (let index = 0; index < lines.length; index += 1) {
+        if (!lines[index].includes(needle)) continue;
+        const enclosingPrefix = enclosingPythonFunctionPrefix(lines, index);
+        assert.ok(
+          (enclosingPrefix.includes("_flint_backend_has_function")
+            || enclosingPrefix.includes("runtime.reflect.get"))
+            && enclosingPrefix.includes(fn.dynamic.export),
+          `${fn.id}:${relative(root, path)} calls ${fn.dynamic.export}, which is absent from the production Wasm closure, without an explicit capability guard`,
+        );
+      }
+    }
+  }
 });
 
 test("wide-prime polynomial resources follow backend capability without Node", async () => {
