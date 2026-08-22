@@ -4,10 +4,42 @@
   "title": "Sage.js WebAssembly toolchain lock",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "cowasm", "wasiSdk", "libraries", "build"],
+  "required": ["schema", "sourceMirror", "cowasm", "wasiSdk", "libraries", "build"],
   "properties": {
     "$schema": { "type": "string" },
     "schema": { "const": "sagejs.wasm-toolchain-lock/v1" },
+    "sourceMirror": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "r2Prefix", "objects"],
+      "properties": {
+        "schema": { "const": "sagejs.wasm-source-mirror/v1" },
+        "r2Prefix": { "type": "string", "pattern": "^(?!/)(?!.*\\.\\.).+[^/]$" },
+        "objects": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "filename", "sha256"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$" },
+              "filename": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]+$" },
+              "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "kind": { "enum": ["git-bundle"] },
+              "platform": { "type": "string", "pattern": "^(linux|darwin)-(x64|arm64)$" },
+              "cowasmTarget": { "type": "string", "pattern": "^(?!/)(?!.*\\.\\.).+$" },
+              "archiveEnvironment": { "type": "string", "pattern": "^SAGEJS_[A-Z0-9_]+$" },
+              "upstreamUrls": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string", "format": "uri", "pattern": "^https://" }
+              }
+            }
+          }
+        }
+      }
+    },
     "cowasm": {
       "type": "object",
       "additionalProperties": false,
@@ -70,13 +102,20 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["path", "versionFrom", "versionTo", "digestFrom", "digestTo"],
+            "required": ["path"],
+            "anyOf": [
+              { "required": ["versionFrom", "versionTo"] },
+              { "required": ["digestFrom", "digestTo"] },
+              { "required": ["urlFrom", "urlTo"] }
+            ],
             "properties": {
               "path": { "type": "string" },
               "versionFrom": { "type": "string" },
               "versionTo": { "type": "string" },
               "digestFrom": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-              "digestTo": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+              "digestTo": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "urlFrom": { "type": "string", "format": "uri", "pattern": "^https://" },
+              "urlTo": { "type": "string", "format": "uri", "pattern": "^https://" }
             }
           }
         },

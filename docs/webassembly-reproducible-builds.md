@@ -10,7 +10,9 @@ CoWasm checkout, system FLINT, or undocumented compiler flags.
 
 The lock records the exact CoWasm revision, WASI SDK identity, FLINT, GMP,
 MPFR, MPC, Arb, and M4RI sources, archive digests, targets, flags, and recipe
-overrides. The build receipt authenticates that toolchain, the complete source
+overrides. It also records the immutable R2 object for the CoWasm Git history,
+every supported host's WASI SDK, ffpoly, and smalljac. The build receipt
+authenticates that toolchain, the complete source
 and generator closure, generated adapter inputs, each output asset, module
 memory limits, and the exported capability set.
 
@@ -36,6 +38,30 @@ verifies source pins and digests, builds the locked dependencies, and publishes
 the completed directory atomically. A second worktree with the same lock reuses
 it.
 
+Production release builds do not contact gmplib.org, flintlib.org, GNU mirrors,
+GitHub release assets, or other native-source hosts. The `sagejs-source-mirror`
+GitHub environment fetches the current platform's complete source closure from
+the private R2 bucket first. Every key contains its SHA-256 digest, every
+download is hashed again, and `SAGEJS_WASM_SOURCE_MIRROR_DIR` makes preparation
+fail closed instead of falling back to the network. Upstream URLs in the lock
+are bootstrap/audit provenance used only when an administrator intentionally
+stages a new mirror revision.
+
+To stage and publish a reviewed mirror revision:
+
+```sh
+node packages/flint-wasm/scripts/source-mirror.mjs stage --all-platforms \
+  --cowasm-bundle /secure/path/to/the-reviewed-complete.bundle \
+  --output /secure/staging/sagejs-wasm-sources
+node packages/flint-wasm/scripts/source-mirror.mjs upload --all-platforms \
+  --input /secure/staging/sagejs-wasm-sources
+```
+
+`upload` uses bucket-scoped S3 credentials and HEAD-verifies every immutable
+object after publication. A new CoWasm bundle must publish the locked commit as
+the canonical `refs/heads/toolchain` ref; mirror-only preparation checks out and
+validates that exact revision before building.
+
 Inspect the selected paths without guessing:
 
 ```sh
@@ -45,6 +71,8 @@ node packages/flint-wasm/scripts/wasm-toolchain.cjs status --json
 ```
 
 `SAGEJS_WASM_TOOLCHAIN_CACHE` may relocate the content-addressed cache.
+`SAGEJS_WASM_SOURCE_MIRROR_DIR` selects a fully downloaded, verified source
+mirror and forbids native-source network fallback.
 `SAGEJS_WASM_TOOLCHAIN_ROOT` is an expert override for an already prepared
 checkout; the resolver still verifies the full revision, pins, SDK, headers,
 and archives. The legacy `SAGEJS_COWASM_ROOT` spelling cannot name a different

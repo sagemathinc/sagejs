@@ -3,6 +3,7 @@
 
 const { createHash } = require("node:crypto");
 const {
+  copyFileSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -71,6 +72,50 @@ function loadToolchainLock(filename = lockFilename) {
       throw new Error(`${override.path} source URL overrides must use HTTPS`);
     }
   }
+  if (lock.sourceMirror?.schema !== "sagejs.wasm-source-mirror/v1" ||
+      !Array.isArray(lock.sourceMirror.objects) || lock.sourceMirror.objects.length === 0) {
+    throw new Error("the WebAssembly source mirror inventory is missing");
+  }
+  const mirrorIds = new Set();
+  const mirrorFiles = new Set();
+  for (const object of lock.sourceMirror.objects) {
+    if (!/^[a-z0-9][a-z0-9-]+$/.test(object.id ?? "") || mirrorIds.has(object.id)) {
+      throw new Error(`invalid or duplicate source mirror id ${object.id ?? "missing"}`);
+    }
+    if (!/^[A-Za-z0-9][A-Za-z0-9._+-]+$/.test(object.filename ?? "") ||
+        !/^[0-9a-f]{64}$/.test(object.sha256 ?? "")) {
+      throw new Error(`${object.id} has an invalid source mirror filename or digest`);
+    }
+    const identity = `${object.sha256}/${object.filename}`;
+    if (mirrorFiles.has(identity)) throw new Error(`duplicate source mirror object ${identity}`);
+    mirrorIds.add(object.id);
+    mirrorFiles.add(identity);
+    if (object.cowasmTarget &&
+        (object.cowasmTarget.startsWith("/") || object.cowasmTarget.includes(".."))) {
+      throw new Error(`${object.id} has an unsafe CoWasm source target`);
+    }
+    for (const url of object.upstreamUrls ?? []) {
+      if (!url.startsWith("https://")) throw new Error(`${object.id} has a non-HTTPS bootstrap URL`);
+    }
+  }
+  if (!lock.sourceMirror.objects.some((object) => object.kind === "git-bundle")) {
+    throw new Error("the source mirror does not include the pinned CoWasm checkout");
+  }
+  if (lock.sourceMirror.objects.filter((object) => object.kind === "git-bundle").length !== 1) {
+    throw new Error("the source mirror must include exactly one pinned CoWasm checkout");
+  }
+  for (const [platform, digest] of Object.entries(lock.wasiSdk.archives)) {
+    if (!lock.sourceMirror.objects.some((object) => object.platform === platform && object.sha256 === digest)) {
+      throw new Error(`the source mirror lacks the locked WASI SDK archive for ${platform}`);
+    }
+  }
+  for (const [name, dependency] of Object.entries(lock.libraries)) {
+    if (name === "arb") continue;
+    if (!lock.sourceMirror.objects.some((object) =>
+      object.id === name && object.sha256 === dependency.sourceSha256)) {
+      throw new Error(`the source mirror lacks the locked ${name} source archive`);
+    }
+  }
   return lock;
 }
 
@@ -90,6 +135,42 @@ function platformKey(platform = process.platform, architecture = process.arch) {
   const arch = architecture === "x64" ? "x64" :
     architecture === "arm64" ? "arm64" : architecture;
   return `${os}-${arch}`;
+}
+
+function sourceMirrorObjects(lock = loadToolchainLock(), platform = platformKey()) {
+  return lock.sourceMirror.objects.filter(
+    (object) => object.platform === undefined || object.platform === platform,
+  );
+}
+
+function sourceMirrorFilename(root, object) {
+  return join(resolve(root), object.sha256, object.filename);
+}
+
+function verifyMirroredFile(root, object) {
+  const filename = sourceMirrorFilename(root, object);
+  if (!existsSync(filename)) throw new Error(`source mirror object is missing: ${object.id}`);
+  const actual = sha256Bytes(readFileSync(filename));
+  if (actual !== object.sha256) {
+    throw new Error(`source mirror digest for ${object.id} ${actual} != ${object.sha256}`);
+  }
+  return filename;
+}
+
+function seedMirroredSources(cowasmRoot, mirrorRoot, lock) {
+  for (const object of sourceMirrorObjects(lock)) {
+    const source = verifyMirroredFile(mirrorRoot, object);
+    if (object.cowasmTarget) {
+      const destination = resolve(cowasmRoot, ...object.cowasmTarget.split("/"));
+      const target = relative(resolve(cowasmRoot), destination);
+      if (target.startsWith("..") || target === "") {
+        throw new Error(`unsafe CoWasm mirror target for ${object.id}`);
+      }
+      mkdirSync(dirname(destination), { recursive: true });
+      copyFileSync(source, destination);
+    }
+    if (object.archiveEnvironment) process.env[object.archiveEnvironment] = source;
+  }
 }
 
 function gitCommonDirectory(root = repositoryRoot) {
@@ -240,6 +321,7 @@ function applyWorkspaceLockRepair(cowasmRoot, lock) {
   const filename = join(cowasmRoot, "pnpm-lock.yaml");
   let source = readFileSync(filename, "utf8");
   const actual = sha256Bytes(source);
+  if (actual === lock.cowasm.preparedPnpmLockSha256) return;
   if (actual !== lock.cowasm.pnpmLockSha256) {
     throw new Error(
       `the pinned CoWasm workspace lock digest ${actual} != ${lock.cowasm.pnpmLockSha256}`,
@@ -468,12 +550,31 @@ function prepareToolchain({ root = repositoryRoot } = {}) {
     throw error;
   }
   const temporary = join(parent, ".cowasm-prepare");
+  const mirrorRoot = process.env.SAGEJS_WASM_SOURCE_MIRROR_DIR;
   try {
     if (existsSync(temporary) && checkoutRevision(temporary) !== lock.cowasm.revision) {
       rmSync(temporary, { recursive: true, force: true });
     }
     if (!existsSync(temporary)) {
-      runChecked("git", ["clone", "--no-checkout", "--filter=blob:none", lock.cowasm.repository, temporary], root);
+      if (mirrorRoot) {
+        const bundle = verifyMirroredFile(
+          mirrorRoot,
+          lock.sourceMirror.objects.find((object) => object.kind === "git-bundle"),
+        );
+        mkdirSync(temporary, { recursive: true });
+        runChecked("git", ["init", "--quiet"], temporary);
+        runChecked(
+          "git",
+          ["fetch", "--quiet", bundle, "refs/heads/toolchain:refs/heads/toolchain"],
+          temporary,
+        );
+      } else {
+        runChecked(
+          "git",
+          ["clone", "--no-checkout", "--filter=blob:none", lock.cowasm.repository, temporary],
+          root,
+        );
+      }
       runChecked("git", ["checkout", "--detach", lock.cowasm.revision], temporary);
     }
     let overriddenProblems = verifySourcePins(temporary, lock);
@@ -493,6 +594,7 @@ function prepareToolchain({ root = repositoryRoot } = {}) {
     }
     applyWorkspaceLockRepair(temporary, lock);
     installCowasmWrappers(temporary, lock);
+    if (mirrorRoot) seedMirroredSources(temporary, mirrorRoot, lock);
     for (const [command, ...arguments_] of lock.build.prepareTargets) {
       runChecked(command, arguments_, temporary);
     }
@@ -635,6 +737,9 @@ module.exports = {
   platformKey,
   prepareToolchain,
   resolveToolchain,
+  seedMirroredSources,
+  sourceMirrorFilename,
+  sourceMirrorObjects,
   toolchainLockDigest,
   toolchainReceiptIdentity,
   verifySourcePins,

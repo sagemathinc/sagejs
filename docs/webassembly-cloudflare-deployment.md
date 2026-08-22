@@ -58,6 +58,13 @@ automated by a repository token.
    - `R2_BUCKET_NAME`: `sagejs`;
    - `SAGEJS_PUBLIC_ORIGIN`: `https://app.sagejs.org`.
 
+6. Create a third environment, `sagejs-source-mirror`, restricted to `main`
+   and release tags (`v*`). It needs only `R2_ACCESS_KEY_ID` and
+   `R2_SECRET_ACCESS_KEY`, plus the `CLOUDFLARE_ACCOUNT_ID` and
+   `R2_BUCKET_NAME` variables. The reproducible release jobs use it for signed
+   GET requests to the private, content-addressed native-source mirror; they do
+   not receive the Worker deployment token.
+
 The workflow fails before artifact download if any value is missing or
 malformed. It never prints or uploads either secret. Fork pull requests cannot
 invoke it with secrets because deployment is manual and protected by GitHub

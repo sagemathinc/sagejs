@@ -57,7 +57,14 @@ jobs:
   clean-build:
     name: Clean reproducibility build ${{ matrix.replica }}
     runs-on: ubuntu-24.04
+    environment: sagejs-source-mirror
     timeout-minutes: 180
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      SAGEJS_WASM_SOURCE_MIRROR_DIR: ${{ runner.temp }}/sagejs-wasm-source-mirror
     strategy:
       fail-fast: true
       matrix:
@@ -73,13 +80,17 @@ jobs:
         with:
           node-version: 26.5.1
           cache: pnpm
+      - name: Fetch every pinned build source from the private R2 mirror
+        run: |
+          node packages/flint-wasm/scripts/source-mirror.mjs fetch \
+            --output "$SAGEJS_WASM_SOURCE_MIRROR_DIR"
       - run: pnpm install --frozen-lockfile
       - id: toolchain
         run: echo "path=$(node packages/flint-wasm/scripts/wasm-toolchain.cjs cache-path)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v6
         with:
           path: ${{ steps.toolchain.outputs.path }}
-          key: sagejs-cowasm-v1-${{ runner.os }}-${{ hashFiles('packages/flint-wasm/release/toolchain-lock.json') }}
+          key: sagejs-cowasm-v1-${{ runner.os }}-${{ hashFiles('packages/flint-wasm/toolchain/lock.json') }}
       - name: Build without an ambient CoWasm checkout
         run: |
           node packages/flint-wasm/scripts/wasm-toolchain.cjs prepare
