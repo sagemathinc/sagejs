@@ -2620,7 +2620,7 @@ def fmpz_matrix_entry(
         exception=ValueError,
         message="integer matrix modular export failed",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_export_mod_ui(
     source: FmpzMatrix,
@@ -2716,7 +2716,7 @@ def fmpz_matrix_is_zero(matrix: FmpzMatrix) -> bool: ...
     abi=[in_("matrix", sagejs_fmpz_matrix_t)],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_is_one(matrix: FmpzMatrix) -> bool: ...
 
@@ -2935,7 +2935,7 @@ def fmpz_matrix_det(source: FmpzMatrix) -> Integer: ...
         exception=ValueError,
         message="trace requires a square integer matrix",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_trace(source: FmpzMatrix) -> Integer: ...
 
@@ -3120,7 +3120,7 @@ def fmpq_matrix_from_fmpz(source: FmpzMatrix) -> FmpqMatrix: ...
         exception=ValueError,
         message="rational matrix contains a nonintegral entry",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_from_fmpq_integral(source: FmpqMatrix) -> FmpzMatrix: ...
 
@@ -3143,7 +3143,7 @@ def fmpz_matrix_from_fmpq_integral(source: FmpqMatrix) -> FmpzMatrix: ...
         exception=ValueError,
         message="integer matrix submatrix bounds are invalid",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_submatrix(
     source: FmpzMatrix,
@@ -3235,7 +3235,7 @@ def fmpz_matrix_prefix_rows(source: FmpzMatrix, count: uint64) -> FmpzMatrix: ..
         exception=ValueError,
         message="integer matrix column selection contains an invalid index",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_select_columns(
     source: FmpzMatrix,
@@ -3309,7 +3309,7 @@ def fmpz_matrix_swap_columns(
         exception=ValueError,
         message="integer matrix block bounds or aliases are invalid",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_set_block(
     target: Writable[FmpzMatrix],
@@ -3334,7 +3334,7 @@ def fmpz_matrix_set_block(
         exception=ValueError,
         message="stacked integer matrices must have the same number of columns",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_stack(
     top: FmpzMatrix,
@@ -3357,7 +3357,7 @@ def fmpz_matrix_stack(
         exception=ValueError,
         message="augmented integer matrices must have the same number of rows",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_augment(
     left: FmpzMatrix,
@@ -3807,7 +3807,7 @@ def fmpq_matrix_neg(source: FmpqMatrix) -> FmpqMatrix: ...
         exception=ValueError,
         message="invalid rational matrix scalar",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_scalar_mul(
     source: FmpqMatrix,
@@ -3850,7 +3850,7 @@ def fmpq_matrix_is_zero(matrix: FmpqMatrix) -> bool: ...
     abi=[in_("matrix", sagejs_fmpq_matrix_t)],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_is_one(matrix: FmpqMatrix) -> bool: ...
 
@@ -4155,7 +4155,7 @@ def fmpq_matrix_trace(source: FmpqMatrix) -> FmpqValue: ...
         exception=ValueError,
         message="rational matrix submatrix bounds are invalid",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_submatrix(
     source: FmpqMatrix,
@@ -4321,7 +4321,7 @@ def fmpq_matrix_swap_columns(
         exception=ValueError,
         message="rational matrix block bounds or aliases are invalid",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_set_block(
     target: Writable[FmpqMatrix],
@@ -4346,7 +4346,7 @@ def fmpq_matrix_set_block(
         exception=ValueError,
         message="stacked rational matrices must have the same number of columns",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_stack(
     top: FmpqMatrix,
@@ -4369,7 +4369,7 @@ def fmpq_matrix_stack(
         exception=ValueError,
         message="augmented rational matrices must have the same number of rows",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_augment(
     left: FmpqMatrix,
@@ -4384,7 +4384,7 @@ def fmpq_matrix_augment(
     abi=[in_("source", sagejs_fmpq_matrix_t)],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_nonzero_count(source: FmpqMatrix) -> uint64: ...
 
