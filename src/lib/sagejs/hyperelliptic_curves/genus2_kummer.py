@@ -222,12 +222,72 @@ _CLASSICAL_DELTA_4 = (
 
 def _copy_data(value: Any) -> Any:
     """Copy the JSON-like proof/provenance records used in this module."""
+    if isinstance(value, _FrozenDict):
+        return {key: _copy_data(entry) for key, entry in value.items()}
     if isinstance(value, dict):
         return {key: _copy_data(entry) for key, entry in value.items()}
     if isinstance(value, tuple):
         return tuple(_copy_data(entry) for entry in value)
     if isinstance(value, list):
         return [_copy_data(entry) for entry in value]
+    return value
+
+
+class _SealedRecord:
+    """Reject ordinary mutation after construction, including private fields."""
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_record_sealed", False):
+            raise AttributeError(type(self).__name__ + " is immutable")
+        object.__setattr__(self, name, value)
+
+    def _seal(self) -> None:
+        object.__setattr__(self, "_record_sealed", True)
+
+
+class _FrozenDict(_SealedRecord):
+    """Small source-transparent immutable mapping for private proof records."""
+
+    def __init__(self, data: dict[str, Any]) -> None:
+        self._items = tuple((key, _freeze_data(value)) for key, value in data.items())
+        self._seal()
+
+    def __getitem__(self, key: str) -> Any:
+        for stored_key, value in self._items:
+            if stored_key == key:
+                return value
+        raise KeyError(key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        raise TypeError("an immutable proof record cannot be modified")
+
+    def __delitem__(self, key: str) -> None:
+        raise TypeError("an immutable proof record cannot be modified")
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, _FrozenDict):
+            return self._items == other._items
+        if isinstance(other, dict):
+            return _copy_data(self) == other
+        return False
+
+    def items(self) -> tuple[tuple[str, Any], ...]:
+        return self._items
+
+
+def _freeze_data(value: Any) -> Any:
+    if isinstance(value, _FrozenDict):
+        return value
+    if isinstance(value, dict):
+        return _FrozenDict(value)
+    if isinstance(value, (tuple, list)):
+        return tuple(_freeze_data(entry) for entry in value)
     return value
 
 
@@ -239,7 +299,7 @@ class Genus2KummerCapabilityError(NotImplementedError):
         self.diagnostics = dict(diagnostics)
 
 
-class Genus2KummerCapability:
+class Genus2KummerCapability(_SealedRecord):
     """Machine-readable result of exact Kummer capability detection."""
 
     def __init__(
@@ -250,7 +310,8 @@ class Genus2KummerCapability:
     ) -> None:
         self._supported = bool(supported)
         self._reason = str(reason)
-        self._diagnostics = _copy_data(diagnostics)
+        self._diagnostics = _freeze_data(diagnostics)
+        self._seal()
 
     @property
     def diagnostics(self) -> dict[str, Any]:
@@ -705,16 +766,17 @@ def classical_duplication_raw(
     )
 
 
-class KummerCoordinates:
+class KummerCoordinates(_SealedRecord):
     """Primitive integral projective Kummer coordinates with exact provenance."""
 
     def __init__(self, divisor: Any, values: tuple[Any, ...]) -> None:
         self._divisor = divisor
         self._jacobian = divisor.parent()
         self._coordinates = _primitive_integer_coordinates(values)
-        self._provenance = _copy_data(divisor_provenance(divisor))
+        self._provenance = _freeze_data(divisor_provenance(divisor))
         self._duplication_steps = 0
         self._raw_from_previous: tuple[Any, ...] | None = None
+        self._seal()
 
     @classmethod
     def _from_duplication(
@@ -724,9 +786,10 @@ class KummerCoordinates:
         answer._divisor = None
         answer._jacobian = source._jacobian
         answer._coordinates = _primitive_integer_coordinates(values)
-        answer._provenance = _copy_data(source._provenance)
+        answer._provenance = source._provenance
         answer._duplication_steps = source._duplication_steps + 1
         answer._raw_from_previous = values
+        answer._seal()
         return answer
 
     def divisor(self) -> Any:

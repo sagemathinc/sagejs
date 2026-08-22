@@ -46,6 +46,8 @@ from sagejs.number_fields.class_unit_analytic import IntervalBallField, RealBall
 
 def _copy_data(value: Any) -> Any:
     """Return a defensive copy of a JSON-like diagnostic record."""
+    if isinstance(value, _FrozenDict):
+        return {key: _copy_data(entry) for key, entry in value.items()}
     if isinstance(value, dict):
         return {key: _copy_data(entry) for key, entry in value.items()}
     if isinstance(value, tuple):
@@ -62,6 +64,27 @@ def _copy_ball(value: RealBall) -> RealBall:
         precision_bits=value.precision_bits,
         rigorous=value.rigorous,
         source=value.source,
+    )
+
+
+def _ball_data(value: RealBall) -> tuple[Any, Any, int, bool, Any]:
+    """Store a ball as immutable exact endpoints and proof metadata."""
+    return (
+        value.lower,
+        value.upper,
+        int(value.precision_bits),
+        bool(value.rigorous),
+        _freeze_data(value.source),
+    )
+
+
+def _ball_from_data(data: tuple[Any, Any, int, bool, Any]) -> RealBall:
+    return RealBall(
+        data[0],
+        data[1],
+        precision_bits=data[2],
+        rigorous=data[3],
+        source=_copy_data(data[4]),
     )
 
 
@@ -88,6 +111,64 @@ def _enclosure_width_bits(value: RealBall) -> int:
         numerator *= 2
         bits += 1
     return bits
+
+
+class _SealedRecord:
+    """Reject ordinary mutation after construction, including private fields."""
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_record_sealed", False):
+            raise AttributeError(type(self).__name__ + " is immutable")
+        object.__setattr__(self, name, value)
+
+    def _seal(self) -> None:
+        object.__setattr__(self, "_record_sealed", True)
+
+
+class _FrozenDict(_SealedRecord):
+    """Small source-transparent immutable mapping for private proof records."""
+
+    def __init__(self, data: dict[str, Any]) -> None:
+        self._items = tuple((key, _freeze_data(value)) for key, value in data.items())
+        self._seal()
+
+    def __getitem__(self, key: str) -> Any:
+        for stored_key, value in self._items:
+            if stored_key == key:
+                return value
+        raise KeyError(key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        raise TypeError("an immutable proof record cannot be modified")
+
+    def __delitem__(self, key: str) -> None:
+        raise TypeError("an immutable proof record cannot be modified")
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, _FrozenDict):
+            return self._items == other._items
+        if isinstance(other, dict):
+            return _copy_data(self) == other
+        return False
+
+    def items(self) -> tuple[tuple[str, Any], ...]:
+        return self._items
+
+
+def _freeze_data(value: Any) -> Any:
+    if isinstance(value, _FrozenDict):
+        return value
+    if isinstance(value, dict):
+        return _FrozenDict(value)
+    if isinstance(value, (tuple, list)):
+        return tuple(_freeze_data(entry) for entry in value)
+    return value
 
 
 class Genus2HeightCapabilityError(NotImplementedError):
@@ -182,7 +263,30 @@ def _integer_coefficients(polynomial: Any, length: int) -> tuple[int, ...] | Non
     return tuple(answer)
 
 
-class AutomaticHeightBounds:
+def _coefficient_size_bits_upper(polynomial: Any, length: int) -> int:
+    """Return a cheap upper bound for numerator/denominator coefficient bits."""
+    answer = 1
+    zero = polynomial.parent().base_ring()(0)
+    for index in range(length):
+        value = polynomial[index] if index <= polynomial.degree() else zero
+        numerator, denominator = _rational_pair(value)
+        answer = max(
+            answer,
+            4 * len(str(abs(numerator))),
+            4 * len(str(abs(denominator))),
+        )
+    return answer
+
+
+def _coordinate_size_bits_upper(point: KummerCoordinates) -> int:
+    """Return a decimal-length upper bound for primitive coordinate bits."""
+    return max(
+        1,
+        max(4 * len(str(abs(value))) for value in point.coordinates()),
+    )
+
+
+class AutomaticHeightBounds(_SealedRecord):
     """A proved two-sided bound for the naive/canonical height correction."""
 
     def __init__(
@@ -191,17 +295,26 @@ class AutomaticHeightBounds:
         correction_upper: RealBall,
         diagnostics: dict[str, Any],
     ) -> None:
-        self._correction_lower = _copy_ball(correction_lower)
-        self._correction_upper = _copy_ball(correction_upper)
-        self._diagnostics = _copy_data(diagnostics)
+        self._correction_lower_data = _ball_data(correction_lower)
+        self._correction_upper_data = _ball_data(correction_upper)
+        self._diagnostics = _freeze_data(diagnostics)
+        self._seal()
 
     @property
     def correction_lower(self) -> RealBall:
-        return _copy_ball(self._correction_lower)
+        return _ball_from_data(self._correction_lower_data)
 
     @property
     def correction_upper(self) -> RealBall:
-        return _copy_ball(self._correction_upper)
+        return _ball_from_data(self._correction_upper_data)
+
+    @property
+    def _correction_lower(self) -> RealBall:
+        return self.correction_lower
+
+    @property
+    def _correction_upper(self) -> RealBall:
+        return self.correction_upper
 
     @property
     def diagnostics(self) -> dict[str, Any]:
@@ -231,7 +344,7 @@ class AutomaticHeightBounds:
         )
 
 
-class FiniteHeightCorrectionResult:
+class FiniteHeightCorrectionResult(_SealedRecord):
     """Certified factorization-free finite local-height correction."""
 
     def __init__(
@@ -242,24 +355,37 @@ class FiniteHeightCorrectionResult:
         steps: int,
         diagnostics: dict[str, Any],
     ) -> None:
-        self._ball = _copy_ball(ball)
-        self._partial_sum = _copy_ball(partial_sum)
-        self._tail_bound = _copy_ball(tail_bound)
+        self._ball_data = _ball_data(ball)
+        self._partial_sum_data = _ball_data(partial_sum)
+        self._tail_bound_data = _ball_data(tail_bound)
         self._steps = int(steps)
-        self._diagnostics = _copy_data(diagnostics)
+        self._diagnostics = _freeze_data(diagnostics)
         self._rigorous = True
+        self._seal()
 
     @property
     def ball(self) -> RealBall:
-        return _copy_ball(self._ball)
+        return _ball_from_data(self._ball_data)
 
     @property
     def partial_sum(self) -> RealBall:
-        return _copy_ball(self._partial_sum)
+        return _ball_from_data(self._partial_sum_data)
 
     @property
     def tail_bound(self) -> RealBall:
-        return _copy_ball(self._tail_bound)
+        return _ball_from_data(self._tail_bound_data)
+
+    @property
+    def _ball(self) -> RealBall:
+        return self.ball
+
+    @property
+    def _partial_sum(self) -> RealBall:
+        return self.partial_sum
+
+    @property
+    def _tail_bound(self) -> RealBall:
+        return self.tail_bound
 
     @property
     def diagnostics(self) -> dict[str, Any]:
@@ -562,13 +688,15 @@ class HeightContext:
             l1_bound = classical_duplication_l1_bound(jacobian)
             self._duplication_overhead_bits_upper = 4 * len(str(l1_bound)) + 8
         except Exception:
-            coefficient_digits = 1
-            for polynomial, length in ((jacobian.f(), 7), (jacobian.h(), 4)):
-                for coefficient in _integer_coefficients(polynomial, length) or ():
-                    coefficient_digits = max(
-                        coefficient_digits, len(str(abs(coefficient)))
-                    )
-            self._duplication_overhead_bits_upper = 16 * coefficient_digits + 64
+            coefficient_bits_upper = max(
+                _coefficient_size_bits_upper(jacobian.f(), 7),
+                _coefficient_size_bits_upper(jacobian.h(), 4),
+            )
+            # Generalized/rational models clear coefficient denominators in
+            # the direct quartics.  Counting both numerator and denominator is
+            # essential: a tiny rational coefficient can otherwise create a
+            # huge primitive integral Kummer output in one duplication.
+            self._duplication_overhead_bits_upper = 16 * coefficient_bits_upper + 128
         self._chains: dict[Any, list[KummerCoordinates]] = {}
         self._kummer: dict[Any, Any] = {}
         self._fields: dict[int, IntervalBallField] = {}
@@ -631,10 +759,7 @@ class HeightContext:
         else:
             self._chain_hits += 1
         while len(chain) <= steps:
-            current_bits_upper = max(
-                1,
-                max(4 * len(str(abs(value))) for value in chain[-1].coordinates()),
-            )
+            current_bits_upper = _coordinate_size_bits_upper(chain[-1])
             predicted_bits_upper = (
                 4 * current_bits_upper + self._duplication_overhead_bits_upper
             )
@@ -645,6 +770,7 @@ class HeightContext:
                     {
                         "requested_steps": steps,
                         "completed_steps": len(chain) - 1,
+                        "resource_check_stage": "pre-duplication-estimate",
                         "current_coordinate_bits_upper": current_bits_upper,
                         "predicted_next_coordinate_bits_upper": predicted_bits_upper,
                         "max_exact_coordinate_bits": self.max_exact_coordinate_bits,
@@ -654,7 +780,25 @@ class HeightContext:
                         ),
                     },
                 )
-            chain.append(chain[-1].duplicate())
+            next_point = chain[-1].duplicate()
+            actual_bits_upper = _coordinate_size_bits_upper(next_point)
+            if actual_bits_upper > self.max_exact_coordinate_bits:
+                raise Genus2HeightResourceLimitError(
+                    "exact Kummer duplication exceeded the configured bit budget; "
+                    "use fewer steps or the bounded local-correction engines",
+                    {
+                        "requested_steps": steps,
+                        "completed_steps": len(chain) - 1,
+                        "resource_check_stage": "post-duplication-exact",
+                        "actual_next_coordinate_bits_upper": actual_bits_upper,
+                        "max_exact_coordinate_bits": self.max_exact_coordinate_bits,
+                        "fallbacks": (
+                            "factorization_free_finite_correction",
+                            "reduce exact doubling steps",
+                        ),
+                    },
+                )
+            chain.append(next_point)
             self._doublings += 1
         return tuple(chain[: steps + 1])
 
@@ -706,7 +850,7 @@ class HeightContext:
         }
 
 
-class CanonicalHeightResult:
+class CanonicalHeightResult(_SealedRecord):
     """A canonical-height enclosure or explicitly numerical reference value."""
 
     def __init__(
@@ -719,17 +863,22 @@ class CanonicalHeightResult:
         bounds: AutomaticHeightBounds | None,
         diagnostics: dict[str, Any],
     ) -> None:
-        self._ball = _copy_ball(ball)
+        self._ball_data = _ball_data(ball)
         self._status = str(status)
         self._steps = int(steps)
-        self._provenance = _copy_data(provenance)
+        self._provenance = _freeze_data(provenance)
         self._bounds = None if bounds is None else bounds.copy()
-        self._diagnostics = _copy_data(diagnostics)
+        self._diagnostics = _freeze_data(diagnostics)
         self._rigorous = bool(ball.rigorous)
+        self._seal()
 
     @property
     def ball(self) -> RealBall:
-        return _copy_ball(self._ball)
+        return _ball_from_data(self._ball_data)
+
+    @property
+    def _ball(self) -> RealBall:
+        return self.ball
 
     @property
     def status(self) -> str:
@@ -765,7 +914,7 @@ class CanonicalHeightResult:
         height_difference_bound: Any = None,
     ) -> bool:
         """Strictly replay this result from its exact divisor and parameters."""
-        if divisor_provenance(divisor) != self._provenance:
+        if divisor_provenance(divisor) != self.provenance:
             raise Genus2HeightResolutionError(
                 "canonical-height replay divisor does not match provenance",
                 {"expected": self.provenance, "actual": divisor_provenance(divisor)},
@@ -785,14 +934,25 @@ class CanonicalHeightResult:
                 context_data.get("max_exact_coordinate_bits", 100000)
             ),
         )
+        torsion_order = None
+        if (
+            self._diagnostics.get("torsion_certificate")
+            == "verified-annihilating-multiple"
+        ):
+            torsion_order = int(self._diagnostics["annihilating_multiple"])
         replay = canonical_height(
             divisor,
             steps=self._steps,
             precision=self._ball.precision_bits,
             height_difference_bound=height_difference_bound,
+            torsion_order=torsion_order,
             context=replay_context,
         )
-        if replay.status != self._status or not _same_ball(replay._ball, self._ball):
+        if (
+            replay.status != self._status
+            or replay._rigorous != self._rigorous
+            or not _same_ball(replay._ball, self._ball)
+        ):
             raise Genus2HeightResolutionError(
                 "canonical-height strict replay did not reproduce the record",
                 {"stored": self.to_dict(), "replayed": replay.to_dict()},
@@ -1133,7 +1293,7 @@ def canonical_height(
     )
 
 
-class HeightPairingResult:
+class HeightPairingResult(_SealedRecord):
     """A symmetric Neron--Tate pairing matrix with proof state."""
 
     def __init__(
@@ -1142,16 +1302,23 @@ class HeightPairingResult:
         height_results: tuple[CanonicalHeightResult, ...],
         diagnostics: dict[str, Any],
     ) -> None:
-        self._matrix = tuple(
-            tuple(_copy_ball(entry) for entry in row) for row in matrix
+        self._matrix_data = tuple(
+            tuple(_ball_data(entry) for entry in row) for row in matrix
         )
         self._height_results = tuple(height_results)
-        self._diagnostics = _copy_data(diagnostics)
+        self._diagnostics = _freeze_data(diagnostics)
         self._rigorous = all(entry.rigorous for row in self._matrix for entry in row)
+        self._seal()
 
     @property
     def matrix(self) -> tuple[tuple[RealBall, ...], ...]:
-        return tuple(tuple(_copy_ball(entry) for entry in row) for row in self._matrix)
+        return tuple(
+            tuple(_ball_from_data(entry) for entry in row) for row in self._matrix_data
+        )
+
+    @property
+    def _matrix(self) -> tuple[tuple[RealBall, ...], ...]:
+        return self.matrix
 
     @property
     def height_results(self) -> tuple[CanonicalHeightResult, ...]:
@@ -1206,6 +1373,11 @@ class HeightPairingResult:
                 "algorithm": "exact-integral-M-transpose-H-M",
                 "basis_matrix": tuple(tuple(row) for row in integers),
                 "source_pairing": self.diagnostics,
+                "steps": int(self._diagnostics.get("steps", 0)),
+                "precision_bits": int(
+                    self._diagnostics.get("precision_bits", precision)
+                ),
+                "context": _copy_data(self._diagnostics.get("context", {})),
             },
         )
 
@@ -1236,9 +1408,16 @@ class HeightPairingResult:
             height_difference_bound=height_difference_bound,
             context=replay_context,
         )
+        if self._diagnostics.get("algorithm") == "exact-integral-M-transpose-H-M":
+            replay = replay.transform(self._diagnostics["basis_matrix"])
         if len(replay._matrix) != len(self._matrix):
             raise Genus2HeightResolutionError(
                 "height-pairing strict replay changed matrix size",
+                {"stored": self.to_dict(), "replayed": replay.to_dict()},
+            )
+        if replay._rigorous != self._rigorous:
+            raise Genus2HeightResolutionError(
+                "height-pairing strict replay changed the rigor state",
                 {"stored": self.to_dict(), "replayed": replay.to_dict()},
             )
         for row in range(len(self._matrix)):
@@ -1372,7 +1551,7 @@ def _interval_determinant(matrix: tuple[tuple[RealBall, ...], ...]) -> RealBall:
     return states[(1 << size) - 1]
 
 
-class RegulatorResult:
+class RegulatorResult(_SealedRecord):
     """The determinant of a computed canonical height pairing."""
 
     def __init__(
@@ -1382,15 +1561,20 @@ class RegulatorResult:
         status: str,
         diagnostics: dict[str, Any],
     ) -> None:
-        self._ball = _copy_ball(ball)
+        self._ball_data = _ball_data(ball)
         self._pairing = pairing
         self._status = str(status)
-        self._diagnostics = _copy_data(diagnostics)
+        self._diagnostics = _freeze_data(diagnostics)
         self._rigorous = bool(ball.rigorous)
+        self._seal()
 
     @property
     def ball(self) -> RealBall:
-        return _copy_ball(self._ball)
+        return _ball_from_data(self._ball_data)
+
+    @property
+    def _ball(self) -> RealBall:
+        return self.ball
 
     @property
     def pairing(self) -> HeightPairingResult:
@@ -1456,7 +1640,13 @@ class RegulatorResult:
             height_difference_bound=height_difference_bound,
             context=replay_context,
         )
-        if replay._status != self._status or not _same_ball(replay._ball, self._ball):
+        if self._diagnostics.get("algorithm") == "regulator-index-square-scaling":
+            replay = replay.transform_index(int(self._diagnostics["subgroup_index"]))
+        if (
+            replay._status != self._status
+            or replay._rigorous != self._rigorous
+            or not _same_ball(replay._ball, self._ball)
+        ):
             raise Genus2HeightResolutionError(
                 "regulator strict replay did not reproduce the record",
                 {"stored": self.to_dict(), "replayed": replay.to_dict()},
