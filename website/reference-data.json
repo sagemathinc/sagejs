@@ -14773,9 +14773,9 @@
         "name": "fast_callable",
         "qualified": "fast_callable",
         "path": "src/baselib/symbolic.py",
-        "line": 2648,
+        "line": 2665,
         "excerpt": {
-          "start_line": 2636,
+          "start_line": 2653,
           "text": ") -> Any:\n    if isinstance(value, Expression):\n        return value.n(prec=prec, digits=digits)\n    if hasattr(value, \"numerical_approx\"):\n        return value.numerical_approx(prec=prec, digits=digits)\n    return SR(value).n(prec=prec, digits=digits)\n\n\nn = numerical_approx\nN = numerical_approx\n\n\ndef fast_callable(\n    expression: Any,\n    vars: Sequence[Any] | None = None,\n) -> Any:\n    \"\"\"Compile a symbolic expression to a hot JavaScript numeric function.\"\"\"\n    symbolic_expression = SR(expression)\n    variables = symbolic_expression.variables() if vars is None else list(vars)\n    names = [_symbol_name(variable) for variable in variables]\n    return _call_backend(\"compile\", [symbolic_expression._tree, names])\n\n\npi = Expression(\"Pi\")\ne = Expression(\"ExponentialE\")"
         }
       },

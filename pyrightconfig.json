@@ -252,7 +252,9 @@
     "src/lib/sagejs/optimization/random_search.py",
     "src/lib/sagejs/optimization/random_stream.py",
     "src/lib/sagejs/optimization/schedule.py",
-    "src/lib/sagejs/optimization/simulated_annealing.py"
+    "src/lib/sagejs/optimization/simulated_annealing.py",
+    "src/lib/sagejs/optimization/cobyla.py",
+    "src/lib/sagejs/optimization/levenberg_marquardt.py"
   ],
   "extraPaths": [
     "src/baselib"

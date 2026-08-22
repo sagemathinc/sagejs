@@ -2629,6 +2629,23 @@ def minimize(
     return _optimization_module().minimize(func, x0, **options)
 
 
+def minimize_constrained(
+    func: Any,
+    cons: Any,
+    x0: Any,
+    **options: Any,
+) -> Any:
+    return _optimization_module().minimize_constrained(func, cons, x0, **options)
+
+
+def find_fit(
+    data: Any,
+    model: Any,
+    **options: Any,
+) -> Any:
+    return _optimization_module().find_fit(data, model, **options)
+
+
 def numerical_approx(
     value: Any,
     prec: Any = None,
