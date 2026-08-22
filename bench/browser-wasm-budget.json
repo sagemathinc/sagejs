@@ -247,7 +247,7 @@
       "operations": {
         "exact-matrix-kernel": {
           "warm_ms": {
-            "median": 27.720000000000255
+            "median": 50.91999999999962
           }
         },
         "cubic-number-field-zeta-1000": {
@@ -272,7 +272,7 @@
         },
         "numeric-mpfr-symbolic": {
           "warm_ms": {
-            "median": 46.820000000000164
+            "median": 90.48000000000002
           }
         },
         "moebius-range-100000": {
@@ -302,7 +302,7 @@
         },
         "word-prime-matrix-128": {
           "warm_ms": {
-            "median": 174.01999999999998
+            "median": 317.5
           }
         },
         "sparse-integer-right-kernel-192": {
@@ -312,7 +312,7 @@
         },
         "matrix-combinatorial-invariants": {
           "warm_ms": {
-            "median": 97.08000000000038
+            "median": 202.96000000000004
           }
         },
         "multivariate-resultant-packed": {
@@ -526,22 +526,22 @@
     "firefox": {
       "operations": {
         "exact-matrix-kernel": {
-          "warm_median_ratio": 0.5099190757324511
+          "warm_median_ratio": 1.2625821505950168
         },
         "cubic-number-field-zeta-1000": {
           "warm_median_ratio": 1.7299902577163797
         },
         "modular-symbols-level-1000": {
-          "warm_median_ratio": 26.875189606277594
+          "warm_median_ratio": 42.75871611109536
         },
         "analytic-special-value-batches": {
           "warm_median_ratio": 7.047085206648839
         },
         "analytic-gamma-xi-batches": {
-          "warm_median_ratio": 3.8772763127463366
+          "warm_median_ratio": 5.253785181574564
         },
         "numeric-mpfr-symbolic": {
-          "warm_median_ratio": 1.0182677938168676
+          "warm_median_ratio": 1.9354372942808227
         },
         "moebius-range-100000": {
           "warm_median_ratio": 1.32756008370404
@@ -559,16 +559,16 @@
           "warm_median_ratio": 1.5137031124794869
         },
         "word-prime-matrix-128": {
-          "warm_median_ratio": 1.6028173922911433
+          "warm_median_ratio": 2.6043373413339324
         },
         "sparse-integer-right-kernel-192": {
           "warm_median_ratio": 8.046555506546111
         },
         "matrix-combinatorial-invariants": {
-          "warm_median_ratio": 1.2747197714120007
+          "warm_median_ratio": 2.585637654222265
         },
         "multivariate-resultant-packed": {
-          "warm_median_ratio": 6.028498809678061
+          "warm_median_ratio": 7.771474353569104
         },
         "extension-field-polynomial-5632": {
           "warm_median_ratio": 6.592344851890565
@@ -596,7 +596,7 @@
           "warm_median_ratio": 1.748226858420618
         },
         "modular-symbols-level-1000": {
-          "warm_median_ratio": 42.552557573821765
+          "warm_median_ratio": 56.912548074044224
         },
         "analytic-special-value-batches": {
           "warm_median_ratio": 1.5370981958101055
