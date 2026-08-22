@@ -876,6 +876,75 @@ def packed_row_hnf_in_place(
 
 
 @native
+def packed_ideal_product_hnf_in_place(
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    workspace: IntegerBuffer,
+    left_basis: IntegerBuffer,
+    right_basis: IntegerBuffer,
+    multiplication_tensor: IntegerBuffer,
+    degree: uint64,
+) -> bool:
+    """Multiply two packed ideal bases and canonicalize their row lattice.
+
+    The two bases and the multiplication tensor are integer numerators over
+    caller-owned positive common denominators.  Tensor entry `(i,j,k)` is the
+    coefficient of basis coordinate `k` in the product of power-basis
+    coordinates `i` and `j`.  The caller combines those three denominators
+    after this kernel returns the canonical numerator HNF.
+    """
+    maximum_degree: uint64 = 16
+    row_count = degree * degree
+    basis_entries = degree * degree
+    product_entries = row_count * degree
+    valid = (
+        degree > 0
+        and degree <= maximum_degree
+        and len(output) == product_entries
+        and len(source) == product_entries
+        and len(workspace) == 2 * degree
+        and len(left_basis) == basis_entries
+        and len(right_basis) == basis_entries
+        and len(multiplication_tensor) == degree * degree * degree
+    )
+    if not valid:
+        return False
+    left_row = 0
+    while left_row < degree:
+        right_row = 0
+        while right_row < degree:
+            product_row = left_row * degree + right_row
+            coordinate = 0
+            while coordinate < degree:
+                value = 0
+                left_coordinate = 0
+                while left_coordinate < degree:
+                    right_coordinate = 0
+                    while right_coordinate < degree:
+                        tensor_index = (
+                            left_coordinate * degree + right_coordinate
+                        ) * degree + coordinate
+                        value += (
+                            left_basis[left_row * degree + left_coordinate]
+                            * right_basis[right_row * degree + right_coordinate]
+                            * multiplication_tensor[tensor_index]
+                        )
+                        right_coordinate += 1
+                    left_coordinate += 1
+                source[product_row * degree + coordinate] = value
+                coordinate += 1
+            right_row += 1
+        left_row += 1
+    return _packed_row_hnf_in_place(
+        output,
+        source,
+        workspace,
+        row_count,
+        degree,
+    )
+
+
+@native
 def packed_prime_ideal_candidate_hnf_in_place(
     output: IntegerBuffer,
     source: IntegerBuffer,
@@ -1031,6 +1100,7 @@ __all__ = [
     "packed_composite_dedekind_basis_in_place",
     "packed_composite_dedekind_enlargement_in_place",
     "packed_known_overorder_contains_vectors_in_place",
+    "packed_ideal_product_hnf_in_place",
     "packed_order_contains_vector_in_place",
     "packed_order_contains_vectors_in_place",
     "packed_order_table_in_place",

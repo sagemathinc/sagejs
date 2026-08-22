@@ -10495,19 +10495,20 @@
       "fallback": "same-source-dynamic-python",
       "wasm_module": "kernel-gmp",
       "public_consumers": [
-        "buchmann-lenstra-row-hnf"
+        "buchmann-lenstra-row-hnf",
+        "number-field-ideal-products"
       ],
       "tests": [
         "production-kernel-differential"
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "The receipt-authenticated production pack compiles all 6 registered functions in this source-transparent kernel family.",
-      "public_explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "review_note": "The receipt-authenticated production pack compiles all 7 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 7 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 6,
+        "compiled_functions": 7,
         "fallback_functions": 0,
-        "total_functions": 6,
+        "total_functions": 7,
         "production_pack": true,
         "fallback_reasons": []
       }

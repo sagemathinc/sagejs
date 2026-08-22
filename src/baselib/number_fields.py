@@ -1578,11 +1578,7 @@ class NumberFieldIdeal:
         if isinstance(other, NumberFieldIdeal):
             if other._order is not self._order:
                 raise TypeError("ideals must belong to the same order")
-            rows = []
-            for left in self.basis():
-                for right in other.basis():
-                    rows.append(_nf_coordinates(left * right, self._field.degree()))
-            return NumberFieldIdeal(self._order, rows, _check_closed=False)
+            return _nf_ideal_arithmetic_module().ideal_product(self, other)
         scalar = self._field(other)
         return NumberFieldIdeal(
             self._order,
@@ -1672,6 +1668,21 @@ class NumberFieldIdeal:
             and other._order is self._order
             and other._basis_rows == self._basis_rows
         )
+
+    @classmethod
+    def _from_canonical_basis_rows(
+        cls, order: NumberFieldOrder, rows: list[list[Any]]
+    ) -> NumberFieldIdeal:
+        """Construct from a producer-owned canonical full-rank row HNF."""
+        degree = order.degree()
+        rational_rows = [[sage.QQ(value) for value in row] for row in rows]
+        if len(rational_rows) != degree or any(
+            len(row) != degree for row in rational_rows
+        ):
+            raise ValueError("canonical ideal rows must be a square full-rank basis")
+        answer = cls(order, [], _check_closed=False)
+        answer._basis_rows = rational_rows
+        return answer
 
     def __repr__(self) -> str:
         if self.is_zero():

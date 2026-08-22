@@ -14,14 +14,25 @@ from typing import Any
 
 import sagejs as sage
 import sagejs.runtime as runtime
+from sagejs.native import (
+    integer_buffer_values,
+    kernel_integer_buffer,
+    kernel_integer_zeros,
+)
 
 _nf = __import__("sagejs._baselib.number_fields", fromlist=["number_fields"])
 NumberFieldIdeal = _nf.NumberFieldIdeal
 _nf_coordinates = _nf._nf_coordinates
+_nf_element_from_row = _nf._nf_element_from_row
 _nf_global = _nf._nf_global
 _nf_lcm = _nf._nf_lcm
 
 SERIALIZATION_SCHEMA = "sagejs.number-fields.ideal.v1"
+MAX_PACKED_IDEAL_PRODUCT_DEGREE = 16
+MAX_MULTIPLICATION_TENSOR_CACHE_ENTRIES = 32
+
+_multiplication_tensor_cache: list[tuple[Any, tuple[int, ...], int]] = []
+_ideal_product_kernel_override: Any = None
 
 
 def _same_order(left: Any, right: Any) -> None:
@@ -31,6 +42,144 @@ def _same_order(left: Any, right: Any) -> None:
         raise TypeError("ideal arithmetic requires number-field ideals")
     if left.ring() is not right.ring():
         raise TypeError("ideals must belong to the same order")
+
+
+def _readable_ideal_product(left: Any, right: Any) -> Any:
+    """Multiply ideal bases through ordinary exact field elements."""
+    _same_order(left, right)
+    rows = []
+    for left_element in left.basis():
+        for right_element in right.basis():
+            rows.append(
+                _nf_coordinates(
+                    left_element * right_element,
+                    left.number_field().degree(),
+                )
+            )
+    return NumberFieldIdeal(left.ring(), rows, _check_closed=False)
+
+
+def _field_multiplication_tensor(field: Any) -> tuple[tuple[int, ...], int]:
+    for index, (cached_field, tensor, denominator) in enumerate(
+        _multiplication_tensor_cache
+    ):
+        if cached_field is field:
+            if index:
+                _multiplication_tensor_cache.append(
+                    _multiplication_tensor_cache.pop(index)
+                )
+            return tensor, denominator
+    degree = int(field.degree())
+    basis = []
+    for index in range(degree):
+        row = [sage.QQ(0)] * degree
+        row[index] = sage.QQ(1)
+        basis.append(_nf_element_from_row(field, row))
+    products = []
+    denominator = runtime.bigint(1)
+    for left in basis:
+        for right in basis:
+            coordinates = _nf_coordinates(left * right, degree)
+            products.append(coordinates)
+            for value in coordinates:
+                denominator = _nf_lcm(denominator, value._denominator)
+    tensor_values = []
+    for coordinates in products:
+        for value in coordinates:
+            scaled = value * denominator
+            if scaled._denominator != 1:
+                raise ArithmeticError(
+                    "failed to clear a field multiplication denominator"
+                )
+            tensor_values.append(int(scaled._numerator))
+    answer = (tuple(tensor_values), int(denominator))
+    if len(_multiplication_tensor_cache) >= MAX_MULTIPLICATION_TENSOR_CACHE_ENTRIES:
+        _multiplication_tensor_cache.pop(0)
+    _multiplication_tensor_cache.append((field, answer[0], answer[1]))
+    return answer
+
+
+def _packed_ideal_basis(ideal: Any) -> tuple[list[int], int]:
+    denominator = runtime.bigint(1)
+    for row in ideal._basis_rows:
+        for value in row:
+            denominator = _nf_lcm(denominator, value._denominator)
+    numerators = []
+    for row in ideal._basis_rows:
+        for value in row:
+            scaled = value * denominator
+            if scaled._denominator != 1:
+                raise ArithmeticError("failed to clear an ideal-basis denominator")
+            numerators.append(int(scaled._numerator))
+    return numerators, int(denominator)
+
+
+def _packed_ideal_product(left: Any, right: Any) -> Any:
+    degree = int(left.number_field().degree())
+    if (
+        degree < 1
+        or degree > MAX_PACKED_IDEAL_PRODUCT_DEGREE
+        or left.is_zero()
+        or right.is_zero()
+    ):
+        return None
+    kernel_module = __import__(
+        "sagejs.number_fields.bl_composite_kernel", fromlist=["bl_composite_kernel"]
+    )
+    kernel = (
+        _ideal_product_kernel_override
+        if callable(_ideal_product_kernel_override)
+        else getattr(kernel_module, "packed_ideal_product_hnf_in_place", None)
+    )
+    if not callable(kernel):
+        return None
+    try:
+        left_values, left_denominator = _packed_ideal_basis(left)
+        right_values, right_denominator = _packed_ideal_basis(right)
+        tensor, tensor_denominator = _field_multiplication_tensor(left.number_field())
+        maximum_bits = max(
+            [1]
+            + [abs(value).bit_length() for value in left_values]
+            + [abs(value).bit_length() for value in right_values]
+            + [abs(value).bit_length() for value in tensor]
+        )
+        product_bits = 3 * maximum_bits + (degree * degree).bit_length()
+        word_capacity = max(16, (product_bits + 63) // 64 + 8 * degree)
+        entry_count = degree * degree * degree
+        output = kernel_integer_zeros(kernel, entry_count, word_capacity)
+        source = kernel_integer_zeros(kernel, entry_count, word_capacity)
+        workspace = kernel_integer_zeros(kernel, 2 * degree, word_capacity)
+        if not kernel(
+            output,
+            source,
+            workspace,
+            kernel_integer_buffer(kernel, left_values),
+            kernel_integer_buffer(kernel, right_values),
+            kernel_integer_buffer(kernel, tensor),
+            degree,
+        ):
+            return None
+        values = integer_buffer_values(output)
+        denominator = left_denominator * right_denominator * tensor_denominator
+        rows = [
+            [
+                sage.QQ(int(values[row * degree + column])) / sage.QQ(denominator)
+                for column in range(degree)
+            ]
+            for row in range(degree)
+        ]
+        return NumberFieldIdeal._from_canonical_basis_rows(left.ring(), rows)
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+
+
+def ideal_product(left: Any, right: Any) -> Any:
+    """Return the exact product through a packed HNF when available."""
+    _same_order(left, right)
+    if left.is_zero() or right.is_zero():
+        return NumberFieldIdeal(left.ring(), [], _check_closed=False)
+    packed = _packed_ideal_product(left, right)
+    return _readable_ideal_product(left, right) if packed is None else packed
 
 
 def ideal_contains(container: Any, contained: Any) -> bool:
@@ -346,6 +495,7 @@ __all__ = [
     "ideal_divides",
     "ideal_from_dict",
     "ideal_inverse",
+    "ideal_product",
     "ideal_power",
     "ideal_quotient",
     "ideal_valuation",

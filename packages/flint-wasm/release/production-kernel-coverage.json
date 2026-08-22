@@ -4,7 +4,7 @@
   "totals": {
     "registered_kernels": 38,
     "production_kernels": 31,
-    "compiled_functions": 232,
+    "compiled_functions": 233,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -23,9 +23,9 @@
       "id": "buchmann-lenstra-row-hnf-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 6,
+      "compiled_functions": 7,
       "fallback_functions": 0,
-      "total_functions": 6,
+      "total_functions": 7,
       "fallback_reasons": []
     },
     {
