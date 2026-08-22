@@ -600,6 +600,16 @@ def _factor_base_row_norm(factor_base: Iterable[Any], row: Iterable[int]) -> Any
     return answer
 
 
+def _factor_base_row_norm_from_norms(
+    factor_base_norms: Iterable[Any], row: Iterable[int]
+) -> Any:
+    answer = sage.QQ(1)
+    for norm, exponent in zip(factor_base_norms, row, strict=True):
+        if exponent:
+            answer *= sage.QQ(norm) ** int(exponent)
+    return answer
+
+
 def _factor_positive_integer(value: int) -> list[list[int]]:
     if value < 1:
         raise ValueError("a norm numerator or denominator must be positive")
@@ -627,6 +637,32 @@ def _norm_smoothness(
                 "index": index,
                 "exponent": exponent,
                 "norm": _rational_pair(factor_base[index].norm()),
+            }
+            for index, exponent in enumerate(row)
+            if exponent
+        ],
+    }
+
+
+def _norm_smoothness_from_norms(
+    principal_norm: Any,
+    row: tuple[int, ...],
+    factor_base_norms: tuple[Any, ...],
+) -> dict[str, Any]:
+    principal_pair = _rational_pair(principal_norm)
+    numerator = abs(principal_pair[0])
+    denominator = principal_pair[1]
+    return {
+        "principal_norm": principal_pair,
+        "principal_norm_factorization": {
+            "numerator": _factor_positive_integer(numerator),
+            "denominator": _factor_positive_integer(denominator),
+        },
+        "factor_base_norms": [
+            {
+                "index": index,
+                "exponent": exponent,
+                "norm": _rational_pair(factor_base_norms[index]),
             }
             for index, exponent in enumerate(row)
             if exponent
@@ -910,6 +946,9 @@ class ExactRelationCollector:
     ) -> None:
         self.order = order
         self.factor_base = _validate_factor_base(order, factor_base)
+        self._factor_base_norms = tuple(
+            sage.QQ(prime_ideal.norm()) for prime_ideal in self.factor_base
+        )
         self._reconstructor = FactorBaseIdealReconstructor(
             order,
             self.factor_base,
@@ -1083,7 +1122,10 @@ class ExactRelationCollector:
         witness_norm = sage.QQ(factored.norm())
         if witness_norm < 0:
             witness_norm = -witness_norm
-        if _factor_base_row_norm(self.factor_base, row) != witness_norm:
+        if (
+            _factor_base_row_norm_from_norms(self._factor_base_norms, row)
+            != witness_norm
+        ):
             raise RelationNotSmoothError(
                 "the principal witness norm has support outside the factor base"
             )
@@ -1131,10 +1173,10 @@ class ExactRelationCollector:
             quotient_row=quotient_row,
             source_row=computed_source_row,
             witness=factored.to_dict(),
-            norm_smoothness=_norm_smoothness(
+            norm_smoothness=_norm_smoothness_from_norms(
                 witness_norm,
                 row,
-                self.factor_base,
+                self._factor_base_norms,
             ),
             archimedean_logs=archimedean_logs,
             log_precision=log_precision,
