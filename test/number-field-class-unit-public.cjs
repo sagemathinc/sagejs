@@ -135,7 +135,7 @@ test("public quadratic class/unit context preserves proof and analytic contracts
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 K = NumberField(x**2 + 4*x + 1, "a")
-expected = [(False, "exact-relations-conditional-grh"), (True, "exact-unconditional")]
+expected = [(False, "exact-unconditional"), (True, "exact-unconditional")]
 for proof, status in expected:
     result = K.class_unit_group(proof=proof)
     assert result.complete and result.proof_status == status
@@ -177,6 +177,129 @@ assert result.regulator().precision_bits >= 100
 print("cubic-regulator-ok")
 `, 180_000);
   assert.equal(output, "cubic-regulator-ok");
+});
+
+test("public cubic class number uses cached unconditional Minkowski evidence", () => {
+  const output = runPublic(String.raw`
+cubic_module = __import__(
+    "sagejs.number_fields.cubic_class_number", fromlist=["cubic_class_number"]
+)
+class_unit_module = __import__(
+    "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
+)
+units_module = __import__("sagejs.number_fields.units", fromlist=["units"])
+analytic_module = __import__(
+    "sagejs.number_fields.class_unit_analytic", fromlist=["class_unit_analytic"]
+)
+
+def forbidden(*args, **kwargs):
+    raise AssertionError("the coupled class/unit path was touched")
+
+class_unit_module.class_number = forbidden
+units_module.bounded_unit_subgroup = forbidden
+analytic_module.regulator_from_factored_units = forbidden
+analytic_module.ZetaLogResidueWorkspace = forbidden
+
+certificate_verify = cubic_module.CubicMinkowskiClassNumberCertificate.verify
+certificate_verify_calls = []
+def observed_certificate_verify(self, *args, **kwargs):
+    certificate_verify_calls.append(self.stable_hash())
+    return certificate_verify(self, *args, **kwargs)
+cubic_module.CubicMinkowskiClassNumberCertificate.verify = observed_certificate_verify
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 - 6*x - 12, "c")
+assert K.class_number(proof=True) == 3
+artifact = K._bounded_cubic_class_number_artifact
+assert artifact.complete
+assert artifact.proof_status == "exact-unconditional"
+assert artifact.certificate.proof_status == "exact-unconditional"
+assert certificate_verify_calls == []
+assert artifact.diagnostics["quotient_order"] == 3
+
+# The stronger unconditional artifact satisfies proof=False from the field
+# cache even when the producer itself is made unavailable.
+cubic_module.bounded_cubic_minkowski_class_number = forbidden
+assert K.class_number(proof=False) == 3
+assert K._bounded_cubic_class_number_artifact is artifact
+assert certificate_verify_calls == []
+
+# Exported constructors cannot mint the private live authority, even from a
+# byte-for-byte copy of valid evidence.  A live seal also cannot be moved from
+# its producer result onto the forged result.
+K_forged = NumberField(x**3 - x**2 - 6*x - 12, "g")
+source_certificate = artifact.certificate
+forged_certificate = cubic_module.CubicMinkowskiClassNumberCertificate(
+    K_forged,
+    plan=source_certificate.plan,
+    factor_base=source_certificate.factor_base,
+    relations=source_certificate.relations,
+    presentation=source_certificate.presentation,
+    obstructions=source_certificate.obstructions,
+    caps=source_certificate.caps,
+)
+forged_result = cubic_module.CubicClassNumberResult(
+    K_forged,
+    True,
+    source_certificate.source,
+    artifact.minkowski_bound,
+    certificate=forged_certificate,
+    factor_base=artifact.factor_base,
+    relation_records=artifact.relation_records,
+    presentation=artifact.presentation,
+    diagnostics=artifact.diagnostics,
+)
+assert not cubic_module.authenticated_cubic_class_number_result_matches(
+    forged_result, K_forged
+)
+forged_result._live_authentication = artifact._live_authentication
+assert not cubic_module.authenticated_cubic_class_number_result_matches(
+    forged_result, K_forged
+)
+original_producer = cubic_module.bounded_cubic_minkowski_class_number
+cubic_module.bounded_cubic_minkowski_class_number = lambda field: forged_result
+try:
+    K_forged.class_number(proof=True)
+    raise AssertionError("a directly constructed cubic result entered the cache")
+except ArithmeticError as error:
+    assert "invalid exact evidence" in str(error) or "lost authentication" in str(error)
+cubic_module.bounded_cubic_minkowski_class_number = original_producer
+assert not hasattr(K_forged, "_bounded_cubic_class_number_artifact")
+
+# Cache reads rebind the immutable source snapshot and fail after mutation.
+artifact.diagnostics["quotient_order"] = 4
+try:
+    K.class_number(proof=True)
+    raise AssertionError("mutated live cubic evidence remained authenticated")
+except ArithmeticError as error:
+    assert "lost authentication" in str(error)
+artifact.diagnostics["quotient_order"] = 3
+assert K.class_number(proof=True) == 3
+
+# Explicit algorithms and resource policies retain the existing coupled
+# dispatch rather than silently consuming the auto/no-limits shortcut.
+for options in ({"algorithm": "minkowski"}, {"max_relations": 1}):
+    try:
+        K.class_number(**options)
+        raise AssertionError("an explicit class-number policy bypassed dispatch")
+    except AssertionError as error:
+        assert "coupled class/unit path" in str(error)
+
+# Bounded noncompletion is only a routing hint: it falls through rather than
+# supplying an upper bound as a class number.
+def incomplete(field):
+    return cubic_module.CubicClassNumberResult(
+        field, False, "forced bounded exhaustion", 1
+    )
+cubic_module.bounded_cubic_minkowski_class_number = incomplete
+class_unit_module.class_number = lambda *args, **kwargs: 7
+K_fallback = NumberField(x**3 + 3*x + 1, "f")
+assert K_fallback.class_number(proof=False) == 7
+assert not hasattr(K_fallback, "_bounded_cubic_class_number_artifact")
+print("cubic-class-number-fast-ok")
+`, 180_000);
+  assert.equal(output, "cubic-class-number-fast-ok");
 });
 
 test(

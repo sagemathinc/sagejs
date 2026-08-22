@@ -9,6 +9,8 @@ group from a truncated relation search.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any
 
 import sagejs as sage
@@ -18,6 +20,136 @@ from sagejs.number_fields.embeddings import (
     exact_signature,
 )
 from sagejs.number_fields.units import UnitSubgroupResult
+
+CUBIC_MINKOWSKI_CERTIFICATE_SCHEMA = (
+    "sagejs.number-fields/cubic-minkowski-principal-factor-base-v1"
+)
+DEFAULT_CUBIC_MINKOWSKI_MAX_BOUND = 64
+DEFAULT_CUBIC_MINKOWSKI_MAX_RATIONAL_PRIMES = 64
+DEFAULT_CUBIC_MINKOWSKI_MAX_PRIME_IDEALS = 64
+DEFAULT_CUBIC_MINKOWSKI_MAX_MEMORY_BYTES = 16 * 1024 * 1024
+DEFAULT_CUBIC_MINKOWSKI_MAX_REDUCTION_CANDIDATES = 16
+_CUBIC_MINKOWSKI_REPLAY_MAX_BOUND = 4096
+_CUBIC_MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES = 4096
+_CUBIC_MINKOWSKI_REPLAY_MAX_PRIME_IDEALS = 4096
+_CUBIC_MINKOWSKI_REPLAY_MAX_MEMORY_BYTES = 64 * 1024 * 1024
+_CUBIC_MINKOWSKI_REPLAY_MAX_REDUCTION_CANDIDATES = 65536
+_CUBIC_MINKOWSKI_REPLAY_MAX_EVIDENCE = 4096
+_CUBIC_MINKOWSKI_REPLAY_MAX_DEPTH = 64
+_CUBIC_MINKOWSKI_REPLAY_MAX_NODES = 100000
+_CUBIC_MINKOWSKI_REPLAY_MAX_STRING_BYTES = 65536
+_CUBIC_MINKOWSKI_REPLAY_MAX_TOTAL_STRING_BYTES = 16 * 1024 * 1024
+_CUBIC_MINKOWSKI_REPLAY_MAX_INTEGER_BITS = 16384
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
+def _content_hash(value: Any) -> str:
+    return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _positive_integer(value: Any, name: str) -> int:
+    if isinstance(value, (bool, float, str, bytes, bytearray)):
+        raise TypeError(name + " must be a positive exact integer")
+    answer = int(value)
+    if answer != value or answer < 1:
+        raise ValueError(name + " must be a positive exact integer")
+    return answer
+
+
+def _cubic_minkowski_payload_within_caps(value: Any) -> bool:
+    state = {"nodes": 0, "string_bytes": 0}
+
+    def visit(node: Any, depth: int) -> bool:
+        if depth > _CUBIC_MINKOWSKI_REPLAY_MAX_DEPTH:
+            return False
+        state["nodes"] += 1
+        if state["nodes"] > _CUBIC_MINKOWSKI_REPLAY_MAX_NODES:
+            return False
+        if node is None or isinstance(node, bool):
+            return True
+        if isinstance(node, int):
+            return abs(node).bit_length() <= _CUBIC_MINKOWSKI_REPLAY_MAX_INTEGER_BITS
+        if isinstance(node, str):
+            if len(node) > _CUBIC_MINKOWSKI_REPLAY_MAX_STRING_BYTES:
+                return False
+            try:
+                if any(0xD800 <= ord(character) <= 0xDFFF for character in node):
+                    return False
+                size = len(node.encode("utf-8"))
+            except (TypeError, ValueError, UnicodeError):
+                return False
+            if size > _CUBIC_MINKOWSKI_REPLAY_MAX_STRING_BYTES:
+                return False
+            state["string_bytes"] += size
+            return (
+                state["string_bytes"] <= _CUBIC_MINKOWSKI_REPLAY_MAX_TOTAL_STRING_BYTES
+            )
+        if isinstance(node, list):
+            if len(node) > _CUBIC_MINKOWSKI_REPLAY_MAX_EVIDENCE:
+                return False
+            return all(visit(item, depth + 1) for item in node)
+        if isinstance(node, dict):
+            if len(node) > _CUBIC_MINKOWSKI_REPLAY_MAX_EVIDENCE:
+                return False
+            for key, item in node.items():
+                if not isinstance(key, str) or not visit(key, depth + 1):
+                    return False
+                if not visit(item, depth + 1):
+                    return False
+            return True
+        return False
+
+    return visit(value, 0)
+
+
+def _validate_cubic_minkowski_replay_limits(
+    plan: Any,
+    factor_base: Any,
+    witnesses: Any,
+    candidates_checked: Any,
+    maximum_reduction_candidates: Any,
+) -> None:
+    if not isinstance(plan, dict):
+        raise TypeError("a Minkowski certificate plan must be a dictionary")
+    if not all(
+        isinstance(value, list)
+        for value in (factor_base, witnesses, candidates_checked)
+    ):
+        raise TypeError("Minkowski certificate evidence must use lists")
+    if any(
+        len(value) > _CUBIC_MINKOWSKI_REPLAY_MAX_EVIDENCE
+        for value in (factor_base, witnesses, candidates_checked)
+    ):
+        raise ValueError("Minkowski certificate evidence exceeds replay limits")
+    reduction_cap = _positive_integer(
+        maximum_reduction_candidates, "maximum reduction candidates"
+    )
+    if reduction_cap > _CUBIC_MINKOWSKI_REPLAY_MAX_REDUCTION_CANDIDATES:
+        raise ValueError("Minkowski reduction cap exceeds the replay limit")
+    caps = plan.get("caps")
+    if not isinstance(caps, dict):
+        raise TypeError("a Minkowski certificate plan must contain exact caps")
+    replay_caps = (
+        ("max_bound", _CUBIC_MINKOWSKI_REPLAY_MAX_BOUND),
+        ("max_rational_primes", _CUBIC_MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES),
+        ("max_prime_ideals", _CUBIC_MINKOWSKI_REPLAY_MAX_PRIME_IDEALS),
+        ("max_memory_bytes", _CUBIC_MINKOWSKI_REPLAY_MAX_MEMORY_BYTES),
+    )
+    for name, limit in replay_caps:
+        if _positive_integer(caps.get(name), name.replace("_", " ")) > limit:
+            raise ValueError(name.replace("_", " ") + " exceeds the replay limit")
+    tree = {
+        "plan": plan,
+        "factor_base": factor_base,
+        "witnesses": witnesses,
+        "candidates_checked": candidates_checked,
+        "maximum_reduction_candidates": maximum_reduction_candidates,
+    }
+    if not _cubic_minkowski_payload_within_caps(tree):
+        raise ValueError("Minkowski certificate payload exceeds replay limits")
 
 
 class _TrivialClassElement:
@@ -144,6 +276,210 @@ class MinkowskiClassNumberOneCertificate:
         return tuple(records) == self.decomposition_records
 
 
+class MinkowskiPrincipalFactorBaseCertificate:
+    """Unconditional class-number-one proof from principal Minkowski primes.
+
+    The exact Minkowski factor base generates the full ideal class group.  If
+    every prime in that complete base has an independently replayable
+    principal generator, the class group is trivial.  Search exhaustion is
+    deliberately outside this certificate: only successful exact witnesses
+    are serializable as a proof.
+    """
+
+    def __init__(
+        self,
+        field: Any,
+        *,
+        plan: dict[str, Any],
+        factor_base: list[dict[str, Any]],
+        witnesses: list[dict[str, Any]],
+        candidates_checked: list[int],
+        maximum_reduction_candidates: int,
+    ) -> None:
+        if field.degree() != 3:
+            raise ValueError("the bounded Minkowski certificate requires a cubic")
+        _validate_cubic_minkowski_replay_limits(
+            plan,
+            factor_base,
+            witnesses,
+            candidates_checked,
+            maximum_reduction_candidates,
+        )
+        cap = _positive_integer(
+            maximum_reduction_candidates, "maximum reduction candidates"
+        )
+        counts = tuple(
+            _positive_integer(value, "reduction candidates checked")
+            for value in candidates_checked
+        )
+        if not (
+            len(factor_base) == len(witnesses) == len(counts)
+            and all(value <= cap for value in counts)
+        ):
+            raise ValueError("Minkowski prime witnesses have inconsistent lengths")
+        self.field = field
+        self._plan_json = _canonical_json(plan)
+        self._factor_base_json = _canonical_json(factor_base)
+        self._witnesses_json = _canonical_json(witnesses)
+        self.candidates_checked = counts
+        self.maximum_reduction_candidates = cap
+        self.has_principal_element_witnesses = True
+        self.proof_status = "exact-unconditional"
+        self.source = "exact Minkowski factor base with principal prime witnesses"
+        self._content_sha256 = _content_hash(self._body_dict())
+        runtime.object.freeze(self)
+
+    @property
+    def plan(self) -> dict[str, Any]:
+        return json.loads(self._plan_json)
+
+    @property
+    def factor_base(self) -> list[dict[str, Any]]:
+        return json.loads(self._factor_base_json)
+
+    @property
+    def witnesses(self) -> list[dict[str, Any]]:
+        return json.loads(self._witnesses_json)
+
+    @property
+    def bound(self) -> int:
+        return int(self.plan["bound"]["bound"])
+
+    @property
+    def principal_relation_witnesses(self) -> tuple[Any, ...]:
+        relations = __import__(
+            "sagejs.number_fields.class_group_relations",
+            fromlist=["class_group_relations"],
+        )
+        return tuple(
+            relations.FactoredPrincipalWitness.from_dict(self.field, payload)
+            for payload in self.witnesses
+        )
+
+    def _body_dict(self) -> dict[str, Any]:
+        return {
+            "schema": CUBIC_MINKOWSKI_CERTIFICATE_SCHEMA,
+            "plan": self.plan,
+            "factor_base": self.factor_base,
+            "witnesses": self.witnesses,
+            "candidates_checked": list(self.candidates_checked),
+            "maximum_reduction_candidates": self.maximum_reduction_candidates,
+            "proof_status": self.proof_status,
+        }
+
+    def to_dict(self) -> dict[str, Any]:
+        body = self._body_dict()
+        body["content_sha256"] = self._content_sha256
+        return body
+
+    def stable_hash(self) -> str:
+        return self._content_sha256
+
+    def verify(self) -> bool:
+        try:
+            if _content_hash(self._body_dict()) != self._content_sha256:
+                return False
+            factor_base_module = __import__(
+                "sagejs.number_fields.class_group_factor_base",
+                fromlist=["class_group_factor_base"],
+            )
+            stored_plan = self.plan
+            caps = stored_plan["caps"]
+            plan = factor_base_module.factor_base_plan(
+                self.field.maximal_order(),
+                proof=True,
+                theorem="minkowski",
+                max_bound=_positive_integer(caps["max_bound"], "maximum bound"),
+                max_rational_primes=_positive_integer(
+                    caps["max_rational_primes"], "maximum rational primes"
+                ),
+                max_prime_ideals=_positive_integer(
+                    caps["max_prime_ideals"], "maximum prime ideals"
+                ),
+                max_memory_bytes=_positive_integer(
+                    caps["max_memory_bytes"], "maximum memory bytes"
+                ),
+            )
+            if plan.to_dict() != stored_plan or tuple(plan.assumptions):
+                return False
+            records = factor_base_module.build_factor_base(plan)
+            if [record.to_dict() for record in records] != self.factor_base:
+                return False
+            witness_payloads = self.witnesses
+            if not (
+                len(records) == len(witness_payloads) == len(self.candidates_checked)
+            ):
+                return False
+            relations = __import__(
+                "sagejs.number_fields.class_group_relations",
+                fromlist=["class_group_relations"],
+            )
+            order = self.field.maximal_order()
+            for record, payload in zip(records, witness_payloads, strict=True):
+                witness = relations.FactoredPrincipalWitness.from_dict(
+                    self.field, payload
+                )
+                if witness.principal_ideal(order) != record.prime_ideal:
+                    return False
+            return True
+        except (ImportError, TypeError, ValueError, ArithmeticError, KeyError):
+            return False
+
+    @classmethod
+    def from_dict(
+        cls, field: Any, payload: dict[str, Any]
+    ) -> MinkowskiPrincipalFactorBaseCertificate:
+        if not isinstance(payload, dict):
+            raise TypeError("a Minkowski certificate must be a dictionary")
+        if not _cubic_minkowski_payload_within_caps(payload):
+            raise ValueError("Minkowski certificate payload exceeds replay limits")
+        expected_keys = {
+            "schema",
+            "plan",
+            "factor_base",
+            "witnesses",
+            "candidates_checked",
+            "maximum_reduction_candidates",
+            "proof_status",
+            "content_sha256",
+        }
+        if set(payload) != expected_keys:
+            raise ValueError("a Minkowski certificate has unexpected fields")
+        if payload.get("schema") != CUBIC_MINKOWSKI_CERTIFICATE_SCHEMA:
+            raise ValueError("unsupported cubic Minkowski certificate schema")
+        content_hash = payload.get("content_sha256")
+        if (
+            not isinstance(content_hash, str)
+            or len(content_hash) != 64
+            or any(character not in "0123456789abcdef" for character in content_hash)
+        ):
+            raise ValueError("a Minkowski certificate has an invalid content hash")
+        body = dict(payload)
+        del body["content_sha256"]
+        if _content_hash(body) != content_hash:
+            raise ValueError("Minkowski certificate content hash mismatch")
+        if payload.get("proof_status") != "exact-unconditional":
+            raise ValueError("a Minkowski certificate has the wrong proof status")
+        if not isinstance(payload.get("plan"), dict):
+            raise TypeError("a Minkowski certificate plan must be a dictionary")
+        if not all(
+            isinstance(payload.get(name), list)
+            for name in ("factor_base", "witnesses", "candidates_checked")
+        ):
+            raise TypeError("Minkowski certificate evidence must use lists")
+        answer = cls(
+            field,
+            plan=payload["plan"],
+            factor_base=payload["factor_base"],
+            witnesses=payload["witnesses"],
+            candidates_checked=payload["candidates_checked"],
+            maximum_reduction_candidates=payload["maximum_reduction_candidates"],
+        )
+        if answer.to_dict() != payload or not answer.verify():
+            raise ValueError("Minkowski certificate exact replay failed")
+        return answer
+
+
 class ClassGroupCertificate:
     """Finite abelian presentation evidence for a computed class group."""
 
@@ -189,9 +525,9 @@ class ClassGroupCertificate:
 
     def verify(self, max_elements: int = 100_000) -> bool:
         if self.arithmetic_certificate is not None:
-            if (
-                type(self.arithmetic_certificate)
-                is not MinkowskiClassNumberOneCertificate
+            if type(self.arithmetic_certificate) not in (
+                MinkowskiClassNumberOneCertificate,
+                MinkowskiPrincipalFactorBaseCertificate,
             ):
                 return False
             if not self.arithmetic_certificate.verify():
@@ -387,6 +723,124 @@ class ClassGroupSearchResult:
         if self.complete:
             return "Certified class group of order " + str(self.order())
         return "Incomplete class-group search (" + self.reason + ")"
+
+
+def bounded_cubic_minkowski_class_number_one(
+    field: Any,
+    *,
+    max_bound: int = DEFAULT_CUBIC_MINKOWSKI_MAX_BOUND,
+    max_rational_primes: int = DEFAULT_CUBIC_MINKOWSKI_MAX_RATIONAL_PRIMES,
+    max_prime_ideals: int = DEFAULT_CUBIC_MINKOWSKI_MAX_PRIME_IDEALS,
+    max_memory_bytes: int = DEFAULT_CUBIC_MINKOWSKI_MAX_MEMORY_BYTES,
+    max_reduction_candidates: int = (DEFAULT_CUBIC_MINKOWSKI_MAX_REDUCTION_CANDIDATES),
+) -> ClassGroupSearchResult:
+    """Prove a cubic class number is one within explicit exact work caps.
+
+    This producer never recognizes a defining polynomial.  It constructs the
+    complete unconditional Minkowski factor base, then asks the resumable
+    exact ideal reducer for a principal generator of every prime in that base.
+    Failing to find a generator within the bound is an incomplete result, not
+    evidence that a prime or class is nonprincipal.
+    """
+    if field.degree() != 3:
+        raise ValueError("the bounded Minkowski fast path requires a cubic field")
+    max_bound = _positive_integer(max_bound, "maximum factor-base bound")
+    max_rational_primes = _positive_integer(
+        max_rational_primes, "maximum rational primes"
+    )
+    max_prime_ideals = _positive_integer(max_prime_ideals, "maximum prime ideals")
+    max_memory_bytes = _positive_integer(max_memory_bytes, "maximum memory bytes")
+    max_reduction_candidates = _positive_integer(
+        max_reduction_candidates, "maximum reduction candidates"
+    )
+    factor_base_module = __import__(
+        "sagejs.number_fields.class_group_factor_base",
+        fromlist=["class_group_factor_base"],
+    )
+    plan = factor_base_module.factor_base_plan(
+        field.maximal_order(),
+        proof=True,
+        theorem="minkowski",
+        max_bound=max_bound,
+        max_rational_primes=max_rational_primes,
+        max_prime_ideals=max_prime_ideals,
+        max_memory_bytes=max_memory_bytes,
+    )
+    try:
+        plan.require_feasible()
+        records = factor_base_module.build_factor_base(plan)
+    except ValueError as error:
+        return ClassGroupSearchResult(
+            field,
+            False,
+            "bounded cubic Minkowski factor base is unavailable: " + str(error),
+            int(plan.bound),
+        )
+    relations = __import__(
+        "sagejs.number_fields.class_group_relations",
+        fromlist=["class_group_relations"],
+    )
+    witness_payloads: list[dict[str, Any]] = []
+    candidates_checked: list[int] = []
+    for record in records:
+        checked = [0]
+
+        def checkpoint(state: Any, checked: list[int] = checked) -> None:
+            checked[0] = int(state.candidates_tested)
+
+        try:
+            row, witness = relations.reduce_ideal_over_base(
+                record.prime_ideal,
+                (),
+                max_candidates=max_reduction_candidates,
+                checkpoint_callback=checkpoint,
+            )
+        except relations.IdealReductionResourceLimit:
+            return ClassGroupSearchResult(
+                field,
+                False,
+                "bounded principal-generator search exhausted for a Minkowski prime",
+                int(plan.bound),
+            )
+        if (
+            row != ()
+            or witness.principal_ideal(field.maximal_order()) != record.prime_ideal
+        ):
+            raise ArithmeticError(
+                "a cubic Minkowski principal witness failed exact replay"
+            )
+        witness_payloads.append(witness.to_dict())
+        candidates_checked.append(checked[0])
+    arithmetic = MinkowskiPrincipalFactorBaseCertificate(
+        field,
+        plan=plan.to_dict(),
+        factor_base=[record.to_dict() for record in records],
+        witnesses=witness_payloads,
+        candidates_checked=candidates_checked,
+        maximum_reduction_candidates=max_reduction_candidates,
+    )
+    if not arithmetic.verify():
+        raise ArithmeticError("cubic Minkowski certificate replay failed")
+    group = _TrivialClassGroup()
+    certificate = ClassGroupCertificate(
+        group,
+        [],
+        [],
+        1,
+        arithmetic.source,
+        "minkowski-principal-factor-base",
+        arithmetic,
+    )
+    if not certificate.verify(max_elements=1):
+        raise ArithmeticError("cubic class-number-one proof replay failed")
+    return ClassGroupSearchResult(
+        field,
+        True,
+        certificate.source,
+        int(plan.bound),
+        group,
+        certificate,
+    )
 
 
 class AnalyticClassNumberFormulaReport:
@@ -631,11 +1085,14 @@ def analytic_class_number_formula_report(
 
 __all__ = [
     "AnalyticClassNumberFormulaReport",
+    "CUBIC_MINKOWSKI_CERTIFICATE_SCHEMA",
     "ClassGroupCertificate",
     "ClassGroupSearchResult",
     "MinkowskiClassNumberOneCertificate",
+    "MinkowskiPrincipalFactorBaseCertificate",
     "PrincipalIdealWitness",
     "analytic_class_number_formula_report",
     "bounded_class_group",
+    "bounded_cubic_minkowski_class_number_one",
     "certified_small_cubic_class_group",
 ]

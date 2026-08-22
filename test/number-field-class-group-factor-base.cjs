@@ -64,6 +64,16 @@ x = R.gen()
 plans = {}
 fields = {}
 results = []
+bdf_margins_64 = {
+    "real-quadratic-d5": [17429225712700933122, 17429225712700933123],
+    "real-quadratic-index-two": [17429225712700933122, 17429225712700933123],
+    "gaussian": [13619903642533639228, 13619903642533639229],
+    "cubic-discriminant-minus23": [11023082158359826261, 11023082158359826262],
+    "cubic-discriminant-minus59": [11726742603809046431, 11726742603809046432],
+    "pure-cubic-minus108": [8000612063363591694, 8000612063363591695],
+    "cyclotomic-eight": [6398189639187723695, 6398189639187723696],
+    "quintic-class-c4": [3201983944431722600, 3201983944431722601],
+}
 
 for case in fixture["cases"]:
     polynomial = R(case["polynomial"])
@@ -83,6 +93,10 @@ for case in fixture["cases"]:
     assert bach.assumptions == ("GRH for the Dedekind zeta function",)
     assert bdf.details["strict_inequality"] is True
     assert bdf.interval.lower.numerator > 0
+    margin = bdf.interval.to_dyadic_dict(64)
+    assert [margin["lower_numerator"], margin["upper_numerator"]] == (
+        bdf_margins_64[case["id"]]
+    )
 
     plan = factor_base_plan(
         order,
@@ -553,4 +567,212 @@ print(json.dumps({
   assert.ok(
     measured.construction_seconds < fixture.high_degree_benchmark.maximum_seconds,
   );
+});
+
+test("anchored log intervals preserve BDF and auto selects a tiny unconditional base", () => {
+  const output = run(String.raw`
+import json
+import time
+import sagejs.number_fields.class_group_factor_base as factor_bases
+from sagejs.number_fields.class_group_factor_base import (
+    bdf_bound,
+    build_factor_base,
+    factor_base_plan,
+    grh_bound,
+    minkowski_bound,
+)
+
+fixture = json.loads(${JSON.stringify(JSON.stringify(fixture))})
+benchmark = fixture["small_bound_benchmark"]
+case = [
+    entry
+    for entry in fixture["cases"]
+    if entry["id"] == "cubic-discriminant-minus59"
+][0]
+R = PolynomialRing(QQ, "x")
+field = NumberField(R(case["polynomial"]), "a")
+order = field.maximal_order()
+assert list(field.signature()) == case["signature"]
+assert int(order.discriminant()) == case["discriminant"]
+
+# This is a cold exact BDF call in a fresh process.  Its bound and strict
+# outward certificate must be unchanged by rational interval anchoring.
+bdf_started = time.perf_counter()
+bdf = bdf_bound(order, max_bound=10000)
+bdf_seconds = time.perf_counter() - bdf_started
+assert bdf.bound == benchmark["bdf_bound"] == case["bounds"]["bdf"]
+assert bdf.assumptions == ("GRH for the Dedekind zeta function",)
+assert bdf.details["strict_inequality"] is True
+assert bdf.interval.lower.numerator > 0
+assert bdf_seconds < benchmark["maximum_anchored_bdf_seconds"]
+
+# Every primitive enclosure must equal an outward dyadic compression of its
+# scalar exact-rational series at several working precisions.  Compression may
+# widen an endpoint but can never move it inward.
+for precision in (32, 64, 96, 128):
+    rational = factor_bases._Rational(1083, 5)
+    pairs = (
+        (
+            factor_bases._pi_scalar_interval(precision),
+            factor_bases._pi_interval(precision),
+        ),
+        (
+            factor_bases._log_rational_scalar_interval(rational, precision),
+            factor_bases._log_rational_interval(rational, precision),
+        ),
+        (
+            factor_bases._euler_gamma_scalar_interval(precision),
+            factor_bases._euler_gamma_interval(precision),
+        ),
+        (
+            factor_bases._catalan_scalar_interval(precision),
+            factor_bases._catalan_interval(precision),
+        ),
+    )
+    for scalar, compressed in pairs:
+        replay = factor_bases._outward_dyadic_interval(
+            scalar,
+            precision + factor_bases.DYADIC_GUARD_BITS,
+        )
+        assert compressed.lower == replay.lower
+        assert compressed.upper == replay.upper
+        assert compressed.lower <= scalar.lower
+        assert scalar.upper <= compressed.upper
+        for endpoint in (compressed.lower, compressed.upper):
+            denominator = endpoint.denominator
+            assert denominator > 0
+            assert denominator & (denominator - 1) == 0
+
+# Replay the anchored identity exactly at the precision used by the first BDF
+# decision.  The optimized enclosure equals the compressed explicit outward
+# interval and overlaps the independent direct endpoint enclosure.
+bits = 76
+pi = factor_bases._pi_interval(bits)
+anchored = factor_bases._log_interval(pi, bits)
+anchor = factor_bases._Rational(3)
+work_bits = bits + 4
+anchor_log = factor_bases._log_rational_interval(anchor, work_bits)
+scaled = pi / factor_bases._Interval.exact(anchor)
+scaled_lower = factor_bases._log_rational_interval(scaled.lower, work_bits)
+scaled_upper = factor_bases._log_rational_interval(scaled.upper, work_bits)
+explicit_scalar = anchor_log + factor_bases._Interval(
+    scaled_lower.lower,
+    scaled_upper.upper,
+)
+explicit = factor_bases._outward_dyadic_interval(
+    explicit_scalar,
+    bits + factor_bases.DYADIC_GUARD_BITS,
+)
+assert anchored.lower == explicit.lower
+assert anchored.upper == explicit.upper
+direct_lower = factor_bases._log_rational_interval(pi.lower, bits)
+direct_upper = factor_bases._log_rational_interval(pi.upper, bits)
+direct = factor_bases._Interval(direct_lower.lower, direct_upper.upper)
+assert anchored.lower <= direct.upper and direct.lower <= anchored.upper
+
+# Both auto and explicit GRH selection must test the cheap exact Minkowski
+# floor first.  At cutoff two it is no larger than either conditional search's
+# minimum, so no BDF call is permitted and the returned proof state is
+# assumption-free.  The cached Minkowski result itself remains unmodified.
+original_bdf = factor_bases.bdf_bound
+def unexpected_bdf(*_args, **_kwargs):
+    raise AssertionError("the small unconditional cutoff entered BDF search")
+factor_bases.bdf_bound = unexpected_bdf
+try:
+    auto_started = time.perf_counter()
+    auto_plan = factor_base_plan(order, proof=False, theorem="auto")
+    auto_records = build_factor_base(auto_plan)
+    auto_seconds = time.perf_counter() - auto_started
+    explicit_grh = grh_bound(order, max_bdf_bound=10000)
+finally:
+    factor_bases.bdf_bound = original_bdf
+
+minkowski = minkowski_bound(order)
+assert minkowski.bound == benchmark["auto_bound"] == case["bounds"]["minkowski"]
+assert auto_plan.bound == explicit_grh.bound == minkowski.bound
+assert auto_plan.theorem == explicit_grh.theorem == "Minkowski"
+assert auto_plan.assumptions == explicit_grh.assumptions == ()
+assert auto_plan.bound_result is not minkowski
+assert auto_plan.bound_result.details["selection"] == (
+    "unconditional-bound-at-grh-search-minimum"
+)
+assert auto_plan.bound_result.details["grh_search_minimum"] == 2
+assert "selection" not in minkowski.details
+compact = [
+    {
+        "p": record.rational_prime,
+        "norm": record.norm,
+        "e": record.ramification_index,
+        "f": record.residue_degree,
+    }
+    for record in auto_records
+]
+assert compact == case["minkowski_factor_base"]
+assert len(auto_records) == benchmark["auto_factor_base_size"]
+assert auto_seconds < benchmark["maximum_auto_factor_base_seconds"]
+
+print(json.dumps({
+    "bdf_seconds": bdf_seconds,
+    "auto_seconds": auto_seconds,
+    "bdf_bound": bdf.bound,
+    "auto_bound": auto_plan.bound,
+    "auto_size": len(auto_records),
+}, separators=(",", ":")))
+`);
+
+  const measured = JSON.parse(output);
+  assert.equal(measured.bdf_bound, fixture.small_bound_benchmark.bdf_bound);
+  assert.equal(measured.auto_bound, fixture.small_bound_benchmark.auto_bound);
+  assert.equal(
+    measured.auto_size,
+    fixture.small_bound_benchmark.auto_factor_base_size,
+  );
+});
+
+test("dyadic BDF compression preserves the h=3 cubic certificate", () => {
+  const output = run(String.raw`
+import json
+import time
+
+from sagejs.number_fields.class_group_factor_base import bdf_bound
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+field = NumberField(x**3 - x**2 - 6*x - 12, "a")
+order = field.maximal_order()
+started = time.perf_counter()
+bound = bdf_bound(order, max_bound=10000)
+seconds = time.perf_counter() - started
+margin = bound.interval.to_dyadic_dict(64)
+assert int(order.discriminant()) == -1083
+assert bound.bound == 9
+assert bound.precision_bits == 64
+assert bound.assumptions == ("GRH for the Dedekind zeta function",)
+assert margin == {
+    "scale_bits": 64,
+    "lower_numerator": 12923988274345410010,
+    "upper_numerator": 12923988274345410011,
+}
+assert seconds < 1.75
+print(json.dumps({
+    "seconds": seconds,
+    "bound": bound.bound,
+    "precision_bits": bound.precision_bits,
+    "margin": {
+        "scale_bits": margin["scale_bits"],
+        "lower_numerator": str(margin["lower_numerator"]),
+        "upper_numerator": str(margin["upper_numerator"]),
+    },
+}, separators=(",", ":")))
+`);
+
+  const measured = JSON.parse(output);
+  assert.equal(measured.bound, 9);
+  assert.equal(measured.precision_bits, 64);
+  assert.deepEqual(measured.margin, {
+    scale_bits: 64,
+    lower_numerator: "12923988274345410010",
+    upper_numerator: "12923988274345410011",
+  });
+  assert.ok(measured.seconds < 1.75);
 });

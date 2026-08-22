@@ -1,0 +1,190 @@
+#!/usr/bin/env node
+"use strict";
+
+const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
+const { join } = require("node:path");
+const { spawnSync } = require("node:child_process");
+const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
+
+const root = join(__dirname, "..");
+const sagejs = join(root, "bin", "sagejs");
+
+function run(executable, args, source, timeout = 120_000) {
+  const result = spawnSync(executable, args, {
+    cwd: root,
+    encoding: "utf8",
+    input: source,
+    timeout,
+  });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return result.stdout.trim();
+}
+
+const kernelDifferential = String.raw`
+from sagejs.native import integer_buffer_values, kernel_integer_buffer, kernel_integer_zeros
+from sagejs.number_fields.bl_composite_kernel import packed_prime_ideal_candidate_hnf_in_place
+
+packed = packed_prime_ideal_candidate_hnf_in_place
+dynamic = getattr(packed, "__sagejs_native_source__", packed)
+basis = [2, 0, 0, 0, 1, 1, 0, 0, 2]
+cases = [
+    ([0, 0, 1], 1, [4, 0, 0, 0, 2, 0, 0, 0, 2]),
+    ([1, 0, 1, 0, 1, 0], 2, [2, 0, 2, 0, 1, 1, 0, 0, 4]),
+]
+
+def outcome(function, subspace, row_count):
+    degree = 3
+    entries = (degree + row_count) * degree
+    output = kernel_integer_zeros(function, entries, 32)
+    source = kernel_integer_zeros(function, entries, 32)
+    workspace = kernel_integer_zeros(function, 2 * degree, 32)
+    basis_buffer = kernel_integer_buffer(function, basis)
+    subspace_buffer = kernel_integer_buffer(function, subspace)
+    assert function(
+        output,
+        source,
+        workspace,
+        basis_buffer,
+        subspace_buffer,
+        2,
+        degree,
+        row_count,
+    )
+    return [int(value) for value in integer_buffer_values(output)[:9]]
+
+for subspace, row_count, expected in cases:
+    assert outcome(dynamic, subspace, row_count) == expected
+    assert outcome(packed, subspace, row_count) == expected
+
+for function in (dynamic, packed):
+    output = kernel_integer_zeros(function, 12, 32)
+    source = kernel_integer_zeros(function, 12, 32)
+    workspace = kernel_integer_zeros(function, 6, 32)
+    assert not function(
+        output,
+        source,
+        workspace,
+        kernel_integer_buffer(function, basis),
+        kernel_integer_buffer(function, [0, 0, 2]),
+        2,
+        3,
+        1,
+    )
+    assert list(integer_buffer_values(output)) == [0] * 12
+`;
+
+test("candidate HNF source matches in CPython and compiled Sage.js", () => {
+  run(
+    pythonExecutable(),
+    ["-c", `import sys; sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})\n${kernelDifferential}`],
+    "",
+  );
+  const output = run(
+    sagejs,
+    ["--python", "-"],
+    `${kernelDifferential}\nfrom sagejs.native import is_compiled\nprint(is_compiled(packed))\n`,
+  );
+  assert.equal(output, "True");
+});
+
+test("packed h3 candidates replay and preserve the five-record payload", () => {
+  const output = run(sagejs, ["--python", "-"], String.raw`
+import hashlib
+import json
+
+from sagejs.number_fields import class_group_factor_base as factor_bases
+from sagejs.number_fields import prime_ideals
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+field = NumberField(x**3 - x**2 - 6*x - 12, "a")
+order = field.maximal_order()
+plan = factor_bases.factor_base_plan(order, proof=True, theorem="minkowski")
+records = factor_bases.build_factor_base(plan)
+payload = [record.to_dict() for record in records]
+encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+assert hashlib.sha256(encoded).hexdigest() == "2262d9dce3278741e3b73e9d95eb70a2d81c2b86cc3436198cda58efcbfc5456"
+assert [(record.norm, record.rational_prime, record.ramification_index, record.residue_degree) for record in records] == [
+    (2, 2, 1, 1),
+    (3, 3, 1, 1),
+    (3, 3, 2, 1),
+    (4, 2, 1, 2),
+    (5, 5, 1, 1),
+]
+p2 = [record.prime_ideal for record in records if record.rational_prime == 2]
+assert all(getattr(ideal, "_packed_candidate_pending_replay", None) is False for ideal in p2)
+assert all(getattr(ideal, "_verified_modular_algebra", None) is not None for ideal in p2)
+
+# verify=False never admits the unchecked decoder and therefore exercises
+# the original readable NumberFieldIdeal constructor.
+unverified_order = NumberField(x**3 - x**2 - 6*x - 12, "b").maximal_order()
+unverified = prime_ideals.factor_rational_prime(
+    unverified_order, 2, algorithm="finite-algebra", verify=False
+)
+assert all(
+    getattr(ideal, "_packed_candidate_pending_replay", None) is None
+    for ideal in unverified.prime_ideals()
+)
+
+# A rejected packed result fails closed to that same readable constructor.
+saved = prime_ideals._candidate_kernel.packed_prime_ideal_candidate_hnf_in_place
+def rejected(*args):
+    return False
+prime_ideals._candidate_kernel.packed_prime_ideal_candidate_hnf_in_place = rejected
+try:
+    fallback_order = NumberField(x**3 - x**2 - 6*x - 12, "c").maximal_order()
+    fallback = prime_ideals.factor_rational_prime(
+        fallback_order, 2, algorithm="finite-algebra", verify=True
+    )
+finally:
+    prime_ideals._candidate_kernel.packed_prime_ideal_candidate_hnf_in_place = saved
+assert fallback.splitting_record() == {"version": 1, "prime": 2, "factors": [{"e": 1, "f": 1}, {"e": 1, "f": 2}]}
+
+# A successful-looking corrupt HNF cannot survive the unchanged replay.
+def corrupt(output, source, workspace, basis, subspace, prime, degree, rows):
+    for index in range(len(output)):
+        output[index] = 0
+    for index in range(degree):
+        output[index * degree + index] = 1
+    return True
+prime_ideals._candidate_kernel.packed_prime_ideal_candidate_hnf_in_place = corrupt
+try:
+    corrupt_order = NumberField(x**3 - x**2 - 6*x - 12, "d").maximal_order()
+    rejected = False
+    try:
+        prime_ideals.factor_rational_prime(
+            corrupt_order, 2, algorithm="finite-algebra", verify=True
+        )
+    except (ArithmeticError, ValueError):
+        rejected = True
+    assert rejected
+finally:
+    prime_ideals._candidate_kernel.packed_prime_ideal_candidate_hnf_in_place = saved
+print(hashlib.sha256(encoded).hexdigest())
+`);
+  assert.equal(
+    output,
+    "2262d9dce3278741e3b73e9d95eb70a2d81c2b86cc3436198cda58efcbfc5456",
+  );
+});
+
+test("production inventory names the isolated candidate kernel", () => {
+  const manifest = require("../architecture/native-kernels.json");
+  const record = manifest.kernels.find((entry) =>
+    entry.id === "prime-ideal-candidate-materializer-production"
+  );
+  assert.equal(
+    record?.source,
+    "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+  );
+  assert.deepEqual(record?.functions, [
+    "packed_prime_ideal_candidate_hnf_in_place",
+  ]);
+  const expected = createHash("sha256")
+    .update(require("node:fs").readFileSync(join(root, record.source)))
+    .digest("hex");
+  assert.equal(expected.length, 64);
+});

@@ -12,6 +12,11 @@ const modulePath = join(
   root,
   "src/lib/sagejs/number_fields/class_unit_analytic.py",
 );
+const nativePath = join(root, "src/lib/sagejs/native.py");
+const zetaKernelPath = join(
+  root,
+  "src/lib/sagejs/number_fields/zeta_coefficient_kernel.py",
+);
 const fixturePath = join(
   root,
   "test/fixtures/number-field-class-unit-analytic.json",
@@ -22,12 +27,31 @@ function runPython(witness, timeout = 120_000) {
   const bootstrap = String.raw`
 import importlib.util
 import json
+import sys
+import types
+
+sagejs = types.ModuleType("sagejs")
+number_fields = types.ModuleType("sagejs.number_fields")
+sagejs.number_fields = number_fields
+sys.modules["sagejs"] = sagejs
+sys.modules["sagejs.number_fields"] = number_fields
+for dependency_name, dependency_path in [
+    ("sagejs.native", ${JSON.stringify(nativePath)}),
+    ("sagejs.number_fields.zeta_coefficient_kernel", ${JSON.stringify(zetaKernelPath)}),
+]:
+    dependency_spec = importlib.util.spec_from_file_location(
+        dependency_name, dependency_path
+    )
+    dependency = importlib.util.module_from_spec(dependency_spec)
+    sys.modules[dependency_name] = dependency
+    dependency_spec.loader.exec_module(dependency)
 
 spec = importlib.util.spec_from_file_location(
     "sagejs.number_fields.class_unit_analytic",
     ${JSON.stringify(modulePath)},
 )
 module = importlib.util.module_from_spec(spec)
+sys.modules["sagejs.number_fields.class_unit_analytic"] = module
 spec.loader.exec_module(module)
 for exported_name in module.__all__:
     globals()[exported_name] = getattr(module, exported_name)
@@ -182,6 +206,23 @@ print("unit-lattice-ok")
 
 test("BF plan aggregation and bounded provenance preserve exact intervals", () => {
   runPython(String.raw`
+module._shared_integer_log_endpoints.clear()
+module._shared_integer_sqrt_endpoints.clear()
+first_shared_field = IntervalBallField(128)
+first_log = first_shared_field.log_integer(37)
+first_sqrt = first_shared_field.sqrt_integer(37)
+expected_log = first_log.to_dict()
+expected_sqrt = first_sqrt.to_dict()
+# Cached state is immutable endpoint data rather than these mutable objects.
+first_log.lower = RationalEndpoint(-1000)
+first_sqrt.upper = RationalEndpoint(1000)
+second_shared_field = IntervalBallField(128)
+assert second_shared_field.log_integer(37).to_dict() == expected_log
+assert second_shared_field.sqrt_integer(37).to_dict() == expected_sqrt
+shared_diagnostics = second_shared_field.diagnostics()
+assert shared_diagnostics["log_cache_hits"] == 1
+assert shared_diagnostics["sqrt_cache_hits"] == 1
+
 def reference_plan(threshold, splitting):
     ninth = threshold // 9
     aggregated = {}
@@ -265,18 +306,50 @@ new_plan = module._build_bf_plan(threshold, splitting)
 assert old_plan.raw_terms == new_plan.raw_terms
 assert old_plan.terms == new_plan.terms
 
-old_finite = reference_finite_term(
-    old_plan, IntervalBallField(128)
-)
-new_finite = module._bf_finite_term(
+old_finite = reference_finite_term(old_plan, IntervalBallField(128))
+scalar_finite = module._bf_finite_term_scalar(
     new_plan, IntervalBallField(128)
 )
+kernel_field = IntervalBallField(128)
+new_finite = module._bf_finite_term(new_plan, kernel_field)
 assert old_finite.lower == new_finite.lower
 assert old_finite.upper == new_finite.upper
 assert old_finite.precision_bits == new_finite.precision_bits
 assert old_finite.rigorous == new_finite.rigorous
+assert scalar_finite.to_dict() == new_finite.to_dict()
+assert kernel_field.diagnostics()["bf_dyadic_kernel_successes"] == 1
+assert kernel_field.diagnostics()["bf_dyadic_kernel_fallbacks"] == 0
 assert len(new_finite.source) < 512
 assert "mpmath-libmp-directed-rounding" in new_finite.source
+
+# Precision escalation must preserve the full serialized proof object, not
+# merely overlap numerically with the scalar oracle.
+for precision in (64, 96, 160, 256):
+    scalar = module._bf_finite_term_scalar(
+        new_plan, IntervalBallField(precision)
+    )
+    accelerated_field = IntervalBallField(precision)
+    accelerated = module._bf_finite_term(new_plan, accelerated_field)
+    assert accelerated.to_dict() == scalar.to_dict()
+    diagnostics = accelerated_field.diagnostics()
+    assert diagnostics["bf_dyadic_kernel_calls"] == 1
+    assert diagnostics["bf_dyadic_kernel_successes"] == 1
+
+import builtins
+original_import = builtins.__import__
+def without_dyadic_kernel(name, *args, **kwargs):
+    if name == "sagejs.number_fields.zeta_coefficient_kernel":
+        raise ImportError("focused unavailable-kernel witness")
+    return original_import(name, *args, **kwargs)
+builtins.__import__ = without_dyadic_kernel
+try:
+    fallback_field = IntervalBallField(128)
+    fallback = module._bf_finite_term(new_plan, fallback_field)
+finally:
+    builtins.__import__ = original_import
+assert fallback.to_dict() == scalar_finite.to_dict()
+assert fallback_field.diagnostics()["bf_dyadic_kernel_calls"] == 0
+assert fallback_field.diagnostics()["bf_dyadic_kernel_fallbacks"] == 1
 
 certificate = UnitSaturationIndexCertificate(
     {"field": "focused-provenance-test"},

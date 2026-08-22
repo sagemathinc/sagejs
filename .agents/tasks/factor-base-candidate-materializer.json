@@ -1,0 +1,54 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "factor-base-candidate-materializer",
+  "title": "Factor Base Candidate Materializer",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Fuse bounded packed prime-ideal candidate HNF, residue presentation, and canonical generator materialization while retaining readable fallback and independent replay",
+  "base_commit": "62afd585cacae7b543bbe36a50fd39ac1cea9405",
+  "claims": [
+    "src/lib/sagejs/number_fields/prime_ideals.py",
+    "src/lib/sagejs/number_fields/class_group_factor_base.py",
+    "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+    "test/number-field-prime-ideal-candidate-kernel.cjs",
+    "bench/number-field-prime-ideal-candidate-kernel.cjs",
+    "architecture/native-kernels.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "sage",
+      "pari"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Added a checked source-transparent IntegerBuffer kernel for pO plus modular-subspace HNF construction, immediate independent replay for packed candidates, one-table verifier replay, and modular canonical two-generator selection. The h3 five-record payload remains SHA-256 2262d9dce3278741e3b73e9d95eb70a2d81c2b86cc3436198cda58efcbfc5456; warm median improved from the audited 0.6085s base to 0.4279s.",
+    "risks": [
+      "The new production-kernel capability still requires central Wasm classification and generated coverage/report/dashboard refresh.",
+      "The number-field package source is 2280 bytes over the current central lazy-budget ratchet.",
+      "Broad test:native and full test:changed remain central-pending; focused native/dynamic differential, factor-base, foundations, strict Pyright, formatting, architecture:native, benchmark, and parallel checks passed."
+    ],
+    "next_steps": [
+      "Central integration should add package script bench:number-field-prime-ideal-candidate-kernel, raise the exact package byte ratchet, classify kernel:prime-ideal-candidate-materializer-production for compiled-source Wasm, regenerate production coverage/reports, then run broad gates."
+    ]
+  }
+}

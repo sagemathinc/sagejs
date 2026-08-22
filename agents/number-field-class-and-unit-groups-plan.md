@@ -554,7 +554,40 @@ regulators.
 Exit criterion: unconditional results agree across the corpus and certificate
 replay detects every mutated prime, relation, generator, and saturation claim.
 
-### P7 — profiling and native acceleration
+### P7 — competitive profiling and native acceleration
+
+P7 starts as soon as the P3 vertical slice runs and remains active throughout
+P4--P6; it is not a cleanup phase deferred until the algorithms are otherwise
+declared finished.  Every supported acceptance family gets a matched same-host
+Sage/PARI comparison before and after optimization.  The harness must use the
+same polynomial, prepared-field boundary, proof policy, and requested output,
+and must report library/process initialization separately from mathematical
+work.
+
+The canonical executable gate for the pinned LMFDB cubic ladder is:
+
+```bash
+pnpm bench:number-field-class-number-lmfdb -- --samples 5 --proof both \
+  --require-sage --output /tmp/lmfdb-class-number-timings.json
+```
+
+Its receipt is the source of the per-case ratios and geometric-mean, median,
+p90, p95, and worst-case figures below.  A timing claim made without this
+matched prepared-field receipt is profiling evidence only, not P7 acceptance.
+
+For every material gap, optimize in this order:
+
+1. compare the mathematical algorithm and stopping criterion with PARI/Hecke;
+2. remove redundant exact reconstruction, replay, and object conversion;
+3. improve data layout and batching across runtime/native/Wasm boundaries;
+4. compile only measured source-transparent kernels with exact fallbacks;
+5. move unavoidable module compilation into release precompilation rather than
+   charging the first mathematical request.
+
+Any result slower than the matched Sage/PARI computation by more than one order
+of magnitude needs a phase-level explanation and a tracked closure item.  An
+unexplained gap of two orders of magnitude or more is a P7 blocker, even when
+the answer and certificate are correct.
 
 Profile complete computations before selecting kernels. Candidate packed,
 host-independent kernels include:
@@ -573,7 +606,16 @@ pass packed arrays and matrices, never per-ideal host callbacks.
 
 Exit criterion: optimized computations preserve exact serialized results and
 show measured wins on bench-1 without worsening cold startup or the SEA size
-budget materially.
+budget materially.  On the pinned small-field corpus, warm class-number-only
+requests have a same-host geometric-mean slowdown of at most 10x versus
+Sage/PARI, no supported case exceeds 50x without a documented capability
+boundary, and the two motivating cubics
+`x^3 + 2*x + 1` and `x^3 - x^2 - 6*x - 12` are both within 10x in matched
+`proof=False` mode.  Their matched `proof=True` paths are benchmarked against
+`bnfcertify` and must also be within one order of magnitude before P7 is marked
+complete.  These ratios exclude process and field construction on both sides;
+cold process and cold field costs are reported separately and must not hide
+behind the warm comparison.
 
 ### P8 — integration, documentation, and release gates
 
@@ -655,6 +697,14 @@ Report:
   available;
 - whether each comparison is unconditional, GRH-conditional, or heuristic.
 
+The persistent comparison suite includes a versioned LMFDB sample stratified
+by degree, signature, discriminant size, class number, class-group structure,
+and unit rank.  It records per-case Sage.js, Sage/PARI, Hecke/Oscar, and Magma
+answers where available, but performance ratios use same-host Sage/PARI so
+machine differences cannot masquerade as algorithmic wins.  Report median,
+geometric mean, p90, p95, and worst-case ratios, along with the dominant Sage.js
+phase for every case above the 10x threshold.
+
 Use `bench-1` for stable Linux x64 timings. Cross-platform machines validate
 correctness and gross regressions rather than being combined into one speed
 ranking.
@@ -669,6 +719,10 @@ Initial performance targets are directional, not release promises:
   should not regress materially;
 - requesting only a class number should avoid expensive generator expansion;
 - certificate replay should be substantially cheaper than relation discovery.
+
+The P7 competitive ratios above are completion gates rather than directional
+targets.  A correct but thousand-times-slower small-field implementation is an
+important correctness milestone, not a completed production algorithm.
 
 ## Correctness and certificate tests
 

@@ -1609,7 +1609,7 @@ class _EngineProofReplayContext:
         for payload in relation_payloads:
             if not isinstance(payload, dict):
                 return False
-            for name in ("row", "quotient_row", "source_row", "factor_base"):
+            for name in ("row", "quotient_row", "source_row"):
                 value = payload.get(name)
                 if not isinstance(value, list) or len(value) != column_count:
                     return False

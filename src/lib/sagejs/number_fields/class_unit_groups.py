@@ -1789,8 +1789,10 @@ class ClassUnitGroupEngine:
         presentation: Any = None,
         minimum_dependencies: int | None = None,
         saturation_prime: int | None = None,
+        relations_per_ideal: int = 2,
     ) -> tuple[Any, Any]:
         """Collect exact relations, deferring dense transforms in safe batches."""
+        relations_per_ideal = _positive(relations_per_ideal, "relations_per_ideal")
         started = self._phase_start()
         relations = self.components.relations
         matrix_module = self.components.matrix
@@ -1989,6 +1991,7 @@ class ClassUnitGroupEngine:
                     "ideal_strategy": strategy,
                 },
                 large_prime_bound,
+                stop_after=relations_per_ideal,
             )
             attempts += 1
             if len(collector.records) > self.limits.max_relations:

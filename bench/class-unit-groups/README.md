@@ -13,6 +13,36 @@ recorded maximal-order basis. Class logs are coordinate vectors relative to
 the generator ideals stored in the same oracle record. No correctness check
 parses a displayed ideal, unit, or group representation.
 
+LMFDB supplies a much broader read-only data source. A separate pinned cubic
+class-number ladder lives in
+`test/fixtures/number-field-lmfdb-cubic-class-numbers.json`; it includes
+`3.1.59.1` and the nontrivial `C3` field `3.1.1083.1`. Validate it offline or
+download a bounded, canonically ordered slice directly from the public SQL
+mirror with:
+
+```bash
+node bench/class-unit-groups/download-lmfdb-number-fields.cjs --check
+node bench/class-unit-groups/download-lmfdb-number-fields.cjs --download \
+  --degree 3 --disc-max 100000 --limit 1000 --output /tmp/lmfdb-cubics.json
+```
+
+The downloader uses `COPY` through `psql`, validates all numeric CLI fields
+before constructing SQL, and defaults to the public credentials documented at
+`https://beta.lmfdb.org/api/options`. Network access is never part of routine
+tests; committed fixtures remain the reproducible oracle boundary.
+
+Run the pinned cubic ladder through matched persistent Sage.js and Sage/PARI
+processes with fresh prepared fields on both sides:
+
+```bash
+pnpm bench:number-field-class-number-lmfdb -- --samples 5 --proof both \
+  --require-sage --output /tmp/lmfdb-class-number-timings.json
+```
+
+The receipt reports every per-case ratio, geometric mean, median, p90, p95,
+worst case, and the dominant Sage.js phase. Process startup is recorded
+separately and is not included in the prepared-field ratios.
+
 ## Run the harness
 
 The capture paths can be overridden with `SAGE_ORACLE` and `MAGMA_ORACLE` or

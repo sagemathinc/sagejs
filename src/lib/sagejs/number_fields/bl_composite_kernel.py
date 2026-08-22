@@ -876,6 +876,71 @@ def packed_row_hnf_in_place(
 
 
 @native
+def packed_prime_ideal_candidate_hnf_in_place(
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    workspace: IntegerBuffer,
+    order_basis_numerators: IntegerBuffer,
+    modular_subspace: IntegerBuffer,
+    prime: int,
+    degree: uint64,
+    subspace_row_count: uint64,
+) -> bool:
+    """Materialize one `p*O + subspace` lattice and canonicalize it.
+
+    The order basis is a row-major numerator matrix over one positive common
+    denominator chosen by the caller.  `modular_subspace` stores order-basis
+    coordinates in `[0, prime)`.  `output` and `source` have exactly
+    `degree + subspace_row_count` rows; the first `degree` output rows are
+    the canonical row HNF numerator over the unchanged denominator.
+
+    Fixed shapes and the public degree bound keep this ABI suitable for both
+    the native host and Wasm.  Returning false leaves the readable rational
+    lattice constructor as the exact fallback.
+    """
+    maximum_degree: uint64 = 16
+    row_count = degree + subspace_row_count
+    entry_count = row_count * degree
+    valid = (
+        degree > 0
+        and degree <= maximum_degree
+        and subspace_row_count <= degree
+        and prime >= 2
+        and len(output) == entry_count
+        and len(source) == entry_count
+        and len(workspace) == 2 * degree
+        and len(order_basis_numerators) == degree * degree
+        and len(modular_subspace) == subspace_row_count * degree
+    )
+    if not valid:
+        return False
+
+    for row in range(degree):
+        for column in range(degree):
+            source[row * degree + column] = (
+                prime * order_basis_numerators[row * degree + column]
+            )
+    for row in range(subspace_row_count):
+        for column in range(degree):
+            value = 0
+            for basis_index in range(degree):
+                coordinate = modular_subspace[row * degree + basis_index]
+                if coordinate < 0 or coordinate >= prime:
+                    return False
+                value += (
+                    coordinate * order_basis_numerators[basis_index * degree + column]
+                )
+            source[(degree + row) * degree + column] = value
+    return _packed_row_hnf_in_place(
+        output,
+        source,
+        workspace,
+        row_count,
+        degree,
+    )
+
+
+@native
 def packed_composite_dedekind_basis_in_place(
     metadata: IntegerBuffer,
     data_output: IntegerBuffer,

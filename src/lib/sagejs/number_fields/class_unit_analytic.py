@@ -614,6 +614,54 @@ def _ball(value: Any, *, precision_bits: int, rigorous: bool) -> RealBall:
     )
 
 
+_SHARED_INTEGER_TRANSCENDENTAL_CACHE_LIMIT = 16_384
+_shared_integer_log_endpoints: dict[
+    tuple[int, int], tuple[int, int, int, int, str]
+] = {}
+_shared_integer_sqrt_endpoints: dict[
+    tuple[int, int], tuple[int, int, int, int, str]
+] = {}
+
+
+def _shared_integer_ball(
+    cache: dict[tuple[int, int], tuple[int, int, int, int, str]],
+    key: tuple[int, int],
+) -> RealBall | None:
+    """Return a fresh ball from one bounded field-independent endpoint cache."""
+    cached = cache.get(key)
+    if cached is None:
+        return None
+    lower_numerator, lower_denominator, upper_numerator, upper_denominator, source = (
+        cached
+    )
+    return RealBall(
+        RationalEndpoint(lower_numerator, lower_denominator),
+        RationalEndpoint(upper_numerator, upper_denominator),
+        precision_bits=key[0],
+        rigorous=True,
+        source=source,
+    )
+
+
+def _remember_shared_integer_ball(
+    cache: dict[tuple[int, int], tuple[int, int, int, int, str]],
+    key: tuple[int, int],
+    ball: RealBall,
+) -> None:
+    """Retain bounded immutable endpoints, never a caller-mutable `RealBall`."""
+    if key[0] > 1024 or key[1].bit_length() > 64:
+        return
+    if len(cache) >= _SHARED_INTEGER_TRANSCENDENTAL_CACHE_LIMIT:
+        cache.clear()
+    cache[key] = (
+        ball.lower.numerator,
+        ball.lower.denominator,
+        ball.upper.numerator,
+        ball.upper.denominator,
+        ball.source,
+    )
+
+
 class IntervalBallField:
     """Directed-rounding transcendental operations backed by `mpmath.iv`."""
 
@@ -628,6 +676,9 @@ class IntervalBallField:
         self._sqrt_hits = 0
         self._log_evaluations = 0
         self._sqrt_evaluations = 0
+        self._bf_dyadic_kernel_calls = 0
+        self._bf_dyadic_kernel_successes = 0
+        self._bf_dyadic_kernel_fallbacks = 0
 
     def _from_iv(self, value: Any, source: str) -> RealBall:
         lower_value, upper_value = value._mpi_
@@ -687,8 +738,15 @@ class IntervalBallField:
         if cached is not None:
             self._log_hits += 1
             return cached
+        key = (self.precision_bits, value)
+        shared = _shared_integer_ball(_shared_integer_log_endpoints, key)
+        if shared is not None:
+            self._log_hits += 1
+            self._integer_logs[value] = shared
+            return shared
         result = self.log(RealBall(value, precision_bits=self.precision_bits))
         self._integer_logs[value] = result
+        _remember_shared_integer_ball(_shared_integer_log_endpoints, key, result)
         return result
 
     def sqrt_integer(self, value: int) -> RealBall:
@@ -697,8 +755,15 @@ class IntervalBallField:
         if cached is not None:
             self._sqrt_hits += 1
             return cached
+        key = (self.precision_bits, value)
+        shared = _shared_integer_ball(_shared_integer_sqrt_endpoints, key)
+        if shared is not None:
+            self._sqrt_hits += 1
+            self._integer_square_roots[value] = shared
+            return shared
         result = self.sqrt(RealBall(value, precision_bits=self.precision_bits))
         self._integer_square_roots[value] = result
+        _remember_shared_integer_ball(_shared_integer_sqrt_endpoints, key, result)
         return result
 
     def diagnostics(self) -> dict[str, int]:
@@ -707,6 +772,9 @@ class IntervalBallField:
             "log_cache_hits": self._log_hits,
             "sqrt_evaluations": self._sqrt_evaluations,
             "sqrt_cache_hits": self._sqrt_hits,
+            "bf_dyadic_kernel_calls": self._bf_dyadic_kernel_calls,
+            "bf_dyadic_kernel_successes": self._bf_dyadic_kernel_successes,
+            "bf_dyadic_kernel_fallbacks": self._bf_dyadic_kernel_fallbacks,
         }
 
     def pi(self) -> RealBall:
@@ -3294,6 +3362,9 @@ class ZetaLogResidueWorkspace:
                     "log_cache_hits": 0,
                     "sqrt_evaluations": 0,
                     "sqrt_cache_hits": 0,
+                    "bf_dyadic_kernel_calls": 0,
+                    "bf_dyadic_kernel_successes": 0,
+                    "bf_dyadic_kernel_fallbacks": 0,
                 }
             field = IntervalBallField(precision)
             result = (_bf_finite_term(plan, field), field.diagnostics())
@@ -3407,7 +3478,7 @@ def _bf_prime_power_summand(
     return first - logarithm / half_power
 
 
-def _bf_finite_term(
+def _bf_finite_term_scalar(
     plan: _BFPrimePowerPlan,
     field: IntervalBallField,
 ) -> RealBall:
@@ -3452,6 +3523,148 @@ def _bf_finite_term(
         * field.log_integer(3 * threshold)
     )
     return multiplier * total
+
+
+def _dyadic_mantissas(ball: RealBall, precision_bits: int) -> tuple[int, int]:
+    """Return exact `2^-precision_bits` endpoint mantissas or fail closed."""
+    if not ball.rigorous or ball.precision_bits != precision_bits:
+        raise ValueError("the BF dyadic kernel requires one rigorous precision")
+    scale = 1 << precision_bits
+    if scale % ball.lower.denominator or scale % ball.upper.denominator:
+        raise ValueError("a BF endpoint is not exactly representable at its precision")
+    return (
+        ball.lower.numerator * (scale // ball.lower.denominator),
+        ball.upper.numerator * (scale // ball.upper.denominator),
+    )
+
+
+def _bf_finite_term_kernel(
+    plan: _BFPrimePowerPlan,
+    field: IntervalBallField,
+) -> RealBall | None:
+    """Execute the exact packed dyadic replay, or select the scalar fallback."""
+    try:
+        kernel_module = __import__(
+            "sagejs.number_fields.zeta_coefficient_kernel",
+            fromlist=["assemble_bf_dyadic_finite_term"],
+        )
+        native_module = __import__(
+            "sagejs.native",
+            fromlist=[
+                "integer_buffer_values",
+                "kernel_integer_buffer",
+                "kernel_integer_zeros",
+            ],
+        )
+    except (ImportError, ModuleNotFoundError):
+        field._bf_dyadic_kernel_fallbacks += 1
+        return None
+
+    kernel = getattr(kernel_module, "assemble_bf_dyadic_finite_term", None)
+    if not callable(kernel):
+        field._bf_dyadic_kernel_fallbacks += 1
+        return None
+    precision = field.precision_bits
+    threshold = plan.threshold
+    ninth = threshold // 9
+    sqrt_threshold = field.sqrt_integer(threshold)
+    sqrt_ninth = field.sqrt_integer(ninth)
+    scales = (
+        sqrt_threshold * field.log_integer(threshold),
+        sqrt_ninth * field.log_integer(ninth),
+    )
+    log_three_threshold = field.log_integer(3 * threshold)
+    endpoints: list[int] = []
+    for ball in scales:
+        endpoints.extend(_dyadic_mantissas(ball, precision))
+    endpoints.extend(_dyadic_mantissas(sqrt_threshold, precision))
+    endpoints.extend(_dyadic_mantissas(log_three_threshold, precision))
+    term_data: list[int] = []
+    log_cache: dict[int, RealBall] = {}
+    sqrt_cache: dict[int, RealBall] = {}
+    dyadic_scale = 1 << precision
+    for multiplicity, scale_index, norm, exponent in plan.terms:
+        term_data.extend((multiplicity, scale_index, norm, exponent))
+        logarithm = log_cache.get(norm)
+        if logarithm is None:
+            logarithm = field.log_integer(norm)
+            log_cache[norm] = logarithm
+        endpoints.extend(_dyadic_mantissas(logarithm, precision))
+        if exponent % 2:
+            root = sqrt_cache.get(norm)
+            if root is None:
+                root = field.sqrt_integer(norm)
+                sqrt_cache[norm] = root
+            endpoints.extend(_dyadic_mantissas(root, precision))
+        else:
+            endpoints.extend((dyadic_scale, dyadic_scale))
+
+    field._bf_dyadic_kernel_calls += 1
+    try:
+        packed_terms = native_module.kernel_integer_buffer(kernel, term_data)
+        packed_endpoints = native_module.kernel_integer_buffer(kernel, endpoints)
+        word_capacity = max(8, (precision + 255) // 64)
+        output = native_module.kernel_integer_zeros(kernel, 2, word_capacity)
+        accepted = bool(
+            kernel(
+                output,
+                packed_terms,
+                packed_endpoints,
+                len(plan.terms),
+                precision,
+            )
+        )
+        if not accepted:
+            field._bf_dyadic_kernel_fallbacks += 1
+            return None
+        values = native_module.integer_buffer_values(output)
+        lower_mantissa = int(values[0])
+        upper_mantissa = int(values[1])
+    except (OverflowError, RuntimeError, TypeError, ValueError):
+        field._bf_dyadic_kernel_fallbacks += 1
+        return None
+    if upper_mantissa < lower_mantissa:
+        field._bf_dyadic_kernel_fallbacks += 1
+        return None
+
+    denominator_source = (
+        "exact-rational-endpoints; "
+        + sqrt_threshold.source
+        + "; "
+        + log_three_threshold.source
+    )
+    multiplier_source = "exact-rational-endpoints; " + denominator_source
+    total_source = (
+        "belabas-friedman-finite-prime-sum; "
+        "mpmath-libmp-directed-rounding; "
+        "outward-dyadic-arithmetic"
+        if plan.terms
+        else "exact-rational-endpoints"
+    )
+    field._bf_dyadic_kernel_successes += 1
+    return RealBall.dyadic_endpoints(
+        lower_mantissa,
+        -precision,
+        upper_mantissa,
+        -precision,
+        precision_bits=precision,
+        rigorous=True,
+        source=multiplier_source + "; " + total_source,
+    )
+
+
+def _bf_finite_term(
+    plan: _BFPrimePowerPlan,
+    field: IntervalBallField,
+) -> RealBall:
+    try:
+        accelerated = _bf_finite_term_kernel(plan, field)
+    except (OverflowError, ValueError):
+        field._bf_dyadic_kernel_fallbacks += 1
+        accelerated = None
+    if accelerated is not None:
+        return accelerated
+    return _bf_finite_term_scalar(plan, field)
 
 
 class ZetaLogResidueEnclosure:

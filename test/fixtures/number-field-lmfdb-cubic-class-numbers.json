@@ -1,0 +1,26 @@
+{
+  "schema": "sagejs.number-fields/lmfdb-class-number-corpus-v1",
+  "description": "A deterministic cubic class-number ladder from the read-only LMFDB mirror; coefficients are ascending.",
+  "source": {
+    "table": "nf_fields",
+    "api_options": "https://beta.lmfdb.org/api/options",
+    "api_stats": "https://beta.lmfdb.org/api/stats",
+    "license": "CC-BY-SA-4.0"
+  },
+  "query": {
+    "selection": "smallest absolute-discriminant complex cubic for each represented class number, plus the two reported performance fields",
+    "ordering": ["degree", "disc_abs", "label"]
+  },
+  "records": [
+    {"label":"3.1.23.1","degree":3,"coefficients":["1","0","-1","1"],"disc_sign":-1,"discriminant_absolute":"23","r2":1,"class_number":"1","class_group":[],"regulator":"0.281199574323","torsion_order":2,"used_grh":false},
+    {"label":"3.1.59.1","degree":3,"coefficients":["-1","2","0","1"],"disc_sign":-1,"discriminant_absolute":"59","r2":1,"class_number":"1","class_group":[],"regulator":"0.790985720639","torsion_order":2,"used_grh":false},
+    {"label":"3.1.283.1","degree":3,"coefficients":["-1","4","0","1"],"disc_sign":-1,"discriminant_absolute":"283","r2":1,"class_number":"2","class_group":["2"],"regulator":"1.40134232731","torsion_order":2,"used_grh":false},
+    {"label":"3.1.588.1","degree":3,"coefficients":["1","5","-1","1"],"disc_sign":-1,"discriminant_absolute":"588","r2":1,"class_number":"3","class_group":["3"],"regulator":"1.65400419943","torsion_order":2,"used_grh":false},
+    {"label":"3.1.1083.1","degree":3,"coefficients":["-12","-6","-1","1"],"disc_sign":-1,"discriminant_absolute":"1083","r2":1,"class_number":"3","class_group":["3"],"regulator":"2.62907295987","torsion_order":2,"used_grh":false},
+    {"label":"3.1.1371.1","degree":3,"coefficients":["6","3","-1","1"],"disc_sign":-1,"discriminant_absolute":"1371","r2":1,"class_number":"4","class_group":["4"],"regulator":"2.13833439909","torsion_order":2,"used_grh":false},
+    {"label":"3.1.1563.1","degree":3,"coefficients":["-6","7","-1","1"],"disc_sign":-1,"discriminant_absolute":"1563","r2":1,"class_number":"5","class_group":["5"],"regulator":"2.04883295994","torsion_order":2,"used_grh":false},
+    {"label":"3.1.2856.1","degree":3,"coefficients":["-21","9","-1","1"],"disc_sign":-1,"discriminant_absolute":"2856","r2":1,"class_number":"7","class_group":["7"],"regulator":"2.81566371405","torsion_order":2,"used_grh":false},
+    {"label":"3.1.4027.2","degree":3,"coefficients":["8","7","-1","1"],"disc_sign":-1,"discriminant_absolute":"4027","r2":1,"class_number":"6","class_group":["6"],"regulator":"2.4565437641","torsion_order":2,"used_grh":false},
+    {"label":"3.1.5448.1","degree":3,"coefficients":["30","-14","-1","1"],"disc_sign":-1,"discriminant_absolute":"5448","r2":1,"class_number":"8","class_group":["8"],"regulator":"3.80219929162","torsion_order":2,"used_grh":false}
+  ]
+}

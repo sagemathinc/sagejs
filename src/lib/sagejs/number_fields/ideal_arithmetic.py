@@ -53,16 +53,17 @@ def ideal_divides(divisor: Any, dividend: Any) -> bool:
 
 def scalar_translate(ideal: Any, scalar: Any) -> Any:
     if ideal.is_zero():
-        return NumberFieldIdeal(ideal.ring(), [])
+        return NumberFieldIdeal(ideal.ring(), [], _check_closed=False)
     value = ideal.number_field()(scalar)
     if value.is_zero():
-        return NumberFieldIdeal(ideal.ring(), [])
+        return NumberFieldIdeal(ideal.ring(), [], _check_closed=False)
     return NumberFieldIdeal(
         ideal.ring(),
         [
             _nf_coordinates(value * element, ideal.number_field().degree())
             for element in ideal.basis()
         ],
+        _check_closed=False,
     )
 
 
@@ -72,7 +73,7 @@ def colon_ideal(numerator: Any, denominator: Any) -> Any:
     if denominator.is_zero():
         raise ZeroDivisionError("the colon by the zero ideal is not supported")
     if numerator.is_zero():
-        return NumberFieldIdeal(numerator.ring(), [])
+        return NumberFieldIdeal(numerator.ring(), [], _check_closed=False)
     answer = None
     for element in denominator.basis():
         translated = scalar_translate(numerator, element.inverse())

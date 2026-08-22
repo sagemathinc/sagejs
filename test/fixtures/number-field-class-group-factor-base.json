@@ -28,6 +28,20 @@
     "host": "Linux x64 shared development host",
     "policy": "timer excludes maximal-order and bound construction; result equality is checked before accepting the sample"
   },
+  "small_bound_benchmark": {
+    "workload": "discriminant-minus59 cubic x^3+2*x+1, cold exact bounds and factor-base construction",
+    "baseline_bdf_seconds": 8.18,
+    "anchored_bdf_reference_seconds": 1.59,
+    "auto_factor_base_reference_seconds": 0.12,
+    "maximum_anchored_bdf_seconds": 4.0,
+    "maximum_auto_factor_base_seconds": 1.0,
+    "bdf_bound": 7,
+    "bdf_factor_base_size": 2,
+    "auto_bound": 2,
+    "auto_factor_base_size": 1,
+    "host": "Linux x64 shared development host",
+    "policy": "cold process timing excludes maximal-order construction; exact bound, theorem assumptions, and prime records are checked before accepting the sample"
+  },
   "high_degree_benchmark": {
     "workload": "exact Minkowski factor bases for one field in every degree 6 through 10",
     "reference_seconds": 13.71,
@@ -229,6 +243,21 @@
       "bdf_factor_base": [
         {"p": 5, "norm": 5, "e": 1, "f": 1},
         {"p": 7, "norm": 7, "e": 1, "f": 1}
+      ],
+      "class_group": []
+    },
+    {
+      "id": "cubic-discriminant-minus59",
+      "polynomial": [1, 2, 0, 1],
+      "signature": [1, 1],
+      "discriminant": -59,
+      "bounds": {"minkowski": 2, "bach": 200, "bdf": 7},
+      "bdf_factor_base": [
+        {"p": 2, "norm": 2, "e": 1, "f": 1},
+        {"p": 2, "norm": 4, "e": 1, "f": 2}
+      ],
+      "minkowski_factor_base": [
+        {"p": 2, "norm": 2, "e": 1, "f": 1}
       ],
       "class_group": []
     },

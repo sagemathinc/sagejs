@@ -60,7 +60,9 @@ test("global arithmetic internals preserve exact and incomplete proof states", (
   const output = run(String.raw`
 from sagejs.number_fields.embeddings import archimedean_data, exact_signature
 from sagejs.number_fields.units import RootsOfUnityResult, UnitCertificate, UnitCompletionCertificate, UnitSubgroupResult, bounded_unit_subgroup, certified_small_cubic_unit_group, real_quadratic_unit_group, roots_of_unity
-from sagejs.number_fields.class_groups import analytic_class_number_formula_report, bounded_class_group, certified_small_cubic_class_group
+import hashlib
+import json
+from sagejs.number_fields.class_groups import MinkowskiPrincipalFactorBaseCertificate, analytic_class_number_formula_report, bounded_class_group, bounded_cubic_minkowski_class_number_one, certified_small_cubic_class_group
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -158,6 +160,70 @@ try:
 except ValueError:
     pass
 
+K59 = NumberField(x**3 + 2*x + 1, "c")
+fast59 = bounded_cubic_minkowski_class_number_one(K59)
+assert fast59.complete and fast59.order() == 1
+assert fast59.minkowski_bound == 2
+assert fast59.proof_status == "exact-minkowski-principal-factor-base"
+certificate59 = fast59.certificate.arithmetic_certificate
+assert isinstance(certificate59, MinkowskiPrincipalFactorBaseCertificate)
+assert certificate59.verify()
+assert len(certificate59.factor_base) == len(certificate59.witnesses) == 1
+assert certificate59.candidates_checked == (5,)
+assert certificate59.principal_relation_witnesses[0].evaluate() == K59.gen() + 1
+payload59 = certificate59.to_dict()
+detached59 = MinkowskiPrincipalFactorBaseCertificate.from_dict(K59, payload59)
+assert detached59.to_dict() == payload59 and detached59.verify()
+def rehash(payload):
+    body = dict(payload)
+    del body["content_sha256"]
+    payload["content_sha256"] = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+for mutation in (
+    "bound",
+    "witness",
+    "coverage",
+    "replay-cap",
+    "oversized-integer",
+    "malformed-string",
+):
+    forged = json.loads(json.dumps(payload59))
+    if mutation == "bound":
+        forged["plan"]["bound"]["bound"] += 1
+    elif mutation == "witness":
+        forged["witnesses"][0]["factors"][0]["exponent"] = 2
+    elif mutation == "coverage":
+        forged["factor_base"] = []
+        forged["witnesses"] = []
+        forged["candidates_checked"] = []
+    elif mutation == "replay-cap":
+        forged["plan"]["caps"]["max_bound"] = 4097
+    elif mutation == "oversized-integer":
+        forged["witnesses"][0]["factors"][0]["exponent"] = 1 << 16384
+    else:
+        forged["proof_status"] += "\ud800"
+    if mutation != "malformed-string":
+        rehash(forged)
+    try:
+        MinkowskiPrincipalFactorBaseCertificate.from_dict(K59, forged)
+        raise AssertionError("mutated Minkowski evidence passed detached replay")
+    except ValueError:
+        pass
+bounded59 = bounded_cubic_minkowski_class_number_one(
+    K59, max_reduction_candidates=1
+)
+assert not bounded59.complete and bounded59.certificate is None
+
+# A nontrivial class group must decline the bounded class-number-one proof
+# quickly and fall through to the general engine; it is never mislabeled as
+# principal because the small exact search was exhausted.
+K1083 = NumberField(x**3 - x**2 - 6*x - 12, "d")
+bounded1083 = bounded_cubic_minkowski_class_number_one(K1083)
+assert not bounded1083.complete and bounded1083.certificate is None
+assert "principal-generator search exhausted" in bounded1083.reason
+
 Km = NumberField(x**3 - x - 1, "a")
 units_m = certified_small_cubic_unit_group(Km)
 classes_m = certified_small_cubic_class_group(Km)
@@ -244,4 +310,123 @@ assert not forged_cubic_units.verify_completion()
 print("number-field-global-arithmetic-ok")
 `);
   assert.equal(output, "number-field-global-arithmetic-ok");
+});
+
+test("bounded cubic class numbers replay every quotient p-line", () => {
+  const output = run(String.raw`
+import hashlib
+import json
+from sagejs.number_fields.cubic_class_number import CubicClassNumberResult, CubicMinkowskiClassNumberCertificate, authenticated_cubic_class_number_result_matches, bounded_cubic_minkowski_class_number
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+
+# A trivial relation quotient proves class number one without p-lines.
+K59 = NumberField(x**3 + 2*x + 1, "c")
+generic59 = bounded_cubic_minkowski_class_number(K59)
+assert generic59.complete and generic59.order() == 1
+assert generic59.certificate.obstructions == []
+assert generic59.certificate.verify()
+
+# The nontrivial quotient is proved exact without units, a regulator, or hR.
+K1083 = NumberField(x**3 - x**2 - 6*x - 12, "d")
+classes1083 = bounded_cubic_minkowski_class_number(K1083)
+assert classes1083.complete and classes1083.order() == 3
+assert classes1083.proof_status == "exact-unconditional"
+assert classes1083.presentation.invariants == (3,)
+assert classes1083.diagnostics["quotient_order"] == 3
+assert classes1083.diagnostics["projective_lines"] == 1
+assert classes1083.diagnostics["residue_states"] <= 500000
+assert classes1083.diagnostics["relation_search"]["relation_attempts"] > 0
+assert classes1083.diagnostics["relation_search"]["relation_candidates"] == 5
+assert len(classes1083.relation_records) == 7
+assert set(classes1083.diagnostics["phase_timings"]) == {
+    "factor_base", "relations", "norm_obstructions", "certificate_encoding", "total"
+}
+certificate1083 = classes1083.certificate
+assert isinstance(certificate1083, CubicMinkowskiClassNumberCertificate)
+assert len(certificate1083.obstructions) == 1
+assert certificate1083.obstructions[0]["modulus"] == 19
+assert certificate1083.verify()
+# The presentation was replayed once when the immutable certificate was
+# constructed; reading its certified order must not deserialize the SNF again.
+matrix_module = __import__(
+    "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
+)
+presentation_from_dict = matrix_module.RelationPresentation.from_dict
+def forbidden_presentation_replay(value):
+    raise AssertionError("class_number replayed its immutable presentation")
+matrix_module.RelationPresentation.from_dict = forbidden_presentation_replay
+assert certificate1083.class_number == 3
+matrix_module.RelationPresentation.from_dict = presentation_from_dict
+try:
+    certificate1083.verify(cancelled=lambda: True)
+    raise AssertionError("detached cubic proof replay ignored cancellation")
+except RuntimeError as error:
+    assert str(error) == "class/unit computation cancelled"
+caps_copy1083 = certificate1083.caps
+caps_copy1083["max_quotient_order"] = 1
+assert certificate1083.caps["max_quotient_order"] == 4096
+payload1083 = certificate1083.to_dict()
+detached1083 = CubicMinkowskiClassNumberCertificate.from_dict(K1083, payload1083)
+assert detached1083.to_dict() == payload1083 and detached1083.class_number == 3
+detached_result1083 = CubicClassNumberResult(
+    K1083,
+    True,
+    detached1083.source,
+    classes1083.minkowski_bound,
+    certificate=detached1083,
+    factor_base=classes1083.factor_base,
+    relation_records=classes1083.relation_records,
+    presentation=classes1083.presentation,
+    diagnostics=classes1083.diagnostics,
+)
+assert not authenticated_cubic_class_number_result_matches(
+    detached_result1083, K1083
+)
+
+def rehash(payload):
+    body = dict(payload)
+    del body["content_sha256"]
+    payload["content_sha256"] = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+for mutation in ("norm-form", "coverage", "presentation", "replay-cap"):
+    forged = json.loads(json.dumps(payload1083))
+    if mutation == "norm-form":
+        forged["obstructions"][0]["norm_form_coefficients"][0] += 1
+    elif mutation == "coverage":
+        forged["obstructions"] = []
+    elif mutation == "presentation":
+        forged["presentation"]["smith"][0][0] += 1
+    else:
+        forged["caps"]["max_residue_states"] = 20000001
+    rehash(forged)
+    try:
+        CubicMinkowskiClassNumberCertificate.from_dict(K1083, forged)
+        raise AssertionError("mutated cubic class-number evidence passed replay")
+    except ValueError:
+        pass
+
+quotient_capped1083 = bounded_cubic_minkowski_class_number(
+    K1083, max_quotient_order=2
+)
+assert not quotient_capped1083.complete
+assert quotient_capped1083.presentation.order == 3
+assert "quotient order" in quotient_capped1083.reason
+
+cancel_polls = [0]
+def cancelled1083():
+    cancel_polls[0] += 1
+    return True
+try:
+    bounded_cubic_minkowski_class_number(K1083, cancelled=cancelled1083)
+    raise AssertionError("cubic class-number cancellation was ignored")
+except RuntimeError as error:
+    assert str(error) == "class/unit computation cancelled"
+assert cancel_polls[0] == 1
+print("cubic-class-number-p-lines-ok")
+`);
+  assert.equal(output, "cubic-class-number-p-lines-ok");
 });

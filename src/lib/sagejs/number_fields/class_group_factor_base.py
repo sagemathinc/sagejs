@@ -34,12 +34,15 @@ DEFAULT_MAX_RATIONAL_PRIMES = 1_000_000
 DEFAULT_MAX_PRIME_IDEALS = 1_000_000
 DEFAULT_MAX_MEMORY_BYTES = 256 * 1024 * 1024
 MAX_INTERVAL_BITS = 512
+DYADIC_GUARD_BITS = 24
 
 _pi_cache: dict[int, _Interval] = {}
 _log_cache: dict[tuple[int, int, int], _Interval] = {}
+_interval_log_cache: dict[tuple[int, int, int, int, int], _Interval] = {}
 _sqrt_cache: dict[tuple[int, int, int], _Interval] = {}
 _gamma_cache: dict[int, _Interval] = {}
 _catalan_cache: dict[int, _Interval] = {}
+_scalar_log_two_cache: dict[int, _Interval] = {}
 _bound_cache: list[tuple[Any, str, Any]] = []
 
 
@@ -255,6 +258,28 @@ class _Interval:
         }
 
 
+def _outward_dyadic_interval(value: _Interval, bits: int) -> _Interval:
+    """Compress an exact interval to outward dyadic endpoints.
+
+    The scalar series below naturally produce ratios whose numerators and
+    denominators grow with every subsequent interval operation.  Rounding
+    each primitive enclosure outward to a guarded power-of-two denominator
+    preserves containment while keeping later BDF arithmetic compact.
+    """
+    if bits < 0:
+        raise ValueError("a dyadic interval precision must be nonnegative")
+    scale = 1 << bits
+    lower_numerator = value.lower.numerator * scale // value.lower.denominator
+    upper_numerator = -((-value.upper.numerator * scale) // value.upper.denominator)
+    result = _Interval(
+        _Rational(lower_numerator, scale),
+        _Rational(upper_numerator, scale),
+    )
+    if result.lower > value.lower or result.upper < value.upper:
+        raise ArithmeticError("dyadic interval compression lost outward containment")
+    return result
+
+
 def _alternating_interval(
     partial: _Rational, next_term: _Rational, next_is_positive: bool
 ) -> _Interval:
@@ -277,13 +302,20 @@ def _atan_reciprocal_interval(denominator: int, terms: int) -> _Interval:
     return _alternating_interval(total, next_term, sign > 0)
 
 
+def _pi_scalar_interval(bits: int) -> _Interval:
+    """Return the direct exact-rational Machin enclosure of pi."""
+    terms = max(8, bits // 4 + 4)
+    return _atan_reciprocal_interval(5, terms).scale(16) - (
+        _atan_reciprocal_interval(239, terms).scale(4)
+    )
+
+
 def _pi_interval(bits: int) -> _Interval:
     cached = _pi_cache.get(bits)
     if cached is not None:
         return cached
-    terms = max(8, bits // 4 + 4)
-    answer = _atan_reciprocal_interval(5, terms).scale(16) - (
-        _atan_reciprocal_interval(239, terms).scale(4)
+    answer = _outward_dyadic_interval(
+        _pi_scalar_interval(bits), bits + DYADIC_GUARD_BITS
     )
     _pi_cache[bits] = answer
     return answer
@@ -308,13 +340,10 @@ def _atanh_log_series(value: _Rational, bits: int) -> _Interval:
     raise ArithmeticError("the exact logarithm series did not converge")
 
 
-def _log_rational_interval(value: _Rational, bits: int) -> _Interval:
+def _log_rational_scalar_interval(value: _Rational, bits: int) -> _Interval:
+    """Return the direct exact-rational atanh enclosure of `log(value)`."""
     if value <= ZERO:
         raise ValueError("a logarithm needs a positive rational")
-    key = (value.numerator, value.denominator, bits)
-    cached = _log_cache.get(key)
-    if cached is not None:
-        return cached
     numerator = value.numerator
     denominator = value.denominator
     exponent = numerator.bit_length() - denominator.bit_length()
@@ -335,14 +364,24 @@ def _log_rational_interval(value: _Rational, bits: int) -> _Interval:
     z = (normalized - ONE) / (normalized + ONE)
     normalized_log = _atanh_log_series(z, bits + 8)
     if exponent == 0:
-        _log_cache[key] = normalized_log
         return normalized_log
-    log_two_key = (2, 1, bits)
-    log_two = _log_cache.get(log_two_key)
+    log_two = _scalar_log_two_cache.get(bits)
     if log_two is None:
         log_two = _atanh_log_series(_Rational(1, 3), bits + 8)
-        _log_cache[log_two_key] = log_two
-    answer = normalized_log + log_two.scale(exponent)
+        _scalar_log_two_cache[bits] = log_two
+    return normalized_log + log_two.scale(exponent)
+
+
+def _log_rational_interval(value: _Rational, bits: int) -> _Interval:
+    if value <= ZERO:
+        raise ValueError("a logarithm needs a positive rational")
+    key = (value.numerator, value.denominator, bits)
+    cached = _log_cache.get(key)
+    if cached is not None:
+        return cached
+    answer = _outward_dyadic_interval(
+        _log_rational_scalar_interval(value, bits), bits + DYADIC_GUARD_BITS
+    )
     _log_cache[key] = answer
     return answer
 
@@ -351,9 +390,43 @@ def _log_interval(value: _Interval, bits: int) -> _Interval:
     """Enclose the logarithm of one positive rational interval."""
     if value.lower <= ZERO:
         raise ValueError("an interval logarithm needs positive endpoints")
-    lower = _log_rational_interval(value.lower, bits)
-    upper = _log_rational_interval(value.upper, bits)
-    return _Interval(lower.lower, upper.upper)
+    key = (
+        value.lower.numerator,
+        value.lower.denominator,
+        value.upper.numerator,
+        value.upper.denominator,
+        bits,
+    )
+    cached = _interval_log_cache.get(key)
+    if cached is not None:
+        return cached
+
+    # Tight transcendental enclosures often have enormous rational endpoints.
+    # Logging them directly can drive the atanh series with a mediocre
+    # argument and make every exact numerator/denominator grow needlessly.
+    # If both endpoints share an integer part m >= 2, use the exact identity
+    # log(x) = log(m) + log(x/m).  The scaled interval is close to one (pi/3
+    # is the motivating case), so the same outward-exact series converges with
+    # much smaller rational intermediates.  Extra work bits cover addition of
+    # the two independently enclosed logarithms; interval arithmetic preserves
+    # containment regardless of whether the final decision needs more bits.
+    anchor = value.lower.floor()
+    work_bits = bits
+    if anchor >= 2 and value.upper < _Rational(anchor + 1):
+        work_bits = bits + 4
+        anchor_value = _Rational(anchor)
+        anchor_log = _log_rational_interval(anchor_value, work_bits)
+        scaled = value / _Interval.exact(anchor_value)
+        scaled_lower = _log_rational_interval(scaled.lower, work_bits)
+        scaled_upper = _log_rational_interval(scaled.upper, work_bits)
+        scalar = anchor_log + _Interval(scaled_lower.lower, scaled_upper.upper)
+    else:
+        lower = _log_rational_interval(value.lower, work_bits)
+        upper = _log_rational_interval(value.upper, work_bits)
+        scalar = _Interval(lower.lower, upper.upper)
+    answer = _outward_dyadic_interval(scalar, bits + DYADIC_GUARD_BITS)
+    _interval_log_cache[key] = answer
+    return answer
 
 
 def _sqrt_rational_interval(value: _Rational, bits: int) -> _Interval:
@@ -394,16 +467,14 @@ def _bernoulli_numbers(limit: int) -> list[_Rational]:
     return numbers
 
 
-def _euler_gamma_interval(bits: int) -> _Interval:
-    cached = _gamma_cache.get(bits)
-    if cached is not None:
-        return cached
+def _euler_gamma_scalar_interval(bits: int) -> _Interval:
+    """Return the direct exact-rational Euler--Maclaurin enclosure."""
     sample = max(64, bits * 2)
     term_count = max(8, bits // 4)
     harmonic = ZERO
     for value in range(1, sample + 1):
         harmonic = harmonic + _Rational(1, value)
-    log_sample = _log_rational_interval(_Rational(sample), bits + 16)
+    log_sample = _log_rational_scalar_interval(_Rational(sample), bits + 16)
     bernoulli = _bernoulli_numbers(2 * term_count)
     correction = ZERO
     for index in range(1, term_count):
@@ -417,18 +488,25 @@ def _euler_gamma_interval(bits: int) -> _Interval:
         1, 2 * term_count * sample ** (2 * term_count)
     )
     shifted = center + _Interval.exact(next_term)
-    answer = _Interval(
+    return _Interval(
         _minimum([center.lower, shifted.lower]),
         _maximum([center.upper, shifted.upper]),
+    )
+
+
+def _euler_gamma_interval(bits: int) -> _Interval:
+    cached = _gamma_cache.get(bits)
+    if cached is not None:
+        return cached
+    answer = _outward_dyadic_interval(
+        _euler_gamma_scalar_interval(bits), bits + DYADIC_GUARD_BITS
     )
     _gamma_cache[bits] = answer
     return answer
 
 
-def _catalan_interval(bits: int) -> _Interval:
-    cached = _catalan_cache.get(bits)
-    if cached is not None:
-        return cached
+def _catalan_scalar_interval(bits: int) -> _Interval:
+    """Return the direct exact-rational alternating-series enclosure."""
     total = ZERO
     sign = 1
     target_denominator = 1 << bits
@@ -447,10 +525,19 @@ def _catalan_interval(bits: int) -> _Interval:
             2 * (2 * next_index + 1) ** 3 * next_central**3,
         )
         if next_term.numerator * target_denominator < next_term.denominator:
-            answer = _alternating_interval(total, next_term, sign > 0)
-            _catalan_cache[bits] = answer
-            return answer
+            return _alternating_interval(total, next_term, sign > 0)
     raise ArithmeticError("the exact Catalan series did not converge")
+
+
+def _catalan_interval(bits: int) -> _Interval:
+    cached = _catalan_cache.get(bits)
+    if cached is not None:
+        return cached
+    answer = _outward_dyadic_interval(
+        _catalan_scalar_interval(bits), bits + DYADIC_GUARD_BITS
+    )
+    _catalan_cache[bits] = answer
+    return answer
 
 
 def _same_integer(interval: _Interval, rounding: str) -> int | None:
@@ -779,7 +866,23 @@ def bdf_bound(value: Any, *, max_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBo
 
 
 def grh_bound(value: Any, *, max_bdf_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBound:
-    """Return the smaller certified bound from Bach and BDF."""
+    """Return the smallest selected unconditional or GRH-certified bound."""
+    minkowski = minkowski_bound(value)
+    if minkowski.bound <= 2:
+        details = dict(minkowski.details)
+        details["selection"] = "unconditional-bound-at-grh-search-minimum"
+        details["grh_search_minimum"] = 2
+        return FactorBaseBound(
+            minkowski.theorem,
+            minkowski.assumptions,
+            minkowski.bound,
+            minkowski.degree,
+            minkowski.signature,
+            minkowski.discriminant,
+            minkowski.precision_bits,
+            minkowski.interval,
+            details,
+        )
     bach = bach_bound(value)
     bdf = bdf_bound(value, max_bound=max_bdf_bound)
     selected = bdf if bdf.bound < bach.bound else bach
@@ -923,6 +1026,17 @@ def _factor_base_record_memory_bytes(record: Any) -> int:
 def _two_generator_data(prime_ideal: Any) -> dict[str, Any] | None:
     order = prime_ideal.ring()
     prime = int(prime_ideal.rational_prime())
+    try:
+        witness = _prime_ideals.canonical_two_generator_witness(prime_ideal)
+    except (ArithmeticError, RuntimeError, TypeError, ValueError):
+        witness = None
+    if witness is not None:
+        return {
+            "rational_prime": prime,
+            "second_generator": [list(pair) for pair in _encode_element(witness)],
+        }
+    # The readable ideal-equality search remains the fail-closed fallback for
+    # unusual presentations outside the bounded modular witness path.
     for element in prime_ideal.basis():
         if order.ideal(prime, element) == prime_ideal:
             return {

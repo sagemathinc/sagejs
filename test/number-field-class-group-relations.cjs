@@ -97,7 +97,15 @@ context = Context()
 context.relations = []
 context.add_relation = lambda relation: context.relations.append(relation)
 collector = ExactRelationCollector(O, factor_base, context=context)
-initial = initial_rational_prime_relations(collector)
+order_type = type(O)
+saved_factor_rational_prime = order_type.factor_rational_prime
+def forbidden_refactor(self, rational_prime, *args, **kwargs):
+    raise AssertionError("initial rational relations refactored a certified prime")
+order_type.factor_rational_prime = forbidden_refactor
+try:
+    initial = initial_rational_prime_relations(collector)
+finally:
+    order_type.factor_rational_prime = saved_factor_rational_prime
 assert [list(item.record.row) for item in initial] == case["initial_rows"]
 assert collector.rank_screen.rank == case["initial_modular_rank"]
 assert len(context.relations) == len(initial)
@@ -231,13 +239,13 @@ mutated = json.loads(json.dumps(serialized[0]))
 mutated["witness"]["factors"][0]["element"][0][0] += 1
 mutations.append(mutated)
 mutated = json.loads(json.dumps(serialized[0]))
-mutated["principal_ideal"]["basis"][0][0][0] += 1
+mutated["source_row"][0] += 1
 mutations.append(mutated)
 mutated = json.loads(json.dumps(serialized[0]))
 mutated["norm_smoothness"]["principal_norm"][0] += 1
 mutations.append(mutated)
 mutated = json.loads(json.dumps(serialized[0]))
-mutated["field_order"]["discriminant"] += 1
+mutated["unexpected_ideal_payload"] = {}
 mutations.append(mutated)
 for mutation in mutations:
     assert not verify_relation_record(O, factor_base, mutation)["certified"]

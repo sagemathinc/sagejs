@@ -1,0 +1,54 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-factor-base-dyadic",
+  "title": "Class Factor Base Dyadic",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compress exact primitive transcendental enclosures to outward dyadic intervals while preserving BDF certificates and improving cubic factor-base performance",
+  "base_commit": "01f0bdcc7973e07d000d560674f4ee55dc00627a",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_group_factor_base.py",
+    "test/number-field-class-group-factor-base.cjs",
+    "bench/number-field-class-group-factor-base-dyadic.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm exec pyright src/lib/sagejs/number_fields/class_group_factor_base.py",
+    "node --test test/number-field-class-group-factor-base.cjs",
+    "node --test test/number-field-class-unit-engine.cjs",
+    "pnpm test:baselib:strict",
+    "node bench/number-field-class-group-factor-base-dyadic.cjs --check",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Exact primitive pi, logarithm, Euler-gamma, Catalan, and interval-log enclosures now retain their direct scalar-series oracle but cache a checked outward dyadic compression with 24 guard bits. The h=3 discriminant-minus1083 cubic keeps BDF bound 9, precision 64, the exact serialized margin, and the same five factor-base records while cold BDF selection falls from 2.31 seconds to about 0.85 seconds and warm fresh-field selection from 1.59 seconds to about 0.49 seconds. Differential tests cover scalar-versus-compressed containment at 32, 64, 96, and 128 bits and pin all existing representative BDF margins.",
+    "risks": [
+      "The broad pnpm test:native lane gate reaches an unrelated exact-main inconsistency: test/dense-integer-migration.cjs forbids the lazy sagejs.kernels.matrix.dense_integer import that src/baselib/matrix.py already contains at base commit 01f0bdcc. Native FLINT, FFLAS, graph, M4RI, FFI, lifecycle, and production-kernel portions passed before that matrix-source assertion failed.",
+      "The task remains active because the mechanically required native receipt cannot pass without an out-of-scope matrix-lane correction. Focused factor-base, integrated engine, strict baselib, standalone Pyright, architecture, build, and benchmark checks pass."
+    ],
+    "next_steps": [
+      "Central integration should resolve or update the dense-integer migration assertion and rerun pnpm test:native.",
+      "Do not broaden auto theorem selection from this change; corpus evidence should decide any later small-Minkowski cutoff."
+    ]
+  }
+}
