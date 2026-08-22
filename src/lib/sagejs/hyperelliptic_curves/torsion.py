@@ -38,6 +38,18 @@ TWO_TORSION_SCHEMA = "sagejs.hyperelliptic-rational-two-torsion/v1"
 QQ_DIVISOR_SCHEMA = "sagejs.hyperelliptic-rational-mumford-divisor/v1"
 QQ_ORDER_SCHEMA = "sagejs.hyperelliptic-rational-mumford-order/v1"
 
+TORSION_BOUND_THEOREM = (
+    "for good p, reduction injects on prime-to-p rational torsion; "
+    "each ell-primary exponent excludes the p=ell reduction"
+)
+TORSION_BOUND_ALGORITHM = "distinct-good-reduction-primary-bound/v1"
+TORSION_ORDER_THEOREM = (
+    "exact rational scalar multiplication proves the order; at good p the "
+    "specialization kernel on torsion is p-primary"
+)
+TORSION_ORDER_ALGORITHM = "exact-annihilation-and-prime-factor-strip/v1"
+TORSION_BASIS_ALGORITHM = "deterministic-primary-basis-from-input-generators/v1"
+
 
 class RationalTorsionCapabilityError(NotImplementedError):
     """The requested torsion proof lies outside the implemented envelope."""
@@ -45,6 +57,10 @@ class RationalTorsionCapabilityError(NotImplementedError):
     def __init__(self, message: str, diagnostics: dict[str, Any] | None = None) -> None:
         super().__init__(message)
         self.diagnostics = {} if diagnostics is None else dict(diagnostics)
+
+
+class _RationalDivisorNonintegralError(ArithmeticError):
+    """A fixed Mumford representative has a denominator divisible by `p`."""
 
 
 def _frobenius() -> Any:
@@ -317,6 +333,58 @@ def _normalize_primes(primes: Any) -> list[int]:
     return sorted(answer)
 
 
+def _checked_algorithm(value: Any) -> str:
+    if not isinstance(value, str) or not value:
+        raise TypeError("the local-factor algorithm must be a nonempty string")
+    return value
+
+
+def _skipped_reduction_row(prime: int, error: Exception) -> dict[str, str]:
+    return {
+        "prime": str(prime),
+        "status": "unsupported_good_reduction",
+        "reason": str(error),
+    }
+
+
+def _scan_good_reductions(
+    jacobian: Any,
+    candidates: Any,
+    requested_count: int,
+    automatic: bool,
+    algorithm: str,
+) -> tuple[list[Any], list[Any]]:
+    rows = []
+    skipped = []
+    for prime in candidates:
+        try:
+            rows.append(_good_reduction_row(jacobian, int(prime), algorithm))
+        except (ArithmeticError, NotImplementedError, ValueError) as error:
+            skipped.append(_skipped_reduction_row(int(prime), error))
+            if not automatic:
+                break
+            continue
+        if automatic and len(rows) >= requested_count:
+            break
+    return rows, skipped
+
+
+def _prime_search_certificate(
+    automatic: bool,
+    candidates: Any,
+    requested_count: int,
+    max_prime: int,
+    algorithm: str,
+) -> dict[str, Any]:
+    return {
+        "mode": "automatic" if automatic else "explicit",
+        "requested_algorithm": algorithm,
+        "candidate_primes": tuple(str(prime) for prime in candidates),
+        "requested_good_reduction_count": requested_count if automatic else None,
+        "maximum_prime": str(max_prime) if automatic else None,
+    }
+
+
 class RationalTwoTorsionData:
     """The exact rational 2-torsion obtained from branch-factor orbits."""
 
@@ -420,6 +488,9 @@ class RationalTorsionData:
         generator_certificates: Any = (),
         two_torsion: RationalTwoTorsionData | None = None,
         upper_factorization: Any = None,
+        supplied_generators: Any = (),
+        input_generator_certificates: Any = (),
+        basis_derivation: Mapping[str, Any] | None = None,
     ) -> None:
         self.jacobian = jacobian
         self.upper_bound = sage.ZZ(
@@ -430,6 +501,11 @@ class RationalTorsionData:
         self.generators = tuple(generators)
         self.invariants = tuple(sage.ZZ(value) for value in invariants)
         self.generator_certificates = tuple(generator_certificates)
+        self.supplied_generators = tuple(supplied_generators)
+        self.input_generator_certificates = tuple(input_generator_certificates)
+        self.basis_derivation = (
+            None if basis_derivation is None else dict(basis_derivation)
+        )
         lower = sage.ZZ(1)
         for invariant in self.invariants:
             lower *= invariant
@@ -454,6 +530,9 @@ class RationalTorsionData:
                 rational_mumford_data(jacobian, divisor) for divisor in self.generators
             ),
             "generator_order_certificates": self.generator_certificates,
+            "supplied_generators": self.supplied_generators,
+            "input_generator_order_certificates": self.input_generator_certificates,
+            "basis_derivation": self.basis_derivation,
             "upper_bound_factorization": (
                 None
                 if upper_factorization is None
@@ -513,6 +592,7 @@ def torsion_bound(
     _require_rational_jacobian(jacobian)
     requested_count = _checked_integer(count, "good reduction count")
     checked_maximum = _checked_integer(max_prime, "maximum reduction prime")
+    requested_algorithm = _checked_algorithm(algorithm)
     if requested_count < 2:
         raise ValueError("at least two good reductions are required")
     if checked_maximum < 3:
@@ -526,23 +606,21 @@ def torsion_bound(
     if not automatic and len(candidates) < 2:
         raise ValueError("at least two distinct reduction primes are required")
 
-    rows = []
-    skipped = []
-    for prime in candidates:
-        try:
-            rows.append(_good_reduction_row(jacobian, prime, algorithm))
-        except (ArithmeticError, NotImplementedError, ValueError) as error:
-            if not automatic:
-                raise RationalTorsionCapabilityError(
-                    "the supplied reduction prime p="
-                    + str(prime)
-                    + " is not a certified supported good prime",
-                    {"prime": prime, "error": str(error)},
-                ) from error
-            skipped.append({"prime": str(prime), "error": str(error)})
-            continue
-        if automatic and len(rows) >= requested_count:
-            break
+    rows, skipped = _scan_good_reductions(
+        jacobian,
+        candidates,
+        requested_count,
+        automatic,
+        requested_algorithm,
+    )
+    if not automatic and skipped:
+        failed = skipped[0]
+        raise RationalTorsionCapabilityError(
+            "the supplied reduction prime p="
+            + str(failed["prime"])
+            + " is not a certified supported good prime",
+            {"prime": int(failed["prime"]), "error": failed["reason"]},
+        )
     if len(rows) < 2:
         raise RationalTorsionCapabilityError(
             "fewer than two supported good reductions were found",
@@ -567,9 +645,14 @@ def torsion_bound(
     upper_certificate = {
         "schema": TORSION_BOUND_SCHEMA,
         "curve": _curve_data(jacobian),
-        "theorem": (
-            "for good p, reduction injects on prime-to-p rational torsion; "
-            "each ell-primary exponent excludes the p=ell reduction"
+        "theorem": TORSION_BOUND_THEOREM,
+        "proof_algorithm": TORSION_BOUND_ALGORITHM,
+        "prime_search": _prime_search_certificate(
+            automatic,
+            candidates,
+            requested_count,
+            checked_maximum,
+            requested_algorithm,
         ),
         "good_reductions": tuple(rows),
         "raw_gcd": str(common),
@@ -603,14 +686,92 @@ def verify_torsion_bound_certificate(
     _require_rational_jacobian(jacobian)
     if certificate.get("schema") != TORSION_BOUND_SCHEMA:
         raise ValueError("unknown rational torsion-bound certificate schema")
+    expected_certificate_keys = {
+        "schema",
+        "curve",
+        "theorem",
+        "proof_algorithm",
+        "prime_search",
+        "good_reductions",
+        "raw_gcd",
+        "residue_characteristic_corrections",
+        "bound_history",
+        "upper_bound",
+        "skipped_candidates",
+    }
+    if set(certificate.keys()) != expected_certificate_keys:
+        raise ValueError("a torsion-bound certificate has noncanonical fields")
     if certificate.get("curve") != _curve_data(jacobian):
         raise ValueError("the torsion-bound certificate belongs to another Jacobian")
+    if certificate.get("theorem") != TORSION_BOUND_THEOREM:
+        raise ValueError("the torsion-bound theorem is not canonical")
+    if certificate.get("proof_algorithm") != TORSION_BOUND_ALGORITHM:
+        raise ValueError("the torsion-bound proof algorithm is not canonical")
+
+    search_value = certificate.get("prime_search")
+    if search_value is None or not hasattr(search_value, "get"):
+        raise ValueError("the torsion-bound prime search is not canonical")
+    search: Mapping[str, Any] = search_value
+    if set(search.keys()) != {
+        "mode",
+        "requested_algorithm",
+        "candidate_primes",
+        "requested_good_reduction_count",
+        "maximum_prime",
+    }:
+        raise ValueError("the torsion-bound prime search is not canonical")
+    mode = search.get("mode")
+    if mode not in ("automatic", "explicit"):
+        raise ValueError("unknown torsion-bound prime-search mode")
+    requested_algorithm = _checked_algorithm(search.get("requested_algorithm"))
+    candidate_primes = tuple(
+        _canonical_positive_integer(value, "candidate reduction prime")
+        for value in search.get("candidate_primes", ())
+    )
+    if tuple(_normalize_primes(candidate_primes)) != candidate_primes:
+        raise ValueError("candidate reduction primes are not canonical")
+    automatic = mode == "automatic"
+    if automatic:
+        requested_count = _checked_integer(
+            search.get("requested_good_reduction_count"),
+            "requested good reduction count",
+        )
+        maximum = _canonical_positive_integer(
+            search.get("maximum_prime"), "maximum reduction prime"
+        )
+        if requested_count < 2 or maximum < 3:
+            raise ValueError("the automatic prime search has invalid limits")
+        if candidate_primes != tuple(_default_prime_candidates(maximum)):
+            raise ValueError("the automatic candidate-prime list is inconsistent")
+    else:
+        if (
+            search.get("requested_good_reduction_count") is not None
+            or search.get("maximum_prime") is not None
+        ):
+            raise ValueError("an explicit prime search has automatic-only limits")
+        requested_count = len(candidate_primes)
+        if requested_count < 2:
+            raise ValueError("an explicit prime search needs two candidates")
+
+    expected_rows, expected_skipped = _scan_good_reductions(
+        jacobian,
+        candidate_primes,
+        requested_count,
+        automatic,
+        requested_algorithm,
+    )
+    if not automatic and expected_skipped:
+        raise ArithmeticError("an explicit certified reduction prime is unsupported")
     claimed_rows = list(certificate.get("good_reductions", ()))
     if len(claimed_rows) < 2:
         raise ValueError("a torsion-bound certificate needs two good reductions")
+    if tuple(dict(row) for row in claimed_rows) != tuple(expected_rows):
+        raise ArithmeticError("the certified good-reduction scan is inconsistent")
+    if tuple(certificate.get("skipped_candidates", ())) != tuple(expected_skipped):
+        raise ArithmeticError("the certified skipped-prime scan is inconsistent")
     primes = []
     recomputed = []
-    for row in claimed_rows:
+    for row, expected in zip(claimed_rows, expected_rows, strict=True):
         prime = _canonical_positive_integer(row.get("prime"), "reduction prime")
         if prime in primes or not sage.is_prime(prime):
             raise ValueError("certificate reduction primes must be distinct primes")
@@ -622,10 +783,7 @@ def verify_torsion_bound_certificate(
         }
         if set(row.keys()) != expected_keys:
             raise ValueError("a good-reduction row has noncanonical fields")
-        expected = _good_reduction_row(jacobian, prime, "auto")
-        if tuple(row.get("lpolynomial_coefficients_ascending", ())) != tuple(
-            expected["lpolynomial_coefficients_ascending"]
-        ) or str(row.get("jacobian_order")) != str(expected["jacobian_order"]):
+        if dict(row) != expected:
             raise ArithmeticError("a certified finite-field order is inconsistent")
         primes.append(prime)
         recomputed.append(dict(row))
@@ -670,7 +828,10 @@ def _reduce_rational_divisor(jacobian: Any, divisor: Any, prime: int) -> Any:
             rational = sage.QQ(coefficient)
             denominator = int(rational.denominator())
             if denominator % prime == 0:
-                raise ArithmeticError("the divisor is not integral at p=" + str(prime))
+                raise _RationalDivisorNonintegralError(
+                    "the Mumford representative has a denominator divisible by p="
+                    + str(prime)
+                )
             values.append(field(int(rational.numerator())) / field(denominator % prime))
         return values
 
@@ -679,6 +840,70 @@ def _reduce_rational_divisor(jacobian: Any, divisor: Any, prime: int) -> Any:
         [ring(reduced_coefficients(u_value)), ring(reduced_coefficients(v_value))],
         check=True,
     )
+
+
+def _is_power_of_prime(value: int, prime: int) -> bool:
+    remaining = value
+    while remaining > 1 and remaining % prime == 0:
+        remaining //= prime
+    return remaining == 1
+
+
+def _reduction_order_witness(
+    jacobian: Any,
+    divisor: Any,
+    order: int,
+    order_factors: Any,
+    row: Mapping[str, Any],
+) -> dict[str, Any]:
+    prime = _canonical_positive_integer(row.get("prime"), "reduction prime")
+    try:
+        reduced = _reduce_rational_divisor(jacobian, divisor, prime)
+        if not reduced.scalar_multiple(order, algorithm="reference").is_zero():
+            raise ArithmeticError(
+                "the rational divisor order does not annihilate its reduction"
+            )
+        reduced_order = order
+        for factor_prime, exponent in order_factors:
+            for _index in range(int(exponent)):
+                candidate = reduced_order // int(factor_prime)
+                if not reduced.scalar_multiple(
+                    candidate, algorithm="reference"
+                ).is_zero():
+                    break
+                reduced_order = candidate
+    except _RationalDivisorNonintegralError as error:
+        return {
+            "prime": str(prime),
+            "status": "nonintegral",
+            "reason": str(error),
+        }
+    except NotImplementedError as error:
+        return {
+            "prime": str(prime),
+            "status": "unsupported",
+            "reason": str(error),
+        }
+
+    finite_order = _canonical_positive_integer(
+        row.get("jacobian_order"), "finite Jacobian order"
+    )
+    if order % reduced_order != 0:
+        raise ArithmeticError("a reduced divisor order does not divide its QQ order")
+    if finite_order % reduced_order != 0:
+        raise ArithmeticError("a reduced divisor order does not divide #J(F_p)")
+    kernel_quotient = order // reduced_order
+    if not _is_power_of_prime(kernel_quotient, prime):
+        raise ArithmeticError(
+            "the specialization order quotient is not residue-characteristic primary"
+        )
+    return {
+        "prime": str(prime),
+        "status": "verified",
+        "finite_jacobian_order": str(finite_order),
+        "reduction_order": str(reduced_order),
+        "specialization_kernel_quotient": str(kernel_quotient),
+    }
 
 
 def _order_certificate(
@@ -709,39 +934,19 @@ def _order_certificate(
     if remaining != 1:
         raise ArithmeticError("the divisor order has an unknown prime factor")
 
-    reduction_witnesses = []
-    for row in reduction_rows:
-        prime = int(row["prime"])
-        try:
-            reduced = _reduce_rational_divisor(jacobian, divisor, prime)
-        except (ArithmeticError, ValueError, NotImplementedError) as error:
-            reduction_witnesses.append(
-                {"prime": str(prime), "status": "not_integral", "error": str(error)}
-            )
-            continue
-        reduced_order = order
-        for factor_prime, exponent in order_factors:
-            for _index in range(exponent):
-                candidate = reduced_order // factor_prime
-                if not reduced.scalar_multiple(
-                    candidate, algorithm="reference"
-                ).is_zero():
-                    break
-                reduced_order = candidate
-        reduction_witnesses.append(
-            {
-                "prime": str(prime),
-                "status": "verified",
-                "reduction_order": str(reduced_order),
-            }
-        )
+    reduction_witnesses = tuple(
+        _reduction_order_witness(jacobian, divisor, order, order_factors, row)
+        for row in reduction_rows
+    )
     return {
         "schema": QQ_ORDER_SCHEMA,
+        "theorem": TORSION_ORDER_THEOREM,
+        "proof_algorithm": TORSION_ORDER_ALGORITHM,
         "divisor": rational_mumford_data(jacobian, divisor),
         "annihilating_upper_bound": str(upper_bound),
         "order": str(order),
         "order_factorization": _factorization_data(order_factors),
-        "reduction_witnesses": tuple(reduction_witnesses),
+        "reduction_witnesses": reduction_witnesses,
     }
 
 
@@ -753,6 +958,21 @@ def _verify_order_certificate(
 ) -> tuple[Any, int]:
     if certificate.get("schema") != QQ_ORDER_SCHEMA:
         raise ValueError("unknown rational Mumford order-certificate schema")
+    if set(certificate.keys()) != {
+        "schema",
+        "theorem",
+        "proof_algorithm",
+        "divisor",
+        "annihilating_upper_bound",
+        "order",
+        "order_factorization",
+        "reduction_witnesses",
+    }:
+        raise ValueError("a rational Mumford order certificate has noncanonical fields")
+    if certificate.get("theorem") != TORSION_ORDER_THEOREM:
+        raise ValueError("the rational Mumford order theorem is not canonical")
+    if certificate.get("proof_algorithm") != TORSION_ORDER_ALGORITHM:
+        raise ValueError("the rational Mumford order algorithm is not canonical")
     if str(upper_bound) != str(certificate.get("annihilating_upper_bound")):
         raise ValueError("a generator certificate has the wrong upper bound")
     divisor = rational_mumford_from_data(jacobian, certificate["divisor"])
@@ -769,31 +989,12 @@ def _verify_order_certificate(
             raise ArithmeticError("the claimed divisor order is not minimal")
 
     witnesses = tuple(certificate.get("reduction_witnesses", ()))
-    expected_primes = tuple(int(row["prime"]) for row in reduction_rows)
-    if tuple(int(witness.get("prime")) for witness in witnesses) != expected_primes:
-        raise ValueError("the divisor certificate has the wrong reduction witnesses")
-    for witness, prime in zip(witnesses, expected_primes, strict=True):
-        try:
-            reduced = _reduce_rational_divisor(jacobian, divisor, prime)
-        except (ArithmeticError, ValueError, NotImplementedError):
-            if witness.get("status") != "not_integral":
-                raise ArithmeticError(
-                    "a divisor reduction witness is incorrectly unavailable"
-                ) from None
-            continue
-        reduced_order = order
-        for factor_prime, exponent in factors:
-            for _index in range(exponent):
-                candidate = reduced_order // factor_prime
-                if not reduced.scalar_multiple(
-                    candidate, algorithm="reference"
-                ).is_zero():
-                    break
-                reduced_order = candidate
-        if witness.get("status") != "verified" or str(
-            witness.get("reduction_order")
-        ) != str(reduced_order):
-            raise ArithmeticError("a divisor reduction-order witness is inconsistent")
+    expected_witnesses = tuple(
+        _reduction_order_witness(jacobian, divisor, order, factors, row)
+        for row in reduction_rows
+    )
+    if witnesses != expected_witnesses:
+        raise ArithmeticError("a divisor reduction-order witness is inconsistent")
     return divisor, order
 
 
@@ -837,9 +1038,16 @@ def certify_supplied_torsion(
     trial_limit = _checked_integer(max_trial_divisions, "max_trial_divisions")
     factors = _factorization(upper, factorization, trial_limit)
 
+    supplied_checked = tuple(
+        verify_rational_mumford_divisor(jacobian, divisor)
+        for divisor in list(generators)
+    )
+    supplied_data = tuple(
+        rational_mumford_data(jacobian, divisor) for divisor in supplied_checked
+    )
     checked_generators = []
     two_torsion = rational_two_torsion(jacobian)
-    for divisor in list(two_torsion.generators) + list(generators):
+    for divisor in list(two_torsion.generators) + list(supplied_checked):
         checked = verify_rational_mumford_divisor(jacobian, divisor)
         if checked not in checked_generators and not checked.is_zero():
             checked_generators.append(checked)
@@ -882,6 +1090,18 @@ def certify_supplied_torsion(
         generator_certificates=tuple(basis_certificates),
         two_torsion=two_torsion,
         upper_factorization=factors,
+        supplied_generators=supplied_data,
+        input_generator_certificates=tuple(certificates),
+        basis_derivation={
+            "algorithm": TORSION_BASIS_ALGORITHM,
+            "input_policy": (
+                "canonical rational 2-torsion first, then supplied generators; "
+                "remove zeroes and exact duplicates"
+            ),
+            "two_torsion_generator_count": len(two_torsion.generators),
+            "supplied_generator_count": len(supplied_checked),
+            "deduplicated_nonzero_input_count": len(checked_generators),
+        },
     )
     verify_torsion_result_certificate(jacobian, result.certificate)
     return result
@@ -894,6 +1114,26 @@ def verify_torsion_result_certificate(
     _require_rational_jacobian(jacobian)
     if certificate.get("schema") != TORSION_RESULT_SCHEMA:
         raise ValueError("unknown rational torsion-result certificate schema")
+    if set(certificate.keys()) != {
+        "schema",
+        "curve",
+        "status",
+        "lower_bound",
+        "upper_bound",
+        "exact",
+        "invariants",
+        "generators",
+        "generator_order_certificates",
+        "supplied_generators",
+        "input_generator_order_certificates",
+        "basis_derivation",
+        "upper_bound_factorization",
+        "two_torsion_certificate",
+        "upper_bound_certificate",
+    }:
+        raise ValueError(
+            "a rational torsion-result certificate has noncanonical fields"
+        )
     if certificate.get("curve") != _curve_data(jacobian):
         raise ValueError("the torsion-result certificate belongs to another Jacobian")
     upper_certificate = certificate["upper_bound_certificate"]
@@ -922,6 +1162,11 @@ def verify_torsion_result_certificate(
         raise ValueError("the claimed torsion lower bound is inconsistent")
 
     generator_certificates = tuple(certificate.get("generator_order_certificates", ()))
+    supplied_generator_data = tuple(certificate.get("supplied_generators", ()))
+    input_generator_certificates = tuple(
+        certificate.get("input_generator_order_certificates", ())
+    )
+    basis_derivation = certificate.get("basis_derivation")
     reduction_rows = upper_certificate["good_reductions"]
     generators = []
     orders = []
@@ -957,25 +1202,74 @@ def verify_torsion_result_certificate(
     ) != tuple(certificate.get("generators", ())):
         raise ValueError("the serialized torsion basis is inconsistent")
 
-    # The verified branch-orbit theorem already proves independence for the
-    # complete rational 2-torsion basis.  General supplied bases are replayed
-    # through the exact generic-group basis algorithm.
-    if generator_certificates:
+    # A supplied-subgroup certificate retains the original input, proves each
+    # deduplicated input order, and deterministically replays the change to an
+    # independent invariant-factor basis.  This proves that the returned basis
+    # generates the subgroup that was actually supplied, rather than merely
+    # proving that some unrelated rational torsion points have the same order.
+    if basis_derivation is None:
+        if supplied_generator_data or input_generator_certificates:
+            raise ValueError("supplied generators have no basis derivation proof")
+        if (
+            generator_certificates
+            or certificate.get("upper_bound_factorization") is not None
+        ):
+            raise ValueError("a derived torsion basis has no derivation certificate")
+    else:
+        if two_certificate is None:
+            raise ValueError("a supplied basis derivation omits rational 2-torsion")
+        supplied_generators = tuple(
+            rational_mumford_from_data(jacobian, data)
+            for data in supplied_generator_data
+        )
+        two_data = rational_two_torsion(jacobian)
+        input_generators = []
+        for divisor in list(two_data.generators) + list(supplied_generators):
+            if divisor not in input_generators and not divisor.is_zero():
+                input_generators.append(divisor)
+        expected_derivation = {
+            "algorithm": TORSION_BASIS_ALGORITHM,
+            "input_policy": (
+                "canonical rational 2-torsion first, then supplied generators; "
+                "remove zeroes and exact duplicates"
+            ),
+            "two_torsion_generator_count": len(two_data.generators),
+            "supplied_generator_count": len(supplied_generators),
+            "deduplicated_nonzero_input_count": len(input_generators),
+        }
+        if dict(basis_derivation) != expected_derivation:
+            raise ValueError("the supplied-generator derivation is inconsistent")
+        if len(input_generator_certificates) != len(input_generators):
+            raise ValueError("the input-generator proof list has the wrong length")
+        input_orders = []
+        for expected_divisor, item in zip(
+            input_generators, input_generator_certificates, strict=True
+        ):
+            checked_divisor, checked_order = _verify_order_certificate(
+                jacobian, item, upper, reduction_rows
+            )
+            if checked_divisor != expected_divisor:
+                raise ArithmeticError(
+                    "an input-generator order proof belongs to another divisor"
+                )
+            input_orders.append(checked_order)
+
         factor_data = certificate.get("upper_bound_factorization")
-        upper_factors = (
-            factor_integer_bounded(upper)
-            if factor_data is None
-            else _parse_factorization_data(upper, factor_data)
-        )
+        if factor_data is None:
+            raise ValueError("a supplied basis derivation has no ambient factorization")
+        upper_factors = _parse_factorization_data(upper, factor_data)
         budget = GroupOperationBudget(scalar_algorithm="reference")
-        _checked_basis, checked_orders = basis_from_generators(
-            generators, orders, upper_factors, budget
+        derived_basis, derived_orders = basis_from_generators(
+            input_generators, input_orders, upper_factors, budget
         )
-        checked_lower = 1
-        for order in checked_orders:
-            checked_lower *= order
-        if checked_lower != lower:
-            raise ArithmeticError("the claimed torsion basis is not independent")
+        derived_generators = tuple(reversed(derived_basis))
+        derived_invariants = tuple(reversed(derived_orders))
+        if derived_invariants != claimed_invariants or tuple(
+            rational_mumford_data(jacobian, divisor) for divisor in derived_generators
+        ) != tuple(certificate.get("generators", ())):
+            raise ArithmeticError(
+                "the claimed torsion basis is not derived from the supplied subgroup"
+            )
     exact = lower == upper
     if bool(certificate.get("exact")) != exact:
         raise ValueError("the exact torsion status is inconsistent")

@@ -70,6 +70,18 @@ test("reduction bounds exclude their own residue characteristic", async () => {
         "upper,raw,corrections=_corrected_reduction_bound(rows)",
         "assert raw == 3 and upper == 9",
         "assert corrections[0]['added_exponent'] == 1",
+        "def val(n,p):",
+        " e=0",
+        " while n%p == 0:",
+        "  n//=p",
+        "  e+=1",
+        " return e",
+        "for orders in [(72,180,350),(27,45,63),(80,150,196),(11,121,1331)]:",
+        " test_rows=[{'prime':str(p),'jacobian_order':str(n)} for p,n in zip((3,5,7),orders)]",
+        " test_upper,_,_=_corrected_reduction_bound(test_rows)",
+        " for ell in (2,3,5,7,11):",
+        "  expected=min(val(n,ell) for p,n in zip((3,5,7),orders) if p != ell)",
+        "  assert val(test_upper,ell) == expected",
         "[raw,upper,corrections]",
       ].join("\n"),
     );
@@ -110,10 +122,35 @@ test(
           "assert rows[1]['jacobian_order'] == '64'",
           "assert verify_torsion_bound_certificate(J,B.upper_bound_certificate)",
           "assert verify_torsion_result_certificate(J,B.certificate)",
+          "bad_bound=dict(B.upper_bound_certificate)",
+          "bad_bound['theorem']='untrusted theorem text'",
+          "try:",
+          " verify_torsion_bound_certificate(J,bad_bound)",
+          " assert False",
+          "except ValueError:",
+          " pass",
+          "bad_bound=dict(B.upper_bound_certificate)",
+          "bad_rows=[dict(row) for row in bad_bound['good_reductions']]",
+          "bad_rows[0]['algorithm']='auto'",
+          "bad_bound['good_reductions']=tuple(bad_rows)",
+          "try:",
+          " verify_torsion_bound_certificate(J,bad_bound)",
+          " assert False",
+          "except ArithmeticError:",
+          " pass",
           "Jbad=HyperellipticCurve(x^5-5*x).jacobian()",
           "Auto=torsion_bound(Jbad,count=2,max_prime=7,algorithm='exhaustive')",
           "assert tuple(row['prime'] for row in Auto.upper_bound_certificate['good_reductions']) == ('3','7')",
           "assert Auto.upper_bound_certificate['skipped_candidates'][0]['prime'] == '5'",
+          "bad_auto=dict(Auto.upper_bound_certificate)",
+          "bad_skips=[dict(row) for row in bad_auto['skipped_candidates']]",
+          "bad_skips[0]['reason'] += ' tampered'",
+          "bad_auto['skipped_candidates']=tuple(bad_skips)",
+          "try:",
+          " verify_torsion_bound_certificate(Jbad,bad_auto)",
+          " assert False",
+          "except ArithmeticError:",
+          " pass",
           "A=certify_supplied_torsion(J,[],bound=B)",
           "assert A.lower_bound == 8 and A.upper_bound == B.upper_bound",
           "assert verify_torsion_result_certificate(J,A.certificate)",
@@ -137,6 +174,62 @@ test(
         { timeout: 120_000 },
       );
       assert.match(result.repr, /^\[8, \d+, (True|False), \(2, 2, 2\)\]$/);
+    } finally {
+      await session.close();
+    }
+  },
+);
+
+test(
+  "supplied odd torsion and dependent inputs replay to the same subgroup",
+  { timeout: 120_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(
+        [
+          "from sagejs.hyperelliptic_curves.torsion import (",
+          " certify_supplied_torsion, rational_mumford_data, torsion_bound,",
+          " verify_torsion_result_certificate,",
+          ")",
+          "R=PolynomialRing(QQ,'x')",
+          "x=R.gen()",
+          "u=x^2-2*x-2",
+          "v=x^3-2*x^2-2*x-2",
+          // Since f=v^2-u^3, div(y-v) proves that (u,v mod u) has order 3.
+          "J=HyperellipticCurve(v^2-u^3).jacobian()",
+          "D=J([u,v%u])",
+          "assert not D.is_zero() and (3*D).is_zero() and not (2*D).is_zero()",
+          "B=torsion_bound(J,count=3,max_prime=11,algorithm='exhaustive')",
+          "assert B.bounds() == (2,6)",
+          "A=certify_supplied_torsion(J,[D,2*D,D,J.zero()],bound=B)",
+          "assert A.exact and A.order() == 6 and A.invariants == (6,)",
+          "assert len(A.certificate['supplied_generators']) == 4",
+          "assert len(A.certificate['input_generator_order_certificates']) == 3",
+          "assert verify_torsion_result_certificate(J,A.certificate)",
+          "for proof in A.certificate['input_generator_order_certificates']:",
+          " for witness in proof['reduction_witnesses']:",
+          "  if witness['status'] == 'verified':",
+          "   assert int(witness['finite_jacobian_order']) % int(witness['reduction_order']) == 0",
+          "   q=int(witness['specialization_kernel_quotient'])",
+          "   p=int(witness['prime'])",
+          "   while q > 1 and q % p == 0:",
+          "    q //= p",
+          "   assert q == 1",
+          "forged=dict(A.certificate)",
+          "supplied=list(forged['supplied_generators'])",
+          "supplied[0]=rational_mumford_data(J,J.zero())",
+          "forged['supplied_generators']=tuple(supplied)",
+          "try:",
+          " verify_torsion_result_certificate(J,forged)",
+          " assert False",
+          "except ArithmeticError:",
+          " pass",
+          "[B.bounds(),A.invariants,A.order()]",
+        ].join("\n"),
+        { timeout: 120_000 },
+      );
+      assert.equal(result.repr, "[(2, 6), (6,), 6]");
     } finally {
       await session.close();
     }
