@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "updated": "2026-08-08",
+  "updated": "2026-08-22",
   "capabilities": [
     {
       "id": "sage-language",
@@ -210,6 +210,24 @@
       "evidence": "A source-derived gate assigns all 135 public graph-module functions and aliases to executable semantic tests and searchable typed reference entries, each with a passing CI-verified workflow. Native integration checks compact generators and exact group enumeration, the SageMath scope audit measures 78 of 411 Graph methods, and every bundled graph6 record remains available as a correctness corpus.",
       "target": "Broaden Sage graph API coverage, benchmark native frontiers on dedicated hosts, and add OGDF-class advanced routing/layout without changing public semantics.",
       "priority": "now"
+    },
+    {
+      "id": "combinatorics",
+      "area": "Discrete mathematics",
+      "feature": "Enumerative combinatorics",
+      "state": "partial",
+      "quality": "tested",
+      "coverage": {
+        "level": "foundational",
+        "label": "Integer partitions as a complete combinatorial class",
+        "summary": "Integer partitions are an ordinary Sage parent with Sage's enumeration order, exact counting that never enumerates, membership, ranking, and uniform sampling. The remaining combinatorial classes are explicit next work.",
+        "includes": ["Partition and Partitions", "Sage enumeration order", "exact cardinality by Euler's pentagonal recurrence", "min_part / max_part / length / min_length / max_length / parts_in", "rank, unrank, first, last", "uniform random_element without enumeration", "conjugate, hook lengths, dominance order, Ferrers diagrams", "number_of_partitions", "sage.combinat.partition import path"]
+      },
+      "summary": "Integer partitions are a complete Sage-compatible combinatorial class with exact counting, ranking, and uniform sampling.",
+      "implementation": "Ordinary CPython-parseable Python. One memoized recursion over the largest remaining part serves counting, ranking, and sampling; unconstrained counts use Euler's pentagonal number recurrence.",
+      "evidence": "A focused regression suite cross-checks cardinality against enumeration for every class it can list, round-trips rank and unrank, confirms conjugation is an involution which permutes each class, and reproduces n! from the hook length formula through the sum of squares of standard Young tableau counts.",
+      "target": "Add permutations, subsets, compositions, tuples, integer vectors, and set partitions on the same protocol, then tableaux and posets.",
+      "priority": "next"
     },
     {
       "id": "spectral-linear-algebra",

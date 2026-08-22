@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-08-08",
+  "updated": "2026-08-22",
   "policy": {
     "correctnessFirst": "A benchmark result is publishable only after all compared systems agree on the normalized mathematical result or their semantic difference is explicit.",
     "sharedCi": "Shared CI runs correctness and catastrophic-regression checks, not tight competitive timing gates.",
@@ -8,6 +8,7 @@
     "aggregation": "Publish raw cases, medians, scale frontiers, and per-domain geometric means; never collapse all mathematics into one opaque score."
   },
   "plannedPriorities": {
+    "combinatorial-enumeration": "P1",
     "jupyter-latency": "P1",
     "wasm-native-gap": "P1",
     "safe-eval-overhead": "P2",
@@ -36,6 +37,7 @@
     {"id":"finite-fields","status":"existing","path":"bench/compare-finite-fields.cjs","capabilities":["finite-fields"],"systems":["Sage.js","SageMath"],"axes":["prime fields","extension fields","operation","iterations"]},
     {"id":"exact-linear-algebra","status":"existing","path":"bench/compare-exact-linear-algebra.cjs","capabilities":["linear-algebra"],"systems":["Sage.js","SageMath"],"axes":["operation","dimension","exact base ring"]},
     {"id":"graph-theory","status":"existing","path":"bench/compare-graphs.cjs","capabilities":["graph-theory"],"systems":["Sage.js/igraph","SageMath","bliss","nauty/Traces"],"axes":["algorithm","graph family","vertices","edges","density","labels","certificate","generator count","memory frontier"]},
+    {"id":"combinatorial-enumeration","status":"planned","capabilities":["combinatorics"],"systems":["Sage.js","SageMath"],"axes":["class size","constraint shape","counting versus listing","rank and unrank latency","uniform sampling throughput"]},
     {"id":"elliptic-curves","status":"existing","path":"bench/compare-elliptic-curves.cjs","capabilities":["elliptic-arithmetic"],"systems":["Sage.js","SageMath"],"axes":["point arithmetic","scalar multiplication","field"]},
     {"id":"quadratic-class-groups","status":"existing","path":"bench/compare-quadratic-class-groups.cjs","capabilities":["quadratic-fields"],"systems":["Sage.js/FLINT","PARI/GP","Magma"],"axes":["discriminant","class number versus structure","proof semantics"]},
     {"id":"modular-symbols","status":"existing","path":"bench/compare-modular-symbols.cjs","capabilities":["modular-symbols"],"systems":["Sage.js","SageMath","PARI/GP","Magma"],"axes":["level","operator","decomposition","normalized answer"]},
