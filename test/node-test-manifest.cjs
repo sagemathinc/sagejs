@@ -74,6 +74,7 @@ const integration = [
   "test/number-field-class-group-maps-proof.cjs",
   "test/number-field-class-group-matrix.cjs",
   "test/number-field-class-group-relations.cjs",
+  "test/number-field-ideal-product-kernel.cjs",
   "test/number-field-class-unit-analytic.cjs",
   "test/number-field-class-unit-context.cjs",
   "test/number-field-class-unit-engine.cjs",

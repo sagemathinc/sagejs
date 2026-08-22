@@ -1578,7 +1578,7 @@ class ClassUnitGroupEngine:
         """Search one ideal while retaining bounded exact partial relations."""
         search.state.ideals_tested += 1
         admitted = 0
-        for sequence, element in enumerate(search.short_elements(ideal)):
+        for sequence, element in enumerate(search.iter_short_elements(ideal)):
             self._check_cancelled()
             search.state.candidates_tested += 1
             candidate_provenance = {

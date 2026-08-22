@@ -2081,7 +2081,15 @@ class LLLRelationSearch:
         self.last_random_attempts = 0
         self.state = RelationSearchState(seed) if state is None else state
 
-    def short_elements(self, ideal: Any) -> tuple[Any, ...]:
+    def iter_short_elements(self, ideal: Any) -> Iterable[Any]:
+        """Yield exact short elements without materializing unused candidates.
+
+        Lattice reduction and the bounded coefficient stream are still
+        constructed eagerly, so the replayable PRNG state is identical to a
+        full `short_elements` call.  Field-element conversion, ideal
+        membership, and canonical deduplication happen only as the consumer
+        advances the iterator.
+        """
         if ideal.ring() is not self.collector.order or ideal.is_zero():
             raise TypeError("short-vector search requires a nonzero ideal of the order")
         integer_rows, denominator = _integral_lattice_rows(ideal)
@@ -2131,7 +2139,6 @@ class LLLRelationSearch:
             if any(candidate):
                 coefficient_rows.append(candidate)
         field = ideal.number_field()
-        answer: list[Any] = []
         seen: set[str] = set()
         for row in coefficient_rows[: self.max_candidates_per_ideal]:
             element = _field_element_from_coefficients(
@@ -2143,8 +2150,11 @@ class LLLRelationSearch:
             key = json.dumps(_element_payload(field, element), separators=(",", ":"))
             if key not in seen:
                 seen.add(key)
-                answer.append(element)
-        return tuple(answer)
+                yield element
+
+    def short_elements(self, ideal: Any) -> tuple[Any, ...]:
+        """Return the complete bounded exact short-element tuple."""
+        return tuple(self.iter_short_elements(ideal))
 
     def search_ideal(
         self,
@@ -2163,7 +2173,7 @@ class LLLRelationSearch:
         if limit == 0:
             return ()
         answer: list[RelationAdmission] = []
-        for sequence, element in enumerate(self.short_elements(ideal)):
+        for sequence, element in enumerate(self.iter_short_elements(ideal)):
             self.state.candidates_tested += 1
             candidate_provenance = {
                 "algorithm": (

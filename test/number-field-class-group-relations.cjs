@@ -492,6 +492,31 @@ short_two = [str(value) for value in search_two.short_elements(O.ideal(1))]
 assert short_one == short_two
 assert short_one[:len(case["short_element_prefix"])] == case["short_element_prefix"]
 
+# Consumers that stop after one relation must not pay to construct every
+# exact field element in the bounded coefficient stream.  Full consumption
+# remains byte-for-byte equivalent to the tuple-returning public helper.
+import sagejs.number_fields.class_group_relations as relation_module
+conversion_count = 0
+original_conversion = relation_module._field_element_from_coefficients
+def counted_conversion(*args, **kwargs):
+    global conversion_count
+    conversion_count += 1
+    return original_conversion(*args, **kwargs)
+relation_module._field_element_from_coefficients = counted_conversion
+try:
+    lazy_search = LLLRelationSearch(
+        collector, seed=case["search_seed"], max_candidates_per_ideal=10
+    )
+    lazy_stream = lazy_search.iter_short_elements(O.ideal(1))
+    first_lazy = next(lazy_stream)
+    conversions_after_first = conversion_count
+    lazy_values = [first_lazy] + list(lazy_stream)
+    conversions_after_full = conversion_count
+finally:
+    relation_module._field_element_from_coefficients = original_conversion
+assert conversions_after_first < conversions_after_full
+assert [str(value) for value in lazy_values] == short_one
+
 # Degenerate random settings retain the deterministic reduced-basis prefix and
 # terminate without consuming the replayable PRNG stream.
 for zero_setting in (
