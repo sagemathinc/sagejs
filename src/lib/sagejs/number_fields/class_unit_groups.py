@@ -24,6 +24,8 @@ from typing import Any, Callable, Iterable, Sequence
 EXACT_UNCONDITIONAL = "exact-unconditional"
 EXACT_RELATIONS_CONDITIONAL_GRH = "exact-relations-conditional-grh"
 INCOMPLETE_RESOURCE_LIMIT = "incomplete-resource-limit"
+MAX_DIRECT_CUBIC_RELATION_SEED_BOUND = 4
+MAX_DIRECT_CUBIC_RELATION_SEED_SIZE = 3
 
 _AUTHENTICATED_CLASS_UNIT_SATURATION_TOKEN = object()
 
@@ -1193,6 +1195,7 @@ class ClassUnitGroupEngine:
             "generation_admission_receipt_hits": 0,
             "cubic_relation_seed_uses": 0,
             "cubic_relation_seed_relations": 0,
+            "cubic_factor_base_seed_uses": 0,
             "automorphism_orbit_plans": 0,
             "automorphism_orbit_available_plans": 0,
             "automorphism_orbit_useful_plans": 0,
@@ -3028,8 +3031,8 @@ class ClassUnitGroupEngine:
         )
         return group
 
-    def _cubic_relation_seed(self, plan: Any, factor_base: tuple[Any, ...]) -> Any:
-        """Return an authenticated class-only relation prefix when compatible."""
+    def _authenticated_cubic_relation_seed(self) -> Any:
+        """Read the live class-only relation prefix without replaying it."""
         if self.algorithm not in ("auto", "minkowski"):
             return None
         artifact = getattr(self.field, "_bounded_cubic_class_number_artifact", None)
@@ -3042,8 +3045,41 @@ class ClassUnitGroupEngine:
             )
             reader = getattr(module, "authenticated_cubic_relation_seed", None)
             seed: Any = reader(artifact, self.field) if callable(reader) else None
-            if seed is None:
-                return None
+            return seed
+        except (AttributeError, ImportError, TypeError, ValueError, ArithmeticError):
+            return None
+
+    def _direct_cubic_relation_seed(self) -> Any:
+        """Reuse a tiny authenticated Minkowski base under the default policy."""
+        if (
+            self.algorithm != "auto"
+            or self.seed != 0
+            or self.checkpoint_controller is not None
+            or self.limits.to_dict() != ClassUnitEngineLimits().to_dict()
+        ):
+            return None
+        seed = self._authenticated_cubic_relation_seed()
+        if seed is None:
+            return None
+        try:
+            if (
+                seed.plan.order is self.order
+                and not tuple(seed.plan.assumptions)
+                and "Minkowski" in str(seed.plan.theorem)
+                and int(seed.plan.bound) <= MAX_DIRECT_CUBIC_RELATION_SEED_BOUND
+                and len(seed.factor_base) <= MAX_DIRECT_CUBIC_RELATION_SEED_SIZE
+            ):
+                return seed
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            pass
+        return None
+
+    def _cubic_relation_seed(self, plan: Any, factor_base: tuple[Any, ...]) -> Any:
+        """Return an authenticated class-only relation prefix when compatible."""
+        seed = self._authenticated_cubic_relation_seed()
+        if seed is None:
+            return None
+        try:
             if (
                 seed.plan.order is not self.order
                 or int(seed.plan.bound) != int(plan.bound)
@@ -3081,8 +3117,25 @@ class ClassUnitGroupEngine:
             # proof=True request is upgraded afterward by expressing every
             # Minkowski-required prime ideal in this exact presentation.
             discovery_proof = self.algorithm == "minkowski"
-            plan, factor_base = self._factor_base(proof=discovery_proof)
-            relation_seed = self._cubic_relation_seed(plan, factor_base)
+            relation_seed = self._direct_cubic_relation_seed()
+            if relation_seed is None:
+                plan, factor_base = self._factor_base(proof=discovery_proof)
+                relation_seed = self._cubic_relation_seed(plan, factor_base)
+            else:
+                started = self._phase_start()
+                plan = relation_seed.plan
+                factor_base = relation_seed.factor_base
+                self._resource_usage["cubic_factor_base_seed_uses"] += 1
+                self._phase_finish("factor-base", started)
+                self._stage(
+                    "factor-base",
+                    "complete",
+                    theorem=plan.theorem,
+                    assumptions=list(plan.assumptions),
+                    bound=int(plan.bound),
+                    size=len(factor_base),
+                    reused_cubic_seed=True,
+                )
             # In cubic fields, retaining a second smooth witness from the same
             # short-vector enumeration costs more exact ideal admission and
             # replay work than it saves in lattice setup.  The stopping rule

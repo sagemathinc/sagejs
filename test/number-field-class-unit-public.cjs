@@ -320,6 +320,7 @@ assert result.diagnostics["factor_base_bound"] == 4
 assert result.diagnostics["factor_base_size"] == 3
 assert resources["cubic_relation_seed_uses"] == 1
 assert resources["cubic_relation_seed_relations"] == 3
+assert resources["cubic_factor_base_seed_uses"] == 1
 assert resources["relation_attempts"] == 6
 assert resources["relation_candidates"] == 6
 assert resources["presentation_extractions"] == 1
@@ -352,6 +353,17 @@ T._bounded_cubic_class_number_artifact = forged
 assert T.class_number(proof=False) == 2
 cold_result = list(T._class_unit_engine_cache.values())[-1]
 assert cold_result.diagnostics["resources"]["cubic_relation_seed_uses"] == 0
+assert cold_result.diagnostics["resources"]["cubic_factor_base_seed_uses"] == 0
+
+# A valid prefix remains useful under an explicit engine policy, but the
+# narrow direct factor-base shortcut is reserved for the exact default caps.
+U = NumberField(x**3 + 4*x - 1, "u")
+valid_limited = cubic_module.bounded_cubic_minkowski_class_number(U)
+assert cubic_module.authenticated_cubic_relation_seed(valid_limited, U) is not None
+U._bounded_cubic_class_number_artifact = valid_limited
+limited_result = U.class_unit_group(proof=False, max_relations=1024)
+assert limited_result.complete and limited_result.class_number() == 2
+assert limited_result.diagnostics["resources"]["cubic_factor_base_seed_uses"] == 0
 print("cubic-relation-seed-ok")
 `, 180_000);
   assert.equal(output, "cubic-relation-seed-ok");
