@@ -1379,10 +1379,17 @@ def _selective_dedekind_kummer(
     scale = runtime.integer_bigint(field._integral_equation_scale_cache)
     beta = field.gen() * scale
     selected: list[tuple[Any, Any]] = []
+    table = None
+    one = None
     for factor in modular_factors:
         residue_degree = len(factor.polynomial) - 1
         if residue_degree not in residue_degrees:
             continue
+        if table is None:
+            table = _prime_ideals._modular_table(order, prime)
+            one = [
+                value % prime for value in _prime_ideals._order_one_coordinates(order)
+            ]
         second_generator = field.zero()
         for coefficient in reversed(factor.polynomial):
             second_generator = second_generator * beta + int(coefficient)
@@ -1392,6 +1399,8 @@ def _selective_dedekind_kummer(
             prime,
             int(factor.multiplicity),
             residue_degree,
+            table=table,
+            one=one,
         )
         selected.append((prime_ideal, second_generator))
     selected.sort(key=lambda pair: _prime_ideals._prime_sort_key(pair[0]))

@@ -96,14 +96,26 @@ import hashlib
 import json
 
 from sagejs.number_fields import class_group_factor_base as factor_bases
+from sagejs.number_fields import ideal_arithmetic
 from sagejs.number_fields import prime_ideals
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 field = NumberField(x**3 - x**2 - 6*x - 12, "a")
 order = field.maximal_order()
-plan = factor_bases.factor_base_plan(order, proof=True, theorem="minkowski")
-records = factor_bases.build_factor_base(plan)
+modular_table_calls = 0
+original_modular_table = prime_ideals._modular_table
+def counted_modular_table(*args, **kwargs):
+    global modular_table_calls
+    modular_table_calls += 1
+    return original_modular_table(*args, **kwargs)
+prime_ideals._modular_table = counted_modular_table
+try:
+    plan = factor_bases.factor_base_plan(order, proof=True, theorem="minkowski")
+    records = factor_bases.build_factor_base(plan)
+finally:
+    prime_ideals._modular_table = original_modular_table
+assert modular_table_calls == 4
 payload = [record.to_dict() for record in records]
 encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
 assert hashlib.sha256(encoded).hexdigest() == "2262d9dce3278741e3b73e9d95eb70a2d81c2b86cc3436198cda58efcbfc5456"
@@ -117,6 +129,26 @@ assert [(record.norm, record.rational_prime, record.ramification_index, record.r
 p2 = [record.prime_ideal for record in records if record.rational_prime == 2]
 assert all(getattr(ideal, "_packed_candidate_pending_replay", None) is False for ideal in p2)
 assert all(getattr(ideal, "_verified_modular_algebra", None) is not None for ideal in p2)
+
+# Exact product replay starts with the first authenticated prime factor.  For
+# this two-factor, exponent-one decomposition it needs exactly one HNF ideal
+# product instead of separately multiplying both factors by the unit ideal.
+product_calls = 0
+original_ideal_product = ideal_arithmetic.ideal_product
+def counted_ideal_product(left, right):
+    global product_calls
+    product_calls += 1
+    return original_ideal_product(left, right)
+ideal_arithmetic.ideal_product = counted_ideal_product
+try:
+    product_order = NumberField(x**3 - x**2 - 6*x - 12, "product").maximal_order()
+    product_decomposition = prime_ideals.factor_rational_prime(
+        product_order, 2, algorithm="finite-algebra", verify=True
+    )
+finally:
+    ideal_arithmetic.ideal_product = original_ideal_product
+assert product_calls == 1
+assert product_decomposition.verify()["certified"]
 
 # verify=False never admits the unchecked decoder and therefore exercises
 # the original readable NumberFieldIdeal constructor.

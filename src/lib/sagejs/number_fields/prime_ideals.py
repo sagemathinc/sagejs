@@ -1112,7 +1112,13 @@ def _residue_presentation_for_prime(
 
 
 def _prime_from_ideal(
-    ideal: Any, prime: int, ramification: int, residue_degree: int
+    ideal: Any,
+    prime: int,
+    ramification: int,
+    residue_degree: int,
+    *,
+    table: list[list[list[int]]] | None = None,
+    one: list[int] | None = None,
 ) -> NumberFieldPrimeIdeal:
     result = NumberFieldPrimeIdeal(
         ideal.ring(),
@@ -1121,7 +1127,9 @@ def _prime_from_ideal(
         ramification,
         residue_degree,
     )
-    result._residue_presentation = _residue_presentation_for_prime(result)
+    result._residue_presentation = _residue_presentation_for_prime(
+        result, table=table, one=one
+    )
     return result
 
 
@@ -1134,6 +1142,8 @@ def _dedekind_kummer(order: Any, prime: int) -> list[NumberFieldPrimeIdeal] | No
     factors = _om.factor_mod_prime(coefficients, prime)
     scale = runtime.integer_bigint(field._integral_equation_scale_cache)
     beta = field.gen() * scale
+    table = _modular_table(order, prime)
+    one = [value % prime for value in _order_one_coordinates(order)]
     answer: list[NumberFieldPrimeIdeal] = []
     for factor in factors:
         value = field.zero()
@@ -1146,6 +1156,8 @@ def _dedekind_kummer(order: Any, prime: int) -> list[NumberFieldPrimeIdeal] | No
                 prime,
                 int(factor.multiplicity),
                 len(factor.polynomial) - 1,
+                table=table,
+                one=one,
             )
         )
     return answer
@@ -1352,7 +1364,7 @@ def verify_prime_decomposition(
     if not factors:
         failures.append("the decomposition has no prime factors")
     p_ideal = order.ideal(p)
-    product = order.ideal(1)
+    product = None
     degree_sum = 0
     seen: list[Any] = []
     for pair in factors:
@@ -1430,9 +1442,10 @@ def verify_prime_decomposition(
             if ideal + previous != order.ideal(1):
                 failures.append("two prime ideals are not comaximal")
         seen.append(ideal)
-        product = product * (ideal**exponent)
+        power = ideal if exponent == 1 else ideal**exponent
+        product = power if product is None else product * power
         degree_sum += exponent * residue_degree
-    if product != p_ideal:
+    if product is None or product != p_ideal:
         failures.append("the exact product lattice is not p*O")
     if degree_sum != order.degree():
         failures.append("the sum of e*f does not equal the field degree")
