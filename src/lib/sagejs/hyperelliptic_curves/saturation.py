@@ -21,6 +21,10 @@ proved algebraic rank/Selmer upper bound, with provenance.  The implementation
 is ordinary CPython-parseable Python and has no native or host dependency; the
 default reduction provider lazily uses Sage.js's existing finite-field
 Jacobian and explicit abelian-group maps, which also have dynamic fallbacks.
+
+Registered ``assumption_verifiers`` are an explicit caller-provided trust
+root.  This module binds their decisions to the curve, ordered basis, claim
+kind, and value, but it cannot authenticate a verifier chosen by the caller.
 """
 
 from __future__ import annotations
@@ -28,6 +32,8 @@ from __future__ import annotations
 import hashlib
 import json
 from typing import Any, Mapping
+
+import sagejs.runtime as runtime
 
 SCHEMA = "sagejs.hyperelliptic.saturation-result.v2"
 REDUCTION_SCHEMA = "sagejs.hyperelliptic.saturation-reduction-constraint.v1"
@@ -51,32 +57,51 @@ class SaturationResourceLimitError(RuntimeError):
 class FrozenRecord:
     """A tiny immutable mapping used by public certificate results."""
 
+    __slots__ = ("_entries", "_frozen")
+    _entries: tuple[tuple[str, Any], ...]
+
     def __init__(self, values: Mapping[str, Any]) -> None:
-        self._values = {str(key): _freeze(value) for key, value in values.items()}
+        self._entries = tuple(
+            (str(key), _freeze(value)) for key, value in values.items()
+        )
+        self._frozen = True
+        runtime.object.freeze(self)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_frozen", False):
+            raise TypeError("certificate records are immutable")
+        object.__setattr__(self, name, value)
 
     def __getitem__(self, name: str) -> Any:
-        return self._values[name]
+        for key, value in self._entries:
+            if key == name:
+                return value
+        raise KeyError(name)
 
     def __iter__(self) -> Any:
-        yield from self._values
+        for key, _value in self._entries:
+            yield key
 
     def __len__(self) -> int:
-        return len(self._values)
+        return len(self._entries)
 
     def get(self, name: str, default: Any = None) -> Any:
-        return self._values.get(name, default)
+        for key, value in self._entries:
+            if key == name:
+                return value
+        return default
 
     def items(self) -> Any:
-        return self._values.items()
+        return self._entries
 
     def keys(self) -> Any:
-        return self._values.keys()
+        return tuple(key for key, _value in self._entries)
 
     def values(self) -> Any:
-        return self._values.values()
+        return tuple(value for _key, value in self._entries)
 
     def __repr__(self) -> str:
-        return repr(self._values)
+        return repr({key: value for key, value in self._entries})
 
     def __setitem__(self, name: str, value: Any) -> None:
         raise TypeError("certificate records are immutable")
@@ -1393,6 +1418,36 @@ def _primes_up_to(bound: int, maximum_count: int) -> tuple[int, ...]:
 class SaturationResult:
     """An honest subgroup/saturation result with independently labeled claims."""
 
+    __slots__ = (
+        "jacobian",
+        "input_basis",
+        "basis",
+        "independence",
+        "rank_status",
+        "prime_results",
+        "basis_steps",
+        "index_factor_from_input",
+        "index_bound",
+        "global_status",
+        "diagnostics",
+        "_raw_inputs",
+        "_assumption_verifiers",
+        "s_saturated_primes",
+        "free_quotient_saturated_primes",
+        "ell_division_relations_ruled_out_primes",
+        "global_saturation_proved",
+        "global_free_quotient_saturation_proved",
+        "full_mordell_weil_group_proved",
+        "_frozen",
+    )
+    index_factor_from_input: int
+    s_saturated_primes: tuple[int, ...]
+    free_quotient_saturated_primes: tuple[int, ...]
+    ell_division_relations_ruled_out_primes: tuple[int, ...]
+    global_saturation_proved: bool
+    global_free_quotient_saturation_proved: bool
+    full_mordell_weil_group_proved: bool
+
     def __init__(
         self,
         jacobian: Any,
@@ -1415,38 +1470,53 @@ class SaturationResult:
         self.rank_status = _freeze(rank_status)
         self.prime_results = _freeze(tuple(prime_results))
         self.basis_steps = _freeze(tuple(basis_steps))
-        self.index_factor_from_input = _product(
-            step["index_factor"] for step in self.basis_steps
-        )
         self.index_bound = None if index_bound is None else _freeze(index_bound)
         self.global_status = _freeze(global_status)
         self.diagnostics = _freeze(diagnostics)
         self._raw_inputs = _freeze(raw_inputs)
-        self._assumption_verifiers = assumption_verifiers
-        self.s_saturated_primes = tuple(
+        self._assumption_verifiers = (
+            None
+            if assumption_verifiers is None
+            else _freeze(dict(assumption_verifiers))
+        )
+        for name, value in self._computed_promoted_aliases().items():
+            setattr(self, name, value)
+        self._frozen = True
+        runtime.object.freeze(self)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_frozen", False):
+            raise TypeError("saturation results are immutable")
+        object.__setattr__(self, name, value)
+
+    def _computed_promoted_aliases(self) -> dict[str, Any]:
+        free_quotient_primes = tuple(
             row["prime"]
             for row in self.prime_results
             if row["free_quotient_saturated"] is True
         )
-        self.free_quotient_saturated_primes = tuple(
-            row["prime"]
-            for row in self.prime_results
-            if row["free_quotient_saturated"] is True
-        )
-        self.ell_division_relations_ruled_out_primes = tuple(
+        relation_primes = tuple(
             row["prime"]
             for row in self.prime_results
             if row["ell_division_relations_ruled_out"] is True
         )
-        self.global_saturation_proved = (
-            self.global_status.get("global_saturation_proved") is True
-        )
-        self.global_free_quotient_saturation_proved = self.global_saturation_proved
-        self.full_mordell_weil_group_proved = (
-            self.global_saturation_proved
+        global_saturation = self.global_status.get("global_saturation_proved") is True
+        full_group = (
+            global_saturation
             and self.rank_status.get("full_rank_proved") is True
             and self.global_status.get("torsion_subgroup_included") is True
         )
+        return {
+            "index_factor_from_input": _product(
+                step["index_factor"] for step in self.basis_steps
+            ),
+            "s_saturated_primes": free_quotient_primes,
+            "free_quotient_saturated_primes": free_quotient_primes,
+            "ell_division_relations_ruled_out_primes": relation_primes,
+            "global_saturation_proved": global_saturation,
+            "global_free_quotient_saturation_proved": global_saturation,
+            "full_mordell_weil_group_proved": full_group,
+        }
 
     def __repr__(self) -> str:
         return (
@@ -1484,9 +1554,13 @@ class SaturationResult:
             "s_saturated_primes": tuple(
                 str(value) for value in self.s_saturated_primes
             ),
+            "free_quotient_saturated_primes": tuple(
+                str(value) for value in self.free_quotient_saturated_primes
+            ),
             "ell_division_relations_ruled_out_primes": tuple(
                 str(value) for value in self.ell_division_relations_ruled_out_primes
             ),
+            "global_saturation_proved": self.global_saturation_proved,
             "global_free_quotient_saturation_proved": (
                 self.global_free_quotient_saturation_proved
             ),
@@ -1519,6 +1593,9 @@ class SaturationResult:
 
     def verify(self) -> bool:
         """Recheck every finite reduction and exact basis transformation."""
+        for name, value in self._computed_promoted_aliases().items():
+            if getattr(self, name) != value:
+                raise ArithmeticError("a promoted saturation field was forged: " + name)
         for prime_result in self.prime_results:
             for certificate in prime_result["reduction_certificates"]:
                 verify_reduction_constraint(certificate)
