@@ -255,6 +255,7 @@
     "bench:number-field-class-number-lmfdb": "node bench/class-unit-groups/compare-lmfdb-class-numbers.cjs",
     "bench:number-field-prime-ideal-candidate-kernel": "node bench/number-field-prime-ideal-candidate-kernel.cjs",
     "bench:number-field-ideal-product-kernel": "node bench/number-field-ideal-product-kernel.cjs",
+    "bench:number-field-lll-transform": "node bench/number-field-lll-transform.cjs",
     "bench:number-field-element-valuations": "node bench/number-field-element-valuations.cjs",
     "bench:number-field-cubic-norm-obstruction": "node bench/number-field-cubic-norm-obstruction.cjs",
     "bench:number-field-om-maxmin": "node bench/number-field-om-maxmin.cjs",

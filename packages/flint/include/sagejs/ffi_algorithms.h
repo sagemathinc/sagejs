@@ -8,6 +8,7 @@
 #include <flint/fmpq.h>
 #include <flint/fmpq_mat.h>
 #include <flint/fmpq_poly.h>
+#include <flint/fmpz_lll.h>
 #include <flint/fmpz_mat.h>
 #include <flint/fmpz_poly.h>
 #include <flint/fmpz_poly_factor.h>
@@ -1259,6 +1260,25 @@ static inline int sagejs_flint_fmpz_mat_hnf_transform(
         fmpz_mat_ncols(transform) != rows)
         return 0;
     fmpz_mat_hnf_transform(output, transform, source);
+    return 1;
+}
+
+static inline int sagejs_flint_fmpz_mat_lll_transform(
+    fmpz_mat_t output, fmpz_mat_t transform, const fmpz_mat_t source)
+{
+    const slong rows = fmpz_mat_nrows(source);
+    const slong columns = fmpz_mat_ncols(source);
+    fmpz_lll_t context;
+    if (rows <= 0 || columns <= 0 || rows > columns ||
+        fmpz_mat_nrows(output) != rows ||
+        fmpz_mat_ncols(output) != columns ||
+        fmpz_mat_nrows(transform) != rows ||
+        fmpz_mat_ncols(transform) != rows)
+        return 0;
+    fmpz_mat_set(output, source);
+    fmpz_mat_one(transform);
+    fmpz_lll_context_init(context, 0.75, 0.5, Z_BASIS, EXACT);
+    fmpz_lll(output, transform, context);
     return 1;
 }
 

@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 117,
-    "declared-ffi": 412,
+    "declared-ffi": 413,
     "declared-ffi-resource": 29,
     "napi-export": 317,
     "runtime-intrinsic": 137,
@@ -1921,6 +1921,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatHnfTransform",
       "symbol": "sagejs_flint_fmpz_mat_hnf_transform",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_mat_lll_transform",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_mat_lll_transform",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatLllTransform",
+      "symbol": "sagejs_flint_fmpz_mat_lll_transform",
       "disposition": "declared-safe-ffi"
     },
     {

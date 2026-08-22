@@ -4982,6 +4982,68 @@ def fmpz_mat_hnf_transform(
 
 
 @flint.function(
+    dynamic="ffiFmpzMatLllTransform",
+    symbol="sagejs_flint_fmpz_mat_lll_transform",
+    returns=int,
+    abi=[
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="rows",
+                columns="columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "transform",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="transform",
+                rows="rows",
+                columns="rows",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output", "transform"],
+    ),
+    result=Status(
+        1, exception=ValueError, message="FLINT integer LLL transformation failed"
+    ),
+    wasm=True,
+)
+def fmpz_mat_lll_transform(
+    output: Writable[IntegerBuffer],
+    transform: Writable[IntegerBuffer],
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatSnfTransform",
     symbol="sagejs_flint_fmpz_mat_snf_transform",
     returns=int,

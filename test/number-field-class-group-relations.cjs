@@ -30,6 +30,7 @@ from sagejs.number_fields.class_group_relations import (
     _integer_determinant,
     _matrix_times_rows,
     _nearest_integer,
+    _readable_exact_lll_reduce_with_transform,
     AutomorphismOrbitPlan,
     ExactRelationCollector,
     FactorBaseIdealReconstructor,
@@ -314,6 +315,8 @@ def full_recompute_lll(rows):
 
 # Exact differential against the previous full-recompute path covers size
 # reductions before and after swaps, negative multiples, and large integers.
+# FLINT is free to choose another exact reduced basis in the same lattice, so
+# its contract is the exact unimodular row identity plus the LLL inequalities.
 lll_cases = (
     [[1, 1], [1, -1]],
     [[105, 821, 404], [281, 88, 197], [37, 401, 999]],
@@ -328,19 +331,36 @@ lll_cases = (
 )
 for lll_rows in lll_cases:
     expected_basis, expected_transform = full_recompute_lll(lll_rows)
+    readable_basis, readable_transform = _readable_exact_lll_reduce_with_transform(
+        lll_rows
+    )
+    assert readable_basis == expected_basis
+    assert readable_transform == expected_transform
     actual_basis, actual_transform = _exact_lll_reduce_with_transform(lll_rows)
-    assert actual_basis == expected_basis
-    assert actual_transform == expected_transform
     assert _matrix_times_rows(actual_transform, lll_rows) == actual_basis
     assert abs(_integer_determinant(actual_transform)) == 1
+    actual_mu, actual_norms = _gram_schmidt(actual_basis)
+    for row_index in range(1, len(actual_basis)):
+        for previous in range(row_index):
+            assert abs(actual_mu[row_index][previous]) <= QQ(1) / QQ(2)
+        assert actual_norms[row_index] >= (
+            QQ(3) / QQ(4) - actual_mu[row_index][row_index - 1] ** 2
+        ) * actual_norms[row_index - 1]
 
 assert exact_lll_reduce([[1, 1], [1, -1]]) == [[1, 1], [1, -1]]
-unit_plan = minkowski_lll_lattice(O.ideal(1), precision=128)
+import sagejs.number_fields.class_group_relations as relation_module
+saved_lll_kernel_override = relation_module._lll_kernel_override
+relation_module._lll_kernel_override = False
+try:
+    unit_plan = minkowski_lll_lattice(O.ideal(1), precision=128)
+    lower_precision_unit_plan = minkowski_lll_lattice(O.ideal(1), precision=80)
+finally:
+    relation_module._lll_kernel_override = saved_lll_kernel_override
 assert unit_plan.verify(O.ideal(1))
 assert unit_plan.signature == (2, 0)
 assert [list(row) for row in unit_plan.transform] == case["minkowski_transform"]
 assert [list(row) for row in unit_plan.exact_rows] == case["minkowski_exact_rows"]
-assert minkowski_lll_lattice(O.ideal(1), precision=80).transform == unit_plan.transform
+assert lower_precision_unit_plan.transform == unit_plan.transform
 
 # The live plan is a candidate selector, not proof evidence.  Its exact rows
 # come directly from the ideal basis and admitted relations replay exact ideal
@@ -501,15 +521,19 @@ search_one = LLLRelationSearch(
 search_two = LLLRelationSearch(
     collector, seed=case["search_seed"], max_candidates_per_ideal=10
 )
-short_one = [str(value) for value in search_one.short_elements(O.ideal(1))]
-short_two = [str(value) for value in search_two.short_elements(O.ideal(1))]
+saved_lll_kernel_override = relation_module._lll_kernel_override
+relation_module._lll_kernel_override = False
+try:
+    short_one = [str(value) for value in search_one.short_elements(O.ideal(1))]
+    short_two = [str(value) for value in search_two.short_elements(O.ideal(1))]
+finally:
+    relation_module._lll_kernel_override = saved_lll_kernel_override
 assert short_one == short_two
 assert short_one[:len(case["short_element_prefix"])] == case["short_element_prefix"]
 
 # Consumers that stop after one relation must not pay to construct every
 # exact field element in the bounded coefficient stream.  Full consumption
 # remains byte-for-byte equivalent to the tuple-returning public helper.
-import sagejs.number_fields.class_group_relations as relation_module
 conversion_count = 0
 original_conversion = relation_module._field_element_from_coefficients
 def counted_conversion(*args, **kwargs):
@@ -517,6 +541,8 @@ def counted_conversion(*args, **kwargs):
     conversion_count += 1
     return original_conversion(*args, **kwargs)
 relation_module._field_element_from_coefficients = counted_conversion
+saved_lll_kernel_override = relation_module._lll_kernel_override
+relation_module._lll_kernel_override = False
 try:
     lazy_search = LLLRelationSearch(
         collector, seed=case["search_seed"], max_candidates_per_ideal=10
@@ -528,6 +554,7 @@ try:
     conversions_after_full = conversion_count
 finally:
     relation_module._field_element_from_coefficients = original_conversion
+    relation_module._lll_kernel_override = saved_lll_kernel_override
 assert conversions_after_first < conversions_after_full
 assert [str(value) for value in lazy_values] == short_one
 

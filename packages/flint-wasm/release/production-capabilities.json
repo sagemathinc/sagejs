@@ -131,6 +131,7 @@
         "ffi:flint:fmpz_mat_hnf",
         "ffi:flint:fmpz_mat_hnf_modular_eldiv",
         "ffi:flint:fmpz_mat_hnf_transform",
+        "ffi:flint:fmpz_mat_lll_transform",
         "ffi:flint:fmpz_mat_mul",
         "ffi:flint:fmpz_mat_rank",
         "ffi:flint:fmpz_mat_right_kernel",

@@ -65,7 +65,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 875000,
+      "max_source_bytes": 880000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.native", "sagejs.ffi"],
       "files": [
@@ -256,7 +256,7 @@
       "id": "number-field-global-arithmetic",
       "layer": 7,
       "startup": "lazy",
-      "max_source_bytes": 1005000,
+      "max_source_bytes": 1010000,
       "depends_on": [
         "core-runtime",
         "arithmetic",

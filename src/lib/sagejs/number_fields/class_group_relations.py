@@ -68,6 +68,10 @@ MAX_IDEAL_REDUCTION_JSON_NODES = 100_000
 MAX_IDEAL_REDUCTION_JSON_CHARACTERS = 1_000_000
 MAX_IDEAL_REDUCTION_REPLAY_CANDIDATES = 4096
 MAX_IDEAL_REDUCTION_REPLAY_CURSOR_STEPS = 65_536
+MAX_FLINT_LLL_DIMENSION = 64
+MAX_FLINT_LLL_VALUES = 4096
+MAX_FLINT_LLL_ENTRY_BITS = 16_384
+_lll_kernel_override: Any = None
 
 
 class RelationNotSmoothError(ArithmeticError):
@@ -1210,7 +1214,7 @@ def _gram_schmidt(rows: list[list[int]]) -> tuple[list[list[Any]], list[Any]]:
     return mu, norms
 
 
-def _exact_lll_reduce_with_transform(
+def _readable_exact_lll_reduce_with_transform(
     rows: Iterable[Iterable[int]],
 ) -> tuple[list[list[int]], list[list[int]]]:
     """Return an exact 3/4-LLL basis and its unimodular row transform."""
@@ -1263,8 +1267,99 @@ def _exact_lll_reduce_with_transform(
     return basis, transform
 
 
+def _flint_lll_reduce_with_transform(
+    basis: list[list[int]],
+) -> tuple[list[list[int]], list[list[int]]] | None:
+    """Return an exactly authenticated FLINT LLL transform when available."""
+    row_count = len(basis)
+    column_count = len(basis[0]) if basis else 0
+    if (
+        row_count == 0
+        or row_count > MAX_FLINT_LLL_DIMENSION
+        or column_count < row_count
+        or row_count * column_count > MAX_FLINT_LLL_VALUES
+        or any(len(row) != column_count for row in basis)
+    ):
+        return None
+    maximum_bits = max(abs(value).bit_length() for row in basis for value in row)
+    if maximum_bits > MAX_FLINT_LLL_ENTRY_BITS:
+        return None
+    try:
+        kernel_module = __import__(
+            "sagejs.kernels.matrix.dense_integer_flint",
+            fromlist=["dense_integer_flint"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        kernel = (
+            kernel_module.flint_dense_integer_matrix_lll_transform
+            if _lll_kernel_override is None
+            else _lll_kernel_override
+        )
+        if kernel is False or not native_module.is_compiled(kernel):
+            return None
+        flattened = [value for row in basis for value in row]
+        source = native_module.kernel_integer_buffer(kernel, flattened)
+        word_capacity = max(8, (maximum_bits + 2 * row_count + 255) // 64)
+        output = native_module.kernel_integer_zeros(
+            kernel, row_count * column_count, word_capacity
+        )
+        transform_output = native_module.kernel_integer_zeros(
+            kernel, row_count * row_count, word_capacity
+        )
+        if not kernel(
+            output,
+            transform_output,
+            source,
+            row_count,
+            column_count,
+        ):
+            return None
+        output_values = [
+            int(value) for value in native_module.integer_buffer_values(output)
+        ]
+        transform_values = [
+            int(value)
+            for value in native_module.integer_buffer_values(transform_output)
+        ]
+        reduced = [
+            output_values[index * column_count : (index + 1) * column_count]
+            for index in range(row_count)
+        ]
+        transform = [
+            transform_values[index * row_count : (index + 1) * row_count]
+            for index in range(row_count)
+        ]
+        if (
+            abs(_integer_determinant(transform)) != 1
+            or _matrix_times_rows(transform, basis) != reduced
+        ):
+            return None
+        return reduced, transform
+    except (
+        ImportError,
+        AttributeError,
+        OverflowError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        ArithmeticError,
+    ):
+        return None
+
+
+def _exact_lll_reduce_with_transform(
+    rows: Iterable[Iterable[int]],
+) -> tuple[list[list[int]], list[list[int]]]:
+    """Return an exact 3/4-LLL basis and its unimodular row transform."""
+    basis = [[int(value) for value in row] for row in rows]
+    accelerated = _flint_lll_reduce_with_transform(basis)
+    if accelerated is not None:
+        return accelerated
+    return _readable_exact_lll_reduce_with_transform(basis)
+
+
 def exact_lll_reduce(rows: Iterable[Iterable[int]]) -> list[list[int]]:
-    """Return a deterministic exact 3/4-LLL basis for an integer row lattice."""
+    """Return an exact 3/4-LLL basis for an integer row lattice."""
     return _exact_lll_reduce_with_transform(rows)[0]
 
 

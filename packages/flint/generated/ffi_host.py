@@ -249,6 +249,7 @@ from sagejs.ffi.flint import (
     fmpz_mat_hnf as _ffi_fmpz_mat_hnf,
     fmpz_mat_hnf_modular_eldiv as _ffi_fmpz_mat_hnf_modular_eldiv,
     fmpz_mat_hnf_transform as _ffi_fmpz_mat_hnf_transform,
+    fmpz_mat_lll_transform as _ffi_fmpz_mat_lll_transform,
     fmpz_mat_snf_transform as _ffi_fmpz_mat_snf_transform,
     fmpz_mat_right_kernel as _ffi_fmpz_mat_right_kernel,
     fmpq_mat_rank as _ffi_fmpq_mat_rank,
@@ -2734,6 +2735,23 @@ def ffiFmpzMatHnfTransform(
     columns: uint64,
 ) -> bool:
     return _ffi_fmpz_mat_hnf_transform(
+        output,
+        transform,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
+def ffiFmpzMatLllTransform(
+    output: IntegerBuffer,
+    transform: IntegerBuffer,
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return _ffi_fmpz_mat_lll_transform(
         output,
         transform,
         source,

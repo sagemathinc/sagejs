@@ -1,11 +1,11 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "294d1bc75bd898b15475c49a2ad91c9fc233c9bf2347c5904d286d4d34e52609",
+  "source_sha256": "62b21e86d59a3908f4a9eaae0143d9eca765db87b303bdcc9605d39cfe18d980",
   "counts": {
-    "total": 960,
+    "total": 961,
     "by_kind": {
-      "declared-ffi-function": 412,
+      "declared-ffi-function": 413,
       "declared-ffi-resource": 29,
       "napi-export": 317,
       "production-kernel": 40,
@@ -15,12 +15,12 @@
     "by_disposition": {
       "compiled-source": 40,
       "desktop-only": 14,
-      "generated-wasm": 302,
+      "generated-wasm": 303,
       "portable-fallback": 560,
       "shared-core": 44
     },
     "by_status": {
-      "available": 518,
+      "available": 519,
       "desktop-only": 14,
       "fallback": 428
     }
@@ -2316,6 +2316,18 @@
     },
     {
       "id": "ffi:flint:fmpz_mat_hnf_transform",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi:flint:fmpz_mat_lll_transform",
       "family": "flint",
       "disposition": "generated-wasm",
       "status": "available",
@@ -5697,7 +5709,7 @@
       "public_consumers": [
         "dense-integer-flint"
       ],
-      "explanation": "All 15 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 16 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-integer-production",
