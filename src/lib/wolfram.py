@@ -1,7 +1,7 @@
 """Small runtime used by the experimental Wolfram Language frontend."""
 
 import math
-from typing import Any, Callable
+from typing import Any, Callable, SupportsFloat, cast
 
 import sagejs as sage
 import sagejs.runtime as runtime
@@ -117,6 +117,435 @@ Length = length
 Prime = prime
 Range = wolfram_range
 Table = table
+
+
+_optimization_module_cache = runtime.undefined
+
+_INFEASIBLE = ":infeasible"
+"""The `flag` suffix `nminimize` appends when its answer stays infeasible."""
+
+# Wolfram relational heads, mapped to the sign that turns `lhs REL rhs` into
+# a `g(x) >= 0` inequality: `1` keeps `lhs - rhs`, `-1` flips to `rhs - lhs`,
+# and `0` marks the equation `lhs - rhs == 0`.
+_RELATION_ORIENTATION = {
+    "Equal": 0,
+    "Greater": 1,
+    "GreaterEqual": 1,
+    "Less": -1,
+    "LessEqual": -1,
+}
+
+
+def _optimization_module() -> Any:
+    """Load the lazy numerical optimization package on first use."""
+    global _optimization_module_cache
+    if _optimization_module_cache is runtime.undefined:
+        _optimization_module_cache = __import__(
+            "sagejs.optimization.nminimize",
+            fromlist=["nminimize"],
+        )
+    return _optimization_module_cache
+
+
+def _is_symbolic(value: Any) -> bool:
+    """Return whether `value` looks like a Sage.js symbolic expression."""
+    return hasattr(value, "_tree") and hasattr(value, "variables")
+
+
+def _is_number(value: Any) -> bool:
+    """Return whether `value` is a plain number, not a symbol or a list."""
+    if _is_symbolic(value) or isinstance(value, (list, tuple, str)):
+        return False
+    try:
+        float(value)
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
+def _variable_entries(variables: Any) -> list[Any]:
+    """Split a Wolfram variable argument into one entry per variable.
+
+    `NMinimize[f, x]` names a single bare variable, `NMinimize[f, {x, y}]` a
+    list of them, and `NMinimize[f, {{x, a, b}, ...}]` a list of variables
+    each carrying its own initial region. Wolfram's one genuine ambiguity is
+    `{x, a, b}` at the top level, which is a single variable with a region
+    rather than three bare variables; it is resolved here the way Wolfram
+    resolves it, by checking that the last two elements are numbers.
+    """
+    if not isinstance(variables, (list, tuple)):
+        return [variables]
+    entries = list(variables)
+    if len(entries) == 3 and _is_number(entries[1]) and _is_number(entries[2]):
+        return [entries]
+    return entries
+
+
+def _entry_variable(entry: Any) -> Any:
+    """Return the variable itself out of one `_variable_entries` entry."""
+    if isinstance(entry, (list, tuple)) and len(entry):
+        return list(entry)[0]
+    return entry
+
+
+def _symbolic_function(expression: Any, variables: list[Any]) -> Any:
+    """Compile a symbolic expression into a callable of one coordinate list.
+
+    `fast_callable` is reached through the global object, the way
+    `_plot_target` reaches the Sage plotting entry points, because the
+    `sagejs` import in this module carries compiler intrinsics rather than
+    the whole Sage namespace.
+    """
+    compiler = runtime.reflect.get(runtime.global_object, "fast_callable")
+    evaluator = compiler(expression, vars=variables)
+
+    def evaluate(point: Any) -> float:
+        return float(evaluator(*[float(value) for value in point]))
+
+    return evaluate
+
+
+def _objective_function(objective: Any, variables: list[Any]) -> Any:
+    """Adapt a Wolfram objective to the numeric contract `nminimize` expects.
+
+    A symbolic expression is compiled against `variables`, in coordinate
+    order, and a plain number becomes a constant objective. Anything else
+    must be a callable taking one sequence of coordinates; a Wolfram-source
+    function defined as `f[x_, y_] := ...` takes its arguments separately
+    and so has to be applied in the source (`NMinimize[f[x, y], {x, y}]`)
+    rather than passed by name.
+    """
+    if _is_symbolic(objective):
+        return _symbolic_function(objective, variables)
+    if not callable(objective):
+        constant = float(objective)
+
+        def constant_value(_point: Any) -> float:
+            return constant
+
+        return constant_value
+
+    def evaluate(point: Any) -> float:
+        return float(cast(SupportsFloat, objective(point)))
+
+    return evaluate
+
+
+def _relation_parts(value: Any) -> Any:
+    """Split a symbolic relation into `(head, lhs, rhs)`, or `None` if it is not one."""
+    if not _is_symbolic(value):
+        return None
+    tree = value._tree
+    if not runtime.array.isArray(tree) or len(tree) != 3:
+        return None
+    name = tree[0]
+    if name not in _RELATION_ORIENTATION:
+        return None
+    builder = type(value)
+    return [name, builder(tree[1]), builder(tree[2])]
+
+
+def _constraint(value: Any, variables: list[Any], module: Any) -> Any:
+    """Turn one Wolfram constraint into an engine-level `Constraint`.
+
+    An equation `lhs == rhs` becomes the equality `lhs - rhs == 0`, and each
+    of the four inequalities becomes `g(x) >= 0` with the sides ordered so
+    that `g` is non-negative exactly on the feasible side. Strong
+    inequalities become weak ones, which the Wolfram documentation also does
+    ("Any strong inequalities will be converted to weak inequalities due to
+    limits of working with approximate numbers"). A plain callable is read
+    as `g(x) >= 0` directly.
+    """
+    parts = _relation_parts(value)
+    if parts is None:
+        if callable(value):
+            return module.inequality(value)
+        raise ValueError(
+            "NMinimize constraints must be equations, inequalities, or "
+            "callables; combine several of them in a List, not with &&"
+        )
+    orientation = _RELATION_ORIENTATION[parts[0]]
+    difference = parts[1] - parts[2] if orientation >= 0 else parts[2] - parts[1]
+    function = _symbolic_function(difference, variables)
+    if orientation == 0:
+        return module.equality(function)
+    return module.inequality(function)
+
+
+def _optimize(
+    problem: Any,
+    variables: Any,
+    maximize: bool,
+    method: str,
+    method_options: dict[str, Any] | None,
+    max_iterations: int | None,
+    tolerance: float,
+    seed: int,
+    penalty_scale: float,
+) -> Any:
+    """Run the engine and return `[result, variable_names]`."""
+    module = _optimization_module()
+    entries = _variable_entries(variables)
+    symbols = [_entry_variable(entry) for entry in entries]
+
+    objective_value = problem
+    constraint_values: list[Any] = []
+    if isinstance(problem, (list, tuple)):
+        parts = list(problem)
+        if len(parts) != 2:
+            raise ValueError(
+                "NMinimize takes either an objective or the pair {f, cons}"
+            )
+        objective_value = parts[0]
+        if isinstance(parts[1], (list, tuple)):
+            constraint_values = list(parts[1])
+        else:
+            constraint_values = [parts[1]]
+
+    constraints = [_constraint(value, symbols, module) for value in constraint_values]
+    result = module.nminimize(
+        _objective_function(objective_value, symbols),
+        entries,
+        constraints=constraints if len(constraints) else None,
+        method=method,
+        method_options=method_options,
+        max_iterations=max_iterations,
+        tolerance=tolerance,
+        seed=seed,
+        penalty_scale=penalty_scale,
+        maximize=maximize,
+    )
+    return [result, [str(symbol) for symbol in symbols]]
+
+
+def _infeasible(result: Any) -> bool:
+    """Return whether the engine reported the answer as still infeasible."""
+    return _INFEASIBLE in result.flag
+
+
+def _rules(names: list[str], values: Any) -> list[Any]:
+    """Build Wolfram's `{x -> xmin, ...}` as a list of `{name, value}` pairs.
+
+    This module has no value-level `Rule` object — the Wolfram frontend does
+    not lower `->` outside plot options — so a rule is carried the way every
+    other Wolfram list of pairs already is here, as a two-element list. This
+    is the same shape `FactorInteger` returns for `{{p, e}, ...}`.
+    """
+    return [[name, value] for name, value in zip(names, values, strict=True)]
+
+
+def _extremum(result: Any, names: list[str], maximize: bool) -> list[Any]:
+    """Shape `{fmin, {x -> xmin, ...}}`, or the infeasible answer."""
+    if _infeasible(result):
+        indeterminate = float("nan")
+        limit = float("-inf") if maximize else float("inf")
+        return [limit, [[name, indeterminate] for name in names]]
+    return [result.fun, _rules(names, result.x)]
+
+
+def n_minimize(
+    problem: Any,
+    variables: Any,
+    method: str = "Automatic",
+    method_options: dict[str, Any] | None = None,
+    max_iterations: int | None = None,
+    tolerance: float = 0.001,
+    seed: int = 0,
+    penalty_scale: float = 1.0,
+) -> list[Any]:
+    """Search numerically for a global minimum, Wolfram `NMinimize`.
+
+    `problem` is the objective, or the pair `{f, cons}` whose second element
+    is the constraint or a List of constraints. `variables` is a bare
+    variable, a List of them, or a List of `{x, a, b}` specifications giving
+    each variable's initial region; a variable without one gets Wolfram's
+    documented default region `-1 <= x <= 1`.
+
+    Returns `{fmin, {x -> xmin, y -> ymin, ...}}`, with each rule carried as
+    a two-element list (see `_rules`). When the constraints cannot be
+    satisfied within `tolerance` the answer is
+    `{Infinity, {x -> Indeterminate, ...}}`, as documented, rendered with
+    the IEEE values `inf` and `nan` because this module has no symbolic
+    `Infinity` or `Indeterminate` object.
+
+    `method` selects among `"Automatic"`, `"NelderMead"`,
+    `"DifferentialEvolution"`, `"SimulatedAnnealing"` and `"RandomSearch"`;
+    `method_options` carries that method's Wolfram sub-options by their
+    documented string names. **The Wolfram frontend does not lower `Rule`
+    expressions into keyword arguments**, so `Method -> "NelderMead"` cannot
+    be written in Wolfram source today; select a method through these Python
+    keyword arguments instead.
+    """
+    answer = _optimize(
+        problem,
+        variables,
+        False,
+        method,
+        method_options,
+        max_iterations,
+        tolerance,
+        seed,
+        penalty_scale,
+    )
+    return _extremum(answer[0], answer[1], False)
+
+
+def n_maximize(
+    problem: Any,
+    variables: Any,
+    method: str = "Automatic",
+    method_options: dict[str, Any] | None = None,
+    max_iterations: int | None = None,
+    tolerance: float = 0.001,
+    seed: int = 0,
+    penalty_scale: float = 1.0,
+) -> list[Any]:
+    """Search numerically for a global maximum, Wolfram `NMaximize`.
+
+    This is `n_minimize` of the negated objective with the value negated
+    back, and returns `{fmax, {x -> xmax, ...}}` in the same shape.
+
+    One documented deviation: the `NMaximize` reference page states the
+    infeasible answer as `{Infinity, {x -> Indeterminate, ...}}`, word for
+    word the same as `NMinimize`'s. `-Infinity` is the only value that makes
+    sense for a maximization that found nothing, so that is what is returned
+    here.
+    """
+    answer = _optimize(
+        problem,
+        variables,
+        True,
+        method,
+        method_options,
+        max_iterations,
+        tolerance,
+        seed,
+        penalty_scale,
+    )
+    return _extremum(answer[0], answer[1], True)
+
+
+def n_arg_min(
+    problem: Any,
+    variables: Any,
+    method: str = "Automatic",
+    method_options: dict[str, Any] | None = None,
+    max_iterations: int | None = None,
+    tolerance: float = 0.001,
+    seed: int = 0,
+    penalty_scale: float = 1.0,
+) -> list[Any]:
+    """Return just the minimizing variable values, Wolfram `NArgMin`.
+
+    Same arguments as `n_minimize`; the answer is `{xmin, ymin, ...}`, or a
+    list of `Indeterminate` when the constraints cannot be satisfied.
+    """
+    answer = _optimize(
+        problem,
+        variables,
+        False,
+        method,
+        method_options,
+        max_iterations,
+        tolerance,
+        seed,
+        penalty_scale,
+    )
+    return _arguments(answer[0], answer[1])
+
+
+def n_arg_max(
+    problem: Any,
+    variables: Any,
+    method: str = "Automatic",
+    method_options: dict[str, Any] | None = None,
+    max_iterations: int | None = None,
+    tolerance: float = 0.001,
+    seed: int = 0,
+    penalty_scale: float = 1.0,
+) -> list[Any]:
+    """Return just the maximizing variable values, Wolfram `NArgMax`."""
+    answer = _optimize(
+        problem,
+        variables,
+        True,
+        method,
+        method_options,
+        max_iterations,
+        tolerance,
+        seed,
+        penalty_scale,
+    )
+    return _arguments(answer[0], answer[1])
+
+
+def _arguments(result: Any, names: list[str]) -> list[Any]:
+    """Shape `NArgMin`/`NArgMax`: the extremizing values on their own."""
+    if _infeasible(result):
+        return [float("nan") for _name in names]
+    return [value for value in result.x]
+
+
+def n_min_value(
+    problem: Any,
+    variables: Any,
+    method: str = "Automatic",
+    method_options: dict[str, Any] | None = None,
+    max_iterations: int | None = None,
+    tolerance: float = 0.001,
+    seed: int = 0,
+    penalty_scale: float = 1.0,
+) -> float:
+    """Return just the minimum value `fmin`, Wolfram `NMinValue`."""
+    answer = _optimize(
+        problem,
+        variables,
+        False,
+        method,
+        method_options,
+        max_iterations,
+        tolerance,
+        seed,
+        penalty_scale,
+    )
+    if _infeasible(answer[0]):
+        return float("inf")
+    return float(answer[0].fun)
+
+
+def n_max_value(
+    problem: Any,
+    variables: Any,
+    method: str = "Automatic",
+    method_options: dict[str, Any] | None = None,
+    max_iterations: int | None = None,
+    tolerance: float = 0.001,
+    seed: int = 0,
+    penalty_scale: float = 1.0,
+) -> float:
+    """Return just the maximum value `fmax`, Wolfram `NMaxValue`."""
+    answer = _optimize(
+        problem,
+        variables,
+        True,
+        method,
+        method_options,
+        max_iterations,
+        tolerance,
+        seed,
+        penalty_scale,
+    )
+    if _infeasible(answer[0]):
+        return float("-inf")
+    return float(answer[0].fun)
+
+
+NMinimize = n_minimize
+NMaximize = n_maximize
+NArgMin = n_arg_min
+NArgMax = n_arg_max
+NMinValue = n_min_value
+NMaxValue = n_max_value
 
 
 class _GraphicsDirective:
