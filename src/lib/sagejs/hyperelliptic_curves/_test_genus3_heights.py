@@ -26,6 +26,11 @@ from sagejs.hyperelliptic_curves.genus3_heights import (
 )
 from sagejs.hyperelliptic_curves.model import HyperellipticCurve
 
+heights_module = __import__(
+    "sagejs.hyperelliptic_curves.genus3_heights",
+    fromlist=["SplitMumfordFinitePlan"],
+)
+
 
 def close(left: Any, right: Any, tolerance: str = "1e-13") -> bool:
     return abs(left - right) < mp.mpf(tolerance)
@@ -215,6 +220,106 @@ def test_split_mumford_move():
         assert "nonspecial" in error.diagnostics["needs"][0]
     else:
         raise AssertionError("a special theta representative was accepted")
+
+    # Internal fixture tokens let this focused test isolate composability from
+    # the local-reduction algorithms.  Production callers cannot create a
+    # complete plan through the public constructors without replaying the
+    # curve and divisor support.
+    def empty_complete_plan(active_move: Any):
+        curve_key = heights_module._curve_key(active_move.curve)
+        divisor_key = heights_module._divisor_pair_key(
+            active_move.left_affine_terms,
+            active_move.right_affine_terms,
+            -active_move.degree,
+            0,
+        )
+        support = heights_module.SplitMumfordCandidateSupport(
+            (),
+            sources=(),
+            factor_work_bits=0,
+            max_factor_bits=512,
+            _verification=heights_module._CandidateSupportVerification(
+                curve_key, divisor_key
+            ),
+        )
+        return heights_module.SplitMumfordFinitePlan(
+            support,
+            (),
+            (),
+            _verification=heights_module._FinitePlanVerification(
+                curve_key,
+                divisor_key,
+                heights_module._move_key(active_move),
+            ),
+        )
+
+    conjugate_move = move_split_mumford_divisor(
+        jacobian([u_value, ring(-1)]), moving_x=4
+    )
+    plan = empty_complete_plan(move)
+    conjugate_plan = empty_complete_plan(conjugate_move)
+    assert plan.complete and plan.belongs_to(move)
+    assert not plan.belongs_to(conjugate_move)
+    bound_archimedean = heights_module.ArchimedeanPairing(
+        4,
+        precision=100,
+        refinement_stable=True,
+        rigorous=False,
+        algorithm="internal move-binding fixture",
+        certificate={"fixture": "move binding"},
+        _verification=heights_module._AutomaticArchimedeanVerification(
+            100,
+            "internal fixture",
+            curve_key=heights_module._curve_key(move.curve),
+            move_key=heights_module._move_key(move),
+        ),
+    )
+    bound_result = split_mumford_canonical_height(
+        move,
+        (),
+        bound_archimedean,
+        complete_prime_set=True,
+        prec=100,
+        finite_plan=plan,
+    )
+    assert bound_result.archimedean_move_verified
+    assert bound_result.archimedean_refinement_stable
+    try:
+        split_mumford_canonical_height(
+            conjugate_move,
+            (),
+            bound_archimedean,
+            complete_prime_set=True,
+            prec=100,
+            finite_plan=plan,
+        )
+    except Genus3HeightCapabilityError as error:
+        assert "finite plan" in str(error)
+    else:
+        raise AssertionError("a finite plan certified a different Mumford move")
+    try:
+        split_mumford_canonical_height(
+            conjugate_move,
+            (),
+            bound_archimedean,
+            complete_prime_set=True,
+            prec=100,
+            finite_plan=conjugate_plan,
+        )
+    except Genus3HeightCapabilityError as error:
+        assert "archimedean pairing" in str(error)
+    else:
+        raise AssertionError("an automatic real symbol certified a different move")
+    conditional_result = split_mumford_canonical_height(
+        conjugate_move,
+        (),
+        archimedean,
+        complete_prime_set=True,
+        prec=100,
+        finite_plan=conjugate_plan,
+    )
+    assert not conditional_result.archimedean_move_verified
+    assert not conditional_result.archimedean_refinement_stable
 
 
 def test_theta_and_archimedean_bilinearity():

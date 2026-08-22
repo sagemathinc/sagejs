@@ -80,12 +80,30 @@ class _CandidateSupportVerification:
         self.divisor_key = divisor_key
 
 
+class _FinitePlanVerification:
+    """Internal witness binding one complete finite plan to an exact move."""
+
+    def __init__(self, curve_key: Any, divisor_key: Any, move_key: Any) -> None:
+        self.curve_key = curve_key
+        self.divisor_key = divisor_key
+        self.move_key = move_key
+
+
 class _AutomaticArchimedeanVerification:
     """Internal numerical-refinement witness; never a rigorous enclosure."""
 
-    def __init__(self, precision: int, convention: str) -> None:
+    def __init__(
+        self,
+        precision: int,
+        convention: str,
+        *,
+        curve_key: Any = None,
+        move_key: Any = None,
+    ) -> None:
         self.precision = precision
         self.convention = convention
+        self.curve_key = curve_key
+        self.move_key = move_key
 
 
 def _positive_integer(value: Any, name: str) -> int:
@@ -186,6 +204,39 @@ def _divisor_pair_key(
         terms_key(right_terms),
         _qq_string(left_infinity),
         _qq_string(right_infinity),
+    )
+
+
+def _point_key(point: Any) -> tuple[str, str]:
+    x_value, y_value = point.xy()
+    return (_qq_string(x_value), _qq_string(y_value))
+
+
+def _move_key(move: Any) -> tuple[Any, ...]:
+    """Return an exact representation key for one Holmes moving datum."""
+    u_value, v_value = move.divisor.uv()
+    return (
+        _curve_key(move.curve),
+        (
+            tuple(_qq_string(value) for value in u_value.list()),
+            tuple(_qq_string(value) for value in v_value.list()),
+        ),
+        _divisor_pair_key(
+            move.left_affine_terms,
+            move.right_affine_terms,
+            -move.degree,
+            0,
+        ),
+        tuple(_point_key(point) for point in move.moving_fibre),
+        (None if move.auxiliary_point is None else _point_key(move.auxiliary_point)),
+        tuple(
+            (
+                tuple(_point_key(point) for point in left),
+                tuple(_point_key(point) for point in right),
+            )
+            for left, right in move.theta_pairs
+        ),
+        int(move.negative_class_multiple),
     )
 
 
@@ -1452,13 +1503,25 @@ class SplitMumfordFinitePlan:
         support: SplitMumfordCandidateSupport,
         pairings: Any,
         unsupported: Any,
+        *,
+        _verification: Any = None,
     ) -> None:
         self.support = support
         self.pairings = tuple(sorted(pairings, key=lambda item: item.prime))
         self.unsupported = tuple(dict(item) for item in unsupported)
+        self._verification = (
+            _verification
+            if isinstance(_verification, _FinitePlanVerification)
+            else None
+        )
         support_verification = support._verification
-        bindings_match = support_verification is not None
-        if support_verification is not None:
+        bindings_match = bool(
+            support_verification is not None
+            and self._verification is not None
+            and self._verification.curve_key == support_verification.curve_key
+            and self._verification.divisor_key == support_verification.divisor_key
+        )
+        if bindings_match and support_verification is not None:
             for item in self.pairings:
                 item_verification = item._verification
                 if (
@@ -1475,6 +1538,15 @@ class SplitMumfordFinitePlan:
             and bindings_match
         )
 
+    def belongs_to(self, move: SplitMumfordMove) -> bool:
+        """Return whether this plan was computed for exactly `move`."""
+        return bool(
+            self.complete
+            and self._verification is not None
+            and self._verification.curve_key == _curve_key(move.curve)
+            and self._verification.move_key == _move_key(move)
+        )
+
     def require_complete(self) -> SplitMumfordFinitePlan:
         if not self.complete:
             raise Genus3HeightCapabilityError(
@@ -1489,6 +1561,15 @@ class SplitMumfordFinitePlan:
             "candidate_support": self.support.to_dict(),
             "pairings": tuple(pairing.to_dict() for pairing in self.pairings),
             "unsupported": self.unsupported,
+            "binding": (
+                None
+                if self._verification is None
+                else {
+                    "curve_key": self._verification.curve_key,
+                    "divisor_pair_key": self._verification.divisor_key,
+                    "move_key": self._verification.move_key,
+                }
+            ),
             "complete": self.complete,
         }
 
@@ -1568,7 +1649,21 @@ def split_mumford_finite_plan(
                     "diagnostics": dict(error.diagnostics),
                 }
             )
-    return SplitMumfordFinitePlan(support, pairings, unsupported)
+    support_verification = support._verification
+    return SplitMumfordFinitePlan(
+        support,
+        pairings,
+        unsupported,
+        _verification=(
+            None
+            if support_verification is None
+            else _FinitePlanVerification(
+                support_verification.curve_key,
+                support_verification.divisor_key,
+                _move_key(move),
+            )
+        ),
+    )
 
 
 def _periods_module() -> Any:
@@ -1703,7 +1798,10 @@ def split_mumford_archimedean_pairing(
             "rigorous": False,
         },
         _verification=_AutomaticArchimedeanVerification(
-            prec, "period/Abel refinement plus normalized-coordinate theta refinement"
+            prec,
+            "period/Abel refinement plus normalized-coordinate theta refinement",
+            curve_key=_curve_key(move.curve),
+            move_key=_move_key(move),
         ),
     )
 
@@ -2036,15 +2134,28 @@ class ArchimedeanPairing:
             raise ValueError("an archimedean pairing must be finite")
         self.precision = _positive_integer(precision, "precision")
         self.refinement_stability_claimed = bool(refinement_stable)
+        self._verification = (
+            _verification
+            if isinstance(_verification, _AutomaticArchimedeanVerification)
+            else None
+        )
         self.refinement_stable = bool(
-            isinstance(_verification, _AutomaticArchimedeanVerification)
-            and _verification.precision >= self.precision
+            self._verification is not None
+            and self._verification.precision >= self.precision
         )
         self.rigorous_claimed = bool(rigorous)
         # No current Phase-8 analytic path returns ball enclosures.
         self.rigorous = False
         self.algorithm = str(algorithm)
         self.certificate = dict(certificate)
+
+    def belongs_to(self, move: SplitMumfordMove) -> bool:
+        """Return whether an automatic symbol is bound to exactly `move`."""
+        return bool(
+            self._verification is not None
+            and self._verification.curve_key == _curve_key(move.curve)
+            and self._verification.move_key == _move_key(move)
+        )
 
     def to_dict(self) -> dict[str, Any]:
         digits = max(20, int(self.precision * 0.30103) + 5)
@@ -2056,6 +2167,10 @@ class ArchimedeanPairing:
             "refinement_stability_claimed": self.refinement_stability_claimed,
             "rigorous": self.rigorous,
             "rigorous_claimed": self.rigorous_claimed,
+            "move_bound": bool(
+                self._verification is not None
+                and self._verification.move_key is not None
+            ),
             "algorithm": self.algorithm,
             "certificate": dict(self.certificate),
         }
@@ -2346,15 +2461,44 @@ class Genus3CanonicalHeightResult:
         pairing: FaltingsHriljacPairingResult,
     ) -> None:
         pairing.require_complete()
+        finite_plan = pairing.finite_plan
+        if finite_plan is None or not finite_plan.belongs_to(move):
+            raise Genus3HeightCapabilityError(
+                "the finite plan is not bound to the supplied Mumford move",
+                {
+                    "expected_move_key": _move_key(move),
+                    "finite_plan": (
+                        None if finite_plan is None else finite_plan.to_dict()
+                    ),
+                },
+            )
+        archimedean_verification = pairing.archimedean._verification
+        if (
+            archimedean_verification is not None
+            and archimedean_verification.move_key is not None
+            and not pairing.archimedean.belongs_to(move)
+        ):
+            raise Genus3HeightCapabilityError(
+                "the automatic archimedean pairing belongs to a different Mumford move",
+                {
+                    "expected_curve_key": _curve_key(move.curve),
+                    "expected_move_key": _move_key(move),
+                    "archimedean_curve_key": archimedean_verification.curve_key,
+                    "archimedean_move_key": archimedean_verification.move_key,
+                },
+            )
         self.move = move
         self.pairing = pairing
         self.negative_class_multiple = move.negative_class_multiple
         with mp.workprec(pairing.precision + 32):
             self.value = +(pairing.neron_symbol / self.negative_class_multiple)
         self.finite_exact = pairing.finite_exact
-        self.archimedean_refinement_stable = pairing.archimedean_refinement_stable
-        self.rigorous = pairing.rigorous
-        self.finite_plan: SplitMumfordFinitePlan | None = None
+        self.archimedean_move_verified = pairing.archimedean.belongs_to(move)
+        self.archimedean_refinement_stable = bool(
+            pairing.archimedean_refinement_stable and self.archimedean_move_verified
+        )
+        self.rigorous = bool(pairing.rigorous and self.archimedean_move_verified)
+        self.finite_plan: SplitMumfordFinitePlan | None = finite_plan
         self.normalization = "[E]=-k[D], <D,E>=k*h([D]), height=<D,E>/k"
 
     def to_dict(self) -> dict[str, Any]:
@@ -2367,6 +2511,8 @@ class Genus3CanonicalHeightResult:
             "move": self.move.to_dict(),
             "faltings_hriljac_pairing": self.pairing.to_dict(),
             "finite_exact": self.finite_exact,
+            "finite_plan_move_verified": True,
+            "archimedean_move_verified": self.archimedean_move_verified,
             "archimedean_refinement_stable": self.archimedean_refinement_stable,
             "rigorous": self.rigorous,
             "finite_plan": (
@@ -2445,7 +2591,6 @@ def automatic_split_mumford_canonical_height(
         prec=prec,
         finite_plan=finite_plan,
     )
-    result.finite_plan = finite_plan
     return result
 
 
