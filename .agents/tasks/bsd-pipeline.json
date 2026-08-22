@@ -1,0 +1,72 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "bsd-pipeline",
+  "title": "Automatic hyperelliptic BSD pipeline",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Atomically assemble a fully certified-or-supplied genus-2/3 BSD analytic quotient with independent per-factor provenance and structured incomplete-factor outcomes",
+  "base_commit": "f6c59646b0fb317714f2ec398ac6a4073a01b8cd",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/bsd_pipeline.py",
+    "test/hyperelliptic-bsd-pipeline.cjs"
+  ],
+  "dependencies": [
+    "bsd-periods"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Pinned PARI BSD oracle corpus and exact BSD quotient contracts",
+      "Independent factor certificate replay and precision refinement"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/hyperelliptic-bsd-pipeline.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.193,
+      "started_at": "2026-08-22T07:57:47.502Z",
+      "commit": "f6c59646b0fb317714f2ec398ac6a4073a01b8cd",
+      "workspace_fingerprint": "c0b781e2d6dea6130c1258a58c517d1e46a28431e21d213aa19c08d965115f41",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/bsd_pipeline.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.534,
+      "started_at": "2026-08-22T07:57:55.348Z",
+      "commit": "f6c59646b0fb317714f2ec398ac6a4073a01b8cd",
+      "workspace_fingerprint": "c0b781e2d6dea6130c1258a58c517d1e46a28431e21d213aa19c08d965115f41",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added the standalone compute_bsd_analytic_quotient pipeline, immutable/replayable complete and incomplete reports, exact factor contracts with independent provenance, SQLite checkpoint rows, quotient-method proxies, typed subgroup-index forwarding, a complete supplied-Neron rank-zero fixture, and explicit incomplete positive-rank coverage.",
+    "risks": [
+      "Automatic genus-3 positive-rank regulators remain an explicit unsupported capability unless a provenanced regulator or pairing is supplied.",
+      "pnpm architecture:check reaches package-graph validation but the integrated hyperelliptic-curves-algorithms package is already over its lazy source budget; package registration/splitting is owned by the integration lane."
+    ],
+    "next_steps": [
+      "Integration should register the lazy module and add the central curve method without importing it eagerly.",
+      "Merge the saturation lane's replayable SubgroupIndexData adapter; the pipeline already accepts subgroup_index and the report proxies with_subgroup_index."
+    ]
+  }
+}
