@@ -25,6 +25,8 @@ EXACT_UNCONDITIONAL = "exact-unconditional"
 EXACT_RELATIONS_CONDITIONAL_GRH = "exact-relations-conditional-grh"
 INCOMPLETE_RESOURCE_LIMIT = "incomplete-resource-limit"
 
+_AUTHENTICATED_CLASS_UNIT_SATURATION_TOKEN = object()
+
 
 def _factor_base_proof_status(plan: Any) -> str:
     """Derive discovery authority from the theorem and its assumptions."""
@@ -444,6 +446,149 @@ class ClassUnitSaturationRecord:
         except (AttributeError, TypeError, ValueError, ArithmeticError):
             return False
         return self.complete
+
+
+def _saturation_record_live_snapshot(record: Any) -> tuple[Any, ...]:
+    """Snapshot the critical state crossing one synchronous engine boundary.
+
+    The authority is consumed before the engine returns the record, so this
+    state does not need to duplicate the large serialized certificate.  It
+    binds every mathematical decision used at the terminal check plus the
+    identities of the standard objects which made those decisions.  The
+    public verifier remains the only reusable or detached verifier.
+    """
+    if type(record) is not ClassUnitSaturationRecord:
+        raise TypeError("a live saturation record must have the exact record type")
+    certificate = record._analytic_certificate
+    analytic_proof = certificate._analytic_proof
+    hr_index = analytic_proof["hr_index"]
+    return (
+        record.content_sha256,
+        record.index_bound,
+        record.required_primes,
+        record.remaining_index_bound,
+        id(record.attempts),
+        id(record.analytic_validation),
+        int(record.analytic_validation["lower_index"]),
+        int(record.analytic_validation["upper_index"]),
+        bool(record.analytic_validation["rigorous"]),
+        record.rigorous,
+        record.complete,
+        record.saturated,
+        record.reason,
+        id(certificate),
+        certificate._body_json,
+        certificate._content_sha256,
+        id(certificate._body_snapshot),
+        id(certificate._field_order_identity),
+        id(certificate._initial_units),
+        id(certificate._configuration),
+        id(analytic_proof),
+        id(certificate._generation_evidence),
+        certificate._index_bound,
+        certificate._proof_status,
+        int(hr_index["lower_index"]),
+        int(hr_index["upper_index"]),
+        int(hr_index["unique_index"]),
+        bool(hr_index["rigorous"]),
+        bool(analytic_proof["regulator"]["rigorous"]),
+        bool(analytic_proof["zeta_log_residue"]["rigorous"]),
+        id(record._analytic_generation_verifier),
+        id(record._analytic_module),
+        id(record._analytic_workspace),
+        tuple(id(unit) for unit in record.original_units),
+        tuple(id(unit) for unit in record.units),
+        tuple(
+            (
+                id(artifact),
+                tuple(id(unit) for unit in before),
+                id(torsion),
+                id(generation_verifier),
+            )
+            for artifact, before, torsion, generation_verifier in record._producer_artifacts
+        ),
+    )
+
+
+class _AuthenticatedClassUnitSaturationRecord:
+    """One non-serializable authority issued at the live engine boundary."""
+
+    def __init__(self, token: object, record: ClassUnitSaturationRecord) -> None:
+        if token is not _AUTHENTICATED_CLASS_UNIT_SATURATION_TOKEN:
+            raise TypeError("live saturation authorities are module-issued")
+        analytic = _optional_module("sagejs.number_fields.class_unit_analytic")
+        certificate_type = getattr(analytic, "UnitSaturationIndexCertificate", None)
+        workspace_type = getattr(analytic, "ZetaLogResidueWorkspace", None)
+        if (
+            record._analytic_module is not analytic
+            or type(record._analytic_certificate) is not certificate_type
+            or type(record._analytic_workspace) is not workspace_type
+            or not record.complete
+            or not record.rigorous
+            or record.remaining_index_bound != 1
+        ):
+            raise ValueError(
+                "only a complete standard analytic saturation record can be sealed"
+            )
+        self.__dict__["_record"] = record
+        self.__dict__["_field"] = record._field
+        self.__dict__["_order"] = record._order
+        self.__dict__["_snapshot"] = _saturation_record_live_snapshot(record)
+        self.__dict__["_frozen"] = True
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if self.__dict__.get("_frozen", False):
+            raise AttributeError("live saturation authorities are immutable")
+        self.__dict__[name] = value
+
+    def consume(self, field: Any, order: Any) -> bool:
+        try:
+            if self.__dict__.get("_consumed", False):
+                return False
+            record = self.__dict__.get("_record")
+            accepted = bool(
+                type(record) is ClassUnitSaturationRecord
+                and record._field is field
+                and record._order is order
+                and self.__dict__.get("_field") is field
+                and self.__dict__.get("_order") is order
+                and record.complete
+                and record.rigorous
+                and record.remaining_index_bound == 1
+                and self.__dict__.get("_snapshot")
+                == _saturation_record_live_snapshot(record)
+            )
+            self.__dict__["_consumed"] = True
+            return accepted
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            self.__dict__["_consumed"] = True
+            return False
+
+
+def _issue_live_saturation_record(record: ClassUnitSaturationRecord) -> bool:
+    """Attach a private live authority when the canonical producer was used."""
+    try:
+        authority = _AuthenticatedClassUnitSaturationRecord(
+            _AUTHENTICATED_CLASS_UNIT_SATURATION_TOKEN, record
+        )
+    except (AttributeError, TypeError, ValueError, ArithmeticError):
+        return False
+    record.__dict__["_live_authentication"] = authority
+    return True
+
+
+def _authenticated_live_saturation_record_matches(
+    record: Any, field: Any, order: Any
+) -> bool:
+    """Recognize unchanged live evidence without detached arithmetic replay."""
+    if type(record) is not ClassUnitSaturationRecord:
+        return False
+    authority = record.__dict__.pop("_live_authentication", None)
+    return bool(
+        type(authority) is _AuthenticatedClassUnitSaturationRecord
+        and authority.__dict__.get("_record") is record
+        and authority.consume(field, order)
+    )
 
 
 class UnitGroupComputation:
@@ -1055,6 +1200,9 @@ class ClassUnitGroupEngine:
             "automorphism_orbit_duplicate_skips": 0,
             "automorphism_orbit_recursive_skips": 0,
             "automorphism_orbit_limit_skips": 0,
+            "saturation_live_authentication_requests": 0,
+            "saturation_live_authentication_hits": 0,
+            "saturation_live_authentication_fallback_replays": 0,
         }
         self._generation_verification_cache: dict[str, bool] = {}
         self._generation_verification_cache_active = True
@@ -1411,9 +1559,11 @@ class ClassUnitGroupEngine:
             )
             return ideal, random_row, "seeded-random-product"
         source_row = tuple(row)
-        ideal = self.components.relations.reconstruct_factor_base_ideal(
-            self.order, factor_base, source_row
-        )
+        # The collector immediately authenticates the same source row during
+        # witness admission.  Construct it through the collector-owned exact
+        # cache so that admission observes an identity-preserving row hit
+        # instead of rebuilding the prime powers and ideal product.
+        ideal = search.collector.reconstruct_factor_base_ideal(source_row)
         return ideal, source_row, strategy
 
     def _search_relation_ideal(
@@ -2794,6 +2944,7 @@ class ClassUnitGroupEngine:
                 else "bounded saturation did not isolate class/unit index one"
             ),
         )
+        _issue_live_saturation_record(record)
         self._saturation_record = record
         self._checkpoint_capture({"saturation": record})
         self._stage(
@@ -2992,9 +3143,22 @@ class ClassUnitGroupEngine:
                 proof_status=initial_proof_status,
             )
             try:
+                self._resource_usage["saturation_live_authentication_requests"] += 1
+                live_saturation = _authenticated_live_saturation_record_matches(
+                    saturation_record, self.field, self.order
+                )
+                if live_saturation:
+                    self._resource_usage["saturation_live_authentication_hits"] += 1
+                else:
+                    self._resource_usage[
+                        "saturation_live_authentication_fallback_replays"
+                    ] += 1
                 saturation_replayed = bool(
                     saturation_record.complete
-                    and saturation_record.verify(self.field, self.order)
+                    and (
+                        live_saturation
+                        or saturation_record.verify(self.field, self.order)
+                    )
                 )
             finally:
                 # Proof objects used after the computation must replay their

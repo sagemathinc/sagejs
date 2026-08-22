@@ -525,6 +525,9 @@ relation_events = [event for event in events if event["event"] == "relation-sear
 assert relation_events[0]["strategy"] == "single-prime-sweep"
 assert relation_events[0]["search_state"]["ideals_tested"] == 1
 assert engine._resource_usage["relation_attempts"] <= 4
+reconstruction = collector.reconstruction_diagnostics()
+assert reconstruction["row_hits"] > 0
+assert reconstruction["row_requests"] > reconstruction["row_misses"]
 assert all(record.verify(O, (P2,))["certified"] for record in collector.records)
 print("targeted")
 `);
