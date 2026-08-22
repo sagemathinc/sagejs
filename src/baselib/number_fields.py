@@ -2873,6 +2873,7 @@ class NumberFieldParent(sage.Parent):
                         certificate_type is None
                         or type(certificate) is not certificate_type
                         or certificate.proof_status != "exact-unconditional"
+                        or not certificate.verify()
                     ):
                         raise ArithmeticError(
                             "cubic class-number producer returned invalid exact evidence"

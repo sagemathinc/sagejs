@@ -200,6 +200,13 @@ units_module.bounded_unit_subgroup = forbidden
 analytic_module.regulator_from_factored_units = forbidden
 analytic_module.ZetaLogResidueWorkspace = forbidden
 
+certificate_verify = cubic_module.CubicMinkowskiClassNumberCertificate.verify
+certificate_verify_calls = []
+def observed_certificate_verify(self, *args, **kwargs):
+    certificate_verify_calls.append(self.stable_hash())
+    return certificate_verify(self, *args, **kwargs)
+cubic_module.CubicMinkowskiClassNumberCertificate.verify = observed_certificate_verify
+
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 K = NumberField(x**3 - x**2 - 6*x - 12, "c")
@@ -209,6 +216,7 @@ assert artifact.complete
 assert artifact.proof_status == "exact-unconditional"
 assert artifact.certificate.proof_status == "exact-unconditional"
 assert artifact.certificate.verify()
+assert len(certificate_verify_calls) >= 2
 assert artifact.diagnostics["quotient_order"] == 3
 
 # The stronger unconditional artifact satisfies proof=False from the field
