@@ -251,7 +251,9 @@ class FactoredNumberFieldElement:
         except (TypeError, ValueError, ArithmeticError, ZeroDivisionError):
             return False
 
-    def archimedean_logarithms(self, prec: int = 53) -> tuple[Any, ...]:
+    def archimedean_logarithms(
+        self, prec: int = 53, *, workspace: Any = None
+    ) -> tuple[Any, ...]:
         """Return rigorous weighted log-absolute-value balls factor by factor."""
         if isinstance(prec, bool) or not isinstance(prec, int) or prec < 2:
             raise ValueError("archimedean precision must be an integer at least 2")
@@ -273,35 +275,17 @@ class FactoredNumberFieldElement:
             for _embedding in data.embeddings
         ]
         for factor, exponent in self._factors:
+            factor_logs = (
+                _factor_archimedean_logarithms(
+                    self._field, factor, prec, data, analytic_module
+                )
+                if workspace is None
+                else workspace.factor_logarithms(
+                    self._field, factor, prec, data, analytic_module
+                )
+            )
             for index, embedding in enumerate(data.embeddings):
-                algebraic = embedding(factor)
-                enclosure = runtime.flint_backend().qqbarLogAbsBall(
-                    algebraic._native, prec
-                )
-                try:
-                    endpoint_encoding = enclosure["endpointEncoding"]
-                    lower_mantissa = enclosure["lowerMantissa"]
-                    lower_exponent = enclosure["lowerExponent"]
-                    upper_mantissa = enclosure["upperMantissa"]
-                    upper_exponent = enclosure["upperExponent"]
-                    precision_bits = enclosure["precisionBits"]
-                except (KeyError, TypeError) as error:
-                    raise ArithmeticError(
-                        "FLINT returned an incomplete logarithm enclosure"
-                    ) from error
-                if endpoint_encoding != "mantissa-times-two-power":
-                    raise ArithmeticError(
-                        "FLINT did not return exact outward dyadic endpoints"
-                    )
-                ball = analytic_module.RealBall.dyadic_endpoints(
-                    lower_mantissa,
-                    lower_exponent,
-                    upper_mantissa,
-                    upper_exponent,
-                    precision_bits=int(precision_bits),
-                    rigorous=True,
-                    source="FLINT qqbar/Arb outward dyadic logarithmic embedding",
-                )
+                ball = factor_logs[index]
                 weight = exponent * int(embedding.log_weight)
                 result[index] = result[index] + ball * analytic_module.RealBall(
                     weight, precision_bits=prec
@@ -390,7 +374,98 @@ class FactoredNumberFieldElement:
         )
 
 
+def _factor_archimedean_logarithms(
+    field: Any, factor: Any, precision: int, data: Any, analytic_module: Any
+) -> tuple[Any, ...]:
+    answer = []
+    for embedding in data.embeddings:
+        algebraic = embedding(factor)
+        enclosure = runtime.flint_backend().qqbarLogAbsBall(
+            algebraic._native, precision
+        )
+        try:
+            endpoint_encoding = enclosure["endpointEncoding"]
+            lower_mantissa = enclosure["lowerMantissa"]
+            lower_exponent = enclosure["lowerExponent"]
+            upper_mantissa = enclosure["upperMantissa"]
+            upper_exponent = enclosure["upperExponent"]
+            precision_bits = enclosure["precisionBits"]
+        except (KeyError, TypeError) as error:
+            raise ArithmeticError(
+                "FLINT returned an incomplete logarithm enclosure"
+            ) from error
+        if endpoint_encoding != "mantissa-times-two-power":
+            raise ArithmeticError("FLINT did not return exact outward dyadic endpoints")
+        answer.append(
+            analytic_module.RealBall.dyadic_endpoints(
+                lower_mantissa,
+                lower_exponent,
+                upper_mantissa,
+                upper_exponent,
+                precision_bits=int(precision_bits),
+                rigorous=True,
+                source="FLINT qqbar/Arb outward dyadic logarithmic embedding",
+            )
+        )
+    return tuple(answer)
+
+
+class FactoredLogarithmWorkspace:
+    """Bound one field's reusable rigorous logarithms of canonical factors."""
+
+    def __init__(self, field: Any, *, maximum_entries: int = 512) -> None:
+        if (
+            isinstance(maximum_entries, bool)
+            or not isinstance(maximum_entries, int)
+            or maximum_entries < 1
+            or maximum_entries > 4096
+        ):
+            raise ValueError("factor-logarithm cache size must be in 1..4096")
+        self._field = field
+        self._maximum_entries = maximum_entries
+        self._cache: dict[tuple[int, tuple[tuple[int, int], ...]], tuple[Any, ...]] = {}
+        self._requests = 0
+        self._hits = 0
+        self._evictions = 0
+
+    def factor_logarithms(
+        self,
+        field: Any,
+        factor: Any,
+        precision: int,
+        data: Any,
+        analytic_module: Any,
+    ) -> tuple[Any, ...]:
+        if field is not self._field:
+            raise TypeError("a factor-logarithm workspace belongs to another field")
+        self._requests += 1
+        selected_factor = field(factor)
+        key = (precision, _element_key(field, selected_factor))
+        cached = self._cache.get(key)
+        if cached is not None:
+            self._hits += 1
+            return cached
+        answer = _factor_archimedean_logarithms(
+            field, selected_factor, precision, data, analytic_module
+        )
+        if len(self._cache) >= self._maximum_entries:
+            self._cache.pop(next(iter(self._cache)))
+            self._evictions += 1
+        self._cache[key] = answer
+        return answer
+
+    def diagnostics(self) -> dict[str, int]:
+        return {
+            "requests": self._requests,
+            "hits": self._hits,
+            "entries": len(self._cache),
+            "maximum_entries": self._maximum_entries,
+            "evictions": self._evictions,
+        }
+
+
 __all__ = [
+    "FactoredLogarithmWorkspace",
     "FactoredNumberFieldElement",
     "SERIALIZATION_SCHEMA",
     "field_fingerprint",

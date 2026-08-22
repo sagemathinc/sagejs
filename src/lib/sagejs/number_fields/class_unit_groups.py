@@ -1081,6 +1081,12 @@ class ClassUnitGroupEngine:
             raise TypeError("progress must be callable")
         self.components = _Components() if components is None else components
         self._analytic_workspace: Any = None
+        self._factored_logarithm_workspace: Any = None
+        factored_workspace_type = getattr(
+            self.components.factored, "FactoredLogarithmWorkspace", None
+        )
+        if callable(factored_workspace_type):
+            self._factored_logarithm_workspace = factored_workspace_type(self.field)
         workspace_type = getattr(
             self.components.analytic, "ZetaLogResidueWorkspace", None
         )
@@ -1183,6 +1189,8 @@ class ClassUnitGroupEngine:
             "partial_discards": 0,
             "unit_log_rank": 0,
             "unit_rank_target": 0,
+            "unit_logarithm_requests": 0,
+            "unit_logarithm_cache_hits": 0,
             "presentation_extractions": 0,
             "saturation_rounds": 0,
             "proof_primes_completed": 0,
@@ -1212,6 +1220,7 @@ class ClassUnitGroupEngine:
         }
         self._generation_verification_cache: dict[str, bool] = {}
         self._generation_verification_cache_active = True
+        self._unit_logarithm_cache: dict[tuple[int, str], tuple[Any, ...]] = {}
         self._partials: dict[tuple[Any, ...], _LargePrimePartial] = {}
         self._relation_unit_log_rank = 0
         self._relation_search_state: Any = None
@@ -1279,6 +1288,11 @@ class ClassUnitGroupEngine:
         workspace_diagnostics = getattr(self._analytic_workspace, "diagnostics", None)
         if callable(workspace_diagnostics):
             answer["analytic_workspace"] = workspace_diagnostics()
+        factored_diagnostics = getattr(
+            self._factored_logarithm_workspace, "diagnostics", None
+        )
+        if callable(factored_diagnostics):
+            answer["factored_logarithm_workspace"] = factored_diagnostics()
         if extra:
             answer.update(extra)
         return answer
@@ -2304,8 +2318,33 @@ class ClassUnitGroupEngine:
         logarithms = []
         for dependency in presentation.dependency_transforms:
             unit = self._combine(records, dependency)
-            logarithms.append(list(unit.archimedean_logarithms(80)[:-1]))
+            logarithms.append(list(self._unit_logarithms(unit, 80)[:-1]))
         return min(unit_rank, _floating_matrix_rank(logarithms))
+
+    def _unit_logarithms(self, unit: Any, precision: int) -> tuple[Any, ...]:
+        """Return one bounded computation-local logarithm vector."""
+        self._resource_usage["unit_logarithm_requests"] += 1
+        stable_hash = getattr(unit, "stable_hash", None)
+        if not callable(stable_hash):
+            return tuple(
+                unit.archimedean_logarithms(
+                    precision, workspace=self._factored_logarithm_workspace
+                )
+            )
+        key = (precision, str(stable_hash()))
+        cached = self._unit_logarithm_cache.get(key)
+        if cached is not None:
+            self._resource_usage["unit_logarithm_cache_hits"] += 1
+            return cached
+        answer = tuple(
+            unit.archimedean_logarithms(
+                precision, workspace=self._factored_logarithm_workspace
+            )
+        )
+        if len(self._unit_logarithm_cache) >= 256:
+            self._unit_logarithm_cache.pop(next(iter(self._unit_logarithm_cache)))
+        self._unit_logarithm_cache[key] = answer
+        return answer
 
     def _decode_relation_witness(self, record: Any) -> Any:
         return self.components.relations.FactoredPrincipalWitness.from_dict(
@@ -2366,7 +2405,7 @@ class ClassUnitGroupEngine:
         """Select a smallest observed full-rank logarithmic sublattice basis."""
         if unit_rank == 0:
             return ()
-        logarithms = [list(unit.archimedean_logarithms(80)[:-1]) for unit in candidates]
+        logarithms = [list(self._unit_logarithms(unit, 80)[:-1]) for unit in candidates]
         best: tuple[int, ...] = ()
         best_volume: float | None = None
         checked = 0

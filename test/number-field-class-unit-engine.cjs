@@ -382,6 +382,41 @@ second = unit.principal_ideal(O)
 assert first == second and first is second
 assert len(unit._principal_ideal_cache) == 1
 
+factor_workspace = factored.FactoredLogarithmWorkspace(K, maximum_entries=1)
+uncached_logs = unit.archimedean_logarithms(80)
+cached_logs = unit.archimedean_logarithms(80, workspace=factor_workspace)
+assert [ball.to_dict() for ball in cached_logs] == [
+    ball.to_dict() for ball in uncached_logs
+]
+equal_factored_unit = factored.FactoredNumberFieldElement.from_element(K, K(2))
+equal_factored_unit.archimedean_logarithms(80, workspace=factor_workspace)
+assert factor_workspace.diagnostics()["hits"] == 1
+factored.FactoredNumberFieldElement.from_element(K, K(3)).archimedean_logarithms(
+    80, workspace=factor_workspace
+)
+assert factor_workspace.diagnostics()["entries"] == 1
+assert factor_workspace.diagnostics()["evictions"] == 1
+
+engine = ClassUnitGroupEngine(K, algorithm="buchmann-hecke")
+log_calls = [0]
+class LogProbe:
+    def __init__(self, key, values):
+        self.key = key
+        self.values = values
+    def stable_hash(self):
+        return self.key
+    def archimedean_logarithms(self, precision=53, workspace=None):
+        log_calls[0] += 1
+        return self.values
+equal_unit = LogProbe("same", (1, 2))
+different_unit = LogProbe("different", (3, 4))
+assert engine._unit_logarithms(LogProbe("same", (1, 2)), 80) == engine._unit_logarithms(equal_unit, 80)
+assert log_calls[0] == 1
+assert engine._unit_logarithms(different_unit, 80) != ()
+assert log_calls[0] == 2
+assert engine._resource_usage["unit_logarithm_requests"] == 3
+assert engine._resource_usage["unit_logarithm_cache_hits"] == 1
+
 collector = relations.ExactRelationCollector(O, (P2,))
 admission = collector.admit_witness(
     relations.FactoredPrincipalWitness.from_element(K(2))
