@@ -206,6 +206,23 @@ print("unit-lattice-ok")
 
 test("BF plan aggregation and bounded provenance preserve exact intervals", () => {
   runPython(String.raw`
+module._shared_integer_log_endpoints.clear()
+module._shared_integer_sqrt_endpoints.clear()
+first_shared_field = IntervalBallField(128)
+first_log = first_shared_field.log_integer(37)
+first_sqrt = first_shared_field.sqrt_integer(37)
+expected_log = first_log.to_dict()
+expected_sqrt = first_sqrt.to_dict()
+# Cached state is immutable endpoint data rather than these mutable objects.
+first_log.lower = RationalEndpoint(-1000)
+first_sqrt.upper = RationalEndpoint(1000)
+second_shared_field = IntervalBallField(128)
+assert second_shared_field.log_integer(37).to_dict() == expected_log
+assert second_shared_field.sqrt_integer(37).to_dict() == expected_sqrt
+shared_diagnostics = second_shared_field.diagnostics()
+assert shared_diagnostics["log_cache_hits"] == 1
+assert shared_diagnostics["sqrt_cache_hits"] == 1
+
 def reference_plan(threshold, splitting):
     ninth = threshold // 9
     aggregated = {}

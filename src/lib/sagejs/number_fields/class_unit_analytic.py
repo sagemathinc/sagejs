@@ -614,6 +614,54 @@ def _ball(value: Any, *, precision_bits: int, rigorous: bool) -> RealBall:
     )
 
 
+_SHARED_INTEGER_TRANSCENDENTAL_CACHE_LIMIT = 16_384
+_shared_integer_log_endpoints: dict[
+    tuple[int, int], tuple[int, int, int, int, str]
+] = {}
+_shared_integer_sqrt_endpoints: dict[
+    tuple[int, int], tuple[int, int, int, int, str]
+] = {}
+
+
+def _shared_integer_ball(
+    cache: dict[tuple[int, int], tuple[int, int, int, int, str]],
+    key: tuple[int, int],
+) -> RealBall | None:
+    """Return a fresh ball from one bounded field-independent endpoint cache."""
+    cached = cache.get(key)
+    if cached is None:
+        return None
+    lower_numerator, lower_denominator, upper_numerator, upper_denominator, source = (
+        cached
+    )
+    return RealBall(
+        RationalEndpoint(lower_numerator, lower_denominator),
+        RationalEndpoint(upper_numerator, upper_denominator),
+        precision_bits=key[0],
+        rigorous=True,
+        source=source,
+    )
+
+
+def _remember_shared_integer_ball(
+    cache: dict[tuple[int, int], tuple[int, int, int, int, str]],
+    key: tuple[int, int],
+    ball: RealBall,
+) -> None:
+    """Retain bounded immutable endpoints, never a caller-mutable `RealBall`."""
+    if key[0] > 1024 or key[1].bit_length() > 64:
+        return
+    if len(cache) >= _SHARED_INTEGER_TRANSCENDENTAL_CACHE_LIMIT:
+        cache.clear()
+    cache[key] = (
+        ball.lower.numerator,
+        ball.lower.denominator,
+        ball.upper.numerator,
+        ball.upper.denominator,
+        ball.source,
+    )
+
+
 class IntervalBallField:
     """Directed-rounding transcendental operations backed by `mpmath.iv`."""
 
@@ -690,8 +738,15 @@ class IntervalBallField:
         if cached is not None:
             self._log_hits += 1
             return cached
+        key = (self.precision_bits, value)
+        shared = _shared_integer_ball(_shared_integer_log_endpoints, key)
+        if shared is not None:
+            self._log_hits += 1
+            self._integer_logs[value] = shared
+            return shared
         result = self.log(RealBall(value, precision_bits=self.precision_bits))
         self._integer_logs[value] = result
+        _remember_shared_integer_ball(_shared_integer_log_endpoints, key, result)
         return result
 
     def sqrt_integer(self, value: int) -> RealBall:
@@ -700,8 +755,15 @@ class IntervalBallField:
         if cached is not None:
             self._sqrt_hits += 1
             return cached
+        key = (self.precision_bits, value)
+        shared = _shared_integer_ball(_shared_integer_sqrt_endpoints, key)
+        if shared is not None:
+            self._sqrt_hits += 1
+            self._integer_square_roots[value] = shared
+            return shared
         result = self.sqrt(RealBall(value, precision_bits=self.precision_bits))
         self._integer_square_roots[value] = result
+        _remember_shared_integer_ball(_shared_integer_sqrt_endpoints, key, result)
         return result
 
     def diagnostics(self) -> dict[str, int]:
