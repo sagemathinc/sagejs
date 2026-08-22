@@ -198,6 +198,37 @@ def _gcd(left: int, right: int) -> int:
     return left
 
 
+def _certified_machine_prime(value: int) -> bool:
+    """Deterministically test primality throughout the 64-bit local-data range."""
+    value = _exact_integer(value, "prime")
+    if value < 2 or value >= 2**64:
+        return False
+    small_primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37]
+    if value in small_primes:
+        return True
+    if any(value % prime == 0 for prime in small_primes):
+        return False
+    odd_part = value - 1
+    exponent = 0
+    while odd_part % 2 == 0:
+        odd_part //= 2
+        exponent += 1
+    for base in [2, 325, 9375, 28178, 450775, 9780504, 1795265022]:
+        reduced_base = base % value
+        if reduced_base == 0:
+            continue
+        residue = pow(reduced_base, odd_part, value)
+        if residue in [1, value - 1]:
+            continue
+        for _index in range(exponent - 1):
+            residue = residue * residue % value
+            if residue == value - 1:
+                break
+        else:
+            return False
+    return True
+
+
 def _matrix(values: Any, name: str, *, square: bool = False) -> list[list[int]]:
     try:
         rows = [
@@ -759,6 +790,151 @@ def _replayed_frobenius_sign(
     raise ValueError("a replayed theta value is not a p-adic unit")
 
 
+def _replayed_cluster_nu(
+    node: dict[str, Any],
+    top: dict[str, Any],
+    nodes: list[Any],
+    leading: int,
+    prime: int,
+) -> int:
+    depth = node["depth"]
+    if depth is None:
+        raise ValueError("a principal cluster has no depth")
+    answer = _rational_valuation((leading, 1), prime) + len(node["roots"]) * depth
+    for index in top["roots"]:
+        if index in node["roots"]:
+            continue
+        singleton = next(item for item in nodes if item["roots"] == (index,))
+        meet = _cluster_meet(node, singleton, nodes)
+        if meet["depth"] is None:
+            raise ValueError("a principal-cluster meet has no depth")
+        answer += meet["depth"]
+    return answer
+
+
+def _replayed_child_residue(
+    child: dict[str, Any],
+    node: dict[str, Any],
+    roots: list[tuple[int, int]],
+    prime: int,
+) -> int:
+    difference = _rational_subtract(roots[child["roots"][0]], roots[node["roots"][0]])
+    depth = node["depth"]
+    if depth is None:
+        raise ValueError("a principal cluster has no depth")
+    numerator, denominator = difference
+    if depth >= 0:
+        divisor = prime**depth
+        if numerator % divisor != 0:
+            raise ValueError("a child centre has insufficient cluster depth")
+        numerator //= divisor
+    else:
+        denominator *= prime ** (-depth)
+    if denominator % prime == 0:
+        raise ValueError("a child residue has a prime denominator")
+    return numerator % prime * pow(denominator % prime, prime - 2, prime) % prime
+
+
+def _replayed_component_polynomial(
+    node: dict[str, Any],
+    roots: list[tuple[int, int]],
+    leading: int,
+    prime: int,
+) -> list[int]:
+    theta = (leading, 1)
+    center = roots[node["roots"][0]]
+    for index, root in enumerate(roots):
+        if index not in node["roots"]:
+            theta = _rational_multiply(theta, _rational_subtract(center, root))
+    polynomial = [_rational_unit_mod(theta, prime)]
+    for child_roots in node["children"]:
+        if len(child_roots) % 2 == 0:
+            continue
+        child = {
+            "roots": child_roots,
+        }
+        residue = _replayed_child_residue(child, node, roots, prime)
+        polynomial = _trim_mod(
+            _integer_polynomial_product(polynomial, [(-residue) % prime, 1]),
+            prime,
+        )
+    return polynomial
+
+
+def _exact_polynomial(value: Any, name: str) -> list[int]:
+    if not isinstance(value, (list, tuple)):
+        raise TypeError(name + " must be an exact integer polynomial")
+    return [_exact_integer(coefficient, name + " coefficient") for coefficient in value]
+
+
+def _verify_cluster_components(
+    certificate: dict[str, Any],
+    principal_nodes: list[Any],
+    top: dict[str, Any],
+    nodes: list[Any],
+    roots: list[tuple[int, int]],
+    leading: int,
+    prime: int,
+) -> None:
+    records = certificate.get("component_curves")
+    if not isinstance(records, (list, tuple)) or len(records) != len(principal_nodes):
+        raise ValueError("the principal component records have the wrong size")
+    reduction = __import__(
+        "sagejs.hyperelliptic_curves.bad_reduction",
+        fromlist=["_normalization_factor"],
+    )
+    abelian_coefficients = [1]
+    for node, record in zip(principal_nodes, records):
+        if not isinstance(record, dict):
+            raise TypeError("a principal component assertion is not a record")
+        roots_record = tuple(
+            _exact_integer(value, "component root index")
+            for value in record.get("root_indices", [])
+        )
+        if roots_record != node["roots"]:
+            raise ValueError("a component assertion names the wrong cluster")
+        nu = _replayed_cluster_nu(node, top, nodes, leading, prime)
+        if nu % 2 != 0:
+            raise ValueError("a principal cluster has odd nu and is not semistable")
+        if _exact_integer(record.get("depth"), "component depth") != node["depth"]:
+            raise ValueError("a component assertion has the wrong depth")
+        if _exact_integer(record.get("nu"), "component nu") != nu:
+            raise ValueError("a component assertion has the wrong nu invariant")
+        odd_children = sum(1 for child in node["children"] if len(child) % 2 == 1)
+        component_genus = max(0, (odd_children - 1) // 2)
+        if _exact_integer(record.get("genus"), "component genus") != component_genus:
+            raise ValueError("a component assertion has the wrong genus")
+        polynomial = _replayed_component_polynomial(node, roots, leading, prime)
+        if (
+            _exact_polynomial(
+                record.get("polynomial_mod_p_ascending"), "component polynomial"
+            )
+            != polynomial
+        ):
+            raise ValueError("a component assertion has the wrong branch polynomial")
+        euler_coefficients = [
+            _exact_integer(value, "component Euler coefficient")
+            for value in reduction._normalization_factor(polynomial, prime)
+        ]
+        if (
+            _exact_polynomial(
+                record.get("euler_coefficients"), "component Euler factor"
+            )
+            != euler_coefficients
+        ):
+            raise ValueError("a component assertion has the wrong Euler factor")
+        abelian_coefficients = _integer_polynomial_product(
+            abelian_coefficients, euler_coefficients
+        )
+    if (
+        _exact_polynomial(
+            certificate.get("abelian_euler_coefficients"), "abelian Euler factor"
+        )
+        != abelian_coefficients
+    ):
+        raise ValueError("the component factors do not reconstruct the abelian factor")
+
+
 def _cluster_lattice(
     local_data: Any, *, trusted_internal: bool = False
 ) -> tuple[list[list[int]], list[list[int]], dict[str, Any]]:
@@ -790,6 +966,18 @@ def _cluster_lattice(
             for value in top_record["root_indices"]
         )
     ]
+    principal_nodes = [node for node in nodes if node["principal"]]
+    if not principal_nodes:
+        raise ValueError("the split cluster picture has no principal cluster")
+    _verify_cluster_components(
+        certificate,
+        principal_nodes,
+        top,
+        nodes,
+        rational_roots,
+        leading,
+        prime,
+    )
     proper_nodes = [node for node in nodes if len(node["roots"]) > 1]
     cluster_basis = [
         node
@@ -1025,6 +1213,53 @@ def _integer_polynomial_product(left: list[int], right: list[int]) -> list[int]:
     return answer
 
 
+def _trim_mod(values: list[int], prime: int) -> list[int]:
+    answer = [value % prime for value in values]
+    while len(answer) > 1 and answer[-1] == 0:
+        answer.pop()
+    return answer if answer else [0]
+
+
+def _polynomial_remainder_mod(
+    dividend: list[int], divisor: list[int], prime: int
+) -> list[int]:
+    numerator = _trim_mod(dividend, prime)
+    denominator = _trim_mod(divisor, prime)
+    if denominator == [0]:
+        raise ZeroDivisionError("polynomial division by zero")
+    inverse = pow(denominator[-1], prime - 2, prime)
+    while len(numerator) >= len(denominator) and numerator != [0]:
+        shift = len(numerator) - len(denominator)
+        scalar = numerator[-1] * inverse % prime
+        for index, value in enumerate(denominator):
+            numerator[index + shift] -= scalar * value
+        numerator = _trim_mod(numerator, prime)
+    return numerator
+
+
+def _polynomial_gcd_mod(left: list[int], right: list[int], prime: int) -> list[int]:
+    left = _trim_mod(left, prime)
+    right = _trim_mod(right, prime)
+    while right != [0]:
+        left, right = right, _polynomial_remainder_mod(left, right, prime)
+    inverse = pow(left[-1], prime - 2, prime)
+    return _trim_mod([value * inverse for value in left], prime)
+
+
+def _good_branch_replay(binding: dict[str, Any], prime: int) -> bool:
+    if prime <= 2:
+        return False
+    genus = _exact_integer(binding.get("genus"), "bound genus")
+    branch = _completed_branch_from_binding(binding)
+    if len(branch) - 1 not in [2 * genus + 1, 2 * genus + 2]:
+        return False
+    reduced = _trim_mod(branch, prime)
+    if len(reduced) - 1 not in [2 * genus + 1, 2 * genus + 2]:
+        return False
+    derivative = [index * reduced[index] for index in range(1, len(reduced))]
+    return _polynomial_gcd_mod(reduced, derivative, prime) == [1]
+
+
 def _completed_branch_from_binding(binding: dict[str, Any]) -> list[int]:
     if binding.get("schema") != "sagejs.hyperelliptic.integral-model-binding.v1":
         raise ValueError("the integral-model binding schema is not recognized")
@@ -1062,7 +1297,9 @@ def _valid_model_binding(binding: Any, prime: int) -> bool:
     genus = _exact_integer(binding.get("genus"), "bound genus")
     y_weight = _exact_integer(binding.get("y_weight"), "bound y weight")
     return (
-        denominator > 0
+        _certified_machine_prime(prime)
+        and prime > 2
+        and denominator > 0
         and denominator == scale
         and denominator % prime != 0
         and genus in [2, 3]
@@ -1223,6 +1460,12 @@ def _tamagawa_from_bound_local_reduction(
             "model_not_minimal",
             "the local record explicitly says that the model is not minimal",
         )
+    if prime == 2:
+        return _unsupported(
+            prime,
+            "unsupported_at_2",
+            "component-group certification is currently restricted to odd primes",
+        )
     if reduction_type == "semistable_split_cluster":
         try:
             pairing, frobenius, source = _cluster_lattice(
@@ -1287,12 +1530,6 @@ def _tamagawa_from_bound_local_reduction(
             rational_order=1,
             rational_invariants=[],
             certificate=proof,
-        )
-    if prime == 2:
-        return _unsupported(
-            prime,
-            "unsupported_at_2",
-            "bad reduction at 2 is outside the odd-prime component-group envelope",
         )
     if certificate.get("wild_inertia") is True:
         return _unsupported(
@@ -1441,10 +1678,62 @@ def _outer_matches_certificate(
     )
 
 
+def _replay_almost_good_certificate(
+    source_certificate: dict[str, Any], binding: dict[str, Any], prime: int
+) -> bool:
+    if prime <= 2:
+        return False
+    branch = _completed_branch_from_binding(binding)
+    reduction = __import__(
+        "sagejs.hyperelliptic_curves.bad_reduction",
+        fromlist=["_normalize_almost_good"],
+    )
+    normalized = reduction._normalize_almost_good(branch, prime)
+    kind, repeated = reduction._almost_good_type(normalized, prime)
+    if kind == "1":
+        _coefficients, details = reduction._type1(normalized, prime)
+    elif kind == "2a":
+        _coefficients, details = reduction._type2a(normalized, prime)
+    elif kind == "2b":
+        _coefficients, details = reduction._type2b(normalized, prime)
+    elif kind == "4":
+        _coefficients, details = reduction._type4(normalized, prime)
+    else:
+        return False
+    if source_certificate.get("almost_good_type") != kind:
+        return False
+    if (
+        _exact_polynomial(
+            source_certificate.get("normalized_branch_coefficients_ascending"),
+            "normalized almost-good branch",
+        )
+        != normalized
+    ):
+        return False
+    if (
+        _exact_polynomial(
+            source_certificate.get("triple_factor_mod_p"),
+            "almost-good triple factor",
+        )
+        != repeated
+    ):
+        return False
+    if source_certificate.get("transform") != binding.get("transform"):
+        return False
+    if _exact_integer(
+        source_certificate.get("excluded_denominator"),
+        "almost-good excluded denominator",
+    ) != _exact_integer(binding.get("excluded_denominator"), "bound denominator"):
+        return False
+    return all(source_certificate.get(name) == value for name, value in details.items())
+
+
 def _verify_trivial_local_replay(
     replay: Any, binding: Any, reduction_type: str, prime: int
 ) -> bool:
     if not isinstance(replay, dict) or not isinstance(binding, dict):
+        return False
+    if not _valid_model_binding(binding, prime):
         return False
     if replay.get("record_schema") != BOUND_LOCAL_REPLAY_SCHEMA:
         return False
@@ -1476,6 +1765,7 @@ def _verify_trivial_local_replay(
             and jacobian_good
             and replay.get("semistable") is True
             and source_certificate.get("theorem") == "smooth proper base change"
+            and _good_branch_replay(binding, prime)
         )
     almost_good_type = reduction_type[len("almost_good_type_") :]
     return (
@@ -1486,6 +1776,7 @@ def _verify_trivial_local_replay(
         and replay.get("semistable") is None
         and source_certificate.get("theorem") == "Maistret-Sutherland Algorithm 7"
         and source_certificate.get("almost_good_type") == almost_good_type
+        and _replay_almost_good_certificate(source_certificate, binding, prime)
     )
 
 
@@ -1552,7 +1843,6 @@ def verify_tamagawa_certificate(value: Any) -> bool:
                 and source["certificate"].get("theorem") == theorem
                 and certificate.get("source_theorem") == theorem
                 and certificate.get("provenance") == expected_provenance
-                and _valid_model_binding(binding, outer_prime)
                 and bool(_completed_branch_from_binding(binding))
                 and _outer_matches_certificate(
                     outer,
@@ -1643,13 +1933,21 @@ def verify_tamagawa_certificate(value: Any) -> bool:
             and source.get("local_theorem")
             == "split semistable cluster-picture decomposition"
             and branch == _completed_branch_from_binding(binding)
+            and replay_certificate.get("transform") == binding.get("transform")
+            and _exact_integer(
+                replay_certificate.get("excluded_denominator"),
+                "replayed excluded denominator",
+            )
+            == _exact_integer(
+                binding.get("excluded_denominator"), "bound excluded denominator"
+            )
             and replay_prime
             == _exact_integer(binding.get("prime"), "bound prime")
             == _exact_integer(outer.get("prime"), "outer prime")
             and _exact_integer(replay.get("genus"), "replay genus")
             == _exact_integer(binding.get("genus"), "bound genus")
         )
-    except (ArithmeticError, KeyError, TypeError, ValueError):
+    except (ArithmeticError, KeyError, NotImplementedError, TypeError, ValueError):
         return False
 
 
