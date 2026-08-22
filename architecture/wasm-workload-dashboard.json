@@ -24,7 +24,7 @@
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "6ace92065ff99b54edc371f5e53e1164d084fec8f2ecd76cf4947252b51ced0d"
+      "sha256": "9d33c496f1c46296e33e9813a2925acb033f41b4dab3cdd14ed08eeaf495ff21"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
@@ -42,26 +42,26 @@
     "parity_workloads": 32,
     "performance_workloads": 20,
     "capability_counts": {
-      "total": 963,
+      "total": 962,
       "by_kind": {
         "declared-ffi-function": 414,
         "declared-ffi-resource": 29,
         "napi-export": 317,
         "production-kernel": 40,
-        "runtime-intrinsic": 138,
+        "runtime-intrinsic": 137,
         "specialist-capability": 25
       },
       "by_disposition": {
         "compiled-source": 40,
         "desktop-only": 14,
-        "generated-wasm": 304,
-        "portable-fallback": 561,
+        "generated-wasm": 320,
+        "portable-fallback": 544,
         "shared-core": 44
       },
       "by_status": {
-        "available": 521,
+        "available": 536,
         "desktop-only": 14,
-        "fallback": 428
+        "fallback": 412
       }
     },
     "kernel_coverage_totals": {
