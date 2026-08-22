@@ -1224,11 +1224,13 @@ class ExactRelationCollector:
 
         This is the batch-sieve boundary.  A packed producer may propose the
         factor-base row of an algebraic integer, but it is not trusted as a
-        certificate.  Reconstruct `Q = prod(P_i^v_i)` independently, check
-        `generator in Q`, and check `Norm(Q) = |Norm(generator)|`.  Thus
-        `(generator)` is contained in `Q` and both integral ideals have the
-        same norm, forcing exact equality.  Detached relation replay remains
-        unchanged and rebuilds the complete principal ideal again.
+        certificate.  In a maximal order, independently check membership in
+        every required prime power and exact equality between the row norm
+        and `|Norm(generator)|`.  The proposed valuations are therefore lower
+        bounds for the principal ideal valuations, and norm equality rules out
+        both higher valuations and omitted prime factors.  For a nonmaximal
+        order, retain the general reconstructed-ideal check.  Detached replay
+        remains unchanged and rebuilds the complete principal ideal again.
         """
         element = self.order.number_field()(generator)
         if element.is_zero() or element not in self.order:
@@ -1250,12 +1252,26 @@ class ExactRelationCollector:
             raise RelationNotSmoothError(
                 "the sieved relation norm has support outside the factor base"
             )
-        reconstructed = self.reconstruct_factor_base_ideal(row)
-        if reconstructed.norm() != witness_norm or element not in reconstructed:
-            raise RelationNotSmoothError(
-                "the sieved relation row does not contain its generator",
-                ideal=reconstructed,
-            )
+        reconstructed = None
+        if self.order.is_maximal():
+            for prime_ideal, exponent in zip(self.factor_base, row, strict=True):
+                if exponent == 0:
+                    continue
+                powers = prime_ideal._valuation_power_cache
+                while len(powers) < exponent:
+                    powers.append(powers[-1] * prime_ideal)
+                if element not in powers[exponent - 1]:
+                    raise RelationNotSmoothError(
+                        "the sieved relation row has a false prime valuation",
+                        ideal=powers[exponent - 1],
+                    )
+        else:
+            reconstructed = self.reconstruct_factor_base_ideal(row)
+            if reconstructed.norm() != witness_norm or element not in reconstructed:
+                raise RelationNotSmoothError(
+                    "the sieved relation row does not contain its generator",
+                    ideal=reconstructed,
+                )
         factored = FactoredPrincipalWitness.from_element(element)
         zero_row = (0,) * len(row)
         record = RelationRecord(
@@ -1272,7 +1288,8 @@ class ExactRelationCollector:
         )
         # The exact containment plus equal-norm argument above proves that
         # this retained lattice is precisely the witness principal ideal.
-        record._remember_principal_ideal(self.order, reconstructed)
+        if reconstructed is not None:
+            record._remember_principal_ideal(self.order, reconstructed)
         self._admission_receipt_statistics["integral_norm_certificates"] += 1
         return self._store_verified(record)
 
