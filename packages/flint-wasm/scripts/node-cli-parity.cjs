@@ -20,14 +20,42 @@ const receiptPath = option("--receipt", null);
 const cases = corpus.cases.filter((item) => item.tier === tier);
 if (cases.length === 0) throw new Error(`no ${tier} public corpus cases`);
 
+function assertCliOutput(item, stdout) {
+  if (Object.hasOwn(item.expect, "stdout")) {
+    const expected = `${item.expect.stdout}${item.expect.repr
+      ? `${item.expect.repr}\n`
+      : ""}`;
+    assert.equal(stdout, expected, `${item.id} output drifted`);
+    return;
+  }
+  if (item.expect.numeric_tokens) {
+    assert.equal(item.expect.numeric_tokens.stream, "stdout");
+    const found = stdout.match(/[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?/gi)?.map(Number) ?? [];
+    const wanted = item.expect.numeric_tokens.values;
+    assert.equal(found.length, wanted.length, `${item.id} numeric token count drifted`);
+    for (let index = 0; index < wanted.length; index += 1) {
+      const tolerance = item.expect.numeric_tokens.absolute_tolerance +
+        item.expect.numeric_tokens.relative_tolerance * Math.abs(wanted[index]);
+      assert.ok(
+        Number.isFinite(found[index]) && Math.abs(found[index] - wanted[index]) <= tolerance,
+        `${item.id} numeric token ${index} drifted: ${found[index]} != ${wanted[index]} ± ${tolerance}`,
+      );
+    }
+    return;
+  }
+  if (item.expect.display) {
+    const expected = item.expect.repr ? `${item.expect.repr}\n` : "";
+    assert.equal(stdout, expected, `${item.id} textual display summary drifted`);
+    return;
+  }
+  throw new Error(`${item.id} has no CLI-checkable parity expectation`);
+}
+
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-node-wasm-parity-"));
 const results = [];
 try {
   for (const item of cases) {
     const diagnostics = join(temporary, `${item.id}.json`);
-    const expectedOutput = `${item.expect.stdout}${item.expect.repr
-      ? `${item.expect.repr}\n`
-      : ""}`;
     const run = spawnSync(
       process.execPath,
       [
@@ -47,7 +75,7 @@ try {
       },
     );
     assert.equal(run.status, 0, `${item.id} failed:\n${run.stderr}`);
-    assert.equal(run.stdout, expectedOutput, `${item.id} output drifted`);
+    assertCliOutput(item, run.stdout);
     const diagnostic = JSON.parse(readFileSync(diagnostics, "utf8"));
     assert.equal(diagnostic.outcome, "ok", `${item.id} did not complete`);
     const observed = new Set((diagnostic.instrumentation?.routes ?? []).map((route) =>
