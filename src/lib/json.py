@@ -207,6 +207,28 @@ class JSONEncoder:
 
 def dumps(obj, **keywords):
     cls = keywords.pop("cls", None)
+    canonical_keywords = {
+        "skipkeys",
+        "ensure_ascii",
+        "check_circular",
+        "allow_nan",
+        "sort_keys",
+        "indent",
+        "separators",
+    }
+    if (
+        cls is None
+        and keywords.get("sort_keys", False) is True
+        and keywords.get("separators") == (",", ":")
+        and keywords.get("skipkeys", False) is False
+        and keywords.get("ensure_ascii", True) is True
+        and keywords.get("check_circular", True) is True
+        and keywords.get("indent") is None
+        and set(keywords).issubset(canonical_keywords)
+    ):
+        encoded = runtime.canonical_json_exact(obj)
+        if encoded is not None:
+            return encoded
     encoder_class = JSONEncoder if cls is None else cls
     return encoder_class(**keywords).encode(obj)
 

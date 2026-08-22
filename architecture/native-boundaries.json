@@ -17,7 +17,7 @@
     "declared-ffi": 414,
     "declared-ffi-resource": 29,
     "napi-export": 317,
-    "runtime-intrinsic": 137,
+    "runtime-intrinsic": 138,
     "wasm-export": 72
   },
   "boundaries": [
@@ -9164,6 +9164,14 @@
       "path": "tools/python/contract.ts",
       "export": "callable_instance_class",
       "symbol": "ρσ_callable_instance_class",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:canonical_json_exact",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "canonical_json_exact",
+      "symbol": "ρσ_canonical_json_exact",
       "disposition": "runtime-primitive"
     },
     {

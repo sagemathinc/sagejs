@@ -46,6 +46,7 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   bool_builtin: "ρσ_bool",
   check_interrupt: "ρσ_check_interrupt",
   callable_instance_class: "ρσ_callable_instance_class",
+  canonical_json_exact: "ρσ_canonical_json_exact",
   console_object: "console",
   coercion_model: "ρσ_coercion_model",
   dynamic_eval: "ρσ_dynamic_eval",

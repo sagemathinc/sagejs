@@ -17910,6 +17910,25 @@
       "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
     },
     {
+      "id": "runtime:canonical_json_exact",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This exact-container serializer is implemented above the Wasm ABI, returns control to the ordinary Python encoder outside its strict canonical subset, and is exercised by browser compilation.",
+      "public_explanation": "Exact canonical proof data uses a portable JavaScript runtime traversal with an ordinary Python fallback for unsupported values."
+    },
+    {
       "id": "runtime:canonical_rational_values_to_packed_bytes",
       "kind": "runtime-intrinsic",
       "family": "runtime",
