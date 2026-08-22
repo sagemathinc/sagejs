@@ -40,10 +40,41 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node test/hyperelliptic-bsd-oracles/verify.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.04,
+      "started_at": "2026-08-22T06:02:01.080Z",
+      "commit": "58613bd0efd18571b668af63c92bb13d2ec217a1",
+      "workspace_fingerprint": "6d5c6e9f370219f8bf3a13ea81acc68791dd00b8a47ef9c6005e6adc0ac17ae4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.033,
+      "started_at": "2026-08-22T06:02:01.780Z",
+      "commit": "58613bd0efd18571b668af63c92bb13d2ec217a1",
+      "workspace_fingerprint": "6d5c6e9f370219f8bf3a13ea81acc68791dd00b8a47ef9c6005e6adc0ac17ae4",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added an implementation-independent hyperelliptic BSD acceptance corpus backed by a locally rebuilt official PARI/GP 2.18.1.alpha archive. Six genus-2 rows pin real periods, reduction-gcd torsion bounds, PARI's upstream component-product helper, rank-zero quotient identities 1, 4, 1/4, 9, and 49, and a root-number -1 leading derivative. Two genus-3 period rows and the split J0(33) elliptic-factor identity pin higher-genus analytic normalization. Exact contract vectors separately test r! division, generic dual torsion, principally polarized torsion, basis changes, and subgroup-index-square scaling. The report classifies each plan phase as externally covered, partially covered, self-consistency-only, or uncovered and defines ten concrete WebAssembly integration gates.",
+    "risks": [
+      "No licensed Magma or full SageMath executable was available in this lane. Genus-2 heights, saturation, deficiency, and genus-3 heights therefore remain explicitly without an external numerical oracle; internal bilinearity or refinement tests cannot close that gap.",
+      "PARI's genus2tors helper is only a good-reduction gcd upper bound, and its genus2tamagawa test helper is not a Sage.js certificate of Frobenius-fixed rational component classes. The fixture names and documentation preserve those limitations.",
+      "The split J0(33) fixture certifies the analytic L-factor identity only. Integral period-lattice, component-group, torsion, and isogeny-index corrections are still required before using it as a complete BSD quotient oracle.",
+      "Repository-wide architecture, strict-baselib, and native suites were deliberately left to the integration lane; this fixture-only lane ran the focused verifier, exact PARI transcript replay, syntax, and diff checks."
+    ],
+    "next_steps": [
+      "Capture versioned Magma or published research transcripts for genus-2 canonical heights/regulators, a nontrivial saturation, rational component groups, deficiency, and a genus-3 Faltings-Hriljac pairing.",
+      "Wire the exact contract vectors and relevant PARI rows into the BSD public API differential tests once the integration API is stable.",
+      "Add release-tier pure-quotient and numerical-refinement cases to the shared browser Wasm parity corpus and obtain trusted Chromium, Firefox, and WebKit receipts.",
+      "Run the lane-required architecture, strict-baselib, and native checks after integration with the implementation branches."
+    ]
   }
 }
