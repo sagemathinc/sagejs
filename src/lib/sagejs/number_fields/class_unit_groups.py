@@ -1352,6 +1352,10 @@ class ClassUnitGroupEngine:
             "cubic_relation_seed_uses": 0,
             "cubic_relation_seed_relations": 0,
             "cubic_factor_base_seed_uses": 0,
+            "cubic_integral_sieve_uses": 0,
+            "cubic_integral_sieve_candidates": 0,
+            "cubic_integral_sieve_relations": 0,
+            "cubic_integral_sieve_dependency_relations": 0,
             "cubic_specialized_seed_skips": 0,
             "automorphism_orbit_plans": 0,
             "automorphism_orbit_available_plans": 0,
@@ -1828,6 +1832,109 @@ class ClassUnitGroupEngine:
                     break
         return admitted
 
+    def _default_cubic_integral_relation_prefix(
+        self,
+        collector: Any,
+        factor_base: tuple[Any, ...],
+        unit_rank: int,
+    ) -> Any:
+        """Try one exact packed relation prefix under the default cubic policy.
+
+        The packed kernels only propose small integral generators and their
+        valuation rows.  A fresh collector independently checks every exact
+        norm and prime-power containment before this prefix can replace the
+        ordinary rational-prime prefix.  Any unavailable kernel, rejected
+        proposal, or resource mismatch returns the untouched collector and
+        leaves the LLL search authoritative.
+        """
+        if (
+            int(self.field.degree()) != 3
+            or self.algorithm != "auto"
+            or self.seed != 0
+            or self.checkpoint_controller is not None
+            or self.limits.to_dict() != ClassUnitEngineLimits().to_dict()
+        ):
+            return collector
+        try:
+            cubic = __import__(
+                "sagejs.number_fields.cubic_class_number",
+                fromlist=["cubic_class_number"],
+            )
+            propose = getattr(cubic, "_packed_cubic_relation_candidates", None)
+            select = getattr(cubic, "_select_cubic_relation_candidates", None)
+            select_dependencies = getattr(
+                cubic, "_select_cubic_dependency_candidates", None
+            )
+            if (
+                not callable(propose)
+                or not callable(select)
+                or not callable(select_dependencies)
+            ):
+                return collector
+            coefficient_bound = int(getattr(cubic, "_CUBIC_RELATION_SIEVE_BOUND", 2))
+            relations = self.components.relations
+            matrix = self.components.matrix
+            trial = relations.ExactRelationCollector(self.order, factor_base)
+            relations.initial_rational_prime_relations(trial)
+            remaining = self.limits.max_relations - len(trial.records)
+            if remaining <= 0:
+                return collector
+            candidates: Any = propose(
+                self.order,
+                factor_base,
+                maximum_candidates=remaining,
+                coefficient_bound=coefficient_bound,
+                cancelled=self.cancelled,
+            )
+            if candidates is None:
+                return collector
+            selected: Any = select(
+                matrix,
+                tuple(record.row for record in trial.records),
+                candidates,
+                len(factor_base),
+            )
+            if selected is None or len(selected) > remaining:
+                return collector
+            for row, coordinates, _expected_norm in selected:
+                trial.admit_integral_order_basis_row(
+                    coordinates,
+                    row,
+                    provenance={
+                        "algorithm": "packed-cubic-engine-relation-sieve",
+                        "coefficient_bound": coefficient_bound,
+                        "order_basis_coordinates": list(coordinates),
+                    },
+                )
+            dependency_candidates: Any = select_dependencies(
+                selected,
+                candidates,
+                unit_rank,
+            )
+            remaining = self.limits.max_relations - len(trial.records)
+            if len(dependency_candidates) <= remaining:
+                for row, coordinates, _expected_norm in dependency_candidates:
+                    trial.admit_integral_order_basis_row(
+                        coordinates,
+                        row,
+                        provenance={
+                            "algorithm": "packed-cubic-engine-unit-seed",
+                            "coefficient_bound": coefficient_bound,
+                            "order_basis_coordinates": list(coordinates),
+                        },
+                    )
+            else:
+                dependency_candidates = ()
+            self._resource_usage["cubic_integral_sieve_uses"] += 1
+            self._resource_usage["cubic_integral_sieve_candidates"] += len(candidates)
+            self._resource_usage["cubic_integral_sieve_relations"] += len(selected)
+            self._resource_usage["cubic_integral_sieve_dependency_relations"] += len(
+                dependency_candidates
+            )
+            return trial
+        except (AttributeError, ArithmeticError, ImportError, TypeError, ValueError):
+            return collector
+
     def _unconditional_proof_pass(self, group: Any) -> tuple[Any, ...]:
         started = self._phase_start()
         plan, proof_primes = self._factor_base(proof=True, record_stage=False)
@@ -2183,7 +2290,15 @@ class ClassUnitGroupEngine:
                 collector.add_relation(record)
             if not restored_relations:
                 before_initial = len(collector.records)
-                relations.initial_rational_prime_relations(collector)
+                packed_collector = self._default_cubic_integral_relation_prefix(
+                    collector,
+                    factor_base,
+                    unit_rank,
+                )
+                if packed_collector is collector:
+                    relations.initial_rational_prime_relations(collector)
+                else:
+                    collector = packed_collector
                 if len(collector.records) > self.limits.max_relations:
                     raise ValueError("exact relation count exceeds max_relations")
                 self._admit_automorphism_orbits(
