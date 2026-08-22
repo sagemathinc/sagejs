@@ -311,6 +311,7 @@ class ClassUnitSaturationRecord:
         self.attempts = tuple(_component_payload(value) for value in attempts)
         self.analytic_validation = _component_payload(analytic_validation)
         self._analytic_certificate = analytic_certificate
+        self._analytic_certificate_payload = _component_payload(analytic_certificate)
         self._analytic_generation_verifier = analytic_generation_verifier
         self._producer_artifacts = tuple(
             (artifact, tuple(before), torsion, generation_verifier)
@@ -353,7 +354,7 @@ class ClassUnitSaturationRecord:
             "remaining_index_bound": self.remaining_index_bound,
             "attempts": list(self.attempts),
             "analytic_validation": self.analytic_validation,
-            "analytic_certificate": _component_payload(self._analytic_certificate),
+            "analytic_certificate": self._analytic_certificate_payload,
             "original_units": [
                 self._unit_payload(unit) for unit in self.original_units
             ],

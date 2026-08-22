@@ -193,11 +193,31 @@ def ideal_valuation(ideal: Any, prime_ideal: Any) -> int:
 
 
 def element_valuation(value: Any, prime_ideal: Any) -> int:
-    field = prime_ideal.number_field()
+    """Return the exact valuation of `value` at one prime ideal."""
+    return element_valuations(value, (prime_ideal,))[0]
+
+
+def element_valuations(value: Any, prime_ideals: Any) -> tuple[int, ...]:
+    """Return exact valuations of one element at several prime ideals.
+
+    The algebraic element, its absolute norm, and (for a fractional element)
+    its principal ideal are constructed once.  Each returned entry retains
+    the same exact prime-power lattice-membership test as `element_valuation`.
+    """
+    primes = tuple(prime_ideals)
+    if not primes:
+        return ()
+    reference = primes[0]
+    if not isinstance(reference, NumberFieldIdeal):
+        raise TypeError("element valuations require number-field prime ideals")
+    for prime_ideal in primes[1:]:
+        _same_order(reference, prime_ideal)
+    field = reference.number_field()
     element = field(value)
     if element.is_zero():
         raise ValueError("the valuation of zero is infinite")
-    if element in prime_ideal.ring():
+    order = reference.ring()
+    if element in order:
         # For an algebraic integer alpha, `(alpha)` is contained in `P^k`
         # exactly when alpha is an element of `P^k`.  Testing lattice
         # membership while multiplying successive integral powers avoids the
@@ -207,20 +227,30 @@ def element_valuation(value: Any, prime_ideal: Any) -> int:
         norm = element.norm()
         if norm._denominator != 1:
             raise ArithmeticError("an algebraic integer has nonintegral norm")
-        rational_prime = int(prime_ideal.rational_prime())
-        norm_valuation = _p_adic_valuation_integer(norm._numerator, rational_prime)
-        residue_degree = int(prime_ideal.residue_degree())
-        if residue_degree < 1:
-            raise ArithmeticError("a prime ideal has invalid residue degree")
-        maximum = norm_valuation // residue_degree
-        valuation = 0
-        powers = prime_ideal._valuation_power_cache
-        while len(powers) < maximum:
-            powers.append(powers[-1] * prime_ideal)
-        while valuation < maximum and element in powers[valuation]:
-            valuation += 1
-        return valuation
-    return ideal_valuation(prime_ideal.ring().ideal(element), prime_ideal)
+        norm_valuations: dict[int, int] = {}
+        answer: list[int] = []
+        for prime_ideal in primes:
+            rational_prime = int(prime_ideal.rational_prime())
+            norm_valuation = norm_valuations.get(rational_prime)
+            if norm_valuation is None:
+                norm_valuation = _p_adic_valuation_integer(
+                    norm._numerator, rational_prime
+                )
+                norm_valuations[rational_prime] = norm_valuation
+            residue_degree = int(prime_ideal.residue_degree())
+            if residue_degree < 1:
+                raise ArithmeticError("a prime ideal has invalid residue degree")
+            maximum = norm_valuation // residue_degree
+            valuation = 0
+            powers = prime_ideal._valuation_power_cache
+            while len(powers) < maximum:
+                powers.append(powers[-1] * prime_ideal)
+            while valuation < maximum and element in powers[valuation]:
+                valuation += 1
+            answer.append(valuation)
+        return tuple(answer)
+    principal = order.ideal(element)
+    return tuple(ideal_valuation(principal, prime_ideal) for prime_ideal in primes)
 
 
 def factor_integral_ideal(ideal: Any) -> Any:
@@ -310,6 +340,7 @@ def ideal_from_dict(order: Any, data: dict[str, Any]) -> Any:
 __all__ = [
     "colon_ideal",
     "element_valuation",
+    "element_valuations",
     "factor_integral_ideal",
     "ideal_contains",
     "ideal_divides",

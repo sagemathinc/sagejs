@@ -582,10 +582,9 @@ def factor_witness_over_base(
     )
     row = [0 for _prime in factors]
     for element, exponent in witness.factors():
-        for index, prime_ideal in enumerate(factors):
-            row[index] += int(exponent) * int(
-                ideal_module.element_valuation(element, prime_ideal)
-            )
+        valuations = ideal_module.element_valuations(element, factors)
+        for index, valuation in enumerate(valuations):
+            row[index] += int(exponent) * int(valuation)
     return tuple(row)
 
 

@@ -55,6 +55,19 @@ def _content_hash(value: Any) -> str:
     return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
 
 
+def _json_clone(value: Any) -> Any:
+    """Copy canonical JSON data without invoking the runtime JSON parser."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_json_clone(item) for item in value]
+    if isinstance(value, dict):
+        if any(not isinstance(key, str) for key in value):
+            raise TypeError("canonical proof dictionaries require string keys")
+        return {key: _json_clone(item) for key, item in value.items()}
+    raise TypeError("a proof payload contains a non-JSON value")
+
+
 class AnalyticCertificationError(ArithmeticError):
     """Raised when data requested as rigorous has no complete proof boundary."""
 
@@ -615,12 +628,16 @@ def _ball(value: Any, *, precision_bits: int, rigorous: bool) -> RealBall:
 
 
 _SHARED_INTEGER_TRANSCENDENTAL_CACHE_LIMIT = 16_384
+_BF_PACKED_LAYOUT_CACHE_LIMIT = 32
+_INTEGER_LOG_SOURCE = "integer-log; exact outward binary rounding"
+_INTEGER_SQRT_SOURCE = "integer-square-root; exact outward binary rounding"
 _shared_integer_log_endpoints: dict[
     tuple[int, int], tuple[int, int, int, int, str]
 ] = {}
 _shared_integer_sqrt_endpoints: dict[
     tuple[int, int], tuple[int, int, int, int, str]
 ] = {}
+_shared_bf_packed_layouts: dict[Any, tuple[tuple[int, ...], tuple[int, ...]]] = {}
 
 
 def _shared_integer_ball(
@@ -662,6 +679,40 @@ def _remember_shared_integer_ball(
     )
 
 
+def _shared_integer_mantissas(
+    cache: dict[tuple[int, int], tuple[int, int, int, int, str]],
+    key: tuple[int, int],
+) -> tuple[int, int] | None:
+    """Return cached endpoints at the cache key's exact dyadic scale."""
+    cached = cache.get(key)
+    if cached is None:
+        return None
+    scale = 1 << key[0]
+    lower_numerator, lower_denominator, upper_numerator, upper_denominator, _ = cached
+    if scale % lower_denominator or scale % upper_denominator:
+        return None
+    return (
+        lower_numerator * (scale // lower_denominator),
+        upper_numerator * (scale // upper_denominator),
+    )
+
+
+def _remember_shared_integer_mantissas(
+    cache: dict[tuple[int, int], tuple[int, int, int, int, str]],
+    key: tuple[int, int],
+    lower: int,
+    upper: int,
+    source: str,
+) -> None:
+    """Retain native dyadic endpoints without allocating interval objects."""
+    if key[0] > 1024 or key[1].bit_length() > 64:
+        return
+    if len(cache) >= _SHARED_INTEGER_TRANSCENDENTAL_CACHE_LIMIT:
+        cache.clear()
+    scale = 1 << key[0]
+    cache[key] = (int(lower), scale, int(upper), scale, source)
+
+
 class IntervalBallField:
     """Directed-rounding transcendental operations backed by `mpmath.iv`."""
 
@@ -679,6 +730,10 @@ class IntervalBallField:
         self._bf_dyadic_kernel_calls = 0
         self._bf_dyadic_kernel_successes = 0
         self._bf_dyadic_kernel_fallbacks = 0
+        self._bf_transcendental_kernel_calls = 0
+        self._bf_transcendental_kernel_successes = 0
+        self._bf_transcendental_kernel_fallbacks = 0
+        self._bf_packed_layout_cache_hits = 0
 
     def _from_iv(self, value: Any, source: str) -> RealBall:
         lower_value, upper_value = value._mpi_
@@ -744,7 +799,14 @@ class IntervalBallField:
             self._log_hits += 1
             self._integer_logs[value] = shared
             return shared
-        result = self.log(RealBall(value, precision_bits=self.precision_bits))
+        raw = self.log(RealBall(value, precision_bits=self.precision_bits))
+        result = RealBall(
+            raw.lower,
+            raw.upper,
+            precision_bits=self.precision_bits,
+            rigorous=True,
+            source=_INTEGER_LOG_SOURCE,
+        )
         self._integer_logs[value] = result
         _remember_shared_integer_ball(_shared_integer_log_endpoints, key, result)
         return result
@@ -761,7 +823,14 @@ class IntervalBallField:
             self._sqrt_hits += 1
             self._integer_square_roots[value] = shared
             return shared
-        result = self.sqrt(RealBall(value, precision_bits=self.precision_bits))
+        raw = self.sqrt(RealBall(value, precision_bits=self.precision_bits))
+        result = RealBall(
+            raw.lower,
+            raw.upper,
+            precision_bits=self.precision_bits,
+            rigorous=True,
+            source=_INTEGER_SQRT_SOURCE,
+        )
         self._integer_square_roots[value] = result
         _remember_shared_integer_ball(_shared_integer_sqrt_endpoints, key, result)
         return result
@@ -775,6 +844,14 @@ class IntervalBallField:
             "bf_dyadic_kernel_calls": self._bf_dyadic_kernel_calls,
             "bf_dyadic_kernel_successes": self._bf_dyadic_kernel_successes,
             "bf_dyadic_kernel_fallbacks": self._bf_dyadic_kernel_fallbacks,
+            "bf_transcendental_kernel_calls": self._bf_transcendental_kernel_calls,
+            "bf_transcendental_kernel_successes": (
+                self._bf_transcendental_kernel_successes
+            ),
+            "bf_transcendental_kernel_fallbacks": (
+                self._bf_transcendental_kernel_fallbacks
+            ),
+            "bf_packed_layout_cache_hits": self._bf_packed_layout_cache_hits,
         }
 
     def pi(self) -> RealBall:
@@ -3365,6 +3442,10 @@ class ZetaLogResidueWorkspace:
                     "bf_dyadic_kernel_calls": 0,
                     "bf_dyadic_kernel_successes": 0,
                     "bf_dyadic_kernel_fallbacks": 0,
+                    "bf_transcendental_kernel_calls": 0,
+                    "bf_transcendental_kernel_successes": 0,
+                    "bf_transcendental_kernel_fallbacks": 0,
+                    "bf_packed_layout_cache_hits": 0,
                 }
             field = IntervalBallField(precision)
             result = (_bf_finite_term(plan, field), field.diagnostics())
@@ -3513,7 +3594,7 @@ def _bf_finite_term_scalar(
             rigorous=rigorous,
             source=(
                 "belabas-friedman-finite-prime-sum; "
-                "mpmath-libmp-directed-rounding; "
+                "exact outward integer transcendental rounding; "
                 "outward-dyadic-arithmetic"
             ),
         )
@@ -3536,6 +3617,92 @@ def _dyadic_mantissas(ball: RealBall, precision_bits: int) -> tuple[int, int]:
         ball.lower.numerator * (scale // ball.lower.denominator),
         ball.upper.numerator * (scale // ball.upper.denominator),
     )
+
+
+def _bf_populate_integer_transcendentals(
+    values: Sequence[int],
+    field: IntervalBallField,
+    kernel_module: Any,
+    native_module: Any,
+) -> dict[int, tuple[int, int, int, int]] | None:
+    """Return packed integer log/sqrt endpoints, computing only cache misses."""
+    kernel = getattr(
+        kernel_module, "assemble_bf_integer_transcendental_endpoints", None
+    )
+    if not callable(kernel):
+        return None
+    unique_values = tuple(sorted({int(value) for value in values}))
+    if not unique_values:
+        return {}
+    answer: dict[int, tuple[int, int, int, int]] = {}
+    missing_values: list[int] = []
+    for value in unique_values:
+        key = (field.precision_bits, value)
+        logarithm = _shared_integer_mantissas(_shared_integer_log_endpoints, key)
+        square_root = _shared_integer_mantissas(_shared_integer_sqrt_endpoints, key)
+        if logarithm is None or square_root is None:
+            missing_values.append(value)
+            continue
+        answer[value] = (
+            logarithm[0],
+            logarithm[1],
+            square_root[0],
+            square_root[1],
+        )
+        field._log_hits += 1
+        field._sqrt_hits += 1
+    if not missing_values:
+        return answer
+    field._bf_transcendental_kernel_calls += 1
+    precision = field.precision_bits
+    try:
+        packed_values = native_module.kernel_integer_buffer(kernel, missing_values)
+        word_capacity = max(8, (precision + 511) // 64)
+        output = native_module.kernel_integer_zeros(
+            kernel, 4 * len(missing_values), word_capacity
+        )
+        accepted = bool(kernel(output, packed_values, precision))
+        if not accepted:
+            field._bf_transcendental_kernel_fallbacks += 1
+            return None
+        endpoints = native_module.integer_buffer_values(output)
+    except (OverflowError, RuntimeError, TypeError, ValueError):
+        field._bf_transcendental_kernel_fallbacks += 1
+        return None
+    if len(endpoints) != 4 * len(missing_values):
+        field._bf_transcendental_kernel_fallbacks += 1
+        return None
+    for index, value in enumerate(missing_values):
+        offset = 4 * index
+        logarithm_lower = int(endpoints[offset])
+        logarithm_upper = int(endpoints[offset + 1])
+        square_root_lower = int(endpoints[offset + 2])
+        square_root_upper = int(endpoints[offset + 3])
+        answer[value] = (
+            logarithm_lower,
+            logarithm_upper,
+            square_root_lower,
+            square_root_upper,
+        )
+        key = (precision, value)
+        _remember_shared_integer_mantissas(
+            _shared_integer_log_endpoints,
+            key,
+            logarithm_lower,
+            logarithm_upper,
+            _INTEGER_LOG_SOURCE,
+        )
+        _remember_shared_integer_mantissas(
+            _shared_integer_sqrt_endpoints,
+            key,
+            square_root_lower,
+            square_root_upper,
+            _INTEGER_SQRT_SOURCE,
+        )
+    field._log_evaluations += len(missing_values)
+    field._sqrt_evaluations += len(missing_values)
+    field._bf_transcendental_kernel_successes += 1
+    return answer
 
 
 def _bf_finite_term_kernel(
@@ -3567,37 +3734,97 @@ def _bf_finite_term_kernel(
     precision = field.precision_bits
     threshold = plan.threshold
     ninth = threshold // 9
-    sqrt_threshold = field.sqrt_integer(threshold)
-    sqrt_ninth = field.sqrt_integer(ninth)
-    scales = (
-        sqrt_threshold * field.log_integer(threshold),
-        sqrt_ninth * field.log_integer(ninth),
-    )
-    log_three_threshold = field.log_integer(3 * threshold)
-    endpoints: list[int] = []
-    for ball in scales:
-        endpoints.extend(_dyadic_mantissas(ball, precision))
-    endpoints.extend(_dyadic_mantissas(sqrt_threshold, precision))
-    endpoints.extend(_dyadic_mantissas(log_three_threshold, precision))
-    term_data: list[int] = []
-    log_cache: dict[int, RealBall] = {}
-    sqrt_cache: dict[int, RealBall] = {}
     dyadic_scale = 1 << precision
-    for multiplicity, scale_index, norm, exponent in plan.terms:
-        term_data.extend((multiplicity, scale_index, norm, exponent))
-        logarithm = log_cache.get(norm)
-        if logarithm is None:
-            logarithm = field.log_integer(norm)
-            log_cache[norm] = logarithm
-        endpoints.extend(_dyadic_mantissas(logarithm, precision))
-        if exponent % 2:
-            root = sqrt_cache.get(norm)
-            if root is None:
-                root = field.sqrt_integer(norm)
-                sqrt_cache[norm] = root
-            endpoints.extend(_dyadic_mantissas(root, precision))
-        else:
-            endpoints.extend((dyadic_scale, dyadic_scale))
+    layout_key = (precision, threshold, plan.terms)
+    cached_layout = _shared_bf_packed_layouts.get(layout_key)
+    if cached_layout is not None:
+        field._bf_packed_layout_cache_hits += 1
+        term_data, endpoints = cached_layout
+    else:
+        needed_values = [threshold, ninth, 3 * threshold]
+        needed_values.extend(term[2] for term in plan.terms)
+        packed_transcendentals = _bf_populate_integer_transcendentals(
+            needed_values, field, kernel_module, native_module
+        )
+
+        def packed_ball(value: int, offset: int, source: str) -> RealBall:
+            if packed_transcendentals is None:
+                return (
+                    field.log_integer(value)
+                    if offset == 0
+                    else field.sqrt_integer(value)
+                )
+            packed = packed_transcendentals[value]
+            return RealBall(
+                RationalEndpoint(packed[offset], dyadic_scale),
+                RationalEndpoint(packed[offset + 1], dyadic_scale),
+                precision_bits=precision,
+                rigorous=True,
+                source=source,
+            )
+
+        sqrt_threshold_for_layout = packed_ball(threshold, 2, _INTEGER_SQRT_SOURCE)
+        sqrt_ninth = packed_ball(ninth, 2, _INTEGER_SQRT_SOURCE)
+        scales = (
+            sqrt_threshold_for_layout * packed_ball(threshold, 0, _INTEGER_LOG_SOURCE),
+            sqrt_ninth * packed_ball(ninth, 0, _INTEGER_LOG_SOURCE),
+        )
+        log_three_threshold_for_layout = packed_ball(
+            3 * threshold, 0, _INTEGER_LOG_SOURCE
+        )
+        endpoint_list: list[int] = []
+        for ball in scales:
+            endpoint_list.extend(_dyadic_mantissas(ball, precision))
+        endpoint_list.extend(_dyadic_mantissas(sqrt_threshold_for_layout, precision))
+        endpoint_list.extend(
+            _dyadic_mantissas(log_three_threshold_for_layout, precision)
+        )
+        term_list: list[int] = []
+        log_cache: dict[int, RealBall] = {}
+        sqrt_cache: dict[int, RealBall] = {}
+        for multiplicity, scale_index, norm, exponent in plan.terms:
+            term_list.extend((multiplicity, scale_index, norm, exponent))
+            if packed_transcendentals is None:
+                logarithm = log_cache.get(norm)
+                if logarithm is None:
+                    logarithm = field.log_integer(norm)
+                    log_cache[norm] = logarithm
+                endpoint_list.extend(_dyadic_mantissas(logarithm, precision))
+            else:
+                logarithm_endpoints = packed_transcendentals[norm]
+                endpoint_list.extend(logarithm_endpoints[:2])
+            if exponent % 2:
+                if packed_transcendentals is None:
+                    root = sqrt_cache.get(norm)
+                    if root is None:
+                        root = field.sqrt_integer(norm)
+                        sqrt_cache[norm] = root
+                    endpoint_list.extend(_dyadic_mantissas(root, precision))
+                else:
+                    root_endpoints = packed_transcendentals[norm]
+                    endpoint_list.extend(root_endpoints[2:])
+            else:
+                endpoint_list.extend((dyadic_scale, dyadic_scale))
+        term_data = tuple(term_list)
+        endpoints = tuple(endpoint_list)
+        if len(_shared_bf_packed_layouts) >= _BF_PACKED_LAYOUT_CACHE_LIMIT:
+            _shared_bf_packed_layouts.clear()
+        _shared_bf_packed_layouts[layout_key] = (term_data, endpoints)
+
+    sqrt_threshold = RealBall(
+        RationalEndpoint(endpoints[4], dyadic_scale),
+        RationalEndpoint(endpoints[5], dyadic_scale),
+        precision_bits=precision,
+        rigorous=True,
+        source=_INTEGER_SQRT_SOURCE,
+    )
+    log_three_threshold = RealBall(
+        RationalEndpoint(endpoints[6], dyadic_scale),
+        RationalEndpoint(endpoints[7], dyadic_scale),
+        precision_bits=precision,
+        rigorous=True,
+        source=_INTEGER_LOG_SOURCE,
+    )
 
     field._bf_dyadic_kernel_calls += 1
     try:
@@ -3636,7 +3863,7 @@ def _bf_finite_term_kernel(
     multiplier_source = "exact-rational-endpoints; " + denominator_source
     total_source = (
         "belabas-friedman-finite-prime-sum; "
-        "mpmath-libmp-directed-rounding; "
+        "exact outward integer transcendental rounding; "
         "outward-dyadic-arithmetic"
         if plan.terms
         else "exact-rational-endpoints"
@@ -4151,38 +4378,80 @@ class UnitSaturationIndexCertificate:
         generation_verifier: Callable[..., Any] | None = None,
         workspace: ZetaLogResidueWorkspace | None = None,
     ) -> None:
-        self.field_order_identity = json.loads(_canonical_json(field_order_identity))
-        self.initial_units = json.loads(_canonical_json(list(initial_units)))
-        self.configuration = json.loads(_canonical_json(configuration))
-        self.index_bound = int(index_bound)
-        self.analytic_proof = json.loads(_canonical_json(analytic_proof))
-        self.generation_evidence = json.loads(_canonical_json(generation_evidence))
-        self.proof_status = str(proof_status)
-        self._generation_verifier = generation_verifier
-        self._workspace = workspace
-        if self.index_bound < 1:
+        selected_index_bound = int(index_bound)
+        selected_proof_status = str(proof_status)
+        if selected_index_bound < 1:
             raise ValueError("a global index certificate needs a positive index")
-        if self.proof_status not in (
+        if selected_proof_status not in (
             "exact-unconditional",
             "exact-relations-conditional-grh",
         ):
             raise ValueError("a global index certificate needs an exact proof status")
+        body = {
+            "schema": "sagejs.number-fields.unit-saturation-index-certificate.v1",
+            "field_order_identity": field_order_identity,
+            "initial_units": list(initial_units),
+            "configuration": configuration,
+            "index_bound": selected_index_bound,
+            "analytic_proof": analytic_proof,
+            "generation_evidence": generation_evidence,
+            "proof_status": selected_proof_status,
+        }
+        # One canonical snapshot provides both mutation isolation and the
+        # authenticated byte sequence.  Structural copying is materially
+        # cheaper than sending this large exact-integer tree through the
+        # runtime JSON parser, while the canonical serialization above still
+        # validates and authenticates the complete payload.
+        self._body_json = _canonical_json(body)
+        snapshot = _json_clone(body)
+        self._body_snapshot = snapshot
+        self._field_order_identity = snapshot["field_order_identity"]
+        self._initial_units = snapshot["initial_units"]
+        self._configuration = snapshot["configuration"]
+        self._index_bound = int(snapshot["index_bound"])
+        self._analytic_proof = snapshot["analytic_proof"]
+        self._generation_evidence = snapshot["generation_evidence"]
+        self._proof_status = str(snapshot["proof_status"])
+        self._content_sha256 = hashlib.sha256(
+            self._body_json.encode("utf-8")
+        ).hexdigest()
+        self._generation_verifier = generation_verifier
+        self._workspace = workspace
+
+    @property
+    def field_order_identity(self) -> dict[str, Any]:
+        return _json_clone(self._field_order_identity)
+
+    @property
+    def initial_units(self) -> list[Any]:
+        return _json_clone(self._initial_units)
+
+    @property
+    def configuration(self) -> dict[str, Any]:
+        return _json_clone(self._configuration)
+
+    @property
+    def index_bound(self) -> int:
+        return self._index_bound
+
+    @property
+    def analytic_proof(self) -> dict[str, Any]:
+        return _json_clone(self._analytic_proof)
+
+    @property
+    def generation_evidence(self) -> Any:
+        return _json_clone(self._generation_evidence)
+
+    @property
+    def proof_status(self) -> str:
+        return self._proof_status
 
     def _body_dict(self) -> dict[str, Any]:
-        return {
-            "schema": "sagejs.number-fields.unit-saturation-index-certificate.v1",
-            "field_order_identity": self.field_order_identity,
-            "initial_units": self.initial_units,
-            "configuration": self.configuration,
-            "index_bound": self.index_bound,
-            "analytic_proof": self.analytic_proof,
-            "generation_evidence": self.generation_evidence,
-            "proof_status": self.proof_status,
-        }
+        return _json_clone(self._body_snapshot)
 
     def to_dict(self) -> dict[str, Any]:
         body = self._body_dict()
-        body["content_sha256"] = _content_hash(body)
+        body["content_sha256"] = self._content_sha256
         return body
 
     def workspace_diagnostics(self) -> dict[str, int] | None:
@@ -4243,7 +4512,7 @@ class UnitSaturationIndexCertificate:
     ) -> bool:
         replay_started = time.perf_counter_ns()
         try:
-            hr_payload = self.analytic_proof["hr_index"]
+            hr_payload = self._analytic_proof["hr_index"]
             lower_index = _payload_integer(
                 hr_payload["lower_index"], "authenticated hR lower index"
             )
@@ -4261,23 +4530,23 @@ class UnitSaturationIndexCertificate:
                     hr_payload["rigorous"], "authenticated hR rigor"
                 )
                 or not _payload_boolean(
-                    self.analytic_proof["regulator"]["rigorous"],
+                    self._analytic_proof["regulator"]["rigorous"],
                     "authenticated regulator rigor",
                 )
                 or not _payload_boolean(
-                    self.analytic_proof["zeta_log_residue"]["rigorous"],
+                    self._analytic_proof["zeta_log_residue"]["rigorous"],
                     "authenticated zeta rigor",
                 )
             ):
                 return False
-            if _canonical_json(self.field_order_identity) != _canonical_json(
-                _saturation_field_order_identity(field, order)
+            if self._field_order_identity != _saturation_field_order_identity(
+                field, order
             ):
                 return False
             unit_payloads = [
                 _element_payload(_ordinary_unit(unit)) for unit in initial_units
             ]
-            if _canonical_json(unit_payloads) != _canonical_json(self.initial_units):
+            if unit_payloads != self._initial_units:
                 return False
             verifier = generation_verifier or self._generation_verifier
             if not callable(verifier) or not bool(
@@ -4285,9 +4554,9 @@ class UnitSaturationIndexCertificate:
                     field,
                     order,
                     initial_units,
-                    int(self.configuration["class_number"]),
-                    self.generation_evidence,
-                    self.proof_status,
+                    int(self._configuration["class_number"]),
+                    _json_clone(self._generation_evidence),
+                    self._proof_status,
                 )
             ):
                 return False
@@ -4295,12 +4564,10 @@ class UnitSaturationIndexCertificate:
                 field,
                 order,
                 initial_units,
-                self.configuration,
+                self._configuration,
                 workspace=self._workspace,
             )
-            return index_bound == self.index_bound and _canonical_json(
-                proof
-            ) == _canonical_json(self.analytic_proof)
+            return index_bound == self._index_bound and proof == self._analytic_proof
         except (TypeError, ValueError, ArithmeticError, ZeroDivisionError):
             return False
         finally:

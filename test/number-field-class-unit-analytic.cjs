@@ -208,6 +208,7 @@ test("BF plan aggregation and bounded provenance preserve exact intervals", () =
   runPython(String.raw`
 module._shared_integer_log_endpoints.clear()
 module._shared_integer_sqrt_endpoints.clear()
+module._shared_bf_packed_layouts.clear()
 first_shared_field = IntervalBallField(128)
 first_log = first_shared_field.log_integer(37)
 first_sqrt = first_shared_field.sqrt_integer(37)
@@ -222,6 +223,40 @@ assert second_shared_field.sqrt_integer(37).to_dict() == expected_sqrt
 shared_diagnostics = second_shared_field.diagnostics()
 assert shared_diagnostics["log_cache_hits"] == 1
 assert shared_diagnostics["sqrt_cache_hits"] == 1
+
+from sagejs.native import (
+    integer_buffer_values,
+    kernel_integer_buffer,
+    kernel_integer_zeros,
+)
+from sagejs.number_fields.zeta_coefficient_kernel import (
+    assemble_bf_integer_transcendental_endpoints,
+)
+transcendental_values = list(range(1, 258)) + [1009, 4093, 8191, 24039, 999983]
+for precision in (64, 96, 128, 160, 256):
+    module._shared_integer_log_endpoints.clear()
+    module._shared_integer_sqrt_endpoints.clear()
+    scalar_field = IntervalBallField(precision)
+    expected = []
+    for value in transcendental_values:
+        expected.extend(module._dyadic_mantissas(
+            scalar_field.log_integer(value), precision
+        ))
+        expected.extend(module._dyadic_mantissas(
+            scalar_field.sqrt_integer(value), precision
+        ))
+    packed_values = kernel_integer_buffer(
+        assemble_bf_integer_transcendental_endpoints, transcendental_values
+    )
+    output = kernel_integer_zeros(
+        assemble_bf_integer_transcendental_endpoints,
+        4 * len(transcendental_values),
+        max(8, (precision + 511) // 64),
+    )
+    assert assemble_bf_integer_transcendental_endpoints(
+        output, packed_values, precision
+    )
+    assert list(integer_buffer_values(output)) == expected
 
 def reference_plan(threshold, splitting):
     ninth = threshold // 9
@@ -320,7 +355,14 @@ assert scalar_finite.to_dict() == new_finite.to_dict()
 assert kernel_field.diagnostics()["bf_dyadic_kernel_successes"] == 1
 assert kernel_field.diagnostics()["bf_dyadic_kernel_fallbacks"] == 0
 assert len(new_finite.source) < 512
-assert "mpmath-libmp-directed-rounding" in new_finite.source
+assert "exact outward integer transcendental rounding" in new_finite.source
+assert kernel_field.diagnostics()["bf_transcendental_kernel_successes"] == 1
+repeat_field = IntervalBallField(128)
+repeat_finite = module._bf_finite_term(new_plan, repeat_field)
+assert repeat_finite.to_dict() == new_finite.to_dict()
+repeat_diagnostics = repeat_field.diagnostics()
+assert repeat_diagnostics["bf_packed_layout_cache_hits"] == 1
+assert repeat_diagnostics["bf_transcendental_kernel_calls"] == 0
 
 # Precision escalation must preserve the full serialized proof object, not
 # merely overlap numerically with the scalar oracle.
@@ -360,8 +402,14 @@ certificate = UnitSaturationIndexCertificate(
     {"generation": "focused-provenance-test"},
     "exact-relations-conditional-grh",
 )
+original_certificate_payload = certificate.to_dict()
 mutated = certificate.to_dict()
 mutated["analytic_proof"]["finite_term"]["source"] = "forged-provenance"
+mutated["generation_evidence"]["generation"] = "forged-generation"
+assert certificate.to_dict() == original_certificate_payload
+exposed_generation = certificate.generation_evidence
+exposed_generation["generation"] = "another-forgery"
+assert certificate.to_dict() == original_certificate_payload
 try:
     UnitSaturationIndexCertificate.from_dict(mutated)
     raise AssertionError("a finite-term provenance mutation retained authority")
