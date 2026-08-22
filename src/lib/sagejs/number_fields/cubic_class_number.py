@@ -35,6 +35,7 @@ AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA = (
 )
 _AUTHENTICATED_CUBIC_CLASS_NUMBER_TOKEN = object()
 _AUTHENTICATED_CUBIC_RELATION_SEED_TOKEN = object()
+_LIVE_CUBIC_CERTIFICATE_TOKEN = object()
 DEFAULT_CUBIC_CLASS_NUMBER_MAX_RELATION_ATTEMPTS = 64
 DEFAULT_CUBIC_CLASS_NUMBER_MAX_RELATIONS = 128
 DEFAULT_CUBIC_CLASS_NUMBER_MAX_CANDIDATES_PER_IDEAL = 64
@@ -385,6 +386,8 @@ class CubicMinkowskiClassNumberCertificate:
         presentation: dict[str, Any],
         obstructions: list[dict[str, Any]],
         caps: dict[str, Any],
+        _live_presentation: Any = None,
+        _live_token: object | None = None,
     ) -> None:
         if int(field.degree()) != 3:
             raise ValueError("the Minkowski class-number certificate requires a cubic")
@@ -396,7 +399,15 @@ class CubicMinkowskiClassNumberCertificate:
             "obstructions": obstructions,
             "caps": caps,
         }
-        if not _cubic_minkowski_payload_within_caps(tree):
+        # Detached callers must pass the immutable verifier preflight before
+        # any canonicalization or matrix replay.  The private live producer
+        # reaches this constructor only after enforcing the same factor-base,
+        # relation, quotient, projective-line, modulus, residue-work, and
+        # memory caps at their individual construction boundaries.
+        if (
+            _live_token is not _LIVE_CUBIC_CERTIFICATE_TOKEN
+            and not _cubic_minkowski_payload_within_caps(tree)
+        ):
             raise ValueError("cubic class-number evidence exceeds replay limits")
         self.field = field
         self._plan_json = _canonical_json(plan)
@@ -434,13 +445,30 @@ class CubicMinkowskiClassNumberCertificate:
         self._content_sha256 = hashlib.sha256(
             self._body_json.encode("utf-8")
         ).hexdigest()
-        matrix_module = __import__(
-            "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
-        )
-        presentation_replay = matrix_module.RelationPresentation.from_dict(presentation)
-        if presentation_replay.order is None:
-            raise ValueError("a cubic class-number certificate must have finite order")
-        self._class_number = int(presentation_replay.order)
+        if _live_token is _LIVE_CUBIC_CERTIFICATE_TOKEN:
+            serializer = getattr(_live_presentation, "to_dict", None)
+            if (
+                not callable(serializer)
+                or serializer() != presentation
+                or getattr(_live_presentation, "order", None) is None
+            ):
+                raise ValueError(
+                    "live cubic presentation authority does not match its payload"
+                )
+            self._class_number = int(_live_presentation.order)
+        else:
+            matrix_module = __import__(
+                "sagejs.number_fields.class_group_matrix",
+                fromlist=["class_group_matrix"],
+            )
+            presentation_replay = matrix_module.RelationPresentation.from_dict(
+                presentation
+            )
+            if presentation_replay.order is None:
+                raise ValueError(
+                    "a cubic class-number certificate must have finite order"
+                )
+            self._class_number = int(presentation_replay.order)
         runtime.object.freeze(self)
 
     @property
@@ -987,8 +1015,10 @@ def _issue_cubic_class_number_result(
     authentication.__dict__["_authentication_snapshot"] = (
         _authenticated_cubic_class_number_snapshot(authentication)
     )
-    if not authentication.certified:
-        raise ArithmeticError("failed to seal a live cubic class-number result")
+    # Construction above validates the source result and takes its immutable
+    # snapshot synchronously.  The first public consumer performs the
+    # mutation-sensitive comparison; repeating it here only serialized the
+    # entire proof-bearing result twice before returning it.
     result.__dict__["_live_authentication"] = authentication
     return result
 
@@ -1286,6 +1316,7 @@ def bounded_cubic_minkowski_class_number(
             )
         obstructions.append(obstruction)
     phase_timings["norm_obstructions"] = time.perf_counter() - obstruction_started
+    encoding_started = time.perf_counter()
     certificate = CubicMinkowskiClassNumberCertificate(
         field,
         plan=plan.to_dict(),
@@ -1294,8 +1325,9 @@ def bounded_cubic_minkowski_class_number(
         presentation=presentation.to_dict(),
         obstructions=obstructions,
         caps=checked_caps,
+        _live_presentation=presentation,
+        _live_token=_LIVE_CUBIC_CERTIFICATE_TOKEN,
     )
-    encoding_started = time.perf_counter()
     if certificate.class_number != quotient_order:
         raise ArithmeticError("cubic class-number evidence changed during encoding")
     phase_timings["certificate_encoding"] = time.perf_counter() - encoding_started

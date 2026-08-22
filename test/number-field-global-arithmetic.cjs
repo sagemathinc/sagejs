@@ -330,7 +330,18 @@ assert generic59.certificate.verify()
 
 # The nontrivial quotient is proved exact without units, a regulator, or hR.
 K1083 = NumberField(x**3 - x**2 - 6*x - 12, "d")
+matrix_module = __import__(
+    "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
+)
+presentation_from_dict = matrix_module.RelationPresentation.from_dict
+presentation_replays = [0]
+def counting_presentation_replay(value):
+    presentation_replays[0] += 1
+    return presentation_from_dict(value)
+matrix_module.RelationPresentation.from_dict = counting_presentation_replay
 classes1083 = bounded_cubic_minkowski_class_number(K1083)
+matrix_module.RelationPresentation.from_dict = presentation_from_dict
+assert presentation_replays[0] == 0
 assert classes1083.complete and classes1083.order() == 3
 assert classes1083.proof_status == "exact-unconditional"
 assert classes1083.presentation.invariants == (3,)
@@ -348,12 +359,8 @@ assert isinstance(certificate1083, CubicMinkowskiClassNumberCertificate)
 assert len(certificate1083.obstructions) == 1
 assert certificate1083.obstructions[0]["modulus"] == 19
 assert certificate1083.verify()
-# The presentation was replayed once when the immutable certificate was
-# constructed; reading its certified order must not deserialize the SNF again.
-matrix_module = __import__(
-    "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
-)
-presentation_from_dict = matrix_module.RelationPresentation.from_dict
+# The live engine issued the immutable certificate without replaying its own
+# exact presentation; reading its certified order must not deserialize it.
 def forbidden_presentation_replay(value):
     raise AssertionError("class_number replayed its immutable presentation")
 matrix_module.RelationPresentation.from_dict = forbidden_presentation_replay
