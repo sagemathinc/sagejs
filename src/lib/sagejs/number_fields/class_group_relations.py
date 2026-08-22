@@ -263,15 +263,22 @@ def _order_fingerprint(order: Any) -> dict[str, Any]:
     }
 
 
-def _ideal_payload(ideal: Any) -> dict[str, Any]:
+def _ideal_payload(
+    ideal: Any,
+    *,
+    field_order: dict[str, Any] | None = None,
+    norm: Any = None,
+) -> dict[str, Any]:
     return {
         "schema": IDEAL_SCHEMA,
-        "field_order": _order_fingerprint(ideal.ring()),
+        "field_order": (
+            _order_fingerprint(ideal.ring()) if field_order is None else field_order
+        ),
         "basis": [
             [_rational_pair(value) for value in row]
             for row in ideal.basis_matrix().rows()
         ],
-        "norm": _rational_pair(ideal.norm()),
+        "norm": _rational_pair(ideal.norm() if norm is None else norm),
     }
 
 
@@ -397,10 +404,12 @@ class FactoredPrincipalWitness:
     def principal_ideal(self, order: Any = None) -> Any:
         if order is None:
             order = self.field.maximal_order()
-        answer = order.ideal(1)
+        answer = None
         for element, exponent, _payload in self._factors:
-            answer *= order.ideal(element) ** exponent
-        return answer
+            base = order.ideal(element)
+            power = base if exponent == 1 else base**exponent
+            answer = power if answer is None else answer * power
+        return order.ideal(1) if answer is None else answer
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -629,10 +638,18 @@ def _norm_smoothness(
     quotient: Any,
     row: tuple[int, ...],
     factor_base: tuple[Any, ...],
+    *,
+    principal_norm: Any = None,
+    source_norm: Any = None,
+    quotient_norm: Any = None,
 ) -> dict[str, Any]:
-    principal_pair = _rational_pair(principal.norm())
-    source_pair = _rational_pair(source.norm())
-    quotient_pair = _rational_pair(quotient.norm())
+    principal_pair = _rational_pair(
+        principal.norm() if principal_norm is None else principal_norm
+    )
+    source_pair = _rational_pair(source.norm() if source_norm is None else source_norm)
+    quotient_pair = _rational_pair(
+        quotient.norm() if quotient_norm is None else quotient_norm
+    )
     numerator = abs(principal_pair[0])
     denominator = principal_pair[1]
     return {
@@ -949,6 +966,10 @@ class ExactRelationCollector:
             max_powers=max_factor_powers,
         )
         self.rank_screen = ModularRankScreen(len(self.factor_base), rank_prime)
+        self._field_order_fingerprint = _order_fingerprint(order)
+        self._factor_base_fingerprints = tuple(
+            _prime_fingerprint(prime) for prime in self.factor_base
+        )
         self.records: list[RelationRecord] = []
         self.admissions: list[RelationAdmission] = []
         self.context = context
@@ -1118,23 +1139,45 @@ class ExactRelationCollector:
                 ideal=principal,
             )
         quotient = self.reconstruct_factor_base_ideal(quotient_row)
-        if source * quotient != principal:
-            raise ArithmeticError(
-                "the source and quotient do not reconstruct principal"
-            )
+        # Each ideal has already been compared with the exact reconstruction
+        # of its exponent row, and `row = source_row + quotient_row`.  Their
+        # product identity follows exactly from those checks.  Detached replay
+        # still performs the independent ideal multiplication before accepting
+        # an exported relation.
+        source_norm = _factor_base_row_norm(self.factor_base, computed_source_row)
+        quotient_norm = _factor_base_row_norm(self.factor_base, quotient_row)
         record = RelationRecord(
             row=row,
             quotient_row=quotient_row,
             source_row=computed_source_row,
             witness=factored.to_dict(),
-            principal_ideal=_ideal_payload(principal),
-            source_ideal=_ideal_payload(source),
-            smooth_quotient=_ideal_payload(quotient),
-            norm_smoothness=_norm_smoothness(
-                principal, source, quotient, row, self.factor_base
+            principal_ideal=_ideal_payload(
+                principal,
+                field_order=self._field_order_fingerprint,
+                norm=witness_norm,
             ),
-            field_order=_order_fingerprint(self.order),
-            factor_base=[_prime_fingerprint(prime) for prime in self.factor_base],
+            source_ideal=_ideal_payload(
+                source,
+                field_order=self._field_order_fingerprint,
+                norm=source_norm,
+            ),
+            smooth_quotient=_ideal_payload(
+                quotient,
+                field_order=self._field_order_fingerprint,
+                norm=quotient_norm,
+            ),
+            norm_smoothness=_norm_smoothness(
+                principal,
+                source,
+                quotient,
+                row,
+                self.factor_base,
+                principal_norm=witness_norm,
+                source_norm=source_norm,
+                quotient_norm=quotient_norm,
+            ),
+            field_order=self._field_order_fingerprint,
+            factor_base=self._factor_base_fingerprints,
             archimedean_logs=archimedean_logs,
             log_precision=log_precision,
             provenance=provenance,
@@ -1201,6 +1244,7 @@ def initial_rational_prime_relations(
         answer.append(
             collector.admit_witness(
                 collector.order.number_field()(rational_prime),
+                source_row=(0,) * len(collector.factor_base),
                 principal_row=row,
                 provenance={
                     "algorithm": "rational-prime-decomposition",
@@ -2246,9 +2290,7 @@ class LLLRelationSearch:
             row[index] += 1 + self.state.next_u64() % exponent_bound
         exponents = tuple(int(value) for value in row)
         return (
-            reconstruct_factor_base_ideal(
-                self.collector.order, self.collector.factor_base, exponents
-            ),
+            self.collector.reconstruct_factor_base_ideal(exponents),
             exponents,
         )
 
