@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const test = require("node:test");
@@ -43,48 +44,63 @@ const expected =
   "[2*a^3 + 2*a + 2, 2, 2*a^2 + 2*a + 1, 1], " +
   "[2, 2*a, 2*a^3 + 2*a + 1, 1]]";
 
-test("public GF(p^n) elements and dense polynomials agree in native and Wasm", async () => {
-  const { createSage: createWasmSage } = await import(wasmKernel);
-  const native = await createNativeSage();
-  const wasm = await createWasmSage();
-  try {
-    const [nativeResult, wasmResult] = await Promise.all([
-      native.evaluate(publicWorkload),
-      wasm.evaluate(publicWorkload),
-    ]);
-    assert.equal(nativeResult.repr, expected);
-    assert.equal(wasmResult.repr, nativeResult.repr);
-
-    const routes = wasmResult.instrumentation.routes;
-    const required = new Set([
-      "ffi:flint:fq_context",
-      "ffi:flint:fq_element",
-      "ffi:flint:fq_element_add",
-      "ffi:flint:fq_element_inverse",
-      "ffi:flint:fq_element_mul",
-      "ffi:flint:fq_element_neg",
-      "ffi:flint:fq_element_pow",
-      "ffi:flint:fq_element_sub",
-      "ffi:flint:fq_polynomial",
-      "ffi:flint:fq_polynomial_add",
-      "ffi:flint:fq_polynomial_mul",
-      "ffi:flint:fq_polynomial_neg",
-      "ffi:flint:fq_polynomial_pow",
-      "ffi:flint:fq_polynomial_sub",
-    ]);
-    for (const route of routes) {
-      if (route.capability_id.startsWith("ffi:flint:fq_")) {
-        assert.equal(route.selected_route, "receipt-backed-wasm-artifact");
-        assert.equal(route.execution_target, "wasm-artifact");
-        required.delete(route.capability_id);
-      }
-    }
-    assert.deepEqual([...required], []);
-    assert.doesNotMatch(
-      JSON.stringify(wasmResult.instrumentation),
-      /python-fallback|dynamic-python|portable-fallback|shared-runtime-js/,
+test(
+  "public GF(p^n) elements and dense polynomials agree in native and Wasm",
+  { timeout: 120_000 },
+  async (t) => {
+    const wasiRuntime = path.join(
+      root,
+      "packages/flint-wasm/dist/wasi-runtime.mjs",
     );
-  } finally {
-    await Promise.all([native.close(), wasm.close()]);
-  }
-});
+    if (!fs.existsSync(wasiRuntime)) {
+      t.skip("build the FLINT Wasm release artifact first");
+      return;
+    }
+
+    let native;
+    let wasm;
+    try {
+      const { createSage: createWasmSage } = await import(wasmKernel);
+      native = await createNativeSage();
+      wasm = await createWasmSage();
+      const [nativeResult, wasmResult] = await Promise.all([
+        native.evaluate(publicWorkload),
+        wasm.evaluate(publicWorkload),
+      ]);
+      assert.equal(nativeResult.repr, expected);
+      assert.equal(wasmResult.repr, nativeResult.repr);
+
+      const routes = wasmResult.instrumentation.routes;
+      const required = new Set([
+        "ffi:flint:fq_context",
+        "ffi:flint:fq_element",
+        "ffi:flint:fq_element_add",
+        "ffi:flint:fq_element_inverse",
+        "ffi:flint:fq_element_mul",
+        "ffi:flint:fq_element_neg",
+        "ffi:flint:fq_element_pow",
+        "ffi:flint:fq_element_sub",
+        "ffi:flint:fq_polynomial",
+        "ffi:flint:fq_polynomial_add",
+        "ffi:flint:fq_polynomial_mul",
+        "ffi:flint:fq_polynomial_neg",
+        "ffi:flint:fq_polynomial_pow",
+        "ffi:flint:fq_polynomial_sub",
+      ]);
+      for (const route of routes) {
+        if (route.capability_id.startsWith("ffi:flint:fq_")) {
+          assert.equal(route.selected_route, "receipt-backed-wasm-artifact");
+          assert.equal(route.execution_target, "wasm-artifact");
+          required.delete(route.capability_id);
+        }
+      }
+      assert.deepEqual([...required], []);
+      assert.doesNotMatch(
+        JSON.stringify(wasmResult.instrumentation),
+        /python-fallback|dynamic-python|portable-fallback|shared-runtime-js/,
+      );
+    } finally {
+      await Promise.all([native?.close(), wasm?.close()]);
+    }
+  },
+);
