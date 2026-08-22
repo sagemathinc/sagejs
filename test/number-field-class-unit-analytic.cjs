@@ -609,6 +609,51 @@ def quadratic_provider(discriminant):
         return records
     return provider
 
+# The maximal-order provider may expose the same exact local factors in the
+# private packed shape used by zeta-coefficient construction.  The analytic
+# workspace must validate that shape without touching the nested-record
+# fallback, and reject even a one-prime reordering.
+class PackedProvider:
+    def __init__(self):
+        self.public_calls = 0
+        self.packed_calls = 0
+        self.primes = [2, 3, 5]
+    def splitting_records(self, _start, _stop):
+        self.public_calls += 1
+        raise AssertionError("the packed splitting path fell back")
+    def _zeta_factor_degree_data(self, start, stop):
+        self.packed_calls += 1
+        return {
+            "degree": 2,
+            "intervalStart": start,
+            "intervalStop": stop,
+            "completePrimeInterval": True,
+            "primes": list(self.primes),
+            "factorCounts": [1, 2, 1],
+            "exponents": [1, 0, 1, 1, 2, 0],
+            "degrees": [2, 0, 1, 1, 1, 0],
+        }
+
+packed_provider = PackedProvider()
+packed_workspace = ZetaLogResidueWorkspace(
+    5, 2, packed_provider.splitting_records
+)
+assert packed_workspace.splitting_types([2, 3, 5], 4096) == {
+    2: ((1, 2),),
+    3: ((1, 1), (1, 1)),
+    5: ((2, 1),),
+}
+assert packed_provider.packed_calls == 1
+assert packed_provider.public_calls == 0
+packed_provider.primes = [2, 5, 3]
+try:
+    module._packed_splitting_block(
+        packed_provider.splitting_records, 2, 6, [2, 3, 5], 2
+    )
+    raise AssertionError("reordered packed splitting data was accepted")
+except AnalyticCertificationError:
+    pass
+
 # Floating-point cutoff location is only a proposal: the accelerated search
 # must reproduce the exact minimal threshold and its outward interval, while
 # using exactly two certified evaluations on representative quadratic and

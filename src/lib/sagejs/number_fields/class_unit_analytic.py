@@ -3111,6 +3111,97 @@ def _same_provider(left: Any, right: Any) -> bool:
     )
 
 
+def _packed_splitting_block(
+    provider: Callable[[int, int], Iterable[Any]],
+    start: int,
+    stop: int,
+    expected_primes: Sequence[int],
+    degree: int,
+) -> dict[int, tuple[tuple[int, int], ...]] | None:
+    """Decode the maximal order's private packed splitting stream.
+
+    The public splitting provider remains the authoritative fallback.  This
+    hook only avoids expanding an already certified FLINT batch into nested
+    record dictionaries which this analytic layer would immediately compact
+    again.  Every interval, rational prime, packed shape, factor, and local
+    degree identity is replayed here before the data enters the workspace.
+    """
+    order = getattr(provider, "__self__", None)
+    hook = getattr(order, "_zeta_factor_degree_data", None)
+    if not callable(hook):
+        return None
+    data: Any = hook(start, stop)
+    if data is None:
+        return None
+    try:
+        if data.get("completePrimeInterval") is not True:
+            raise AnalyticCertificationError(
+                "packed splitting data does not certify a complete prime interval"
+            )
+        if int(data["intervalStart"]) != start or int(data["intervalStop"]) != stop:
+            raise AnalyticCertificationError(
+                "packed splitting data describes a different prime interval"
+            )
+        if int(data["degree"]) != degree:
+            raise AnalyticCertificationError(
+                "packed splitting data has the wrong field degree"
+            )
+        primes = data["primes"]
+        counts = data["factorCounts"]
+        exponents = data["exponents"]
+        degrees = data["degrees"]
+        record_count = len(expected_primes)
+        if len(primes) != record_count or len(counts) != record_count:
+            raise AnalyticCertificationError(
+                "packed splitting data has the wrong record count"
+            )
+        if len(exponents) != record_count * degree or len(degrees) != len(exponents):
+            raise AnalyticCertificationError(
+                "packed splitting factor arrays have the wrong shape"
+            )
+    except (KeyError, TypeError, ValueError, OverflowError) as error:
+        raise AnalyticCertificationError("malformed packed splitting data") from error
+
+    block: dict[int, tuple[tuple[int, int], ...]] = {}
+    for row, expected_prime in enumerate(expected_primes):
+        try:
+            prime = int(primes[row])
+            count = int(counts[row])
+        except (TypeError, ValueError, OverflowError) as error:
+            raise AnalyticCertificationError(
+                "malformed packed splitting record"
+            ) from error
+        if prime != expected_prime:
+            raise AnalyticCertificationError(
+                "packed splitting data omitted or reordered a rational prime"
+            )
+        if count < 1 or count > degree:
+            raise AnalyticCertificationError(
+                "packed splitting data has an invalid factor count"
+            )
+        factors = []
+        for index in range(count):
+            offset = row * degree + index
+            try:
+                ramification = int(exponents[offset])
+                residue_degree = int(degrees[offset])
+            except (TypeError, ValueError, OverflowError) as error:
+                raise AnalyticCertificationError(
+                    "malformed packed splitting factor"
+                ) from error
+            if ramification < 1 or residue_degree < 1:
+                raise AnalyticCertificationError(
+                    "packed splitting data has a nonpositive factor"
+                )
+            factors.append((ramification, residue_degree))
+        if sum(e * f for e, f in factors) != degree:
+            raise AnalyticCertificationError(
+                "packed splitting data violates the local degree identity"
+            )
+        block[prime] = tuple(factors)
+    return block
+
+
 class _BFPrimePowerPlan:
     """Exact aggregation plan for one Belabas--Friedman cutoff."""
 
@@ -3538,31 +3629,43 @@ class ZetaLogResidueWorkspace:
             while self.covered_stop < final:
                 start = self.covered_stop
                 stop = min(final, start + block_size)
-                expected = {prime for prime in primes if start <= prime < stop}
-                block: dict[int, tuple[tuple[int, int], ...]] = {}
-                self.provider_calls += 1
-                for raw_record in self.splitting_provider(start, stop):
-                    prime, factors = _splitting_record(raw_record, self.degree)
-                    if prime < start or prime >= stop:
-                        raise ValueError(
-                            "splitting provider returned a prime outside its block"
+                expected = [prime for prime in primes if start <= prime < stop]
+                block = _packed_splitting_block(
+                    self.splitting_provider,
+                    start,
+                    stop,
+                    expected,
+                    self.degree,
+                )
+                if block is None:
+                    block = {}
+                    self.provider_calls += 1
+                    for raw_record in self.splitting_provider(start, stop):
+                        prime, factors = _splitting_record(raw_record, self.degree)
+                        if prime < start or prime >= stop:
+                            raise ValueError(
+                                "splitting provider returned a prime outside its block"
+                            )
+                        if prime in block or prime in self._records:
+                            raise ValueError(
+                                "splitting provider returned a duplicate prime"
+                            )
+                        block[prime] = factors
+                        self.records_decoded += 1
+                    missing = set(expected) - set(block)
+                    if missing:
+                        raise AnalyticCertificationError(
+                            "splitting provider omitted rational prime "
+                            + str(min(missing))
                         )
-                    if prime in block or prime in self._records:
+                    unexpected = set(block) - set(expected)
+                    if unexpected:
                         raise ValueError(
-                            "splitting provider returned a duplicate prime"
+                            "splitting provider returned a composite or out-of-range entry"
                         )
-                    block[prime] = factors
-                    self.records_decoded += 1
-                missing = expected - set(block)
-                if missing:
-                    raise AnalyticCertificationError(
-                        "splitting provider omitted rational prime " + str(min(missing))
-                    )
-                unexpected = set(block) - expected
-                if unexpected:
-                    raise ValueError(
-                        "splitting provider returned a composite or out-of-range entry"
-                    )
+                else:
+                    self.provider_calls += 1
+                    self.records_decoded += len(block)
                 self._records.update(block)
                 self.covered_stop = stop
             return {prime: self._records[prime] for prime in primes}
