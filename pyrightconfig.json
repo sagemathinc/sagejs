@@ -246,7 +246,14 @@
     "src/lib/sagejs/optimization/brent_minimize.py",
     "src/lib/sagejs/optimization/brent_root.py",
     "src/lib/sagejs/optimization/nelder_mead.py",
-    "src/lib/sagejs/optimization/sage_api.py"
+    "src/lib/sagejs/optimization/sage_api.py",
+    "src/lib/sagejs/optimization/differential_evolution.py",
+    "src/lib/sagejs/optimization/global_result.py",
+    "src/lib/sagejs/optimization/nminimize.py",
+    "src/lib/sagejs/optimization/random_search.py",
+    "src/lib/sagejs/optimization/random_stream.py",
+    "src/lib/sagejs/optimization/schedule.py",
+    "src/lib/sagejs/optimization/simulated_annealing.py"
   ],
   "extraPaths": [
     "src/baselib"
