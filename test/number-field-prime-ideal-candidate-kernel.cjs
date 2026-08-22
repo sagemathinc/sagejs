@@ -138,6 +138,9 @@ expected_coordinates = prime_ideals._field_element_order_coordinates(
     order, p2[0].basis()[0]
 )
 expected_one = prime_ideals._order_one_coordinates(order)
+expected_table = prime_ideals._maximal._nf_order_multiplication_table(order)
+second_table = prime_ideals._maximal._nf_order_multiplication_table(order)
+assert second_table == expected_table and second_table is not expected_table
 assert order._basis_inverse_matrix() is order._basis_inverse_matrix()
 order_type = type(order)
 original_basis_matrix = order_type.basis_matrix
@@ -152,6 +155,10 @@ try:
         order, p2[0].basis()[0]
     ) == expected_coordinates
     assert prime_ideals._order_one_coordinates(order) == expected_one
+    assert prime_ideals._modular_table(order, 7) == [
+        [[int(value) % 7 for value in product] for product in left]
+        for left in expected_table
+    ]
 finally:
     order_type.basis_matrix = original_basis_matrix
 

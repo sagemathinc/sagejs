@@ -19,6 +19,17 @@ _nf_lcm = _nf_module._nf_lcm
 _nf_trace_matrix = _nf_module._nf_trace_matrix
 _untyped = _nf_module._untyped
 
+MAX_ORDER_MULTIPLICATION_TABLE_CACHE_ENTRIES = 64
+_order_multiplication_table_cache: list[
+    tuple[Any, tuple[tuple[tuple[Any, ...], ...], ...]]
+] = []
+
+
+def _copy_order_multiplication_table(
+    table: tuple[tuple[tuple[Any, ...], ...], ...],
+) -> list[list[list[Any]]]:
+    return [[list(product) for product in left] for left in table]
+
 
 def integral_equation_polynomial(field: Any) -> Any:
     """Return the monic integral polynomial for the equation-order generator."""
@@ -93,6 +104,15 @@ def equation_order_is_p_maximal(
 
 def _nf_order_multiplication_table(order: Any) -> list[list[list[Any]]]:
     """Return the integral multiplication table in the order basis."""
+    for index, (cached_order, cached_table) in enumerate(
+        _order_multiplication_table_cache
+    ):
+        if cached_order is order:
+            if index:
+                _order_multiplication_table_cache.append(
+                    _order_multiplication_table_cache.pop(index)
+                )
+            return _copy_order_multiplication_table(cached_table)
     field = order.number_field()
     degree = field.degree()
     if getattr(field, "_equation_order_cache", None) is order:
@@ -112,31 +132,41 @@ def _nf_order_multiplication_table(order: Any) -> list[list[list[Any]]]:
                 for index in range(degree):
                     row[index] -= leading * coefficients[index]
             powers.append(row)
-        return [
+        table = [
             [list(powers[left + right]) for right in range(degree)]
             for left in range(degree)
         ]
-    basis = order.basis()
-    basis_inverse = order.basis_matrix().inverse()
-    table = []
-    for left in basis:
-        left_products = []
-        for right in basis:
-            product = _nf_global("vector")(
-                sage.QQ,
-                _nf_coordinates(left * right, degree),
-            )
-            coordinates = list(product * basis_inverse)
-            integral_coordinates = []
-            for value in coordinates:
-                if value._denominator != 1:
-                    raise ArithmeticError(
-                        "an order multiplication table has a nonintegral entry"
-                    )
-                integral_coordinates.append(value._numerator)
-            left_products.append(integral_coordinates)
-        table.append(left_products)
-    return table
+    else:
+        basis = order.basis()
+        basis_inverse = order._basis_inverse_matrix()
+        table = []
+        for left in basis:
+            left_products = []
+            for right in basis:
+                product = _nf_global("vector")(
+                    sage.QQ,
+                    _nf_coordinates(left * right, degree),
+                )
+                coordinates = list(product * basis_inverse)
+                integral_coordinates = []
+                for value in coordinates:
+                    if value._denominator != 1:
+                        raise ArithmeticError(
+                            "an order multiplication table has a nonintegral entry"
+                        )
+                    integral_coordinates.append(value._numerator)
+                left_products.append(integral_coordinates)
+            table.append(left_products)
+    if (
+        len(_order_multiplication_table_cache)
+        >= MAX_ORDER_MULTIPLICATION_TABLE_CACHE_ENTRIES
+    ):
+        _order_multiplication_table_cache.pop(0)
+    frozen_table = tuple(
+        tuple(tuple(value for value in product) for product in left) for left in table
+    )
+    _order_multiplication_table_cache.append((order, frozen_table))
+    return _copy_order_multiplication_table(frozen_table)
 
 
 def _nf_modular_algebra_product(

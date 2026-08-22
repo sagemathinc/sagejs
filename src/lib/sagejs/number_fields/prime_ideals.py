@@ -1409,9 +1409,10 @@ def verify_prime_decomposition(
         return {"certified": False, "failures": [str(error)]}
     if not order.is_maximal():
         failures.append("the order is not independently certified maximal")
-    # This table is recomputed at the verifier boundary and is never accepted
-    # from the producer.  Reusing that independent exact input within one
-    # replay avoids rebuilding the same maximal-order products four times.
+    # This modular table is recomputed at the verifier boundary and is never
+    # accepted from the producer.  Its integer multiplication tensor may come
+    # from the maximal order's immutable identity-keyed cache; every caller
+    # receives a fresh nested list before reducing it modulo p.
     replay_table: list[list[list[int]]] | None = None
     replay_one: list[int] | None = None
     try:
