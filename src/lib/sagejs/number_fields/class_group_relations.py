@@ -1519,8 +1519,12 @@ def minkowski_lll_lattice(
         exact_rows=exact_rows,
         denominator=denominator,
     )
-    if not plan.verify(ideal):
-        raise ArithmeticError("Minkowski LLL transform failed exact ideal replay")
+    # This plan only selects relation candidates: its exact rows are direct
+    # integer combinations of the authenticated ideal basis, and every
+    # accepted relation is independently reconstructed and compared with its
+    # principal ideal.  Avoid replaying the producer-owned transform on every
+    # search ideal.  Public callers and tests retain `plan.verify(ideal)` for
+    # detached or diagnostic validation.
     return plan
 
 

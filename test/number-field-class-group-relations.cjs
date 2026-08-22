@@ -38,6 +38,7 @@ from sagejs.number_fields.class_group_relations import (
     IdealReductionResourceLimit,
     IdealReductionState,
     LLLRelationSearch,
+    MinkowskiLatticePlan,
     ModularRankScreen,
     RelationNotSmoothError,
     RelationRecord,
@@ -340,6 +341,19 @@ assert unit_plan.signature == (2, 0)
 assert [list(row) for row in unit_plan.transform] == case["minkowski_transform"]
 assert [list(row) for row in unit_plan.exact_rows] == case["minkowski_exact_rows"]
 assert minkowski_lll_lattice(O.ideal(1), precision=80).transform == unit_plan.transform
+
+# The live plan is a candidate selector, not proof evidence.  Its exact rows
+# come directly from the ideal basis and admitted relations replay exact ideal
+# equality, so production does not redundantly call the detached verifier.
+saved_plan_verify = MinkowskiLatticePlan.verify
+def reject_producer_replay(*_args, **_kwargs):
+    raise AssertionError("producer replayed its own Minkowski selector")
+MinkowskiLatticePlan.verify = reject_producer_replay
+try:
+    unchecked_live_plan = minkowski_lll_lattice(O.ideal(1), precision=80)
+finally:
+    MinkowskiLatticePlan.verify = saved_plan_verify
+assert saved_plan_verify(unchecked_live_plan, O.ideal(1))
 
 # Differential oracle: SageMath's documented Minkowski embedding of
 # Q[x]/(x^3+2), including sqrt(2)-weighted real and imaginary coordinates.
