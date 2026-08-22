@@ -381,6 +381,62 @@ def _select_cubic_relation_candidates(
         return None
 
 
+def _select_cubic_dependency_candidates(
+    selected: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    maximum: int,
+) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...]:
+    """Retain bounded duplicate rows that can seed exact unit dependencies.
+
+    Two distinct principal elements with the same factor-base valuation row
+    have a unit quotient.  The class-number-only presentation does not need
+    such duplicate rows, but a coupled class/unit fallback does.  Keep them
+    only after the class-number proof has already failed, and let the ordinary
+    exact relation admission boundary authenticate every proposed element.
+    """
+    limit = max(0, int(maximum))
+    if limit == 0 or not selected:
+        return ()
+    retained_coordinates = [
+        (tuple(int(value) for value in row), tuple(int(value) for value in coordinates))
+        for row, coordinates, _norm in selected
+    ]
+    selected_rows = tuple(tuple(int(value) for value in entry[0]) for entry in selected)
+    answer: list[tuple[tuple[int, ...], tuple[int, ...], int]] = []
+    for selected_row in selected_rows:
+        for candidate in candidates:
+            row, coordinates, _norm = candidate
+            identity = (
+                tuple(int(value) for value in row),
+                tuple(int(value) for value in coordinates),
+            )
+            same_row = len(identity[0]) == len(selected_row) and all(
+                left == right
+                for left, right in zip(identity[0], selected_row, strict=True)
+            )
+            already_retained = any(
+                len(known_row) == len(identity[0])
+                and len(known_coordinates) == len(identity[1])
+                and all(
+                    left == right
+                    for left, right in zip(known_row, identity[0], strict=True)
+                )
+                and all(
+                    left == right
+                    for left, right in zip(known_coordinates, identity[1], strict=True)
+                )
+                for known_row, known_coordinates in retained_coordinates
+            )
+            if not same_row or already_retained:
+                continue
+            retained_coordinates.append(identity)
+            answer.append(candidate)
+            break
+        if len(answer) >= limit:
+            break
+    return tuple(answer)
+
+
 def _readable_cubic_norm_form_represents_targets(
     coefficients: tuple[int, ...],
     modulus: int,
@@ -1537,6 +1593,8 @@ def bounded_cubic_minkowski_class_number(
     )
     relation_metrics["integral_sieve_relations"] = sieve_admitted
     relation_metrics["integral_sieve_fallback"] = int(selected_sieve_candidates is None)
+    relation_metrics["integral_sieve_dependency_candidates"] = 0
+    relation_metrics["integral_sieve_dependency_relations"] = 0
     try:
         # This class-number-only quotient needs full factor-base rank but no
         # logarithmic unit dependencies.  One exact row per searched ideal is
@@ -1577,6 +1635,72 @@ def bounded_cubic_minkowski_class_number(
         value = engine_resources.get(name)
         if isinstance(value, int) and not isinstance(value, bool):
             relation_metrics[name] = int(value)
+
+    dependency_seed_enriched = False
+
+    def enrich_incomplete_unit_seed() -> None:
+        """Add exact duplicate rows only for a coupled class/unit fallback."""
+        nonlocal dependency_seed_enriched, presentation, relation_records
+        if dependency_seed_enriched:
+            return
+        dependency_seed_enriched = True
+        if selected_sieve_candidates is None or sieve_candidates is None:
+            return
+        remaining = checked_caps["max_relations"] - len(collector.records)
+        if remaining <= 0:
+            return
+        # A cubic has unit rank one or two according to the sign of its exact
+        # discriminant.  Duplicate principal rows supply at most that many
+        # cheap unit dependencies; the coupled engine independently checks
+        # their logarithmic rank and continues its ordinary search if needed.
+        unit_rank_bound = 1 if int(engine.order.discriminant()) < 0 else 2
+        dependency_candidates = _select_cubic_dependency_candidates(
+            selected_sieve_candidates,
+            sieve_candidates,
+            min(remaining, unit_rank_bound),
+        )
+        relation_metrics["integral_sieve_dependency_candidates"] = len(
+            dependency_candidates
+        )
+        if not dependency_candidates:
+            return
+        started = time.perf_counter()
+        basis = tuple(engine.order.basis())
+        admitted = 0
+        for row, coordinates, expected_norm in dependency_candidates:
+            _check_cubic_cancelled(cancelled)
+            try:
+                element = engine.order.number_field()(0)
+                for coefficient, basis_element in zip(coordinates, basis, strict=True):
+                    element += coefficient * basis_element
+                if abs(
+                    _integer_rational(element.norm(), "a sieved element norm")
+                ) != abs(expected_norm):
+                    continue
+                collector.admit_integral_generator_row(
+                    element,
+                    row,
+                    provenance={
+                        "algorithm": "packed-cubic-unit-dependency-seed",
+                        "coefficient_bound": _CUBIC_RELATION_SIEVE_BOUND,
+                        "order_basis_coordinates": list(coordinates),
+                    },
+                )
+                admitted += 1
+            except (ArithmeticError, TypeError, ValueError):
+                # A rejected packed proposal is never evidence.  Successfully
+                # admitted earlier rows remain independently authenticated.
+                continue
+        relation_metrics["integral_sieve_dependency_relations"] = admitted
+        if admitted:
+            relation_records = tuple(collector.records)
+            presentation = matrix_module.extract_relation_presentation(
+                tuple(record.row for record in relation_records),
+                len(factor_base),
+                require_full_rank=True,
+            )
+        phase_timings["fallback-unit-seed"] = time.perf_counter() - started
+
     if presentation.rank != len(factor_base) or presentation.order is None:
         return incomplete(
             "bounded exact relation search did not reach full rank",
@@ -1586,6 +1710,7 @@ def bounded_cubic_minkowski_class_number(
         )
     quotient_order = int(presentation.order)
     if quotient_order > checked_caps["max_quotient_order"]:
+        enrich_incomplete_unit_seed()
         return incomplete(
             "relation quotient order exceeds the bounded proof cap",
             factor_base=factor_base,
@@ -1597,6 +1722,7 @@ def bounded_cubic_minkowski_class_number(
             presentation, max_lines=checked_caps["max_projective_lines"]
         )
     except ValueError:
+        enrich_incomplete_unit_seed()
         return incomplete(
             "quotient p-torsion has too many projective lines",
             factor_base=factor_base,
@@ -1623,6 +1749,7 @@ def bounded_cubic_minkowski_class_number(
             phase_timings["norm_obstructions"] = (
                 time.perf_counter() - obstruction_started
             )
+            enrich_incomplete_unit_seed()
             return incomplete(
                 "bounded modular norm-form search found no obstruction for a p-line",
                 factor_base=factor_base,
