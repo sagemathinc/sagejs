@@ -417,6 +417,24 @@ assert log_calls[0] == 2
 assert engine._resource_usage["unit_logarithm_requests"] == 3
 assert engine._resource_usage["unit_logarithm_cache_hits"] == 1
 
+principal_calls = [0]
+class UnitAuthorityProbe:
+    def __init__(self, key):
+        self.key = key
+    def stable_hash(self):
+        return self.key
+    def principal_ideal(self, order):
+        principal_calls[0] += 1
+        return order.ideal(1)
+engine._authenticated_dependency_units.add("trusted-unit")
+engine._verify_exact_units(
+    (UnitAuthorityProbe("trusted-unit"), UnitAuthorityProbe("cold-unit"))
+)
+assert principal_calls[0] == 1
+assert engine._resource_usage["unit_principal_authority_requests"] == 2
+assert engine._resource_usage["unit_principal_authority_hits"] == 1
+assert engine._resource_usage["unit_principal_authority_fallbacks"] == 1
+
 collector = relations.ExactRelationCollector(O, (P2,))
 admission = collector.admit_witness(
     relations.FactoredPrincipalWitness.from_element(K(2))

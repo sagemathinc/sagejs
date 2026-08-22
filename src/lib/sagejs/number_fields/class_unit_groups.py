@@ -1191,6 +1191,9 @@ class ClassUnitGroupEngine:
             "unit_rank_target": 0,
             "unit_logarithm_requests": 0,
             "unit_logarithm_cache_hits": 0,
+            "unit_principal_authority_requests": 0,
+            "unit_principal_authority_hits": 0,
+            "unit_principal_authority_fallbacks": 0,
             "presentation_extractions": 0,
             "saturation_rounds": 0,
             "proof_primes_completed": 0,
@@ -1221,6 +1224,7 @@ class ClassUnitGroupEngine:
         self._generation_verification_cache: dict[str, bool] = {}
         self._generation_verification_cache_active = True
         self._unit_logarithm_cache: dict[tuple[int, str], tuple[Any, ...]] = {}
+        self._authenticated_dependency_units: set[str] = set()
         self._partials: dict[tuple[Any, ...], _LargePrimePartial] = {}
         self._relation_unit_log_rank = 0
         self._relation_search_state: Any = None
@@ -2366,7 +2370,7 @@ class ClassUnitGroupEngine:
         return self.components.relations.FactoredPrincipalWitness(self.field, factors)
 
     def _independent_units(
-        self, records: Sequence[Any], presentation: Any, unit_rank: int
+        self, collector: Any, presentation: Any, unit_rank: int
     ) -> tuple[Any, ...]:
         started = self._phase_start()
         if unit_rank == 0:
@@ -2375,10 +2379,32 @@ class ClassUnitGroupEngine:
             return ()
         if not presentation.verify():
             raise ArithmeticError("the relation presentation failed exact replay")
+        records = tuple(collector.records)
+        admission_verifier = getattr(collector, "verify_admission_receipt", None)
+        live_relations_authenticated = callable(admission_verifier) and all(
+            admission_verifier(self.order, collector.factor_base, record)
+            for record in records
+        )
         candidates: list[Any] = []
         for dependency in presentation.dependency_transforms:
+            if len(dependency) != len(records):
+                raise ArithmeticError("a relation dependency has the wrong exact width")
             unit = self._combine(records, dependency)
             candidates.append(unit)
+            if live_relations_authenticated:
+                relation_row = [0] * len(collector.factor_base)
+                for coefficient, record in zip(dependency, records, strict=True):
+                    if len(record.row) != len(relation_row):
+                        raise ArithmeticError(
+                            "an authenticated relation has the wrong exact width"
+                        )
+                    for index, value in enumerate(record.row):
+                        relation_row[index] += int(coefficient) * int(value)
+                stable_hash = getattr(unit, "stable_hash", None)
+                if not any(relation_row) and callable(stable_hash):
+                    if len(self._authenticated_dependency_units) >= 1024:
+                        self._authenticated_dependency_units.pop()
+                    self._authenticated_dependency_units.add(str(stable_hash()))
         units = self._select_unit_basis(candidates, unit_rank)
         if not units:
             self._phase_finish("unit-recovery", started)
@@ -2428,6 +2454,15 @@ class ClassUnitGroupEngine:
     def _verify_exact_units(self, units: Sequence[Any]) -> None:
         one = self.order.ideal(1)
         for unit in units:
+            self._resource_usage["unit_principal_authority_requests"] += 1
+            stable_hash = getattr(unit, "stable_hash", None)
+            if (
+                callable(stable_hash)
+                and str(stable_hash()) in self._authenticated_dependency_units
+            ):
+                self._resource_usage["unit_principal_authority_hits"] += 1
+                continue
+            self._resource_usage["unit_principal_authority_fallbacks"] += 1
             if unit.principal_ideal(self.order) != one:
                 raise ArithmeticError("a relation dependency is not an exact unit")
 
@@ -2970,7 +3005,7 @@ class ClassUnitGroupEngine:
                 if admitted == 0:
                     continue
                 relation_units = self._independent_units(
-                    collector.records, presentation, unit_rank
+                    collector, presentation, unit_rank
                 )
                 combined = self._select_unit_basis(
                     tuple(units) + tuple(relation_units), unit_rank
@@ -3242,7 +3277,7 @@ class ClassUnitGroupEngine:
                         "unit_rank_target": unit_rank,
                     },
                 )
-            units = self._independent_units(collector.records, presentation, unit_rank)
+            units = self._independent_units(collector, presentation, unit_rank)
             torsion, regulator, index = self._analytic_index(
                 presentation, units, unit_rank
             )
