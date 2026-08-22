@@ -321,6 +321,7 @@ assert result.diagnostics["factor_base_size"] == 3
 assert resources["cubic_relation_seed_uses"] == 1
 assert resources["cubic_relation_seed_relations"] == 3
 assert resources["cubic_factor_base_seed_uses"] == 1
+assert resources["cubic_specialized_seed_skips"] == 1
 assert resources["relation_attempts"] == 6
 assert resources["relation_candidates"] == 6
 assert resources["presentation_extractions"] == 1
@@ -354,6 +355,7 @@ assert T.class_number(proof=False) == 2
 cold_result = list(T._class_unit_engine_cache.values())[-1]
 assert cold_result.diagnostics["resources"]["cubic_relation_seed_uses"] == 0
 assert cold_result.diagnostics["resources"]["cubic_factor_base_seed_uses"] == 0
+assert cold_result.diagnostics["resources"]["cubic_specialized_seed_skips"] == 0
 
 # A valid prefix remains useful under an explicit engine policy, but the
 # narrow direct factor-base shortcut is reserved for the exact default caps.

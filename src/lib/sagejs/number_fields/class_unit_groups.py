@@ -28,6 +28,7 @@ MAX_DIRECT_CUBIC_RELATION_SEED_BOUND = 4
 MAX_DIRECT_CUBIC_RELATION_SEED_SIZE = 3
 
 _AUTHENTICATED_CLASS_UNIT_SATURATION_TOKEN = object()
+_CUBIC_RELATION_SEED_UNREAD = object()
 
 
 def _factor_base_proof_status(plan: Any) -> str:
@@ -1196,6 +1197,7 @@ class ClassUnitGroupEngine:
             "cubic_relation_seed_uses": 0,
             "cubic_relation_seed_relations": 0,
             "cubic_factor_base_seed_uses": 0,
+            "cubic_specialized_seed_skips": 0,
             "automorphism_orbit_plans": 0,
             "automorphism_orbit_available_plans": 0,
             "automorphism_orbit_useful_plans": 0,
@@ -1220,6 +1222,7 @@ class ClassUnitGroupEngine:
         self._proof_progress: Any = None
         self._proof_dependency_hashes: dict[str, str] = {}
         self._saturation_record: Any = None
+        self._authenticated_cubic_relation_seed_cache: Any = _CUBIC_RELATION_SEED_UNREAD
 
     def _stage(self, name: str, state: str, **details: Any) -> None:
         if name in self._phase_timings and "elapsed_seconds" not in details:
@@ -1327,6 +1330,17 @@ class ClassUnitGroupEngine:
 
     def _specialized(self) -> ClassUnitComputation | None:
         if self.algorithm != "auto" or self.field.degree() > 3:
+            return None
+        if (
+            self.field.degree() == 3
+            and self._authenticated_cubic_relation_seed() is not None
+        ):
+            # The public bounded cubic producer has already completed the
+            # same small-field decision and retained an exact relation prefix.
+            # Re-running the unrelated bounded class enumeration and 125-term
+            # unit box cannot complete this field and only delays the general
+            # relation engine that consumes that authenticated prefix.
+            self._resource_usage["cubic_specialized_seed_skips"] += 1
             return None
         started = self._phase_start()
         classes_module = _optional_module("sagejs.number_fields.class_groups")
@@ -3035,8 +3049,14 @@ class ClassUnitGroupEngine:
         """Read the live class-only relation prefix without replaying it."""
         if self.algorithm not in ("auto", "minkowski"):
             return None
+        if (
+            self._authenticated_cubic_relation_seed_cache
+            is not _CUBIC_RELATION_SEED_UNREAD
+        ):
+            return self._authenticated_cubic_relation_seed_cache
         artifact = getattr(self.field, "_bounded_cubic_class_number_artifact", None)
         if artifact is None:
+            self._authenticated_cubic_relation_seed_cache = None
             return None
         try:
             module = __import__(
@@ -3045,8 +3065,10 @@ class ClassUnitGroupEngine:
             )
             reader = getattr(module, "authenticated_cubic_relation_seed", None)
             seed: Any = reader(artifact, self.field) if callable(reader) else None
+            self._authenticated_cubic_relation_seed_cache = seed
             return seed
         except (AttributeError, ImportError, TypeError, ValueError, ArithmeticError):
+            self._authenticated_cubic_relation_seed_cache = None
             return None
 
     def _direct_cubic_relation_seed(self) -> Any:
