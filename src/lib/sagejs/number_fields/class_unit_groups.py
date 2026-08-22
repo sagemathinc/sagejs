@@ -937,10 +937,14 @@ class ClassUnitGroupEngine:
             self.components.analytic, "ZetaLogResidueWorkspace", None
         )
         if callable(workspace_type) and int(self.field.degree()) > 1:
+            workspace_options: dict[str, Any] = {}
+            if components is None:
+                workspace_options["share_across_isomorphic_fields"] = True
             self._analytic_workspace = workspace_type(
                 int(self.order.discriminant()),
                 int(self.field.degree()),
                 self.order.splitting_records,
+                **workspace_options,
             )
         self.checkpoint_controller = checkpoint_controller
         if self.checkpoint_controller is None and (
@@ -2908,14 +2912,14 @@ class ClassUnitGroupEngine:
             discovery_proof = self.algorithm == "minkowski"
             plan, factor_base = self._factor_base(proof=discovery_proof)
             relation_seed = self._cubic_relation_seed(plan, factor_base)
-            # In low degree, retaining a second smooth witness from the same
+            # In cubic fields, retaining a second smooth witness from the same
             # short-vector enumeration costs more exact ideal admission and
             # replay work than it saves in lattice setup.  The stopping rule
             # below still requires full relation rank, the full logarithmic
-            # unit rank, and rigorous index one.  Higher degrees keep two
+            # unit rank, and rigorous index one.  Other degrees keep two
             # admissions per ideal because their LLL/enumeration setup is the
             # dominant cost and should be amortized across useful witnesses.
-            initial_relations_per_ideal = 1 if int(self.field.degree()) <= 3 else 2
+            initial_relations_per_ideal = 1 if int(self.field.degree()) == 3 else 2
             if relation_seed is None:
                 collector, presentation = self._relations(
                     factor_base,
