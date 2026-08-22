@@ -126,6 +126,8 @@ from .schedule import make_schedule, slice_indices
 # The Sage.js `math` module has no `math.inf` attribute.
 _INFINITY = float("inf")
 
+_MICROSECONDS_PER_SECOND = 1000000.0
+
 _SEARCH_POINTS_PER_DIMENSION = 10
 """Wolfram's documented multiplier in `"SearchPoints" -> Automatic = Min[10*d, 100]`."""
 
@@ -475,7 +477,7 @@ def random_search(
         f, resolved_bounds, starts[0], tolerance, max_iterations, local_method
     )
     probe_elapsed = time.perf_counter() - probe_began
-    predicted_micros = max(probe_elapsed, 0.0) * 1_000_000.0
+    predicted_micros = max(probe_elapsed, 0.0) * _MICROSECONDS_PER_SECOND
 
     schedule = make_schedule(
         slice_count=count,
