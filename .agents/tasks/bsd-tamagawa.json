@@ -101,10 +101,50 @@
       "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
       "workspace_fingerprint": "996c27dbb024194c3ec82ff2c5e8c13b2bcebebb03d9b855e7d86651fdfcefc6",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-tamagawa.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.395,
+      "started_at": "2026-08-22T06:30:49.579Z",
+      "commit": "f295c475a430dcaa307e63e31d45e1d4ae103616",
+      "workspace_fingerprint": "3b5fa3eed52de6345599c3090f8ba8b638d552ba7ef7c78e536b19fc39cfdfd4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.493,
+      "started_at": "2026-08-22T06:30:55.588Z",
+      "commit": "f295c475a430dcaa307e63e31d45e1d4ae103616",
+      "workspace_fingerprint": "3b5fa3eed52de6345599c3090f8ba8b638d552ba7ef7c78e536b19fc39cfdfd4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff format --check src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.491,
+      "started_at": "2026-08-22T06:30:57.692Z",
+      "commit": "f295c475a430dcaa307e63e31d45e1d4ae103616",
+      "workspace_fingerprint": "3b5fa3eed52de6345599c3090f8ba8b638d552ba7ef7c78e536b19fc39cfdfd4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.071,
+      "started_at": "2026-08-22T06:30:58.792Z",
+      "commit": "f295c475a430dcaa307e63e31d45e1d4ae103616",
+      "workspace_fingerprint": "3b5fa3eed52de6345599c3090f8ba8b638d552ba7ef7c78e536b19fc39cfdfd4",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added a host-independent exact component-lattice engine, conversion of existing split rational cluster certificates in genus 2 and 3 via the DDMM Theorem D.18 length pairing, separate geometric and Frobenius-fixed rational invariant factors, recheckable certificates, atomic local/product APIs, and explicit unsupported statuses. Tiny lattices are checked by direct exhaustive class enumeration; current almost-good and split-cluster reduction records are exercised end to end.",
+    "summary": "Added a host-independent exact component-lattice engine, conversion of existing split rational cluster certificates in genus 2 and 3 via the DDMM Theorem D.18 length pairing, separate geometric and Frobenius-fixed rational invariant factors, recheckable certificates, atomic local/product APIs, and explicit unsupported statuses. Curve-level certification now requires a recognized internal local record bound to the exact integral model and prime; serialized split-cluster proofs replay root valuations, the branch polynomial, the cluster tree, theta signs, and the model binding. Supplied lattices retain exact conditional computations but are explicitly not curve-certified. Tiny lattices are checked by direct exhaustive class enumeration; current almost-good and split-cluster reduction records are exercised end to end, including cases where rational and geometric orders differ.",
     "risks": [
       "No curve-level Magma or Van Bommel Tamagawa fixture was available in this lane; every tamagawa-v1.json row is an independent finite-lattice enumeration oracle, and none should be represented as an external CAS oracle.",
       "Existing ordinary-nodal local certificates omit node thicknesses, so they remain insufficient unless an explicit component pairing/Frobenius matrix is supplied; auto mode retries the richer split-cluster certificate when rational roots permit it.",
