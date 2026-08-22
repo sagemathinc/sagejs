@@ -1242,11 +1242,13 @@ def initial_rational_prime_relations(
         # stale or incomplete factor base fails closed without refactoring p.
         if local_degree != int(collector.order.number_field().degree()):
             continue
+        generator = collector.order.number_field()(rational_prime)
         answer.append(
             collector.admit_witness(
-                collector.order.number_field()(rational_prime),
+                generator,
                 source_row=(0,) * len(collector.factor_base),
                 principal_row=row,
+                integral_generator=generator,
                 provenance={
                     "algorithm": "rational-prime-decomposition",
                     "rational_prime": rational_prime,

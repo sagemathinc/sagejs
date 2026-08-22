@@ -132,9 +132,11 @@ assert [[list(pair) for pair in item.record.sparse_row()] for item in initial] =
 ]
 collector_cache = collector.reconstruction_diagnostics()
 assert collector_cache["row_hits"] > 0
+assert collector_cache["row_misses"] == 0
 assert collector_cache["retained_ideal_objects"] <= (
     collector_cache["max_retained_ideal_objects"]
 )
+assert collector.admission_receipt_diagnostics()["integral_norm_certificates"] == len(initial)
 
 # Live admission receipts bind the collector's exact order and factor-base
 # objects plus the complete canonical record payload.  Public/detached replay
