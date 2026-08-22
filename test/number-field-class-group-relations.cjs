@@ -97,7 +97,15 @@ context = Context()
 context.relations = []
 context.add_relation = lambda relation: context.relations.append(relation)
 collector = ExactRelationCollector(O, factor_base, context=context)
-initial = initial_rational_prime_relations(collector)
+order_type = type(O)
+saved_factor_rational_prime = order_type.factor_rational_prime
+def forbidden_refactor(self, rational_prime, *args, **kwargs):
+    raise AssertionError("initial rational relations refactored a certified prime")
+order_type.factor_rational_prime = forbidden_refactor
+try:
+    initial = initial_rational_prime_relations(collector)
+finally:
+    order_type.factor_rational_prime = saved_factor_rational_prime
 assert [list(item.record.row) for item in initial] == case["initial_rows"]
 assert collector.rank_screen.rank == case["initial_modular_rank"]
 assert len(context.relations) == len(initial)

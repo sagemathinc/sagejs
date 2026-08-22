@@ -1070,6 +1070,7 @@ class ExactRelationCollector:
         *,
         source_ideal: Any = None,
         source_row: Iterable[int] | None = None,
+        principal_row: Iterable[int] | None = None,
         archimedean_logs: Iterable[Any] = (),
         log_precision: int = 0,
         provenance: dict[str, Any] | None = None,
@@ -1091,7 +1092,13 @@ class ExactRelationCollector:
                 raise ArithmeticError(
                     "the supplied source row does not reconstruct its ideal"
                 )
-        row = factor_witness_over_base(factored, self.factor_base)
+        row = (
+            factor_witness_over_base(factored, self.factor_base)
+            if principal_row is None
+            else tuple(int(value) for value in principal_row)
+        )
+        if len(row) != len(self.factor_base):
+            raise ValueError("the supplied principal row has the wrong width")
         witness_norm = sage.QQ(factored.norm())
         if witness_norm < 0:
             witness_norm = -witness_norm
@@ -1176,19 +1183,25 @@ def initial_rational_prime_relations(
         )
     answer: list[RelationAdmission] = []
     for sequence, rational_prime in enumerate(candidates):
-        decomposition = collector.order.factor_rational_prime(rational_prime)
-        complete = True
-        for prime_ideal, _exponent in decomposition:
-            if not any(
-                prime_ideal == base_prime for base_prime in collector.factor_base
-            ):
-                complete = False
-                break
-        if not complete:
+        row = [0] * len(collector.factor_base)
+        local_degree = 0
+        for index, prime_ideal in enumerate(collector.factor_base):
+            if int(prime_ideal.rational_prime()) != rational_prime:
+                continue
+            exponent = int(prime_ideal.ramification_index())
+            residue_degree = int(prime_ideal.residue_class_degree())
+            row[index] = exponent
+            local_degree += exponent * residue_degree
+        # The factor base contains distinct, already certified prime ideals.
+        # Full local degree is a cheap coverage screen.  Admission below still
+        # requires the reconstructed row ideal to equal `(p)` exactly, so a
+        # stale or incomplete factor base fails closed without refactoring p.
+        if local_degree != int(collector.order.number_field().degree()):
             continue
         answer.append(
             collector.admit_witness(
                 collector.order.number_field()(rational_prime),
+                principal_row=row,
                 provenance={
                     "algorithm": "rational-prime-decomposition",
                     "rational_prime": rational_prime,
