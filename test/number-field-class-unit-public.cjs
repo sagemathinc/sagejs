@@ -539,6 +539,24 @@ assert proof_resources["relation_attempts"] == 0
 assert proof_resources["relation_candidates"] == 0
 assert proof_result.saturation_record.complete
 assert proof_result.saturation_record.verify()
+
+# LMFDB 3.1.5448.1 has no duplicate valuation row in the primary coefficient
+# box.  The one bounded coefficient-4 fallback finds an exact pair whose unit
+# quotient is fundamental, so the coupled engine again needs no LLL search.
+W = NumberField(x**3 - x**2 - 14*x + 30, "c")
+assert W.class_number(proof=False) == 8
+widened_artifact = W._bounded_cubic_class_number_artifact
+widened_search = widened_artifact.diagnostics["relation_search"]
+assert widened_search["integral_sieve_dependency_candidates"] == 2
+assert widened_search["integral_sieve_dependency_relations"] == 2
+assert widened_search["integral_sieve_dependency_coefficient_bound"] == 4
+assert len(widened_artifact.relation_records) == 9
+widened_result = list(W._class_unit_engine_cache.values())[-1]
+widened_resources = widened_result.diagnostics["resources"]
+assert widened_result.proof_status == "exact-unconditional"
+assert widened_resources["cubic_relation_seed_relations"] == 9
+assert widened_resources["relation_attempts"] == 0
+assert widened_resources["relation_candidates"] == 0
 print("cubic-relation-seed-policy-ok")
 `, 180_000);
   assert.equal(output, "cubic-relation-seed-policy-ok");

@@ -88,6 +88,19 @@ for function in (candidate_dynamic, candidate_packed):
         128,
     )
     assert tuple(integer_buffer_values(widened_metadata)) == (50, 171, 0, 3)
+    largest_metadata = kernel_integer_zeros(function, 4, 1)
+    largest_coefficients = kernel_integer_zeros(function, 128 * 3, 16)
+    largest_norms = kernel_integer_zeros(function, 128, 16)
+    assert function(
+        largest_metadata,
+        largest_coefficients,
+        largest_norms,
+        kernel_integer_buffer(function, norm_form),
+        kernel_integer_buffer(function, [2, 3, 5]),
+        4,
+        128,
+    )
+    assert tuple(integer_buffer_values(largest_metadata)) == (86, 364, 0, 4)
 
 for function in (row_dynamic, row_packed):
     metadata = kernel_integer_zeros(function, 3, 1)
