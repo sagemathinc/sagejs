@@ -39,6 +39,9 @@ _MAXIMUM_SATURATION_REPLAY_PRECISION_STEPS = 32
 _MAXIMUM_SATURATION_REPLAY_RECORDS = 4_096
 _MAXIMUM_SATURATION_REPLAY_DEPTH = 64
 _MAXIMUM_SATURATION_REPLAY_STRING = 1_000_000
+_SHARED_ZETA_WORKSPACE_CACHE_LIMIT = 16
+_SHARED_ZETA_WORKSPACE_SNAPSHOT_TOKEN = object()
+_shared_zeta_workspace_snapshots: dict[str, Any] = {}
 
 
 def _canonical_json(value: Any) -> str:
@@ -3112,6 +3115,90 @@ class _BFPrimePowerPlan:
         self.aggregated_terms = len(self.terms)
 
 
+def _real_ball_snapshot(ball: RealBall) -> tuple[Any, ...]:
+    """Return an immutable exact snapshot of one cached analytic interval."""
+    return (
+        ball.lower.numerator,
+        ball.lower.denominator,
+        ball.upper.numerator,
+        ball.upper.denominator,
+        ball.precision_bits,
+        ball.rigorous,
+        ball.source,
+    )
+
+
+def _real_ball_from_snapshot(snapshot: tuple[Any, ...]) -> RealBall:
+    """Reconstruct a fresh interval from a shared immutable snapshot."""
+    (
+        lower_numerator,
+        lower_denominator,
+        upper_numerator,
+        upper_denominator,
+        precision_bits,
+        rigorous,
+        source,
+    ) = snapshot
+    return RealBall(
+        RationalEndpoint(lower_numerator, lower_denominator),
+        RationalEndpoint(upper_numerator, upper_denominator),
+        precision_bits=precision_bits,
+        rigorous=rigorous,
+        source=source,
+    )
+
+
+def _shared_zeta_workspace_key(
+    discriminant: int,
+    degree: int,
+    splitting_provider: Callable[[int, int], Iterable[Any]],
+) -> str | None:
+    """Fingerprint an exact maximal-order splitting provider, ignoring names."""
+    order = getattr(splitting_provider, "__self__", None)
+    if order is None:
+        return None
+    try:
+        field = order.number_field()
+        coefficients = tuple(
+            (int(value._numerator), int(value._denominator))
+            for value in field._defining_coefficients
+        )
+        basis = tuple(
+            tuple((int(value._numerator), int(value._denominator)) for value in row)
+            for row in order._basis_rows
+        )
+        if int(field.degree()) != int(degree) or int(order.discriminant()) != int(
+            discriminant
+        ):
+            return None
+    except (AttributeError, TypeError, ValueError):
+        return None
+    body = {
+        "schema": "sagejs.number-fields/shared-zeta-workspace-key-v1",
+        "degree": int(degree),
+        "discriminant": int(discriminant),
+        "defining_polynomial": coefficients,
+        "maximal_order_basis": basis,
+    }
+    return hashlib.sha256(_canonical_json(body).encode("utf-8")).hexdigest()
+
+
+class _SharedZetaWorkspaceSnapshot:
+    """Module-issued immutable cache entry, never serialized as proof data."""
+
+    def __init__(self, token: object, key: str, payload: tuple[Any, ...]) -> None:
+        if token is not _SHARED_ZETA_WORKSPACE_SNAPSHOT_TOKEN:
+            raise TypeError("shared zeta snapshots are module-issued")
+        self.key = str(key)
+        self.payload = payload
+        self.__dict__["_frozen"] = True
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if self.__dict__.get("_frozen", False):
+            raise AttributeError("shared zeta snapshots are immutable")
+        self.__dict__[name] = value
+
+
 def _build_bf_plan(
     threshold: int,
     splitting: dict[int, tuple[tuple[int, int], ...]],
@@ -3162,12 +3249,14 @@ def _build_bf_plan(
 class ZetaLogResidueWorkspace:
     """Reusable exact analytic work for one field computation.
 
-    The cache is explicit so proof data cannot leak between fields. Extending
-    a cutoff asks the provider only for the uncovered tail, while every new
-    block is checked for complete prime coverage and local degree identities.
-    Regulator entries are keyed by the exact algebraic unit coordinates and
-    every precision/resource parameter. The workspace is deliberately absent
-    from serialized certificates, whose replay therefore remains independent.
+    Extending a cutoff asks the provider only for the uncovered tail, while
+    every new block is checked for complete prime coverage and local degree
+    identities. Default live engines may seed a new workspace from a bounded,
+    module-issued immutable snapshot keyed by the exact defining polynomial
+    and maximal-order basis; arbitrary providers and detached replay do not.
+    Regulator entries remain local and are keyed by the exact algebraic unit
+    coordinates and every precision/resource parameter. The workspace is
+    absent from serialized certificates, whose replay remains independent.
     """
 
     def __init__(
@@ -3175,6 +3264,8 @@ class ZetaLogResidueWorkspace:
         discriminant: int,
         degree: int,
         splitting_provider: Callable[[int, int], Iterable[Any]],
+        *,
+        share_across_isomorphic_fields: bool = False,
     ) -> None:
         discriminant = int(discriminant)
         degree = int(degree)
@@ -3200,6 +3291,7 @@ class ZetaLogResidueWorkspace:
         self.zeta_residue_calls = 0
         self.certificate_construction_calls = 0
         self.certificate_replay_calls = 0
+        self.shared_workspace_cache_hits = 0
         self.splitting_nanoseconds = 0
         self.prime_enumeration_nanoseconds = 0
         self.threshold_nanoseconds = 0
@@ -3218,6 +3310,90 @@ class ZetaLogResidueWorkspace:
         self._regulators: dict[
             tuple[str, int, int, int, int, int], tuple[RegulatorEnclosure, str]
         ] = {}
+        self._shared_cache_key = (
+            _shared_zeta_workspace_key(discriminant, degree, splitting_provider)
+            if share_across_isomorphic_fields
+            else None
+        )
+        if self._shared_cache_key is not None:
+            snapshot = _shared_zeta_workspace_snapshots.get(self._shared_cache_key)
+            if (
+                type(snapshot) is _SharedZetaWorkspaceSnapshot
+                and snapshot.key == self._shared_cache_key
+            ):
+                self._restore_shared_snapshot(snapshot.payload)
+                self.shared_workspace_cache_hits = 1
+                # Refresh insertion order so this fixed-capacity dictionary is
+                # a small LRU, not a process-lifetime proof-data archive.
+                _shared_zeta_workspace_snapshots.pop(self._shared_cache_key)
+                _shared_zeta_workspace_snapshots[self._shared_cache_key] = snapshot
+
+    def _shared_snapshot(self) -> tuple[Any, ...]:
+        return (
+            self.covered_stop,
+            tuple(sorted(self._records.items())),
+            tuple(
+                (threshold, plan.terms, plan.raw_terms)
+                for threshold, plan in sorted(self._plans.items())
+            ),
+            tuple(sorted(self._primes.items())),
+            tuple(
+                (key, value[0], _real_ball_snapshot(value[1]), value[2])
+                for key, value in sorted(self._thresholds.items())
+            ),
+            tuple(
+                (
+                    key,
+                    _real_ball_snapshot(value[0]),
+                    tuple(sorted(value[1].items())),
+                )
+                for key, value in sorted(self._finite_terms.items())
+            ),
+        )
+
+    def _restore_shared_snapshot(self, snapshot: tuple[Any, ...]) -> None:
+        (
+            covered_stop,
+            records,
+            plans,
+            primes,
+            thresholds,
+            finite_terms,
+        ) = snapshot
+        self.covered_stop = int(covered_stop)
+        self._records = {int(prime): tuple(factors) for prime, factors in records}
+        self._plans = {
+            int(threshold): _BFPrimePowerPlan(threshold, terms, raw_terms)
+            for threshold, terms, raw_terms in plans
+        }
+        self._primes = {int(bound): tuple(values) for bound, values in primes}
+        self._thresholds = {
+            tuple(key): (
+                int(threshold),
+                _real_ball_from_snapshot(ball),
+                int(evaluations),
+            )
+            for key, threshold, ball, evaluations in thresholds
+        }
+        self._finite_terms = {
+            tuple(key): (_real_ball_from_snapshot(ball), dict(diagnostics))
+            for key, ball, diagnostics in finite_terms
+        }
+
+    def _publish_shared_snapshot(self) -> None:
+        key = self._shared_cache_key
+        if key is None:
+            return
+        snapshot = _SharedZetaWorkspaceSnapshot(
+            _SHARED_ZETA_WORKSPACE_SNAPSHOT_TOKEN,
+            key,
+            self._shared_snapshot(),
+        )
+        _shared_zeta_workspace_snapshots.pop(key, None)
+        if len(_shared_zeta_workspace_snapshots) >= _SHARED_ZETA_WORKSPACE_CACHE_LIMIT:
+            oldest = next(iter(_shared_zeta_workspace_snapshots))
+            _shared_zeta_workspace_snapshots.pop(oldest)
+        _shared_zeta_workspace_snapshots[key] = snapshot
 
     def diagnostics(self) -> dict[str, int]:
         """Return non-proof cache counters and monotonic phase timings."""
@@ -3234,6 +3410,7 @@ class ZetaLogResidueWorkspace:
             "zeta_residue_calls": self.zeta_residue_calls,
             "certificate_construction_calls": self.certificate_construction_calls,
             "certificate_replay_calls": self.certificate_replay_calls,
+            "shared_workspace_cache_hits": self.shared_workspace_cache_hits,
             "splitting_nanoseconds": self.splitting_nanoseconds,
             "prime_enumeration_nanoseconds": self.prime_enumeration_nanoseconds,
             "threshold_nanoseconds": self.threshold_nanoseconds,
@@ -4085,6 +4262,7 @@ def zeta_log_residue_bound(
             selected_workspace.zeta_residue_nanoseconds += (
                 time.perf_counter_ns() - zeta_started
             )
+            selected_workspace._publish_shared_snapshot()
             return ZetaLogResidueEnclosure(
                 accumulated,
                 finite,

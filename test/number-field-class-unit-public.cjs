@@ -340,6 +340,56 @@ print("cubic-relation-seed-ok")
   assert.equal(output, "cubic-relation-seed-ok");
 });
 
+test("isomorphic cubic computations reuse only live analytic snapshots", () => {
+  const output = runPublic(String.raw`
+import sagejs.number_fields.class_unit_analytic as analytic
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K1 = NumberField(x**3 + 4*x - 1, "first")
+K2 = NumberField(x**3 + 4*x - 1, "second")
+assert K1.class_number(proof=False) == 2
+first = K1.class_unit_group(proof=False)
+first_live_workspace = first.saturation_record._analytic_certificate._workspace
+first_finite = next(iter(first_live_workspace._finite_terms.values()))[0]
+first_finite.lower = analytic.RationalEndpoint(999)
+assert K2.class_number(proof=False) == 2
+second = K2.class_unit_group(proof=False)
+
+first_workspace = first.diagnostics["analytic_workspace"]
+second_workspace = second.diagnostics["analytic_workspace"]
+assert first_workspace["shared_workspace_cache_hits"] == 0
+assert second_workspace["shared_workspace_cache_hits"] == 1
+assert second_workspace["provider_calls"] == 0
+assert second_workspace["records_decoded"] == 0
+second_live_workspace = second.saturation_record._analytic_certificate._workspace
+assert all(
+    ball.lower != analytic.RationalEndpoint(999)
+    for ball, _diagnostics in second_live_workspace._finite_terms.values()
+)
+assert first.class_number() == second.class_number() == 2
+assert first.regulator().to_dict() == second.regulator().to_dict()
+
+# A detached certificate never inherits this process-local performance hint.
+certificate = second.saturation_record._analytic_certificate
+detached = analytic.UnitSaturationIndexCertificate.from_dict(certificate.to_dict())
+assert detached.workspace_diagnostics() is None
+
+# Replacing the private cache entry with unissued data is only a failed hint.
+cache_key = analytic._shared_zeta_workspace_key(
+    int(K2.discriminant()), 3, K2.maximal_order().splitting_records
+)
+analytic._shared_zeta_workspace_snapshots[cache_key] = ()
+K3 = NumberField(x**3 + 4*x - 1, "third")
+assert K3.class_number(proof=False) == 2
+third = K3.class_unit_group(proof=False)
+assert third.diagnostics["analytic_workspace"]["shared_workspace_cache_hits"] == 0
+assert third.diagnostics["analytic_workspace"]["provider_calls"] > 0
+print("shared-live-analytic-ok")
+`, 180_000);
+  assert.equal(output, "shared-live-analytic-ok");
+});
+
 test(
   "public motivating quintic replays conditional and unconditional class maps",
   { skip: process.env.SAGEJS_SLOW_CLASS_UNIT !== "1" },
