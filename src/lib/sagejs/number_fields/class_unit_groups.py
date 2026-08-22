@@ -1185,6 +1185,7 @@ class ClassUnitGroupEngine:
             "proof_primes_completed": 0,
             "generation_verification_calls": 0,
             "generation_verification_cache_hits": 0,
+            "generation_verification_live_authentication_hits": 0,
             "generation_verification_full_replays": 0,
             "generation_reconstruction_calls": 0,
             "generation_reconstruction_cache_hits": 0,
@@ -2479,6 +2480,7 @@ class ClassUnitGroupEngine:
                 "proof_status": proof_status,
             }
         )
+        live_authority_available = True
 
         def verify_generation(
             field: Any,
@@ -2488,16 +2490,34 @@ class ClassUnitGroupEngine:
             supplied_evidence: Any,
             supplied_proof_status: str,
         ) -> bool:
+            nonlocal live_authority_available
             del initial_units
             try:
                 self._resource_usage["generation_verification_calls"] += 1
                 if field is not self.field or order is not self.order:
                     return False
-                if (
-                    supplied_proof_status != proof_status
-                    or _component_payload(supplied_evidence) != canonical
-                    or int(class_number) != int(presentation.order)
+                if supplied_proof_status != proof_status or int(class_number) != int(
+                    presentation.order
                 ):
+                    return False
+                if (
+                    self._generation_verification_cache_active
+                    and live_authority_available
+                    and supplied_evidence is evidence
+                ):
+                    # This first call is made synchronously by this producer,
+                    # before the authority escapes.  The plan, factor base,
+                    # exact relations, and presentation are the identical
+                    # objects just constructed by the engine.  Consume the
+                    # authority once and make every later call authenticate
+                    # the canonical payload or perform detached replay.
+                    live_authority_available = False
+                    self._generation_verification_cache[cache_key] = True
+                    self._resource_usage[
+                        "generation_verification_live_authentication_hits"
+                    ] += 1
+                    return True
+                if _component_payload(supplied_evidence) != canonical:
                     return False
                 if (
                     self._generation_verification_cache_active

@@ -1111,26 +1111,35 @@ evidence, verifier = engine._generation_authority(
     EXACT_RELATIONS_CONDITIONAL_GRH,
 )
 assert counts == {
-    "factor_base": 1,
-    "presentation": 1,
-    "relations": 1,
+    "factor_base": 0,
+    "presentation": 0,
+    "relations": 0,
     "detached_relations": 0,
 }
-assert engine._resource_usage["generation_reconstruction_calls"] == 3
-assert engine._resource_usage["generation_reconstruction_cache_hits"] == 2
+assert engine._resource_usage["generation_reconstruction_calls"] == 0
+assert engine._resource_usage["generation_reconstruction_cache_hits"] == 0
+assert engine._resource_usage[
+    "generation_verification_live_authentication_hits"
+] == 1
+evidence["bound"] = 19
+assert not verifier(
+    K, K.maximal_order(), (), 1, evidence,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+)
+evidence["bound"] = 17
 for _index in range(2):
     assert verifier(
         K, K.maximal_order(), (), 1, evidence,
         EXACT_RELATIONS_CONDITIONAL_GRH,
     )
 assert counts == {
-    "factor_base": 1,
-    "presentation": 1,
-    "relations": 1,
+    "factor_base": 0,
+    "presentation": 0,
+    "relations": 0,
     "detached_relations": 0,
 }
-assert engine._resource_usage["generation_reconstruction_calls"] == 3
-assert engine._resource_usage["generation_reconstruction_cache_hits"] == 2
+assert engine._resource_usage["generation_reconstruction_calls"] == 0
+assert engine._resource_usage["generation_reconstruction_cache_hits"] == 0
 assert engine._resource_usage["generation_verification_cache_hits"] == 2
 engine._generation_verification_cache_active = False
 assert verifier(
@@ -1138,18 +1147,18 @@ assert verifier(
     EXACT_RELATIONS_CONDITIONAL_GRH,
 )
 assert counts == {
-    "factor_base": 2,
-    "presentation": 2,
-    "relations": 2,
+    "factor_base": 1,
+    "presentation": 1,
+    "relations": 1,
     "detached_relations": 0,
 }
-assert engine._resource_usage["generation_reconstruction_calls"] == 6
-assert engine._resource_usage["generation_reconstruction_cache_hits"] == 5
-assert engine._resource_usage["generation_verification_full_replays"] == 2
+assert engine._resource_usage["generation_reconstruction_calls"] == 3
+assert engine._resource_usage["generation_reconstruction_cache_hits"] == 2
+assert engine._resource_usage["generation_verification_full_replays"] == 1
 # The detached proof path does not inherit the live collector callback.
 assert FakeRelation().verify(K.maximal_order(), (prime,))["certified"]
 assert counts["detached_relations"] == 1
-assert engine._resource_usage["generation_reconstruction_calls"] == 6
+assert engine._resource_usage["generation_reconstruction_calls"] == 3
 print("generation-memo")
 `);
   assert.equal(output, "generation-memo");
