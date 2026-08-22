@@ -130,6 +130,31 @@ p2 = [record.prime_ideal for record in records if record.rational_prime == 2]
 assert all(getattr(ideal, "_packed_candidate_pending_replay", None) is False for ideal in p2)
 assert all(getattr(ideal, "_verified_modular_algebra", None) is not None for ideal in p2)
 
+# Prime modular-coordinate consumers share the maximal order's immutable exact
+# basis inverse.  Once prepared, none may reconstruct and invert a fresh basis
+# matrix for the same order.
+expected_subspace = prime_ideals._ideal_mod_p_subspace(p2[0], 2)
+expected_coordinates = prime_ideals._field_element_order_coordinates(
+    order, p2[0].basis()[0]
+)
+expected_one = prime_ideals._order_one_coordinates(order)
+assert order._basis_inverse_matrix() is order._basis_inverse_matrix()
+order_type = type(order)
+original_basis_matrix = order_type.basis_matrix
+def forbidden_basis_matrix(self):
+    if self is order:
+        raise AssertionError("prime arithmetic rebuilt the cached order basis")
+    return original_basis_matrix(self)
+order_type.basis_matrix = forbidden_basis_matrix
+try:
+    assert prime_ideals._ideal_mod_p_subspace(p2[0], 2) == expected_subspace
+    assert prime_ideals._field_element_order_coordinates(
+        order, p2[0].basis()[0]
+    ) == expected_coordinates
+    assert prime_ideals._order_one_coordinates(order) == expected_one
+finally:
+    order_type.basis_matrix = original_basis_matrix
+
 # Exact product replay starts with the first authenticated prime factor.  For
 # this two-factor, exponent-one decomposition it needs exactly one HNF ideal
 # product instead of separately multiplying both factors by the unit ideal.

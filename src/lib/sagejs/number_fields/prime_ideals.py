@@ -442,7 +442,7 @@ def _order_one_coordinates(order: Any) -> list[int]:
     row = [sage.QQ(0)] * degree
     row[0] = sage.QQ(1)
     coordinates = list(
-        _nf_global("vector")(sage.QQ, row) * order.basis_matrix().inverse()
+        _nf_global("vector")(sage.QQ, row) * order._basis_inverse_matrix()
     )
     answer: list[int] = []
     for value in coordinates:
@@ -809,7 +809,7 @@ def _prime_candidate_from_modular_subspace(
 
 def _ideal_mod_p_subspace(ideal: Any, prime: int) -> list[list[int]]:
     order = ideal.ring()
-    inverse = order.basis_matrix().inverse()
+    inverse = order._basis_inverse_matrix()
     rows: list[list[int]] = []
     for row in ideal._basis_rows:
         coordinates = list(_nf_global("vector")(sage.QQ, row) * inverse)
@@ -849,7 +849,7 @@ def canonical_two_generator_witness(
 def _field_element_order_coordinates(order: Any, value: Any) -> list[Any]:
     element = order.number_field()(value)
     row = _nf_coordinates(element, order.degree())
-    return list(_nf_global("vector")(sage.QQ, row) * order.basis_matrix().inverse())
+    return list(_nf_global("vector")(sage.QQ, row) * order._basis_inverse_matrix())
 
 
 def _polynomial_remainder(
