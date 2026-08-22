@@ -12,6 +12,142 @@ from sagejs.native import IntegerBuffer, native, uint64
 
 
 @native
+def packed_cubic_order_norm_form_coefficients_in_place(
+    output: IntegerBuffer,
+    multiplication_table: IntegerBuffer,
+) -> bool:
+    """Interpolate a cubic order norm form from its multiplication table.
+
+    The table uses `(basis factor, multiplied basis column, output row)`
+    order.  `output` receives coefficients in the monomial order used by the
+    two cubic norm-form kernels below.
+    """
+    if len(output) != 10 or len(multiplication_table) != 27:
+        return False
+    point = 0
+    while point < 10:
+        x = 0
+        y = 0
+        z = 0
+        if point == 0:
+            x = 1
+        elif point == 1:
+            y = 1
+        elif point == 2:
+            z = 1
+        elif point == 3:
+            x = 1
+            y = 1
+        elif point == 4:
+            x = 1
+            y = -1
+        elif point == 5:
+            x = 1
+            z = 1
+        elif point == 6:
+            x = 1
+            z = -1
+        elif point == 7:
+            y = 1
+            z = 1
+        elif point == 8:
+            y = 1
+            z = -1
+        else:
+            x = 1
+            y = 1
+            z = 1
+        m00 = (
+            x * multiplication_table[0]
+            + y * multiplication_table[9]
+            + z * multiplication_table[18]
+        )
+        m01 = (
+            x * multiplication_table[3]
+            + y * multiplication_table[12]
+            + z * multiplication_table[21]
+        )
+        m02 = (
+            x * multiplication_table[6]
+            + y * multiplication_table[15]
+            + z * multiplication_table[24]
+        )
+        m10 = (
+            x * multiplication_table[1]
+            + y * multiplication_table[10]
+            + z * multiplication_table[19]
+        )
+        m11 = (
+            x * multiplication_table[4]
+            + y * multiplication_table[13]
+            + z * multiplication_table[22]
+        )
+        m12 = (
+            x * multiplication_table[7]
+            + y * multiplication_table[16]
+            + z * multiplication_table[25]
+        )
+        m20 = (
+            x * multiplication_table[2]
+            + y * multiplication_table[11]
+            + z * multiplication_table[20]
+        )
+        m21 = (
+            x * multiplication_table[5]
+            + y * multiplication_table[14]
+            + z * multiplication_table[23]
+        )
+        m22 = (
+            x * multiplication_table[8]
+            + y * multiplication_table[17]
+            + z * multiplication_table[26]
+        )
+        output[point] = (
+            m00 * (m11 * m22 - m12 * m21)
+            - m01 * (m10 * m22 - m12 * m20)
+            + m02 * (m10 * m21 - m11 * m20)
+        )
+        point += 1
+
+    c300 = output[0]
+    c030 = output[1]
+    c003 = output[2]
+    plus01 = output[3] - c300 - c030
+    minus01 = output[4] - c300 + c030
+    plus02 = output[5] - c300 - c003
+    minus02 = output[6] - c300 + c003
+    plus12 = output[7] - c030 - c003
+    minus12 = output[8] - c030 + c003
+    if (
+        (plus01 + minus01) % 2 != 0
+        or (plus01 - minus01) % 2 != 0
+        or (plus02 + minus02) % 2 != 0
+        or (plus02 - minus02) % 2 != 0
+        or (plus12 + minus12) % 2 != 0
+        or (plus12 - minus12) % 2 != 0
+    ):
+        return False
+    c210 = (plus01 - minus01) // 2
+    c120 = (plus01 + minus01) // 2
+    c201 = (plus02 - minus02) // 2
+    c102 = (plus02 + minus02) // 2
+    c021 = (plus12 - minus12) // 2
+    c012 = (plus12 + minus12) // 2
+    c111 = output[9] - (c300 + c030 + c003 + c210 + c201 + c120 + c021 + c102 + c012)
+    output[0] = c300
+    output[1] = c030
+    output[2] = c003
+    output[3] = c210
+    output[4] = c201
+    output[5] = c120
+    output[6] = c021
+    output[7] = c102
+    output[8] = c012
+    output[9] = c111
+    return True
+
+
+@native
 def packed_cubic_norm_form_target_slice(
     coefficients: IntegerBuffer,
     modulus: uint64,
@@ -67,6 +203,268 @@ def packed_cubic_norm_form_target_slice(
                 if value == positive_target or value == negative_target:
                     return represented
     return absent
+
+
+@native
+def packed_cubic_norm_smooth_candidates_in_place(
+    metadata: IntegerBuffer,
+    coefficient_output: IntegerBuffer,
+    norm_output: IntegerBuffer,
+    norm_coefficients: IntegerBuffer,
+    rational_primes: IntegerBuffer,
+    coefficient_bound: uint64,
+    maximum_candidates: uint64,
+) -> bool:
+    """Enumerate canonical cubic box elements with smooth rational norm.
+
+    Coefficients are maximal-order basis coordinates in the centered box of
+    radius `coefficient_bound`.  Negation is removed by requiring the first
+    nonzero coordinate to be positive.  The ten norm-form coefficients use
+    the monomial order documented by `packed_cubic_norm_form_target_slice`.
+
+    `metadata` receives candidate count, tested-vector count, overflow, and
+    the requested bound.  The output arrays have fixed caller-owned capacity;
+    overflow retains an exact prefix and lets the readable caller fall back.
+    """
+    maximum_bound: uint64 = 16
+    maximum_prime_count: uint64 = 256
+    valid = (
+        len(metadata) == 4
+        and len(norm_coefficients) == 10
+        and len(rational_primes) <= maximum_prime_count
+        and coefficient_bound > 0
+        and coefficient_bound <= maximum_bound
+        and maximum_candidates > 0
+        and len(coefficient_output) == 3 * maximum_candidates
+        and len(norm_output) == maximum_candidates
+    )
+    if not valid:
+        return False
+    previous_prime = 1
+    for prime_index in range(len(rational_primes)):
+        prime = rational_primes[prime_index]
+        if prime <= previous_prime:
+            return False
+        previous_prime = prime
+    metadata[0] = 0
+    metadata[1] = 0
+    metadata[2] = 0
+    metadata[3] = coefficient_bound
+    width = 2 * coefficient_bound + 1
+    for x_index in range(width):
+        x = x_index - coefficient_bound
+        for y_index in range(width):
+            y = y_index - coefficient_bound
+            for z_index in range(width):
+                z = z_index - coefficient_bound
+                canonical = not (x == 0 and y == 0 and z == 0) and not (
+                    x < 0 or (x == 0 and y < 0) or (x == 0 and y == 0 and z < 0)
+                )
+                if canonical:
+                    metadata[1] += 1
+                    norm = (
+                        norm_coefficients[0] * x * x * x
+                        + norm_coefficients[1] * y * y * y
+                        + norm_coefficients[2] * z * z * z
+                        + norm_coefficients[3] * x * x * y
+                        + norm_coefficients[4] * x * x * z
+                        + norm_coefficients[5] * x * y * y
+                        + norm_coefficients[6] * y * y * z
+                        + norm_coefficients[7] * x * z * z
+                        + norm_coefficients[8] * y * z * z
+                        + norm_coefficients[9] * x * y * z
+                    )
+                    if norm < 0:
+                        norm = -norm
+                    if norm > 1:
+                        remaining = norm
+                        for prime_index in range(len(rational_primes)):
+                            prime = rational_primes[prime_index]
+                            while remaining % prime == 0:
+                                remaining //= prime
+                        if remaining == 1:
+                            candidate = metadata[0]
+                            if candidate >= maximum_candidates:
+                                metadata[2] = 1
+                                return True
+                            coefficient_output[3 * candidate] = x
+                            coefficient_output[3 * candidate + 1] = y
+                            coefficient_output[3 * candidate + 2] = z
+                            norm_output[candidate] = norm
+                            metadata[0] = candidate + 1
+    return True
+
+
+def _packed_upper_hnf_contains(
+    numerators: IntegerBuffer,
+    numerator_offset: int,
+    basis_denominator: int,
+    vector: IntegerBuffer,
+    vector_denominator: int,
+    degree: int,
+    workspace: IntegerBuffer,
+    workspace_offset: int,
+) -> bool:
+    coordinate = 0
+    while coordinate < degree:
+        value = basis_denominator * vector[coordinate]
+        source = 0
+        while source < coordinate:
+            value -= (
+                workspace[workspace_offset + source]
+                * numerators[numerator_offset + source * degree + coordinate]
+            )
+            source += 1
+        diagonal = numerators[numerator_offset + coordinate * degree + coordinate]
+        if diagonal == 0 or value % diagonal != 0:
+            return False
+        quotient = value // diagonal
+        workspace[workspace_offset + coordinate] = quotient
+        if quotient % vector_denominator != 0:
+            return False
+        coordinate += 1
+    return True
+
+
+@native
+def packed_factor_base_rows_in_place(
+    metadata: IntegerBuffer,
+    row_output: IntegerBuffer,
+    smooth_output: IntegerBuffer,
+    workspace: IntegerBuffer,
+    coefficient_vectors: IntegerBuffer,
+    absolute_norms: IntegerBuffer,
+    order_basis_numerators: IntegerBuffer,
+    prime_power_numerators: IntegerBuffer,
+    prime_power_denominators: IntegerBuffer,
+    factor_offsets: IntegerBuffer,
+    factor_norms: IntegerBuffer,
+    order_basis_denominator: int,
+    degree: uint64,
+    candidate_count: uint64,
+    factor_count: uint64,
+    prime_power_count: uint64,
+) -> bool:
+    """Compute many exact integral factor-base rows in one packed pass.
+
+    Candidate vectors are order-basis coordinates.  Prime powers are packed as
+    consecutive upper-HNF lattices, grouped by the monotone `factor_offsets`.
+    Each row records the exact length of the nested containment prefix.  A row
+    is marked smooth only when its factor-base norm equals the supplied exact
+    absolute element norm.  The caller independently reconstructs retained
+    row ideals and checks generator containment before certificate admission.
+    """
+    maximum_degree: uint64 = 16
+    maximum_candidates: uint64 = 4096
+    maximum_factors: uint64 = 4096
+    maximum_prime_powers: uint64 = 4096
+    square = degree * degree
+    valid = (
+        degree > 0
+        and degree <= maximum_degree
+        and candidate_count > 0
+        and candidate_count <= maximum_candidates
+        and factor_count > 0
+        and factor_count <= maximum_factors
+        and prime_power_count > 0
+        and prime_power_count <= maximum_prime_powers
+        and order_basis_denominator > 0
+        and len(metadata) == 3
+        and len(row_output) == candidate_count * factor_count
+        and len(smooth_output) == candidate_count
+        and len(workspace) == 2 * degree
+        and len(coefficient_vectors) == candidate_count * degree
+        and len(absolute_norms) == candidate_count
+        and len(order_basis_numerators) == square
+        and len(prime_power_numerators) == prime_power_count * square
+        and len(prime_power_denominators) == prime_power_count
+        and len(factor_offsets) == factor_count + 1
+        and len(factor_norms) == factor_count
+        and factor_offsets[0] == 0
+        and factor_offsets[factor_count] == prime_power_count
+    )
+    factor_index = 0
+    while valid and factor_index < factor_count:
+        if (
+            factor_offsets[factor_index] > factor_offsets[factor_index + 1]
+            or factor_norms[factor_index] <= 1
+        ):
+            valid = False
+        factor_index += 1
+    power_index = 0
+    while valid and power_index < prime_power_count:
+        if prime_power_denominators[power_index] <= 0:
+            valid = False
+        row = 0
+        while valid and row < degree:
+            column = 0
+            while column < row:
+                if (
+                    prime_power_numerators[power_index * square + row * degree + column]
+                    != 0
+                ):
+                    valid = False
+                column += 1
+            if prime_power_numerators[power_index * square + row * degree + row] == 0:
+                valid = False
+            row += 1
+        power_index += 1
+    if not valid:
+        return False
+    metadata[0] = 0
+    metadata[1] = candidate_count
+    metadata[2] = prime_power_count
+    candidate_index = 0
+    while candidate_index < candidate_count:
+        coordinate = 0
+        while coordinate < degree:
+            value = 0
+            basis_index = 0
+            while basis_index < degree:
+                value += (
+                    coefficient_vectors[candidate_index * degree + basis_index]
+                    * order_basis_numerators[basis_index * degree + coordinate]
+                )
+                basis_index += 1
+            workspace[coordinate] = value
+            coordinate += 1
+        row_norm = 1
+        any_valuation = False
+        factor_index = 0
+        while factor_index < factor_count:
+            valuation = 0
+            power_index = factor_offsets[factor_index]
+            stop = factor_offsets[factor_index + 1]
+            member = True
+            while member and power_index < stop:
+                member = _packed_upper_hnf_contains(
+                    prime_power_numerators,
+                    power_index * square,
+                    prime_power_denominators[power_index],
+                    workspace,
+                    order_basis_denominator,
+                    degree,
+                    workspace,
+                    degree,
+                )
+                if member:
+                    valuation += 1
+                    any_valuation = True
+                power_index += 1
+            row_output[candidate_index * factor_count + factor_index] = valuation
+            exponent = 0
+            while exponent < valuation:
+                row_norm *= factor_norms[factor_index]
+                exponent += 1
+            factor_index += 1
+        norm = absolute_norms[candidate_index]
+        if norm > 1 and any_valuation and row_norm == norm:
+            smooth_output[candidate_index] = 1
+            metadata[0] += 1
+        else:
+            smooth_output[candidate_index] = 0
+        candidate_index += 1
+    return True
 
 
 def _packed_modular_inverse_or_zero(value: int, modulus: int) -> int:
@@ -1237,11 +1635,16 @@ def packed_composite_dedekind_basis_in_place(
 __all__ = [
     "packed_composite_dedekind_basis_in_place",
     "packed_composite_dedekind_enlargement_in_place",
+    "packed_cubic_norm_form_target_slice",
+    "packed_cubic_order_norm_form_coefficients_in_place",
+    "packed_cubic_norm_smooth_candidates_in_place",
+    "packed_factor_base_rows_in_place",
     "packed_lattice_memberships_in_place",
     "packed_known_overorder_contains_vectors_in_place",
     "packed_ideal_product_hnf_in_place",
     "packed_order_contains_vector_in_place",
     "packed_order_contains_vectors_in_place",
     "packed_order_table_in_place",
+    "packed_prime_ideal_candidate_hnf_in_place",
     "packed_row_hnf_in_place",
 ]

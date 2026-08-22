@@ -30,14 +30,14 @@ test("the Wasm source-kernel inventory accounts for all registered kernels", asy
     root,
     "packages/flint-wasm/release/production-kernel-coverage.json",
   ), "utf8"));
-  assert.equal(manifest.kernels.length, 40);
+  assert.equal(manifest.kernels.length, 41);
   assert.equal(inventory.registered.length, manifest.kernels.length);
-  assert.equal(inventory.production.length, 33);
+  assert.equal(inventory.production.length, 34);
   assert.equal(inventory.modules.length, inventory.production.length);
   assert.equal(inventory.nonProduction.length, 7);
-  assert.equal(coverage.totals.registered_kernels, 40);
-  assert.equal(coverage.totals.production_kernels, 33);
-  assert.equal(coverage.totals.compiled_functions, 238);
+  assert.equal(coverage.totals.registered_kernels, 41);
+  assert.equal(coverage.totals.production_kernels, 34);
+  assert.equal(coverage.totals.compiled_functions, 241);
   assert.equal(coverage.totals.unsupported_production_functions, 0);
   const coverageById = new Map(coverage.kernels.map((item) => [item.id, item]));
   for (const omitted of inventory.nonProduction) {
@@ -109,10 +109,10 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
       emitOnly: true,
     });
     assert.equal(manifest.completeInventory, true);
-    assert.equal(manifest.registeredKernels, 40);
-    assert.equal(manifest.productionKernels, 33);
-    assert.equal(manifest.compiledKernelCores, 33);
-    assert.equal(manifest.compiledFunctions, 238);
+    assert.equal(manifest.registeredKernels, 41);
+    assert.equal(manifest.productionKernels, 34);
+    assert.equal(manifest.compiledKernelCores, 34);
+    assert.equal(manifest.compiledFunctions, 241);
     assert.equal(manifest.unsupportedFunctions, 0);
     assert.equal(manifest.nonProductionKernels.length, 7);
     assert.deepEqual(manifest.packs.map((pack) => pack.domain), ["flint", "gmp"]);

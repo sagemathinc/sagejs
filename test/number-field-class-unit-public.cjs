@@ -319,16 +319,16 @@ assert result.proof_status == "exact-unconditional"
 assert result.diagnostics["factor_base_bound"] == 4
 assert result.diagnostics["factor_base_size"] == 3
 assert resources["cubic_relation_seed_uses"] == 1
-assert resources["cubic_relation_seed_relations"] == 4
+assert resources["cubic_relation_seed_relations"] == 3
 assert resources["cubic_factor_base_seed_uses"] == 1
 assert resources["cubic_specialized_seed_skips"] == 1
-assert resources["relation_attempts"] == 6
-assert resources["relation_candidates"] == 7
+assert resources["relation_attempts"] == 4
+assert resources["relation_candidates"] == 4
 assert resources["presentation_extractions"] == 1
 assert resources["saturation_live_authentication_requests"] == 1
 assert resources["saturation_live_authentication_hits"] == 1
 assert resources["saturation_live_authentication_fallback_replays"] == 0
-assert result.diagnostics["relations"] == 8
+assert result.diagnostics["relations"] == 7
 record = result.saturation_record
 assert "_live_authentication" not in record.__dict__
 assert not class_unit_module._authenticated_live_saturation_record_matches(
@@ -383,7 +383,7 @@ K = NumberField(x**3 - x**2 + 7*x - 6, "a")
 assert K.class_number(proof=False) == 5
 artifact = K._bounded_cubic_class_number_artifact
 assert len(artifact.factor_base) == 7
-assert len(artifact.relation_records) == 10
+assert len(artifact.relation_records) == 7
 result = list(K._class_unit_engine_cache.values())[-1]
 resources = result.diagnostics["resources"]
 assert result.proof_status == "exact-unconditional"
@@ -391,7 +391,7 @@ assert result.diagnostics["factor_base_bound"] == 11
 assert result.diagnostics["factor_base_size"] == 7
 assert resources["cubic_factor_base_seed_uses"] == 1
 assert resources["cubic_relation_seed_uses"] == 1
-assert resources["cubic_relation_seed_relations"] == 10
+assert resources["cubic_relation_seed_relations"] == 7
 
 # LMFDB 3.1.4027.2 needs ten primes in the unconditional producer.  That
 # prefix is valid, but deliberately outside the live reuse policy: measured

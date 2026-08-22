@@ -397,6 +397,7 @@
         "kernel:genus3-weil-candidate-production",
         "kernel:number-field-composite-analysis-production",
         "kernel:number-field-cubic-norm-obstruction-production",
+        "kernel:number-field-cubic-relation-sieve-production",
         "kernel:number-field-discriminant-prefactor-production",
         "kernel:number-field-element-valuations-production",
         "kernel:number-field-om-proof-production",

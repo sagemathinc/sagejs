@@ -1583,6 +1583,84 @@ def extract_relation_presentation(
     return answer
 
 
+def exact_relation_hnf_support(
+    rows: Iterable[Any], column_count: int
+) -> tuple[tuple[tuple[int, ...], ...], tuple[int, ...]]:
+    """Return the exact nonzero row-HNF basis and its source-row support.
+
+    This is the HNF-only boundary for relation proposal selection.  It avoids
+    computing an SNF, while still replaying the left transform and checking
+    that it is unimodular.  The returned support contains every source row
+    used by a nonzero canonical HNF row.
+    """
+    columns = _nonnegative_integer(column_count, "column_count")
+    sparse_rows = tuple(SparseRelationRow(columns, row) for row in rows)
+    source = [row.dense() for row in sparse_rows]
+    if not source:
+        return (), ()
+    native_replayed = False
+    try:
+        row_count = len(source)
+        flat = [entry for row in source for entry in row]
+        matrix_module = __import__("sagejs._baselib.matrix", fromlist=["matrix"])
+        algebra_module = __import__("sagejs._baselib.algebra", fromlist=["ZZ"])
+        matrix = matrix_module.matrix(algebra_module.ZZ, row_count, columns, flat)
+        hermite, hermite_left = matrix.hermite_form(transformation=True)
+        if hermite_left * matrix != hermite:
+            raise ArithmeticError("exact relation HNF transform failed replay")
+        if abs(int(hermite_left.determinant())) != 1:
+            raise ArithmeticError("exact relation HNF transform is not unimodular")
+        rank = int(hermite.rank())
+        hnf = _sage_rows(hermite, rank, columns)
+        left = _sage_rows(hermite_left, rank, row_count)
+        native_replayed = True
+    except (ImportError, RuntimeError, TypeError, ValueError, ArithmeticError):
+        hnf, left = _python_hnf_transform(source, columns)
+    if not native_replayed:
+        if _matrix_multiply(left, source) != hnf:
+            raise ArithmeticError("exact relation HNF transform failed replay")
+        if abs(_determinant_exact(left)) != 1:
+            raise ArithmeticError("exact relation HNF transform is not unimodular")
+    nonzero = [index for index, row in enumerate(hnf) if any(row)]
+    basis = tuple(tuple(int(value) for value in hnf[index]) for index in nonzero)
+    support = tuple(
+        sorted(
+            {
+                source_index
+                for index in nonzero
+                for source_index, coefficient in enumerate(left[index])
+                if coefficient != 0
+            }
+        )
+    )
+    return basis, support
+
+
+def exact_relation_hnf_basis(
+    rows: Iterable[Any], column_count: int
+) -> tuple[tuple[int, ...], ...]:
+    """Return the exact nonzero row-HNF basis without computing an SNF."""
+    columns = _nonnegative_integer(column_count, "column_count")
+    sparse_rows = tuple(SparseRelationRow(columns, row) for row in rows)
+    source = [row.dense() for row in sparse_rows]
+    if not source:
+        return ()
+    try:
+        row_count = len(source)
+        flat = [entry for row in source for entry in row]
+        matrix_module = __import__("sagejs._baselib.matrix", fromlist=["matrix"])
+        algebra_module = __import__("sagejs._baselib.algebra", fromlist=["ZZ"])
+        matrix = matrix_module.matrix(algebra_module.ZZ, row_count, columns, flat)
+        hermite = matrix.hermite_form(include_zero_rows=False)
+        return tuple(
+            tuple(int(hermite[row, column]) for column in range(columns))
+            for row in range(hermite.nrows())
+        )
+    except (ImportError, RuntimeError, TypeError, ValueError, ArithmeticError):
+        hnf, _left = _python_hnf_transform(source, columns)
+        return tuple(tuple(int(value) for value in row) for row in hnf if any(row))
+
+
 def modular_rank_and_pivots(
     rows: Iterable[Any],
     column_count: int,
@@ -1618,6 +1696,8 @@ __all__ = [
     "RelationMatrixError",
     "RelationPresentation",
     "SparseRelationRow",
+    "exact_relation_hnf_basis",
+    "exact_relation_hnf_support",
     "extract_relation_presentation",
     "modular_rank_and_pivots",
 ]

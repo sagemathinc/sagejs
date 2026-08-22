@@ -348,10 +348,14 @@ assert classes1083.presentation.invariants == (3,)
 assert classes1083.diagnostics["quotient_order"] == 3
 assert classes1083.diagnostics["projective_lines"] == 1
 assert classes1083.diagnostics["residue_states"] <= 500000
-assert classes1083.diagnostics["relation_search"]["relation_attempts"] == 3
-assert classes1083.diagnostics["relation_search"]["ideals_tested"] == 3
-assert classes1083.diagnostics["relation_search"]["relation_candidates"] == 5
-assert len(classes1083.relation_records) == 7
+assert classes1083.diagnostics["relation_search"]["relation_attempts"] == 0
+assert classes1083.diagnostics["relation_search"]["ideals_tested"] == 0
+assert classes1083.diagnostics["relation_search"]["relation_candidates"] == 0
+assert classes1083.diagnostics["relation_search"]["integral_sieve_candidates"] == 21
+assert classes1083.diagnostics["relation_search"]["integral_sieve_selected"] == 3
+assert classes1083.diagnostics["relation_search"]["integral_sieve_relations"] == 3
+assert classes1083.diagnostics["relation_search"]["integral_sieve_fallback"] == 0
+assert len(classes1083.relation_records) == 5
 assert set(classes1083.diagnostics["phase_timings"]) == {
     "factor_base", "relations", "norm_obstructions", "certificate_encoding", "total"
 }

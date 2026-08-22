@@ -10639,6 +10639,32 @@
       }
     },
     {
+      "id": "kernel:number-field-cubic-relation-sieve-production",
+      "kind": "production-kernel",
+      "family": "number-field-cubic-relation-sieve",
+      "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "number-field-cubic-class-number"
+      ],
+      "tests": [
+        "production-kernel-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 3 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 3,
+        "fallback_functions": 0,
+        "total_functions": 3,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
       "id": "kernel:compiler-owned-record-witness",
       "kind": "production-kernel",
       "family": "compiler-owned-record",

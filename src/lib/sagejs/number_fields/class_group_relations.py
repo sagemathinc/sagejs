@@ -1213,6 +1213,69 @@ class ExactRelationCollector:
         # full replay for external or restored records.
         return self._store_verified(record)
 
+    def admit_integral_generator_row(
+        self,
+        generator: Any,
+        principal_row: Iterable[int],
+        *,
+        provenance: dict[str, Any] | None = None,
+    ) -> RelationAdmission:
+        """Admit a proposed integral row after exact containment and norm replay.
+
+        This is the batch-sieve boundary.  A packed producer may propose the
+        factor-base row of an algebraic integer, but it is not trusted as a
+        certificate.  Reconstruct `Q = prod(P_i^v_i)` independently, check
+        `generator in Q`, and check `Norm(Q) = |Norm(generator)|`.  Thus
+        `(generator)` is contained in `Q` and both integral ideals have the
+        same norm, forcing exact equality.  Detached relation replay remains
+        unchanged and rebuilds the complete principal ideal again.
+        """
+        element = self.order.number_field()(generator)
+        if element.is_zero() or element not in self.order:
+            raise ValueError(
+                "a sieved relation generator must be a nonzero order element"
+            )
+        row = tuple(int(value) for value in principal_row)
+        if len(row) != len(self.factor_base) or any(value < 0 for value in row):
+            raise ValueError(
+                "a sieved integral relation row must be nonnegative and have factor-base width"
+            )
+        witness_norm = sage.QQ(element.norm())
+        if witness_norm < 0:
+            witness_norm = -witness_norm
+        if witness_norm <= 1:
+            raise ValueError("a sieved class relation must have nonunit norm")
+        row_norm = _factor_base_row_norm_from_norms(self._factor_base_norms, row)
+        if row_norm != witness_norm:
+            raise RelationNotSmoothError(
+                "the sieved relation norm has support outside the factor base"
+            )
+        reconstructed = self.reconstruct_factor_base_ideal(row)
+        if reconstructed.norm() != witness_norm or element not in reconstructed:
+            raise RelationNotSmoothError(
+                "the sieved relation row does not contain its generator",
+                ideal=reconstructed,
+            )
+        factored = FactoredPrincipalWitness.from_element(element)
+        zero_row = (0,) * len(row)
+        record = RelationRecord(
+            row=row,
+            quotient_row=row,
+            source_row=zero_row,
+            witness=factored.to_dict(),
+            norm_smoothness=_norm_smoothness_from_norms(
+                witness_norm,
+                row,
+                self._factor_base_norms,
+            ),
+            provenance=provenance,
+        )
+        # The exact containment plus equal-norm argument above proves that
+        # this retained lattice is precisely the witness principal ideal.
+        record._remember_principal_ideal(self.order, reconstructed)
+        self._admission_receipt_statistics["integral_norm_certificates"] += 1
+        return self._store_verified(record)
+
     def admit_automorphism_orbit(
         self,
         relation: RelationRecord | RelationAdmission | dict[str, Any],

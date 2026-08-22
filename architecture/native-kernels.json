@@ -512,6 +512,21 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "number-field-cubic-relation-sieve-production",
+      "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+      "functions": [
+        "packed_cubic_order_norm_form_coefficients_in_place",
+        "packed_cubic_norm_smooth_candidates_in_place",
+        "packed_factor_base_rows_in_place"
+      ],
+      "semantic_domain": "exact cubic order norm-form interpolation, bounded canonical coefficient-box enumeration by rational norm support, and batched exact factor-base valuations in nested prime-power HNF lattices",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "readable-exact-controls"],
+      "benchmark": "bench:number-field-class-number-lmfdb",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "number-field-discriminant-prefactor-production",
       "source": "src/lib/sagejs/number_fields/discriminant_prefactor_kernel.py",
       "functions": ["packed_composite_polynomial_split_hint_in_place"],

@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "3cbfe9e7903c2f48c4a720c71950121ddd9e6fe71b52867fcf4b762477c0e2fd",
+  "source_sha256": "63adff1d3dc79f2b54b076702f8ac528597c3fc07836f48bea8e2ed08e59a1d1",
   "counts": {
-    "total": 963,
+    "total": 964,
     "by_kind": {
       "declared-ffi-function": 414,
       "declared-ffi-resource": 29,
       "napi-export": 317,
-      "production-kernel": 40,
+      "production-kernel": 41,
       "runtime-intrinsic": 138,
       "specialist-capability": 25
     },
     "by_disposition": {
-      "compiled-source": 40,
+      "compiled-source": 41,
       "desktop-only": 14,
       "generated-wasm": 304,
       "portable-fallback": 561,
       "shared-core": 44
     },
     "by_status": {
-      "available": 521,
+      "available": 522,
       "desktop-only": 14,
       "fallback": 428
     }
@@ -5878,6 +5878,18 @@
         "number-field-cubic-class-number"
       ],
       "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:number-field-cubic-relation-sieve-production",
+      "family": "number-field-cubic-relation-sieve",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "number-field-cubic-class-number"
+      ],
+      "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:number-field-discriminant-prefactor-production",
