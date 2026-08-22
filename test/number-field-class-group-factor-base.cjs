@@ -671,9 +671,9 @@ direct = factor_bases._Interval(direct_lower.lower, direct_upper.upper)
 assert anchored.lower <= direct.upper and direct.lower <= anchored.upper
 
 # Both auto and explicit GRH selection must test the cheap exact Minkowski
-# floor first.  At cutoff two it is no larger than either conditional search's
-# minimum, so no BDF call is permitted and the returned proof state is
-# assumption-free.  The cached Minkowski result itself remains unmodified.
+# floor first.  Tiny bounds have at most the rational primes 2 and 3, so the
+# assumption-free base is preferred without paying for BDF.  The cached
+# Minkowski result itself remains unmodified.
 original_bdf = factor_bases.bdf_bound
 def unexpected_bdf(*_args, **_kwargs):
     raise AssertionError("the small unconditional cutoff entered BDF search")
@@ -684,6 +684,15 @@ try:
     auto_records = build_factor_base(auto_plan)
     auto_seconds = time.perf_counter() - auto_started
     explicit_grh = grh_bound(order, max_bdf_bound=10000)
+    comparison_x = R.gen()
+    comparison_field = NumberField(
+        comparison_x**3 + 4 * comparison_x - 1, "b"
+    )
+    comparison_order = comparison_field.maximal_order()
+    comparison_plan = factor_base_plan(
+        comparison_order, proof=False, theorem="auto"
+    )
+    comparison_records = build_factor_base(comparison_plan)
 finally:
     factor_bases.bdf_bound = original_bdf
 
@@ -694,10 +703,15 @@ assert auto_plan.theorem == explicit_grh.theorem == "Minkowski"
 assert auto_plan.assumptions == explicit_grh.assumptions == ()
 assert auto_plan.bound_result is not minkowski
 assert auto_plan.bound_result.details["selection"] == (
-    "unconditional-bound-at-grh-search-minimum"
+    "unconditional-small-minkowski-bound"
 )
+assert auto_plan.bound_result.details["automatic_minkowski_bound_limit"] == 4
 assert auto_plan.bound_result.details["grh_search_minimum"] == 2
 assert "selection" not in minkowski.details
+assert comparison_plan.bound == 4
+assert comparison_plan.theorem == "Minkowski"
+assert comparison_plan.assumptions == ()
+assert len(comparison_records) == 3
 compact = [
     {
         "p": record.rational_prime,

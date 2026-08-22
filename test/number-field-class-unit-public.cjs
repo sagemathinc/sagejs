@@ -302,6 +302,42 @@ print("cubic-class-number-fast-ok")
   assert.equal(output, "cubic-class-number-fast-ok");
 });
 
+test("public cubic fallback resumes its authenticated exact relation prefix", () => {
+  const output = runPublic(String.raw`
+import sagejs.number_fields.cubic_class_number as cubic_module
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 + 4*x - 1, "s")
+assert K.class_number(proof=True) == 2
+artifact = K._bounded_cubic_class_number_artifact
+assert not artifact.complete
+result = list(K._class_unit_engine_cache.values())[-1]
+resources = result.diagnostics["resources"]
+assert result.proof_status == "exact-unconditional"
+assert result.diagnostics["factor_base_bound"] == 4
+assert result.diagnostics["factor_base_size"] == 3
+assert resources["cubic_relation_seed_uses"] == 1
+assert resources["cubic_relation_seed_relations"] == 3
+assert resources["relation_attempts"] == 6
+assert result.diagnostics["relations"] == 11
+
+# A mutated live prefix is only a failed optimization hint.  It cannot enter
+# the engine, and the independent exact computation still returns the answer.
+T = NumberField(x**3 + 4*x - 1, "t")
+forged = cubic_module.bounded_cubic_minkowski_class_number(T)
+assert cubic_module.authenticated_cubic_relation_seed(forged, T) is not None
+forged.diagnostics["quotient_order"] = 99
+assert cubic_module.authenticated_cubic_relation_seed(forged, T) is None
+T._bounded_cubic_class_number_artifact = forged
+assert T.class_number(proof=False) == 2
+cold_result = list(T._class_unit_engine_cache.values())[-1]
+assert cold_result.diagnostics["resources"]["cubic_relation_seed_uses"] == 0
+print("cubic-relation-seed-ok")
+`, 180_000);
+  assert.equal(output, "cubic-relation-seed-ok");
+});
+
 test(
   "public motivating quintic replays conditional and unconditional class maps",
   { skip: process.env.SAGEJS_SLOW_CLASS_UNIT !== "1" },

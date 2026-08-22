@@ -2897,6 +2897,15 @@ class NumberFieldParent(sage.Parent):
                 if uncached:
                     self._bounded_cubic_class_number_artifact = artifact
                 return int(artifact.order())
+            seed_reader = getattr(
+                cubic_class_numbers, "authenticated_cubic_relation_seed", None
+            )
+            if (
+                uncached
+                and callable(seed_reader)
+                and seed_reader(artifact, self) is not None
+            ):
+                self._bounded_cubic_class_number_artifact = artifact
         if self.degree() == 2:
             routing = self.quadratic_class_group_plan(algorithm, **limits)
             if routing.backend == "minkowski-triviality":

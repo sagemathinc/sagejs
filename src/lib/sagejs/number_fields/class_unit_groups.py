@@ -1041,6 +1041,8 @@ class ClassUnitGroupEngine:
             "generation_reconstruction_cache_hits": 0,
             "generation_admission_receipt_requests": 0,
             "generation_admission_receipt_hits": 0,
+            "cubic_relation_seed_uses": 0,
+            "cubic_relation_seed_relations": 0,
             "automorphism_orbit_plans": 0,
             "automorphism_orbit_available_plans": 0,
             "automorphism_orbit_useful_plans": 0,
@@ -2851,6 +2853,41 @@ class ClassUnitGroupEngine:
         )
         return group
 
+    def _cubic_relation_seed(self, plan: Any, factor_base: tuple[Any, ...]) -> Any:
+        """Return an authenticated class-only relation prefix when compatible."""
+        if self.algorithm not in ("auto", "minkowski"):
+            return None
+        artifact = getattr(self.field, "_bounded_cubic_class_number_artifact", None)
+        if artifact is None:
+            return None
+        try:
+            module = __import__(
+                "sagejs.number_fields.cubic_class_number",
+                fromlist=["cubic_class_number"],
+            )
+            reader = getattr(module, "authenticated_cubic_relation_seed", None)
+            seed: Any = reader(artifact, self.field) if callable(reader) else None
+            if seed is None:
+                return None
+            if (
+                seed.plan.order is not self.order
+                or int(seed.plan.bound) != int(plan.bound)
+                or tuple(seed.plan.assumptions)
+                or "Minkowski" not in str(seed.plan.theorem)
+                or "Minkowski" not in str(plan.theorem)
+                or len(seed.factor_base) != len(factor_base)
+                or any(
+                    retained != rebuilt
+                    for retained, rebuilt in zip(
+                        seed.factor_base, factor_base, strict=True
+                    )
+                )
+            ):
+                return None
+            return seed
+        except (AttributeError, ImportError, TypeError, ValueError, ArithmeticError):
+            return None
+
     def run(self) -> ClassUnitComputation:
         self._check_cancelled()
         specialized = self._specialized()
@@ -2870,7 +2907,23 @@ class ClassUnitGroupEngine:
             # Minkowski-required prime ideal in this exact presentation.
             discovery_proof = self.algorithm == "minkowski"
             plan, factor_base = self._factor_base(proof=discovery_proof)
-            collector, presentation = self._relations(factor_base, unit_rank)
+            relation_seed = self._cubic_relation_seed(plan, factor_base)
+            if relation_seed is None:
+                collector, presentation = self._relations(factor_base, unit_rank)
+            else:
+                plan = relation_seed.plan
+                factor_base = relation_seed.factor_base
+                self._relation_search_state = relation_seed.search_state
+                self._resource_usage["cubic_relation_seed_uses"] += 1
+                self._resource_usage["cubic_relation_seed_relations"] += len(
+                    relation_seed.collector.records
+                )
+                collector, presentation = self._relations(
+                    factor_base,
+                    unit_rank,
+                    collector=relation_seed.collector,
+                    presentation=relation_seed.presentation,
+                )
             if presentation.rank != len(factor_base) or presentation.order is None:
                 return self._incomplete(
                     "relation search exhausted before full rank",

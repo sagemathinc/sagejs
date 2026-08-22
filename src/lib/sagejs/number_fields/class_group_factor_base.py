@@ -33,6 +33,7 @@ DEFAULT_MAX_BOUND = 1_000_000
 DEFAULT_MAX_RATIONAL_PRIMES = 1_000_000
 DEFAULT_MAX_PRIME_IDEALS = 1_000_000
 DEFAULT_MAX_MEMORY_BYTES = 256 * 1024 * 1024
+AUTO_MINKOWSKI_BOUND_LIMIT = 4
 MAX_INTERVAL_BITS = 512
 DYADIC_GUARD_BITS = 24
 
@@ -868,9 +869,10 @@ def bdf_bound(value: Any, *, max_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBo
 def grh_bound(value: Any, *, max_bdf_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBound:
     """Return the smallest selected unconditional or GRH-certified bound."""
     minkowski = minkowski_bound(value)
-    if minkowski.bound <= 2:
+    if minkowski.bound <= AUTO_MINKOWSKI_BOUND_LIMIT:
         details = dict(minkowski.details)
-        details["selection"] = "unconditional-bound-at-grh-search-minimum"
+        details["selection"] = "unconditional-small-minkowski-bound"
+        details["automatic_minkowski_bound_limit"] = AUTO_MINKOWSKI_BOUND_LIMIT
         details["grh_search_minimum"] = 2
         return FactorBaseBound(
             minkowski.theorem,
