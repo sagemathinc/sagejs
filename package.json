@@ -252,6 +252,7 @@
     "bench:number-field-maximal-order-parallel-worker": "node bench/number-field-maximal-order-parallel-worker.cjs",
     "bench:number-field-buchmann-lenstra-precision": "node bench/number-field-buchmann-lenstra-precision.cjs",
     "bench:number-field-buchmann-lenstra-fast": "node bench/number-field-buchmann-lenstra-fast.cjs",
+    "bench:number-field-prime-ideal-candidate-kernel": "node bench/number-field-prime-ideal-candidate-kernel.cjs",
     "bench:number-field-om-maxmin": "node bench/number-field-om-maxmin.cjs",
     "bench:number-field-om-p2-tail": "node bench/number-field-om-p2-tail.cjs",
     "bench:number-field-om-auto-selector": "node bench/number-field-om-auto-selector.cjs",

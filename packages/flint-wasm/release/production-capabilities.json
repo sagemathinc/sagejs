@@ -402,7 +402,8 @@
         "kernel:packed-integer-polynomial-production",
         "kernel:packed-moebius-range-production",
         "kernel:packed-permutation-center-production",
-        "kernel:packed-rational-polynomial-production"
+        "kernel:packed-rational-polynomial-production",
+        "kernel:prime-ideal-candidate-materializer-production"
       ]
     }
   }

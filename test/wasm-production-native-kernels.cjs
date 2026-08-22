@@ -30,14 +30,14 @@ test("the Wasm source-kernel inventory accounts for all registered kernels", asy
     root,
     "packages/flint-wasm/release/production-kernel-coverage.json",
   ), "utf8"));
-  assert.equal(manifest.kernels.length, 37);
+  assert.equal(manifest.kernels.length, 38);
   assert.equal(inventory.registered.length, manifest.kernels.length);
-  assert.equal(inventory.production.length, 30);
+  assert.equal(inventory.production.length, 31);
   assert.equal(inventory.modules.length, inventory.production.length);
   assert.equal(inventory.nonProduction.length, 7);
-  assert.equal(coverage.totals.registered_kernels, 37);
-  assert.equal(coverage.totals.production_kernels, 30);
-  assert.equal(coverage.totals.compiled_functions, 230);
+  assert.equal(coverage.totals.registered_kernels, 38);
+  assert.equal(coverage.totals.production_kernels, 31);
+  assert.equal(coverage.totals.compiled_functions, 231);
   assert.equal(coverage.totals.unsupported_production_functions, 0);
   const coverageById = new Map(coverage.kernels.map((item) => [item.id, item]));
   for (const omitted of inventory.nonProduction) {
@@ -109,10 +109,10 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
       emitOnly: true,
     });
     assert.equal(manifest.completeInventory, true);
-    assert.equal(manifest.registeredKernels, 37);
-    assert.equal(manifest.productionKernels, 30);
-    assert.equal(manifest.compiledKernelCores, 30);
-    assert.equal(manifest.compiledFunctions, 230);
+    assert.equal(manifest.registeredKernels, 38);
+    assert.equal(manifest.productionKernels, 31);
+    assert.equal(manifest.compiledKernelCores, 31);
+    assert.equal(manifest.compiledFunctions, 231);
     assert.equal(manifest.unsupportedFunctions, 0);
     assert.equal(manifest.nonProductionKernels.length, 7);
     assert.deepEqual(manifest.packs.map((pack) => pack.domain), ["flint", "gmp"]);
@@ -371,6 +371,7 @@ test("number-field GMP Wasm cores execute the same exact sources as fallbacks", 
       "utf8",
     ));
     const kernelIds = new Set([
+      "prime-ideal-candidate-materializer-production",
       "number-field-om-proof-production",
       "number-field-composite-analysis-production",
       "number-field-zeta-coefficients-production",
@@ -459,6 +460,25 @@ test("number-field GMP Wasm cores execute the same exact sources as fallbacks", 
       1n,
       16n,
     );
+    const candidate = runtime.function(
+      "sagejs/number_fields/bl_composite_kernel.py",
+      "packed_prime_ideal_candidate_hnf_in_place",
+    );
+    const candidateOutput = Array(12).fill(0n);
+    const candidateResult = candidate(
+      candidateOutput,
+      Array(12).fill(0n),
+      Array(6).fill(0n),
+      [2n, 0n, 0n, 0n, 1n, 1n, 0n, 0n, 2n],
+      [0n, 0n, 1n],
+      2n,
+      3n,
+      1n,
+    );
+    assert.equal(candidateResult, true);
+    assert.deepEqual(words(candidateOutput.slice(0, 9)), [
+      "4", "0", "0", "0", "2", "0", "0", "0", "2",
+    ]);
     const actual = {
       om: [omResult, words(omWorkspace)],
       composite: String(squareRoot(value)),
@@ -478,7 +498,7 @@ test("number-field GMP Wasm cores execute the same exact sources as fallbacks", 
       zeta: [true, ["1", "1", "0", "1", "1", "0", "0", "1"]],
       bf: oracle.bf,
     });
-    for (const fn of [maxmin, squareRoot, zeta, bf]) {
+    for (const fn of [maxmin, squareRoot, zeta, bf, candidate]) {
       assert.equal(fn.nativeAvailable, true);
       assert.equal(fn.executionTarget, "wasm");
       assert.equal(fn.sourceTransparent, true);

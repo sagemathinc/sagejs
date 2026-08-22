@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "f47a4b32f117d0f05cee7e3f43a14bb30241ae0fc1bc9bd31b981c0586732799",
+  "source_sha256": "d37cf9f018048fe6d5412bdf61a2134506352a532c92dff46128b9256e321fcc",
   "counts": {
-    "total": 957,
+    "total": 958,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
       "napi-export": 317,
-      "production-kernel": 37,
+      "production-kernel": 38,
       "runtime-intrinsic": 137,
       "specialist-capability": 25
     },
     "by_disposition": {
-      "compiled-source": 37,
+      "compiled-source": 38,
       "desktop-only": 14,
       "generated-wasm": 302,
       "portable-fallback": 560,
       "shared-core": 44
     },
     "by_status": {
-      "available": 515,
+      "available": 516,
       "desktop-only": 14,
       "fallback": 428
     }
@@ -6046,6 +6046,18 @@
         "prime-field"
       ],
       "explanation": "This family uses compiled WebAssembly for 0 of 2 functions and the same-source fallback for 2 functions."
+    },
+    {
+      "id": "kernel:prime-ideal-candidate-materializer-production",
+      "family": "prime-ideal-candidate-materializer",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "prime-ideal-candidate-materializer"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:sparse-random-matrix-production",
