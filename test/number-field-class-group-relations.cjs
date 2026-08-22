@@ -625,12 +625,19 @@ assert short_one[:len(case["short_element_prefix"])] == case["short_element_pref
 # exact field element in the bounded coefficient stream.  Full consumption
 # remains byte-for-byte equivalent to the tuple-returning public helper.
 conversion_count = 0
+integral_lattice_count = 0
 original_conversion = relation_module._field_element_from_coefficients
+original_integral_lattice_rows = relation_module._integral_lattice_rows
 def counted_conversion(*args, **kwargs):
     global conversion_count
     conversion_count += 1
     return original_conversion(*args, **kwargs)
+def counted_integral_lattice_rows(*args, **kwargs):
+    global integral_lattice_count
+    integral_lattice_count += 1
+    return original_integral_lattice_rows(*args, **kwargs)
 relation_module._field_element_from_coefficients = counted_conversion
+relation_module._integral_lattice_rows = counted_integral_lattice_rows
 saved_lll_kernel_override = relation_module._lll_kernel_override
 relation_module._lll_kernel_override = False
 try:
@@ -644,8 +651,10 @@ try:
     conversions_after_full = conversion_count
 finally:
     relation_module._field_element_from_coefficients = original_conversion
+    relation_module._integral_lattice_rows = original_integral_lattice_rows
     relation_module._lll_kernel_override = saved_lll_kernel_override
 assert conversions_after_first < conversions_after_full
+assert integral_lattice_count == 1
 assert [str(value) for value in lazy_values] == short_one
 
 # Degenerate random settings retain the deterministic reduced-basis prefix and

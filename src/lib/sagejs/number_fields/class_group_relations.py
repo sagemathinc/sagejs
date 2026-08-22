@@ -2299,7 +2299,6 @@ class LLLRelationSearch:
         """
         if ideal.ring() is not self.collector.order or ideal.is_zero():
             raise TypeError("short-vector search requires a nonzero ideal of the order")
-        integer_rows, denominator = _integral_lattice_rows(ideal)
         if self.basis_reducer is None:
             self.last_lattice_plan = minkowski_lll_lattice(
                 ideal, precision=self.embedding_precision
@@ -2308,6 +2307,7 @@ class LLLRelationSearch:
             denominator = self.last_lattice_plan.denominator
         else:
             self.last_lattice_plan = None
+            integer_rows, denominator = _integral_lattice_rows(ideal)
             reduced = self.basis_reducer(integer_rows)
         coefficient_rows: list[list[int]] = []
         coefficient_rows.extend(reduced)
