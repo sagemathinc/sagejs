@@ -27,7 +27,7 @@
       "operations": {
         "exact-matrix-kernel": {
           "warm_ms": {
-            "median": 54.36156699998537
+            "median": 77.77003200000001
           }
         },
         "cubic-number-field-zeta-1000": {
