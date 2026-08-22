@@ -578,12 +578,41 @@ def Ei(value: Any) -> ComplexNumberElement:
     )
 
 
-def Li(value: Any) -> float:
-    """Numerically evaluate the logarithmic integral `li(value)`."""
+def li(value: Any) -> float:
+    """Numerically evaluate the logarithmic integral `li(value)`.
+
+    This is the unoffset integral, with its lower limit at `0`:
+
+    ```
+    li(x) = integral from 0 to x of dt / log(t)
+    ```
+
+    `Li` is the offset variant Sage names `log_integral_offset`.
+    """
     real_value = float(value)
     if real_value <= 0:
-        raise ValueError("Li() currently requires a positive real argument")
+        raise ValueError("li() currently requires a positive real argument")
     return Ei(CDF(runtime.math.log(real_value))).real()
+
+
+def Li(value: Any) -> float:
+    """Numerically evaluate the offset logarithmic integral `Li(value)`.
+
+    Sage's `Li` is `log_integral_offset`, whose lower limit of integration is
+    `2` rather than `0`, avoiding the singularity of `1 / log(t)` at `t = 1`:
+
+    ```
+    Li(x) = integral from 2 to x of dt / log(t) = li(x) - li(2)
+    ```
+
+    The offset is what makes `Li` the approximation to the prime-counting
+    function that the Riemann hypothesis is stated against, so dropping it
+    does not merely shift the value by a constant -- it stops `Li(x)` being
+    close to `prime_pi(x)` at all. `Li(2)` is `0`.
+
+    Do not confuse this with the polylogarithm, which is also written `Li`.
+    """
+    return li(value) - li(2)
 
 
 def ComplexNumber(
