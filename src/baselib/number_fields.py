@@ -2857,29 +2857,25 @@ class NumberFieldParent(sage.Parent):
         if self._is_tutorial_cubic():
             return 1
         if self.degree() == 3 and algorithm == "auto" and len(limits) == 0:
+            cubic_class_numbers = _nf_cubic_class_number_module()
             artifact = self._bounded_cubic_class_number_artifact
-            if artifact is runtime.undefined:
-                artifact = _nf_cubic_class_number_module().bounded_cubic_minkowski_class_number(
+            uncached = artifact is runtime.undefined
+            if uncached:
+                artifact = cubic_class_numbers.bounded_cubic_minkowski_class_number(
                     self
                 )
-                if artifact.complete:
-                    certificate = artifact.certificate
-                    certificate_type = getattr(
-                        _nf_cubic_class_number_module(),
-                        "CubicMinkowskiClassNumberCertificate",
-                        None,
-                    )
-                    if (
-                        certificate_type is None
-                        or type(certificate) is not certificate_type
-                        or certificate.proof_status != "exact-unconditional"
-                        or not certificate.verify()
-                    ):
-                        raise ArithmeticError(
-                            "cubic class-number producer returned invalid exact evidence"
-                        )
-                    self._bounded_cubic_class_number_artifact = artifact
             if artifact.complete:
+                matcher = getattr(
+                    cubic_class_numbers,
+                    "authenticated_cubic_class_number_result_matches",
+                    None,
+                )
+                if not callable(matcher) or not matcher(artifact, self):
+                    raise ArithmeticError(
+                        "cached cubic class-number evidence lost authentication"
+                    )
+                if uncached:
+                    self._bounded_cubic_class_number_artifact = artifact
                 return int(artifact.order())
         if self.degree() == 2:
             routing = self.quadratic_class_group_plan(algorithm, **limits)

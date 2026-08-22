@@ -316,7 +316,7 @@ test("bounded cubic class numbers replay every quotient p-line", () => {
   const output = run(String.raw`
 import hashlib
 import json
-from sagejs.number_fields.cubic_class_number import CubicMinkowskiClassNumberCertificate, bounded_cubic_minkowski_class_number
+from sagejs.number_fields.cubic_class_number import CubicClassNumberResult, CubicMinkowskiClassNumberCertificate, authenticated_cubic_class_number_result_matches, bounded_cubic_minkowski_class_number
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -357,6 +357,20 @@ assert certificate1083.caps["max_quotient_order"] == 4096
 payload1083 = certificate1083.to_dict()
 detached1083 = CubicMinkowskiClassNumberCertificate.from_dict(K1083, payload1083)
 assert detached1083.to_dict() == payload1083 and detached1083.class_number == 3
+detached_result1083 = CubicClassNumberResult(
+    K1083,
+    True,
+    detached1083.source,
+    classes1083.minkowski_bound,
+    certificate=detached1083,
+    factor_base=classes1083.factor_base,
+    relation_records=classes1083.relation_records,
+    presentation=classes1083.presentation,
+    diagnostics=classes1083.diagnostics,
+)
+assert not authenticated_cubic_class_number_result_matches(
+    detached_result1083, K1083
+)
 
 def rehash(payload):
     body = dict(payload)

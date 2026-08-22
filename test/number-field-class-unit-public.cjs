@@ -215,8 +215,7 @@ artifact = K._bounded_cubic_class_number_artifact
 assert artifact.complete
 assert artifact.proof_status == "exact-unconditional"
 assert artifact.certificate.proof_status == "exact-unconditional"
-assert artifact.certificate.verify()
-assert len(certificate_verify_calls) >= 2
+assert certificate_verify_calls == []
 assert artifact.diagnostics["quotient_order"] == 3
 
 # The stronger unconditional artifact satisfies proof=False from the field
@@ -224,6 +223,59 @@ assert artifact.diagnostics["quotient_order"] == 3
 cubic_module.bounded_cubic_minkowski_class_number = forbidden
 assert K.class_number(proof=False) == 3
 assert K._bounded_cubic_class_number_artifact is artifact
+assert certificate_verify_calls == []
+
+# Exported constructors cannot mint the private live authority, even from a
+# byte-for-byte copy of valid evidence.  A live seal also cannot be moved from
+# its producer result onto the forged result.
+K_forged = NumberField(x**3 - x**2 - 6*x - 12, "g")
+source_certificate = artifact.certificate
+forged_certificate = cubic_module.CubicMinkowskiClassNumberCertificate(
+    K_forged,
+    plan=source_certificate.plan,
+    factor_base=source_certificate.factor_base,
+    relations=source_certificate.relations,
+    presentation=source_certificate.presentation,
+    obstructions=source_certificate.obstructions,
+    caps=source_certificate.caps,
+)
+forged_result = cubic_module.CubicClassNumberResult(
+    K_forged,
+    True,
+    source_certificate.source,
+    artifact.minkowski_bound,
+    certificate=forged_certificate,
+    factor_base=artifact.factor_base,
+    relation_records=artifact.relation_records,
+    presentation=artifact.presentation,
+    diagnostics=artifact.diagnostics,
+)
+assert not cubic_module.authenticated_cubic_class_number_result_matches(
+    forged_result, K_forged
+)
+forged_result._live_authentication = artifact._live_authentication
+assert not cubic_module.authenticated_cubic_class_number_result_matches(
+    forged_result, K_forged
+)
+original_producer = cubic_module.bounded_cubic_minkowski_class_number
+cubic_module.bounded_cubic_minkowski_class_number = lambda field: forged_result
+try:
+    K_forged.class_number(proof=True)
+    raise AssertionError("a directly constructed cubic result entered the cache")
+except ArithmeticError as error:
+    assert "invalid exact evidence" in str(error) or "lost authentication" in str(error)
+cubic_module.bounded_cubic_minkowski_class_number = original_producer
+assert not hasattr(K_forged, "_bounded_cubic_class_number_artifact")
+
+# Cache reads rebind the immutable source snapshot and fail after mutation.
+artifact.diagnostics["quotient_order"] = 4
+try:
+    K.class_number(proof=True)
+    raise AssertionError("mutated live cubic evidence remained authenticated")
+except ArithmeticError as error:
+    assert "lost authentication" in str(error)
+artifact.diagnostics["quotient_order"] = 3
+assert K.class_number(proof=True) == 3
 
 # Explicit algorithms and resource policies retain the existing coupled
 # dispatch rather than silently consuming the auto/no-limits shortcut.

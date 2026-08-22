@@ -26,6 +26,10 @@ from sagejs.number_fields.class_groups import (
 CUBIC_CLASS_NUMBER_CERTIFICATE_SCHEMA = (
     "sagejs.number-fields/cubic-minkowski-class-number-v1"
 )
+AUTHENTICATED_CUBIC_CLASS_NUMBER_SCHEMA = (
+    "sagejs.number-fields/authenticated-cubic-class-number-result-v1"
+)
+_AUTHENTICATED_CUBIC_CLASS_NUMBER_TOKEN = object()
 DEFAULT_CUBIC_CLASS_NUMBER_MAX_RELATION_ATTEMPTS = 64
 DEFAULT_CUBIC_CLASS_NUMBER_MAX_RELATIONS = 128
 DEFAULT_CUBIC_CLASS_NUMBER_MAX_CANDIDATES_PER_IDEAL = 64
@@ -40,6 +44,21 @@ _CUBIC_CLASS_NUMBER_REPLAY_MAX_QUOTIENT_ORDER = 1_000_000
 _CUBIC_CLASS_NUMBER_REPLAY_MAX_PROJECTIVE_LINES = 4096
 _CUBIC_CLASS_NUMBER_REPLAY_MAX_MODULUS = 257
 _CUBIC_CLASS_NUMBER_REPLAY_MAX_RESIDUE_STATES = 20_000_000
+
+
+def _freeze_authentication_value(value: Any) -> Any:
+    """Return an exact immutable snapshot of one JSON-safe value."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_authentication_value(item) for item in value)
+    if isinstance(value, dict):
+        if not all(isinstance(key, str) for key in value):
+            raise TypeError("authentication snapshot keys must be strings")
+        return tuple(
+            (key, _freeze_authentication_value(value[key])) for key in sorted(value)
+        )
+    raise TypeError("authentication snapshots require JSON-safe values")
 
 
 def _check_cubic_cancelled(cancelled: Callable[[], bool] | None) -> None:
@@ -609,6 +628,160 @@ class CubicClassNumberResult:
         return "Incomplete cubic class-number search (" + self.reason + ")"
 
 
+def _cubic_class_number_result_snapshot(result: CubicClassNumberResult) -> Any:
+    """Snapshot every mutable proof-bearing field of one live result."""
+    certificate = result.certificate
+    if type(certificate) is not CubicMinkowskiClassNumberCertificate:
+        raise TypeError("a live cubic class-number result needs the exact certificate")
+    factor_base = []
+    for ideal in result.factor_base:
+        serializer = getattr(ideal, "to_dict", None)
+        if not callable(serializer):
+            raise TypeError("a live cubic factor-base ideal is not serializable")
+        factor_base.append(serializer())
+    relations = []
+    for record in result.relation_records:
+        serializer = getattr(record, "to_dict", None)
+        if not callable(serializer):
+            raise TypeError("a live cubic relation record is not serializable")
+        relations.append(serializer())
+    presentation = result.presentation
+    presentation_serializer = getattr(presentation, "to_dict", None)
+    if not callable(presentation_serializer):
+        raise TypeError("a live cubic presentation is not serializable")
+    return _freeze_authentication_value(
+        {
+            "complete": result.complete,
+            "reason": result.reason,
+            "minkowski_bound": result.minkowski_bound,
+            "proof_status": result.proof_status,
+            # These strings are the certificate's canonical immutable source.
+            # Snapshotting them avoids reparsing the potentially large exact
+            # witness payload merely to compare it with itself.
+            "certificate": {
+                "plan_json": certificate._plan_json,
+                "factor_base_json": certificate._factor_base_json,
+                "relations_json": certificate._relations_json,
+                "presentation_json": certificate._presentation_json,
+                "obstructions_json": certificate._obstructions_json,
+                "caps_json": certificate._caps_json,
+                "proof_status": certificate.proof_status,
+                "source": certificate.source,
+                "content_sha256": certificate._content_sha256,
+            },
+            "factor_base": factor_base,
+            "relations": relations,
+            "presentation": presentation_serializer(),
+            "diagnostics": result.diagnostics,
+        }
+    )
+
+
+class _AuthenticatedCubicClassNumberResult:
+    """Immutable producer-issued seal for one live exact cubic result."""
+
+    def __init__(self, token: object, result: CubicClassNumberResult) -> None:
+        if token is not _AUTHENTICATED_CUBIC_CLASS_NUMBER_TOKEN:
+            raise TypeError("authenticated cubic class-number seals are module-issued")
+        if type(result) is not CubicClassNumberResult or not result.complete:
+            raise ValueError(
+                "an authenticated cubic class-number result must be complete"
+            )
+        certificate = result.certificate
+        if type(certificate) is not CubicMinkowskiClassNumberCertificate:
+            raise TypeError("an authenticated cubic result needs the exact certificate")
+        if (
+            result.proof_status != "exact-unconditional"
+            or certificate.proof_status != "exact-unconditional"
+            or certificate.field is not result.field
+        ):
+            raise ValueError("an authenticated cubic result has inconsistent authority")
+        self.schema = AUTHENTICATED_CUBIC_CLASS_NUMBER_SCHEMA
+        self.class_number = int(certificate.class_number)
+        self.minkowski_bound = int(result.minkowski_bound)
+        self.proof_status = str(result.proof_status)
+        self.certificate_sha256 = str(certificate.stable_hash())
+        self.factor_base_size = len(result.factor_base)
+        self.relation_count = len(result.relation_records)
+        self.__dict__["_source_field"] = result.field
+        self.__dict__["_source_result"] = result
+        self.__dict__["_source_snapshot"] = _cubic_class_number_result_snapshot(result)
+        self.__dict__["_frozen"] = True
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if self.__dict__.get("_frozen", False):
+            raise AttributeError("authenticated cubic class-number seals are immutable")
+        self.__dict__[name] = value
+
+    @property
+    def certified(self) -> bool:
+        try:
+            source = self.__dict__.get("_source_result")
+            return (
+                type(source) is CubicClassNumberResult
+                and source.field is self.__dict__.get("_source_field")
+                and source.complete
+                and self.proof_status == "exact-unconditional"
+                and self.__dict__.get("_authentication_snapshot")
+                == _authenticated_cubic_class_number_snapshot(self)
+                and self.__dict__.get("_source_snapshot")
+                == _cubic_class_number_result_snapshot(source)
+            )
+        except (AttributeError, TypeError, ValueError):
+            return False
+
+
+def _authenticated_cubic_class_number_snapshot(
+    authentication: _AuthenticatedCubicClassNumberResult,
+) -> tuple[Any, ...]:
+    return (
+        AUTHENTICATED_CUBIC_CLASS_NUMBER_SCHEMA,
+        authentication.schema,
+        authentication.class_number,
+        authentication.minkowski_bound,
+        authentication.proof_status,
+        authentication.certificate_sha256,
+        authentication.factor_base_size,
+        authentication.relation_count,
+    )
+
+
+def _issue_cubic_class_number_result(
+    result: CubicClassNumberResult,
+) -> CubicClassNumberResult:
+    """Attach a cheap live seal at the exact producer boundary."""
+    authentication = _AuthenticatedCubicClassNumberResult(
+        _AUTHENTICATED_CUBIC_CLASS_NUMBER_TOKEN, result
+    )
+    authentication.__dict__["_authentication_snapshot"] = (
+        _authenticated_cubic_class_number_snapshot(authentication)
+    )
+    if not authentication.certified:
+        raise ArithmeticError("failed to seal a live cubic class-number result")
+    result.__dict__["_live_authentication"] = authentication
+    return result
+
+
+def authenticated_cubic_class_number_result_matches(result: Any, field: Any) -> bool:
+    """Check a producer-issued live result without detached arithmetic replay."""
+    if type(result) is not CubicClassNumberResult or result.field is not field:
+        return False
+    try:
+        authentication = result.__dict__.get("_live_authentication")
+        certificate = result.certificate
+        return (
+            type(authentication) is _AuthenticatedCubicClassNumberResult
+            and type(certificate) is CubicMinkowskiClassNumberCertificate
+            and authentication.__dict__.get("_source_result") is result
+            and authentication.__dict__.get("_source_field") is field
+            and authentication.certified
+            and authentication.class_number == result.order()
+            and authentication.certificate_sha256 == certificate.stable_hash()
+        )
+    except (AttributeError, TypeError, ValueError):
+        return False
+
+
 def bounded_cubic_minkowski_class_number(
     field: Any,
     *,
@@ -867,27 +1040,29 @@ def bounded_cubic_minkowski_class_number(
         raise ArithmeticError("cubic class-number evidence changed during encoding")
     phase_timings["certificate_encoding"] = time.perf_counter() - encoding_started
     phase_timings["total"] = time.perf_counter() - total_started
-    return CubicClassNumberResult(
-        field,
-        True,
-        certificate.source,
-        int(plan.bound),
-        certificate=certificate,
-        factor_base=factor_base,
-        relation_records=relation_records,
-        presentation=presentation,
-        diagnostics={
-            "algorithm": "bounded-cubic-minkowski-p-lines",
-            "phase_timings": dict(phase_timings),
-            "factor_base_size": len(factor_base),
-            "relations": len(relation_records),
-            "presentation_rank": int(presentation.rank),
-            "quotient_order": quotient_order,
-            "projective_lines": len(line_specs),
-            "residue_states": residue_states,
-            "relation_search": dict(relation_metrics),
-            "caps": dict(checked_caps),
-        },
+    return _issue_cubic_class_number_result(
+        CubicClassNumberResult(
+            field,
+            True,
+            certificate.source,
+            int(plan.bound),
+            certificate=certificate,
+            factor_base=factor_base,
+            relation_records=relation_records,
+            presentation=presentation,
+            diagnostics={
+                "algorithm": "bounded-cubic-minkowski-p-lines",
+                "phase_timings": dict(phase_timings),
+                "factor_base_size": len(factor_base),
+                "relations": len(relation_records),
+                "presentation_rank": int(presentation.rank),
+                "quotient_order": quotient_order,
+                "projective_lines": len(line_specs),
+                "residue_states": residue_states,
+                "relation_search": dict(relation_metrics),
+                "caps": dict(checked_caps),
+            },
+        )
     )
 
 
@@ -895,5 +1070,6 @@ __all__ = [
     "CUBIC_CLASS_NUMBER_CERTIFICATE_SCHEMA",
     "CubicClassNumberResult",
     "CubicMinkowskiClassNumberCertificate",
+    "authenticated_cubic_class_number_result_matches",
     "bounded_cubic_minkowski_class_number",
 ]
