@@ -947,7 +947,13 @@ def bounded_cubic_minkowski_class_number(
         components=components,
     )
     try:
-        collector, presentation = engine._relations(factor_base, 0)
+        # This class-number-only quotient needs full factor-base rank but no
+        # logarithmic unit dependencies.  One exact row per searched ideal is
+        # sufficient; the loop continues until the exact presentation reaches
+        # full rank, and the detached certificate replays every retained row.
+        collector, presentation = engine._relations(
+            factor_base, 0, relations_per_ideal=1
+        )
     except RuntimeError:
         raise
     except ValueError as error:
