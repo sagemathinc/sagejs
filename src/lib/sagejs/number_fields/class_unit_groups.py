@@ -24,8 +24,14 @@ from typing import Any, Callable, Iterable, Sequence
 EXACT_UNCONDITIONAL = "exact-unconditional"
 EXACT_RELATIONS_CONDITIONAL_GRH = "exact-relations-conditional-grh"
 INCOMPLETE_RESOURCE_LIMIT = "incomplete-resource-limit"
-MAX_DIRECT_CUBIC_RELATION_SEED_BOUND = 4
-MAX_DIRECT_CUBIC_RELATION_SEED_SIZE = 3
+# Reusing the bounded cubic producer's unconditional Minkowski prefix avoids
+# rebuilding a conditional BDF base and, when proof is requested, a second
+# unconditional base.  Corpus measurements show a clear win through seven
+# prime ideals and Minkowski bound 20.  Larger bases can make authenticated
+# generation replay more expensive than fresh BDF discovery, so keep this a
+# deliberately conservative live optimization policy.
+MAX_DIRECT_CUBIC_RELATION_SEED_BOUND = 20
+MAX_DIRECT_CUBIC_RELATION_SEED_SIZE = 7
 MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 
 _AUTHENTICATED_CLASS_UNIT_SATURATION_TOKEN = object()

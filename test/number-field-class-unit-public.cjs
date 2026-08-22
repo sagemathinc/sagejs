@@ -371,6 +371,45 @@ print("cubic-relation-seed-ok")
   assert.equal(output, "cubic-relation-seed-ok");
 });
 
+test("default cubic fallback reuses only measured-size Minkowski prefixes", () => {
+  const output = runPublic(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+
+# LMFDB 3.1.1563.1 has a seven-prime Minkowski base.  Reusing its exact
+# rank-only prefix makes the coupled result unconditional without a separate
+# BDF discovery/proof pass.
+K = NumberField(x**3 - x**2 + 7*x - 6, "a")
+assert K.class_number(proof=False) == 5
+artifact = K._bounded_cubic_class_number_artifact
+assert len(artifact.factor_base) == 7
+assert len(artifact.relation_records) == 10
+result = list(K._class_unit_engine_cache.values())[-1]
+resources = result.diagnostics["resources"]
+assert result.proof_status == "exact-unconditional"
+assert result.diagnostics["factor_base_bound"] == 11
+assert result.diagnostics["factor_base_size"] == 7
+assert resources["cubic_factor_base_seed_uses"] == 1
+assert resources["cubic_relation_seed_uses"] == 1
+assert resources["cubic_relation_seed_relations"] == 10
+
+# LMFDB 3.1.4027.2 needs ten primes in the unconditional producer.  That
+# prefix is valid, but deliberately outside the live reuse policy: measured
+# authenticated replay costs more than rebuilding its smaller BDF base.
+L = NumberField(x**3 - x**2 + 7*x + 8, "b")
+assert L.class_number(proof=False) == 6
+large_artifact = L._bounded_cubic_class_number_artifact
+assert len(large_artifact.factor_base) == 10
+large_result = list(L._class_unit_engine_cache.values())[-1]
+large_resources = large_result.diagnostics["resources"]
+assert large_result.proof_status == "exact-relations-conditional-grh"
+assert large_resources["cubic_factor_base_seed_uses"] == 0
+assert large_resources["cubic_relation_seed_uses"] == 0
+print("cubic-relation-seed-policy-ok")
+`, 180_000);
+  assert.equal(output, "cubic-relation-seed-policy-ok");
+});
+
 test("isomorphic cubic computations reuse only live analytic snapshots", () => {
   const output = runPublic(String.raw`
 import sagejs.number_fields.class_unit_analytic as analytic
