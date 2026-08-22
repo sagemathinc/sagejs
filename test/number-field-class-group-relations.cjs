@@ -19,6 +19,11 @@ import json
 import hashlib
 import time
 
+from sagejs.number_fields.ideal_arithmetic import (
+    element_valuation,
+    element_valuations,
+)
+
 from sagejs.number_fields.class_group_relations import (
     _exact_lll_reduce_with_transform,
     _gram_schmidt,
@@ -69,6 +74,16 @@ actual_factor_base = [
     for P in factor_base
 ]
 assert actual_factor_base == case["factor_base"]
+
+# Batch valuation retains the exact scalar semantics for integral and
+# fractional elements while sharing coercion, norm, and principal-ideal work.
+for value in (K(2), K.gen() + 1, K.gen() / 2):
+    scalar_valuations = tuple(element_valuation(value, P) for P in factor_base)
+    assert element_valuations(value, factor_base) == scalar_valuations
+    assert element_valuations(value, reversed(factor_base)) == tuple(
+        reversed(scalar_valuations)
+    )
+assert element_valuations(K(2), ()) == ()
 
 # The reconstruction accelerator is collector-local, bounded, and exactly
 # differential against the uncached public construction for signed rows.
