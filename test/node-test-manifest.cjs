@@ -102,6 +102,8 @@ const integration = [
   "test/number-field-maximal-order-selector.cjs",
   "test/number-field-maximal-order-timeout-recovery.cjs",
   "test/number-field-t8-fused-analysis.cjs",
+  "test/number-field-lmfdb-class-number-corpus.cjs",
+  "test/number-field-prime-ideal-candidate-kernel.cjs",
   "test/number-field-discriminant-components.cjs",
   "test/number-field-discriminant-flint-primitives.cjs",
   "test/number-field-discriminant-prefactorization.cjs",
