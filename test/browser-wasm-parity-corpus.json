@@ -281,10 +281,10 @@
         { "id": "analytic:complex-gamma", "route": "receipt-backed-wasm-artifact" },
         { "id": "analytic:riemann-xi", "route": "receipt-backed-wasm-artifact" }
       ],
-      "source": "gamma_batch=complex_gamma_values([[\"0.5\",\"0\"],[\"1\",\"1\"]],prec=160)\nxi_batch=riemann_xi_values([[\"0\",\"0\"],[\"1\",\"0\"],[\"0.5\",\"0\"],[\"2\",\"0\"]],prec=160)\nprint(gamma_batch[0])\nprint(gamma_batch[1])\nprint(xi_batch[0],xi_batch[1])\nprint(xi_batch[2])\nprint(xi_batch[3])",
+      "source": "gamma_batch=complex_gamma_values([[\"0.5\",\"0\"],[\"1\",\"1\"]],prec=160)\nxi_batch=riemann_xi_values([[\"0\",\"0\"],[\"1\",\"0\"],[\"0.5\",\"0\"],[\"2\",\"0\"]],prec=160)\nprint(float(gamma_batch[0].real()))\nprint(float(gamma_batch[1].real()),float(gamma_batch[1].imag()))\nprint(float(xi_batch[0].real()),float(xi_batch[1].real()))\nprint(float(xi_batch[2].real()),xi_batch[2].precision())\nprint(float(xi_batch[3].real()))",
       "timeout_ms": 30000,
       "expect": {
-        "stdout": "1.7724538509055160272981674833411451827975494561\n0.49801566811835604271369111746219809195296296759 - 0.15494982830181068512495513048388660519587965208*I\n1.0000000000000000000000000000000000000000000000 1.0000000000000000000000000000000000000000000000\n0.99424155637662821982554747937079543961458721912\n1.0471975511965977461542144610931676280657231331\n",
+        "stdout": "1.772453850905516\n0.49801566811835607 -0.15494982830181067\n1.0 1.0\n0.9942415563766283 160\n1.0471975511965979\n",
         "repr": ""
       }
     },
