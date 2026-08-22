@@ -78,14 +78,55 @@
       "commit": "abaf7a61bd1ba48111227c883adc1527c81d527a",
       "workspace_fingerprint": "d50035f77c4a8db6a57cbe13124ba9e56841f05cff613d738e5f5aa6b83d524b",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/genus2_kummer.py src/lib/sagejs/hyperelliptic_curves/genus2_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.739,
+      "started_at": "2026-08-22T07:19:15.288Z",
+      "commit": "ff47e6a79c7370e490d90a5e3d9e29492b5f672b",
+      "workspace_fingerprint": "b333ad45d0b6112828a075b94fb185692d1fe84faa49f7092c8479faa7281bbb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-genus2-heights.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.675,
+      "started_at": "2026-08-22T07:19:17.668Z",
+      "commit": "ff47e6a79c7370e490d90a5e3d9e29492b5f672b",
+      "workspace_fingerprint": "b333ad45d0b6112828a075b94fb185692d1fe84faa49f7092c8479faa7281bbb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/genus2_kummer.py src/lib/sagejs/hyperelliptic_curves/genus2_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.755,
+      "started_at": "2026-08-22T07:20:42.878Z",
+      "commit": "ff47e6a79c7370e490d90a5e3d9e29492b5f672b",
+      "workspace_fingerprint": "df07f35385575396fb9b04723ff9177fa3f283adb825335bd39fefc7976665fc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-genus2-heights.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.009,
+      "started_at": "2026-08-22T07:20:45.254Z",
+      "commit": "ff47e6a79c7370e490d90a5e3d9e29492b5f672b",
+      "workspace_fingerprint": "df07f35385575396fb9b04723ff9177fa3f283adb825335bd39fefc7976665fc",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Implements exact QQ Mumford serialization, Cassels--Flynn/Mueller Kummer coordinates, direct sparse Flynn quartic duplication, cached certified canonical heights, pairings and regulators. Primitive integral classical quintics use an exact model-specific duplication L1 audit, Stoll root-partition bounds, certified archimedean correction partial sums/tails, and the factorization-free modular-gcd finite correction of Mueller--Stoll Section 14. Tests cover torsion zero, scaling, basis transforms, the full h2!=0 generalized Kummer transform, seeded constructed-divisor differential corpora against Cantor, nontrivial finite gcd content, and genuine Magma V2.18 CanonicalHeight/HeightPairing/regulator values.",
+    "summary": "Implements exact QQ Mumford serialization, Cassels--Flynn/Mueller Kummer coordinates, direct sparse Flynn quartic duplication, cached certified canonical heights, pairings and regulators. Primitive integral classical quintics use an exact model-specific duplication L1 audit, Stoll root-partition bounds, certified archimedean correction partial sums/tails, and the factorization-free modular-gcd finite correction of Mueller--Stoll Section 14. Public records and cached values are defensive-copy safe and certified records support strict replay. Caller-supplied bounds remain explicitly conditional and cannot drive a local decomposition. Tests cover cache poisoning, resource limits, torsion zero, scaling, basis transforms, the full h2!=0 generalized Kummer transform, seeded constructed-divisor differential corpora against Cantor, nontrivial finite gcd content, and genuine Magma V2.18 CanonicalHeight/HeightPairing/regulator values.",
     "risks": [
       "Automatic certification and local-correction decomposition require a primitive integral odd quintic with h=0; generalized h remains exact direct Kummer arithmetic but numerical unless a proved caller bound is supplied.",
       "Even-degree transformations, number fields, and genus 3 are deliberately outside this lane.",
       "The finite engine implements the certified factorization-free modular approximation to arbitrary precision, not the optional exact coprime-factor formal logarithm representation.",
+      "The archimedean engine is a certified bounded-exact, projectively normalized iterator. Exact coordinate size still grows by roughly fourfold in bits per step; a default 100000-bit guard prevents runaway work, so this is not an arbitrary-precision optimized phase exit.",
       "architecture:check reaches package-graph validation but the new claimed modules exceed the existing hyperelliptic-curves-algorithms lazy byte budget; integration must split or raise that centrally owned manifest budget."
     ],
     "next_steps": [
