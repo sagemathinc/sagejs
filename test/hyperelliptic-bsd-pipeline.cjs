@@ -86,12 +86,14 @@ import json
 from sagejs.hyperelliptic_curves.bsd import (
     LeadingTermData,
     Provenance,
+    RankEvidence,
     TamagawaData,
     TorsionData,
 )
 from sagejs.hyperelliptic_curves.bsd_pipeline import (
     BSDPipelineIncompleteError,
     BSDPipelineReport,
+    _regulator_factor,
     compute_bsd_analytic_quotient,
 )
 R = PolynomialRing(QQ, "x")
@@ -169,6 +171,61 @@ positive = compute_bsd_analytic_quotient(
 assert not positive.complete
 assert "subgroup" in positive.missing_factors()
 assert "regulator" in positive.missing_factors()
+
+class GenusThreePairingFixture:
+    def __init__(self, complete):
+        self.input_completeness = complete
+        self.input_rigor = "non_rigorous_or_unverified"
+        self.rank = 1
+    def to_dict(self):
+        return {
+            "schema": "sagejs.hyperelliptic.height-pairing-matrix.v1",
+            "rank": 1,
+            "entries": (("2.5",),),
+            "regulator": "2.5",
+            "precision_bits": 64,
+            "positive_definite": True,
+            "rigorous": False,
+            "input_completeness": self.input_completeness,
+            "input_rigor": self.input_rigor,
+            "provenance": {},
+        }
+class GenusThreeJacobianFixture:
+    def __init__(self, complete):
+        self.complete = complete
+    def regulator(self, points, **options):
+        assert len(points) == 1 and options["prec"] == 64
+        return GenusThreePairingFixture(self.complete)
+class GenusThreeCurveFixture:
+    def __init__(self, complete):
+        self.complete = complete
+    def genus(self):
+        return 3
+    def jacobian(self):
+        return GenusThreeJacobianFixture(self.complete)
+
+rank_evidence = RankEvidence("supplied", 1, source)
+computed_regulator, computed_row = _regulator_factor(
+    GenusThreeCurveFixture("verified_complete"),
+    ("P",),
+    1,
+    rank_evidence,
+    ({"verified": True},),
+    64,
+    {},
+)
+assert computed_row.complete and computed_regulator.value.kind == "decimal"
+assert not computed_regulator.value.rigorous
+failed_regulator, failed_row = _regulator_factor(
+    GenusThreeCurveFixture("not_verified_complete"),
+    ("P",),
+    1,
+    rank_evidence,
+    ({"verified": True},),
+    64,
+    {},
+)
+assert failed_regulator is None and failed_row.status == "incomplete"
 True
 `);
       assert.equal(result.repr, "True");

@@ -1,17 +1,17 @@
 """Atomic automatic assembly of hyperelliptic BSD analytic quotients.
 
-The low-level :mod:`sagejs.hyperelliptic_curves.bsd` module deliberately
+The low-level `sagejs.hyperelliptic_curves.bsd` module deliberately
 accepts normalized arithmetic factors.  This module is the orchestration
 layer which computes those factors, records their independent provenance, and
 constructs a quotient only after every contract has succeeded.
 
-The resulting quantity for a supplied full-rank subgroup ``Gamma`` is
+The resulting quantity for a supplied full-rank subgroup `Gamma` is
 
-``#Sha(J) / [J(Q)/torsion : Gamma]^2``.
+`#Sha(J) / [J(Q)/torsion : Gamma]^2`.
 
 An analytic rank is never promoted to an algebraic-rank proof.  Callers must
 supply (or eventually obtain from a separate arithmetic implementation) an
-independent ``rank``.  Likewise, a model period is never silently relabelled
+independent `rank`.  Likewise, a model period is never silently relabelled
 as a Neron period.
 """
 
@@ -878,22 +878,61 @@ def _regulator_factor(
             },
         )
     genus = int(curve.genus())
-    if genus == 3:
-        return None, _incomplete_factor(
-            "regulator",
-            "automatic genus-3 canonical regulators remain outside the hardened envelope; "
-            "supply a regulator or pairing with provenance",
-            source="sagejs.genus3_heights",
-            status="unsupported",
-        )
     try:
-        module = __import__(
-            "sagejs.hyperelliptic_curves.genus2_heights", fromlist=["regulator"]
-        )
         options = overrides.get("height_options", {})
         if not isinstance(options, dict):
             raise TypeError("height_options must be a dictionary")
         options = dict(options)
+        if genus == 3:
+            options.pop("precision", None)
+            options.pop("prec", None)
+            computed = curve.jacobian().regulator(subgroup, prec=prec, **options)
+            input_completeness = str(
+                getattr(computed, "input_completeness", "not_recorded")
+            )
+            if input_completeness != "verified_complete":
+                return None, _incomplete_factor(
+                    "regulator",
+                    "the genus-3 height pairing did not verify complete arithmetic inputs",
+                    source="sagejs.genus3_heights",
+                    diagnostics={"input_completeness": input_completeness},
+                )
+            record = computed.to_dict()
+            entries = record.get("entries")
+            if not isinstance(entries, (list, tuple)):
+                raise TypeError("the genus-3 regulator did not return matrix entries")
+            matrix = tuple(
+                tuple(
+                    ArithmeticScalar.decimal(entry, precision_bits=prec)
+                    for entry in row
+                )
+                for row in entries
+            )
+            provenance = Provenance(
+                "computed",
+                "sagejs.genus3_heights.HeightPairingMatrixResult",
+                details={
+                    "input_completeness": input_completeness,
+                    "input_rigor": str(
+                        getattr(computed, "input_rigor", "not_recorded")
+                    ),
+                    "precision_bits": str(prec),
+                    "rank": str(getattr(computed, "rank", len(matrix))),
+                    "rigorous": False,
+                },
+            )
+            result = RegulatorData.from_pairing(
+                analytic_rank, matrix, symmetric=True, provenance=provenance
+            )
+            return result, _complete_factor(
+                "regulator",
+                result,
+                provenance,
+                {"regulator": result.to_dict(), "height_certificate": record},
+            )
+        module = __import__(
+            "sagejs.hyperelliptic_curves.genus2_heights", fromlist=["regulator"]
+        )
         options["precision"] = prec
         computed = module.regulator(subgroup, **options)
         matrix = tuple(
@@ -938,15 +977,15 @@ def compute_bsd_analytic_quotient(
 ) -> BSDPipelineReport:
     """Compute every available BSD factor and assemble atomically.
 
-    ``rank`` is independent algebraic evidence and is never inferred from the
-    probable analytic leading order.  ``subgroup`` is a sequence of rational
-    Mumford divisors.  The optional ``overrides`` dictionary admits typed
+    `rank` is independent algebraic evidence and is never inferred from the
+    probable analytic leading order.  `subgroup` is a sequence of rational
+    Mumford divisors.  The optional `overrides` dictionary admits typed
     factor objects or explicitly provenanced arithmetic data; unknown keys are
     rejected so that misspellings cannot silently alter a scientific run.
 
-    With the default ``on_incomplete='return'`` the result is a structured
-    capability report.  ``on_incomplete='raise'`` raises
-    :class:`BSDPipelineIncompleteError` carrying that same report.
+    With the default `on_incomplete='return'` the result is a structured
+    capability report.  `on_incomplete='raise'` raises
+    `BSDPipelineIncompleteError` carrying that same report.
     """
     bits = _checked_integer(prec, "precision", minimum=32)
     order = _checked_integer(max_order, "maximum derivative order", minimum=0)
