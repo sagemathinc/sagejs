@@ -250,9 +250,22 @@ export async function uploadSourceMirror({ input, env = process.env, allPlatform
     const filename = mirrorFilename(input, object);
     const bytes = await verifyFile(filename, object);
     const url = encodedObjectUrl(value.accountId, value.bucket, objectKey(lock, object));
-    await signedCurl({ value, url, upload: filename, sha256: object.sha256 });
+    let alreadyPresent = false;
+    try {
+      await verifyRemote({ lock, object, value, bytes });
+      alreadyPresent = true;
+    } catch {}
+    if (!alreadyPresent) {
+      await signedCurl({ value, url, upload: filename, sha256: object.sha256 });
+    }
     await verifyRemote({ lock, object, value, bytes });
-    uploaded.push({ id: object.id, key: objectKey(lock, object), bytes, sha256: object.sha256 });
+    uploaded.push({
+      id: object.id,
+      key: objectKey(lock, object),
+      bytes,
+      sha256: object.sha256,
+      uploaded: !alreadyPresent,
+    });
   }
   return { objects: uploaded };
 }
@@ -279,6 +292,29 @@ export async function fetchSourceMirror({ output, env = process.env, allPlatform
     fetched.push({ id: object.id, bytes, sha256: object.sha256 });
   }
   return { objects: fetched, root: path.resolve(output), platform: platform ?? platformKey() };
+}
+
+export async function sourceArchiveEnvironment({
+  input,
+  allPlatforms = false,
+  platform,
+  lock = loadToolchainLock(),
+} = {}) {
+  if (!input) throw new Error("--input is required");
+  const environment = {};
+  for (const object of mirrorObjects(lock, { allPlatforms, platform })) {
+    if (!object.archiveEnvironment) continue;
+    if (!/^SAGEJS_[A-Z0-9_]+_TARBALL$/.test(object.archiveEnvironment)) {
+      throw new Error(`unsafe archive environment name for ${object.id}`);
+    }
+    const filename = mirrorFilename(input, object);
+    await verifyFile(filename, object);
+    if (environment[object.archiveEnvironment]) {
+      throw new Error(`duplicate archive environment ${object.archiveEnvironment}`);
+    }
+    environment[object.archiveEnvironment] = filename;
+  }
+  return environment;
 }
 
 export async function seedCowasmSources({ mirrorRoot, cowasmRoot, environment = process.env } = {}) {
@@ -321,7 +357,13 @@ async function main(argv) {
   if (command === "stage") result = await stageSourceMirror({ ...options, allPlatforms: options.allPlatforms });
   else if (command === "upload") result = await uploadSourceMirror(options);
   else if (command === "fetch") result = await fetchSourceMirror(options);
-  else throw new Error("usage: source-mirror.mjs stage|upload|fetch [options]");
+  else if (command === "environment") {
+    result = await sourceArchiveEnvironment(options);
+    for (const [name, filename] of Object.entries(result).sort(([left], [right]) => left.localeCompare(right))) {
+      process.stdout.write(`${name}=${filename}\n`);
+    }
+    return;
+  } else throw new Error("usage: source-mirror.mjs stage|upload|fetch|environment [options]");
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }
 

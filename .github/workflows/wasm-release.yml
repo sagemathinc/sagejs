@@ -18,7 +18,14 @@ jobs:
   node-oracle:
     name: Native Node oracle for the public browser corpus
     runs-on: ubuntu-24.04
+    environment: sagejs-source-mirror
     timeout-minutes: 180
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      SAGEJS_NATIVE_SOURCE_MIRROR_DIR: /tmp/sagejs-native-source-mirror
     steps:
       - uses: actions/checkout@v7
         with:
@@ -30,6 +37,12 @@ jobs:
         with:
           node-version: 26.5.1
           cache: pnpm
+      - name: Fetch every pinned native source from the private R2 mirror
+        run: |
+          node packages/flint-wasm/scripts/source-mirror.mjs fetch \
+            --output "$SAGEJS_NATIVE_SOURCE_MIRROR_DIR"
+          node packages/flint-wasm/scripts/source-mirror.mjs environment \
+            --input "$SAGEJS_NATIVE_SOURCE_MIRROR_DIR" >> "$GITHUB_ENV"
       - name: Build the current native mathematical oracle
         run: |
           sudo apt-get update

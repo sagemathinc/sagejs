@@ -13,6 +13,7 @@ const {
 } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { dirname, join } = require("node:path");
+const { pathToFileURL } = require("node:url");
 const test = require("node:test");
 
 const {
@@ -47,8 +48,25 @@ test("the committed toolchain lock is complete and content addressed", () => {
   assert.equal(lock.libraries.ffpoly.version, "1.2.7");
   assert.equal(lock.libraries.smalljac.version, "4.1.3");
   assert.equal(lock.sourceMirror.schema, "sagejs.wasm-source-mirror/v1");
-  assert.equal(lock.sourceMirror.objects.length, 12);
+  assert.equal(lock.sourceMirror.objects.length, 16);
   assert.equal(sourceMirrorObjects(lock).filter((object) => object.platform).length, 1);
+  assert.deepEqual(
+    lock.sourceMirror.objects
+      .map((object) => object.archiveEnvironment)
+      .filter(Boolean)
+      .sort(),
+    [
+      "SAGEJS_ECLIB_TARBALL",
+      "SAGEJS_FFPOLY_TARBALL",
+      "SAGEJS_FLINT_TARBALL",
+      "SAGEJS_GMP_TARBALL",
+      "SAGEJS_MPC_TARBALL",
+      "SAGEJS_MPFR_TARBALL",
+      "SAGEJS_OPENBLAS_TARBALL",
+      "SAGEJS_RFOREST_TARBALL",
+      "SAGEJS_SMALLJAC_TARBALL",
+    ],
+  );
   assert.deepEqual(Object.keys(lock.libraries).sort(), [
     "arb", "ffpoly", "flint", "gmp", "m4ri", "mpc", "mpfr", "smalljac",
   ]);
@@ -105,6 +123,36 @@ test("the private source mirror seeds exact CoWasm and portable archives", () =>
   }
 });
 
+test("the private source mirror exports verified desktop-native archives", async () => {
+  const parent = mkdtempSync(join(tmpdir(), "sagejs-native-source-mirror-test-"));
+  const contents = Buffer.from("verified desktop native source\n");
+  const digest = createHash("sha256").update(contents).digest("hex");
+  const object = {
+    id: "native-library",
+    filename: "native-library.tar.xz",
+    sha256: digest,
+    archiveEnvironment: "SAGEJS_NATIVE_LIBRARY_TARBALL",
+  };
+  const lock = { sourceMirror: { objects: [object] } };
+  try {
+    const filename = sourceMirrorFilename(parent, object);
+    mkdirSync(dirname(filename), { recursive: true });
+    writeFileSync(filename, contents);
+    const module = await import(pathToFileURL(join(__dirname, "..", "scripts", "source-mirror.mjs")));
+    assert.deepEqual(
+      await module.sourceArchiveEnvironment({ input: parent, lock }),
+      { SAGEJS_NATIVE_LIBRARY_TARBALL: filename },
+    );
+    writeFileSync(filename, "tampered\n");
+    await assert.rejects(
+      module.sourceArchiveEnvironment({ input: parent, lock }),
+      /source digest/,
+    );
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
 test("the reproducible release is pinned to the private source mirror", () => {
   const workflow = readFileSync(
     join(__dirname, "..", "..", "..", ".github", "workflows", "wasm-release.yml"),
@@ -112,7 +160,9 @@ test("the reproducible release is pinned to the private source mirror", () => {
   );
   assert.match(workflow, /environment: sagejs-source-mirror/);
   assert.match(workflow, /source-mirror\.mjs fetch/);
+  assert.match(workflow, /source-mirror\.mjs environment/);
   assert.match(workflow, /SAGEJS_WASM_SOURCE_MIRROR_DIR/);
+  assert.match(workflow, /SAGEJS_NATIVE_SOURCE_MIRROR_DIR/);
   assert.doesNotMatch(workflow, /SAGEJS_WASM_SOURCE_MIRROR_DIR:.*runner\.temp/);
   assert.match(workflow, /packages\/flint-wasm\/toolchain\/lock\.json/);
   assert.doesNotMatch(workflow, /packages\/flint-wasm\/release\/toolchain-lock\.json/);

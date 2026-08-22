@@ -54,9 +54,29 @@
         ]
       },
       {
+        "id": "native-eclib",
+        "filename": "8dca7f18acedf7c2283a5d0e689c269f8258c981.tar.gz",
+        "sha256": "ec3efe86c385c4dcb8a748423333b45059446666f0b28984c24b05549a566d88",
+        "archiveEnvironment": "SAGEJS_ECLIB_TARBALL",
+        "upstreamUrls": [
+          "https://github.com/JohnCremona/eclib/archive/8dca7f18acedf7c2283a5d0e689c269f8258c981.tar.gz"
+        ]
+      },
+      {
+        "id": "native-gmp",
+        "filename": "gmp-6.3.0.tar.xz",
+        "sha256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+        "archiveEnvironment": "SAGEJS_GMP_TARBALL",
+        "upstreamUrls": [
+          "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz",
+          "https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz"
+        ]
+      },
+      {
         "id": "mpfr",
         "filename": "mpfr-4.2.2.tar.xz",
         "sha256": "b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01",
+        "archiveEnvironment": "SAGEJS_MPFR_TARBALL",
         "cowasmTarget": "upstream/sources/mpfr-4.2.2.tar.xz",
         "upstreamUrls": ["https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.2.tar.xz"]
       },
@@ -64,6 +84,7 @@
         "id": "mpc",
         "filename": "mpc-1.4.1.tar.xz",
         "sha256": "91204cd32f164bd3b7c992d4a6a8ce6519511aadab30f78b6982d0bf8d73e931",
+        "archiveEnvironment": "SAGEJS_MPC_TARBALL",
         "cowasmTarget": "upstream/sources/mpc-1.4.1.tar.xz",
         "upstreamUrls": ["https://ftp.gnu.org/gnu/mpc/mpc-1.4.1.tar.xz"]
       },
@@ -71,6 +92,7 @@
         "id": "flint",
         "filename": "flint-3.6.0.tar.gz",
         "sha256": "b95e2c7792f5eea4a1c8d2d42c4098434756832e57a094b295eb5dfdc9b4c36b",
+        "archiveEnvironment": "SAGEJS_FLINT_TARBALL",
         "cowasmTarget": "upstream/sources/flint-3.6.0.tar.gz",
         "upstreamUrls": ["https://flintlib.org/download/flint-3.6.0.tar.gz"]
       },
@@ -92,6 +114,15 @@
         ]
       },
       {
+        "id": "native-openblas",
+        "filename": "OpenBLAS-0.3.33.tar.gz",
+        "sha256": "6761af1d9f5d353ab4f0b7497be2643313b36c8f31caec0144bfef198e71e6ab",
+        "archiveEnvironment": "SAGEJS_OPENBLAS_TARBALL",
+        "upstreamUrls": [
+          "https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.33/OpenBLAS-0.3.33.tar.gz"
+        ]
+      },
+      {
         "id": "smalljac",
         "filename": "smalljac_v4.1.3.tar",
         "sha256": "5a145509e491bba19bf73d8104576083286bd35aea2a149c7c516e9ea5ca8ec7",
@@ -99,6 +130,15 @@
         "upstreamUrls": [
           "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/smalljac_v4.1.3.tar",
           "https://math.mit.edu/~drew/smalljac_v4.1.3.tar"
+        ]
+      },
+      {
+        "id": "native-rforest",
+        "filename": "3103d396c67cb1685131b1f11e84975cca335bdf.tar.gz",
+        "sha256": "3e94db94c2cc518fa86633d136607ea2af1f4d327f0f5cbcc9920d474ce55754",
+        "archiveEnvironment": "SAGEJS_RFOREST_TARBALL",
+        "upstreamUrls": [
+          "https://github.com/edgarcosta/rforest/archive/3103d396c67cb1685131b1f11e84975cca335bdf.tar.gz"
         ]
       }
     ]

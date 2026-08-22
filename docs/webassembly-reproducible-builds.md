@@ -11,7 +11,8 @@ CoWasm checkout, system FLINT, or undocumented compiler flags.
 The lock records the exact CoWasm revision, WASI SDK identity, FLINT, GMP,
 MPFR, MPC, Arb, and M4RI sources, archive digests, targets, flags, and recipe
 overrides. It also records the immutable R2 object for the CoWasm Git history,
-every supported host's WASI SDK, ffpoly, and smalljac. The build receipt
+every supported host's WASI SDK, the desktop native-oracle archives, ffpoly,
+and smalljac. The build receipt
 authenticates that toolchain, the complete source
 and generator closure, generated adapter inputs, each output asset, module
 memory limits, and the exported capability set.
@@ -42,8 +43,10 @@ Production release builds do not contact gmplib.org, flintlib.org, GNU mirrors,
 GitHub release assets, or other native-source hosts. The `sagejs-source-mirror`
 GitHub environment fetches the current platform's complete source closure from
 the private R2 bucket first. Every key contains its SHA-256 digest, every
-download is hashed again, and `SAGEJS_WASM_SOURCE_MIRROR_DIR` makes preparation
-fail closed instead of falling back to the network. Upstream URLs in the lock
+download is hashed again. `SAGEJS_WASM_SOURCE_MIRROR_DIR` makes Wasm preparation
+fail closed instead of falling back to the network, while the release workflow
+exports the verified `SAGEJS_*_TARBALL` paths for the desktop native oracle.
+Upstream URLs in the lock
 are bootstrap/audit provenance used only when an administrator intentionally
 stages a new mirror revision.
 
