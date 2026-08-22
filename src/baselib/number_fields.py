@@ -1451,6 +1451,7 @@ class NumberFieldIdeal:
         # collection.  The canonical lattice never changes, so its inverse
         # coordinate matrix is safe to compute lazily once per ideal.
         self._membership_inverse_cache = runtime.undefined
+        self._is_integral_cache = runtime.undefined
         # Packed exact kernels consume the same immutable canonical HNF rows.
         # Cache their common-denominator integer representation lazily so
         # relation candidates do not repack every factor-base power.
@@ -1521,7 +1522,15 @@ class NumberFieldIdeal:
         return len(self._basis_rows) == 0
 
     def is_integral(self) -> bool:
-        return all(element in self._order for element in self.basis())
+        if self._is_integral_cache is runtime.undefined:
+            relative = self.basis_matrix() * self._order._basis_inverse_matrix()
+            integral = True
+            for row in relative.rows():
+                if not all(value._denominator == 1 for value in row):
+                    integral = False
+                    break
+            self._is_integral_cache = integral
+        return bool(self._is_integral_cache)
 
     def norm(self) -> Any:
         if self.is_zero():
@@ -1715,6 +1724,7 @@ class NumberFieldOrder(sage.Parent):
     ) -> None:
         self._field = field
         self._basis_rows_cache: Any = None
+        self._basis_inverse_cache: Any = None
         self._authenticated_basis_projection: Any = None
         if authenticated_basis is not runtime.undefined:
             if check_closure:
@@ -1783,6 +1793,7 @@ class NumberFieldOrder(sage.Parent):
     @_basis_rows.setter
     def _basis_rows(self, rows: list[list[Any]]) -> None:
         self._basis_rows_cache = rows
+        self._basis_inverse_cache = None
 
     def number_field(self) -> NumberFieldParent:
         return self._field
@@ -1796,6 +1807,12 @@ class NumberFieldOrder(sage.Parent):
 
     def basis_matrix(self) -> Any:
         return _nf_global("matrix")(sage.QQ, self._basis_rows)
+
+    def _basis_inverse_matrix(self) -> Any:
+        """Return the immutable order basis inverse used by lattice tests."""
+        if self._basis_inverse_cache is None:
+            self._basis_inverse_cache = self.basis_matrix().inverse()
+        return self._basis_inverse_cache
 
     def degree(self) -> int:
         return self._field.degree()
@@ -1811,9 +1828,9 @@ class NumberFieldOrder(sage.Parent):
             element = self._field(value)
         except Exception:
             return False
-        return _nf_row_in_lattice(
-            _nf_coordinates(element, self.degree()), self._basis_rows
-        )
+        row = _nf_global("vector")(sage.QQ, _nf_coordinates(element, self.degree()))
+        coordinates = row * self._basis_inverse_matrix()
+        return all(value._denominator == 1 for value in coordinates)
 
     def discriminant(self) -> Any:
         if self._discriminant_cache is not runtime.undefined:

@@ -94,6 +94,13 @@ for polynomial in (x**2 - 5, x**3 + 4*x - 1, x**4 - x + 1):
             actual = left * right
             assert actual == expected
             assert actual.norm() == left.norm() * right.norm()
+            readable_integral = all(element in O for element in actual.basis())
+            assert actual.is_integral() == readable_integral
+            assert actual.is_integral() == readable_integral
+    fractional = primes[0] / O.ideal(2)
+    readable_fractional_integral = all(element in O for element in fractional.basis())
+    assert fractional.is_integral() == readable_fractional_integral
+    assert fractional.is_integral() == readable_fractional_integral
 
 saved = ideals._ideal_product_kernel_override
 ideals._ideal_product_kernel_override = lambda *args: False
