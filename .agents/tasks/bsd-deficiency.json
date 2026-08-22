@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "bsd-deficiency",
+  "title": "Bsd Deficiency",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Certified deficient-place tests and conditional Poonen-Stoll Sha-shape diagnostics for genus-2/3 hyperelliptic Jacobians",
+  "base_commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/deficiency.py",
+    "src/lib/sagejs/hyperelliptic_curves/_test_deficiency.py",
+    "src/lib/sagejs/hyperelliptic_curves/testdata/deficiency.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "Poonen--Stoll, The Cassels--Tate Pairing on Polarized Abelian Varieties, Theorem 11 and Corollary 12",
+    "Dokchitser--Dokchitser--Maistret--Morgan, Arithmetic of hyperelliptic curves over local fields, Theorem 12.4",
+    "Magma IsDeficient/HasIndexOne for genus-2 differential checks"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Poonen--Stoll explicit examples",
+      "Magma IsDeficient",
+      "exact Sturm and finite-field certificate replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "python3 -I -m py_compile src/lib/sagejs/hyperelliptic_curves/deficiency.py src/lib/sagejs/hyperelliptic_curves/_test_deficiency.py",
+    "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/deficiency.py src/lib/sagejs/hyperelliptic_curves/_test_deficiency.py",
+    "node bin/sagejs src/lib/sagejs/hyperelliptic_curves/_test_deficiency.py",
+    "python3 -m json.tool src/lib/sagejs/hyperelliptic_curves/testdata/deficiency.json"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
