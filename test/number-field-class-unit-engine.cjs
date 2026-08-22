@@ -441,6 +441,15 @@ admission = collector.admit_witness(
 )
 record = admission.record
 detached = relations.RelationRecord.from_dict(record.to_dict())
+decode_record = relations.RelationRecord.from_dict(record.to_dict())
+decoded_once = engine._decode_relation_witness(decode_record)
+decoded_twice = engine._decode_relation_witness(decode_record)
+assert decoded_once is decoded_twice
+decode_record.witness = relations.FactoredPrincipalWitness.from_element(K(3)).to_dict()
+decoded_mutation = engine._decode_relation_witness(decode_record)
+assert decoded_mutation.to_dict() != decoded_once.to_dict()
+assert engine._resource_usage["relation_witness_decode_requests"] == 3
+assert engine._resource_usage["relation_witness_decode_cache_hits"] == 1
 calls = [0]
 original = relations.FactoredPrincipalWitness.principal_ideal
 def counting(self, order=None):
@@ -703,6 +712,93 @@ assert _floating_matrix_rank(((1.0, 2.0), (2.0, 5.0))) == 2
 print("adaptive-unit-rank")
 `);
   assert.equal(output, "adaptive-unit-rank");
+});
+
+test("relation log-rank steering retains exact units only along one record prefix", () => {
+  const output = run(String.raw`
+class FakeRecord:
+    pass
+
+class FakePresentation:
+    def __init__(self, dependencies):
+        self.dependency_transforms = tuple(tuple(row) for row in dependencies)
+
+class FakeUnit:
+    def __init__(self, key, logarithms):
+        self.key = key
+        self.logarithms = logarithms
+    def stable_hash(self):
+        return self.key
+
+class SteeringProbe(ClassUnitGroupEngine):
+    def __init__(self, field):
+        super().__init__(field, algorithm="buchmann-hecke")
+        self.combinations = []
+        self.logs = []
+    def _combine(self, records, coefficients):
+        key = tuple(int(value) for value in coefficients)
+        self.combinations.append((tuple(records), key))
+        normalized = list(key)
+        while normalized and normalized[-1] == 0:
+            normalized.pop()
+        values = {
+            (1,): (1.0, 0.0, 0.0),
+            (0, 1): (2.0, 0.0, 0.0),
+            (0, 0, 1): (0.0, 1.0, 0.0),
+        }[tuple(normalized)]
+        return FakeUnit(str(tuple(normalized)), values)
+    def _unit_logarithms(self, unit, precision):
+        self.logs.append(unit.key)
+        return unit.logarithms
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "a")
+first = FakeRecord()
+second = FakeRecord()
+third = FakeRecord()
+engine = SteeringProbe(K)
+
+rank = engine._unit_logarithmic_rank(
+    (first, second), FakePresentation(((1, 0), (0, 1))), 2
+)
+assert rank == 1
+assert len(engine.combinations) == 2
+assert len(engine.logs) == 2
+
+rank = engine._unit_logarithmic_rank(
+    (first, second, third),
+    FakePresentation(((1, 0, 0), (0, 1, 0), (0, 0, 1))),
+    2,
+)
+assert rank == 2
+assert len(engine.combinations) == 3
+assert len(engine.logs) == 3
+assert engine._resource_usage["relation_dependency_unit_cache_hits"] == 2
+assert engine._resource_usage["relation_independent_log_units"] == 2
+
+# A detached/restored prefix has equal mathematical-looking records but distinct
+# identities.  It must reset and recompute instead of inheriting producer state.
+detached = (FakeRecord(), FakeRecord(), FakeRecord())
+rank = engine._unit_logarithmic_rank(
+    detached,
+    FakePresentation(((1, 0, 0), (0, 1, 0), (0, 0, 1))),
+    2,
+)
+assert rank == 2
+assert len(engine.combinations) == 6
+assert engine._resource_usage["relation_log_steering_resets"] == 1
+
+fresh = SteeringProbe(K)
+assert fresh._unit_logarithmic_rank(
+    detached,
+    FakePresentation(((1, 0, 0), (0, 1, 0), (0, 0, 1))),
+    2,
+) == 2
+assert len(fresh.combinations) == 3
+print("monotone-log-steering")
+`);
+  assert.equal(output, "monotone-log-steering");
 });
 
 test("exact presentations are deferred across safe relation batches", () => {

@@ -26,6 +26,7 @@ EXACT_RELATIONS_CONDITIONAL_GRH = "exact-relations-conditional-grh"
 INCOMPLETE_RESOURCE_LIMIT = "incomplete-resource-limit"
 MAX_DIRECT_CUBIC_RELATION_SEED_BOUND = 4
 MAX_DIRECT_CUBIC_RELATION_SEED_SIZE = 3
+MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 
 _AUTHENTICATED_CLASS_UNIT_SATURATION_TOKEN = object()
 _CUBIC_RELATION_SEED_UNREAD = object()
@@ -1191,6 +1192,16 @@ class ClassUnitGroupEngine:
             "unit_rank_target": 0,
             "unit_logarithm_requests": 0,
             "unit_logarithm_cache_hits": 0,
+            "relation_log_rank_calls": 0,
+            "relation_dependency_unit_requests": 0,
+            "relation_dependency_unit_cache_hits": 0,
+            "relation_dependency_unit_cache_entries": 0,
+            "relation_dependency_units_seen": 0,
+            "relation_independent_log_units": 0,
+            "relation_log_steering_resets": 0,
+            "relation_log_steering_fallbacks": 0,
+            "relation_witness_decode_requests": 0,
+            "relation_witness_decode_cache_hits": 0,
             "unit_principal_authority_requests": 0,
             "unit_principal_authority_hits": 0,
             "unit_principal_authority_fallbacks": 0,
@@ -1224,6 +1235,11 @@ class ClassUnitGroupEngine:
         self._generation_verification_cache: dict[str, bool] = {}
         self._generation_verification_cache_active = True
         self._unit_logarithm_cache: dict[tuple[int, str], tuple[Any, ...]] = {}
+        self._relation_log_record_prefix: tuple[Any, ...] = ()
+        self._relation_dependency_unit_hashes: dict[tuple[int, ...], str] = {}
+        self._relation_seen_dependency_units: set[str] = set()
+        self._relation_independent_logarithms: list[tuple[Any, ...]] = []
+        self._relation_witness_cache: dict[int, tuple[Any, str, Any]] = {}
         self._authenticated_dependency_units: set[str] = set()
         self._partials: dict[tuple[Any, ...], _LargePrimePartial] = {}
         self._relation_unit_log_rank = 0
@@ -2317,9 +2333,113 @@ class ClassUnitGroupEngine:
     def _unit_logarithmic_rank(
         self, records: Sequence[Any], presentation: Any, unit_rank: int
     ) -> int:
-        """Return the observed archimedean rank of exact dependency units."""
+        """Return a monotone observed rank of exact dependency units.
+
+        Relation collection only appends authenticated records.  A dependency
+        unit from an earlier exact presentation therefore remains an exact
+        unit after later rows are appended (its coefficient vector is padded
+        by zeroes).  Retaining an independent logarithm basis avoids rebuilding
+        and reevaluating every earlier dependency at each presentation.
+
+        This state only steers the producer search.  The final unit basis,
+        regulator, analytic index, and detached certificate replay remain the
+        rigorous completion boundary.
+        """
+        self._resource_usage["relation_log_rank_calls"] += 1
         if unit_rank == 0:
             return 0
+        record_prefix = tuple(records)
+        cached_prefix = self._relation_log_record_prefix
+        extends_prefix = len(cached_prefix) <= len(record_prefix)
+        if extends_prefix:
+            for index, cached in enumerate(cached_prefix):
+                if cached is not record_prefix[index]:
+                    extends_prefix = False
+                    break
+        if not extends_prefix:
+            self._reset_relation_log_steering()
+        if len(record_prefix) > MAX_RELATION_LOG_STEERING_RECORDS:
+            self._resource_usage["relation_log_steering_fallbacks"] += 1
+            return self._uncached_unit_logarithmic_rank(
+                record_prefix, presentation, unit_rank
+            )
+        self._relation_log_record_prefix = record_prefix
+        logarithms = self._relation_independent_logarithms
+        current_rank = len(logarithms)
+        for dependency in presentation.dependency_transforms:
+            if current_rank >= unit_rank:
+                break
+            self._resource_usage["relation_dependency_unit_requests"] += 1
+            normalized = [int(value) for value in dependency]
+            while normalized and normalized[-1] == 0:
+                normalized.pop()
+            dependency_key = tuple(normalized)
+            unit_hash = self._relation_dependency_unit_hashes.get(dependency_key)
+            unit = None
+            if unit_hash is None:
+                unit = self._combine(record_prefix, dependency)
+                stable_hash = getattr(unit, "stable_hash", None)
+                if not callable(stable_hash):
+                    self._resource_usage["relation_log_steering_fallbacks"] += 1
+                    self._reset_relation_log_steering()
+                    return self._uncached_unit_logarithmic_rank(
+                        record_prefix, presentation, unit_rank
+                    )
+                unit_hash = str(stable_hash())
+                if (
+                    len(self._relation_dependency_unit_hashes)
+                    < MAX_RELATION_LOG_STEERING_RECORDS
+                ):
+                    self._relation_dependency_unit_hashes[dependency_key] = unit_hash
+            else:
+                self._resource_usage["relation_dependency_unit_cache_hits"] += 1
+            if unit_hash in self._relation_seen_dependency_units:
+                continue
+            if (
+                len(self._relation_seen_dependency_units)
+                >= MAX_RELATION_LOG_STEERING_RECORDS
+            ):
+                self._resource_usage["relation_log_steering_fallbacks"] += 1
+                self._reset_relation_log_steering()
+                return self._uncached_unit_logarithmic_rank(
+                    record_prefix, presentation, unit_rank
+                )
+            self._relation_seen_dependency_units.add(unit_hash)
+            if unit is None:
+                unit = self._combine(record_prefix, dependency)
+            row = tuple(self._unit_logarithms(unit, 80)[:-1])
+            candidate = [*logarithms, row]
+            candidate_rank = _floating_matrix_rank(candidate)
+            if candidate_rank > current_rank:
+                logarithms.append(row)
+                current_rank = candidate_rank
+        self._resource_usage["relation_dependency_unit_cache_entries"] = len(
+            self._relation_dependency_unit_hashes
+        )
+        self._resource_usage["relation_dependency_units_seen"] = len(
+            self._relation_seen_dependency_units
+        )
+        self._resource_usage["relation_independent_log_units"] = len(logarithms)
+        return min(unit_rank, current_rank)
+
+    def _reset_relation_log_steering(self) -> None:
+        """Drop producer-only logarithm state when the relation lineage changes."""
+        if (
+            self._relation_log_record_prefix
+            or self._relation_dependency_unit_hashes
+            or self._relation_seen_dependency_units
+            or self._relation_independent_logarithms
+        ):
+            self._resource_usage["relation_log_steering_resets"] += 1
+        self._relation_log_record_prefix = ()
+        self._relation_dependency_unit_hashes.clear()
+        self._relation_seen_dependency_units.clear()
+        self._relation_independent_logarithms.clear()
+
+    def _uncached_unit_logarithmic_rank(
+        self, records: Sequence[Any], presentation: Any, unit_rank: int
+    ) -> int:
+        """Evaluate a complete presentation without retaining steering state."""
         logarithms = []
         for dependency in presentation.dependency_transforms:
             unit = self._combine(records, dependency)
@@ -2352,9 +2472,21 @@ class ClassUnitGroupEngine:
         return answer
 
     def _decode_relation_witness(self, record: Any) -> Any:
-        return self.components.relations.FactoredPrincipalWitness.from_dict(
+        """Decode one live witness with a bounded mutation-safe memo."""
+        self._resource_usage["relation_witness_decode_requests"] += 1
+        witness_key = json.dumps(record.witness, sort_keys=True, separators=(",", ":"))
+        record_key = id(record)
+        cached = self._relation_witness_cache.get(record_key)
+        if cached is not None and cached[0] is record and cached[1] == witness_key:
+            self._resource_usage["relation_witness_decode_cache_hits"] += 1
+            return cached[2]
+        witness = self.components.relations.FactoredPrincipalWitness.from_dict(
             self.field, record.witness
         )
+        if len(self._relation_witness_cache) >= MAX_RELATION_LOG_STEERING_RECORDS:
+            self._relation_witness_cache.pop(next(iter(self._relation_witness_cache)))
+        self._relation_witness_cache[record_key] = (record, witness_key, witness)
+        return witness
 
     def _combine(self, records: Sequence[Any], coefficients: Sequence[int]) -> Any:
         factors = []
