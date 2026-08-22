@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "bsd-oracle-corpus",
+  "title": "Bsd Oracle Corpus",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Assemble a reproducible independent genus-2/3 BSD arithmetic oracle corpus, validation harness, phase-coverage audit, and WebAssembly acceptance gates without changing implementation APIs",
+  "base_commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+  "claims": [
+    "test/hyperelliptic-bsd-oracles/"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/hyperelliptic-bsd-arithmetic-plan.md",
+    "PARI/GP 2.18.1.alpha src/test/in/hyperellperiods",
+    "Sutherland genus-3 J0(33) isogeny identification"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "PARI/GP 2.18.1.alpha lfungenus2, lfun, genus2red, hyperellperiods",
+      "PARI elliptic-factor identity L(J0(33),s)=L(11a,s)^2*L(33a,s)",
+      "exact rational BSD normalization identities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/hyperelliptic-bsd-oracles/verify.mjs",
+    "git diff --check",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
