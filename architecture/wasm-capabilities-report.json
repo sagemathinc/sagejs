@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "f39d8bd50e61a86eb373bf60d66b454ce1a8f086d4a47e0d9147282747b30c3d",
+  "source_sha256": "5db1dba66926e030b6ff767ee3d65333c7154e588cd87de3f9485702a7f1dbf0",
   "counts": {
-    "total": 962,
+    "total": 963,
     "by_kind": {
       "declared-ffi-function": 414,
       "declared-ffi-resource": 29,
       "napi-export": 317,
       "production-kernel": 40,
-      "runtime-intrinsic": 137,
+      "runtime-intrinsic": 138,
       "specialist-capability": 25
     },
     "by_disposition": {
       "compiled-source": 40,
       "desktop-only": 14,
       "generated-wasm": 320,
-      "portable-fallback": 544,
+      "portable-fallback": 545,
       "shared-core": 44
     },
     "by_status": {
-      "available": 536,
+      "available": 537,
       "desktop-only": 14,
       "fallback": 412
     }
@@ -10076,6 +10076,18 @@
         "compiled Sage and Python modules"
       ],
       "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:canonical_json_exact",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "explanation": "Exact canonical proof data uses a portable JavaScript runtime traversal with an ordinary Python fallback for unsupported values."
     },
     {
       "id": "runtime:canonical_rational_values_to_packed_bytes",
