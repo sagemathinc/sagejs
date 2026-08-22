@@ -736,6 +736,9 @@ class IntervalBallField:
         self._bf_transcendental_kernel_calls = 0
         self._bf_transcendental_kernel_successes = 0
         self._bf_transcendental_kernel_fallbacks = 0
+        self._bf_flint_transcendental_calls = 0
+        self._bf_flint_transcendental_successes = 0
+        self._bf_flint_transcendental_fallbacks = 0
         self._bf_packed_layout_cache_hits = 0
 
     def _from_iv(self, value: Any, source: str) -> RealBall:
@@ -853,6 +856,13 @@ class IntervalBallField:
             ),
             "bf_transcendental_kernel_fallbacks": (
                 self._bf_transcendental_kernel_fallbacks
+            ),
+            "bf_flint_transcendental_calls": self._bf_flint_transcendental_calls,
+            "bf_flint_transcendental_successes": (
+                self._bf_flint_transcendental_successes
+            ),
+            "bf_flint_transcendental_fallbacks": (
+                self._bf_flint_transcendental_fallbacks
             ),
             "bf_packed_layout_cache_hits": self._bf_packed_layout_cache_hits,
         }
@@ -3622,6 +3632,9 @@ class ZetaLogResidueWorkspace:
                     "bf_transcendental_kernel_calls": 0,
                     "bf_transcendental_kernel_successes": 0,
                     "bf_transcendental_kernel_fallbacks": 0,
+                    "bf_flint_transcendental_calls": 0,
+                    "bf_flint_transcendental_successes": 0,
+                    "bf_flint_transcendental_fallbacks": 0,
                     "bf_packed_layout_cache_hits": 0,
                 }
             field = IntervalBallField(precision)
@@ -3830,6 +3843,7 @@ def _bf_populate_integer_transcendentals(
         field._sqrt_hits += 1
     if not missing_values:
         return answer
+
     field._bf_transcendental_kernel_calls += 1
     precision = field.precision_bits
     try:
@@ -3882,6 +3896,77 @@ def _bf_populate_integer_transcendentals(
     return answer
 
 
+def _bf_flint_packed_layout(
+    plan: _BFPrimePowerPlan,
+    field: IntervalBallField,
+    kernel_module: Any,
+    native_module: Any,
+) -> tuple[tuple[int, ...], tuple[int, ...]] | None:
+    """Build a complete BF layout through packed Arb and exact kernels."""
+    flint_kernel = getattr(
+        kernel_module,
+        "assemble_bf_integer_transcendental_endpoints_flint",
+        None,
+    )
+    layout_kernel = getattr(kernel_module, "assemble_bf_dyadic_layout", None)
+    if not callable(flint_kernel) or not callable(layout_kernel):
+        return None
+    is_compiled = getattr(native_module, "is_compiled", None)
+    if (
+        not callable(is_compiled)
+        or not is_compiled(flint_kernel)
+        or not is_compiled(layout_kernel)
+    ):
+        return None
+    threshold = plan.threshold
+    needed_values = [threshold, threshold // 9, 3 * threshold]
+    needed_values.extend(term[2] for term in plan.terms)
+    unique_values = tuple(sorted(set(needed_values)))
+    value_to_index = {value: index for index, value in enumerate(unique_values)}
+    value_indices = tuple(value_to_index[value] for value in needed_values)
+    term_data = tuple(component for term in plan.terms for component in term)
+    precision = field.precision_bits
+    word_capacity = max(8, (precision + 511) // 64)
+    field._bf_flint_transcendental_calls += 1
+    try:
+        packed_values = native_module.kernel_integer_buffer(flint_kernel, unique_values)
+        raw_endpoints = native_module.kernel_integer_zeros(
+            flint_kernel, 4 * len(unique_values), word_capacity
+        )
+        if not bool(flint_kernel(raw_endpoints, packed_values, precision)):
+            raise ValueError("FLINT rejected the integer-ball batch")
+        packed_indices = native_module.kernel_integer_buffer(
+            layout_kernel, value_indices
+        )
+        packed_terms = native_module.kernel_integer_buffer(layout_kernel, term_data)
+        packed_layout = native_module.kernel_integer_zeros(
+            layout_kernel, 8 + 4 * len(plan.terms), word_capacity
+        )
+        if not bool(
+            layout_kernel(
+                packed_layout,
+                raw_endpoints,
+                packed_indices,
+                packed_terms,
+                len(plan.terms),
+                precision,
+            )
+        ):
+            raise ValueError("the exact BF layout kernel rejected its input")
+        endpoint_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(packed_layout)
+        )
+        if len(endpoint_values) != 8 + 4 * len(plan.terms):
+            raise ValueError("the exact BF layout has the wrong width")
+    except (OverflowError, RuntimeError, TypeError, ValueError):
+        field._bf_flint_transcendental_fallbacks += 1
+        return None
+    field._log_evaluations += len(unique_values)
+    field._sqrt_evaluations += len(unique_values)
+    field._bf_flint_transcendental_successes += 1
+    return term_data, endpoint_values
+
+
 def _bf_finite_term_kernel(
     plan: _BFPrimePowerPlan,
     field: IntervalBallField,
@@ -3918,72 +4003,84 @@ def _bf_finite_term_kernel(
         field._bf_packed_layout_cache_hits += 1
         term_data, endpoints = cached_layout
     else:
-        needed_values = [threshold, ninth, 3 * threshold]
-        needed_values.extend(term[2] for term in plan.terms)
-        packed_transcendentals = _bf_populate_integer_transcendentals(
-            needed_values, field, kernel_module, native_module
+        packed_layout = _bf_flint_packed_layout(
+            plan, field, kernel_module, native_module
         )
-
-        def packed_ball(value: int, offset: int, source: str) -> RealBall:
-            if packed_transcendentals is None:
-                return (
-                    field.log_integer(value)
-                    if offset == 0
-                    else field.sqrt_integer(value)
-                )
-            packed = packed_transcendentals[value]
-            return RealBall(
-                RationalEndpoint(packed[offset], dyadic_scale),
-                RationalEndpoint(packed[offset + 1], dyadic_scale),
-                precision_bits=precision,
-                rigorous=True,
-                source=source,
+        if packed_layout is not None:
+            term_data, endpoints = packed_layout
+        else:
+            needed_values = [threshold, ninth, 3 * threshold]
+            needed_values.extend(term[2] for term in plan.terms)
+            packed_transcendentals = _bf_populate_integer_transcendentals(
+                needed_values,
+                field,
+                kernel_module,
+                native_module,
             )
 
-        sqrt_threshold_for_layout = packed_ball(threshold, 2, _INTEGER_SQRT_SOURCE)
-        sqrt_ninth = packed_ball(ninth, 2, _INTEGER_SQRT_SOURCE)
-        scales = (
-            sqrt_threshold_for_layout * packed_ball(threshold, 0, _INTEGER_LOG_SOURCE),
-            sqrt_ninth * packed_ball(ninth, 0, _INTEGER_LOG_SOURCE),
-        )
-        log_three_threshold_for_layout = packed_ball(
-            3 * threshold, 0, _INTEGER_LOG_SOURCE
-        )
-        endpoint_list: list[int] = []
-        for ball in scales:
-            endpoint_list.extend(_dyadic_mantissas(ball, precision))
-        endpoint_list.extend(_dyadic_mantissas(sqrt_threshold_for_layout, precision))
-        endpoint_list.extend(
-            _dyadic_mantissas(log_three_threshold_for_layout, precision)
-        )
-        term_list: list[int] = []
-        log_cache: dict[int, RealBall] = {}
-        sqrt_cache: dict[int, RealBall] = {}
-        for multiplicity, scale_index, norm, exponent in plan.terms:
-            term_list.extend((multiplicity, scale_index, norm, exponent))
-            if packed_transcendentals is None:
-                logarithm = log_cache.get(norm)
-                if logarithm is None:
-                    logarithm = field.log_integer(norm)
-                    log_cache[norm] = logarithm
-                endpoint_list.extend(_dyadic_mantissas(logarithm, precision))
-            else:
-                logarithm_endpoints = packed_transcendentals[norm]
-                endpoint_list.extend(logarithm_endpoints[:2])
-            if exponent % 2:
+            def packed_ball(value: int, offset: int, source: str) -> RealBall:
                 if packed_transcendentals is None:
-                    root = sqrt_cache.get(norm)
-                    if root is None:
-                        root = field.sqrt_integer(norm)
-                        sqrt_cache[norm] = root
-                    endpoint_list.extend(_dyadic_mantissas(root, precision))
+                    return (
+                        field.log_integer(value)
+                        if offset == 0
+                        else field.sqrt_integer(value)
+                    )
+                packed = packed_transcendentals[value]
+                return RealBall(
+                    RationalEndpoint(packed[offset], dyadic_scale),
+                    RationalEndpoint(packed[offset + 1], dyadic_scale),
+                    precision_bits=precision,
+                    rigorous=True,
+                    source=source,
+                )
+
+            sqrt_threshold_for_layout = packed_ball(threshold, 2, _INTEGER_SQRT_SOURCE)
+            sqrt_ninth = packed_ball(ninth, 2, _INTEGER_SQRT_SOURCE)
+            scales = (
+                sqrt_threshold_for_layout
+                * packed_ball(threshold, 0, _INTEGER_LOG_SOURCE),
+                sqrt_ninth * packed_ball(ninth, 0, _INTEGER_LOG_SOURCE),
+            )
+            log_three_threshold_for_layout = packed_ball(
+                3 * threshold, 0, _INTEGER_LOG_SOURCE
+            )
+            endpoint_list: list[int] = []
+            for ball in scales:
+                endpoint_list.extend(_dyadic_mantissas(ball, precision))
+            endpoint_list.extend(
+                _dyadic_mantissas(sqrt_threshold_for_layout, precision)
+            )
+            endpoint_list.extend(
+                _dyadic_mantissas(log_three_threshold_for_layout, precision)
+            )
+            term_list: list[int] = []
+            log_cache: dict[int, RealBall] = {}
+            sqrt_cache: dict[int, RealBall] = {}
+            for multiplicity, scale_index, norm, exponent in plan.terms:
+                term_list.extend((multiplicity, scale_index, norm, exponent))
+                if packed_transcendentals is None:
+                    logarithm = log_cache.get(norm)
+                    if logarithm is None:
+                        logarithm = field.log_integer(norm)
+                        log_cache[norm] = logarithm
+                    endpoint_list.extend(_dyadic_mantissas(logarithm, precision))
                 else:
-                    root_endpoints = packed_transcendentals[norm]
-                    endpoint_list.extend(root_endpoints[2:])
-            else:
-                endpoint_list.extend((dyadic_scale, dyadic_scale))
-        term_data = tuple(term_list)
-        endpoints = tuple(endpoint_list)
+                    logarithm_endpoints = packed_transcendentals[norm]
+                    endpoint_list.extend(logarithm_endpoints[:2])
+                if exponent % 2:
+                    if packed_transcendentals is None:
+                        root = sqrt_cache.get(norm)
+                        if root is None:
+                            root = field.sqrt_integer(norm)
+                            sqrt_cache[norm] = root
+                        endpoint_list.extend(_dyadic_mantissas(root, precision))
+                    else:
+                        root_endpoints = packed_transcendentals[norm]
+                        endpoint_list.extend(root_endpoints[2:])
+                else:
+                    endpoint_list.extend((dyadic_scale, dyadic_scale))
+            term_data = tuple(term_list)
+            endpoints = tuple(endpoint_list)
         if len(_shared_bf_packed_layouts) >= _BF_PACKED_LAYOUT_CACHE_LIMIT:
             _shared_bf_packed_layouts.clear()
         _shared_bf_packed_layouts[layout_key] = (term_data, endpoints)

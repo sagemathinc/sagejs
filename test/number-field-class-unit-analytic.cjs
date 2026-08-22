@@ -32,9 +32,18 @@ import types
 
 sagejs = types.ModuleType("sagejs")
 number_fields = types.ModuleType("sagejs.number_fields")
+ffi_package = types.ModuleType("sagejs.ffi")
+ffi_flint = types.ModuleType("sagejs.ffi.flint")
+def unavailable_integer_log_sqrt_balls(*_args):
+    raise RuntimeError("declared FLINT is unavailable in the CPython oracle")
+ffi_flint.integer_log_sqrt_balls_packed = unavailable_integer_log_sqrt_balls
+ffi_package.flint = ffi_flint
 sagejs.number_fields = number_fields
+sagejs.ffi = ffi_package
 sys.modules["sagejs"] = sagejs
 sys.modules["sagejs.number_fields"] = number_fields
+sys.modules["sagejs.ffi"] = ffi_package
+sys.modules["sagejs.ffi.flint"] = ffi_flint
 for dependency_name, dependency_path in [
     ("sagejs.native", ${JSON.stringify(nativePath)}),
     ("sagejs.number_fields.zeta_coefficient_kernel", ${JSON.stringify(zetaKernelPath)}),
@@ -62,6 +71,22 @@ fixture = json.loads(${JSON.stringify(JSON.stringify(fixture))})
     encoding: "utf8",
     timeout,
   });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  return result.stdout.trim();
+}
+
+function runSagejs(witness, timeout = 120_000) {
+  const result = spawnSync(
+    process.execPath,
+    [join(root, "bin/sagejs"), "--python", "-"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      input: witness,
+      timeout,
+    },
+  );
   if (result.error) throw result.error;
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   return result.stdout.trim();
@@ -357,9 +382,21 @@ assert kernel_field.diagnostics()["bf_dyadic_kernel_fallbacks"] == 0
 assert len(new_finite.source) < 512
 assert "exact outward integer transcendental rounding" in new_finite.source
 assert kernel_field.diagnostics()["bf_transcendental_kernel_successes"] == 1
+module._shared_integer_log_endpoints.clear()
+module._shared_integer_sqrt_endpoints.clear()
+module._shared_bf_packed_layouts.clear()
+zeta_kernel_module = sys.modules[
+    "sagejs.number_fields.zeta_coefficient_kernel"
+]
+zeta_kernel_module.assemble_bf_integer_transcendental_endpoints_flint = None
+fallback_field = IntervalBallField(128)
+fallback_finite = module._bf_finite_term(new_plan, fallback_field)
+assert fallback_field.diagnostics()["bf_flint_transcendental_calls"] == 0
+assert fallback_field.diagnostics()["bf_transcendental_kernel_successes"] == 1
+assert fallback_finite.to_dict() == scalar_finite.to_dict()
 repeat_field = IntervalBallField(128)
 repeat_finite = module._bf_finite_term(new_plan, repeat_field)
-assert repeat_finite.to_dict() == new_finite.to_dict()
+assert repeat_finite.to_dict() == fallback_finite.to_dict()
 repeat_diagnostics = repeat_field.diagnostics()
 assert repeat_diagnostics["bf_packed_layout_cache_hits"] == 1
 assert repeat_diagnostics["bf_transcendental_kernel_calls"] == 0
@@ -737,4 +774,61 @@ except AnalyticCertificationError:
 print("analytic-index-ok")
 `, 180_000);
   assert.equal(output, "analytic-index-ok");
+});
+
+test("declared FLINT integer balls agree with independent rigorous endpoints", () => {
+  const output = runSagejs(String.raw`
+import sagejs.native as native_module
+import sagejs.number_fields.zeta_coefficient_kernel as kernel_module
+from sagejs.number_fields.class_unit_analytic import (
+    IntervalBallField,
+    _dyadic_mantissas,
+)
+
+flint_kernel = kernel_module.assemble_bf_integer_transcendental_endpoints_flint
+source_kernel = kernel_module.assemble_bf_integer_transcendental_endpoints
+assert native_module.is_compiled(flint_kernel)
+assert native_module.is_compiled(source_kernel)
+values = list(range(1, 34)) + [1009, 4093, 8191, 24039, 999983]
+for precision in [64, 96, 128, 160, 256]:
+    packed_values = native_module.kernel_integer_buffer(flint_kernel, values)
+    flint_output = native_module.kernel_integer_zeros(
+        flint_kernel, 4 * len(values), 8
+    )
+    source_output = native_module.kernel_integer_zeros(
+        source_kernel, 4 * len(values), 8
+    )
+    assert flint_kernel(flint_output, packed_values, precision)
+    source_values = native_module.kernel_integer_buffer(source_kernel, values)
+    assert source_kernel(source_output, source_values, precision)
+    flint_endpoints = native_module.integer_buffer_values(flint_output)
+    source_endpoints = native_module.integer_buffer_values(source_output)
+    field = IntervalBallField(precision)
+    for index, value in enumerate(values):
+        offset = 4 * index
+        log_lower, log_upper = _dyadic_mantissas(
+            field.log_integer(value), precision
+        )
+        sqrt_lower, sqrt_upper = _dyadic_mantissas(
+            field.sqrt_integer(value), precision
+        )
+        assert flint_endpoints[offset] <= log_upper
+        assert log_lower <= flint_endpoints[offset + 1]
+        assert flint_endpoints[offset + 2] <= sqrt_upper
+        assert sqrt_lower <= flint_endpoints[offset + 3]
+        assert flint_endpoints[offset] <= source_endpoints[offset + 1]
+        assert source_endpoints[offset] <= flint_endpoints[offset + 1]
+        assert flint_endpoints[offset + 2] <= source_endpoints[offset + 3]
+        assert source_endpoints[offset + 2] <= flint_endpoints[offset + 3]
+
+bad_values = native_module.kernel_integer_buffer(flint_kernel, [0])
+bad_output = native_module.kernel_integer_zeros(flint_kernel, 4, 8)
+try:
+    flint_kernel(bad_output, bad_values, 128)
+    raise AssertionError("FLINT accepted a nonpositive integer")
+except ValueError:
+    pass
+print("ok")
+`);
+  assert.equal(output, "ok");
 });

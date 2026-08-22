@@ -220,7 +220,7 @@
       "id": "number-field-zeta-functions",
       "layer": 7,
       "startup": "lazy",
-      "max_source_bytes": 145000,
+      "max_source_bytes": 150000,
       "depends_on": [
         "core-runtime",
         "native-integration",

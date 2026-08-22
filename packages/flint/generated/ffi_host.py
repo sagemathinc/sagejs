@@ -404,6 +404,7 @@ from sagejs.ffi.flint import (
     number_field_order_resource_unramified_primes as _ffi_number_field_order_resource_unramified_primes,
     number_field_order_with_round2_proof_resource as _ffi_number_field_order_with_round2_proof_resource,
     number_field_analyze_resource as _ffi_number_field_analyze_resource,
+    integer_log_sqrt_balls_packed as _ffi_integer_log_sqrt_balls_packed,
 )
 from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
 
@@ -4819,4 +4820,23 @@ def ffiNumberFieldAnalyzeResource(
         polynomial,
         scale,
         trial_bound,
+    )
+
+
+@native
+def ffiIntegerLogSqrtBallsPacked(
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    output_length: uint64,
+    count: uint64,
+    one: uint64,
+    precision: uint64,
+) -> bool:
+    return _ffi_integer_log_sqrt_balls_packed(
+        output,
+        source,
+        output_length,
+        count,
+        one,
+        precision,
     )

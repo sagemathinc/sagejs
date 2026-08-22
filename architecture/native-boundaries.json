@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 117,
-    "declared-ffi": 413,
+    "declared-ffi": 414,
     "declared-ffi-resource": 29,
     "napi-export": 317,
     "runtime-intrinsic": 137,
@@ -3714,6 +3714,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFqPolynomialSub",
       "symbol": "sagejs_fq_polynomial_sub",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:integer_log_sqrt_balls_packed",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "integer_log_sqrt_balls_packed",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiIntegerLogSqrtBallsPacked",
+      "symbol": "sagejs_flint_integer_log_sqrt_balls_packed",
       "disposition": "declared-safe-ffi"
     },
     {

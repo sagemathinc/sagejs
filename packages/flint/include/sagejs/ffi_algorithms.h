@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include <flint/arb.h>
+#include <flint/arf.h>
 #include <flint/nmod_poly.h>
 #include <flint/nmod_mat.h>
 #include <flint/fmpq.h>
@@ -1626,6 +1628,77 @@ static inline int sagejs_flint_fmpq_mat_charpoly_parts(
     fmpq_poly_clear(polynomial);
     fmpq_mat_clear(source);
     return success;
+}
+
+/* Batch rigorous log(n) and sqrt(n) endpoint construction through Arb.
+ *
+ * Both matrices are caller-owned packed IntegerBuffers adapted by the
+ * declaration-generated FFI.  Each input row is a positive machine-word
+ * integer.  Four output rows at scale 2^precision are written in the order
+ * log lower, log upper, square-root lower, square-root upper.  No Arb object
+ * or pointer crosses the host-neutral boundary.
+ */
+static inline int sagejs_flint_integer_log_sqrt_balls_packed(
+    fmpz_mat_t output,
+    const fmpz_mat_t source,
+    uint64_t precision)
+{
+    const slong count = fmpz_mat_nrows(source);
+    const uint64_t maximum_precision = UINT64_C(4096);
+    arb_t logarithm, square_root;
+    arf_t lower, upper;
+
+    if (fmpz_mat_ncols(source) != 1 ||
+        fmpz_mat_ncols(output) != 1 ||
+        count < 0 || count > 1000000 ||
+        fmpz_mat_nrows(output) != 4 * count ||
+        precision < 16 || precision > maximum_precision ||
+        precision > (uint64_t) (WORD_MAX - 32))
+        return 0;
+
+    arb_init(logarithm);
+    arb_init(square_root);
+    arf_init(lower);
+    arf_init(upper);
+    for (slong index = 0; index < count; index++)
+    {
+        const fmpz *value = fmpz_mat_entry(source, index, 0);
+        const slong offset = 4 * index;
+        if (fmpz_sgn(value) <= 0 || !fmpz_abs_fits_ui(value))
+            goto failure;
+
+        arb_log_ui(logarithm, fmpz_get_ui(value), (slong) precision + 32);
+        arb_get_interval_arf(
+            lower, upper, logarithm, (slong) precision + 32);
+        arf_mul_2exp_si(lower, lower, (slong) precision);
+        arf_mul_2exp_si(upper, upper, (slong) precision);
+        arf_get_fmpz(
+            fmpz_mat_entry(output, offset, 0), lower, ARF_RND_FLOOR);
+        arf_get_fmpz(
+            fmpz_mat_entry(output, offset + 1, 0), upper, ARF_RND_CEIL);
+
+        arb_sqrt_ui(square_root, fmpz_get_ui(value), (slong) precision + 32);
+        arb_get_interval_arf(
+            lower, upper, square_root, (slong) precision + 32);
+        arf_mul_2exp_si(lower, lower, (slong) precision);
+        arf_mul_2exp_si(upper, upper, (slong) precision);
+        arf_get_fmpz(
+            fmpz_mat_entry(output, offset + 2, 0), lower, ARF_RND_FLOOR);
+        arf_get_fmpz(
+            fmpz_mat_entry(output, offset + 3, 0), upper, ARF_RND_CEIL);
+    }
+    arf_clear(upper);
+    arf_clear(lower);
+    arb_clear(square_root);
+    arb_clear(logarithm);
+    return 1;
+
+failure:
+    arf_clear(upper);
+    arf_clear(lower);
+    arb_clear(square_root);
+    arb_clear(logarithm);
+    return 0;
 }
 
 #ifdef __cplusplus

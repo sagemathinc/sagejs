@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from sagejs.ffi.flint import integer_log_sqrt_balls_packed
 from sagejs.native import IntegerBuffer, UInt64Buffer, native, uint64
 
 
@@ -242,6 +243,130 @@ def assemble_bf_integer_transcendental_endpoints(
 
 
 @native
+def assemble_bf_integer_transcendental_endpoints_flint(
+    output: IntegerBuffer,
+    values: IntegerBuffer,
+    precision_bits: uint64,
+) -> bool:
+    """Batch rigorous integer log/square-root balls through declared FLINT.
+
+    The declaration adapts both compiler-owned buffers to lexical FLINT
+    matrices.  Arb performs the transcendental work, while the portable
+    same-source kernel above remains the exact fallback when the foreign
+    capability is unavailable.
+    """
+    one: uint64 = 1
+    return integer_log_sqrt_balls_packed(
+        output,
+        values,
+        len(output),
+        len(values),
+        one,
+        precision_bits,
+    )
+
+
+@native
+def assemble_bf_dyadic_layout(
+    output: IntegerBuffer,
+    raw_endpoints: IntegerBuffer,
+    value_indices: IntegerBuffer,
+    term_data: IntegerBuffer,
+    term_count: uint64,
+    precision_bits: uint64,
+) -> bool:
+    """Assemble the finite-sum endpoint layout without host objects.
+
+    `raw_endpoints` contains one four-entry FLINT/Arb row per distinct integer.
+    `value_indices` selects the threshold, threshold/9, 3*threshold, and then
+    one norm for each prime-power term.  This kernel performs only exact
+    outward dyadic multiplication and permutation.
+    """
+    maximum_precision: uint64 = 1
+    maximum_precision = maximum_precision << 14
+    if (
+        precision_bits < 2
+        or precision_bits > maximum_precision
+        or len(raw_endpoints) % 4 != 0
+        or len(value_indices) != term_count + 3
+        or len(term_data) != 4 * term_count
+        or len(output) != 8 + 4 * term_count
+    ):
+        return False
+    raw_count = len(raw_endpoints) // 4
+    if raw_count == 0:
+        return False
+    for index in range(len(value_indices)):
+        if value_indices[index] < 0 or value_indices[index] >= raw_count:
+            return False
+    scale = 1
+    for _bit in range(precision_bits):
+        scale *= 2
+
+    threshold_offset = 4 * value_indices[0]
+    ninth_offset = 4 * value_indices[1]
+    three_threshold_offset = 4 * value_indices[2]
+    if (
+        raw_endpoints[threshold_offset + 2] <= 0
+        or raw_endpoints[threshold_offset + 3] < raw_endpoints[threshold_offset + 2]
+        or raw_endpoints[threshold_offset + 1] < raw_endpoints[threshold_offset]
+        or raw_endpoints[ninth_offset + 2] <= 0
+        or raw_endpoints[ninth_offset + 3] < raw_endpoints[ninth_offset + 2]
+        or raw_endpoints[ninth_offset + 1] < raw_endpoints[ninth_offset]
+        or raw_endpoints[three_threshold_offset + 1]
+        < raw_endpoints[three_threshold_offset]
+    ):
+        return False
+    scale_zero_lower, scale_zero_upper = _dyadic_multiply(
+        raw_endpoints[threshold_offset + 2],
+        raw_endpoints[threshold_offset + 3],
+        raw_endpoints[threshold_offset],
+        raw_endpoints[threshold_offset + 1],
+        scale,
+    )
+    output[0] = scale_zero_lower
+    output[1] = scale_zero_upper
+    scale_one_lower, scale_one_upper = _dyadic_multiply(
+        raw_endpoints[ninth_offset + 2],
+        raw_endpoints[ninth_offset + 3],
+        raw_endpoints[ninth_offset],
+        raw_endpoints[ninth_offset + 1],
+        scale,
+    )
+    output[2] = scale_one_lower
+    output[3] = scale_one_upper
+    output[4] = raw_endpoints[threshold_offset + 2]
+    output[5] = raw_endpoints[threshold_offset + 3]
+    output[6] = raw_endpoints[three_threshold_offset]
+    output[7] = raw_endpoints[three_threshold_offset + 1]
+
+    for term_index in range(term_count):
+        source_offset = 4 * value_indices[term_index + 3]
+        output_offset = 8 + 4 * term_index
+        exponent = term_data[4 * term_index + 3]
+        if (
+            raw_endpoints[source_offset] <= 0
+            or raw_endpoints[source_offset + 1] < raw_endpoints[source_offset]
+            or exponent < 1
+        ):
+            return False
+        output[output_offset] = raw_endpoints[source_offset]
+        output[output_offset + 1] = raw_endpoints[source_offset + 1]
+        if exponent % 2:
+            if (
+                raw_endpoints[source_offset + 2] <= 0
+                or raw_endpoints[source_offset + 3] < raw_endpoints[source_offset + 2]
+            ):
+                return False
+            output[output_offset + 2] = raw_endpoints[source_offset + 2]
+            output[output_offset + 3] = raw_endpoints[source_offset + 3]
+        else:
+            output[output_offset + 2] = scale
+            output[output_offset + 3] = scale
+    return True
+
+
+@native
 def assemble_bf_dyadic_finite_term(
     output: IntegerBuffer,
     term_data: IntegerBuffer,
@@ -448,7 +573,9 @@ def assemble_zeta_coefficients_from_factors(
 
 
 __all__ = [
+    "assemble_bf_dyadic_layout",
     "assemble_bf_dyadic_finite_term",
     "assemble_bf_integer_transcendental_endpoints",
+    "assemble_bf_integer_transcendental_endpoints_flint",
     "assemble_zeta_coefficients_from_factors",
 ]

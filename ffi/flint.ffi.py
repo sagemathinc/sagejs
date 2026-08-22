@@ -10146,3 +10146,57 @@ def number_field_analyze_resource(
     scale: Integer,
     trial_bound: uint64,
 ) -> NumberFieldAnalysisResource: ...
+
+
+@flint.function(
+    dynamic="ffiIntegerLogSqrtBallsPacked",
+    symbol="sagejs_flint_integer_log_sqrt_balls_packed",
+    returns=int,
+    abi=[
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="output_length",
+                columns="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source",
+                rows="count",
+                columns="one",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("precision", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT integer logarithm/square-root batch is invalid",
+    ),
+    wasm=True,
+)
+def integer_log_sqrt_balls_packed(
+    output: Writable[IntegerBuffer],
+    source: IntegerBuffer,
+    output_length: uint64,
+    count: uint64,
+    one: Min[uint64, 1],
+    precision: uint64,
+) -> bool: ...

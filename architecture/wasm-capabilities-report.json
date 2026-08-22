@@ -1,11 +1,11 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "62b21e86d59a3908f4a9eaae0143d9eca765db87b303bdcc9605d39cfe18d980",
+  "source_sha256": "942b3d1ae7187b8ca78830788aae9dac20123e29b50cc50c053b7b7a657af9f3",
   "counts": {
-    "total": 961,
+    "total": 962,
     "by_kind": {
-      "declared-ffi-function": 413,
+      "declared-ffi-function": 414,
       "declared-ffi-resource": 29,
       "napi-export": 317,
       "production-kernel": 40,
@@ -15,12 +15,12 @@
     "by_disposition": {
       "compiled-source": 40,
       "desktop-only": 14,
-      "generated-wasm": 303,
+      "generated-wasm": 304,
       "portable-fallback": 560,
       "shared-core": 44
     },
     "by_status": {
-      "available": 519,
+      "available": 520,
       "desktop-only": 14,
       "fallback": 428
     }
@@ -4283,6 +4283,18 @@
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
+      "id": "ffi:flint:integer_log_sqrt_balls_packed",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Rigorous packed logarithm and square-root endpoints are available in the receipt-authenticated production WebAssembly artifact, with the same-source exact fallback retained."
+    },
+    {
       "id": "ffi:flint:n_is_prime",
       "family": "flint",
       "disposition": "generated-wasm",
@@ -5925,7 +5937,7 @@
       "public_consumers": [
         "number-field-zeta-coefficients"
       ],
-      "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 5 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:p1-heilbronn-production",

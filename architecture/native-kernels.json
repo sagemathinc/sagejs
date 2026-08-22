@@ -574,10 +574,12 @@
       "source": "src/lib/sagejs/number_fields/zeta_coefficient_kernel.py",
       "functions": [
         "assemble_bf_dyadic_finite_term",
+        "assemble_bf_dyadic_layout",
         "assemble_bf_integer_transcendental_endpoints",
+        "assemble_bf_integer_transcendental_endpoints_flint",
         "assemble_zeta_coefficients_from_factors"
       ],
-      "semantic_domain": "exact multiplicative Dedekind-zeta coefficient assembly from validated prime-power tables, batched rigorous integer logarithm and square-root endpoints, and exact outward-dyadic Belabas-Friedman finite-sum replay using arbitrary-precision integer arithmetic",
+      "semantic_domain": "exact multiplicative Dedekind-zeta coefficient assembly from validated prime-power tables, declared FLINT/Arb batched rigorous integer logarithm and square-root endpoints with a same-source exact fallback, packed exact endpoint layout, and exact outward-dyadic Belabas-Friedman finite-sum replay using arbitrary-precision integer arithmetic",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "sage", "magma", "hecke-oscar"],

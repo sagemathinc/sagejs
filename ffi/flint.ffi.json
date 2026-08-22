@@ -33319,6 +33319,136 @@
         "native": true,
         "wasm": false
       }
+    },
+    {
+      "id": "integer_log_sqrt_balls_packed",
+      "python_name": "integer_log_sqrt_balls_packed",
+      "signature": {
+        "parameters": [
+          {
+            "name": "output",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "output_length",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "count",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "one",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable",
+            "minimum": "1"
+          },
+          {
+            "name": "precision",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiIntegerLogSqrtBallsPacked"
+      },
+      "native": {
+        "symbol": "sagejs_flint_integer_log_sqrt_balls_packed",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "output",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output",
+              "rows": "output_length",
+              "columns": "one",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "source",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "source",
+              "rows": "count",
+              "columns": "one",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "precision",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": [
+          "output"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "FLINT integer logarithm/square-root batch is invalid"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
     }
   ]
 }
