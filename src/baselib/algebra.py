@@ -25,6 +25,26 @@ def is_exact_integer(value: object) -> bool:
     )
 
 
+def is_boxed_python_float(value: object) -> bool:
+    """Recognize a `float` whose value is integral.
+
+    `float()` returns a raw JS number for a non-integral value, but boxes an
+    integral one in a `Number` wrapper carrying `__sagejs_float__`. That is
+    deliberate: in JavaScript `0` and `0.0` are the same primitive, so the
+    wrapper is the only thing that keeps `float(0)` distinguishable from the
+    integer `0` and preserves float contagion. The cost is that such a value
+    reports `jstype` `"object"`, so every test written as
+    `jstype(value) == "number"` silently misses it. See
+    `_builtins_is_python_float` in `builtins.py`, which is the same predicate
+    on the other side of that boundary.
+    """
+    return (
+        runtime.jstype(value) == "object"
+        and value is not None
+        and runtime.native_get(value, "__sagejs_float__") is True
+    )
+
+
 def normalize_integer(value: Any) -> Any:
     value_type = runtime.jstype(value)
     if value_type == "number":
@@ -739,7 +759,7 @@ class CoercionModel:
     def parentOf(self, value: Any) -> Parent:
         if is_exact_integer(value):
             return ZZ
-        if runtime.jstype(value) == "number":
+        if runtime.jstype(value) == "number" or is_boxed_python_float(value):
             return runtime.reflect.get(runtime.global_object, "RDF")
         if (
             value is not None
