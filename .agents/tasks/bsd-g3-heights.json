@@ -93,10 +93,30 @@
       "commit": "031c499000494a4b1165296f535aa0cb75fa4136",
       "workspace_fingerprint": "6138aaf912efdd71e171345f1c51e385fd365f9b48bd31cfe7d586fb39e8f947",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python -m py_compile src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.085,
+      "started_at": "2026-08-22T07:45:05.884Z",
+      "commit": "70a93de8fc740dbee95248de0be1472c03bdbe15",
+      "workspace_fingerprint": "81ee1a604323e22d92cb4b5e9176be99c3a9026ffa233c51f7caa9e7bdc071ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.662,
+      "started_at": "2026-08-22T07:45:06.635Z",
+      "commit": "70a93de8fc740dbee95248de0be1472c03bdbe15",
+      "workspace_fingerprint": "81ee1a604323e22d92cb4b5e9176be99c3a9026ffa233c51f7caa9e7bdc071ea",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Implemented a bounded ordinary-Python genus-3 Faltings--Hriljac reference engine: exact regular-model matrix validation and Cox--Zucker vertical solves; replay-certified good and irreducible-nodal finite paths; exact rational-section intersections; split-Mumford factorization and Holmes moving representatives; complete finite candidate-prime plans with structured unsupported records; Muller theta Green functions with refinement witnesses; the frozen periods/Abel--Jacobi adapter; global pairing, canonical-height, pairing-matrix, and regulator assembly. Raw model-basis Abel--Jacobi integrals are now explicitly normalized as z=A^-1*w before use with tau=A^-1*B, with raw and normalized coordinates retained in the certificate. Supplied matrices, local symbols, component assertions, prime-set assertions, and rigorous analytic assertions remain conditional and cannot promote certification. The automatic theta envelope is odd-degree genus-3 QQ, rational infinity, split rational Mumford degree three. The focused runtime, including a real period/Abel--Jacobi/theta integration regression, passed against frozen periods commit 717df283.",
+    "summary": "Implemented a bounded ordinary-Python genus-3 Faltings--Hriljac reference engine: exact regular-model matrix validation and Cox--Zucker vertical solves; replay-certified good and irreducible-nodal finite paths; exact rational-section intersections; split-Mumford factorization and Holmes moving representatives; complete finite candidate-prime plans with structured unsupported records; Muller theta Green functions with refinement witnesses; the frozen periods/Abel--Jacobi adapter; global pairing, canonical-height, pairing-matrix, and regulator assembly. Raw model-basis Abel--Jacobi integrals are explicitly normalized as z=A^-1*w before use with tau=A^-1*B, with raw and normalized coordinates retained in the certificate. Complete finite plans and automatic archimedean witnesses are bound to exact curve, Mumford divisor, moving representative, theta support, and class-multiple keys; cross-move reuse is rejected. Supplied matrices, local symbols, component assertions, prime-set assertions, and rigorous analytic assertions remain conditional and cannot promote certification. The automatic theta envelope is odd-degree genus-3 QQ, rational infinity, split rational Mumford degree three. The focused runtime, including a real period/Abel--Jacobi/theta integration regression, passed against frozen periods commit 717df283.",
     "risks": [
       "The current local-reduction cluster certificates do not encode replayable full regular-model incidence/blow-up matrices or section-to-component maps. Reducible semistable fibres therefore remain unsupported for certified automatic heights; supplied matrices/component claims are recorded only as conditional inputs.",
       "The archimedean result is numerical and non-rigorous: theta radius refinement is checked, but period, Abel--Jacobi, truncation, and rounding errors are not enclosed.",
