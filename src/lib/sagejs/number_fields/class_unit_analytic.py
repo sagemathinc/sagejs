@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import time
 from typing import Any, Callable, Iterable, Sequence
 
@@ -3653,7 +3654,12 @@ class _BFErrorModel:
     ) -> None:
         self.degree = int(degree)
         self.field = field
-        self.log_discriminant = field.log_integer(abs(int(discriminant)))
+        absolute_discriminant = abs(int(discriminant))
+        self.log_discriminant = field.log_integer(absolute_discriminant)
+        try:
+            self.approximate_log_discriminant = math.log(absolute_discriminant)
+        except (OverflowError, TypeError, ValueError):
+            self.approximate_log_discriminant = float("nan")
         self.sqrt_log_discriminant = field.sqrt(self.log_discriminant)
         self.evaluations = 0
 
@@ -3679,7 +3685,7 @@ class _BFErrorModel:
         return a1 * (a2 * (a3**2) + a4)
 
 
-def _bf_threshold(
+def _bf_threshold_exact(
     model: _BFErrorModel,
     target: RationalEndpoint,
     maximum: int,
@@ -3708,6 +3714,59 @@ def _bf_threshold(
     threshold = 9 * upper
     bound = model.bound(threshold)
     return threshold, bound
+
+
+def _bf_approximate_bound(model: _BFErrorModel, threshold: int) -> float:
+    """Return a non-authoritative scalar proposal for the BF cutoff search."""
+    log_discriminant = float(model.approximate_log_discriminant)
+    sqrt_threshold = math.sqrt(threshold)
+    sqrt_log_discriminant = math.sqrt(log_discriminant)
+    a1 = 2.324 * log_discriminant / (sqrt_threshold * math.log(3 * threshold))
+    a2 = 1.0 + 3.88 / math.log(threshold // 9)
+    a3 = 1.0 + 2.0 / sqrt_log_discriminant
+    a4 = 4.26 * (model.degree - 1) / (sqrt_threshold * log_discriminant)
+    return a1 * (a2 * (a3**2) + a4)
+
+
+def _bf_threshold(
+    model: _BFErrorModel,
+    target: RationalEndpoint,
+    maximum: int,
+) -> tuple[int, RealBall]:
+    """Locate the BF cutoff with a scalar proposal and exact certification.
+
+    Binary floating point controls no proof decision here.  It proposes the
+    same multiple-of-nine cutoff sought by the readable exact search.  The
+    existing outward interval model must then prove that proposal succeeds
+    and that its predecessor fails.  Any nonfinite value, disagreement, or
+    exceptional arithmetic falls back to the complete exact search.
+    """
+    try:
+        approximate_target = float(target)
+        if not math.isfinite(approximate_target) or approximate_target <= 0:
+            raise ValueError("the approximate BF target is not positive and finite")
+        threshold = 72
+        while _bf_approximate_bound(model, threshold) >= approximate_target:
+            threshold *= 2
+            threshold += (-threshold) % 9
+            if threshold > maximum:
+                return _bf_threshold_exact(model, target, maximum)
+        lower = max(8, (threshold // 2) // 9)
+        upper = threshold // 9
+        while upper - lower > 1:
+            middle = (lower + upper) // 2
+            if _bf_approximate_bound(model, 9 * middle) < approximate_target:
+                upper = middle
+            else:
+                lower = middle
+        threshold = 9 * upper
+        bound = model.bound(threshold)
+        predecessor = model.bound(threshold - 9)
+        if bound.upper < target and not predecessor.upper < target:
+            return threshold, bound
+    except (OverflowError, TypeError, ValueError, ZeroDivisionError):
+        pass
+    return _bf_threshold_exact(model, target, maximum)
 
 
 def _max_power_strict(base: int, bound: int) -> int:

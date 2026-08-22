@@ -609,6 +609,23 @@ def quadratic_provider(discriminant):
         return records
     return provider
 
+# Floating-point cutoff location is only a proposal: the accelerated search
+# must reproduce the exact minimal threshold and its outward interval, while
+# using exactly two certified evaluations on representative quadratic and
+# cubic discriminants.
+for discriminant, degree, maximum in ((5, 2, 20000), (283, 3, 1000000), (1083, 3, 1000000)):
+    target = RationalEndpoint(1, 16)
+    accelerated_model = module._BFErrorModel(
+        discriminant, degree, IntervalBallField(96)
+    )
+    exact_model = module._BFErrorModel(discriminant, degree, IntervalBallField(96))
+    accelerated = module._bf_threshold(accelerated_model, target, maximum)
+    exact = module._bf_threshold_exact(exact_model, target, maximum)
+    assert accelerated[0] == exact[0]
+    assert accelerated[1].to_dict() == exact[1].to_dict()
+    assert accelerated_model.evaluations == 2
+    assert exact_model.evaluations > accelerated_model.evaluations
+
 for field in fixture["fields"][:2]:
     enclosure = zeta_log_residue_bound(
         field["discriminant"],
