@@ -153,6 +153,9 @@ assert packed.diagnostics["relation_search"]["integral_sieve_candidates"] == 21
 assert packed.diagnostics["relation_search"]["integral_sieve_selected"] == 3
 assert packed.diagnostics["relation_search"]["integral_sieve_relations"] == 3
 assert packed.diagnostics["relation_search"]["integral_sieve_fallback"] == 0
+assert packed.diagnostics["relation_search"][
+    "relation_prefix_finalized_without_search"
+] == 1
 assert len(packed.relation_records) == 5
 
 from sagejs.number_fields.class_group_relations import ExactRelationCollector, RelationNotSmoothError
@@ -204,6 +207,9 @@ fallback = cubic.bounded_cubic_minkowski_class_number(fallback_field)
 cubic._cubic_relation_sieve_kernel_override = None
 assert fallback.complete and fallback.order() == 3 and fallback.certificate.verify()
 assert fallback.diagnostics["relation_search"]["integral_sieve_fallback"] == 1
+assert fallback.diagnostics["relation_search"][
+    "relation_prefix_finalized_without_search"
+] == 0
 
 def invalid_kernel(*args, **kwargs):
     return 0

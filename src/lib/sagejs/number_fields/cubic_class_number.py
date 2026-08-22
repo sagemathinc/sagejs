@@ -1595,19 +1595,38 @@ def bounded_cubic_minkowski_class_number(
     relation_metrics["integral_sieve_fallback"] = int(selected_sieve_candidates is None)
     relation_metrics["integral_sieve_dependency_candidates"] = 0
     relation_metrics["integral_sieve_dependency_relations"] = 0
+    relation_metrics["relation_prefix_finalized_without_search"] = 0
     try:
         # This class-number-only quotient needs full factor-base rank but no
         # logarithmic unit dependencies.  One exact row per searched ideal is
         # sufficient; the loop continues until the exact presentation reaches
         # full rank, and the detached certificate replays every retained row.
-        collector, presentation = engine._relations(
-            factor_base,
-            0,
-            collector=collector,
-            relations_per_ideal=1,
-            independent_relations_per_ideal=True,
-            target_missing_pivots=True,
+        presentation = matrix_module.extract_relation_presentation(
+            tuple(record.row for record in collector.records),
+            len(factor_base),
+            require_full_rank=False,
         )
+        if presentation.rank == len(factor_base):
+            # The packed rows already give an exact full-rank quotient.  A
+            # zero-attempt search state is the canonical continuation cursor:
+            # the later coupled class/unit engine rebuilds its accumulator
+            # from this authenticated prefix and resumes ordinary relation
+            # search only when logarithmic unit dependencies are required.
+            engine._relation_search_state = relation_module.RelationSearchState(
+                engine.seed
+            )
+            relation_metrics["relation_prefix_finalized_without_search"] = 1
+            relation_metrics["presentation_extractions"] = 1
+        else:
+            collector, presentation = engine._relations(
+                factor_base,
+                0,
+                collector=collector,
+                presentation=presentation,
+                relations_per_ideal=1,
+                independent_relations_per_ideal=True,
+                target_missing_pivots=True,
+            )
     except RuntimeError:
         raise
     except ValueError as error:
@@ -1633,7 +1652,11 @@ def bounded_cubic_minkowski_class_number(
         "presentation_extractions",
     ):
         value = engine_resources.get(name)
-        if isinstance(value, int) and not isinstance(value, bool):
+        if (
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and name not in relation_metrics
+        ):
             relation_metrics[name] = int(value)
 
     dependency_seed_enriched = False

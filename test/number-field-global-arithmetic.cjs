@@ -355,6 +355,10 @@ assert classes1083.diagnostics["relation_search"]["integral_sieve_candidates"] =
 assert classes1083.diagnostics["relation_search"]["integral_sieve_selected"] == 3
 assert classes1083.diagnostics["relation_search"]["integral_sieve_relations"] == 3
 assert classes1083.diagnostics["relation_search"]["integral_sieve_fallback"] == 0
+assert classes1083.diagnostics["relation_search"][
+    "relation_prefix_finalized_without_search"
+] == 1
+assert classes1083.diagnostics["relation_search"]["presentation_extractions"] == 1
 assert len(classes1083.relation_records) == 5
 assert set(classes1083.diagnostics["phase_timings"]) == {
     "factor_base", "relations", "norm_obstructions", "certificate_encoding", "total"
