@@ -1,0 +1,33 @@
+{
+  "schema": "sagejs.hyperelliptic-bsd-oracle.magma-genus3-height.v1",
+  "software": "Magma",
+  "version": "2.18-5",
+  "capture_platform": "x86_64 Linux",
+  "classification": "external numerical oracle; not an interval proof",
+  "script": "magma-genus3-height.m",
+  "script_sha256": "0452ac450ee1df366f303ed9bde2562628f28b1f96a15ec650bd816d79858e2a",
+  "transcript": "expected-magma-2.18-5-genus3-height.txt",
+  "transcript_sha256": "34e37ec17ee9d4daa0dadfbd8bbf914c7129babf6f7d20b40d70b4e2c85acc10",
+  "original_curve": {
+    "equation": "y^2 + y = f(x)",
+    "f_coefficients_ascending": ["0", "-6", "17", "1", "-32", "28", "-9", "1"],
+    "h_coefficients_ascending": ["1"]
+  },
+  "original_mumford_divisor": {
+    "u_coefficients_ascending": ["0", "2", "-3", "1"],
+    "v_coefficients_ascending": ["0"]
+  },
+  "completion_of_square": {
+    "map": "Y = 2*y + 1",
+    "completed_equation": "Y^2 = 1 + 4*f(x)",
+    "completed_v_coefficients_ascending": ["1"],
+    "height_scale": "1"
+  },
+  "sagejs_finite_plan": {
+    "moving_x": "3",
+    "candidate_primes": ["2", "3", "13", "101", "389", "38677"],
+    "log_prime_coefficients": ["-3", "-3", "0", "0", "0", "0"],
+    "complete": true
+  },
+  "canonical_height_prefix": "2.14034414827405886132396479358536142092549662636620100130822937009585545"
+}
