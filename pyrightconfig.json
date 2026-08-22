@@ -240,7 +240,12 @@
     "src/lib/matlab.py",
     "src/lib/numpy.py",
     "src/lib/sqlite3.py",
-    "src/lib/wolfram.py"
+    "src/lib/wolfram.py",
+    "src/lib/sagejs/optimization/__init__.py",
+    "src/lib/sagejs/optimization/brent_minimize.py",
+    "src/lib/sagejs/optimization/brent_root.py",
+    "src/lib/sagejs/optimization/nelder_mead.py",
+    "src/lib/sagejs/optimization/sage_api.py"
   ],
   "extraPaths": [
     "src/baselib"
