@@ -37,8 +37,16 @@ References:
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any, Iterable, Mapping
 
+
+LOCAL_SCHEMA = "sagejs.hyperelliptic-deficiency/v2"
+GLOBAL_SCHEMA = "sagejs.hyperelliptic-global-deficiency/v2"
+CURVE_SCHEMA = "sagejs.hyperelliptic-deficiency-curve/v1"
+LOCAL_REDUCTION_SCHEMA = "sagejs.hyperelliptic-deficiency-local-reduction/v1"
+BAD_PRIMES_SCHEMA = "sagejs.hyperelliptic-deficiency-bad-primes/v1"
 
 POONEN_STOLL_REFERENCE = (
     "Poonen--Stoll, The Cassels--Tate Pairing on Polarized Abelian Varieties (1999)"
@@ -47,6 +55,150 @@ CLUSTER_REFERENCE = (
     "Dokchitser--Dokchitser--Maistret--Morgan, Arithmetic of "
     "hyperelliptic curves over local fields, Theorem 12.4"
 )
+
+_CERTIFIED_TOKEN = object()
+
+
+class _FrozenMapping:
+    """A recursively immutable, insertion-ordered string-key mapping."""
+
+    def __init__(self, value: Mapping[str, Any]) -> None:
+        items = []
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise TypeError("certificate mapping keys must be strings")
+            items.append((key, _freeze(item)))
+        self.__items = tuple(items)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if hasattr(self, "_FrozenMapping__items"):
+            raise AttributeError("certificate mappings are immutable")
+        object.__setattr__(self, name, value)
+
+    def __getitem__(self, key: str) -> Any:
+        for candidate, value in self.__items:
+            if candidate == key:
+                return value
+        raise KeyError(key)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        raise TypeError("certificate mappings are immutable")
+
+    def __delitem__(self, key: str) -> None:
+        raise TypeError("certificate mappings are immutable")
+
+    def __iter__(self) -> Any:
+        return (key for key, _value in self.__items)
+
+    def __len__(self) -> int:
+        return len(self.__items)
+
+    def __repr__(self) -> str:
+        return repr(dict(self.__items))
+
+    def get(self, key: str, default: Any = None) -> Any:
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def keys(self) -> tuple[str, ...]:
+        return tuple(key for key, _value in self.__items)
+
+    def items(self) -> tuple[tuple[str, Any], ...]:
+        return self.__items
+
+
+def _freeze(value: Any) -> Any:
+    if isinstance(value, _FrozenMapping):
+        return value
+    if hasattr(value, "items"):
+        return _FrozenMapping(value)
+    if isinstance(value, (tuple, list)):
+        return tuple(_freeze(item) for item in value)
+    if isinstance(value, set):
+        return tuple(sorted(_freeze(item) for item in value))
+    return value
+
+
+def _thaw(value: Any) -> Any:
+    if isinstance(value, _FrozenMapping):
+        return {key: _thaw(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw(item) for item in value]
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    try:
+        integer = int(value)
+        if value == integer:
+            return integer
+    except (TypeError, ValueError, OverflowError):
+        pass
+    return str(value)
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(_thaw(_freeze(value)), sort_keys=True, separators=(",", ":"))
+
+
+def _fingerprint(value: Any) -> str:
+    return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _strict_keys(value: Any, keys: set[str], name: str) -> Mapping[str, Any]:
+    if not hasattr(value, "items"):
+        raise TypeError(name + " must be a mapping")
+    actual = {str(key) for key in value}
+    if actual != keys:
+        missing = sorted(keys - actual)
+        extra = sorted(actual - keys)
+        raise ValueError(
+            name
+            + " has incorrect fields; missing="
+            + repr(missing)
+            + ", extra="
+            + repr(extra)
+        )
+    return value
+
+
+def _curve_model_payload(curve: Any) -> dict[str, Any]:
+    _require_rational_curve(curve)
+    f_value, h_value = curve.hyperelliptic_polynomials()
+    return {
+        "schema": CURVE_SCHEMA,
+        "base_ring": "QQ",
+        "genus": int(curve.genus()),
+        "f_coefficients_ascending": tuple(str(value) for value in f_value.list()),
+        "h_coefficients_ascending": tuple(str(value) for value in h_value.list()),
+    }
+
+
+def _curve_binding(curve: Any) -> dict[str, Any]:
+    model = _curve_model_payload(curve)
+    return {"curve_model": model, "curve_fingerprint": _fingerprint(model)}
+
+
+def _check_curve_binding(curve: Any, model: Any, fingerprint: Any) -> None:
+    binding = _curve_binding(curve)
+    if _canonical_json(model) != _canonical_json(binding["curve_model"]):
+        raise ArithmeticError(
+            "the deficiency certificate is bound to another curve model"
+        )
+    if not isinstance(fingerprint, str) or fingerprint != binding["curve_fingerprint"]:
+        raise ArithmeticError(
+            "the deficiency certificate has the wrong curve fingerprint"
+        )
+
+
+class _ImmutableRecord:
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_immutable_sealed", False):
+            raise AttributeError(type(self).__name__ + " is immutable")
+        object.__setattr__(self, name, value)
+
+    def _seal(self) -> None:
+        object.__setattr__(self, "_immutable_sealed", True)
 
 
 class DeficiencyUnsupportedError(NotImplementedError):
@@ -62,7 +214,7 @@ class DeficiencyUnsupportedError(NotImplementedError):
         )
 
 
-class DeficiencyResult:
+class DeficiencyResult(_ImmutableRecord):
     """One exact local decision, witness, obstruction, or unsupported state."""
 
     def __init__(
@@ -77,6 +229,9 @@ class DeficiencyResult:
         certificate: Mapping[str, Any] | None = None,
         reason: str | None = None,
         provenance: str = "computed",
+        curve_model: Mapping[str, Any] | None = None,
+        curve_fingerprint: str | None = None,
+        _token: Any = None,
     ) -> None:
         if genus not in [2, 3]:
             raise ValueError("deficiency support is restricted to genus 2 and 3")
@@ -88,42 +243,104 @@ class DeficiencyResult:
             raise ValueError("a nondeficient result requires a divisor witness")
         if decision is None and reason is None:
             raise ValueError("an unsupported result requires a reason")
+        if curve_model is None or curve_fingerprint is None:
+            raise ValueError("a deficiency result requires an exact curve binding")
         self.place = place
         self.genus = int(genus)
         self.divisor_degree = self.genus - 1
         self.decision = decision
         self.deficient = decision
-        self.status = "certified" if decision is not None else "unsupported"
-        self.certified = decision is not None
+        computed = _token is _CERTIFIED_TOKEN
+        self.certified = computed and decision is not None
+        self.status = (
+            "certified"
+            if self.certified
+            else ("unsupported" if computed else "unverified")
+        )
         self.theorem = str(theorem)
-        self.witness = None if witness is None else dict(witness)
-        self.obstruction = None if obstruction is None else dict(obstruction)
-        self.certificate = dict({} if certificate is None else certificate)
+        self.witness = None if witness is None else _freeze(witness)
+        self.obstruction = None if obstruction is None else _freeze(obstruction)
+        self.certificate = _freeze({} if certificate is None else certificate)
         self.reason = None if reason is None else str(reason)
         self.provenance = str(provenance)
+        self.curve_model = _freeze(curve_model)
+        self.curve_fingerprint = str(curve_fingerprint)
+        self.assurance = (
+            ("computed_certified" if decision is not None else "computed_unsupported")
+            if computed
+            else "supplied_unverified"
+        )
+        self._seal()
 
     def require_decision(self) -> bool:
         """Return the certified boolean or raise with the complete local result."""
-        if self.decision is None:
+        if not self.certified or self.decision is None:
             raise DeficiencyUnsupportedError(self)
         return bool(self.decision)
 
     def to_dict(self) -> dict[str, Any]:
         """Return a deterministic, JSON-friendly certificate record."""
         return {
-            "schema": "sagejs.hyperelliptic-deficiency/v1",
+            "schema": LOCAL_SCHEMA,
+            "curve_model": _thaw(self.curve_model),
+            "curve_fingerprint": self.curve_fingerprint,
             "place": self.place,
             "genus": self.genus,
             "divisor_degree": self.divisor_degree,
             "status": self.status,
+            "assurance": self.assurance,
             "deficient": self.decision,
             "theorem": self.theorem,
-            "witness": self.witness,
-            "obstruction": self.obstruction,
-            "certificate": self.certificate,
+            "witness": _thaw(self.witness),
+            "obstruction": _thaw(self.obstruction),
+            "certificate": _thaw(self.certificate),
             "reason": self.reason,
             "provenance": self.provenance,
         }
+
+    @classmethod
+    def from_dict(
+        cls, curve: Any, payload: Mapping[str, Any], algorithm: str = "auto"
+    ) -> DeficiencyResult:
+        """Strictly replay a serialized result against its exact curve model."""
+        keys = {
+            "schema",
+            "curve_model",
+            "curve_fingerprint",
+            "place",
+            "genus",
+            "divisor_degree",
+            "status",
+            "assurance",
+            "deficient",
+            "theorem",
+            "witness",
+            "obstruction",
+            "certificate",
+            "reason",
+            "provenance",
+        }
+        record = _strict_keys(payload, keys, "local deficiency certificate")
+        if record["schema"] != LOCAL_SCHEMA:
+            raise ValueError("unknown local deficiency schema")
+        _check_curve_binding(curve, record["curve_model"], record["curve_fingerprint"])
+        if int(record["genus"]) != int(curve.genus()):
+            raise ArithmeticError(
+                "the local deficiency certificate has the wrong genus"
+            )
+        expected = local_deficiency(curve, record["place"], algorithm)
+        if _canonical_json(expected.to_dict()) != _canonical_json(record):
+            raise ArithmeticError(
+                "the local deficiency certificate failed exact replay"
+            )
+        return expected
+
+    def verify(self, curve: Any, algorithm: str = "auto") -> bool:
+        """Recompute this local theorem and every derived field from the curve."""
+        if not self.assurance.startswith("computed_"):
+            raise ArithmeticError("a supplied local assertion is not a verified result")
+        DeficiencyResult.from_dict(curve, self.to_dict(), algorithm)
+        return True
 
     def __getitem__(self, name: str) -> Any:
         if not hasattr(self, name):
@@ -142,7 +359,75 @@ class DeficiencyResult:
         )
 
 
-class GlobalDeficiencyDiagnostic:
+class ExhaustiveBadPrimesCertificate(_ImmutableRecord):
+    """A typed, curve-bound replay of exhaustive global-reduction support."""
+
+    def __init__(
+        self,
+        genus: int,
+        bad_primes: Iterable[Any],
+        upstream_global_reduction: Mapping[str, Any],
+        *,
+        curve_model: Mapping[str, Any],
+        curve_fingerprint: str,
+        _token: Any = None,
+    ) -> None:
+        self.genus = int(genus)
+        self.bad_primes = tuple(sorted({_normalize_place(p) for p in bad_primes}))
+        if any(prime == "infinity" for prime in self.bad_primes):
+            raise ValueError("an exhaustive bad-prime certificate is finite")
+        self.upstream_global_reduction = _freeze(upstream_global_reduction)
+        self.curve_model = _freeze(curve_model)
+        self.curve_fingerprint = str(curve_fingerprint)
+        computed = _token is _CERTIFIED_TOKEN
+        self.assurance = "computed_certified" if computed else "supplied_unverified"
+        self._seal()
+
+    @classmethod
+    def compute(cls, curve: Any) -> ExhaustiveBadPrimesCertificate:
+        return _compute_exhaustive_bad_primes_certificate(curve)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": BAD_PRIMES_SCHEMA,
+            "curve_model": _thaw(self.curve_model),
+            "curve_fingerprint": self.curve_fingerprint,
+            "genus": self.genus,
+            "bad_primes": list(self.bad_primes),
+            "upstream_global_reduction": _thaw(self.upstream_global_reduction),
+            "assurance": self.assurance,
+        }
+
+    @classmethod
+    def from_dict(
+        cls, curve: Any, payload: Mapping[str, Any]
+    ) -> ExhaustiveBadPrimesCertificate:
+        keys = {
+            "schema",
+            "curve_model",
+            "curve_fingerprint",
+            "genus",
+            "bad_primes",
+            "upstream_global_reduction",
+            "assurance",
+        }
+        record = _strict_keys(payload, keys, "exhaustive bad-primes certificate")
+        if record["schema"] != BAD_PRIMES_SCHEMA:
+            raise ValueError("unknown exhaustive bad-primes schema")
+        _check_curve_binding(curve, record["curve_model"], record["curve_fingerprint"])
+        expected = cls.compute(curve)
+        if _canonical_json(expected.to_dict()) != _canonical_json(record):
+            raise ArithmeticError("the exhaustive bad-primes certificate failed replay")
+        return expected
+
+    def verify(self, curve: Any) -> bool:
+        if self.assurance != "computed_certified":
+            raise ArithmeticError("a supplied bad-primes assertion is not verified")
+        ExhaustiveBadPrimesCertificate.from_dict(curve, self.to_dict())
+        return True
+
+
+class GlobalDeficiencyDiagnostic(_ImmutableRecord):
     """Parity assembly and its precisely conditional Cassels--Tate consequence."""
 
     def __init__(
@@ -154,7 +439,12 @@ class GlobalDeficiencyDiagnostic:
         bad_primes_provenance: str,
         canonical_principal_polarization: bool,
         sha_finite: bool | None,
+        curve_model: Mapping[str, Any],
+        curve_fingerprint: str,
+        considered_bad_primes: Iterable[Any],
+        bad_primes_certificate: ExhaustiveBadPrimesCertificate | None,
         reason: str | None = None,
+        _token: Any = None,
     ) -> None:
         self.genus = int(genus)
         self.local_results = tuple(local_results)
@@ -162,10 +452,18 @@ class GlobalDeficiencyDiagnostic:
         self.bad_primes_provenance = str(bad_primes_provenance)
         self.canonical_principal_polarization = bool(canonical_principal_polarization)
         self.sha_finite = sha_finite
+        self.curve_model = _freeze(curve_model)
+        self.curve_fingerprint = str(curve_fingerprint)
+        self.considered_bad_primes = tuple(considered_bad_primes)
+        self.bad_primes_certificate = bad_primes_certificate
+        computed = _token is _CERTIFIED_TOKEN
+        self.assurance = "computed_certified" if computed else "supplied_unverified"
         self.unsupported_places = tuple(
             result.place for result in self.local_results if not result.certified
         )
-        self.complete = self.bad_primes_complete and not self.unsupported_places
+        self.complete = (
+            computed and self.bad_primes_complete and not self.unsupported_places
+        )
         self.reason = reason
         self.deficient_places = tuple(
             result.place for result in self.local_results if result.decision is True
@@ -192,15 +490,25 @@ class GlobalDeficiencyDiagnostic:
                 POONEN_STOLL_REFERENCE
                 + ", Corollary 12; the order statement additionally assumes finite Sha"
             )
+        self._seal()
 
     def to_dict(self) -> dict[str, Any]:
         """Return a deterministic record without a numerical recognition field."""
         return {
-            "schema": "sagejs.hyperelliptic-global-deficiency/v1",
+            "schema": GLOBAL_SCHEMA,
+            "curve_model": _thaw(self.curve_model),
+            "curve_fingerprint": self.curve_fingerprint,
             "genus": self.genus,
+            "assurance": self.assurance,
             "complete": self.complete,
             "bad_primes_complete": self.bad_primes_complete,
             "bad_primes_provenance": self.bad_primes_provenance,
+            "considered_bad_primes": list(self.considered_bad_primes),
+            "bad_primes_certificate": (
+                None
+                if self.bad_primes_certificate is None
+                else self.bad_primes_certificate.to_dict()
+            ),
             "unsupported_places": list(self.unsupported_places),
             "deficient_places": list(self.deficient_places),
             "number_of_deficient_places": self.number_of_deficient_places,
@@ -214,6 +522,67 @@ class GlobalDeficiencyDiagnostic:
             "local_results": [result.to_dict() for result in self.local_results],
         }
 
+    @classmethod
+    def from_dict(
+        cls, curve: Any, payload: Mapping[str, Any], algorithm: str = "auto"
+    ) -> GlobalDeficiencyDiagnostic:
+        keys = {
+            "schema",
+            "curve_model",
+            "curve_fingerprint",
+            "genus",
+            "assurance",
+            "complete",
+            "bad_primes_complete",
+            "bad_primes_provenance",
+            "considered_bad_primes",
+            "bad_primes_certificate",
+            "unsupported_places",
+            "deficient_places",
+            "number_of_deficient_places",
+            "deficiency_parity",
+            "canonical_principal_polarization",
+            "sha_finite",
+            "cassels_tate_pairing_class",
+            "sha_order_shape",
+            "theorem",
+            "reason",
+            "local_results",
+        }
+        record = _strict_keys(payload, keys, "global deficiency certificate")
+        if record["schema"] != GLOBAL_SCHEMA:
+            raise ValueError("unknown global deficiency schema")
+        _check_curve_binding(curve, record["curve_model"], record["curve_fingerprint"])
+        local_results = tuple(
+            DeficiencyResult.from_dict(curve, item, algorithm)
+            for item in record["local_results"]
+        )
+        bad_certificate = None
+        if record["bad_primes_certificate"] is not None:
+            bad_certificate = ExhaustiveBadPrimesCertificate.from_dict(
+                curve, record["bad_primes_certificate"]
+            )
+        expected = global_deficiency_diagnostic(
+            curve,
+            bad_primes=record["considered_bad_primes"],
+            bad_primes_certificate=bad_certificate,
+            local_results=local_results,
+            algorithm=algorithm,
+            canonical_principal_polarization=record["canonical_principal_polarization"],
+            sha_finite=record["sha_finite"],
+        )
+        if _canonical_json(expected.to_dict()) != _canonical_json(record):
+            raise ArithmeticError(
+                "the global deficiency certificate failed exact replay"
+            )
+        return expected
+
+    def verify(self, curve: Any, algorithm: str = "auto") -> bool:
+        if self.assurance != "computed_certified":
+            raise ArithmeticError("a supplied global assertion is not verified")
+        GlobalDeficiencyDiagnostic.from_dict(curve, self.to_dict(), algorithm)
+        return True
+
     def __repr__(self) -> str:
         return (
             "GlobalDeficiencyDiagnostic(complete="
@@ -224,6 +593,35 @@ class GlobalDeficiencyDiagnostic:
             + repr(self.sha_order_shape)
             + ")"
         )
+
+
+def _computed_result(
+    binding: Mapping[str, Any],
+    place: Any,
+    genus: int,
+    decision: bool | None,
+    *,
+    theorem: str,
+    witness: Mapping[str, Any] | None = None,
+    obstruction: Mapping[str, Any] | None = None,
+    certificate: Mapping[str, Any] | None = None,
+    reason: str | None = None,
+    provenance: str = "computed",
+) -> DeficiencyResult:
+    return DeficiencyResult(
+        place,
+        genus,
+        decision,
+        theorem=theorem,
+        witness=witness,
+        obstruction=obstruction,
+        certificate=certificate,
+        reason=reason,
+        provenance=provenance,
+        curve_model=binding["curve_model"],
+        curve_fingerprint=str(binding["curve_fingerprint"]),
+        _token=_CERTIFIED_TOKEN,
+    )
 
 
 def _trim(values: list[int]) -> list[int]:
@@ -446,13 +844,14 @@ def _real_root_certificate(values: list[int]) -> dict[str, Any]:
 
 
 def _real_deficiency(
-    genus: int, branch: list[int], model: dict[str, Any]
+    binding: Mapping[str, Any], genus: int, branch: list[int], model: dict[str, Any]
 ) -> DeficiencyResult:
     if genus % 2 == 1:
-        return _odd_genus_witness("infinity", genus)
+        return _odd_genus_witness(binding, "infinity", genus)
     degree = _degree(branch)
     if degree % 2 == 1:
-        return DeficiencyResult(
+        return _computed_result(
+            binding,
             "infinity",
             genus,
             False,
@@ -462,7 +861,8 @@ def _real_deficiency(
         )
     root_certificate = _real_root_certificate(branch)
     if int(root_certificate["distinct_real_roots"]) > 0:
-        return DeficiencyResult(
+        return _computed_result(
+            binding,
             "infinity",
             genus,
             False,
@@ -474,7 +874,8 @@ def _real_deficiency(
             certificate={**root_certificate, **model},
         )
     if branch[-1] > 0:
-        return DeficiencyResult(
+        return _computed_result(
+            binding,
             "infinity",
             genus,
             False,
@@ -485,7 +886,8 @@ def _real_deficiency(
             },
             certificate={**root_certificate, **model},
         )
-    return DeficiencyResult(
+    return _computed_result(
+        binding,
         "infinity",
         genus,
         True,
@@ -774,6 +1176,7 @@ def _odd_common_homogeneous_factor_data(
 
 
 def _poonen_stoll_odd_prime(
+    binding: Mapping[str, Any],
     genus: int,
     prime: int,
     branch: list[int],
@@ -787,7 +1190,8 @@ def _poonen_stoll_odd_prime(
     normalized = [value // (prime**removed) for value in branch]
     normalized = _trim(normalized)
     if _degree(normalized) < projective_degree:
-        return DeficiencyResult(
+        return _computed_result(
+            binding,
             prime,
             genus,
             False,
@@ -810,7 +1214,8 @@ def _poonen_stoll_odd_prime(
         **dict(model_certificate),
     }
     if not bool(exceptional["exceptional"]):
-        return DeficiencyResult(
+        return _computed_result(
+            binding,
             prime,
             genus,
             False,
@@ -852,7 +1257,8 @@ def _poonen_stoll_odd_prime(
         **common_factor,
     }
     if not bool(common_factor["has_odd_degree_common_factor"]):
-        return DeficiencyResult(
+        return _computed_result(
+            binding,
             prime,
             genus,
             True,
@@ -864,7 +1270,8 @@ def _poonen_stoll_odd_prime(
             },
             certificate=base_certificate,
         )
-    return DeficiencyResult(
+    return _computed_result(
+        binding,
         prime,
         genus,
         None,
@@ -877,8 +1284,11 @@ def _poonen_stoll_odd_prime(
     )
 
 
-def _odd_genus_witness(place: Any, genus: int) -> DeficiencyResult:
-    return DeficiencyResult(
+def _odd_genus_witness(
+    binding: Mapping[str, Any], place: Any, genus: int
+) -> DeficiencyResult:
+    return _computed_result(
+        binding,
         place,
         genus,
         False,
@@ -893,19 +1303,78 @@ def _odd_genus_witness(place: Any, genus: int) -> DeficiencyResult:
     )
 
 
+def _local_reduction_payload(curve: Any, reduction: Any) -> dict[str, Any]:
+    binding = _curve_binding(curve)
+    return {
+        "schema": LOCAL_REDUCTION_SCHEMA,
+        **binding,
+        "prime": int(reduction.prime),
+        "genus": int(reduction.genus),
+        "coefficients": tuple(int(value) for value in reduction.coefficients),
+        "conductor_exponent": int(reduction.conductor_exponent),
+        "reduction_type": str(reduction.reduction_type),
+        "curve_good_reduction": bool(reduction.curve_good_reduction),
+        "jacobian_good_reduction": bool(reduction.jacobian_good_reduction),
+        "semistable": reduction.semistable,
+        "toric_rank": int(reduction.toric_rank),
+        "backend": str(reduction.backend),
+        "local_root_number": int(reduction.local_root_number),
+        "upstream_certificate": _thaw(_freeze(reduction.certificate)),
+    }
+
+
+def _require_local_reduction_type(reduction: Any) -> None:
+    module = __import__(
+        "sagejs.hyperelliptic_curves.bad_reduction", fromlist=["LocalReductionData"]
+    )
+    if not isinstance(reduction, module.LocalReductionData):
+        raise TypeError("reduction must be a recognized LocalReductionData certificate")
+    if getattr(reduction, "certified", None) is not True:
+        raise ArithmeticError("the supplied LocalReductionData is not certified")
+
+
+def _verified_supplied_local_reduction(
+    curve: Any, prime: int, algorithm: str, reduction: Any
+) -> Any:
+    _require_local_reduction_type(reduction)
+    if int(reduction.prime) != prime or int(reduction.genus) != int(curve.genus()):
+        raise ArithmeticError("the LocalReductionData has the wrong genus or place")
+    # LocalReductionData predates immutable certificate records and is mutable.
+    # Recompute on an exact fresh model so a poisoned per-curve cache cannot
+    # replay its own mutation.
+    replay = _fresh_curve(curve).local_reduction(prime, algorithm)
+    _require_local_reduction_type(replay)
+    if _canonical_json(_local_reduction_payload(curve, reduction)) != _canonical_json(
+        _local_reduction_payload(curve, replay)
+    ):
+        raise ArithmeticError("the supplied LocalReductionData failed exact replay")
+    return replay
+
+
 def _result_from_reduction(
     curve: Any,
     prime: int,
     reduction: Any,
     model_certificate: Mapping[str, Any],
+    *,
+    _token: Any = None,
 ) -> DeficiencyResult | None:
+    if _token is not _CERTIFIED_TOKEN:
+        raise TypeError("local-reduction promotion is internal to certified replay")
+    _require_local_reduction_type(reduction)
     genus = int(curve.genus())
-    if int(reduction.prime) != prime:
-        raise ValueError(
-            "the supplied local-reduction certificate is for another prime"
+    if int(reduction.prime) != prime or int(reduction.genus) != genus:
+        raise ArithmeticError(
+            "the local-reduction certificate has the wrong place/genus"
         )
+    binding = _curve_binding(curve)
+    bound_model = {
+        **dict(model_certificate),
+        "verified_local_reduction": _local_reduction_payload(curve, reduction),
+    }
     if bool(reduction.curve_good_reduction):
-        return DeficiencyResult(
+        return _computed_result(
+            binding,
             prime,
             genus,
             False,
@@ -919,7 +1388,7 @@ def _result_from_reduction(
                 "reduction_type": str(reduction.reduction_type),
                 "curve_good_reduction": True,
                 "local_reduction_backend": str(reduction.backend),
-                **dict(model_certificate),
+                **bound_model,
             },
         )
     certificate = dict(reduction.certificate)
@@ -927,7 +1396,8 @@ def _result_from_reduction(
     if reduction_type == "semistable_split_cluster":
         roots = certificate.get("rational_roots", [])
         if roots:
-            return DeficiencyResult(
+            return _computed_result(
+                binding,
                 prime,
                 genus,
                 False,
@@ -941,11 +1411,12 @@ def _result_from_reduction(
                     "reduction_type": reduction_type,
                     "local_reduction_backend": str(reduction.backend),
                     "cluster_picture": certificate.get("cluster_picture"),
-                    **dict(model_certificate),
+                    **bound_model,
                 },
             )
     if reduction_type == "semistable_nodal":
-        return DeficiencyResult(
+        return _computed_result(
+            binding,
             prime,
             genus,
             False,
@@ -962,7 +1433,7 @@ def _result_from_reduction(
                     "special_fibre_factorization"
                 ),
                 "local_reduction_backend": str(reduction.backend),
-                **dict(model_certificate),
+                **bound_model,
             },
         )
     if reduction_type == "semistable_nodal_two_components":
@@ -975,10 +1446,11 @@ def _result_from_reduction(
             "component_orbit_length": component_orbit,
             "component_multiplicity": 1,
             "local_reduction_backend": str(reduction.backend),
-            **dict(model_certificate),
+            **bound_model,
         }
         if sign == 1:
-            return DeficiencyResult(
+            return _computed_result(
+                binding,
                 prime,
                 genus,
                 False,
@@ -991,7 +1463,8 @@ def _result_from_reduction(
                 certificate=data,
             )
         if genus == 2:
-            return DeficiencyResult(
+            return _computed_result(
+                binding,
                 prime,
                 genus,
                 None,
@@ -1008,6 +1481,7 @@ def _result_from_reduction(
         normalized = certificate.get("normalized_branch_coefficients_ascending")
         if normalized is not None:
             return _poonen_stoll_odd_prime(
+                binding,
                 genus,
                 prime,
                 [int(value) for value in normalized],
@@ -1015,7 +1489,7 @@ def _result_from_reduction(
                     "reduction_type": reduction_type,
                     "almost_good_type": certificate.get("almost_good_type"),
                     "local_reduction_backend": str(reduction.backend),
-                    **dict(model_certificate),
+                    **bound_model,
                 },
                 source="Maistret--Sutherland normalized almost-good model",
             )
@@ -1063,16 +1537,24 @@ def local_deficiency(
     _require_rational_curve(curve)
     normalized_place = _normalize_place(place)
     genus = int(curve.genus())
+    binding = _curve_binding(curve)
     if genus not in [2, 3]:
         raise NotImplementedError("only genus-2 and genus-3 curves are supported")
+    if normalized_place == "infinity" and reduction is not None:
+        raise TypeError("a finite LocalReductionData cannot certify the real place")
+    if normalized_place != "infinity" and reduction is not None:
+        reduction = _verified_supplied_local_reduction(
+            curve, int(normalized_place), algorithm, reduction
+        )
     if genus % 2 == 1:
-        return _odd_genus_witness(normalized_place, genus)
+        return _odd_genus_witness(binding, normalized_place, genus)
     f_values, h_values, branch, model = _integer_model(curve)
     if normalized_place == "infinity":
-        return _real_deficiency(genus, branch, model)
+        return _real_deficiency(binding, genus, branch, model)
     prime = int(normalized_place)
     if _degree(branch) < 2 * genus + 2:
-        return DeficiencyResult(
+        return _computed_result(
+            binding,
             prime,
             genus,
             False,
@@ -1081,12 +1563,15 @@ def local_deficiency(
             certificate={"branch_degree": _degree(branch), **model},
         )
     if reduction is not None:
-        from_reduction = _result_from_reduction(curve, prime, reduction, model)
+        from_reduction = _result_from_reduction(
+            curve, prime, reduction, model, _token=_CERTIFIED_TOKEN
+        )
         if from_reduction is not None and bool(reduction.curve_good_reduction):
             return from_reduction
     integral_point = _small_integral_x_witness(prime, branch)
     if integral_point is not None:
-        return DeficiencyResult(
+        return _computed_result(
+            binding,
             prime,
             genus,
             False,
@@ -1096,7 +1581,8 @@ def local_deficiency(
         )
     point = _hensel_point_witness(prime, f_values, h_values, branch)
     if point is not None:
-        return DeficiencyResult(
+        return _computed_result(
+            binding,
             prime,
             genus,
             False,
@@ -1111,6 +1597,7 @@ def local_deficiency(
     direct: DeficiencyResult | None = None
     if prime != 2:
         direct = _poonen_stoll_odd_prime(
+            binding,
             genus,
             prime,
             branch,
@@ -1122,7 +1609,8 @@ def local_deficiency(
     reduction_error: dict[str, Any] | None = None
     if reduction is None:
         try:
-            reduction = curve.local_reduction(prime, algorithm)
+            reduction = _fresh_curve(curve).local_reduction(prime, algorithm)
+            _require_local_reduction_type(reduction)
         except (ArithmeticError, NotImplementedError) as error:
             reduction_error = {
                 "type": type(error).__name__,
@@ -1130,18 +1618,18 @@ def local_deficiency(
                 "diagnostics": getattr(error, "diagnostics", None),
             }
     if reduction is not None:
-        from_reduction = _result_from_reduction(curve, prime, reduction, model)
+        from_reduction = _result_from_reduction(
+            curve, prime, reduction, model, _token=_CERTIFIED_TOKEN
+        )
         if from_reduction is not None and from_reduction.certified:
             return from_reduction
         if direct is None and from_reduction is not None:
             direct = from_reduction
     certificate = {} if direct is None else dict(direct.certificate)
     if reduction is not None:
-        certificate["local_reduction"] = {
-            "reduction_type": str(reduction.reduction_type),
-            "semistable": reduction.semistable,
-            "backend": str(reduction.backend),
-        }
+        certificate["verified_local_reduction"] = _local_reduction_payload(
+            curve, reduction
+        )
     if reduction_error is not None:
         certificate["local_reduction_error"] = reduction_error
     if direct is not None:
@@ -1158,7 +1646,8 @@ def local_deficiency(
             "the available odd-prime local-reduction data does not determine the index"
         )
         theorem = "no applicable certified finite-place deficiency theorem"
-    return DeficiencyResult(
+    return _computed_result(
+        binding,
         prime,
         genus,
         None,
@@ -1181,11 +1670,79 @@ def is_deficient(
     ).require_decision()
 
 
+def _fresh_curve(curve: Any) -> Any:
+    f_value, h_value = curve.hyperelliptic_polynomials()
+    model = __import__(
+        "sagejs.hyperelliptic_curves.model", fromlist=["HyperellipticCurve"]
+    )
+    return model.HyperellipticCurve(f_value, h_value)
+
+
+def _global_reduction_payload(curve: Any, reduction: Any) -> dict[str, Any]:
+    module = __import__(
+        "sagejs.hyperelliptic_curves.global_arithmetic",
+        fromlist=["GlobalReductionData"],
+    )
+    if not isinstance(reduction, module.GlobalReductionData):
+        raise TypeError("global reduction must be recognized GlobalReductionData")
+    if getattr(reduction, "certified", None) is not True:
+        raise ArithmeticError("the GlobalReductionData is not certified")
+    binding = _curve_binding(curve)
+    return {
+        "schema": "sagejs.hyperelliptic-deficiency-upstream-global-reduction/v1",
+        **binding,
+        "genus": int(reduction.genus),
+        "candidate_primes": tuple(int(p) for p in reduction.candidate_primes),
+        "bad_primes": tuple(int(p) for p in reduction.bad_primes),
+        "conductor": int(reduction.conductor),
+        "finite_root_number": int(reduction.finite_root_number),
+        "archimedean_root_number": int(reduction.archimedean_root_number),
+        "root_number": int(reduction.root_number),
+        "candidate_local_data": tuple(
+            _local_reduction_payload(curve, row)
+            for row in reduction.candidate_local_data
+        ),
+        "upstream_certificate": _thaw(_freeze(reduction.certificate)),
+    }
+
+
+def _compute_exhaustive_bad_primes_certificate(
+    curve: Any,
+) -> ExhaustiveBadPrimesCertificate:
+    _require_rational_curve(curve)
+    fresh = _fresh_curve(curve)
+    reduction = fresh.global_reduction()
+    binding = _curve_binding(curve)
+    payload = _global_reduction_payload(fresh, reduction)
+    # The fresh clone has the same exact binding, but retain the caller's
+    # canonical payload so replay explicitly targets that object model.
+    if payload["curve_fingerprint"] != binding["curve_fingerprint"]:
+        raise ArithmeticError("fresh global reduction changed the exact curve model")
+    return ExhaustiveBadPrimesCertificate(
+        int(curve.genus()),
+        reduction.bad_primes,
+        payload,
+        curve_model=binding["curve_model"],
+        curve_fingerprint=str(binding["curve_fingerprint"]),
+        _token=_CERTIFIED_TOKEN,
+    )
+
+
+def _verified_local_result(curve: Any, result: Any, algorithm: str) -> DeficiencyResult:
+    if not isinstance(result, DeficiencyResult):
+        raise TypeError("local_results must contain DeficiencyResult objects")
+    _check_curve_binding(curve, result.curve_model, result.curve_fingerprint)
+    if result.genus != int(curve.genus()):
+        raise ArithmeticError("a supplied local result has the wrong genus")
+    result.verify(curve, algorithm)
+    return result
+
+
 def global_deficiency_diagnostic(
     curve: Any,
     *,
     bad_primes: Iterable[Any] | None = None,
-    bad_primes_certificate: Any = None,
+    bad_primes_certificate: ExhaustiveBadPrimesCertificate | None = None,
     local_results: Iterable[DeficiencyResult] = (),
     algorithm: str = "auto",
     canonical_principal_polarization: bool = False,
@@ -1206,11 +1763,29 @@ def global_deficiency_diagnostic(
         raise TypeError("sha_finite must be true, false, or None")
     _require_rational_curve(curve)
     genus = int(curve.genus())
+    binding = _curve_binding(curve)
     if genus not in [2, 3]:
         raise NotImplementedError("only genus-2 and genus-3 curves are supported")
-    supplied = {_normalize_place(result.place): result for result in local_results}
+    supplied: dict[Any, DeficiencyResult] = {}
+    for raw_result in local_results:
+        result = _verified_local_result(curve, raw_result, algorithm)
+        place = _normalize_place(result.place)
+        if place in supplied:
+            raise ValueError("duplicate supplied local deficiency result")
+        supplied[place] = result
     if genus % 2 == 1:
-        result = supplied.get("infinity", _odd_genus_witness("infinity", genus))
+        for result in supplied.values():
+            if result.decision is not False:
+                raise ArithmeticError(
+                    "a supplied result contradicts odd-genus nondeficiency"
+                )
+        if bad_primes_certificate is not None:
+            if not isinstance(bad_primes_certificate, ExhaustiveBadPrimesCertificate):
+                raise TypeError(
+                    "bad_primes_certificate must be ExhaustiveBadPrimesCertificate"
+                )
+            bad_primes_certificate.verify(curve)
+        result = _odd_genus_witness(binding, "infinity", genus)
         return GlobalDeficiencyDiagnostic(
             genus,
             [result],
@@ -1218,38 +1793,65 @@ def global_deficiency_diagnostic(
             bad_primes_provenance="odd-genus hyperelliptic degree-2 divisor theorem",
             canonical_principal_polarization=canonical_principal_polarization,
             sha_finite=sha_finite,
+            curve_model=binding["curve_model"],
+            curve_fingerprint=str(binding["curve_fingerprint"]),
+            considered_bad_primes=(),
+            bad_primes_certificate=None,
+            _token=_CERTIFIED_TOKEN,
         )
 
     complete_bad_primes = False
     bad_prime_provenance = "not supplied"
     discovery_error = None
+    verified_bad_certificate = None
     if bad_primes is None:
+        if bad_primes_certificate is not None:
+            raise TypeError(
+                "omit bad_primes_certificate when requesting automatic discovery"
+            )
         try:
-            bad_primes = list(curve.bad_primes())
+            verified_bad_certificate = ExhaustiveBadPrimesCertificate.compute(curve)
+            bad_primes = list(verified_bad_certificate.bad_primes)
             complete_bad_primes = True
-            bad_prime_provenance = "curve.global_reduction().bad_primes"
+            bad_prime_provenance = "verified:" + _fingerprint(
+                verified_bad_certificate.to_dict()
+            )
         except Exception as error:
             bad_primes = []
             discovery_error = type(error).__name__ + ": " + str(error)
             bad_prime_provenance = "global bad-prime discovery failed"
     else:
         bad_primes = list(bad_primes)
-        complete_bad_primes = bad_primes_certificate is not None
-        bad_prime_provenance = (
-            "uncertified supplied list"
-            if bad_primes_certificate is None
-            else str(bad_primes_certificate)
-        )
+        if bad_primes_certificate is None:
+            bad_prime_provenance = "uncertified supplied list"
+        else:
+            if not isinstance(bad_primes_certificate, ExhaustiveBadPrimesCertificate):
+                raise TypeError(
+                    "bad_primes_certificate must be ExhaustiveBadPrimesCertificate"
+                )
+            bad_primes_certificate.verify(curve)
+            verified_bad_certificate = bad_primes_certificate
+            complete_bad_primes = True
+            bad_prime_provenance = "verified:" + _fingerprint(
+                bad_primes_certificate.to_dict()
+            )
     normalized_bad_primes = sorted({_normalize_place(prime) for prime in bad_primes})
     if any(prime == "infinity" for prime in normalized_bad_primes):
         raise ValueError("bad_primes must contain finite primes only")
+    if verified_bad_certificate is not None and tuple(normalized_bad_primes) != tuple(
+        verified_bad_certificate.bad_primes
+    ):
+        raise ArithmeticError(
+            "the supplied bad-prime list does not match its exhaustive certificate"
+        )
     expected_places: list[Any] = ["infinity", *normalized_bad_primes]
+    unexpected = set(supplied) - set(expected_places)
+    if unexpected:
+        raise ValueError("supplied local results include an unexpected place")
     results = []
     for place in expected_places:
         if place in supplied:
             result = supplied[place]
-            if result.genus != genus:
-                raise ValueError("a supplied deficiency result has the wrong genus")
         else:
             result = local_deficiency(curve, place, algorithm)
         results.append(result)
@@ -1267,14 +1869,25 @@ def global_deficiency_diagnostic(
         bad_primes_provenance=bad_prime_provenance,
         canonical_principal_polarization=canonical_principal_polarization,
         sha_finite=sha_finite,
+        curve_model=binding["curve_model"],
+        curve_fingerprint=str(binding["curve_fingerprint"]),
+        considered_bad_primes=normalized_bad_primes,
+        bad_primes_certificate=verified_bad_certificate,
         reason="; ".join(reason_parts) if reason_parts else None,
+        _token=_CERTIFIED_TOKEN,
     )
 
 
 __all__ = [
+    "BAD_PRIMES_SCHEMA",
+    "CURVE_SCHEMA",
     "DeficiencyResult",
     "DeficiencyUnsupportedError",
+    "ExhaustiveBadPrimesCertificate",
+    "GLOBAL_SCHEMA",
     "GlobalDeficiencyDiagnostic",
+    "LOCAL_REDUCTION_SCHEMA",
+    "LOCAL_SCHEMA",
     "global_deficiency_diagnostic",
     "is_deficient",
     "local_deficiency",
