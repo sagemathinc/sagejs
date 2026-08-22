@@ -1,0 +1,194 @@
+{
+  "schema": "sagejs.hyperelliptic-bsd-oracles/v1",
+  "normalizations": {
+    "curve": "y^2 + h(x)y = f(x); coefficient arrays are ascending",
+    "leading_term": "Lstar=L^(r)(1)/r!",
+    "jacobian_quotient": "Lstar*torsion_order^2/(real_period*regulator*tamagawa_product)",
+    "generic_quotient": "Lstar*A_torsion_order*Adual_torsion_order/(real_period*regulator*tamagawa_product)",
+    "subgroup": "Reg(Gamma)=index^2*Reg(J(Q)); Q_Gamma=#Sha/index^2 conditional on BSD"
+  },
+  "sources": [
+    {
+      "id": "pari-2.18.1-alpha",
+      "software": "PARI/GP",
+      "version": "2.18.1.alpha",
+      "archive_url": "https://pari.math.u-bordeaux.fr/pub/pari/unstable/pari-2.18.1.alpha.tar.gz",
+      "archive_sha256": "f046c222db92e3f02120e2f4e74a5b0e1e6faaa248ff90f10c51b2daa0b3599c",
+      "script": "pari-2.18.1-alpha.gp",
+      "transcript": "expected-pari-2.18.1-alpha.txt",
+      "status": "independent-external-oracle",
+      "notes": [
+        "The selected rank-zero identities are a subset of PARI src/test/in/hyperellperiods.",
+        "The torsion field is a good-reduction gcd upper bound, not an exactness certificate.",
+        "The Tamagawa field is PARI's upstream test-helper product, not a Sage.js Frobenius-fixed component-group certificate."
+      ]
+    }
+  ],
+  "phase_coverage": [
+    {"phase": 0, "coverage": "partial-external", "evidence": ["pari-2.18.1-alpha", "exact-contract-vectors"], "missing": ["Neron model transformations", "Magma normalization"]},
+    {"phase": 1, "coverage": "partial-external", "evidence": ["five PARI rank-zero quotient identities", "one PARI rank-one derivative", "exact-contract-vectors"], "missing": ["positive-rank external regulator quotient"]},
+    {"phase": 2, "coverage": "external-oracle", "evidence": ["six PARI genus-2 real periods", "two PARI genus-3 real periods"], "missing": ["full period matrices", "Neron lattice indices"]},
+    {"phase": 3, "coverage": "partial-external", "evidence": ["PARI genus2red", "PARI upstream Tamagawa test helper"], "missing": ["rational Frobenius-fixed component groups", "nonsplit certificates"]},
+    {"phase": 4, "coverage": "partial-external", "evidence": ["PARI good-reduction gcd bounds"], "missing": ["explicit rational generators", "exactness certificates"]},
+    {"phase": 5, "coverage": "uncovered", "evidence": [], "missing": ["Magma or published genus-2 heights and regulators"]},
+    {"phase": 6, "coverage": "self-consistency-only", "evidence": ["exact subgroup-index scaling vector"], "missing": ["external saturation certificates"]},
+    {"phase": 7, "coverage": "uncovered", "evidence": [], "missing": ["Poonen-Stoll deficient-place fixtures", "Magma local-index decisions"]},
+    {"phase": 8, "coverage": "partial-external", "evidence": ["two PARI genus-3 real periods"], "missing": ["genus-3 heights", "finite intersections", "regulators"]}
+  ],
+  "pari_genus2": [
+    {
+      "id": "g2-N169-r0",
+      "model": {"f": ["0", "1", "1"], "h": ["1", "0", "1", "1"]},
+      "conductor": "169",
+      "root_number": 1,
+      "analytic_rank": 0,
+      "real_period": "32.667031090507096110005902370143563809",
+      "torsion_reduction_gcd": "19",
+      "pari_tamagawa_test_helper": "1",
+      "L1": "0.090490390832429629113589757258015412264",
+      "bsd_quotient_candidate": "1",
+      "bad_prime_reduction": ["13"]
+    },
+    {
+      "id": "g2-N196-r0",
+      "model": {"f": ["1", "3", "6", "7", "6", "3", "1"], "h": ["0", "1", "1"]},
+      "conductor": "196",
+      "root_number": 1,
+      "analytic_rank": 0,
+      "real_period": "11.777147840612829156092291191048779085",
+      "torsion_reduction_gcd": "36",
+      "pari_tamagawa_test_helper": "3",
+      "L1": "0.10904766519085952922307677028748869530",
+      "bsd_quotient_candidate": "4",
+      "bad_prime_reduction": ["2", "7"]
+    },
+    {
+      "id": "g2-N249-r0-quarter",
+      "model": {"f": ["0", "-1", "0", "1", "1", "3", "2"], "h": ["1", "0", "0", "1"]},
+      "conductor": "249",
+      "root_number": 1,
+      "analytic_rank": 0,
+      "real_period": "25.783703374249836805826663230386351080",
+      "torsion_reduction_gcd": "14",
+      "pari_tamagawa_test_helper": "4",
+      "L1": "0.13154950701147875921340134301217526069",
+      "bsd_quotient_candidate": "1/4",
+      "bad_prime_reduction": ["3", "83"]
+    },
+    {
+      "id": "g2-N277-r0-nine",
+      "model": {"f": ["-6", "11", "-19", "14", "-9", "1"], "h": ["1"]},
+      "conductor": "277",
+      "root_number": 1,
+      "analytic_rank": 0,
+      "real_period": "3.5784165137752872538928802498095740031",
+      "torsion_reduction_gcd": "15",
+      "pari_tamagawa_test_helper": "1",
+      "L1": "0.14313666055101149015571520999238296022",
+      "bsd_quotient_candidate": "9",
+      "bad_prime_reduction": ["277"]
+    },
+    {
+      "id": "g2-N295-r0-49",
+      "model": {"f": ["-38", "-109", "-50", "53", "15", "1"], "h": ["1", "1", "1"]},
+      "conductor": "295",
+      "root_number": 1,
+      "analytic_rank": 0,
+      "real_period": "0.59707347553287283623528285559846346231",
+      "torsion_reduction_gcd": "14",
+      "pari_tamagawa_test_helper": "1",
+      "L1": "0.14926836888321820905882071389961586578",
+      "bsd_quotient_candidate": "49",
+      "bad_prime_reduction": ["5", "59"]
+    },
+    {
+      "id": "g2-N587-positive-rank",
+      "model": {"f": ["0", "-1", "-1"], "h": ["1", "1", "0", "1"]},
+      "conductor": "587",
+      "root_number": -1,
+      "analytic_rank": 1,
+      "real_period": "29.510964061093545829670229541376376217",
+      "torsion_reduction_gcd": "1",
+      "pari_tamagawa_test_helper": "1",
+      "L1": "0.E-59",
+      "L1_derivative": "0.11135151106422023731910273620872358675",
+      "L1_second_derivative": "0.36582825320695766423396650856368042277",
+      "bad_prime_reduction": ["587"],
+      "missing_for_bsd_quotient": ["canonical regulator", "certified Mordell-Weil subgroup"]
+    }
+  ],
+  "pari_genus3_periods": [
+    {
+      "id": "g3-period-odd-1",
+      "model": {"f": ["0", "1", "1", "0", "-2", "-1", "1", "1"], "h": ["1", "0", "1"]},
+      "real_period": "69.081200998004027497103951240276008092"
+    },
+    {
+      "id": "g3-period-odd-2",
+      "model": {"f": ["0", "1", "-3", "4", "-3", "3", "-3", "1"], "h": ["0", "0", "1"]},
+      "real_period": "59.739112915049974362789703126695402159"
+    }
+  ],
+  "split_genus3_analytic": {
+    "id": "g3-x0-33",
+    "model": {"f": ["0", "1", "1", "1", "0", "1", "1", "1"], "h": ["1", "0", "1", "0", "1"]},
+    "decomposition": "J is Q-isogenous to J0(33); L(J,s)=L(11a,s)^2*L(33a,s)",
+    "factor_conductors": ["11", "11", "33"],
+    "factor_root_numbers": [1, 1, 1],
+    "conductor": "3993",
+    "root_number": 1,
+    "factor_L1": ["0.25384186085591068433775892335090946104", "0.25384186085591068433775892335090946104", "0.74733914774274361945565046577178519567"],
+    "L1": "0.048155313890050367774284460132097573114",
+    "factor_L2": ["0.54604803621501351833412666043344433859", "0.54604803621501351833412666043344433859", "1.0209929213327726028274996975749181632"],
+    "L2": "0.30442788483392158526227254665163655353",
+    "bsd_normalization_status": "analytic-only-isogeny-factorization",
+    "missing_corrections": ["integral period lattice", "component groups", "torsion", "isogeny index"]
+  },
+  "exact_contract_vectors": [
+    {
+      "id": "generic-dual-torsion-not-square",
+      "kind": "generic",
+      "rank": 1,
+      "leading_derivative": "30",
+      "factorial": "1",
+      "real_period": "5",
+      "regulator": "3",
+      "tamagawa_product": "2",
+      "A_torsion_order": "2",
+      "Adual_torsion_order": "7",
+      "expected_quotient": "14",
+      "oracle_status": "exact-contract-self-consistency"
+    },
+    {
+      "id": "jacobian-rank-two-factorial",
+      "kind": "principally-polarized-jacobian",
+      "rank": 2,
+      "leading_derivative": "120",
+      "factorial": "2",
+      "real_period": "3",
+      "regulator": "5",
+      "tamagawa_product": "2",
+      "torsion_order": "3",
+      "expected_sha_over_index_squared": "18",
+      "subgroup_index": "1",
+      "expected_analytic_sha": "18",
+      "oracle_status": "exact-contract-self-consistency"
+    },
+    {
+      "id": "jacobian-index-three-basis-change",
+      "kind": "principally-polarized-jacobian",
+      "rank": 2,
+      "leading_derivative": "120",
+      "factorial": "2",
+      "real_period": "3",
+      "regulator": "45",
+      "tamagawa_product": "2",
+      "torsion_order": "3",
+      "basis_change_determinant": "3",
+      "expected_sha_over_index_squared": "2",
+      "subgroup_index": "3",
+      "expected_analytic_sha": "18",
+      "oracle_status": "exact-contract-self-consistency"
+    }
+  ]
+}
