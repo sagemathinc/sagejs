@@ -44,6 +44,19 @@ function emittedFunction(source, name) {
   return source.slice(start, next + 3);
 }
 
+function emittedPrimeSourceFunction(source, name) {
+  const marker = `int sagejs_kernel_${name}(`;
+  let start = source.indexOf(marker);
+  while (start !== -1 && source.slice(start, source.indexOf("\n", start))
+    .endsWith(";")) {
+    start = source.indexOf(marker, start + marker.length);
+  }
+  assert.notEqual(start, -1, `missing emitted prime-source function ${name}`);
+  const next = source.indexOf("\n}\n", start);
+  assert.notEqual(next, -1, `unterminated prime-source function ${name}`);
+  return source.slice(start, next + 3);
+}
+
 test("fixed-width mutating helpers stay transitively in the word core", async () => {
   const ir = await lowerSource(witnessSource, witnessPath);
   const capabilities = wordPromotionCapabilities(ir.functions);
@@ -61,6 +74,15 @@ test("fixed-width mutating helpers stay transitively in the word core", async ()
   assert.match(emittedCopy, /word_clear_fixed_span\(/);
   assert.doesNotMatch(emittedCopy, /return SAGEJS_WORD_PROMOTE/);
   assert.doesNotMatch(emittedCopy, /native_clear_fixed_span|mpz_/);
+  const publicCaller = emittedPrimeSourceFunction(
+    core.source,
+    "transitive_word_helper_witness",
+  );
+  assert.match(publicCaller, /word_copy_fixed_span\(/);
+  assert.doesNotMatch(
+    publicCaller,
+    /sagejs_kernel_copy_fixed_span|native_copy_fixed_span|mpz_/,
+  );
 });
 
 test("fixed-width helper chaining agrees in dynamic, native, and CPython", async () => {
