@@ -262,8 +262,10 @@ x = R.gen()
 J = HyperellipticCurve(x**5 + x + 1, x**2 + 1).jacobian()
 assert J.order() == 32
 assert J.group_structure(algorithm="basis", seed=3) == (2, 2, 8)
+assert J.group_structure(algorithm="exhaustive", seed=3) == (2, 2, 8)
 G, phi = J.abelian_group(algorithm="basis", seed=3)
 assert G.invariants() == (2, 2, 8)
+assert len(phi._inverse_coordinates) == 32
 assert phi.verify()
 certificate = J.group_structure_certificate(algorithm="basis", seed=3)
 assert certificate["algorithms"]["group_law"] == "generalized-cantor-odd-degree.v1"

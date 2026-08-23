@@ -8,7 +8,8 @@ import sagejs as sage
 import sagejs.runtime as runtime
 from sagejs.hyperelliptic_curves.group_structure import (
     GroupOperationBudget,
-    JacobianResourceLimitError,
+    _cartesian_ranges,
+    _linear_combinations,
     _prepared_context,
     basis_from_generators,
     coordinates_in_basis,
@@ -385,38 +386,36 @@ def certified_abelian_group(
             tuple(sage.ZZ(0) for _value in invariant_values),
         )
     ]
-    # Retain the old complete table only for genuinely tiny groups. It remains
-    # an excellent independent oracle, while larger inverse queries use the
-    # bounded vector-DLP implementation lazily.
+    # For genuinely tiny groups, evaluate every certified basis coordinate in
+    # one prepared batch. Re-solving the same vector DLP independently for
+    # every enumerated divisor dominates explicit-map construction even for
+    # the 32-element rank-three fixture.
     if known_order <= min(max_elements, 512):
-        try:
-            elements = jacobian.points(max_elements, max_candidates)
-            budget = GroupOperationBudget(
-                max_group_operations,
-                max_baby_steps,
-                max_memory_bytes,
-                "auto",
+        budget = GroupOperationBudget(
+            max_group_operations,
+            max_baby_steps,
+            max_memory_bytes,
+            "auto",
+        )
+        budget.reserve_table(known_order)
+        coordinate_rows = tuple(
+            _cartesian_ranges([range(int(value)) for value in invariant_values])
+        )
+        divisors = _linear_combinations(coordinate_rows, generators, budget)
+        seen: dict[Any, Any] = {}
+        coordinate_table = []
+        for divisor, coordinates in zip(divisors, coordinate_rows, strict=True):
+            key = budget.element_key(divisor)
+            if key in seen:
+                if seen[key] != divisor:
+                    raise ArithmeticError("canonical divisor keys collided")
+                raise ArithmeticError("the certified basis coordinates are dependent")
+            seen[key] = divisor
+            coordinate_table.append(
+                (divisor, tuple(sage.ZZ(value) for value in coordinates))
             )
-            for element in elements:
-                coordinate_table.append(
-                    (
-                        element,
-                        coordinates_in_basis(
-                            element,
-                            generators,
-                            invariant_values,
-                            factors,
-                            budget,
-                        ),
-                    )
-                )
-        except JacobianResourceLimitError:
-            coordinate_table = [
-                (
-                    jacobian.zero(),
-                    tuple(sage.ZZ(0) for _value in invariant_values),
-                )
-            ]
+        if len(coordinate_table) != known_order:
+            raise ArithmeticError("the tiny-group coordinate table has wrong size")
     homomorphism = JacobianAbelianMap(
         group,
         jacobian,
