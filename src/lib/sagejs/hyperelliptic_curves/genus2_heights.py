@@ -93,21 +93,21 @@ def _copy_ball(value: RealBall) -> RealBall:
 def _ball_data(value: RealBall) -> tuple[Any, Any, int, bool, Any]:
     """Store a ball as immutable exact endpoints and proof metadata."""
     return (
-        value.lower,
-        value.upper,
+        (int(value.lower.numerator), int(value.lower.denominator)),
+        (int(value.upper.numerator), int(value.upper.denominator)),
         int(value.precision_bits),
         bool(value.rigorous),
-        _freeze_data(value.source),
+        _encode_data(value.source),
     )
 
 
 def _ball_from_data(data: tuple[Any, Any, int, bool, Any]) -> RealBall:
     return RealBall(
-        data[0],
-        data[1],
+        str(data[0][0]) + "/" + str(data[0][1]),
+        str(data[1][0]) + "/" + str(data[1][1]),
         precision_bits=data[2],
         rigorous=data[3],
-        source=_copy_data(data[4]),
+        source=_decode_data(data[4]),
     )
 
 
@@ -233,25 +233,6 @@ def _decode_data(value: Any) -> Any:
     if kind == "tuple":
         return tuple(_decode_data(entry) for entry in payload)
     return payload
-
-
-def _encoded_dict_replace(value: Any, key: str, replacement: Any) -> Any:
-    """Replace one encoded top-level dictionary value without deep decoding."""
-    kind, items = value
-    if kind != "dict":
-        raise TypeError("encoded proof diagnostics must be a dictionary")
-    encoded_replacement = _encode_data(replacement)
-    found = False
-    output = []
-    for stored_key, stored_value in items:
-        if stored_key == key:
-            output.append((stored_key, encoded_replacement))
-            found = True
-        else:
-            output.append((stored_key, stored_value))
-    if not found:
-        output.append((key, encoded_replacement))
-    return ("dict", tuple(output))
 
 
 def _freeze_data(value: Any) -> Any:
@@ -526,28 +507,6 @@ def _flatten_specialized_terms(
     return coefficients, exponents, term_counts, coefficient_bits
 
 
-def _height_model_binding(jacobian: Any) -> tuple[Any, ...]:
-    """Return an exact coefficient binding for an automatic bound proof."""
-    f_value = jacobian.f()
-    h_value = jacobian.h()
-    return (
-        str(f_value.parent().base_ring()),
-        int(jacobian.dimension()),
-        max(int(f_value.degree()), 2 * int(h_value.degree())),
-        tuple(_rational_pair(value) for value in f_value.list()),
-        tuple(_rational_pair(value) for value in h_value.list()),
-    )
-
-
-def _height_point_binding(divisor: Any) -> Any:
-    """Return compact exact Mumford coefficients for one pairing basis entry."""
-    u_value, v_value = divisor.uv()
-    return (
-        tuple(_rational_pair(value) for value in u_value.list()),
-        tuple(_rational_pair(value) for value in v_value.list()),
-    )
-
-
 def _validated_context_specialized_terms(context: Any) -> Any:
     """Replay specialization from the live model before trusting a context."""
     expected = classical_duplication_specialized_terms(context.jacobian)
@@ -608,10 +567,14 @@ class AutomaticHeightBounds(_SealedRecord):
         return cast(dict[str, Any], _copy_data(self._diagnostics))
 
     def copy(self) -> AutomaticHeightBounds:
-        return _copy_automatic_height_bound(self)
-
-    def _certified_for(self, jacobian: Any) -> bool:
-        return _automatic_height_bound_is_certified(self, jacobian)
+        # A copy carries theorem data, not an authentication token.  The
+        # closed proof-state wrapper below replays that data against the exact
+        # live model before it can support a rigorous calculation.
+        return AutomaticHeightBounds(
+            self.correction_lower,
+            self.correction_upper,
+            self.diagnostics,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1190,9 +1153,7 @@ def normalized_archimedean_correction(
             raise ValueError("target height accuracy must be positive")
     if bounds is None:
         bounds = automatic_height_bounds(jacobian, precision=precision)
-    if bounds.diagnostics.get(
-        "automatic_bound"
-    ) != "certified" or not bounds._certified_for(jacobian):
+    if bounds.diagnostics.get("automatic_bound") != "certified":
         raise Genus2HeightCapabilityError(
             "normalized real correction requires model-bound automatic bounds",
             bounds.diagnostics,
@@ -1475,8 +1436,6 @@ class HeightContext:
         self._automatic_bounds: dict[int, AutomaticHeightBounds | None] = {}
         self._automatic_bound_errors: dict[int, dict[str, Any]] = {}
         self._local_corrections: dict[Any, dict[str, Any]] = {}
-        self._finite_corrections: dict[Any, FiniteHeightCorrectionResult] = {}
-        self._archimedean_corrections: dict[Any, ArchimedeanHeightCorrectionResult] = {}
         self._canonical_height_entries = 0
         self._height_pairing_entries = 0
         self._chain_hits = 0
@@ -1607,22 +1566,16 @@ class HeightContext:
         precision: int,
         steps: int,
     ) -> FiniteHeightCorrectionResult:
-        """Return a cached certified finite correction."""
+        """Return a certified finite correction."""
         _validated_context_specialized_terms(self)
-        key = (self._key(divisor), int(precision), int(steps))
-        cached = self._finite_corrections.get(key)
-        if cached is not None:
-            self._finite_correction_hits += 1
-            return cached
+        self._key(divisor)
         self._finite_correction_misses += 1
-        answer = factorization_free_finite_correction(
+        return factorization_free_finite_correction(
             divisor,
             precision=int(precision),
             steps=int(steps),
             specialized_terms=self._classical_duplication_terms,
         )
-        self._finite_corrections[key] = answer
-        return answer
 
     def archimedean_correction(
         self,
@@ -1633,29 +1586,11 @@ class HeightContext:
         bounds: AutomaticHeightBounds,
         target_bits: int | None,
     ) -> ArchimedeanHeightCorrectionResult:
-        """Return a cached normalized real-place correction."""
-        if bounds.diagnostics.get(
-            "automatic_bound"
-        ) != "certified" or not bounds._certified_for(self.jacobian):
-            raise Genus2HeightCapabilityError(
-                "normalized real correction requires model-bound automatic bounds",
-                bounds.diagnostics,
-            )
+        """Return a certified normalized real-place correction."""
         _validated_context_specialized_terms(self)
-        key = (
-            self._key(divisor),
-            int(precision),
-            int(steps),
-            target_bits,
-            str(bounds.correction_lower.lower),
-            str(bounds.correction_upper.upper),
-        )
-        cached = self._archimedean_corrections.get(key)
-        if cached is not None:
-            self._archimedean_correction_hits += 1
-            return cached
+        self._key(divisor)
         self._archimedean_correction_misses += 1
-        answer = normalized_archimedean_correction(
+        return normalized_archimedean_correction(
             divisor,
             precision=int(precision),
             steps=int(steps),
@@ -1663,8 +1598,6 @@ class HeightContext:
             bounds=bounds,
             specialized_terms=self._classical_duplication_terms,
         )
-        self._archimedean_corrections[key] = answer
-        return answer
 
     def diagnostics(self) -> dict[str, Any]:
         return {
@@ -1689,10 +1622,10 @@ class HeightContext:
             "local_correction_cache_entries": len(self._local_corrections),
             "local_correction_cache_hits": self._local_correction_hits,
             "local_correction_cache_misses": self._local_correction_misses,
-            "finite_correction_cache_entries": len(self._finite_corrections),
+            "finite_correction_cache_entries": 0,
             "finite_correction_cache_hits": self._finite_correction_hits,
             "finite_correction_cache_misses": self._finite_correction_misses,
-            "archimedean_correction_cache_entries": len(self._archimedean_corrections),
+            "archimedean_correction_cache_entries": 0,
             "archimedean_correction_cache_hits": self._archimedean_correction_hits,
             "archimedean_correction_cache_misses": (
                 self._archimedean_correction_misses
@@ -1711,6 +1644,11 @@ class HeightContext:
                     if value is not None
                 )
             ),
+            "automatic_bound_proof_state": (
+                "closure-local-structural-model-precision-theorem-sources"
+            ),
+            "automatic_bound_proof_source_capacity": 512,
+            "automatic_bound_egress_registers_source": False,
             "automatic_bound_failures": {
                 str(precision): dict(value)
                 for precision, value in self._automatic_bound_errors.items()
@@ -2674,119 +2612,258 @@ def height_pairing(
 
 def _install_height_proof_state(
     automatic_bounds_function: Any,
+    normalized_archimedean_function: Any,
     canonical_height_function: Any,
     height_pairing_function: Any,
-) -> tuple[Any, Any, Any, Any, Any]:
+) -> tuple[Any, Any, Any, Any]:
     """Install non-exported proof registries and detached result caches.
 
     Python module-private names are a naming convention, not an authentication
-    boundary.  The mutable registries therefore live only in this closure; the
-    returned verifier can check an existing automatic bound but no returned
-    callable can register caller-chosen proof data.  Cached height and pairing
-    payloads contain detached exact endpoints and JSON-like diagnostics, and a
-    fresh sealed public record is reconstructed on every egress.
+    boundary.  The mutable registries and every decision that can preserve
+    `rigorous=True` therefore live only in this closure.  Automatic bounds are
+    authenticated structurally against a bounded set of theorem-source
+    payloads keyed by the complete live model and precision; public copies do
+    not consume proof-state capacity.  A missing source is safely rederived
+    from the captured theorem implementation.  Cached height and pairing
+    payloads contain only integer endpoint pairs and recursively primitive
+    diagnostics, and a fresh sealed public record is reconstructed on every
+    egress.
     """
-    automatic_records: list[tuple[Any, Any, Any, Any, Any, Any]] = []
+    automatic_sources: list[tuple[Any, int, Any]] = []
     canonical_records: list[tuple[Any, Any, Any, Any, Any, Any, Any]] = []
     pairing_records: list[tuple[Any, Any, Any, Any, Any, Any, Any]] = []
     maximum_records = 512
 
+    automatic_bounds_type = AutomaticHeightBounds
+    canonical_result_type = CanonicalHeightResult
+    pairing_result_type = HeightPairingResult
+    encoded_frozen_dict_type = _EncodedFrozenDict
+    frozen_dict_type = _FrozenDict
+    rational_pair_function = _rational_pair
+    specialized_terms_function = classical_duplication_specialized_terms
+    ball_from_data_function = _ball_from_data
+
+    def encode_primitive(value: Any) -> Any:
+        """Encode diagnostics without retaining caller-reachable containers."""
+        if isinstance(value, encoded_frozen_dict_type):
+            return (
+                "dict",
+                tuple(
+                    (key, encode_primitive(decode_primitive(entry)))
+                    for key, entry in value._encoded_items
+                ),
+            )
+        if isinstance(value, frozen_dict_type):
+            return (
+                "dict",
+                tuple((key, encode_primitive(entry)) for key, entry in value.items()),
+            )
+        if isinstance(value, dict):
+            return (
+                "dict",
+                tuple((key, encode_primitive(entry)) for key, entry in value.items()),
+            )
+        if isinstance(value, (tuple, list)):
+            return ("tuple", tuple(encode_primitive(entry) for entry in value))
+        if value is None or isinstance(value, (bool, int, str)):
+            return ("scalar", value)
+        # Height diagnostics are specified to be JSON-like.  Reject an
+        # unexpected mutable scalar rather than retaining it in proof state.
+        raise TypeError("height proof diagnostics must contain primitive data")
+
+    def decode_primitive(value: Any) -> Any:
+        kind, payload = value
+        if kind == "dict":
+            return {key: decode_primitive(entry) for key, entry in payload}
+        if kind == "tuple":
+            return tuple(decode_primitive(entry) for entry in payload)
+        return payload
+
+    def replace_encoded_dictionary(value: Any, key: str, replacement: Any) -> Any:
+        kind, items = value
+        if kind != "dict":
+            raise TypeError("encoded proof diagnostics must be a dictionary")
+        encoded_replacement = encode_primitive(replacement)
+        output = []
+        found = False
+        for stored_key, stored_value in items:
+            if stored_key == key:
+                output.append((stored_key, encoded_replacement))
+                found = True
+            else:
+                output.append((stored_key, stored_value))
+        if not found:
+            output.append((key, encoded_replacement))
+        return ("dict", tuple(output))
+
+    def model_binding(jacobian: Any) -> tuple[Any, ...]:
+        f_value = jacobian.f()
+        h_value = jacobian.h()
+        return (
+            str(f_value.parent().base_ring()),
+            int(jacobian.dimension()),
+            max(int(f_value.degree()), 2 * int(h_value.degree())),
+            tuple(rational_pair_function(value) for value in f_value.list()),
+            tuple(rational_pair_function(value) for value in h_value.list()),
+        )
+
+    def point_binding(divisor: Any) -> Any:
+        u_value, v_value = divisor.uv()
+        return (
+            tuple(rational_pair_function(value) for value in u_value.list()),
+            tuple(rational_pair_function(value) for value in v_value.list()),
+        )
+
+    def validated_context_terms(context: Any) -> Any:
+        expected = specialized_terms_function(context.jacobian)
+        if context._classical_duplication_terms != expected:
+            raise Genus2HeightCapabilityError(
+                "cached Flynn tables do not match the exact Jacobian model",
+                {"specialized_quartics": "rejected-mutated-height-context"},
+            )
+        return expected
+
     def detached_ball_data(data: Any) -> tuple[Any, Any, int, bool, Any]:
-        return (data[0], data[1], int(data[2]), bool(data[3]), _copy_data(data[4]))
+        return (
+            (int(data[0][0]), int(data[0][1])),
+            (int(data[1][0]), int(data[1][1])),
+            int(data[2]),
+            bool(data[3]),
+            encode_primitive(decode_primitive(data[4])),
+        )
 
     def bound_payload(bound: AutomaticHeightBounds) -> tuple[Any, Any, Any]:
         return (
             detached_ball_data(bound._correction_lower_data),
             detached_ball_data(bound._correction_upper_data),
-            _copy_data(bound._diagnostics),
+            encode_primitive(bound._diagnostics),
         )
 
-    def bound_payload_matches(bound: AutomaticHeightBounds, payload: Any) -> bool:
-        return (
-            detached_ball_data(bound._correction_lower_data) == payload[0]
-            and detached_ball_data(bound._correction_upper_data) == payload[1]
-            and _copy_data(bound._diagnostics) == payload[2]
-        )
-
-    def register_bound(bound: AutomaticHeightBounds, jacobian: Any) -> None:
-        automatic_records.append(
-            (
-                bound,
-                jacobian,
-                _freeze_data(_height_model_binding(jacobian)),
-                *bound_payload(bound),
-            )
-        )
-        if len(automatic_records) > maximum_records:
-            automatic_records.pop(0)
-
-    def matching_bound_record(bound: AutomaticHeightBounds) -> Any:
-        for record in reversed(automatic_records):
-            if record[0] is bound:
+    def source_record(binding: Any, precision: int) -> Any:
+        for record in reversed(automatic_sources):
+            if record[0] == binding and record[1] == precision:
                 return record
         return None
 
+    def register_source(
+        bound: AutomaticHeightBounds, jacobian: Any, precision: int
+    ) -> Any:
+        binding = model_binding(jacobian)
+        payload = bound_payload(bound)
+        diagnostics = decode_primitive(payload[2])
+        if (
+            diagnostics.get("automatic_bound") != "certified"
+            or int(diagnostics.get("precision_bits", -1)) != precision
+            or not payload[0][3]
+            or not payload[1][3]
+        ):
+            raise Genus2HeightCapabilityError(
+                "automatic height-bound theorem returned an invalid proof payload",
+                {"automatic_bound": "rejected-invalid-theorem-payload"},
+            )
+        for index, record in enumerate(automatic_sources):
+            if record[0] == binding and record[1] == precision:
+                automatic_sources[index] = (binding, precision, payload)
+                return payload
+        automatic_sources.append((binding, precision, payload))
+        if len(automatic_sources) > maximum_records:
+            automatic_sources.pop(0)
+        return payload
+
+    def theorem_source(jacobian: Any, precision: int) -> Any:
+        binding = model_binding(jacobian)
+        record = source_record(binding, precision)
+        if record is not None:
+            return record[2]
+        derived = automatic_bounds_function(jacobian, precision=precision)
+        return register_source(derived, jacobian, precision)
+
     def bound_is_certified(bound: AutomaticHeightBounds, jacobian: Any) -> bool:
-        record = matching_bound_record(bound)
-        if record is None:
+        if not isinstance(bound, automatic_bounds_type):
             return False
-        payload = (record[3], record[4], record[5])
-        return (
-            record[1] is jacobian
-            and record[2] == _freeze_data(_height_model_binding(jacobian))
-            and bound_payload_matches(bound, payload)
-        )
+        try:
+            payload = bound_payload(bound)
+            diagnostics = decode_primitive(payload[2])
+            precision = int(diagnostics.get("precision_bits", -1))
+            if diagnostics.get("automatic_bound") != "certified" or precision < 16:
+                return False
+            return payload == theorem_source(jacobian, precision)
+        except Exception:
+            return False
 
     def restore_bound(payload: Any, jacobian: Any) -> AutomaticHeightBounds:
-        bound = AutomaticHeightBounds(
-            _ball_from_data(payload[0]),
-            _ball_from_data(payload[1]),
-            _copy_data(payload[2]),
+        candidate = automatic_bounds_type(
+            ball_from_data_function(payload[0]),
+            ball_from_data_function(payload[1]),
+            decode_primitive(payload[2]),
         )
-        register_bound(bound, jacobian)
-        return bound
-
-    def copy_bound(bound: AutomaticHeightBounds) -> AutomaticHeightBounds:
-        record = matching_bound_record(bound)
-        if record is not None and bound_is_certified(bound, record[1]):
-            return restore_bound((record[3], record[4], record[5]), record[1])
-        return AutomaticHeightBounds(
-            _ball_from_data(detached_ball_data(bound._correction_lower_data)),
-            _ball_from_data(detached_ball_data(bound._correction_upper_data)),
-            _copy_data(bound._diagnostics),
-        )
+        if not bound_is_certified(candidate, jacobian):
+            raise Genus2HeightCapabilityError(
+                "cached automatic bounds no longer match their exact theorem source",
+                {"automatic_bound": "rejected-proof-binding-mismatch"},
+            )
+        return candidate
 
     def wrapped_automatic_bounds(
         jacobian: Any, *, precision: int = 100
     ) -> AutomaticHeightBounds:
         answer = automatic_bounds_function(jacobian, precision=precision)
-        register_bound(answer, jacobian)
+        register_source(answer, jacobian, int(precision))
         return answer
+
+    def wrapped_normalized_archimedean_correction(
+        divisor: Any,
+        *,
+        precision: int = 80,
+        steps: int | None = None,
+        target_bits: int | None = None,
+        bounds: AutomaticHeightBounds | None = None,
+        specialized_terms: Any = None,
+    ) -> ArchimedeanHeightCorrectionResult:
+        jacobian = divisor.parent()
+        checked_bounds = bounds
+        if checked_bounds is None:
+            checked_bounds = wrapped_automatic_bounds(
+                jacobian, precision=int(precision)
+            )
+        if not bound_is_certified(checked_bounds, jacobian):
+            raise Genus2HeightCapabilityError(
+                "normalized real correction requires model-bound automatic bounds",
+                checked_bounds.diagnostics,
+            )
+        return normalized_archimedean_function(
+            divisor,
+            precision=precision,
+            steps=steps,
+            target_bits=target_bits,
+            bounds=checked_bounds,
+            specialized_terms=specialized_terms,
+        )
 
     def canonical_payload(result: CanonicalHeightResult) -> tuple[Any, ...]:
         return (
             detached_ball_data(result._ball_data),
             str(result._status),
             int(result._steps),
-            _copy_data(result._provenance),
+            encode_primitive(result._provenance),
             None if result._bounds is None else bound_payload(result._bounds),
-            _encode_data(result._diagnostics),
+            encode_primitive(result._diagnostics),
         )
 
     def restore_canonical(
         payload: Any, jacobian: Any, context: HeightContext
     ) -> CanonicalHeightResult:
-        encoded_diagnostics = _encoded_dict_replace(
+        encoded_diagnostics = replace_encoded_dictionary(
             payload[5], "context", context.diagnostics()
         )
         bounds = None
         if payload[4] is not None:
             bounds = restore_bound(payload[4], jacobian)
-        return CanonicalHeightResult(
-            _ball_from_data(payload[0]),
+        return canonical_result_type(
+            ball_from_data_function(payload[0]),
             status=payload[1],
             steps=payload[2],
-            provenance=_copy_data(payload[3]),
+            provenance=decode_primitive(payload[3]),
             bounds=bounds,
             diagnostics={},
             _encoded_diagnostics=encoded_diagnostics,
@@ -2827,9 +2904,9 @@ def _install_height_proof_state(
             cache_context = cast(HeightContext, context)
             if cache_context.jacobian is not divisor.parent():
                 raise ValueError("the height context belongs to a different Jacobian")
-            expected_terms = _validated_context_specialized_terms(cache_context)
-            model_binding = _freeze_data(_height_model_binding(divisor.parent()))
-            point_binding = _freeze_data(_height_point_binding(divisor))
+            expected_terms = validated_context_terms(cache_context)
+            exact_model_binding = model_binding(divisor.parent())
+            exact_point_binding = point_binding(divisor)
             for record in reversed(canonical_records):
                 if (
                     record[0] is cache_context
@@ -2837,9 +2914,9 @@ def _install_height_proof_state(
                     and (record[1] is divisor or record[1] == divisor)
                 ):
                     if (
-                        record[3] != model_binding
-                        or record[4] != point_binding
-                        or record[5] != _freeze_data(expected_terms)
+                        record[3] != exact_model_binding
+                        or record[4] != exact_point_binding
+                        or record[5] != expected_terms
                     ):
                         raise Genus2HeightCapabilityError(
                             "cached canonical height derivation does not match the exact request",
@@ -2851,6 +2928,33 @@ def _install_height_proof_state(
                     cache_context._canonical_height_hits += 1
                     return restore_canonical(record[6], divisor.parent(), cache_context)
             cache_context._canonical_height_misses += 1
+        if (
+            context is not None
+            and height_difference_bound is None
+            and torsion_order is None
+        ):
+            cache_context = context
+            working_precision = max(
+                normalized_precision,
+                (
+                    normalized_target + 32
+                    if normalized_target is not None
+                    else normalized_precision
+                ),
+            )
+            candidate_bounds = cache_context.automatic_bounds(working_precision)
+            if candidate_bounds is not None and not bound_is_certified(
+                candidate_bounds, divisor.parent()
+            ):
+                raise Genus2HeightCapabilityError(
+                    "a rigorous height requires model-bound automatic bounds",
+                    candidate_bounds.diagnostics,
+                )
+            if eligible and candidate_bounds is None:
+                raise Genus2HeightCapabilityError(
+                    "the local height engine requires model-bound automatic bounds",
+                    {},
+                )
         answer = canonical_height_function(
             divisor,
             steps=steps,
@@ -2868,15 +2972,22 @@ def _install_height_proof_state(
             and answer.diagnostics.get("selected_algorithm") == "local"
         ):
             cache_context = cast(HeightContext, context)
-            expected_terms = _validated_context_specialized_terms(cache_context)
+            expected_terms = validated_context_terms(cache_context)
+            if answer._bounds is None or not bound_is_certified(
+                answer._bounds, divisor.parent()
+            ):
+                raise Genus2HeightCapabilityError(
+                    "a rigorous local height result lost its automatic-bound proof",
+                    {"canonical_height_cache": "rejected-unproved-result-bound"},
+                )
             canonical_records.append(
                 (
                     cache_context,
                     divisor,
                     parameters,
-                    _freeze_data(_height_model_binding(divisor.parent())),
-                    _freeze_data(_height_point_binding(divisor)),
-                    _freeze_data(expected_terms),
+                    model_binding(divisor.parent()),
+                    point_binding(divisor),
+                    expected_terms,
                     canonical_payload(answer),
                 )
             )
@@ -2895,17 +3006,20 @@ def _install_height_proof_state(
                 for row in result._matrix_data
             ),
             tuple(canonical_payload(value) for value in result._height_results),
-            _encode_data(result._diagnostics),
+            encode_primitive(result._diagnostics),
         )
 
     def restore_pairing(
         payload: Any, jacobian: Any, context: HeightContext
     ) -> HeightPairingResult:
-        encoded_diagnostics = _encoded_dict_replace(
+        encoded_diagnostics = replace_encoded_dictionary(
             payload[2], "context", context.diagnostics()
         )
-        return HeightPairingResult(
-            tuple(tuple(_ball_from_data(entry) for entry in row) for row in payload[0]),
+        return pairing_result_type(
+            tuple(
+                tuple(ball_from_data_function(entry) for entry in row)
+                for row in payload[0]
+            ),
             tuple(restore_canonical(value, jacobian, context) for value in payload[1]),
             {},
             _encoded_diagnostics=encoded_diagnostics,
@@ -2946,11 +3060,9 @@ def _install_height_proof_state(
             for value in values:
                 if value.parent() is not jacobian:
                     raise ValueError("all pairing points must lie on the same Jacobian")
-            expected_terms = _validated_context_specialized_terms(cache_context)
-            model_binding = _freeze_data(_height_model_binding(jacobian))
-            point_bindings = _freeze_data(
-                tuple(_height_point_binding(value) for value in values)
-            )
+            expected_terms = validated_context_terms(cache_context)
+            exact_model_binding = model_binding(jacobian)
+            point_bindings = tuple(point_binding(value) for value in values)
             for record in reversed(pairing_records):
                 if (
                     record[0] is cache_context
@@ -2958,9 +3070,9 @@ def _install_height_proof_state(
                     and record[1] == values
                 ):
                     if (
-                        record[3] != model_binding
+                        record[3] != exact_model_binding
                         or record[4] != point_bindings
-                        or record[5] != _freeze_data(expected_terms)
+                        or record[5] != expected_terms
                     ):
                         raise Genus2HeightCapabilityError(
                             "cached height pairing derivation does not match the exact request",
@@ -2985,17 +3097,15 @@ def _install_height_proof_state(
         if eligible and answer.rigorous:
             cache_context = cast(HeightContext, context)
             jacobian = values[0].parent()
-            expected_terms = _validated_context_specialized_terms(cache_context)
+            expected_terms = validated_context_terms(cache_context)
             pairing_records.append(
                 (
                     cache_context,
                     values,
                     parameters,
-                    _freeze_data(_height_model_binding(jacobian)),
-                    _freeze_data(
-                        tuple(_height_point_binding(value) for value in values)
-                    ),
-                    _freeze_data(expected_terms),
+                    model_binding(jacobian),
+                    tuple(point_binding(value) for value in values),
+                    expected_terms,
                     pairing_payload(answer),
                 )
             )
@@ -3009,21 +3119,20 @@ def _install_height_proof_state(
 
     return (
         wrapped_automatic_bounds,
+        wrapped_normalized_archimedean_correction,
         wrapped_canonical_height,
         wrapped_height_pairing,
-        bound_is_certified,
-        copy_bound,
     )
 
 
 (
     automatic_height_bounds,
+    normalized_archimedean_correction,
     canonical_height,
     height_pairing,
-    _automatic_height_bound_is_certified,
-    _copy_automatic_height_bound,
 ) = _install_height_proof_state(
     automatic_height_bounds,
+    normalized_archimedean_correction,
     canonical_height,
     height_pairing,
 )
