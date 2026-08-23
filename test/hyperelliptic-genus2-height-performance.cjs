@@ -265,10 +265,10 @@ assert height.ball.lower == height_again.ball.lower
 assert height.ball.upper == height_again.ball.upper
 assert height.diagnostics["achieved_enclosure_width_bits"] >= 16
 pairing = height_pairing(
-    [P, Q], steps=6, precision=80, algorithm="local", context=context
+    [P, Q], steps=6, precision=80, target_bits=32, algorithm="local", context=context
 )
 reg = regulator(
-    [P, Q], steps=6, precision=80, algorithm="local", context=context
+    [P, Q], steps=6, precision=80, target_bits=32, algorithm="local", context=context
 )
 assert pairing.rigorous
 assert reg.rigorous and reg.status == "certified-positive"
@@ -276,6 +276,94 @@ diagnostics = context.diagnostics()
 assert diagnostics["finite_correction_cache_hits"] > 0
 assert diagnostics["archimedean_correction_cache_hits"] > 0
 assert diagnostics["height_pairing_cache_hits"] == 1
+target_key = (tuple([P, Q]), 6, 80, 32, "local")
+target_entry = context._height_pairings[target_key]
+other_points = tuple([P, P + Q])
+other_pairing = height_pairing(
+    other_points,
+    steps=6,
+    precision=80,
+    target_bits=32,
+    algorithm="local",
+    context=context,
+)
+other_key = (other_points, 6, 80, 32, "local")
+context._height_pairings[target_key] = context._height_pairings[other_key]
+cross_basis_transplant_rejected = False
+try:
+    height_pairing(
+        [P, Q],
+        steps=6,
+        precision=80,
+        target_bits=32,
+        algorithm="local",
+        context=context,
+    )
+except Genus2HeightCapabilityError:
+    cross_basis_transplant_rejected = True
+assert cross_basis_transplant_rejected
+context._height_pairings[target_key] = other_pairing
+bare_result_transplant_rejected = False
+try:
+    height_pairing(
+        [P, Q],
+        steps=6,
+        precision=80,
+        target_bits=32,
+        algorithm="local",
+        context=context,
+    )
+except Genus2HeightCapabilityError:
+    bare_result_transplant_rejected = True
+assert bare_result_transplant_rejected
+context._height_pairings[target_key] = target_entry
+C2 = HyperellipticCurve(x**5 + x + 1)
+J2 = C2.jacobian()
+P2 = J2([x, 1])
+context2 = HeightContext(J2)
+height_pairing(
+    [P2],
+    steps=6,
+    precision=80,
+    target_bits=32,
+    algorithm="local",
+    context=context2,
+)
+other_model_key = (tuple([P2]), 6, 80, 32, "local")
+context._height_pairings[target_key] = context2._height_pairings[other_model_key]
+cross_model_transplant_rejected = False
+try:
+    height_pairing(
+        [P, Q],
+        steps=6,
+        precision=80,
+        target_bits=32,
+        algorithm="local",
+        context=context,
+    )
+except Genus2HeightCapabilityError:
+    cross_model_transplant_rejected = True
+assert cross_model_transplant_rejected
+context._height_pairings[target_key] = target_entry
+tampered_tables = [list(table) for table in context._classical_duplication_terms]
+term = tampered_tables[0][0]
+tampered_tables[0][0] = (term[0] + 1,) + term[1:]
+context._classical_duplication_terms = tuple(
+    tuple(table) for table in tampered_tables
+)
+pairing_cache_tamper_rejected = False
+try:
+    height_pairing(
+        [P, Q],
+        steps=6,
+        precision=80,
+        target_bits=32,
+        algorithm="local",
+        context=context,
+    )
+except Genus2HeightCapabilityError:
+    pairing_cache_tamper_rejected = True
+assert pairing_cache_tamper_rejected
 [
     height.steps,
     height.diagnostics["achieved_enclosure_width_bits"] >= 16,
@@ -283,13 +371,17 @@ assert diagnostics["height_pairing_cache_hits"] == 1
     reg.status,
     diagnostics["finite_correction_cache_hits"] > 0,
     diagnostics["height_pairing_cache_hits"],
+    cross_basis_transplant_rejected,
+    bare_result_transplant_rejected,
+    cross_model_transplant_rejected,
+    pairing_cache_tamper_rejected,
 ]
 `,
       { timeout: 180_000 },
     );
     assert.match(
       result.repr,
-      /^\[\d+, True, True, 'certified-positive', True, 1\]$/,
+      /^\[\d+, True, True, 'certified-positive', True, 1, True, True, True, True\]$/,
     );
   } finally {
     await session.close();

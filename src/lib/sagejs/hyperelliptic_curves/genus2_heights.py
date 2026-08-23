@@ -455,6 +455,7 @@ def _flatten_specialized_terms(
 
 
 _AUTOMATIC_HEIGHT_BOUND_PROOF = object()
+_HEIGHT_PAIRING_CACHE_PROOF = object()
 
 
 def _height_model_binding(jacobian: Any) -> tuple[Any, ...]:
@@ -466,6 +467,48 @@ def _height_model_binding(jacobian: Any) -> tuple[Any, ...]:
         tuple(_rational_pair(f_value[index]) for index in range(6)),
         tuple(_rational_pair(h_value[index]) for index in range(4)),
     )
+
+
+def _height_point_binding(divisor: Any) -> Any:
+    """Return immutable exact model/Mumford data for one pairing basis entry."""
+    return _freeze_data(divisor_provenance(divisor))
+
+
+class _HeightPairingCacheEntry(_SealedRecord):
+    """A pairing result proof-bound to its model, ordered basis, and request."""
+
+    def __init__(
+        self,
+        model_binding: tuple[Any, ...],
+        point_bindings: tuple[Any, ...],
+        parameters: tuple[int, int, int | None, str],
+        result: HeightPairingResult,
+        *,
+        _proof_token: Any,
+    ) -> None:
+        self._proof_token = _proof_token
+        self._model_binding = _freeze_data(model_binding)
+        self._point_bindings = _freeze_data(point_bindings)
+        self._parameters = _freeze_data(parameters)
+        self._result = result
+        self._seal()
+
+    def _certified_for(
+        self,
+        jacobian: Any,
+        point_bindings: tuple[Any, ...],
+        parameters: tuple[int, int, int | None, str],
+    ) -> bool:
+        return (
+            self._proof_token is _HEIGHT_PAIRING_CACHE_PROOF
+            and self._model_binding == _freeze_data(_height_model_binding(jacobian))
+            and self._point_bindings == _freeze_data(point_bindings)
+            and self._parameters == _freeze_data(parameters)
+        )
+
+    @property
+    def result(self) -> HeightPairingResult:
+        return self._result
 
 
 def _scaled_tail_steps(bound: RealBall, target_bits: int) -> int:
@@ -1407,7 +1450,7 @@ class HeightContext:
         self._local_corrections: dict[Any, dict[str, Any]] = {}
         self._finite_corrections: dict[Any, FiniteHeightCorrectionResult] = {}
         self._archimedean_corrections: dict[Any, ArchimedeanHeightCorrectionResult] = {}
-        self._height_pairings: dict[Any, HeightPairingResult] = {}
+        self._height_pairings: dict[Any, _HeightPairingCacheEntry] = {}
         self._chain_hits = 0
         self._chain_misses = 0
         self._doublings = 0
@@ -2544,18 +2587,30 @@ def height_pairing(
     elif context.jacobian is not jacobian:
         raise ValueError("the height context belongs to a different Jacobian")
     cache_key = None
+    point_bindings = tuple(_height_point_binding(value) for value in values)
+    parameters = (
+        int(steps),
+        int(precision),
+        None if target_bits is None else int(target_bits),
+        str(algorithm),
+    )
     if height_difference_bound is None:
-        cache_key = (
-            values,
-            int(steps),
-            int(precision),
-            target_bits,
-            str(algorithm),
-        )
+        cache_key = (values,) + parameters
         cached = context._height_pairings.get(cache_key)
         if cached is not None:
+            if not isinstance(
+                cached, _HeightPairingCacheEntry
+            ) or not cached._certified_for(jacobian, point_bindings, parameters):
+                raise Genus2HeightCapabilityError(
+                    "cached height pairing proof does not match the exact request",
+                    {
+                        "height_pairing_cache": "rejected-proof-binding-mismatch",
+                        "ordered_basis_size": len(values),
+                        "parameters": parameters,
+                    },
+                )
             context._height_pairing_hits += 1
-            return cached
+            return cached.result
         context._height_pairing_misses += 1
     diagonal = tuple(
         canonical_height(
@@ -2610,7 +2665,13 @@ def height_pairing(
         },
     )
     if cache_key is not None:
-        context._height_pairings[cache_key] = answer
+        context._height_pairings[cache_key] = _HeightPairingCacheEntry(
+            _height_model_binding(jacobian),
+            point_bindings,
+            parameters,
+            answer,
+            _proof_token=_HEIGHT_PAIRING_CACHE_PROOF,
+        )
     return answer
 
 
