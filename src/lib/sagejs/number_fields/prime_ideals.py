@@ -909,6 +909,7 @@ class NumberFieldPrimeIdeal(NumberFieldIdeal):
             self._basis_rows = rows
             self._membership_inverse_cache = runtime.undefined
             self._is_integral_cache = runtime.undefined
+            self._norm_cache = runtime.undefined
             self._packed_basis_cache = runtime.undefined
         elif _candidate_token is not None:
             raise ValueError("invalid canonical prime-ideal candidate token")

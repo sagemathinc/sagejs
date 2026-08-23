@@ -1452,6 +1452,7 @@ class NumberFieldIdeal:
         # coordinate matrix is safe to compute lazily once per ideal.
         self._membership_inverse_cache = runtime.undefined
         self._is_integral_cache = runtime.undefined
+        self._norm_cache = runtime.undefined
         # Packed exact kernels consume the same immutable canonical HNF rows.
         # Cache their common-denominator integer representation lazily so
         # relation candidates do not repack every factor-base power.
@@ -1527,11 +1528,19 @@ class NumberFieldIdeal:
     def norm(self) -> Any:
         if self.is_zero():
             return 0
-        relative = self.basis_matrix() * self._order.basis_matrix().inverse()
-        determinant = relative.determinant()
-        if determinant < 0:
-            determinant = -determinant
-        return determinant
+        try:
+            cached = self._norm_cache
+        except AttributeError:
+            # A source checkout may reuse a runtime bootstrap built before
+            # this immutable cache slot was introduced.
+            cached = runtime.undefined
+        if cached is runtime.undefined:
+            relative = self.basis_matrix() * self._order._basis_inverse_matrix()
+            cached = relative.determinant()
+            if cached < 0:
+                cached = -cached
+            self._norm_cache = cached
+        return cached
 
     absolute_norm = norm
 

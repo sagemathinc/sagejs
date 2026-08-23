@@ -88,3 +88,29 @@ test("ideal closure replay shares one exact membership coordinate map", async ()
     await session.close();
   }
 });
+
+test("immutable ideal norms share their exact determinant", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "R.<x> = QQ[]\n" +
+            "K.<a> = NumberField(x^3 - x^2 - 6*x - 12)\n" +
+            "O = K.maximal_order()\n" +
+            "I = O.ideal(2)\n" +
+            "first = I.norm()\n" +
+            "I.basis_matrix = lambda: (_ for _ in ()).throw(AssertionError('recomputed'))\n" +
+            "second = I.norm()\n" +
+            "P = O.factor_rational_prime(2).prime_ideals()[0]\n" +
+            "prime_first = P.norm()\n" +
+            "P.basis_matrix = lambda: (_ for _ in ()).throw(AssertionError('recomputed'))\n" +
+            "[first, second, prime_first, P.norm()]",
+        )
+      ).repr,
+      "[8, 8, 2, 2]",
+    );
+  } finally {
+    await session.close();
+  }
+});
