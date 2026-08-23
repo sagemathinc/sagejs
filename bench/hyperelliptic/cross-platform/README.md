@@ -70,6 +70,15 @@ node bench/hyperelliptic/cross-platform/verify.cjs \
   bench/hyperelliptic/cross-platform/results/*.json
 ```
 
+Generate the human-readable table from the same primary and companion JSON
+receipts with:
+
+```sh
+node bench/hyperelliptic/cross-platform/report.cjs \
+  --output bench/hyperelliptic/cross-platform/results/report.md \
+  bench/hyperelliptic/cross-platform/results/*.json
+```
+
 Phase 10 also has a portable-artifact companion receipt. Run it from the same
 clean checkout after installing that exact commit's authenticated
 `packages/flint-wasm/dist` artifact:
@@ -86,5 +95,23 @@ digest mismatch. It also records Kummer Wasm throughput, artifact
 authentication/load, evaluator cancellation and recovery, checked source
 bounds, and the production package-load test. The standalone cell is labeled
 unavailable on native Windows because the current standalone harness links
-POSIX static archives; the separately compiled Windows native mode is still
-required by the primary receipt.
+POSIX static archives. It is also unavailable on macOS because its current
+standalone build emits GNU/ELF linker flags rejected by Mach-O `ld`. The
+separately compiled Windows and macOS native modes are still required by the
+primary receipt.
+
+When a test-only package correction lands after the mathematical source
+freeze, rerun just that smoke test without changing the recorded source
+commit:
+
+```sh
+SAGEJS_ROOT=/path/to/clean/frozen/checkout \
+node bench/hyperelliptic/cross-platform/rerun-package-smoke.cjs \
+  --input HOST-extras.json --output HOST-extras.json \
+  --expected-commit FROZEN_COMMIT --test-patch-commit TEST_COMMIT
+```
+
+The updater obtains the one test file from Git, runs it under a temporary name
+beside the frozen test, restores a clean checkout, and records the frozen test
+hash, overlay commit/hash, updater hash, command output, and status in the
+receipt. It rejects a dirty checkout or a failing corrected smoke test.
