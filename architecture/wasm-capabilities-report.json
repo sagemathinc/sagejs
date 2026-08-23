@@ -1,19 +1,19 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "2ac10653b29a62d45633e627405694937ee1304abbaaf138a4fa24348ee96a42",
+  "source_sha256": "cff0d943e1fe3d97e67f1f704b4e08be191776f5ec3c1f95e98f0e5d140e513d",
   "counts": {
-    "total": 958,
+    "total": 960,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
       "napi-export": 317,
-      "production-kernel": 38,
+      "production-kernel": 40,
       "runtime-intrinsic": 137,
       "specialist-capability": 25
     },
     "by_disposition": {
-      "compiled-source": 38,
+      "compiled-source": 40,
       "desktop-only": 14,
       "generated-wasm": 302,
       "portable-fallback": 560,
@@ -22,7 +22,7 @@
     "by_status": {
       "available": 516,
       "desktop-only": 14,
-      "fallback": 428
+      "fallback": 430
     }
   },
   "workflow_aliases": {
@@ -5832,6 +5832,32 @@
         "genus3-weil-candidate"
       ],
       "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:hyperelliptic-cantor-production",
+      "family": "hyperelliptic-cantor",
+      "disposition": "compiled-source",
+      "status": "fallback",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "hyperelliptic-jacobian-prepared-arithmetic",
+        "hyperelliptic-group-structure",
+        "hyperelliptic-torsion-and-saturation"
+      ],
+      "explanation": "Prepared packed generalized Cantor addition, arithmetic progressions, and signed scalar multiplication use the exact same-source fallback in the current WebAssembly release artifact; the next authenticated kernel pack will compile the proved odd-prime odd-degree envelope."
+    },
+    {
+      "id": "kernel:hyperelliptic-kummer-production",
+      "family": "hyperelliptic-kummer",
+      "disposition": "compiled-source",
+      "status": "fallback",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "genus2-prime-kummer"
+      ],
+      "explanation": "Packed genus-2 prime-field Kummer projection, duplication, and audited degenerate pseudo-addition use the exact same-source fallback in the current WebAssembly release artifact."
     },
     {
       "id": "kernel:number-field-composite-analysis-production",

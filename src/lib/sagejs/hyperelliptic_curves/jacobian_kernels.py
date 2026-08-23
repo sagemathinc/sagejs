@@ -36,7 +36,7 @@ def _poly_copy(
     source: uint64,
     length: uint64,
 ) -> uint64:
-    cleared = _poly_clear(store, target)
+    _cleared = _poly_clear(store, target)
     index = 0
     while index < length:
         store[target + index] = store[source + index]
@@ -62,7 +62,7 @@ def _poly_add(
     length = left_length
     if right_length > length:
         length = right_length
-    cleared = _poly_clear(store, target)
+    _cleared = _poly_clear(store, target)
     index = 0
     while index < length:
         value = 0
@@ -89,7 +89,7 @@ def _poly_sub(
     length = left_length
     if right_length > length:
         length = right_length
-    cleared = _poly_clear(store, target)
+    _cleared = _poly_clear(store, target)
     index = 0
     while index < length:
         value = 0
@@ -113,7 +113,7 @@ def _poly_mul(
     right_length: uint64,
     modulus: PrimeFieldModulus,
 ) -> uint64:
-    cleared = _poly_clear(store, target)
+    _cleared = _poly_clear(store, target)
     if left_length == 0 or right_length == 0:
         return 0
     length = left_length + right_length - 1
@@ -146,7 +146,7 @@ def _poly_scale(
     scalar: uint64,
     modulus: PrimeFieldModulus,
 ) -> uint64:
-    cleared = _poly_clear(store, target)
+    _cleared = _poly_clear(store, target)
     index = 0
     while index < length:
         store[target + index] = prime_mul(store[source + index], scalar, modulus)
@@ -167,8 +167,8 @@ def _poly_divrem(
     modulus: PrimeFieldModulus,
 ) -> uint64:
     """Return `32*quotient_length + remainder_length`."""
-    cleared = _poly_clear(store, quotient)
-    cleared = _poly_clear(store, remainder)
+    _cleared = _poly_clear(store, quotient)
+    _cleared = _poly_clear(store, remainder)
     if divisor_length == 0:
         return 1024
     index = 0
@@ -226,8 +226,8 @@ def _poly_xgcd(
     next_value = 784
     spare = 800
 
-    cleared = _poly_clear(store, old_r)
-    cleared = _poly_clear(store, r)
+    _cleared = _poly_clear(store, old_r)
+    _cleared = _poly_clear(store, r)
     index = 0
     while index < left_length:
         store[old_r + index] = store[left + index]
@@ -243,10 +243,10 @@ def _poly_xgcd(
     while r_length > 0 and store[r + r_length - 1] == 0:
         r_length -= 1
 
-    cleared = _poly_clear(store, old_s)
-    cleared = _poly_clear(store, s)
-    cleared = _poly_clear(store, old_t)
-    cleared = _poly_clear(store, t)
+    _cleared = _poly_clear(store, old_s)
+    _cleared = _poly_clear(store, s)
+    _cleared = _poly_clear(store, old_t)
+    _cleared = _poly_clear(store, t)
     store[old_s] = 1
     store[t] = 1
     old_s_length = 1
@@ -270,7 +270,7 @@ def _poly_xgcd(
 
         old_r_length = _poly_copy(store, spare, r, r_length)
         r_length = _poly_copy(store, r, remainder, remainder_length)
-        copied = _poly_copy(store, old_r, spare, old_r_length)
+        _copied = _poly_copy(store, old_r, spare, old_r_length)
 
         product_length = _poly_mul(
             store, product, quotient, quotient_length, s, s_length, modulus
@@ -280,7 +280,7 @@ def _poly_xgcd(
         )
         old_s_length = _poly_copy(store, spare, s, s_length)
         s_length = _poly_copy(store, s, next_value, next_length)
-        copied = _poly_copy(store, old_s, spare, old_s_length)
+        _copied = _poly_copy(store, old_s, spare, old_s_length)
 
         product_length = _poly_mul(
             store, product, quotient, quotient_length, t, t_length, modulus
@@ -290,11 +290,11 @@ def _poly_xgcd(
         )
         old_t_length = _poly_copy(store, spare, t, t_length)
         t_length = _poly_copy(store, t, next_value, next_length)
-        copied = _poly_copy(store, old_t, spare, old_t_length)
+        _copied = _poly_copy(store, old_t, spare, old_t_length)
 
-    cleared = _poly_clear(store, gcd_offset)
-    cleared = _poly_clear(store, left_coefficient)
-    cleared = _poly_clear(store, right_coefficient)
+    _cleared = _poly_clear(store, gcd_offset)
+    _cleared = _poly_clear(store, left_coefficient)
+    _cleared = _poly_clear(store, right_coefficient)
     if old_r_length == 0:
         return 0
     inverse = prime_inverse(store[old_r + old_r_length - 1], modulus)
@@ -386,7 +386,7 @@ def _reduce(
         numerator_length = _poly_add(
             store, numerator, h, h_length, v, v_length, modulus
         )
-        cleared = _poly_clear(store, square)
+        _cleared = _poly_clear(store, square)
         numerator_length = _poly_sub(
             store, square, square, 0, numerator, numerator_length, modulus
         )
@@ -408,7 +408,7 @@ def _reduce(
             return 0
     encoded = _poly_divrem(store, quotient, spare_v, v, v_length, u, u_length, modulus)
     v_length = encoded % 32
-    copied = _poly_copy(store, v, spare_v, v_length)
+    _copied = _poly_copy(store, v, spare_v, v_length)
     return u_length + 32 * v_length
 
 
@@ -425,8 +425,8 @@ def _unpack_row(
     checked_modulus = modulus + 0
     if degree > genus:
         return 0
-    cleared = _poly_clear(store, u)
-    cleared = _poly_clear(store, v)
+    _cleared = _poly_clear(store, u)
+    _cleared = _poly_clear(store, v)
     index = 0
     while index <= degree:
         value = rows[row_offset + 1 + index]
@@ -514,7 +514,7 @@ def _cantor_negate_one(
     while h_length > 0 and store[h + h_length - 1] == 0:
         h_length -= 1
     total_length = _poly_add(store, total, h, h_length, v, v_length, modulus)
-    cleared = _poly_clear(store, negative)
+    _cleared = _poly_clear(store, negative)
     index = 0
     while index < total_length:
         store[negative + index] = prime_sub(0, store[total + index], modulus)
@@ -608,14 +608,14 @@ def _cantor_add_one(
         return 0
 
     if u1_length == 1:
-        copied = _poly_copy(store, u3, u2, u2_length)
-        copied = _poly_copy(store, v3, v2, v2_length)
+        _copied = _poly_copy(store, u3, u2, u2_length)
+        _copied = _poly_copy(store, v3, v2, v2_length)
         if _pack_row(output, output_offset, store, u3, u2_length, v3, v2_length) != 0:
             return 5
         return 0
     if u2_length == 1:
-        copied = _poly_copy(store, u3, u1, u1_length)
-        copied = _poly_copy(store, v3, v1, v1_length)
+        _copied = _poly_copy(store, u3, u1, u1_length)
+        _copied = _poly_copy(store, v3, v1, v1_length)
         if _pack_row(output, output_offset, store, u3, u1_length, v3, v1_length) != 0:
             return 5
         return 0

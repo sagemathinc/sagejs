@@ -12611,6 +12611,7 @@
         "standalone smalljac and rforest bridges"
       ],
       "consumers": [
+        "bench/hyperelliptic/cross-platform/run.cjs",
         "packages/flint-wasm/test/hyperelliptic-smalljac.test.mjs",
         "packages/flint/test/hyperelliptic/rforest.cjs",
         "packages/flint/test/hyperelliptic/smalljac.cjs"
@@ -12678,6 +12679,7 @@
         "Sage.js JavaScript fallback"
       ],
       "consumers": [
+        "bench/hyperelliptic/cross-platform/run.cjs",
         "packages/flint-wasm/lazy-modules.mjs",
         "packages/flint-wasm/scripts/build-smalljac-toolchain.cjs",
         "packages/flint-wasm/scripts/wasm-toolchain.cjs",

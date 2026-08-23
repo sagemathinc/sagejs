@@ -532,6 +532,36 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "hyperelliptic-cantor-production",
+      "source": "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
+      "functions": [
+        "packed_cantor_add_batch",
+        "packed_cantor_progression_batch",
+        "packed_cantor_scalar_batch"
+      ],
+      "semantic_domain": "complete prepared generalized Cantor addition, arithmetic progressions, and signed scalar multiplication for genus-2/3 odd-degree one-infinity models over odd primes at most 2^32-1",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "magma", "reference-cantor"],
+      "benchmark": "bench:hyperelliptic-public-jacobian",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "hyperelliptic-kummer-production",
+      "source": "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
+      "functions": [
+        "genus2_kummer_project_batch",
+        "genus2_kummer_double_batch",
+        "genus2_kummer_degenerate_pseudo_add_batch"
+      ],
+      "semantic_domain": "packed genus-2 odd-quintic prime-field Kummer projection, duplication, and audited degenerate pseudo-addition for odd primes at most 2^32-1",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "cantor"],
+      "benchmark": "bench:hyperelliptic-genus2-kummer",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "genus3-weil-candidate-production",
       "source": "src/lib/sagejs/hyperelliptic_curves/genus3_candidate_kernel.py",
       "functions": [

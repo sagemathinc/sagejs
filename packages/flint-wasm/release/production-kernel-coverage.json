@@ -2,12 +2,12 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 38,
+    "registered_kernels": 40,
     "production_kernels": 31,
     "compiled_functions": 232,
     "unsupported_production_functions": 0,
-    "non_production_functions": 30,
-    "same_source_fallback_functions": 30
+    "non_production_functions": 36,
+    "same_source_fallback_functions": 36
   },
   "kernels": [
     {
@@ -161,6 +161,28 @@
       "fallback_functions": 0,
       "total_functions": 2,
       "fallback_reasons": []
+    },
+    {
+      "id": "hyperelliptic-cantor-production",
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 3,
+      "total_functions": 3,
+      "fallback_reasons": [
+        "tracked-production-artifact-predates-hyperelliptic-performance-kernels"
+      ]
+    },
+    {
+      "id": "hyperelliptic-kummer-production",
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 3,
+      "total_functions": 3,
+      "fallback_reasons": [
+        "tracked-production-artifact-predates-hyperelliptic-performance-kernels"
+      ]
     },
     {
       "id": "number-field-composite-analysis-production",

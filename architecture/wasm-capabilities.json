@@ -76,6 +76,18 @@
           "test/native-kernel.cjs"
         ]
       },
+      "hyperelliptic-native-kummer": {
+        "differential": true,
+        "paths": [
+          "test/hyperelliptic-native-kummer.cjs"
+        ]
+      },
+      "hyperelliptic-native-cantor": {
+        "differential": true,
+        "paths": [
+          "test/hyperelliptic-native-cantor.cjs"
+        ]
+      },
       "graph-components-wasm-differential": {
         "differential": true,
         "paths": [
@@ -10885,6 +10897,66 @@
         "total_functions": 6,
         "production_pack": true,
         "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:hyperelliptic-cantor-production",
+      "kind": "production-kernel",
+      "family": "hyperelliptic-cantor",
+      "source": "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "hyperelliptic-jacobian-prepared-arithmetic",
+        "hyperelliptic-group-structure",
+        "hyperelliptic-torsion-and-saturation"
+      ],
+      "tests": [
+        "hyperelliptic-native-cantor",
+        "production-kernel-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The full dynamic/native/CPython differential covers genus 2 and 3, generalized h, every genus-2 collision branch, signed 130-bit scalars, and one-boundary progressions. The current tracked Wasm artifact predates this kernel, so browsers use the exact same-source fallback until a new authenticated pack is checked in.",
+      "public_explanation": "Prepared packed generalized Cantor addition, arithmetic progressions, and signed scalar multiplication use the exact same-source fallback in the current WebAssembly release artifact; the next authenticated kernel pack will compile the proved odd-prime odd-degree envelope.",
+      "compiled_coverage": {
+        "compiled_functions": 0,
+        "fallback_functions": 3,
+        "total_functions": 3,
+        "production_pack": false,
+        "fallback_reasons": [
+          "tracked-production-artifact-predates-hyperelliptic-performance-kernels"
+        ]
+      }
+    },
+    {
+      "id": "kernel:hyperelliptic-kummer-production",
+      "kind": "production-kernel",
+      "family": "hyperelliptic-kummer",
+      "source": "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "genus2-prime-kummer"
+      ],
+      "tests": [
+        "hyperelliptic-native-kummer",
+        "production-kernel-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The production-pack differential compiles all 3 registered fixed-model Kummer functions with the same-source dynamic implementation as oracle. The current tracked Wasm artifact predates this kernel, so browsers use the exact fallback pending a new authenticated pack.",
+      "public_explanation": "Packed genus-2 prime-field Kummer projection, duplication, and audited degenerate pseudo-addition use the exact same-source fallback in the current WebAssembly release artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 0,
+        "fallback_functions": 3,
+        "total_functions": 3,
+        "production_pack": false,
+        "fallback_reasons": [
+          "tracked-production-artifact-predates-hyperelliptic-performance-kernels"
+        ]
       }
     },
     {

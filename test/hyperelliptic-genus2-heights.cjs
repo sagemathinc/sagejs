@@ -520,6 +520,7 @@ try:
         P,
         steps=8,
         precision=80,
+        algorithm="exact",
         context=HeightContext(J, max_exact_coordinate_bits=1024),
     )
 except Genus2HeightResourceLimitError as error:
