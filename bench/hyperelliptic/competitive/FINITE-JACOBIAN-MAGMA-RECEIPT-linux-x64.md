@@ -5,6 +5,15 @@ genus-3 Jacobian arithmetic over `GF(1009)`.  It was run from revision
 `ce048d403a2efa1ed3482c06d62ad2bb5d734a9e` on 2026-08-23 with the exact
 harness in `finite-jacobian-magma-contract.cjs`.
 
+> **Performance ratios in this first receipt are superseded.** Exactness,
+> timer, source, and host records remain valid, but the measured Sage.js
+> function returned `batch[0]` before stopping its timer. Publishing that one
+> element copied the entire sealed `8*n` batch, while Magma observed its final
+> result outside timing. The corrected harness committed with this note
+> returns the complete batch and performs the same first-result observation
+> after timing. A corrected `bench-1` receipt must replace the table below
+> before it is used for competitiveness claims.
+
 The machine was reserved exclusively for this run.  Immediately before the
 timed contract its load averages were `0.07, 0.65, 0.98`, and no competing
 user process was active.  The host was an 8-core, single-thread-per-core AMD
@@ -45,6 +54,26 @@ host.  Public addition and doubling are not yet competitive.  Their retained
 rows are 4.85x--10.65x slower than Magma, while forced polynomial
 materialization is much more expensive.  This receipt intentionally leaves
 those gates open.
+
+## Scaling diagnosis
+
+A local read-only profile isolated retained addition without indexing its
+result. It used three samples per size and one warmup on the same `GF(1009)`
+models. Median time per item improved, rather than regressed, as the batch
+grew:
+
+| genus | 1,000 | 10,000 | 100,000 | 100,000 kernel | 100,000 publication |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 2 | 3.563 us | 2.784 us | 2.651 us | 1.826 us | 0.722 us |
+| 3 | 3.087 us | 2.779 us | 2.629 us | 1.932 us | 0.693 us |
+
+The discrepancy with the raw 100,000-item table is therefore the timed
+first-element observation, not allocation or chunking in the retained native
+kernel. There is also a separate public API opportunity: demanded indexing
+of one packed result should eventually use an authenticated constant-size row
+copy rather than copying the whole batch. That optimization is not needed to
+make the benchmark contract equal, because result observation belongs outside
+both implementations' timed intervals.
 
 ## Exactness and provenance
 
