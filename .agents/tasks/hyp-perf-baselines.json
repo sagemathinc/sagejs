@@ -4,7 +4,7 @@
   "id": "hyp-perf-baselines",
   "title": "Hyp Perf Baselines",
   "lane": "hyperelliptic-curves",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Build exact resident-process Sage.js/Magma/PARI/Sage performance baselines on bench-1 and the versioned competitive benchmark corpus.",
   "base_commit": "76b863adb13c683b265ddc0c987b727fd7291990",
@@ -134,6 +134,56 @@
       "commit": "70ed9cdb0ffe8d10c94fb1ef05c3992ebd7e8a5e",
       "workspace_fingerprint": "c8cf4be791536388bc922eaa80e3c47e681dfed81ea245736c95b82d5625827b",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/hyperelliptic/competitive/local-streams.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.035,
+      "started_at": "2026-08-23T07:11:33.167Z",
+      "commit": "ffa8624d6f9a05468da74ee6f60b5b69dabdc99b",
+      "workspace_fingerprint": "deb68f347db268e21266032b39b93af828434c134593e33a6718757484056438",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/hyperelliptic/competitive/validate.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.038,
+      "started_at": "2026-08-23T07:11:33.876Z",
+      "commit": "ffa8624d6f9a05468da74ee6f60b5b69dabdc99b",
+      "workspace_fingerprint": "deb68f347db268e21266032b39b93af828434c134593e33a6718757484056438",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.439,
+      "started_at": "2026-08-23T07:11:34.598Z",
+      "commit": "ffa8624d6f9a05468da74ee6f60b5b69dabdc99b",
+      "workspace_fingerprint": "deb68f347db268e21266032b39b93af828434c134593e33a6718757484056438",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.563,
+      "started_at": "2026-08-23T07:11:42.679Z",
+      "commit": "ffa8624d6f9a05468da74ee6f60b5b69dabdc99b",
+      "workspace_fingerprint": "deb68f347db268e21266032b39b93af828434c134593e33a6718757484056438",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 827.711,
+      "started_at": "2026-08-23T07:12:18.945Z",
+      "commit": "ffa8624d6f9a05468da74ee6f60b5b69dabdc99b",
+      "workspace_fingerprint": "deb68f347db268e21266032b39b93af828434c134593e33a6718757484056438",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -144,7 +194,7 @@
       "Magma 2.18-5 exposes only a 10 ms timing quantum in this resident interface; zero-valued internal timings are reported as below resolution and are never used to form finite performance ratios. PARI 2.18.1-alpha is pinned but not host-tuned.",
       "Generic even-degree Magma divisor points require an independent infinity weight and g+2 v coefficients. Sage.js public Jacobian arithmetic is currently odd-degree only, so even-degree group-law cells remain explicit unsupported while local-factor, period, and analytic rows remain comparable.",
       "The slow tier is a bounded feasibility corpus rather than an accepted quiet-host receipt. Torsion, saturation, pairing/regulator timing, the optional 10^6 stream, public lazy/materialized stream stages, and production standalone/Wasm hyperelliptic backends remain explicit follow-up gaps.",
-      "The final pnpm test:changed attempt reached unit batch 5 before the unrelated Chromium group-pack test failed to load dist/wasi-runtime.mjs with HTTP 404. Fresh current-workspace syntax, exact-corpus, architecture, strict-baselib, and full native validation receipts all pass."
+      "The final pnpm test:changed attempt reached unit batch 5 before the unrelated Chromium group-pack test failed to load dist/wasi-runtime.mjs with HTTP 404. Current-tree syntax, exact-corpus, architecture, and strict-baselib checks pass. The identical full native suite passed in 866.2 seconds immediately before the receipt content was committed, but its post-commit refresh hit a load-induced performance assertion (generated fmpz multiply 20.90 ms versus legacy 0.19 ms) while the shared host load was 17.7 with four unrelated compiler/Node processes saturating cores. The failed run is preserved; no current-tree native pass is claimed or fabricated, and final integration must run the exact-source full gate once on an uncontended host."
     ],
     "next_steps": [
       "After all implementation commits are integrated, rerun the 28-case acceptance suite and packed 10^4/10^5 local stream on a clean, quiet bench-1 checkout, preserving before and after receipts and exact digests.",
