@@ -23,13 +23,20 @@ function notes(row, backendId) {
   return (values.join("; ") || "—").replaceAll("|", "\\|").replaceAll("\n", " ");
 }
 function main() {
-  const input = resolve(process.argv[2]); const output = process.argv[3] ? resolve(process.argv[3]) : null;
+  const input = resolve(process.argv[2]);
+  const outputArgument = process.argv[3] && !process.argv[3].startsWith("--") ? process.argv[3] : null;
+  const output = outputArgument ? resolve(outputArgument) : null;
+  const finalReport = process.argv.includes("--final");
   const receipt = JSON.parse(readFileSync(input, "utf8"));
   const lines = [
-    "# Frozen Phase-0 competitive hyperelliptic baseline", "",
+    finalReport
+      ? "# Final integrated competitive hyperelliptic receipt"
+      : "# Frozen Phase-0 competitive hyperelliptic baseline", "",
     `Generated from \`${input}\` (${receipt.generated_at_utc}).`, "",
     `Source commit: \`${receipt.source_commit}\`. Corpus: \`${receipt.corpus.sha256}\` (${receipt.corpus.cases} ${receipt.corpus.tier} cases).`, "",
-    "> This is the before-performance baseline. It is not the final acceptance receipt; rerun the identical harness at the final integrated performance SHA for the after comparison.", "",
+    finalReport
+      ? "> This is the after-performance acceptance receipt. Workload-specific gates and unsupported cells remain explicit; it is not a claim that one system is universally faster."
+      : "> This is the before-performance baseline. It is not the final acceptance receipt; rerun the identical harness at the final integrated performance SHA for the after comparison.", "",
     `Host: ${receipt.host.hostname}, ${receipt.host.architecture} ${receipt.host.platform}, ${receipt.host.cpu}, Node ${receipt.host.node}.`, "",
     "> Times are median ± MAD in milliseconds. “Loop/item” is a serial repeated warm loop, not a packed batch. A cache hit is never labeled warm arithmetic. Unsupported and unavailable cells are retained.", "",
     "> Magma 2.18-5 reports `Realtime()` in 10 ms quanta and PARI/GP reports `getwalltime()` in 1 ms quanta. A displayed zero for those backends means below timer resolution, never zero cost; no finite speed ratio may be inferred from it.", "",

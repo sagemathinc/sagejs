@@ -17,8 +17,12 @@ ssh bench-1 'cd ~/sagejs && node bench/hyperelliptic/competitive/run.cjs \
   --tier acceptance --output bench/hyperelliptic/competitive/receipt-linux-x64.json'
 ssh bench-1 'cd ~/sagejs && node bench/hyperelliptic/competitive/render-report.cjs \
   bench/hyperelliptic/competitive/receipt-linux-x64.json \
-  bench/hyperelliptic/competitive/REPORT-linux-x64.md'
+  bench/hyperelliptic/competitive/REPORT-linux-x64.md --final'
 ```
+
+Omit `--final` when rendering the frozen before-performance Phase-0 receipt.
+The flag changes only the report heading and provenance note; it never changes
+or filters timing rows.
 
 Use `--tier slow` for 31/52-bit finite-field throughput, the rank-three group,
 and certified height cases.  `--tier all` is intentionally expensive.  A quick

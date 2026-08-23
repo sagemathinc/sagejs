@@ -320,7 +320,7 @@ print('dense-rational-independent-ok')
     );
     assert.equal(
       functions.get("dense_rational_matrix_add").analysis.backend.kind,
-      "tagged",
+      "integer-buffer-values",
     );
     assert.equal(
       functions.get("dense_rational_matrix_add").analysis
