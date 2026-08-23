@@ -32,7 +32,38 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.544,
+      "started_at": "2026-08-23T05:52:30.409Z",
+      "commit": "4cf4e9ddec8b900a4c0868635859d63c3a36d71f",
+      "workspace_fingerprint": "d5198957f14ccd0bd8364d8fb770e9a9f71b7ecc6e2b55a9b68f0e8567415f1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.275,
+      "started_at": "2026-08-23T05:52:37.561Z",
+      "commit": "4cf4e9ddec8b900a4c0868635859d63c3a36d71f",
+      "workspace_fingerprint": "d5198957f14ccd0bd8364d8fb770e9a9f71b7ecc6e2b55a9b68f0e8567415f1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 864.304,
+      "started_at": "2026-08-23T05:53:21.553Z",
+      "commit": "4cf4e9ddec8b900a4c0868635859d63c3a36d71f",
+      "workspace_fingerprint": "d5198957f14ccd0bd8364d8fb770e9a9f71b7ecc6e2b55a9b68f0e8567415f1f",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],
