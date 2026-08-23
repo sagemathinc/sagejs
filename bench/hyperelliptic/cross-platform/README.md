@@ -46,3 +46,11 @@ dynamic/native differential workload.
 
 Receipts are immutable evidence. If the commit, compiler, VM image, workload,
 or runner changes, add a new receipt rather than overwriting an old one.
+
+After collecting comparable receipts, verify their per-mode and cross-host
+digests and print a compact timing/RSS summary with:
+
+```sh
+node bench/hyperelliptic/cross-platform/verify.cjs \
+  bench/hyperelliptic/cross-platform/results/*.json
+```
