@@ -2004,13 +2004,20 @@ class HyperellipticJacobian(sage.Parent):
         if use_smalljac and algorithm in ("auto", "smalljac"):
             invariants = frobenius.smalljac_group_invariants(self._curve)
             exponent = invariants[-1]
-            for element in self.random_elements(count=5, max_attempts=20):
+            verification_elements = self.random_elements(count=5, max_attempts=20)
+            for element in verification_elements:
                 if not (exponent * element).is_zero():
                     raise ArithmeticError(
                         "a sampled Jacobian element is not killed by the "
                         "smalljac group exponent"
                     )
             if not certificate:
+                self._group_structure_diagnostics_cache = {
+                    "algorithm": "smalljac",
+                    "samples": len(verification_elements),
+                    "group_order": order,
+                    "verified_exponent": int(exponent),
+                }
                 return invariants
             result = self._generic_group_basis(
                 factors,
