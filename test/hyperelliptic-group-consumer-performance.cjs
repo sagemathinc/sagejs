@@ -337,6 +337,38 @@ True`,
   }
 });
 
+test("genus-three prime streams reuse the exact completed-square model", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      String.raw`
+from sagejs.hyperelliptic_curves.certified_genus3 import (
+    _rational_completed_square_data,
+    _rational_completed_square_reduction,
+    _reduce_rational_curve,
+)
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+h = x**3 + 1
+C = HyperellipticCurve((x**7 + x + 1 - h**2)/4, h)
+data = _rational_completed_square_data(C)
+assert data == _rational_completed_square_data(C)
+for prime in (3, 5, 13, 19):
+    reduced = _reduce_rational_curve(C, prime)
+    reduced_f, reduced_h = reduced.hyperelliptic_polynomials()
+    expected = reduced_h*reduced_h + reduced.base_ring()(4)*reduced_f
+    actual = _rational_completed_square_reduction(C, prime, data)
+    actual_f, actual_h = actual.hyperelliptic_polynomials()
+    assert actual_h.is_zero() and actual_f == expected
+True`,
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "True");
+  } finally {
+    await session.close();
+  }
+});
+
 test("prepared genus-three BSGS uses packed progressions and exact factor strip", async () => {
   const session = await createSage();
   try {
@@ -348,11 +380,20 @@ from sagejs.hyperelliptic_curves.certified_genus3 import (
     _native_order_certificates,
     _prepared_order_certificates,
 )
+import sagejs.hyperelliptic_curves.certified_genus3 as certified_genus3
 from sagejs.hyperelliptic_curves.group_structure import group_element_key
 R = PolynomialRing(GF(5), "x")
 x = R.gen()
 J = HyperellipticCurve(x**7 + x + 1).jacobian()
-D = _deterministic_elements(J, 5, max_x_values=5, max_elements=1)[0]
+original_add_pairs_batched = certified_genus3.add_pairs_batched
+def forbidden_single_witness_add(*_args, **_kwds):
+    raise AssertionError("one deterministic witness needs no group addition")
+certified_genus3.add_pairs_batched = forbidden_single_witness_add
+try:
+    D = _deterministic_elements(J, 5, max_x_values=5, max_elements=1)[0]
+finally:
+    certified_genus3.add_pairs_batched = original_add_pairs_batched
+assert not D.is_zero() and D.parent() == J
 budgets = {
     "max_trial_divisions": 1000,
     "max_baby_steps": 1000,
