@@ -1061,8 +1061,10 @@ assert set(batch_data["stage_milliseconds"]) == {
 }
 batch_diagnostics = batch_context.diagnostics()
 assert batch_diagnostics["canonical_height_cache_entries"] == 3
-assert batch_diagnostics["canonical_height_cache_hits"] == 3
+assert batch_diagnostics["canonical_height_cache_hits"] == 0
+assert batch_diagnostics["canonical_height_cache_misses"] == 3
 assert batch_diagnostics["height_pairing_cache_entries"] == 1
+assert batch_diagnostics["height_pairing_cache_misses"] == 1
 pair_hits_before = batch_diagnostics["height_pairing_cache_hits"]
 warm_pairing = height_pairing(
     [P,Q],
@@ -1087,29 +1089,94 @@ partial_pairing = height_pairing(
 )
 assert partial_pairing.rigorous and partial_P.rigorous
 assert partial_pairing.height_results[1].diagnostics["batch"]["point_count"] == 2
-assert partial_context.diagnostics()["canonical_height_cache_entries"] == 3
+partial_diagnostics = partial_context.diagnostics()
+assert partial_diagnostics["canonical_height_cache_entries"] == 3
+assert partial_diagnostics["canonical_height_cache_hits"] == 1
+assert partial_diagnostics["canonical_height_cache_misses"] == 3
+assert partial_diagnostics["height_pairing_cache_entries"] == 1
+assert partial_diagnostics["height_pairing_cache_misses"] == 1
 
-cancel_context = HeightContext(J)
-cancel_calls = [0]
-def cancel_batch():
-    cancel_calls[0] += 1
-    return cancel_calls[0] >= 3
-cancelled = False
-try:
-    height_pairing(
+cache_keys = (
+    "canonical_height_cache_entries",
+    "canonical_height_cache_hits",
+    "canonical_height_cache_misses",
+    "height_pairing_cache_entries",
+    "height_pairing_cache_hits",
+    "height_pairing_cache_misses",
+)
+def cache_state(cache_context):
+    cache_diagnostics = cache_context.diagnostics()
+    return tuple(cache_diagnostics[key] for key in cache_keys)
+
+# First measure every cancellation callback boundary without cancelling.  Each
+# threshold below is then replayed in a new context, alternately through the
+# pairing and regulator entry points.  Even the callback immediately before
+# the joint proof-cache commit must leave cache contents and counters exactly
+# as they were before the call.
+probe_context = HeightContext(J)
+probe_calls = [0]
+def never_cancel():
+    probe_calls[0] += 1
+    return False
+height_pairing(
+    [P,Q],
+    precision=64,
+    target_bits=64,
+    algorithm="local",
+    context=probe_context,
+    cancel=never_cancel,
+)
+assert probe_calls[0] >= 8
+cancelled = True
+late_cancel_contexts = []
+for use_regulator in (False, True):
+    for threshold in range(1, probe_calls[0]+1):
+        cancel_context = HeightContext(J)
+        before_cancel = cache_state(cancel_context)
+        cancel_calls = [0]
+        def cancel_batch():
+            cancel_calls[0] += 1
+            return cancel_calls[0] >= threshold
+        threshold_cancelled = False
+        try:
+            if use_regulator:
+                regulator(
+                    [P,Q],
+                    precision=64,
+                    target_bits=64,
+                    algorithm="local",
+                    context=cancel_context,
+                    cancel=cancel_batch,
+                )
+            else:
+                height_pairing(
+                    [P,Q],
+                    precision=64,
+                    target_bits=64,
+                    algorithm="local",
+                    context=cancel_context,
+                    cancel=cancel_batch,
+                )
+        except Exception as error:
+            threshold_cancelled = "cancelled" in str(error)
+        cancelled = cancelled and threshold_cancelled
+        assert threshold_cancelled
+        assert cache_state(cancel_context) == before_cancel
+        if threshold == probe_calls[0]:
+            late_cancel_contexts.append(cancel_context)
+
+# A context canceled at the last boundary must behave like a truly empty
+# context on its next call: no hidden record may survive behind zero counters.
+for cancel_context in late_cancel_contexts:
+    replay = height_pairing(
         [P,Q],
         precision=64,
         target_bits=64,
         algorithm="local",
         context=cancel_context,
-        cancel=cancel_batch,
     )
-except Exception as error:
-    cancelled = "cancelled" in str(error)
-assert cancelled
-cancel_diagnostics = cancel_context.diagnostics()
-assert cancel_diagnostics["canonical_height_cache_entries"] == 0
-assert cancel_diagnostics["height_pairing_cache_entries"] == 0
+    assert replay.rigorous
+    assert cache_state(cancel_context) == (3, 0, 3, 1, 0, 1)
 [
     batch_data["point_count"],
     partial_pairing.height_results[1].diagnostics["batch"]["point_count"],
