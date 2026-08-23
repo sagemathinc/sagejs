@@ -723,6 +723,51 @@ assert pairing_cache_tamper_rejected
   }
 });
 
+test("rank-four pairing batches reuse an authenticated bounded context", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      `${setup}
+context = HeightContext(J)
+rank4_basis = [P, Q, P + Q, P - Q]
+pairing = height_pairing(
+    rank4_basis,
+    precision=64,
+    target_bits=16,
+    algorithm="local",
+    context=context,
+)
+hits_before = context.diagnostics()["height_pairing_cache_hits"]
+pairing_again = height_pairing(
+    rank4_basis,
+    precision=64,
+    target_bits=16,
+    algorithm="local",
+    context=context,
+)
+diagnostics = context.diagnostics()
+assert pairing.rigorous and pairing_again.rigorous
+assert len(pairing.matrix) == 4
+assert all(len(row) == 4 for row in pairing.matrix)
+assert diagnostics["height_pairing_cache_hits"] == hits_before + 1
+# The dependent fixture has eight distinct height arguments among four
+# diagonals and six polarized sums; exact-equal divisors must hit the
+# authenticated canonical-height cache rather than duplicate work.
+assert diagnostics["canonical_height_cache_entries"] == 8
+[
+    len(pairing.matrix),
+    diagnostics["canonical_height_cache_entries"],
+    diagnostics["height_pairing_cache_hits"],
+]
+`,
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "[4, 8, 1]");
+  } finally {
+    await session.close();
+  }
+});
+
 test("high-precision local tails retain the declared Magma oracle accuracy", async () => {
   const session = await createSage();
   try {

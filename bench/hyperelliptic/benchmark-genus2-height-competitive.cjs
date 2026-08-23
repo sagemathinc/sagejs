@@ -160,6 +160,25 @@ async function sageRows() {
       { timeout: 900_000 },
     );
     const fields = unquote(batchResult.repr).split("|");
+    const rank4Result = await session.evaluate(
+      [
+        "height_bench_rank4_context = HeightContext(height_bench_J)",
+        "height_bench_R = height_bench_P + height_bench_Q",
+        "height_bench_S = height_bench_P - height_bench_Q",
+        "height_bench_rank4_basis = [height_bench_P,height_bench_Q,height_bench_R,height_bench_S]",
+        "height_bench_started = time.perf_counter()",
+        `height_bench_rank4 = height_pairing(height_bench_rank4_basis, precision=${target}, target_bits=${target}, algorithm='local', context=height_bench_rank4_context)`,
+        "height_bench_rank4_cold = 1000*(time.perf_counter()-height_bench_started)",
+        "height_bench_started = time.perf_counter()",
+        `for height_bench_index in range(${repetitions}):`,
+        `    height_bench_rank4_warm = height_pairing(height_bench_rank4_basis, precision=${target}, target_bits=${target}, algorithm='local', context=height_bench_rank4_context)`,
+        `height_bench_rank4_warm_ms = 1000*(time.perf_counter()-height_bench_started)/${repetitions}`,
+        "assert height_bench_rank4.rigorous",
+        "str(height_bench_rank4_cold)+'|'+str(height_bench_rank4_warm_ms)+'|'+str(height_bench_rank4_context.diagnostics()['height_pairing_cache_hits'])+'|'+str(height_bench_rank4_context.diagnostics()['canonical_height_cache_entries'])",
+      ].join("\n"),
+      { timeout: 900_000 },
+    );
+    const rank4Fields = unquote(rank4Result.repr).split("|");
     return {
       rows,
       rank2: {
@@ -168,6 +187,14 @@ async function sageRows() {
         pairingWarmMilliseconds: Number(fields[1]),
         regulatorWarmMilliseconds: Number(fields[2]),
         regulatorEnclosure: { lower: fields[3], upper: fields[4], rigorous: true },
+      },
+      rank4: {
+        targetBits: target,
+        basis: ["P", "Q", "P+Q", "P-Q"],
+        pairingObjectColdMilliseconds: Number(rank4Fields[0]),
+        pairingWarmMilliseconds: Number(rank4Fields[1]),
+        pairingCacheHits: Number(rank4Fields[2]),
+        canonicalHeightCacheEntries: Number(rank4Fields[3]),
       },
     };
   } finally {
@@ -194,6 +221,10 @@ function magmaRows() {
     `t:=Realtime(); for i in [1..${repetitions}] do pairw:=HeightPairingMatrix([Pb,Qb] : Precision:=${decimalDigits}); end for; pairwarm:=1000*Realtime(t)/${repetitions};`,
     `t:=Realtime(); reg:=Regulator([Pb,Qb] : Precision:=${decimalDigits}); regwarm:=1000*Realtime(t);`,
     `printf "B|${target}|%o|%o|%o|%.60o\\n",paircold,pairwarm,regwarm,reg;`,
+    "Rb:=Pb+Qb; Sb:=Pb-Qb; rank4basis:=[Pb,Qb,Rb,Sb];",
+    `t:=Realtime(); pair4:=HeightPairingMatrix(rank4basis : Precision:=${decimalDigits}); pair4cold:=1000*Realtime(t);`,
+    `t:=Realtime(); for i in [1..${repetitions}] do pair4w:=HeightPairingMatrix(rank4basis : Precision:=${decimalDigits}); end for; pair4warm:=1000*Realtime(t)/${repetitions};`,
+    `printf "B4|${target}|%o|%o\\n",pair4cold,pair4warm;`,
     "quit;",
   );
   const execution = spawnSync(magma, ["-b"], {
@@ -206,6 +237,7 @@ function magmaRows() {
   }
   const rows = [];
   let rank2 = null;
+  let rank4 = null;
   for (const line of execution.stdout.split(/\r?\n/)) {
     const fields = line.split("|");
     if (fields[0] === "H") {
@@ -225,9 +257,16 @@ function magmaRows() {
         regulatorWarmMilliseconds: Number(fields[4]),
         regulator: fields[5],
       };
+    } else if (fields[0] === "B4") {
+      rank4 = {
+        targetBits: Number(fields[1]),
+        basis: ["P", "Q", "P+Q", "P-Q"],
+        pairingObjectColdMilliseconds: Number(fields[2]),
+        pairingWarmMilliseconds: Number(fields[3]),
+      };
     }
   }
-  return { executable: magma, version: "2.18-5", rows, rank2 };
+  return { executable: magma, version: "2.18-5", rows, rank2, rank4 };
 }
 
 async function main() {
