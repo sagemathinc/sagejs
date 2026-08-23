@@ -14,6 +14,11 @@ before timings are accepted. The machine-readable final receipt is
 
 The outcome is intentionally workload-specific:
 
+The literal phase-by-phase exit-criterion review is maintained in
+`agents/hyperelliptic-magma-pari-performance-completion-audit.md`. It keeps
+missing acceptance evidence and partially closed phases separate from the
+broader implementation status summarized below.
+
 | Gate | Final result |
 |---|---|
 | Packed Cantor boundary versus identical standalone core | PASS: genus 2 1.049x, genus 3 1.048x overhead (limit 1.15x) |
