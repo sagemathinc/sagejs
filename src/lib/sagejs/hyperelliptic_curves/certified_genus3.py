@@ -2738,11 +2738,11 @@ def rforest_genus3_local_factors(
     fallback = _default_exact_fallback if exact_fallback is None else exact_fallback
     rforest = __import__(
         "sagejs.hyperelliptic_curves.rforest",
-        fromlist=["rforest_hasse_witt_rows"],
+        fromlist=["_rforest_hasse_witt_packed"],
     )
     _observe(stage_observer, "residue_start", {"start": start, "stop": stop})
     try:
-        batch = rforest.rforest_hasse_witt_rows(curve, start, stop)
+        batch = rforest._rforest_hasse_witt_packed(curve, start, stop)
     except (NotImplementedError, OverflowError) as error:
         _observe(
             stage_observer,
@@ -2771,13 +2771,16 @@ def rforest_genus3_local_factors(
     _observe(
         stage_observer,
         "residue_end",
-        {"start": start, "stop": stop, "rows": len(batch["rows"])},
+        {"start": start, "stop": stop, "rows": batch.row_count},
     )
-    rows = batch["rows"]
     completed_square_data = _rational_completed_square_data(curve)
     candidate_window = 16
-    for window_start in range(0, len(rows), candidate_window):
-        window = rows[window_start : window_start + candidate_window]
+    for window_start in range(0, batch.row_count, candidate_window):
+        window_stop = min(batch.row_count, window_start + candidate_window)
+        window = [
+            rforest._rforest_packed_row(batch, index)
+            for index in range(window_start, window_stop)
+        ]
         available = [row for row in window if row["available"]]
         if genus3_candidate_progression_kernel_available():
             enumerations: tuple[Mapping[str, Any], ...] | None = None
