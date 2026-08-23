@@ -860,6 +860,27 @@ class PreparedRationalJacobianArithmetic:
             values, values, algorithm=algorithm, diagnostics=diagnostics
         )
 
+    def negate_batch(
+        self,
+        elements: Any,
+        *,
+        algorithm: str | None = None,
+        diagnostics: bool = False,
+    ) -> Any:
+        """Return canonical inverses through the bounded scalar boundary."""
+        values = self._bounded_tuple(elements)
+        result = self.scalar_batch(
+            values,
+            tuple(-1 for _value in values),
+            algorithm=algorithm,
+            diagnostics=diagnostics,
+        )
+        if diagnostics:
+            answers, record = result
+            record["operation"] = "negate_batch"
+            return answers, record
+        return result
+
     def scalar_batch(
         self,
         elements: Any,

@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Implement a prepared FLINT-backed QQ Cantor add, double, scalar and batch boundary for genus 2 and 3 with exact reference replay and Magma performance receipts.",
-  "base_commit": "846138009da6e2adeb0394929f9b0bb1e317da6d",
+  "base_commit": "ab31e4f3ff8095dcfcdbb34d4d29fb142dc3ae01",
   "claims": [
     "ffi/flint.ffi.py",
     "ffi/flint.ffi.json",
@@ -141,10 +141,20 @@
       "commit": "d4acfc70ba44e70ea51d96cae2f6bd0d55ed41f3",
       "workspace_fingerprint": "7caaaa05a55e455df0879b7091415496723f8d188c995af40bfdc386ac5c3136",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-rational-cantor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.396,
+      "started_at": "2026-08-23T09:53:32.539Z",
+      "commit": "ab31e4f3ff8095dcfcdbb34d4d29fb142dc3ae01",
+      "workspace_fingerprint": "e02118ad1f806f801978163435a178c4cb7b33272d766997232ce8567e429c93",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Prepared FLINT-backed exact QQ Cantor arithmetic now serves the cached public Jacobian boundary: ordinary P+Q, P.double(), and n*P dispatch through native genus-2/3 arithmetic when available, while explicit reference selection and every operation certificate replay the ordinary Python Cantor path. A quiet same-host bench-1 receipt measured the direct 257-bit scalar boundary at 0.632 ms/call versus Magma 2.18-5 at 0.443 ms/call (1.427x); the public operator locally measures 0.711 ms/call and a nontrivial public addition 0.951 ms/call.",
+    "summary": "Prepared FLINT-backed exact QQ Cantor arithmetic now serves the cached public Jacobian boundary: ordinary P+Q, P.double(), -P, P-Q, and n*P dispatch through bounded native genus-2/3 arithmetic when available, while explicit reference selection and every operation certificate replay the ordinary Python Cantor path. Rational negate_batch is implemented exactly as the existing signed scalar boundary and reports its actual selected algorithm. A quiet same-host bench-1 receipt measured the direct 257-bit scalar boundary at 0.632 ms/call versus Magma 2.18-5 at 0.443 ms/call (1.427x); the public operator locally measures 0.711 ms/call and a nontrivial public addition 0.951 ms/call.",
     "risks": [
       "The native-integration package budget and the 22 new FLINT desktop-only Wasm capability dispositions are shared integration edits outside this lane's claims.",
       "Windows uses the tested exact reference fallback until the generated FLINT rational-polynomial workspace is available there."
