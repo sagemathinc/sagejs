@@ -8,9 +8,15 @@ function display(value) { return value === null || value === undefined ? "—" :
 function displayStats(value) {
   return value ? `${display(value.median_ms)} ± ${display(value.mad_ms)}` : "—";
 }
-function notes(row) {
+function notes(row, backendId) {
   const values = [];
   if (row.reason) values.push(row.reason);
+  if (row.status === "ok" && backendId === "magma") {
+    values.push("10 ms Realtime resolution; zero means below resolution");
+  }
+  if (row.status === "ok" && backendId === "pari") {
+    values.push("1 ms getwalltime resolution; zero means below resolution");
+  }
   if (row.effective_pari_bit_precision !== undefined) {
     values.push(`PARI bits ${row.requested_precision_bits ?? "n/a"}→${row.effective_pari_bit_precision}`);
   }
@@ -26,11 +32,12 @@ function main() {
     "> This is the before-performance baseline. It is not the final acceptance receipt; rerun the identical harness at the final integrated performance SHA for the after comparison.", "",
     `Host: ${receipt.host.hostname}, ${receipt.host.architecture} ${receipt.host.platform}, ${receipt.host.cpu}, Node ${receipt.host.node}.`, "",
     "> Times are median ± MAD in milliseconds. “Loop/item” is a serial repeated warm loop, not a packed batch. A cache hit is never labeled warm arithmetic. Unsupported and unavailable cells are retained.", "",
+    "> Magma 2.18-5 reports `Realtime()` in 10 ms quanta and PARI/GP reports `getwalltime()` in 1 ms quanta. A displayed zero for those backends means below timer resolution, never zero cost; no finite speed ratio may be inferred from it.", "",
     "| Case | Backend | Status | Object cold wall | Object cold CPU | Warm wall | Warm CPU | Warm mode | Loop/item wall | Loop/item CPU | Exact digest | Notes |", "|---|---|---:|---:|---:|---:|---:|---|---:|---:|---|---|",
   ];
   for (const backend of receipt.backends) {
     for (const row of backend.rows ?? []) {
-      lines.push(`| ${row.id} | ${backend.backend.id} | ${row.status} | ${displayStats(row.statistics?.object_cold)} | ${displayStats(row.statistics?.object_cold_cpu)} | ${displayStats(row.statistics?.warm)} | ${displayStats(row.statistics?.warm_cpu)} | ${row.warm_mode ?? "—"} | ${displayStats(row.statistics?.repeated_warm_per_item)} | ${displayStats(row.statistics?.repeated_warm_cpu_per_item)} | ${row.exact_result_sha256 ? `\`${row.exact_result_sha256.slice(0, 12)}…\`` : "—"} | ${notes(row)} |`);
+      lines.push(`| ${row.id} | ${backend.backend.id} | ${row.status} | ${displayStats(row.statistics?.object_cold)} | ${displayStats(row.statistics?.object_cold_cpu)} | ${displayStats(row.statistics?.warm)} | ${displayStats(row.statistics?.warm_cpu)} | ${row.warm_mode ?? "—"} | ${displayStats(row.statistics?.repeated_warm_per_item)} | ${displayStats(row.statistics?.repeated_warm_cpu_per_item)} | ${row.exact_result_sha256 ? `\`${row.exact_result_sha256.slice(0, 12)}…\`` : "—"} | ${notes(row, backend.backend.id)} |`);
     }
   }
   lines.push("", "## Resident resource envelope", "", "| Backend | Process-cold wall ms | Outer CPU user/system ms | Resident peak RSS KiB | Mathematical user/system s |", "|---|---:|---:|---:|---:|");

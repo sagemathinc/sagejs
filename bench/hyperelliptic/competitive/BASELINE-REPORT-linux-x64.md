@@ -1,6 +1,6 @@
 # Frozen Phase-0 competitive hyperelliptic baseline
 
-Generated from `/home/user/sagejs/bench/hyperelliptic/competitive/baseline-receipt-linux-x64.json` (2026-08-23T05:45:06.318Z).
+Generated from `/home/user/sagejs-worktrees/hyp-perf-baselines/bench/hyperelliptic/competitive/baseline-receipt-linux-x64.json` (2026-08-23T05:45:06.318Z).
 
 Source commit: `a66abc5694fa7dced52f1e4ddd2eef892e446afd`. Corpus: `f58ce393bd5070b0606a919a5132af79e4fd4f4cfab893fc6e42c8e5d9defd2a` (28 acceptance cases).
 
@@ -9,6 +9,8 @@ Source commit: `a66abc5694fa7dced52f1e4ddd2eef892e446afd`. Corpus: `f58ce393bd50
 Host: cocalc-vm-51c5044ca6d3406d983e0f10, x64 linux, AMD EPYC 7B13, Node v22.22.2.
 
 > Times are median ± MAD in milliseconds. “Loop/item” is a serial repeated warm loop, not a packed batch. A cache hit is never labeled warm arithmetic. Unsupported and unavailable cells are retained.
+
+> Magma 2.18-5 reports `Realtime()` in 10 ms quanta and PARI/GP reports `getwalltime()` in 1 ms quanta. A displayed zero for those backends means below timer resolution, never zero cost; no finite speed ratio may be inferred from it.
 
 | Case | Backend | Status | Object cold wall | Object cold CPU | Warm wall | Warm CPU | Warm mode | Loop/item wall | Loop/item CPU | Exact digest | Notes |
 |---|---|---:|---:|---:|---:|---:|---|---:|---:|---|---|
@@ -96,26 +98,26 @@ Host: cocalc-vm-51c5044ca6d3406d983e0f10, x64 linux, AMD EPYC 7B13, Node v22.22.
 | unsupported-characteristic-2-jacobian | wasm | unsupported | — | — | — | — | — | — | — | — | wasm: no production competitive hyperelliptic Wasm artifact exists yet |
 | unsupported-even-degree-jacobian | wasm | unsupported | — | — | — | — | — | — | — | — | wasm: no production competitive hyperelliptic Wasm artifact exists yet |
 | unsupported-wild-p2-global | wasm | unsupported | — | — | — | — | — | — | — | — | wasm: no production competitive hyperelliptic Wasm artifact exists yet |
-| g2-p13-add-coprime | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `2ef2ecec534e…` | — |
-| g2-p13-double | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `09674064d70d…` | — |
-| g2-p13-scalar-256 | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `e9713735b8ce…` | — |
-| g2-p13-general-h-shared-factor | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `99b09d0ab83d…` | — |
-| g2-p13-conjugate-cancellation | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `a7f15699bd21…` | — |
-| g2-p13-degree0-validate | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `a7f15699bd21…` | — |
-| g3-p5-degree3-validate | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `a0260df28834…` | — |
-| g3-p5-double | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `f912beca55ec…` | — |
-| g3-p5-scalar-1024 | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `a0260df28834…` | — |
-| g3-p5-scalar-64-native | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `e1ac63614965…` | — |
-| g3-p5-scalar-64-reference | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `e1ac63614965…` | — |
-| g2-p5-group-rank2 | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | cache-hit | 0.0000 ± 0.0000 | — | `6a0697e30112…` | — |
-| g3-p13-group-cyclic | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | cache-hit | 0.0000 ± 0.0000 | — | `cc8eccc094f5…` | — |
-| g3-p19-group-cyclic | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | cache-hit | 0.0000 ± 0.0000 | — | `cff5cedb61f5…` | — |
-| g2-p11-local-factor | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `6d893c0d3152…` | — |
-| g3-p7-local-factor | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `89089dd96b9c…` | — |
-| g2-p5-even-local-factor | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `ef846163660a…` | — |
-| g3-p5-even-local-factor | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `2c1256046956…` | — |
+| g2-p13-add-coprime | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `2ef2ecec534e…` | 10 ms Realtime resolution; zero means below resolution |
+| g2-p13-double | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `09674064d70d…` | 10 ms Realtime resolution; zero means below resolution |
+| g2-p13-scalar-256 | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `e9713735b8ce…` | 10 ms Realtime resolution; zero means below resolution |
+| g2-p13-general-h-shared-factor | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `99b09d0ab83d…` | 10 ms Realtime resolution; zero means below resolution |
+| g2-p13-conjugate-cancellation | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `a7f15699bd21…` | 10 ms Realtime resolution; zero means below resolution |
+| g2-p13-degree0-validate | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `a7f15699bd21…` | 10 ms Realtime resolution; zero means below resolution |
+| g3-p5-degree3-validate | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `a0260df28834…` | 10 ms Realtime resolution; zero means below resolution |
+| g3-p5-double | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `f912beca55ec…` | 10 ms Realtime resolution; zero means below resolution |
+| g3-p5-scalar-1024 | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `a0260df28834…` | 10 ms Realtime resolution; zero means below resolution |
+| g3-p5-scalar-64-native | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `e1ac63614965…` | 10 ms Realtime resolution; zero means below resolution |
+| g3-p5-scalar-64-reference | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `e1ac63614965…` | 10 ms Realtime resolution; zero means below resolution |
+| g2-p5-group-rank2 | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | cache-hit | 0.0000 ± 0.0000 | — | `6a0697e30112…` | 10 ms Realtime resolution; zero means below resolution |
+| g3-p13-group-cyclic | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | cache-hit | 0.0000 ± 0.0000 | — | `cc8eccc094f5…` | 10 ms Realtime resolution; zero means below resolution |
+| g3-p19-group-cyclic | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | cache-hit | 0.0000 ± 0.0000 | — | `cff5cedb61f5…` | 10 ms Realtime resolution; zero means below resolution |
+| g2-p11-local-factor | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `6d893c0d3152…` | 10 ms Realtime resolution; zero means below resolution |
+| g3-p7-local-factor | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `89089dd96b9c…` | 10 ms Realtime resolution; zero means below resolution |
+| g2-p5-even-local-factor | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `ef846163660a…` | 10 ms Realtime resolution; zero means below resolution |
+| g3-p5-even-local-factor | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0000 ± 0.0000 | — | `2c1256046956…` | 10 ms Realtime resolution; zero means below resolution |
 | g2-global-reduction | magma | unsupported | — | — | — | — | — | — | — | — | Magma runner has no comparable global_reduction contract |
-| g2-qq-general-h-shared-factor | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0100 ± 0.0000 | — | `5f8e42de746b…` | — |
+| g2-qq-general-h-shared-factor | magma | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | warm-arithmetic | 0.0100 ± 0.0000 | — | `5f8e42de746b…` | 10 ms Realtime resolution; zero means below resolution |
 | g2-real-period-64 | magma | unsupported | — | — | — | — | — | — | — | — | Magma runner has no comparable real_period contract |
 | g2-central-value-32 | magma | unsupported | — | — | — | — | — | — | — | — | Magma runner has no comparable central_value contract |
 | g2-lfunction-init-32-order4 | magma | unsupported | — | — | — | — | — | — | — | — | Magma runner has no comparable lfunction_init contract |
@@ -138,16 +140,16 @@ Host: cocalc-vm-51c5044ca6d3406d983e0f10, x64 linux, AMD EPYC 7B13, Node v22.22.
 | g2-p5-group-rank2 | pari | unsupported | — | — | — | — | — | — | — | — | PARI has no comparable group_structure contract |
 | g3-p13-group-cyclic | pari | unsupported | — | — | — | — | — | — | — | — | PARI has no comparable group_structure contract |
 | g3-p19-group-cyclic | pari | unsupported | — | — | — | — | — | — | — | — | PARI has no comparable group_structure contract |
-| g2-p11-local-factor | pari | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | resident-recompute | 0.0050 ± 0.0000 | — | `6d893c0d3152…` | PARI bits n/a→64 |
-| g3-p7-local-factor | pari | ok | 1.00 ± 0.0000 | — | 1.00 ± 0.0000 | — | resident-recompute | 1.00 ± 0.0000 | — | `89089dd96b9c…` | PARI bits n/a→64 |
-| g2-p5-even-local-factor | pari | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | resident-recompute | 0.0020 ± 0.0000 | — | `ef846163660a…` | PARI bits n/a→64 |
-| g3-p5-even-local-factor | pari | ok | 1.00 ± 0.0000 | — | 1.00 ± 0.0000 | — | resident-recompute | 1.00 ± 0.0000 | — | `2c1256046956…` | PARI bits n/a→64 |
+| g2-p11-local-factor | pari | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | resident-recompute | 0.0050 ± 0.0000 | — | `6d893c0d3152…` | 1 ms getwalltime resolution; zero means below resolution; PARI bits n/a→64 |
+| g3-p7-local-factor | pari | ok | 1.00 ± 0.0000 | — | 1.00 ± 0.0000 | — | resident-recompute | 1.00 ± 0.0000 | — | `89089dd96b9c…` | 1 ms getwalltime resolution; zero means below resolution; PARI bits n/a→64 |
+| g2-p5-even-local-factor | pari | ok | 0.0000 ± 0.0000 | — | 0.0000 ± 0.0000 | — | resident-recompute | 0.0020 ± 0.0000 | — | `ef846163660a…` | 1 ms getwalltime resolution; zero means below resolution; PARI bits n/a→64 |
+| g3-p5-even-local-factor | pari | ok | 1.00 ± 0.0000 | — | 1.00 ± 0.0000 | — | resident-recompute | 1.00 ± 0.0000 | — | `2c1256046956…` | 1 ms getwalltime resolution; zero means below resolution; PARI bits n/a→64 |
 | g2-global-reduction | pari | unsupported | — | — | — | — | — | — | — | — | PARI has no comparable global_reduction contract |
 | g2-qq-general-h-shared-factor | pari | unsupported | — | — | — | — | — | — | — | — | PARI has no comparable jacobian_add contract |
-| g2-real-period-64 | pari | ok | 2.00 ± 0.0000 | — | 2.00 ± 0.0000 | — | resident-recompute | 2.00 ± 0.0000 | — | — | PARI bits 64→64 |
-| g2-central-value-32 | pari | ok | 3.00 ± 0.0000 | — | 0.0000 ± 0.0000 | — | prepared-analytic-evaluation | 0.0000 ± 0.0000 | — | — | PARI bits 32→32 |
-| g2-lfunction-init-32-order4 | pari | ok | 3.00 ± 0.0000 | — | 3.00 ± 0.0000 | — | prepared-descriptor-init | 3.00 ± 0.0000 | — | — | PARI bits 32→32 |
-| g3-real-period-64 | pari | ok | 4.00 ± 0.0000 | — | 4.00 ± 0.0000 | — | resident-recompute | 4.00 ± 0.0000 | — | — | PARI bits 64→64 |
+| g2-real-period-64 | pari | ok | 2.00 ± 0.0000 | — | 2.00 ± 0.0000 | — | resident-recompute | 2.00 ± 0.0000 | — | — | 1 ms getwalltime resolution; zero means below resolution; PARI bits 64→64 |
+| g2-central-value-32 | pari | ok | 3.00 ± 0.0000 | — | 0.0000 ± 0.0000 | — | prepared-analytic-evaluation | 0.0000 ± 0.0000 | — | — | 1 ms getwalltime resolution; zero means below resolution; PARI bits 32→32 |
+| g2-lfunction-init-32-order4 | pari | ok | 3.00 ± 0.0000 | — | 3.00 ± 0.0000 | — | prepared-descriptor-init | 3.00 ± 0.0000 | — | — | 1 ms getwalltime resolution; zero means below resolution; PARI bits 32→32 |
+| g3-real-period-64 | pari | ok | 4.00 ± 0.0000 | — | 4.00 ± 0.0000 | — | resident-recompute | 4.00 ± 0.0000 | — | — | 1 ms getwalltime resolution; zero means below resolution; PARI bits 64→64 |
 | g3-central-value-16 | pari | unsupported | — | — | — | — | — | — | — | — | PARI lfungenus2 is genus-2 only |
 | unsupported-characteristic-2-jacobian | pari | unsupported | — | — | — | — | — | — | — | — | PARI has no comparable unsupported_characteristic_2_jacobian contract |
 | unsupported-even-degree-jacobian | pari | unsupported | — | — | — | — | — | — | — | — | PARI has no comparable unsupported_even_degree_jacobian contract |
