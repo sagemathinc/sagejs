@@ -439,23 +439,46 @@ def materialize_verified_packed_cubic_factor_records(
         for record in factor_records
     ):
         return None
-    records, factors = _materialize_packed_cubic_factor_records(factor_records)
     prime_module = __import__(
         "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
     )
+    factor_module = __import__(
+        "sagejs.number_fields.class_group_factor_base",
+        fromlist=["class_group_factor_base"],
+    )
     order = factor_records[0].order
+    order_basis = tuple(order.basis())
     rational_prime_bases: dict[int, tuple[Any, ...]] = {}
-    for packed, prime_ideal in zip(factor_records, factors, strict=True):
+    restored: list[Any] = []
+    for packed in factor_records:
+        prime_ideal = prime_module.NumberFieldPrimeIdeal(
+            packed.order,
+            [list(row) for row in packed.rows],
+            packed.prime,
+            packed.ramification,
+            packed.residue_degree,
+            dict(packed.presentation),
+            _candidate_token=prime_module._PACKED_CANDIDATE_TOKEN,
+        )
         rational_prime = packed.prime
         p_basis = rational_prime_bases.get(rational_prime)
         if p_basis is None:
             p_basis = tuple(order.ideal(rational_prime).basis())
             rational_prime_bases[rational_prime] = p_basis
+        # Dedekind--Kummer identifies the target as
+        # `p*O + g(beta)*O`, of norm `p^f`.  Checking every order-basis
+        # multiple of `g(beta)` proves that this retained lattice contains the
+        # whole target ideal, not merely its two displayed generators.  Equal
+        # exact norm then forces lattice equality, so there is no need to
+        # recompute the canonical HNF rows that the packed producer retained.
+        generator_products = tuple(
+            packed.second_generator * basis_element for basis_element in order_basis
+        )
         if not prime_module._ideal_arithmetic.ideal_contains_elements(
-            prime_ideal, p_basis + (packed.second_generator,)
+            prime_ideal, p_basis + generator_products
         ):
             raise ArithmeticError(
-                "a packed Dedekind--Kummer ideal omits p*O or its generator"
+                "a packed Dedekind--Kummer lattice omits p*O or g(beta)*O"
             )
         if prime_ideal.norm() != rational_prime**packed.residue_degree:
             raise ArithmeticError(
@@ -473,6 +496,16 @@ def materialize_verified_packed_cubic_factor_records(
             [[list(product) for product in left] for left in packed.modular_table],
             list(packed.modular_one),
         )
+        record = factor_module.FactorBasePrimeRecord(
+            packed.index,
+            prime_ideal,
+            second_generator=packed.second_generator,
+        )
+        if record.to_dict() != packed.to_dict():
+            raise ArithmeticError("packed factor-base materialization changed evidence")
+        restored.append(record)
+    records = tuple(restored)
+    factors = tuple(record.prime_ideal for record in records)
     return records, factors
 
 

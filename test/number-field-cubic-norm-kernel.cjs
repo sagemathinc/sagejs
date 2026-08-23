@@ -368,6 +368,18 @@ assert all(
     not getattr(prime, "_packed_candidate_pending_replay", True)
     for prime in verified_primes
 )
+saved_verified_rows = verified_packed[0].rows
+mutated_rows = [list(row) for row in saved_verified_rows]
+mutated_rows[0][0] += 1
+verified_packed[0].rows = tuple(tuple(row) for row in mutated_rows)
+try:
+    try:
+        cubic.materialize_verified_packed_cubic_factor_records(verified_packed)
+        raise AssertionError("a mutated packed prime lattice was accepted")
+    except ArithmeticError:
+        pass
+finally:
+    verified_packed[0].rows = saved_verified_rows
 
 packed = cubic.bounded_cubic_minkowski_class_number(packed_field)
 assert packed.complete and packed.order() == 3 and packed.certificate.verify()
