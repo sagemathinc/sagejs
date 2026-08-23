@@ -275,19 +275,21 @@ assert reg.rigorous and reg.status == "certified-positive"
 diagnostics = context.diagnostics()
 assert diagnostics["finite_correction_cache_hits"] > 0
 assert diagnostics["archimedean_correction_cache_hits"] > 0
+assert diagnostics["height_pairing_cache_hits"] == 1
 [
     height.steps,
     height.diagnostics["achieved_enclosure_width_bits"] >= 16,
     pairing.rigorous,
     reg.status,
     diagnostics["finite_correction_cache_hits"] > 0,
+    diagnostics["height_pairing_cache_hits"],
 ]
 `,
       { timeout: 180_000 },
     );
     assert.match(
       result.repr,
-      /^\[\d+, True, True, 'certified-positive', True\]$/,
+      /^\[\d+, True, True, 'certified-positive', True, 1\]$/,
     );
   } finally {
     await session.close();
