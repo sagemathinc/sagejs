@@ -479,6 +479,8 @@ class _HeightPairingCacheEntry(_SealedRecord):
 
     def __init__(
         self,
+        jacobian: Any,
+        points: tuple[Any, ...],
         model_binding: tuple[Any, ...],
         point_bindings: tuple[Any, ...],
         parameters: tuple[int, int, int | None, str],
@@ -487,6 +489,8 @@ class _HeightPairingCacheEntry(_SealedRecord):
         _proof_token: Any,
     ) -> None:
         self._proof_token = _proof_token
+        self._jacobian = jacobian
+        self._points = points
         self._model_binding = _freeze_data(model_binding)
         self._point_bindings = _freeze_data(point_bindings)
         self._parameters = _freeze_data(parameters)
@@ -496,13 +500,13 @@ class _HeightPairingCacheEntry(_SealedRecord):
     def _certified_for(
         self,
         jacobian: Any,
-        point_bindings: tuple[Any, ...],
+        points: tuple[Any, ...],
         parameters: tuple[int, int, int | None, str],
     ) -> bool:
         return (
             self._proof_token is _HEIGHT_PAIRING_CACHE_PROOF
-            and self._model_binding == _freeze_data(_height_model_binding(jacobian))
-            and self._point_bindings == _freeze_data(point_bindings)
+            and self._jacobian is jacobian
+            and self._points == points
             and self._parameters == _freeze_data(parameters)
         )
 
@@ -2595,7 +2599,6 @@ def height_pairing(
             {"specialized_quartics": "rejected-mutated-height-context"},
         )
     cache_key = None
-    point_bindings = tuple(_height_point_binding(value) for value in values)
     parameters = (
         int(steps),
         int(precision),
@@ -2608,7 +2611,7 @@ def height_pairing(
         if cached is not None:
             if not isinstance(
                 cached, _HeightPairingCacheEntry
-            ) or not cached._certified_for(jacobian, point_bindings, parameters):
+            ) or not cached._certified_for(jacobian, values, parameters):
                 raise Genus2HeightCapabilityError(
                     "cached height pairing proof does not match the exact request",
                     {
@@ -2674,8 +2677,10 @@ def height_pairing(
     )
     if cache_key is not None:
         context._height_pairings[cache_key] = _HeightPairingCacheEntry(
+            jacobian,
+            values,
             _height_model_binding(jacobian),
-            point_bindings,
+            tuple(_height_point_binding(value) for value in values),
             parameters,
             answer,
             _proof_token=_HEIGHT_PAIRING_CACHE_PROOF,
