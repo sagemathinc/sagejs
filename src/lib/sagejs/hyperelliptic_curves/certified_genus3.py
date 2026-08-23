@@ -702,6 +702,9 @@ def _deterministic_elements(
     # their degree-one Mumford classes directly also avoids making the generic
     # point validator multiply the identically-zero h polynomial.
     ring = jacobian.polynomial_ring()
+    if max_elements == 1:
+        x_value, y_value = points[0]
+        return (jacobian._element(ring.gen() - x_value, ring(y_value), False),)
     elements: list[Any] = []
     element_keys: set[Any] = set()
     partial_sum = jacobian.zero()
@@ -1146,16 +1149,49 @@ def _quadratic_twist(curve: Any, prime: int) -> Any:
     return model.HyperellipticCurve_generic(nonsquare * completed_square)
 
 
-def _completed_square_curve(curve: Any, prime: int) -> Any:
-    """Normalize an odd-characteristic generalized model to `Y^2=h^2+4f`."""
-    field = _prime_field(curve, prime)
+def _rational_completed_square_data(curve: Any) -> tuple[tuple[Any, ...], str]:
+    """Prepare the rational completed-square model once for a prime stream."""
     f_value, h_value = curve.hyperelliptic_polynomials()
-    completed_square = h_value * h_value + field(4) * f_value
+    completed_square = h_value * h_value + 4 * f_value
+    return (
+        tuple(completed_square.list()),
+        str(completed_square.parent().variable_name()),
+    )
+
+
+def _rational_completed_square_reduction(
+    curve: Any,
+    prime: int,
+    data: tuple[tuple[Any, ...], str] | None = None,
+) -> Any:
+    """Reduce `h^2+4f` directly, without publishing an intermediate curve."""
+    coefficients, variable_name = (
+        _rational_completed_square_data(curve) if data is None else data
+    )
+    finite_fields = __import__(
+        "sagejs._baselib.finite_fields",
+        fromlist=["GF"],
+    )
+    frobenius = __import__(
+        "sagejs.hyperelliptic_curves.frobenius",
+        fromlist=["_reduce_rational_coefficient"],
+    )
+    field = finite_fields.GF(prime)
+    ring = sage.PolynomialRing(field, variable_name)
+    reduced = ring(
+        [
+            frobenius._reduce_rational_coefficient(field, value, prime)
+            for value in coefficients
+        ]
+    )
     model = __import__(
         "sagejs.hyperelliptic_curves.model",
         fromlist=["HyperellipticCurve_generic"],
     )
-    return model.HyperellipticCurve_generic(completed_square)
+    try:
+        return model.HyperellipticCurve_generic(reduced)
+    except ValueError as error:
+        raise ArithmeticError("the curve has bad reduction at " + str(prime)) from error
 
 
 def _unique_orders(values: Iterable[int]) -> tuple[int, ...]:
@@ -1668,6 +1704,7 @@ def complete_genus3_residues_with_jacobian(
     max_group_operations: int = 10_000_000,
     stage_observer: StageObserver | None = None,
     _candidate_enumeration: Mapping[str, Any] | None = None,
+    _completed_square_data: tuple[tuple[Any, ...], str] | None = None,
 ) -> dict[str, Any]:
     """Certify one genus-3 factor or use an exact fallback.
 
@@ -1759,8 +1796,8 @@ def complete_genus3_residues_with_jacobian(
         raise ArithmeticError("the rforest residues have no genus-3 Weil lift")
 
     try:
-        reduced_curve = _completed_square_curve(
-            _reduce_rational_curve(curve, prime), prime
+        reduced_curve = _rational_completed_square_reduction(
+            curve, prime, _completed_square_data
         )
         if candidate_summary is None:
             remaining, certificate_diagnostics = _certify_candidates(
@@ -1998,6 +2035,7 @@ def rforest_genus3_local_factors(
         {"start": start, "stop": stop, "rows": len(batch["rows"])},
     )
     rows = batch["rows"]
+    completed_square_data = _rational_completed_square_data(curve)
     candidate_window = 16
     for window_start in range(0, len(rows), candidate_window):
         window = rows[window_start : window_start + candidate_window]
@@ -2048,6 +2086,7 @@ def rforest_genus3_local_factors(
                     max_group_operations=max_group_operations,
                     stage_observer=stage_observer,
                     _candidate_enumeration=enumeration,
+                    _completed_square_data=completed_square_data,
                 )
             yield prime, result
 
