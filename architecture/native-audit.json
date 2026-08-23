@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5138,
-      "bytes": 168075,
+      "lines": 5141,
+      "bytes": 168232,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -23,7 +23,7 @@
         "locally implemented integer, polynomial, and factoring helpers",
         "bounded adapters for elliptic and hyperelliptic external-library kernels"
       ],
-      "rationale": "The boundary is legitimate, but a 5,135-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
+      "rationale": "The boundary is legitimate, but a 5,141-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
       "fallback": "Existing ordinary Python arithmetic remains the capability fallback while each exported operation is separated.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Create a symbol-level inventory and extract one representation-neutral helper family per change set."
@@ -284,6 +284,27 @@
         "native Windows x64"
       ],
       "next": "Keep the adapter limited to packed sums, scalar and search primitives, and capability metadata; do not move certification policy across this boundary."
+    },
+    {
+      "path": "packages/flint/src/hyperelliptic/period_quadrature.c",
+      "lines": 452,
+      "bytes": 16154,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "bounded decimal ingress for complex roots and leading coefficients",
+        "batched endpoint-regularized Gauss--Legendre edge evaluation with Arb and Acb",
+        "outward ball serialization and accuracy-status transport"
+      ],
+      "rationale": "The loop delegates every arbitrary-precision operation to mature Arb and Acb and implements the same bounded panel formula as the ordinary mpmath oracle. A native adapter is warranted because the source-transparent compiler cannot yet own Arb/Acb resources in loops and per-node host crossings were the measured period bottleneck; topology, refinement, symplectic normalization, and acceptance policy remain in ordinary Python.",
+      "fallback": "The ordinary mpmath edge evaluator remains available and is differentially checked against both genera before the Arb result enters public period refinement.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT",
+        "PARI/GP"
+      ],
+      "next": "Keep this operation bounded and representation-only, preserve two independent arbitrary-precision refinement runs, and migrate the loop to source-transparent typed code if the compiler gains owned Arb/Acb resource semantics."
     },
     {
       "path": "packages/flint/src/hyperelliptic/rforest.c",

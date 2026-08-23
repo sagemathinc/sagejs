@@ -501,6 +501,20 @@
       "rationale": "Declarations for the private genus-3 Jacobian Node-API callbacks."
     },
     {
+      "path": "packages/flint/src/hyperelliptic/period_quadrature.c",
+      "category": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Bounded packed adapter that evaluates hyperelliptic edge quadrature with mature Arb/Acb ball arithmetic; ordinary mpmath panels provide an independent same-formula differential oracle."
+    },
+    {
+      "path": "packages/flint/src/hyperelliptic/period_quadrature.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Declaration for the bounded hyperelliptic Arb/Acb period-edge batch adapter."
+    },
+    {
       "path": "packages/flint/src/hyperelliptic/smalljac.c",
       "category": "external-library-bridge",
       "review_status": "accepted",

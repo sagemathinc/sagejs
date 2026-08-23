@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "85b7584c2ed6b1ad64b5aaba5d6607d4c278afb0843e543011c0dd7de5cc2174",
+  "source_sha256": "735ec93ea1e2cd6673672a3c846dd92dba366130690093bc2c4b3499b1b92323",
   "counts": {
-    "total": 962,
+    "total": 963,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
-      "napi-export": 317,
+      "napi-export": 318,
       "production-kernel": 42,
       "runtime-intrinsic": 137,
       "specialist-capability": 25
@@ -16,13 +16,13 @@
       "compiled-source": 42,
       "desktop-only": 14,
       "generated-wasm": 302,
-      "portable-fallback": 560,
+      "portable-fallback": 561,
       "shared-core": 44
     },
     "by_status": {
       "available": 515,
       "desktop-only": 14,
-      "fallback": 433
+      "fallback": 434
     }
   },
   "workflow_aliases": {
@@ -7471,6 +7471,18 @@
         "HyperellipticCurve.lseries"
       ],
       "explanation": "Hyperelliptic L-series values remain available in browsers through the tested strict-Python inverse-Mellin implementation."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticPeriodEdgeBatchArb",
+      "family": "hyperelliptic",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "strict-python-mpmath-period-panels",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "HyperellipticCurve.period_matrix and Abel--Jacobi integration"
+      ],
+      "explanation": "Hyperelliptic periods remain available in browsers through the tested strict-Python arbitrary-precision panel implementation."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:identity",

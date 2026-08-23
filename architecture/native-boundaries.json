@@ -13,10 +13,10 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 117,
+    "classified-native-file": 119,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
-    "napi-export": 317,
+    "napi-export": 318,
     "runtime-intrinsic": 137,
     "wasm-export": 72
   },
@@ -6061,6 +6061,16 @@
       "family": "hyperelliptic"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticPeriodEdgeBatchArb",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "hyperellipticPeriodEdgeBatchArb",
+      "symbol": "sagejs_hyperelliptic_period_edge_batch_arb",
+      "disposition": "retain-host-adapter",
+      "family": "hyperelliptic"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:identity",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -8702,6 +8712,22 @@
       "path": "packages/flint/src/hyperelliptic/genus3_jacobian.c",
       "disposition": "mathematical-algorithm",
       "review_status": "audited",
+      "lane": "hyperelliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/src/hyperelliptic/period_quadrature.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/hyperelliptic/period_quadrature.c",
+      "disposition": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "hyperelliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/src/hyperelliptic/period_quadrature.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/hyperelliptic/period_quadrature.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
       "lane": "hyperelliptic-curves"
     },
     {
