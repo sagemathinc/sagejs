@@ -1544,7 +1544,6 @@ class ClassUnitGroupEngine:
         }
         self._generation_verification_cache: dict[str, bool] = {}
         self._generation_verification_cache_active = True
-        self._live_analytic_proof: tuple[Any, ...] | None = None
         self._unit_logarithm_cache: dict[tuple[int, str], tuple[Any, ...]] = {}
         self._relation_log_record_prefix: tuple[Any, ...] = ()
         self._relation_dependency_unit_hashes: dict[tuple[int, ...], str] = {}
@@ -1564,8 +1563,6 @@ class ClassUnitGroupEngine:
         self._automorphism_orbit_plans: list[tuple[tuple[Any, ...], Any]] = []
         self._proof_progress: Any = None
         self._proof_dependency_hashes: dict[str, str] = {}
-        self._generation_dependency_snapshot: tuple[Any, ...] | None = None
-        self._saturation_record: Any = None
         self._live_verified_factor_base: tuple[Any, ...] | None = None
         self._authenticated_cubic_relation_seed_cache: Any = _CUBIC_RELATION_SEED_UNREAD
 
@@ -1677,6 +1674,40 @@ class ClassUnitGroupEngine:
             )
         )
 
+    def _bind_context_analytic_proof(self, proof: Iterable[Any]) -> None:
+        bind = getattr(self.context, "_bind_live_analytic_proof", None)
+        if callable(bind) and self._live_context_token is not None:
+            bind(self._live_context_token, proof)
+
+    def _context_analytic_proof(self) -> tuple[Any, ...] | None:
+        retained = getattr(self.context, "_live_analytic_proof", None)
+        if not callable(retained) or self._live_context_token is None:
+            return None
+        value: Any = retained(self._live_context_token)
+        return None if value is None else tuple(value)
+
+    def _context_generation_dependency_hashes(
+        self, collector: Any, presentation: Any
+    ) -> tuple[str, str] | None:
+        retained = getattr(self.context, "_live_generation_dependency_hashes", None)
+        if not callable(retained) or self._live_context_token is None:
+            return None
+        value: Any = retained(self._live_context_token, collector, presentation)
+        if value is None:
+            return None
+        return str(value[0]), str(value[1])
+
+    def _bind_context_saturation_record(self, record: Any) -> None:
+        bind = getattr(self.context, "_bind_live_saturation_record", None)
+        if callable(bind) and self._live_context_token is not None:
+            bind(self._live_context_token, record)
+
+    def _context_saturation_record(self) -> Any:
+        retained = getattr(self.context, "_live_saturation_record", None)
+        if not callable(retained) or self._live_context_token is None:
+            return None
+        return retained(self._live_context_token)
+
     def _retain_context_terminal(
         self,
         proof_status: str,
@@ -1741,11 +1772,12 @@ class ClassUnitGroupEngine:
         self._checkpoint_capture({"diagnostics": self._diagnostics(diagnostics)})
         self._checkpoint_save(force=True)
         terminal_diagnostics = self._diagnostics(diagnostics)
+        saturation_record = self._context_saturation_record()
         self._retain_context_terminal(
             INCOMPLETE_RESOURCE_LIMIT,
             reason,
             unit_group=unit_group,
-            saturation_record=self._saturation_record,
+            saturation_record=saturation_record,
             diagnostics=terminal_diagnostics,
         )
         return ClassUnitComputation(
@@ -1759,7 +1791,7 @@ class ClassUnitGroupEngine:
             tentative_invariants=invariants,
             context=self.context,
             diagnostics=terminal_diagnostics,
-            saturation_record=self._saturation_record,
+            saturation_record=saturation_record,
             proof_progress=self._proof_progress,
             proof_dependency_hashes=self._proof_dependency_hashes,
         )
@@ -2477,24 +2509,21 @@ class ClassUnitGroupEngine:
         self, group: Any, collector: Any, presentation: Any, saturation: Any
     ) -> dict[str, str]:
         """Hash every exact dependency consumed by proof-prime replay."""
-        snapshot = self._generation_dependency_snapshot
+        retained_hashes = self._context_generation_dependency_hashes(
+            collector, presentation
+        )
         execution_policy = {
             "schema": "sagejs.number-fields/class-unit-execution-policy-v1",
             "requested_proof": self.proof,
             "algorithm": self.algorithm,
             "limits": self.limits.to_dict(),
         }
-        if (
-            snapshot is not None
-            and snapshot[0] is collector
-            and snapshot[1] is presentation
-            and snapshot[2] == tuple(collector.records)
-        ):
+        if retained_hashes is not None:
             relations_body = {
                 "schema": "sagejs.number-fields/proof-relations-v2",
-                "records_sha256": str(snapshot[3]),
+                "records_sha256": str(retained_hashes[0]),
             }
-            presentation_dependency = str(snapshot[4])
+            presentation_dependency = str(retained_hashes[1])
         else:
             relations_body = {
                 "schema": "sagejs.number-fields/proof-relations-v1",
@@ -3464,13 +3493,15 @@ class ClassUnitGroupEngine:
             zeta_log_residue=zeta,
             precision_bits=self.limits.precision_bits,
         )
-        self._live_analytic_proof = (
-            tuple(units),
-            int(presentation.order),
-            int(torsion.order),
-            regulator,
-            zeta,
-            index,
+        self._bind_context_analytic_proof(
+            (
+                tuple(units),
+                int(presentation.order),
+                int(torsion.order),
+                regulator,
+                zeta,
+                index,
+            )
         )
         self._phase_finish("analytic-index", started)
         self._stage(
@@ -3547,13 +3578,6 @@ class ClassUnitGroupEngine:
                 evidence,
                 (evidence_sha256, relations_sha256, presentation_sha256),
             )
-        self._generation_dependency_snapshot = (
-            collector,
-            presentation,
-            tuple(collector.records),
-            relations_sha256,
-            presentation_sha256,
-        )
         cache_key = _canonical_payload_hash(
             {
                 "evidence_sha256": evidence_sha256,
@@ -3873,7 +3897,7 @@ class ClassUnitGroupEngine:
             "generation_verifier": generation_verifier,
             "proof_status": proof_status,
         }
-        live_proof = self._live_analytic_proof
+        live_proof = self._context_analytic_proof()
         standard_analytic = _optional_module("sagejs.number_fields.class_unit_analytic")
         if (
             live_proof is not None
@@ -4134,7 +4158,7 @@ class ClassUnitGroupEngine:
                 else None
             ),
         )
-        self._saturation_record = record
+        self._bind_context_saturation_record(record)
         self._checkpoint_capture({"saturation": record})
         self._stage(
             "saturation",

@@ -450,6 +450,7 @@ class _LiveClassUnitArtifacts:
         self.factored_units: tuple[Any, ...] = ()
         self.analytic_workspace = analytic_workspace
         self.factored_logarithm_workspace = factored_logarithm_workspace
+        self.analytic_proof: tuple[Any, ...] | None = None
         self.generation_evidence: Any = None
         self.generation_hashes: tuple[str, str, str] | None = None
         self.saturation_record: Any = None
@@ -507,6 +508,8 @@ class _LiveClassUnitArtifacts:
             for retained, supplied in zip(self.relations, current, strict=True)
         ):
             return None
+        # `reusable` means no callback, cancellation hook, or checkpoint can
+        # interpose after `bind_relations` authenticated this exact prefix.
         # The analytic certificate immediately captures canonical bytes.  This
         # live-only projection therefore need not recursively clone normalized
         # JSON trees a second time.
@@ -524,6 +527,39 @@ class _LiveClassUnitArtifacts:
             str(hashes[2]),
         )
 
+    def bind_analytic_proof(self, proof: Iterable[Any]) -> None:
+        if self.sealed:
+            raise ValueError("a sealed class/unit context cannot accept analytic state")
+        values = tuple(proof)
+        if len(values) != 6:
+            raise ValueError("a live analytic proof must contain six exact components")
+        self.analytic_proof = values
+
+    def dependency_hashes(
+        self, collector: Any, presentation: Any
+    ) -> tuple[str, str] | None:
+        if (
+            self.generation_hashes is None
+            or not self.reusable
+            or collector is not self.collector
+            or presentation is not self.presentation
+        ):
+            return None
+        # The reusable context has had no external control boundary since the
+        # prefix was authenticated and the generation hashes were captured.
+        current = tuple(getattr(collector, "records", ()))
+        if len(current) != len(self.relations) or any(
+            retained is not supplied
+            for retained, supplied in zip(self.relations, current, strict=True)
+        ):
+            return None
+        return self.generation_hashes[1], self.generation_hashes[2]
+
+    def bind_saturation_record(self, record: Any) -> None:
+        if self.sealed:
+            raise ValueError("a sealed class/unit context cannot accept saturation")
+        self.saturation_record = record
+
     def retain_terminal(
         self,
         *,
@@ -534,8 +570,15 @@ class _LiveClassUnitArtifacts:
     ) -> None:
         if self.sealed:
             raise ValueError("a class/unit context is already terminal")
+        if (
+            saturation_record is not None
+            and self.saturation_record is not None
+            and saturation_record is not self.saturation_record
+        ):
+            raise ValueError("terminal saturation differs from retained live state")
         self.factored_units = tuple(units)
-        self.saturation_record = saturation_record
+        if saturation_record is not None:
+            self.saturation_record = saturation_record
         self.class_group = class_group
         self.unit_group = unit_group
         self.sealed = True
@@ -549,6 +592,7 @@ class _LiveClassUnitArtifacts:
             "has_presentation": self.presentation is not None,
             "unit_count": len(self.factored_units),
             "has_analytic_workspace": self.analytic_workspace is not None,
+            "has_analytic_proof": self.analytic_proof is not None,
             "has_generation_authority": self.generation_hashes is not None,
             "has_saturation_record": self.saturation_record is not None,
             "has_class_group": self.class_group is not None,
@@ -684,6 +728,40 @@ class ClassUnitGroupContext:
         live = self._live_artifacts
         if live is not None:
             live.bind_generation_evidence(evidence, hashes)
+
+    def _bind_live_analytic_proof(self, token: Any, proof: Iterable[Any]) -> None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live analytic state is engine-owned")
+        live = self._live_artifacts
+        if live is not None:
+            live.bind_analytic_proof(proof)
+
+    def _live_analytic_proof(self, token: Any) -> tuple[Any, ...] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live analytic state is engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.analytic_proof
+
+    def _live_generation_dependency_hashes(
+        self, token: Any, collector: Any, presentation: Any
+    ) -> tuple[str, str] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live generation state is engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.dependency_hashes(collector, presentation)
+
+    def _bind_live_saturation_record(self, token: Any, record: Any) -> None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live saturation state is engine-owned")
+        live = self._live_artifacts
+        if live is not None:
+            live.bind_saturation_record(record)
+
+    def _live_saturation_record(self, token: Any) -> Any:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live saturation state is engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.saturation_record
 
     def _retain_live_terminal(
         self,

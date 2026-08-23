@@ -525,6 +525,7 @@ assert live_context["factor_base_size"] == len(result.conditional_factor_base)
 assert live_context["relation_count"] == len(result.conditional_relation_records)
 assert live_context["has_presentation"]
 assert live_context["has_analytic_workspace"]
+assert live_context["has_analytic_proof"]
 assert live_context["has_generation_authority"]
 assert live_context["has_saturation_record"]
 assert live_context["has_class_group"] and live_context["has_unit_group"]
