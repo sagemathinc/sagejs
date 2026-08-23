@@ -46,6 +46,12 @@ function main() {
     rows.push({ limit, result, wall: summary(samples.map((value) => value.wall_ms)), cpu_user: summary(samples.map((value) => value.cpu_user_ms)), peak_rss_bytes: Math.max(...samples.map((value) => value.rss_bytes)), samples });
   }
   const output = { schema: "sagejs.hyperelliptic-competitive-local-streams.v1", generated_at_utc: new Date().toISOString(), source_commit: require("node:child_process").spawnSync("git", ["rev-parse", "HEAD"], { cwd: repository, encoding: "utf8" }).stdout.trim(), host: { hostname: hostname(), platform: platform(), release: release(), architecture: arch(), node: process.version }, backend: addon.smalljacCapabilities(), contract: { curve: "y^2=x^5+x+1", interval: "[3,limit)", normalization: "det(1-T*Frob)", representation: "packed typed arrays; no public polynomial materialization" }, rows };
-  const serialized = `${JSON.stringify(output, null, 2)}\n`; if (options.output) writeFileSync(options.output, serialized); else process.stdout.write(serialized);
+  const serialized = `${JSON.stringify(
+    output,
+    (_key, value) => (typeof value === "bigint" ? value.toString() : value),
+    2,
+  )}\n`;
+  if (options.output) writeFileSync(options.output, serialized);
+  else process.stdout.write(serialized);
 }
 main();
