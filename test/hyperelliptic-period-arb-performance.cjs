@@ -312,3 +312,66 @@ True
     }
   },
 );
+
+test(
+  "Abel--Jacobi point batches share exact roots and arbitrary refinements",
+  { timeout: 180_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(String.raw`
+import time
+from mpmath import mp
+from sagejs.hyperelliptic_curves.periods import (
+    abel_jacobi_batch,
+    clear_period_cache,
+    real_period,
+)
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+f = (
+    QQ(17) / 60 * x**5
+    - QQ(10) / 3 * x**4
+    + QQ(173) / 12 * x**3
+    - QQ(139) / 6 * x**2
+    + QQ(74) / 5 * x
+    + 1
+)
+C = HyperellipticCurve(f)
+heights = [1, 2, 3, 5, 7, 10]
+points = [C([index, sign * height]) for index, height in enumerate(heights) for sign in (1, -1)]
+clear_period_cache()
+periods = real_period(C, prec=64, use_cache=False)
+started = time.perf_counter()
+batch = abel_jacobi_batch(
+    C,
+    points,
+    period_result=periods,
+    prec=64,
+    max_refinements=3,
+    use_cache=False,
+)
+elapsed_ms = (time.perf_counter() - started) * 1000
+assert len(batch) == len(points)
+assert max(
+    abs(batch[2 * pair].vector()[entry] + batch[2 * pair + 1].vector()[entry])
+    for pair in range(len(heights))
+    for entry in range(2)
+) < mp.power(2, -60)
+for item in batch:
+    diagnostics = item.diagnostics()
+    runs = diagnostics["refinement_runs"]
+    assert len(runs) >= 2
+    assert all(run["engine"] == "arb-acb-abel-jacobi-batch" for run in runs)
+    assert all(run["work_precision_bits"] > 64 for run in runs)
+assert batch[0].verify()["verified"]
+assert batch[-1].verify()["verified"]
+assert elapsed_ms < 2000, elapsed_ms
+True
+`);
+      assert.equal(result.repr, "True");
+    } finally {
+      await session.close();
+    }
+  },
+);

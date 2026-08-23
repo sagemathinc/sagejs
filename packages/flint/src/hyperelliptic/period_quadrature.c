@@ -19,6 +19,7 @@
 #include <flint/fmpq.h>
 #include <flint/fmpq_mat.h>
 #include <flint/fmpq_poly.h>
+#include <flint/fmpq_vec.h>
 #include <flint/fmpz_mat.h>
 #include <flint/qqbar.h>
 
@@ -28,6 +29,7 @@
 #define SAGEJS_PERIOD_MAX_ORDER 64
 #define SAGEJS_PERIOD_MAX_PANELS 64
 #define SAGEJS_PERIOD_MAX_ROOTS 8
+#define SAGEJS_PERIOD_MAX_ABEL_POINTS 64
 
 typedef struct
 {
@@ -60,6 +62,20 @@ typedef struct
     double lattice_ms;
     int initialized;
 } sagejs_period_run;
+
+typedef struct
+{
+    acb_ptr vectors;
+    slong *directions;
+    double *clearances;
+    slong point_count;
+    slong genus;
+    slong sample_evaluations;
+    double roots_ms;
+    double ray_planning_ms;
+    double quadrature_ms;
+    int initialized;
+} sagejs_abel_run;
 
 static int period_check_napi(napi_env env, napi_status status)
 {
@@ -231,6 +247,70 @@ static int period_values_to_fmpq_poly(
         return 0;
     }
     *length_out = (slong) length;
+    return 1;
+}
+
+static int period_values_to_fmpq_points(
+    napi_env env, napi_value value, fmpq **x_values_out,
+    fmpq **y_values_out, slong *point_count_out)
+{
+    bool is_array = false;
+    uint32_t count = 0;
+    fmpq *x_values = NULL;
+    fmpq *y_values = NULL;
+    slong index;
+    if (!period_check_napi(env, napi_is_array(env, value, &is_array)) ||
+        !is_array ||
+        !period_check_napi(env, napi_get_array_length(env, value, &count)) ||
+        count < 1 || count > SAGEJS_PERIOD_MAX_ABEL_POINTS)
+    {
+        napi_throw_range_error(env, NULL,
+            "an Abel--Jacobi batch must contain from 1 through 64 points");
+        return 0;
+    }
+    x_values = _fmpq_vec_init((slong) count);
+    y_values = _fmpq_vec_init((slong) count);
+    if (x_values == NULL || y_values == NULL)
+    {
+        if (x_values != NULL)
+            _fmpq_vec_clear(x_values, (slong) count);
+        if (y_values != NULL)
+            _fmpq_vec_clear(y_values, (slong) count);
+        napi_throw_error(env, NULL,
+            "unable to allocate the bounded Abel--Jacobi point batch");
+        return 0;
+    }
+    for (index = 0; index < (slong) count; index++)
+    {
+        napi_value pair, x_value, y_value;
+        bool pair_is_array = false;
+        uint32_t pair_length = 0;
+        if (!period_check_napi(env,
+                napi_get_element(env, value, (uint32_t) index, &pair)) ||
+            !period_check_napi(env,
+                napi_is_array(env, pair, &pair_is_array)) ||
+            !pair_is_array ||
+            !period_check_napi(env,
+                napi_get_array_length(env, pair, &pair_length)) ||
+            pair_length != 2 ||
+            !period_check_napi(env,
+                napi_get_element(env, pair, 0, &x_value)) ||
+            !period_check_napi(env,
+                napi_get_element(env, pair, 1, &y_value)) ||
+            !period_value_to_fmpq(env, x_value, x_values + index) ||
+            !period_value_to_fmpq(env, y_value, y_values + index))
+        {
+            _fmpq_vec_clear(y_values, (slong) count);
+            _fmpq_vec_clear(x_values, (slong) count);
+            if (!pair_is_array || pair_length != 2)
+                napi_throw_type_error(env, NULL,
+                    "each Abel--Jacobi point must be [x, y]");
+            return 0;
+        }
+    }
+    *x_values_out = x_values;
+    *y_values_out = y_values;
+    *point_count_out = (slong) count;
     return 1;
 }
 
@@ -1457,6 +1537,392 @@ static slong period_achieved_stability_bits(
     return achieved;
 }
 
+static void period_evaluate_fmpq_poly_acb(
+    acb_t result, const fmpq_poly_t polynomial, const acb_t value,
+    slong precision)
+{
+    arb_t coefficient;
+    fmpq_t exact_coefficient;
+    slong index;
+    arb_init(coefficient);
+    fmpq_init(exact_coefficient);
+    acb_zero(result);
+    for (index = fmpq_poly_degree(polynomial); index >= 0; index--)
+    {
+        acb_mul(result, result, value, precision);
+        fmpq_poly_get_coeff_fmpq(exact_coefficient, polynomial, index);
+        arb_set_fmpq(coefficient, exact_coefficient, precision);
+        acb_add_arb(result, result, coefficient, precision);
+    }
+    fmpq_clear(exact_coefficient);
+    arb_clear(coefficient);
+}
+
+static int period_choose_abel_ray(
+    acb_srcptr roots, slong root_count, const fmpq_t target,
+    slong precision, slong *direction_out, double *clearance_out)
+{
+    sagejs_period_point root_points[SAGEJS_PERIOD_MAX_ROOTS];
+    const double target_value = fmpq_get_d(target);
+    const double pi = acos(-1.0);
+    double scale = FLINT_MAX(1.0, fabs(target_value));
+    double separation = HUGE_VAL;
+    slong nearest = -1;
+    slong omitted = -1;
+    slong root_index, direction_index;
+    double best_clearance = -1.0;
+    slong best_direction = -1;
+    for (root_index = 0; root_index < root_count; root_index++)
+    {
+        double distance;
+        root_points[root_index].real =
+            period_acb_midpoint_real(roots + root_index);
+        root_points[root_index].imaginary =
+            period_acb_midpoint_imaginary(roots + root_index);
+        scale = FLINT_MAX(scale, hypot(root_points[root_index].real,
+            root_points[root_index].imaginary));
+        distance = hypot(root_points[root_index].real - target_value,
+            root_points[root_index].imaginary);
+        if (distance < separation)
+        {
+            separation = distance;
+            nearest = root_index;
+        }
+    }
+    if (separation <= ldexp(scale, -(int) (precision / 3)))
+        omitted = nearest;
+    for (direction_index = 0; direction_index < 16; direction_index++)
+    {
+        const double angle = pi * (double) (2 * direction_index + 1) / 32.0;
+        const double direction_real = cos(angle);
+        const double direction_imaginary = sin(angle);
+        double clearance = HUGE_VAL;
+        for (root_index = 0; root_index < root_count; root_index++)
+        {
+            const double displacement_real =
+                root_points[root_index].real - target_value;
+            const double displacement_imaginary =
+                root_points[root_index].imaginary;
+            const double coordinate = displacement_real * direction_real +
+                displacement_imaginary * direction_imaginary;
+            double distance;
+            if (root_index == omitted)
+                continue;
+            if (coordinate >= 0.0)
+                distance = fabs(displacement_real * direction_imaginary -
+                    displacement_imaginary * direction_real);
+            else
+                distance = hypot(displacement_real, displacement_imaginary);
+            if (distance < clearance)
+                clearance = distance;
+        }
+        if (clearance > best_clearance)
+        {
+            best_clearance = clearance;
+            best_direction = direction_index;
+        }
+    }
+    if (best_direction < 0 || !(best_clearance > 0.0) ||
+        !isfinite(best_clearance))
+        return 0;
+    *direction_out = best_direction;
+    *clearance_out = best_clearance;
+    return 1;
+}
+
+static void period_abel_run_init(
+    sagejs_abel_run *run, slong point_count, slong genus)
+{
+    memset(run, 0, sizeof(*run));
+    run->vectors = _acb_vec_init(point_count * genus);
+    run->directions = (slong *) calloc(
+        (size_t) point_count, sizeof(*run->directions));
+    run->clearances = (double *) calloc(
+        (size_t) point_count, sizeof(*run->clearances));
+    run->point_count = point_count;
+    run->genus = genus;
+    run->initialized = run->vectors != NULL &&
+        run->directions != NULL && run->clearances != NULL;
+}
+
+static void period_abel_run_clear(sagejs_abel_run *run)
+{
+    if (run->vectors != NULL)
+        _acb_vec_clear(run->vectors, run->point_count * run->genus);
+    free(run->clearances);
+    free(run->directions);
+    memset(run, 0, sizeof(*run));
+}
+
+static int period_abel_quadrature(
+    acb_ptr output, const slong *directions,
+    const fmpq *x_values, const fmpq *y_values, slong point_count,
+    const fmpq_poly_t completed, const fmpq_poly_t h_value,
+    slong genus, slong panels, slong order, slong precision)
+{
+    const slong sample_count = panels * order;
+    const slong work_precision = precision + 16;
+    arb_ptr nodes = _arb_vec_init(order);
+    arb_ptr weights = _arb_vec_init(order);
+    arb_ptr tangent_squares = _arb_vec_init(sample_count);
+    arb_ptr jacobian_weights = _arb_vec_init(sample_count);
+    arb_t pi, theta, panel_midpoint, panel_half, tangent;
+    arb_t secant_squared, direction_real, direction_imaginary;
+    acb_t target, direction, x_value, residual, square_root;
+    acb_t desired_square_root, previous_root, factor, power, term;
+    fmpq_t desired_exact, h_at_target;
+    slong panel, sample, packed_index, point_index, differential;
+    int ok = nodes != NULL && weights != NULL && tangent_squares != NULL &&
+        jacobian_weights != NULL;
+
+    arb_init(pi);
+    arb_init(theta);
+    arb_init(panel_midpoint);
+    arb_init(panel_half);
+    arb_init(tangent);
+    arb_init(secant_squared);
+    arb_init(direction_real);
+    arb_init(direction_imaginary);
+    acb_init(target);
+    acb_init(direction);
+    acb_init(x_value);
+    acb_init(residual);
+    acb_init(square_root);
+    acb_init(desired_square_root);
+    acb_init(previous_root);
+    acb_init(factor);
+    acb_init(power);
+    acb_init(term);
+    fmpq_init(desired_exact);
+    fmpq_init(h_at_target);
+
+    arb_const_pi(pi, work_precision);
+    arb_set(panel_half, pi);
+    arb_div_ui(panel_half, panel_half, (ulong) (4 * panels), work_precision);
+    for (sample = 0; sample < order; sample++)
+        arb_hypgeom_legendre_p_ui_root(
+            nodes + sample, weights + sample,
+            (ulong) order, (ulong) sample, work_precision);
+    packed_index = 0;
+    for (panel = 0; panel < panels; panel++)
+    {
+        arb_mul_ui(panel_midpoint, pi,
+            (ulong) (2 * panel + 1), work_precision);
+        arb_div_ui(panel_midpoint, panel_midpoint,
+            (ulong) (4 * panels), work_precision);
+        for (sample = order - 1; sample >= 0; sample--)
+        {
+            arb_mul(theta, panel_half, nodes + sample, work_precision);
+            arb_add(theta, theta, panel_midpoint, work_precision);
+            arb_tan(tangent, theta, work_precision);
+            arb_mul(tangent_squares + packed_index,
+                tangent, tangent, work_precision);
+            arb_add_ui(secant_squared,
+                tangent_squares + packed_index, 1, work_precision);
+            arb_mul(jacobian_weights + packed_index,
+                tangent, secant_squared, work_precision);
+            arb_mul(jacobian_weights + packed_index,
+                jacobian_weights + packed_index,
+                weights + sample, work_precision);
+            arb_mul(jacobian_weights + packed_index,
+                jacobian_weights + packed_index,
+                panel_half, work_precision);
+            arb_mul_2exp_si(jacobian_weights + packed_index,
+                jacobian_weights + packed_index, 1);
+            packed_index++;
+        }
+    }
+
+    for (point_index = 0; point_index < point_count && ok; point_index++)
+    {
+        int has_previous = 0;
+        int initial_sign_fixed = 0;
+        arb_set_fmpq(acb_realref(target), x_values + point_index,
+            work_precision);
+        arb_zero(acb_imagref(target));
+        arb_mul_ui(theta, pi,
+            (ulong) (2 * directions[point_index] + 1), work_precision);
+        arb_div_ui(theta, theta, 32, work_precision);
+        arb_sin_cos(direction_imaginary, direction_real,
+            theta, work_precision);
+        acb_set_arb_arb(direction, direction_real, direction_imaginary);
+        fmpq_poly_evaluate_fmpq(
+            h_at_target, h_value, x_values + point_index);
+        fmpq_mul_2exp(desired_exact, y_values + point_index, 1);
+        fmpq_add(desired_exact, desired_exact, h_at_target);
+        arb_set_fmpq(acb_realref(desired_square_root),
+            desired_exact, work_precision);
+        arb_zero(acb_imagref(desired_square_root));
+        for (sample = 0; sample < sample_count; sample++)
+        {
+            acb_mul_arb(x_value, direction,
+                tangent_squares + sample, work_precision);
+            acb_add(x_value, x_value, target, work_precision);
+            period_evaluate_fmpq_poly_acb(
+                residual, completed, x_value, work_precision);
+            if (!acb_is_finite(residual) || acb_contains_zero(residual))
+            {
+                ok = 0;
+                break;
+            }
+            acb_sqrt(square_root, residual, work_precision);
+            if (!acb_is_finite(square_root) || acb_contains_zero(square_root))
+            {
+                ok = 0;
+                break;
+            }
+            if (!initial_sign_fixed && !fmpq_is_zero(desired_exact))
+            {
+                if (period_acb_midpoint_distance_squared(
+                        square_root, desired_square_root, 1) <
+                    period_acb_midpoint_distance_squared(
+                        square_root, desired_square_root, 0))
+                    acb_neg(square_root, square_root);
+                initial_sign_fixed = 1;
+            }
+            else if (has_previous &&
+                period_acb_midpoint_distance_squared(
+                    square_root, previous_root, 1) <
+                period_acb_midpoint_distance_squared(
+                    square_root, previous_root, 0))
+                acb_neg(square_root, square_root);
+            acb_set(previous_root, square_root);
+            has_previous = 1;
+            acb_div(factor, direction, square_root, work_precision);
+            acb_mul_arb(factor, factor,
+                jacobian_weights + sample, work_precision);
+            acb_one(power);
+            for (differential = 0; differential < genus; differential++)
+            {
+                acb_mul(term, factor, power, work_precision);
+                acb_sub(output + point_index * genus + differential,
+                    output + point_index * genus + differential,
+                    term, work_precision);
+                acb_mul(power, power, x_value, work_precision);
+            }
+        }
+    }
+    for (packed_index = 0; packed_index < point_count * genus; packed_index++)
+        if (!acb_is_finite(output + packed_index))
+            ok = 0;
+
+    fmpq_clear(h_at_target);
+    fmpq_clear(desired_exact);
+    acb_clear(term);
+    acb_clear(power);
+    acb_clear(factor);
+    acb_clear(previous_root);
+    acb_clear(desired_square_root);
+    acb_clear(square_root);
+    acb_clear(residual);
+    acb_clear(x_value);
+    acb_clear(direction);
+    acb_clear(target);
+    arb_clear(direction_imaginary);
+    arb_clear(direction_real);
+    arb_clear(secant_squared);
+    arb_clear(tangent);
+    arb_clear(panel_half);
+    arb_clear(panel_midpoint);
+    arb_clear(theta);
+    arb_clear(pi);
+    if (jacobian_weights != NULL)
+        _arb_vec_clear(jacobian_weights, sample_count);
+    if (tangent_squares != NULL)
+        _arb_vec_clear(tangent_squares, sample_count);
+    if (weights != NULL)
+        _arb_vec_clear(weights, order);
+    if (nodes != NULL)
+        _arb_vec_clear(nodes, order);
+    return ok;
+}
+
+static int period_compute_abel_run(
+    sagejs_abel_run *run, qqbar_srcptr exact_roots,
+    const slong *branch_order, slong root_count,
+    const fmpq *x_values, const fmpq *y_values, slong point_count,
+    const fmpq_poly_t completed, const fmpq_poly_t h_value,
+    slong genus, slong panels, slong quadrature_order, slong precision)
+{
+    acb_ptr roots = _acb_vec_init(root_count);
+    slong index;
+    int status = 1;
+    uint64_t stage_started;
+    period_abel_run_init(run, point_count, genus);
+    if (!run->initialized || roots == NULL)
+    {
+        if (roots != NULL)
+            _acb_vec_clear(roots, root_count);
+        return 0;
+    }
+    stage_started = uv_hrtime();
+    for (index = 0; index < root_count; index++)
+        qqbar_get_acb(roots + index,
+            exact_roots + branch_order[index], precision + 16);
+    run->roots_ms = (double) (uv_hrtime() - stage_started) / 1.0e6;
+    stage_started = uv_hrtime();
+    for (index = 0; index < point_count; index++)
+        if (!period_choose_abel_ray(roots, root_count,
+                x_values + index, precision,
+                run->directions + index, run->clearances + index))
+        {
+            status = 0;
+            break;
+        }
+    run->ray_planning_ms =
+        (double) (uv_hrtime() - stage_started) / 1.0e6;
+    stage_started = uv_hrtime();
+    if (status && !period_abel_quadrature(run->vectors, run->directions,
+            x_values, y_values, point_count, completed, h_value,
+            genus, panels, quadrature_order, precision))
+        status = 0;
+    run->quadrature_ms =
+        (double) (uv_hrtime() - stage_started) / 1.0e6;
+    run->sample_evaluations = point_count * panels * quadrature_order;
+    _acb_vec_clear(roots, root_count);
+    return status;
+}
+
+static int period_abel_runs_stable(
+    arb_t difference_out, arb_t tolerance_out,
+    const sagejs_abel_run *left, const sagejs_abel_run *right,
+    slong requested_precision, slong work_precision)
+{
+    const slong target_bits = FLINT_MAX(
+        20, FLINT_MIN(80, requested_precision / 2));
+    const slong value_count = right->point_count * right->genus;
+    arb_t difference, scale, magnitude;
+    acb_t delta;
+    slong index;
+    int stable = 1;
+    arb_init(difference);
+    arb_init(scale);
+    arb_init(magnitude);
+    acb_init(delta);
+    arb_zero(difference_out);
+    arb_one(scale);
+    for (index = 0; index < right->point_count; index++)
+        if (left->directions[index] != right->directions[index])
+            stable = 0;
+    for (index = 0; index < value_count; index++)
+    {
+        acb_sub(delta, right->vectors + index,
+            left->vectors + index, work_precision);
+        acb_abs(difference, delta, work_precision);
+        arb_max(difference_out, difference_out, difference, work_precision);
+        acb_abs(magnitude, right->vectors + index, work_precision);
+        arb_max(scale, scale, magnitude, work_precision);
+    }
+    arb_set(tolerance_out, scale);
+    arb_mul_2exp_si(tolerance_out, tolerance_out, -target_bits);
+    stable = stable && arb_lt(difference_out, tolerance_out);
+    acb_clear(delta);
+    arb_clear(magnitude);
+    arb_clear(scale);
+    arb_clear(difference);
+    return stable;
+}
+
 static napi_value period_decimal_from_arf(
     napi_env env, const arf_t value, slong digits)
 {
@@ -1522,6 +1988,353 @@ static napi_value period_ball_to_object(
         !period_set_named(env, result, "imagRadius", imaginary_radius) ||
         !period_set_named(env, result, "accuracyBits", accuracy))
         return NULL;
+    return result;
+}
+
+napi_value sagejs_hyperelliptic_abel_jacobi_batch_arb(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[8];
+    size_t argc = 8;
+    slong genus, requested_precision, max_refinements;
+    slong initial_panels, quadrature_order;
+    slong coefficient_count = 0, point_count = 0;
+    slong root_count = 0, real_root_count = 0;
+    slong branch_order[SAGEJS_PERIOD_MAX_ROOTS] = {0};
+    slong refinement, completed_runs = 0, selected_run = -1;
+    slong total_samples = 0, index;
+    double branch_clearance = 0.0, root_scale = 1.0;
+    fmpq_poly_t completed, f_value, h_value, derivative, gcd;
+    fmpq *x_values = NULL;
+    fmpq *y_values = NULL;
+    fmpq_t f_at_x, h_at_x, point_lhs, temporary;
+    qqbar_ptr exact_roots = NULL;
+    sagejs_abel_run runs[6];
+    arb_t difference, tolerance;
+    napi_value result = NULL, status = NULL, values = NULL;
+    napi_value run_values = NULL, order_values = NULL;
+    napi_value direction_values = NULL, clearance_values = NULL;
+    napi_value stage_timings = NULL;
+    const char *status_text = "unsupported";
+    uint64_t operation_started, model_validated, roots_isolated;
+    uint64_t branch_planned, refinements_completed, result_assembled;
+
+    memset(runs, 0, sizeof(runs));
+    operation_started = uv_hrtime();
+    if (!period_check_napi(env,
+            napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
+        return NULL;
+    if (argc != 8)
+    {
+        napi_throw_type_error(env, NULL,
+            "hyperellipticAbelJacobiBatchArb expects f coefficients, h "
+            "coefficients, points, genus, precision, refinements, initial "
+            "panels, and quadrature order");
+        return NULL;
+    }
+    if (!period_value_to_slong(env, args[3], 2, 3, &genus) ||
+        !period_value_to_slong(env, args[4],
+            SAGEJS_PERIOD_MIN_PRECISION, SAGEJS_PERIOD_MAX_PRECISION,
+            &requested_precision) ||
+        !period_value_to_slong(env, args[5], 2, 6, &max_refinements) ||
+        !period_value_to_slong(env, args[6],
+            1, SAGEJS_PERIOD_MAX_PANELS, &initial_panels) ||
+        !period_value_to_slong(env, args[7],
+            SAGEJS_PERIOD_MIN_ORDER, SAGEJS_PERIOD_MAX_ORDER,
+            &quadrature_order))
+        return NULL;
+
+    fmpq_poly_init(completed);
+    fmpq_poly_init(f_value);
+    fmpq_poly_init(h_value);
+    fmpq_poly_init(derivative);
+    fmpq_poly_init(gcd);
+    fmpq_init(f_at_x);
+    fmpq_init(h_at_x);
+    fmpq_init(point_lhs);
+    fmpq_init(temporary);
+    arb_init(difference);
+    arb_init(tolerance);
+    if (!period_values_to_fmpq_poly(env, args[0], f_value,
+            1, 2 * genus + 3, 0, &coefficient_count) ||
+        !period_values_to_fmpq_poly(env, args[1], h_value,
+            1, genus + 3, 1, &coefficient_count) ||
+        !period_values_to_fmpq_points(
+            env, args[2], &x_values, &y_values, &point_count))
+        goto cleanup;
+    fmpq_poly_mul(completed, h_value, h_value);
+    fmpq_poly_scalar_mul_si(f_value, f_value, 4);
+    fmpq_poly_add(completed, completed, f_value);
+    root_count = fmpq_poly_degree(completed);
+    if (root_count != 2 * genus + 1)
+    {
+        napi_throw_range_error(env, NULL,
+            "Abel--Jacobi batching requires the odd-degree one-infinity model");
+        goto cleanup;
+    }
+    fmpq_poly_scalar_div_si(f_value, f_value, 4);
+    fmpq_poly_derivative(derivative, completed);
+    fmpq_poly_gcd(gcd, completed, derivative);
+    if (fmpq_poly_degree(gcd) != 0)
+    {
+        napi_throw_range_error(env, NULL,
+            "the completed hyperelliptic polynomial must be squarefree");
+        goto cleanup;
+    }
+    for (index = 0; index < point_count; index++)
+    {
+        fmpq_poly_evaluate_fmpq(f_at_x, f_value, x_values + index);
+        fmpq_poly_evaluate_fmpq(h_at_x, h_value, x_values + index);
+        fmpq_mul(point_lhs, y_values + index, y_values + index);
+        fmpq_mul(temporary, h_at_x, y_values + index);
+        fmpq_add(point_lhs, point_lhs, temporary);
+        if (!fmpq_equal(point_lhs, f_at_x))
+        {
+            napi_throw_range_error(env, NULL,
+                "an Abel--Jacobi batch point is not on the exact curve");
+            goto cleanup;
+        }
+    }
+    model_validated = uv_hrtime();
+    exact_roots = _qqbar_vec_init(root_count);
+    qqbar_roots_fmpq_poly(exact_roots, completed, 0);
+    roots_isolated = uv_hrtime();
+    if (!period_plan_branch_order(exact_roots, root_count,
+            requested_precision + 96, branch_order, &real_root_count,
+            &branch_clearance, &root_scale))
+    {
+        status_text = "branch_chain_not_isolated";
+        branch_planned = uv_hrtime();
+        refinements_completed = branch_planned;
+        goto make_result;
+    }
+    branch_planned = uv_hrtime();
+
+    for (refinement = 0; refinement < max_refinements; refinement++)
+    {
+        const slong work_precision =
+            requested_precision + 32 * (refinement + 1);
+        slong panels = initial_panels * (1L << refinement);
+        slong order_value = quadrature_order;
+        if (branch_clearance / root_scale < 1.0 / 1024.0)
+        {
+            panels *= 4;
+            if (order_value < 64)
+                order_value = 64;
+        }
+        else if (branch_clearance / root_scale < 1.0 / 16.0)
+        {
+            panels *= 2;
+            if (order_value < 32)
+                order_value = 32;
+        }
+        if (panels > SAGEJS_PERIOD_MAX_PANELS)
+        {
+            status_text = "bounded_work_exceeded";
+            break;
+        }
+        if (!period_compute_abel_run(runs + refinement,
+                exact_roots, branch_order, root_count,
+                x_values, y_values, point_count, completed, h_value,
+                genus, panels, order_value, work_precision))
+        {
+            status_text = "validation_failed";
+            break;
+        }
+        completed_runs++;
+        total_samples += runs[refinement].sample_evaluations;
+        if (refinement > 0 && period_abel_runs_stable(
+                difference, tolerance, runs + refinement - 1,
+                runs + refinement, requested_precision, work_precision))
+        {
+            selected_run = refinement;
+            status_text = "ok";
+            break;
+        }
+    }
+    refinements_completed = uv_hrtime();
+
+make_result:
+    if (!period_check_napi(env, napi_create_object(env, &result)) ||
+        !period_check_napi(env, napi_create_string_utf8(
+            env, status_text, NAPI_AUTO_LENGTH, &status)) ||
+        !period_check_napi(env, napi_create_array_with_length(
+            env, (size_t) (point_count * genus), &values)) ||
+        !period_check_napi(env, napi_create_array_with_length(
+            env, (size_t) completed_runs, &run_values)) ||
+        !period_check_napi(env, napi_create_array_with_length(
+            env, (size_t) root_count, &order_values)) ||
+        !period_check_napi(env, napi_create_array_with_length(
+            env, (size_t) point_count, &direction_values)) ||
+        !period_check_napi(env, napi_create_array_with_length(
+            env, (size_t) point_count, &clearance_values)) ||
+        !period_check_napi(env, napi_create_object(env, &stage_timings)) ||
+        !period_set_named(env, result, "status", status) ||
+        !period_set_named(env, result, "values", values) ||
+        !period_set_named(env, result, "refinementRuns", run_values) ||
+        !period_set_named(env, result, "branchOrder", order_values) ||
+        !period_set_named(env, result, "rayDirections", direction_values) ||
+        !period_set_named(env, result, "rayClearances", clearance_values) ||
+        !period_set_named(env, result, "stageTimingsMs", stage_timings) ||
+        !period_set_named_slong(env, result,
+            "requestedPrecisionBits", requested_precision) ||
+        !period_set_named_slong(env, result, "genus", genus) ||
+        !period_set_named_slong(env, result, "pointCount", point_count) ||
+        !period_set_named_slong(env, result, "rootCount", root_count) ||
+        !period_set_named_slong(env, result,
+            "sampleEvaluations", total_samples))
+    {
+        result = NULL;
+        goto cleanup;
+    }
+    for (index = 0; index < root_count; index++)
+    {
+        napi_value value;
+        if (!period_check_napi(env,
+                napi_create_int64(env, (int64_t) branch_order[index], &value)) ||
+            !period_check_napi(env, napi_set_element(
+                env, order_values, (uint32_t) index, value)))
+        {
+            result = NULL;
+            goto cleanup;
+        }
+    }
+    for (index = 0; index < completed_runs; index++)
+    {
+        napi_value item, engine, run_timings;
+        slong panels = initial_panels * (1L << index);
+        slong order_value = quadrature_order;
+        if (branch_clearance / root_scale < 1.0 / 1024.0)
+        {
+            panels *= 4;
+            if (order_value < 64)
+                order_value = 64;
+        }
+        else if (branch_clearance / root_scale < 1.0 / 16.0)
+        {
+            panels *= 2;
+            if (order_value < 32)
+                order_value = 32;
+        }
+        if (!period_check_napi(env, napi_create_object(env, &item)) ||
+            !period_check_napi(env, napi_create_object(env, &run_timings)) ||
+            !period_check_napi(env, napi_create_string_utf8(env,
+                "arb-acb-abel-jacobi-batch", NAPI_AUTO_LENGTH, &engine)) ||
+            !period_set_named(env, item, "engine", engine) ||
+            !period_set_named(env, item, "stageTimingsMs", run_timings) ||
+            !period_set_named_double(env, run_timings,
+                "rootConversion", runs[index].roots_ms) ||
+            !period_set_named_double(env, run_timings,
+                "rayPlanning", runs[index].ray_planning_ms) ||
+            !period_set_named_double(env, run_timings,
+                "quadrature", runs[index].quadrature_ms) ||
+            !period_set_named_slong(env, item, "workPrecisionBits",
+                requested_precision + 32 * (index + 1)) ||
+            !period_set_named_slong(env, item, "quadraturePanels", panels) ||
+            !period_set_named_slong(env, item,
+                "quadratureOrder", order_value) ||
+            !period_set_named_slong(env, item, "sampleEvaluations",
+                runs[index].sample_evaluations) ||
+            !period_check_napi(env, napi_set_element(
+                env, run_values, (uint32_t) index, item)))
+        {
+            result = NULL;
+            goto cleanup;
+        }
+    }
+    if (selected_run >= 0)
+    {
+        const slong digits = (slong) ceil(
+            (double) requested_precision * 0.3010299956639812) + 10;
+        slong accuracy_bits = requested_precision;
+        napi_value difference_value = period_decimal_from_arf(env,
+            arb_midref(difference), digits);
+        napi_value tolerance_value = period_decimal_from_arf(env,
+            arb_midref(tolerance), digits);
+        for (index = 0; index < point_count * genus; index++)
+        {
+            napi_value item = period_ball_to_object(env,
+                runs[selected_run].vectors + index, digits,
+                requested_precision);
+            accuracy_bits = FLINT_MIN(accuracy_bits,
+                acb_rel_accuracy_bits(runs[selected_run].vectors + index));
+            if (item == NULL || !period_check_napi(env, napi_set_element(
+                    env, values, (uint32_t) index, item)))
+            {
+                result = NULL;
+                goto cleanup;
+            }
+        }
+        for (index = 0; index < point_count; index++)
+        {
+            napi_value direction_value, clearance_value;
+            char clearance_text[64];
+            snprintf(clearance_text, sizeof(clearance_text), "%.17g",
+                runs[selected_run].clearances[index]);
+            if (!period_check_napi(env, napi_create_int64(env,
+                    (int64_t) runs[selected_run].directions[index],
+                    &direction_value)) ||
+                !period_check_napi(env, napi_create_string_utf8(env,
+                    clearance_text, NAPI_AUTO_LENGTH, &clearance_value)) ||
+                !period_check_napi(env, napi_set_element(env,
+                    direction_values, (uint32_t) index, direction_value)) ||
+                !period_check_napi(env, napi_set_element(env,
+                    clearance_values, (uint32_t) index, clearance_value)))
+            {
+                result = NULL;
+                goto cleanup;
+            }
+        }
+        if (!period_set_named(env, result,
+                "refinementDifference", difference_value) ||
+            !period_set_named(env, result,
+                "refinementTolerance", tolerance_value) ||
+            !period_set_named_slong(env, result, "workPrecisionBits",
+                requested_precision + 32 * (selected_run + 1)) ||
+            !period_set_named_slong(env, result, "achievedStabilityBits",
+                period_achieved_stability_bits(difference, tolerance,
+                    requested_precision,
+                    requested_precision + 32 * (selected_run + 1))) ||
+            !period_set_named_slong(env, result,
+                "arithmeticAccuracyBits", accuracy_bits))
+        {
+            result = NULL;
+            goto cleanup;
+        }
+    }
+    result_assembled = uv_hrtime();
+    if (!period_set_named_double(env, stage_timings, "modelValidation",
+            (double) (model_validated - operation_started) / 1.0e6) ||
+        !period_set_named_double(env, stage_timings, "exactRootIsolation",
+            (double) (roots_isolated - model_validated) / 1.0e6) ||
+        !period_set_named_double(env, stage_timings, "branchPlanning",
+            (double) (branch_planned - roots_isolated) / 1.0e6) ||
+        !period_set_named_double(env, stage_timings, "refinementAssembly",
+            (double) (refinements_completed - branch_planned) / 1.0e6) ||
+        !period_set_named_double(env, stage_timings, "resultAssembly",
+            (double) (result_assembled - refinements_completed) / 1.0e6))
+        result = NULL;
+
+cleanup:
+    for (index = 0; index < 6; index++)
+        period_abel_run_clear(runs + index);
+    if (exact_roots != NULL)
+        _qqbar_vec_clear(exact_roots, root_count);
+    if (y_values != NULL)
+        _fmpq_vec_clear(y_values, point_count);
+    if (x_values != NULL)
+        _fmpq_vec_clear(x_values, point_count);
+    arb_clear(tolerance);
+    arb_clear(difference);
+    fmpq_clear(temporary);
+    fmpq_clear(point_lhs);
+    fmpq_clear(h_at_x);
+    fmpq_clear(f_at_x);
+    fmpq_poly_clear(gcd);
+    fmpq_poly_clear(derivative);
+    fmpq_poly_clear(h_value);
+    fmpq_poly_clear(f_value);
+    fmpq_poly_clear(completed);
     return result;
 }
 
