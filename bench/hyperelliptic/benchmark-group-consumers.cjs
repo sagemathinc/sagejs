@@ -26,6 +26,13 @@ def measure(prime, polynomial, h=None, seed=1, coordinates=None):
     started = time.perf_counter()
     structure = J.group_structure(algorithm="basis", seed=seed)
     structure_seconds = time.perf_counter() - started
+    exhaustive_seconds = None
+    exhaustive_structure = None
+    if coordinates is not None and len(coordinates) > 1:
+        started = time.perf_counter()
+        exhaustive_structure = J.group_structure(algorithm="exhaustive", seed=seed)
+        exhaustive_seconds = time.perf_counter() - started
+        assert exhaustive_structure == structure
     started = time.perf_counter()
     G, phi = J.abelian_group(algorithm="basis", seed=seed)
     map_seconds = time.perf_counter() - started
@@ -43,6 +50,7 @@ def measure(prime, polynomial, h=None, seed=1, coordinates=None):
         "structure": [str(value) for value in structure],
         "order_seconds": order_seconds,
         "structure_seconds": structure_seconds,
+        "exhaustive_seconds": exhaustive_seconds,
         "map_seconds": map_seconds,
         "inverse_query_seconds": query_seconds,
         "inverse_query": None if query is None else [str(value) for value in query],
