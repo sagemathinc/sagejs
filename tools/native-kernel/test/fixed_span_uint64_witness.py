@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Tuple
+
 from sagejs.native import PrimeFieldModulus, UInt64Buffer, native, uint64
 
 
@@ -31,6 +33,13 @@ def translate_index(length: uint64, shift: uint64 = 1) -> uint64:
     translated: uint64 = 1 + length
     translated = translated - shift
     return translated
+
+
+@native
+def promote_uint64_tuple(level: uint64) -> Tuple[bool, Integer]:
+    """Keep an uncontextualized literal exact in a mixed tuple result."""
+    exact_level = level + 0
+    return True, exact_level
 
 
 @native

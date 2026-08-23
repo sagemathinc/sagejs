@@ -424,16 +424,19 @@ function lowerUint64Operand(node, context, operations) {
  * helper calls such as `span(output, 0, length)` without inserting a cast or
  * silently promoting the machine-word value to GMP arithmetic.
  *
- * When the left operand is a literal and there is no outer context, lower the
- * right operand into a temporary operation list first so its static native
- * type can type the literal.  Append the literal operation before those right
- * operations to retain Python's left-to-right evaluation order in the IR.
+ * Comparisons additionally infer a literal's type from the opposite operand;
+ * this is safe because the result type is always bool.  Arithmetic without an
+ * enclosing uint64 context keeps literals exact, preserving intentional
+ * promotion idioms such as `exact_level = level + 0`.  When the left operand
+ * is a comparison literal, retain Python's left-to-right operation order even
+ * though the right side must be lowered first to discover its type.
  */
 function lowerContextualBinaryOperands(
   node,
   context,
   operations,
   expectedType = undefined,
+  inferLiteralType = false,
 ) {
   if (expectedType === "uint64") {
     return [
@@ -441,8 +444,15 @@ function lowerContextualBinaryOperands(
       lowerExpression(node.right, context, operations, "uint64"),
     ];
   }
+  if (!inferLiteralType) {
+    return [
+      lowerExpression(node.left, context, operations),
+      lowerExpression(node.right, context, operations),
+    ];
+  }
   const leftLiteral = integerLiteral(node.left);
-  if (leftLiteral !== undefined) {
+  const rightLiteral = integerLiteral(node.right);
+  if (leftLiteral !== undefined && rightLiteral === undefined) {
     const rightOperations = [];
     const right = lowerExpression(node.right, context, rightOperations);
     const left = right.type === "uint64"
@@ -452,12 +462,9 @@ function lowerContextualBinaryOperands(
     return [left, right];
   }
   const left = lowerExpression(node.left, context, operations);
-  const right = lowerExpression(
-    node.right,
-    context,
-    operations,
-    left.type === "uint64" ? "uint64" : undefined,
-  );
+  const right = rightLiteral !== undefined && left.type === "uint64"
+    ? emitUint64Constant(context, node.right, operations, rightLiteral)
+    : lowerExpression(node.right, context, operations);
   return [left, right];
 }
 
@@ -1180,6 +1187,8 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
       node,
       context,
       operations,
+      undefined,
+      true,
     );
     if (left.type === "uint64" && right.type === "uint64") {
       const target = temporary(context, node, "bool");

@@ -62,6 +62,7 @@ test("uint64 literals are contextually typed through fixed-span helpers", async 
       "trim_span",
     ],
     publish_degree: [],
+    promote_uint64_tuple: [],
     translate_index: [],
     trim_span: [],
   });
@@ -87,6 +88,15 @@ test("uint64 literals are contextually typed through fixed-span helpers", async 
   );
   assert.ok(publish.some((operation) =>
     operation.kind === "uint64.buffer.set"
+  ));
+  const promotion = operations(
+    ir.functions.find((fn) => fn.name === "promote_uint64_tuple").body,
+  );
+  assert.ok(promotion.some((operation) =>
+    operation.kind === "integer.from_uint64"
+  ));
+  assert.ok(promotion.some((operation) =>
+    operation.kind === "integer.constant"
   ));
 
   const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
@@ -139,6 +149,7 @@ checked([5, 0], [0, 0])
 checked([1], [0])
 checked([0, 0, 0], [0, 0, 0])
 print("compiled=" + str(compiled))
+assert promote_uint64_tuple(7) == (True, 7)
 print("CONTEXTUAL_UINT64_OK")
 `;
   try {
@@ -171,7 +182,7 @@ print("CONTEXTUAL_UINT64_OK")
       "import sys",
       `sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})`,
       `sys.path.insert(0, ${JSON.stringify(__dirname)})`,
-      "from fixed_span_uint64_witness import fixed_span_uint64_witness as witness",
+      "from fixed_span_uint64_witness import fixed_span_uint64_witness as witness, promote_uint64_tuple",
       "for values, expected in [",
       "    ([2, 3, 0, 0], [1, 3, 0, 0]),",
       "    ([5, 0], [0, 0]),",
@@ -181,6 +192,7 @@ print("CONTEXTUAL_UINT64_OK")
       "    output = list(values)",
       "    assert witness(output, 7) == any(values)",
       "    assert output == expected",
+      "assert promote_uint64_tuple(7) == (True, 7)",
       "print('cpython-ok')",
       "",
     ].join("\n");
