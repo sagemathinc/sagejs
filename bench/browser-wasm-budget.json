@@ -392,7 +392,7 @@
         },
         "graph-components-10000": {
           "warm_ms": {
-            "median": 6275.039999999999
+            "median": 8895.14
           }
         },
         "graph-shortest-paths": {
@@ -590,7 +590,7 @@
     "webkit": {
       "operations": {
         "exact-matrix-kernel": {
-          "warm_median_ratio": 0.4746000055518474
+          "warm_median_ratio": 0.7848394850651439
         },
         "cubic-number-field-zeta-1000": {
           "warm_median_ratio": 2.3161651709228153
@@ -611,7 +611,7 @@
           "warm_median_ratio": 0.3333478101833717
         },
         "graph-components-10000": {
-          "warm_median_ratio": 0.6732773340638815
+          "warm_median_ratio": 0.9400806183370709
         },
         "graph-shortest-paths": {
           "warm_median_ratio": 0.8960543503195593
