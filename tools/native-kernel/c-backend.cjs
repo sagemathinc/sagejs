@@ -2717,13 +2717,17 @@ ${generateStatusDeclarations()}
 ${primeFields.length > 0
     ? "typedef struct sagejs_prime_factor sagejs_prime_factor;" : ""}
 ${primeSources.length > 0 ? `
-#ifndef SAGEJS_SOURCE_U64_BUFFER_DEFINED
-#define SAGEJS_SOURCE_U64_BUFFER_DEFINED
+#ifndef SAGEJS_UINT64_BUFFER_DEFINED
+#define SAGEJS_UINT64_BUFFER_DEFINED
 typedef struct
 {
     uint64_t *data;
     size_t length;
-} sagejs_source_u64_buffer;
+} sagejs_uint64_buffer;
+#endif
+#ifndef SAGEJS_SOURCE_U64_BUFFER_DEFINED
+#define SAGEJS_SOURCE_U64_BUFFER_DEFINED
+typedef sagejs_uint64_buffer sagejs_source_u64_buffer;
 #endif
 ` : ""}
 ${nativeRecordDeclarations}
@@ -2734,11 +2738,14 @@ typedef struct
     size_t length;
 } sagejs_int64_buffer;
 ` : ""}${usesUInt64Buffers ? `
+#ifndef SAGEJS_UINT64_BUFFER_DEFINED
+#define SAGEJS_UINT64_BUFFER_DEFINED
 typedef struct
 {
     uint64_t *data;
     size_t length;
 } sagejs_uint64_buffer;
+#endif
 ` : ""}${usesIntegerBuffers ? `
 typedef struct
 {
