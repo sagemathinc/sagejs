@@ -1407,6 +1407,7 @@ class HeightContext:
         self._local_corrections: dict[Any, dict[str, Any]] = {}
         self._finite_corrections: dict[Any, FiniteHeightCorrectionResult] = {}
         self._archimedean_corrections: dict[Any, ArchimedeanHeightCorrectionResult] = {}
+        self._height_pairings: dict[Any, HeightPairingResult] = {}
         self._chain_hits = 0
         self._chain_misses = 0
         self._doublings = 0
@@ -1418,6 +1419,8 @@ class HeightContext:
         self._finite_correction_misses = 0
         self._archimedean_correction_hits = 0
         self._archimedean_correction_misses = 0
+        self._height_pairing_hits = 0
+        self._height_pairing_misses = 0
 
     @property
     def jacobian(self) -> Any:
@@ -1635,6 +1638,9 @@ class HeightContext:
             "archimedean_correction_cache_misses": (
                 self._archimedean_correction_misses
             ),
+            "height_pairing_cache_entries": len(self._height_pairings),
+            "height_pairing_cache_hits": self._height_pairing_hits,
+            "height_pairing_cache_misses": self._height_pairing_misses,
             "precision_fields": tuple(sorted(self._fields)),
             "automatic_bound_precisions": tuple(
                 sorted(
@@ -2535,6 +2541,22 @@ def height_pairing(
             raise ValueError("all pairing points must lie on the same Jacobian")
     if context is None:
         context = HeightContext(jacobian)
+    elif context.jacobian is not jacobian:
+        raise ValueError("the height context belongs to a different Jacobian")
+    cache_key = None
+    if height_difference_bound is None:
+        cache_key = (
+            values,
+            int(steps),
+            int(precision),
+            target_bits,
+            str(algorithm),
+        )
+        cached = context._height_pairings.get(cache_key)
+        if cached is not None:
+            context._height_pairing_hits += 1
+            return cached
+        context._height_pairing_misses += 1
     diagonal = tuple(
         canonical_height(
             value,
@@ -2574,7 +2596,7 @@ def height_pairing(
                     "sum_height": sum_height.to_dict(),
                 }
             )
-    return HeightPairingResult(
+    answer = HeightPairingResult(
         tuple(tuple(row) for row in matrix),
         diagonal,
         {
@@ -2587,6 +2609,9 @@ def height_pairing(
             "context": context.diagnostics(),
         },
     )
+    if cache_key is not None:
+        context._height_pairings[cache_key] = answer
+    return answer
 
 
 def _interval_determinant(matrix: tuple[tuple[RealBall, ...], ...]) -> RealBall:
