@@ -564,6 +564,21 @@ function emitStatementBody(operation, indent, context = {}) {
   if (operation.kind === "source.bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
+  if (operation.kind === "source.modulus.from_uint64") {
+    return [
+      `${indent}${target} = ${cName(operation.source)};`,
+      `${indent}if (${target} < UINT64_C(2) || ` +
+        `${target} > (uint64_t) UINT32_MAX)`,
+      `${indent}{`,
+      statusFailure(
+        "local PrimeFieldModulus must be between 2 and 2^32 - 1",
+        `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}nmod_init(&${target}_nmod, (ulong) ${target});`,
+    ].join("\n");
+  }
   if (operation.kind === "source.copy") {
     if (operation.type === "UInt64Buffer") {
       if (operation.borrowed) {

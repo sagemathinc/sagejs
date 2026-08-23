@@ -532,25 +532,33 @@ function lowerAssignment(statement, context) {
     expect(
       context,
       assign.annotation,
-      ["bool", "uint64"].includes(declaredType),
-      "native prime-source local annotation must be uint64 or bool",
+      ["bool", "uint64", "PrimeModulusValue"].includes(declaredType),
+      "native prime-source local annotation must be uint64, bool, or PrimeFieldModulus",
     );
     const operations = [];
     const value = lowerExpression(assign.value, context, operations);
-    expectType(
+    expect(
       context,
       assign.value,
-      value,
-      declaredType,
-      `local ${assign.target.name}`,
+      value.type === declaredType ||
+        (declaredType === "PrimeModulusValue" && value.type === "uint64"),
+      `local ${assign.target.name} expects ${declaredType}, got ${value.type}`,
     );
     ensureVariable(context, assign.target, assign.target.name, declaredType);
-    operations.push(copyOperation(
-      declaredType,
-      assign.target.name,
-      value.name,
-      false,
-    ));
+    operations.push(
+      declaredType === "PrimeModulusValue" && value.type === "uint64"
+        ? {
+            kind: "source.modulus.from_uint64",
+            target: assign.target.name,
+            source: value.name,
+          }
+        : copyOperation(
+            declaredType,
+            assign.target.name,
+            value.name,
+            false,
+          ),
+    );
     context.initialized.add(assign.target.name);
     return operations;
   }
