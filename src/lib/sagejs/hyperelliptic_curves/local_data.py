@@ -154,12 +154,13 @@ class LocalDataRecord:
         certificate_summary: Mapping[str, Any] | None = None,
         full_certificate: Any = None,
         timings: Mapping[str, float] | None = None,
+        _validated: bool = False,
     ) -> None:
         self.prime = sage.ZZ(_exact_integer(prime, "prime"))
         self.genus = _exact_integer(genus, "genus")
         if self.genus < 1:
             raise ValueError("genus must be positive")
-        if not sage.is_prime(int(self.prime)):
+        if not _validated and not sage.is_prime(int(self.prime)):
             raise ValueError("a local-data record requires a prime")
         self.status = str(status)
         self.selected_algorithm = str(selected_algorithm)
@@ -172,8 +173,9 @@ class LocalDataRecord:
         self.timings = dict({} if timings is None else timings)
 
         if coefficients is None:
-            self.coefficients = None
-            self.lpolynomial = None
+            self._coefficients = None
+            self._lpolynomial = None
+            self._lpolynomial_materialized = True
             self.jacobian_order = None
             self.twist_order = None
             self.curve_point_counts: dict[int, Any] = {}
@@ -188,11 +190,13 @@ class LocalDataRecord:
         )
         if len(values) != 2 * self.genus + 1:
             raise ArithmeticError("a local polynomial has the wrong degree")
-        _frobenius()._validate_lpolynomial(
-            int(self.prime), self.genus, list(values), []
-        )
-        self.coefficients = runtime.math_tuple(list(values))
-        self.lpolynomial = _frobenius().lpolynomial(list(values))
+        if not _validated:
+            _frobenius()._validate_lpolynomial(
+                int(self.prime), self.genus, list(values), []
+            )
+        self._coefficients = runtime.math_tuple(list(values))
+        self._lpolynomial = None
+        self._lpolynomial_materialized = False
         self.jacobian_order = sage.ZZ(sum(values))
         self.twist_order = sage.ZZ(
             sum(
@@ -226,7 +230,22 @@ class LocalDataRecord:
 
     @property
     def available(self) -> bool:
-        return self.coefficients is not None
+        return self._coefficients is not None
+
+    @property
+    def coefficients(self) -> Any:
+        """Return the immutable exact ascending coefficient tuple, if present."""
+        return self._coefficients
+
+    @property
+    def lpolynomial(self) -> Any:
+        """Return the public local polynomial, constructing it only on demand."""
+        if self._coefficients is None:
+            return None
+        if not self._lpolynomial_materialized:
+            self._lpolynomial = _frobenius()._packed_lpolynomial(self._coefficients)
+            self._lpolynomial_materialized = True
+        return self._lpolynomial
 
     def curve_point_count(self, extension_degree: Any = 1) -> Any:
         """Return `#C(F_(p^n))`, derived from the exact local polynomial."""
@@ -442,6 +461,7 @@ class LocalDataStream:
             certificate_summary=summary,
             full_certificate=certificate if self.include_certificates else None,
             timings=timings,
+            _validated=True,
         )
         if record.available:
             stored_coefficients = record.coefficients
