@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "immutable-capsule-owner",
+  "title": "Write-once capsule ownership",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "/root/native_compiler",
+  "objective": "Make immutable UInt64 capsule ownership write-once and registry-authenticated",
+  "base_commit": "b754655dce4a68ba66bdb48e2ec364940cdd3c5e",
+  "claims": [
+    "tools/immutable-uint64-capsule.ts",
+    "test/immutable-uint64-capsule.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "native-primitive",
+    "fallback": "tested-capability",
+    "oracles": [
+      "duplicate-owner, same-owner forgery, transplant, and GC regressions"
+    ],
+    "exceptions": [
+      "Private WeakMap ownership registry is a representation invariant unavailable to mathematical Python"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Added a private owner-to-capsule WeakMap enforcing one write-once capsule per owner identity. Creation reserves the owner before reading an arbitrary source and rolls the reservation back on failure; authorization and copying additionally verify that the owner registry still names the exact capsule. Neutral tests cover duplicate creation, same-owner forgery, cross-owner transplantation, failed and reentrant creation, and collection of owner/capsule/lease cycles.",
+    "risks": [
+      "An owner intentionally supports exactly one capsule for its lifetime; consumers needing multiple independent packed stores must allocate distinct private owner objects."
+    ],
+    "next_steps": [
+      "Cantor integration should create the capsule while constructing the private prepared owner and reject any later rebound capsule before native or copied fallback use.",
+      "Run the focused capsule suite on required non-x64 platforms in integration CI."
+    ]
+  }
+}
