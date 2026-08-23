@@ -221,6 +221,14 @@ test("dashboard covers the three questions and all install paths", () => {
   for (const hook of ["metric-total", "capability-list", "roadmap-columns", "area-filter", "example-search-results", "example-result-list", "competitive-audit", "audit-gap-count", "audit-existing-benchmarks", "performance-results", "performance-bars", "performance-table-body", "performance-warning", "performance-command"]) assert.match(html, new RegExp(`id=["']${hook}["']`));
 });
 
+test("the live browser app is a primary landing-page action", () => {
+  const links = [...html.matchAll(/href=["']https:\/\/app\.sagejs\.org\/["']/g)];
+  assert.ok(links.length >= 3, "the browser app must appear in navigation, hero, and install paths");
+  assert.match(html, /class=["']launch-link["'][^>]*>Run in browser</);
+  assert.match(html, /class=["']button primary["'][^>]*href=["']https:\/\/app\.sagejs\.org\/["']/);
+  assert.match(html, /Open app\.sagejs\.org/);
+});
+
 test("dashboard JavaScript is self-contained and does not inject capability HTML", () => {
   assert.doesNotMatch(html, /<script[^>]+src=["']https?:/i);
   assert.doesNotMatch(html, /<link[^>]+href=["']https?:/i);
