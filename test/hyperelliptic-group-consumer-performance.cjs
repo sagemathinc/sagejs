@@ -261,6 +261,8 @@ R = PolynomialRing(GF(5), "x")
 x = R.gen()
 J = HyperellipticCurve(x**5 + x + 1, x**2 + 1).jacobian()
 assert J.order() == 32
+assert J.group_structure(seed=3) == (2, 2, 8)
+assert J.group_structure_diagnostics()["algorithm"] == "exhaustive-small-order"
 assert J.group_structure(algorithm="basis", seed=3) == (2, 2, 8)
 assert J.group_structure(algorithm="exhaustive", seed=3) == (2, 2, 8)
 G, phi = J.abelian_group(algorithm="basis", seed=3)

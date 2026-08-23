@@ -1718,6 +1718,17 @@ def packed_cantor_search_progression(
             copied = _row_copy(current, 0, temporary, 0)
             group_operations += 1
         giant += 1
+    if copied != 0:
+        return _search_record(
+            statuses,
+            diagnostics,
+            4,
+            group_operations,
+            scalar_bits,
+            baby_steps,
+            giant_steps,
+            hash_collisions,
+        )
     return _search_record(
         statuses,
         diagnostics,

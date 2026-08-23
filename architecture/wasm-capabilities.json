@@ -10955,12 +10955,12 @@
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "The full dynamic/native/CPython differential covers genus 2 and 3, generalized h, every genus-2 collision branch, signed 130-bit scalars, and one-boundary progressions. The current tracked Wasm artifact predates this kernel, so browsers use the exact same-source fallback until a new authenticated pack is checked in.",
-      "public_explanation": "Prepared packed generalized Cantor addition, arithmetic progressions, and signed scalar multiplication use the exact same-source fallback in the current WebAssembly release artifact; the next authenticated kernel pack will compile the proved odd-prime odd-degree envelope.",
+      "review_note": "The full dynamic/native/CPython differential covers genus 2 and 3, generalized h, every genus-2 collision branch, signed 130-bit scalars, one-boundary progressions, and fused bounded BSGS progression search. The current tracked Wasm artifact predates this kernel, so browsers use the exact same-source fallback until a new authenticated pack is checked in.",
+      "public_explanation": "Prepared packed generalized Cantor addition, arithmetic progressions, fused BSGS progression search, and signed scalar multiplication use the exact same-source fallback in the current WebAssembly release artifact; the next authenticated kernel pack will compile the proved odd-prime odd-degree envelope.",
       "compiled_coverage": {
         "compiled_functions": 0,
-        "fallback_functions": 3,
-        "total_functions": 3,
+        "fallback_functions": 4,
+        "total_functions": 4,
         "production_pack": false,
         "fallback_reasons": [
           "tracked-production-artifact-predates-hyperelliptic-performance-kernels"

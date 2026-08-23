@@ -6,8 +6,8 @@
     "production_kernels": 30,
     "compiled_functions": 230,
     "unsupported_production_functions": 0,
-    "non_production_functions": 42,
-    "same_source_fallback_functions": 42
+    "non_production_functions": 43,
+    "same_source_fallback_functions": 43
   },
   "kernels": [
     {
@@ -180,8 +180,8 @@
       "production": false,
       "status": "fallback",
       "compiled_functions": 0,
-      "fallback_functions": 3,
-      "total_functions": 3,
+      "fallback_functions": 4,
+      "total_functions": 4,
       "fallback_reasons": [
         "tracked-production-artifact-predates-hyperelliptic-performance-kernels"
       ]

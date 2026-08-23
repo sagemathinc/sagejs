@@ -2023,13 +2023,32 @@ class HyperellipticJacobian(sage.Parent):
                 }
                 return invariants
             field = self.base_ring()
+            finite_field_order = int(field.order()) if hasattr(field, "order") else 0
             prime_basis_supported = (
                 hasattr(field, "characteristic")
                 and hasattr(field, "order")
                 and int(field.characteristic()) == int(field.order())
                 and int(field.characteristic()) != 2
             )
-            if algorithm != "auto" or prime_basis_supported:
+            enumeration_base = (
+                finite_field_order
+                if prime_basis_supported
+                else finite_field_order * finite_field_order
+            )
+            candidate_bound = 0
+            power = 1
+            for _degree in range(self._genus + 1):
+                candidate_bound += power
+                power *= enumeration_base
+            auto_exhaustive = (
+                algorithm == "auto"
+                and not certificate
+                and order <= 64
+                and order <= max_elements
+                and finite_field_order > 0
+                and candidate_bound <= max_candidates
+            )
+            if not auto_exhaustive and (algorithm != "auto" or prime_basis_supported):
                 result = self._generic_group_basis(
                     factors,
                     max_random_elements=max_random_elements,
@@ -2052,6 +2071,12 @@ class HyperellipticJacobian(sage.Parent):
         )
         if len(invariants) > 2 * self._genus:
             raise ArithmeticError("Jacobian group rank exceeds 2g")
+        if algorithm == "auto":
+            self._group_structure_diagnostics_cache = {
+                "algorithm": "exhaustive-small-order",
+                "samples": len(elements),
+                "generated_subgroup_order": order,
+            }
         if not certificate:
             return invariants
         result = self._generic_group_basis(

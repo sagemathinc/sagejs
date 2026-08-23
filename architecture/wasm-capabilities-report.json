@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "5d7e2616929678e164b81ffaae9af8c0436a6e9f01b5c6ce410ff9c51ed36858",
+  "source_sha256": "85b7584c2ed6b1ad64b5aaba5d6607d4c278afb0843e543011c0dd7de5cc2174",
   "counts": {
     "total": 962,
     "by_kind": {
@@ -5858,7 +5858,7 @@
         "hyperelliptic-group-structure",
         "hyperelliptic-torsion-and-saturation"
       ],
-      "explanation": "Prepared packed generalized Cantor addition, arithmetic progressions, and signed scalar multiplication use the exact same-source fallback in the current WebAssembly release artifact; the next authenticated kernel pack will compile the proved odd-prime odd-degree envelope."
+      "explanation": "Prepared packed generalized Cantor addition, arithmetic progressions, fused BSGS progression search, and signed scalar multiplication use the exact same-source fallback in the current WebAssembly release artifact; the next authenticated kernel pack will compile the proved odd-prime odd-degree envelope."
     },
     {
       "id": "kernel:hyperelliptic-kummer-production",
