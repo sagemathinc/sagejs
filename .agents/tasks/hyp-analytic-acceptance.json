@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-analytic-acceptance",
+  "title": "Hyperelliptic Phase 9 acceptance",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "root/analytic_perf",
+  "objective": "Provide a source-authenticated bounded Phase 9 analytic acceptance harness and receipt contract covering true fresh initialization versus resident PARI, warm versus fresh evaluation, genus-2/3 derivative speedups, cold universal-table amortization, direct Arb differentials, and exact/refined CPU family scans.",
+  "base_commit": "b30ecbfae62760d44a24438f3fb7f99bedfe1eee",
+  "claims": [
+    "bench/hyperelliptic/analytic-acceptance/",
+    "test/hyperelliptic-analytic-acceptance.cjs"
+  ],
+  "dependencies": [
+    "hyp-analytic-phase9"
+  ],
+  "references": [
+    "agents/hyperelliptic-magma-pari-performance-plan.md",
+    "agents/hyperelliptic-central-weights-gpu-twists-plan.md"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "PARI/GP 2.18.1-alpha at matched realbitprecision",
+      "direct Arb central-weight evaluation",
+      "sequential exact quadratic-twist coefficient/sign replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
