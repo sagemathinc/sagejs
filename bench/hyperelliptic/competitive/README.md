@@ -56,6 +56,12 @@ public baseline until the prepared batch APIs in later phases exist.
 
 ## Pinned competitors on `bench-1`
 
+- Node.js 22.22.2: official Linux x64 binary with SHA-256
+  `88fd1ce767091fd8d4a99fdb2356e98c819f93f3b1f8663853a2dee9b438068a`.
+  This is the project's minimum supported Node runtime and the pinned baseline
+  runtime.  The incidental Node 26.5.1 installation on `bench-1` exposed a
+  BigInt/number group-sampling failure in this historical baseline and is not
+  used for the frozen measurement.
 - Magma 2.18-5: `/home/user/bin/magma`.
 - PARI/GP 2.18.1-alpha:
   `/home/user/.local/pari-2.18.1-alpha/bin/gp`.
