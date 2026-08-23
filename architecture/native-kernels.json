@@ -536,9 +536,13 @@
       "source": "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_height_kernel.py",
       "functions": [
         "modular_kummer_height_recurrence",
-        "dyadic_kummer_height_recurrence"
+        "dyadic_kummer_height_recurrence",
+        "modular_kummer_height_recurrence_batch",
+        "dyadic_kummer_height_recurrence_batch",
+        "exact_kummer_small_step_batch",
+        "dyadic_log_interval_batch"
       ],
-      "semantic_domain": "bounded exact modular and outward fixed-scale dyadic iteration of specialized genus-2 Flynn duplication quartics over caller-owned arbitrary-precision integer buffers",
+      "semantic_domain": "bounded exact modular, outward fixed-scale dyadic, exact small-step oracle, and outward dyadic-log batch evaluation of specialized genus-2 Flynn duplication quartics over caller-owned arbitrary-precision integer buffers",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "exact-kummer", "mpmath", "magma"],
