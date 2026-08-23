@@ -23,7 +23,7 @@ from sagejs.native import (
 
 
 def _poly_clear(store: UInt64Buffer, offset: uint64) -> uint64:
-    index = 0
+    index: uint64 = 0
     while index < 16:
         store[offset + index] = 0
         index += 1
@@ -37,7 +37,7 @@ def _poly_copy(
     length: uint64,
 ) -> uint64:
     cleared = _poly_clear(store, target)
-    index = 0
+    index: uint64 = 0
     while index < length:
         store[target + index] = store[source + index]
         index += 1
@@ -63,9 +63,9 @@ def _poly_add(
     if right_length > length:
         length = right_length
     cleared = _poly_clear(store, target)
-    index = 0
+    index: uint64 = 0
     while index < length:
-        value = 0
+        value: uint64 = 0
         if index < left_length:
             value = store[left + index]
         if index < right_length:
@@ -90,9 +90,9 @@ def _poly_sub(
     if right_length > length:
         length = right_length
     cleared = _poly_clear(store, target)
-    index = 0
+    index: uint64 = 0
     while index < length:
-        value = 0
+        value: uint64 = 0
         if index < left_length:
             value = store[left + index]
         if index < right_length:
@@ -117,9 +117,9 @@ def _poly_mul(
     if left_length == 0 or right_length == 0:
         return 0
     length = left_length + right_length - 1
-    left_index = 0
+    left_index: uint64 = 0
     while left_index < left_length:
-        right_index = 0
+        right_index: uint64 = 0
         while right_index < right_length:
             position = left_index + right_index
             store[target + position] = prime_add(
@@ -147,7 +147,7 @@ def _poly_scale(
     modulus: PrimeFieldModulus,
 ) -> uint64:
     cleared = _poly_clear(store, target)
-    index = 0
+    index: uint64 = 0
     while index < length:
         store[target + index] = prime_mul(store[source + index], scalar, modulus)
         index += 1
@@ -171,12 +171,12 @@ def _poly_divrem(
     cleared = _poly_clear(store, remainder)
     if divisor_length == 0:
         return 1024
-    index = 0
+    index: uint64 = 0
     while index < dividend_length:
         store[remainder + index] = store[dividend + index]
         index += 1
     remainder_length = dividend_length
-    quotient_length = 0
+    quotient_length: uint64 = 0
     inverse = prime_inverse(store[divisor + divisor_length - 1], modulus)
     while remainder_length >= divisor_length and remainder_length > 0:
         shift = remainder_length - divisor_length
@@ -214,21 +214,21 @@ def _poly_xgcd(
     """Return packed lengths `g + 32*s + 1024*t`."""
     # Spans 40--51 of the one per-batch workspace are private xgcd scratch.
     # Keeping them in `store` avoids a heap allocation in every composition.
-    old_r = 640
-    r = 656
-    old_s = 672
-    s = 688
-    old_t = 704
-    t = 720
-    quotient = 736
-    remainder = 752
-    product = 768
-    next_value = 784
-    spare = 800
+    old_r: uint64 = 640
+    r: uint64 = 656
+    old_s: uint64 = 672
+    s: uint64 = 688
+    old_t: uint64 = 704
+    t: uint64 = 720
+    quotient: uint64 = 736
+    remainder: uint64 = 752
+    product: uint64 = 768
+    next_value: uint64 = 784
+    spare: uint64 = 800
 
     cleared = _poly_clear(store, old_r)
     cleared = _poly_clear(store, r)
-    index = 0
+    index: uint64 = 0
     while index < left_length:
         store[old_r + index] = store[left + index]
         index += 1
@@ -249,10 +249,10 @@ def _poly_xgcd(
     cleared = _poly_clear(store, t)
     store[old_s] = 1
     store[t] = 1
-    old_s_length = 1
-    s_length = 0
-    old_t_length = 0
-    t_length = 1
+    old_s_length: uint64 = 1
+    s_length: uint64 = 0
+    old_t_length: uint64 = 0
+    t_length: uint64 = 1
 
     while r_length > 0:
         encoded = _poly_divrem(
@@ -317,7 +317,7 @@ def _divexact(
     denominator_length: uint64,
     modulus: PrimeFieldModulus,
 ) -> uint64:
-    remainder = 624
+    remainder: uint64 = 624
     encoded = _poly_divrem(
         store,
         target,
@@ -346,15 +346,15 @@ def _reduce(
     genus: uint64,
     modulus: PrimeFieldModulus,
 ) -> uint64:
-    square = 384
-    product = 400
-    numerator = 416
-    quotient = 432
-    remainder = 448
-    next_v = 464
-    spare_u = 480
-    spare_v = 496
-    steps = 0
+    square: uint64 = 384
+    product: uint64 = 400
+    numerator: uint64 = 416
+    quotient: uint64 = 432
+    remainder: uint64 = 448
+    next_v: uint64 = 464
+    spare_u: uint64 = 480
+    spare_v: uint64 = 496
+    steps: uint64 = 0
     while u_length > genus + 1:
         square_length = _poly_mul(store, square, v, v_length, v, v_length, modulus)
         product_length = _poly_mul(store, product, h, h_length, v, v_length, modulus)
@@ -427,7 +427,7 @@ def _unpack_row(
         return 0
     cleared = _poly_clear(store, u)
     cleared = _poly_clear(store, v)
-    index = 0
+    index: uint64 = 0
     while index <= degree:
         value = rows[row_offset + 1 + index]
         if value >= checked_modulus:
@@ -466,7 +466,7 @@ def _pack_row(
     v_length: uint64,
 ) -> uint64:
     zero = row_offset - row_offset
-    index = 0
+    index: uint64 = 0
     while index < 8:
         output[row_offset + index] = 0
         index += 1
@@ -494,20 +494,20 @@ def _cantor_negate_one(
     modulus: PrimeFieldModulus,
     store: UInt64Buffer,
 ) -> uint64:
-    u = 0
-    v = 16
-    h = 32
-    total = 48
-    negative = 64
-    quotient = 80
-    remainder = 96
+    u: uint64 = 0
+    v: uint64 = 16
+    h: uint64 = 32
+    total: uint64 = 48
+    negative: uint64 = 64
+    quotient: uint64 = 80
+    remainder: uint64 = 96
     packed = _unpack_row(store, u, v, source, source_offset, genus, modulus)
     if packed == 0:
         return 0
     u_length = packed % 32
     v_length = packed // 32
     h_length = genus + 1
-    index = 0
+    index: uint64 = 0
     while index < h_length:
         store[h + index] = model[8 + index]
         index += 1
@@ -546,34 +546,34 @@ def _cantor_add_one(
     store: UInt64Buffer,
 ) -> uint64:
     checked_modulus = modulus + 0
-    index = 0
+    index: uint64 = 0
     while index < len(store):
         store[index] = 0
         index += 1
-    u1 = 0
-    v1 = 16
-    u2 = 32
-    v2 = 48
-    f = 64
-    h = 80
-    common0 = 96
-    left0 = 112
-    right0 = 128
-    difference = 144
-    conjugate = 160
-    common = 176
-    coefficient0 = 192
-    coefficient1 = 208
-    u3 = 224
-    v3 = 240
-    temp0 = 256
-    temp1 = 272
-    temp2 = 288
-    temp3 = 304
-    temp4 = 320
-    temp5 = 336
-    temp6 = 352
-    temp7 = 368
+    u1: uint64 = 0
+    v1: uint64 = 16
+    u2: uint64 = 32
+    v2: uint64 = 48
+    f: uint64 = 64
+    h: uint64 = 80
+    common0: uint64 = 96
+    left0: uint64 = 112
+    right0: uint64 = 128
+    difference: uint64 = 144
+    conjugate: uint64 = 160
+    common: uint64 = 176
+    coefficient0: uint64 = 192
+    coefficient1: uint64 = 208
+    u3: uint64 = 224
+    v3: uint64 = 240
+    temp0: uint64 = 256
+    temp1: uint64 = 272
+    temp2: uint64 = 288
+    temp3: uint64 = 304
+    temp4: uint64 = 320
+    temp5: uint64 = 336
+    temp6: uint64 = 352
+    temp7: uint64 = 368
 
     packed = _unpack_row(store, u1, v1, left_rows, left_offset, genus, modulus)
     if packed == 0:
@@ -588,7 +588,7 @@ def _cantor_add_one(
 
     f_length = genus * 2 + 2
     h_length = genus + 1
-    index = 0
+    index: uint64 = 0
     while index < 8:
         if model[index] >= checked_modulus:
             return 0
@@ -633,7 +633,7 @@ def _cantor_add_one(
                 equal = False
             index += 1
 
-    branch = 1
+    branch: uint64 = 1
     if equal:
         branch = 2
         temp0_length = _poly_add(store, temp0, v1, v1_length, v1, v1_length, modulus)
@@ -946,7 +946,7 @@ def packed_cantor_add_batch(
     modulus: PrimeFieldModulus,
 ) -> bool:
     """Add `count` pairs, emitting canonical rows and branch statuses."""
-    item = 0
+    item: uint64 = 0
     checked_modulus = modulus + 0
     valid = (
         (genus == 2 or genus == 3)
@@ -1023,7 +1023,7 @@ def packed_cantor_progression_batch(
     )
     if status == 0:
         return False
-    item = 0
+    item: uint64 = 0
     while item < count:
         index = 0
         while index < 8:
@@ -1070,7 +1070,7 @@ def packed_cantor_scalar_batch(
     modulus: PrimeFieldModulus,
 ) -> bool:
     """Multiply a batch by signed little-endian 64-bit scalar words."""
-    item = 0
+    item: uint64 = 0
     checked_modulus = modulus + 0
     valid = (
         (genus == 2 or genus == 3)
