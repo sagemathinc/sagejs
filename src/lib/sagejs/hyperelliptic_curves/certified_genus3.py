@@ -56,6 +56,166 @@ def _observe(
         observer(event, details)
 
 
+def _scalar_group_operations(value: int) -> tuple[int, int]:
+    """Return exact binary double-and-add operations and scalar bits."""
+    magnitude = abs(value)
+    bits = 0
+    additions = 0
+    while magnitude:
+        additions += magnitude % 2
+        magnitude //= 2
+        bits += 1
+    return additions + max(0, bits - 1), bits
+
+
+def _ceil_sqrt(value: int) -> int:
+    if value <= 1:
+        return value
+    root = 1 << ((value.bit_length() + 1) // 2)
+    while True:
+        next_root = (root + value // root) // 2
+        if next_root >= root:
+            return root if root * root >= value else root + 1
+        root = next_root
+
+
+def _prepared_order_certificates(
+    jacobian: Any,
+    divisor: Any,
+    base: int,
+    stride: int,
+    count: int,
+    budgets: Mapping[str, int],
+) -> Any:
+    """Search one order progression with fixed-degree prepared BSGS batches."""
+    if not hasattr(jacobian, "prepared_arithmetic"):
+        return None
+    baby_count = _ceil_sqrt(count)
+    if baby_count > budgets["max_baby_steps"]:
+        return {"status": "resource_limit", "native_status": "baby_steps"}
+    giant_count = 1 + (count - 1) // baby_count
+    maximum_candidate = base + (count - 1) * stride
+    _maximum_operations, maximum_bits = _scalar_group_operations(maximum_candidate)
+    maximum_batch = max(3, baby_count, giant_count, maximum_bits + 1)
+    context = jacobian.prepared_arithmetic(
+        algorithm="auto", max_batch_items=maximum_batch
+    )
+    if not context.native_available or not hasattr(context, "progression_batch"):
+        return None
+
+    scalar_values = (base, stride, baby_count * stride)
+    scalar_operations = 0
+    scalar_bits = 0
+    for value in scalar_values:
+        operations, bits = _scalar_group_operations(value)
+        scalar_operations += operations
+        scalar_bits += bits
+    progression_operations = max(0, baby_count - 1) + max(0, giant_count - 1)
+
+    total_operations = scalar_operations + progression_operations
+    if total_operations > budgets["max_group_operations"]:
+        return {"status": "resource_limit", "native_status": "group_operations"}
+    base_product, step, giant_step = context.scalar_batch(
+        (divisor, divisor, divisor),
+        scalar_values,
+        max_group_operations=max(
+            1, max(_scalar_group_operations(value)[0] for value in scalar_values)
+        ),
+    )
+    babies = context.progression_batch(
+        jacobian.zero(),
+        step,
+        baby_count,
+        packed=True,
+        max_group_operations=max(0, baby_count - 1),
+    )
+    giants = context.progression_batch(
+        -base_product,
+        -giant_step,
+        giant_count,
+        packed=True,
+        max_group_operations=max(0, giant_count - 1),
+    )
+    table: dict[Any, int] = {}
+    hash_collisions = 0
+    for index, value in enumerate(babies):
+        if value not in table:
+            table[value] = index
+        else:
+            hash_collisions += 1
+    found_index = None
+    for giant_index, value in enumerate(giants):
+        baby_index = table.get(value)
+        if baby_index is None:
+            continue
+        candidate_index = giant_index * baby_count + baby_index
+        if candidate_index < count:
+            found_index = candidate_index
+            break
+    diagnostics = {
+        "groupOperations": total_operations,
+        "scalarBits": scalar_bits,
+        "babySteps": baby_count,
+        "giantSteps": giant_count,
+        "hashCollisions": hash_collisions,
+        "preparedProgressions": 2,
+        "packedProgressions": 2,
+    }
+    if found_index is None:
+        return {"status": "not_found", "diagnostics": diagnostics}
+
+    annihilating_multiple = base + found_index * stride
+    factors = factor_integer_bounded(
+        annihilating_multiple, budgets["max_trial_divisions"]
+    )
+    strip_scalars = [annihilating_multiple]
+    strip_slices = []
+    for prime_value, exponent in factors:
+        start = len(strip_scalars)
+        divisor_value = 1
+        for _index in range(int(exponent)):
+            divisor_value *= int(prime_value)
+            strip_scalars.append(annihilating_multiple // divisor_value)
+        strip_slices.append((int(prime_value), start, len(strip_scalars)))
+    strip_operations = 0
+    strip_bits = 0
+    for value in strip_scalars:
+        operations, bits = _scalar_group_operations(value)
+        strip_operations += operations
+        strip_bits += bits
+    if total_operations + strip_operations > budgets["max_group_operations"]:
+        return {"status": "resource_limit", "native_status": "group_operations"}
+    strip_results = context.scalar_batch(
+        tuple(divisor for _value in strip_scalars),
+        tuple(strip_scalars),
+        max_group_operations=max(
+            1, max(_scalar_group_operations(value)[0] for value in strip_scalars)
+        ),
+    )
+    if not strip_results[0].is_zero():
+        raise ArithmeticError(
+            "the prepared progression returned a non-annihilating multiple"
+        )
+    element_order = annihilating_multiple
+    for prime, start, stop in strip_slices:
+        for index in range(start, stop):
+            if not strip_results[index].is_zero():
+                break
+            element_order //= prime
+    diagnostics["groupOperations"] += strip_operations
+    diagnostics["scalarBits"] += strip_bits
+    return {
+        "status": "found",
+        "certificate": {
+            "divisor": divisor,
+            "element_order": element_order,
+            "prime_factors": _factorization_of_divisor(element_order, factors),
+        },
+        "annihilating_multiple": annihilating_multiple,
+        "diagnostics": diagnostics,
+    }
+
+
 def _native_order_certificates(
     jacobian: Any,
     divisor: Any,
@@ -75,6 +235,16 @@ def _native_order_certificates(
     diagnostics, but never decide mathematical correctness.
     """
     del kind
+    prepared = _prepared_order_certificates(
+        jacobian,
+        divisor,
+        base,
+        stride,
+        count,
+        budgets,
+    )
+    if prepared is not None:
+        return prepared
     backend = runtime.flint_backend()
     capability_function = runtime.reflect.get(backend, "genus3JacobianCapabilities")
     search_function = runtime.reflect.get(backend, "genus3JacobianSearchProgression")
