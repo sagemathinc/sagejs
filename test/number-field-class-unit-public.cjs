@@ -403,6 +403,11 @@ forged.diagnostics["phase_timings"]["total"] -= 1
 forged.diagnostics["quotient_order"] = 99
 assert cubic_module.authenticated_cubic_relation_seed(forged, T) is None
 forged.diagnostics["quotient_order"] = forged.presentation.order
+factor_record = forged._live_relation_seed.factor_records[0]
+retained_factor_norm = factor_record.norm
+factor_record.norm = retained_factor_norm + 1
+assert cubic_module.authenticated_cubic_relation_seed(forged, T) is None
+factor_record.norm = retained_factor_norm
 relation = forged.relation_records[0]
 retained_row = relation.row
 relation.row = (retained_row[0] + 1,) + retained_row[1:]
@@ -417,6 +422,11 @@ seed = forged._live_relation_seed
 seed.search_state.candidates_tested += 1
 assert cubic_module.authenticated_cubic_relation_seed(forged, T) is None
 seed.search_state.candidates_tested -= 1
+assert cubic_module.authenticated_cubic_relation_seed(forged, T) is not None
+retained_pivots = dict(seed.collector.rank_screen._pivots)
+seed.collector.rank_screen._pivots.clear()
+assert cubic_module.authenticated_cubic_relation_seed(forged, T) is None
+seed.collector.rank_screen._pivots.update(retained_pivots)
 assert cubic_module.authenticated_cubic_relation_seed(forged, T) is not None
 forged.diagnostics["quotient_order"] = 99
 T._bounded_cubic_class_number_artifact = forged

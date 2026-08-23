@@ -1150,6 +1150,46 @@ class ExactRelationCollector:
             _validated_token=_VALIDATED_FACTOR_BASE_TOKEN,
         )
 
+    def rebind_verified_factor_base(
+        self,
+        factor_base: Iterable[Any],
+        *,
+        _validated_token: Any = None,
+    ) -> "ExactRelationCollector":
+        """Transfer exact live state to an equivalent materialized factor base.
+
+        A packed producer may authenticate relations before constructing the
+        ordinary prime-ideal objects required by the general engine.  Its
+        materializer must prove that every replacement has the identical
+        canonical factor-base record before using this private boundary.
+        Detached and public callers cannot supply the module token and always
+        replay relation evidence normally.
+        """
+        if _validated_token is not _VALIDATED_FACTOR_BASE_TOKEN:
+            raise TypeError("verified factor-base rebinding is producer-only")
+        if self.context is not None:
+            raise ValueError("a contextual relation collector cannot be rebound")
+        factors = tuple(factor_base)
+        if len(factors) != len(self.factor_base):
+            raise ValueError("a rebound factor base has the wrong width")
+        answer = ExactRelationCollector(
+            self.order,
+            factors,
+            rank_prime=self.rank_screen.prime,
+            max_reconstructed_ideals=self._reconstructor.max_rows,
+            max_factor_powers=self._reconstructor.max_powers,
+            max_admission_receipts=self.max_admission_receipts,
+            _validated_token=_VALIDATED_FACTOR_BASE_TOKEN,
+        )
+        answer.records = list(self.records)
+        answer.admissions = list(self.admissions)
+        answer.rank_screen._pivots = dict(self.rank_screen._pivots)
+        answer._keys = set(self._keys)
+        answer._admission_receipts = dict(self._admission_receipts)
+        answer._admission_receipt_statistics = dict(self._admission_receipt_statistics)
+        answer._order_basis = self._order_basis
+        return answer
+
     def _factor_ideal_over_base(self, ideal: Any) -> tuple[int, ...]:
         row = tuple(int(ideal.valuation(prime)) for prime in self.factor_base)
         if self.reconstruct_factor_base_ideal(row) != ideal:

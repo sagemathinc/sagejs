@@ -1900,37 +1900,17 @@ def _cubic_relation_seed_snapshot(seed: Any) -> Any:
             (
                 id(record),
                 id(prime_ideal),
-                int(record.index),
-                int(record.rational_prime),
-                int(record.norm),
-                int(record.ramification_index),
-                int(record.residue_degree),
-                tuple(record.hnf_fingerprint),
+                _canonical_json(record.to_dict()),
                 current_basis,
                 int(prime_ideal.rational_prime()),
                 int(prime_ideal.ramification_index()),
                 int(prime_ideal.residue_class_degree()),
-                _freeze_authentication_value(record.two_generator),
-                _freeze_authentication_value(record.valuation_metadata),
-                tuple(record.residue_modulus),
-                _freeze_authentication_value(record.automorphism_orbit),
-                _freeze_authentication_value(prime_ideal._residue_presentation),
+                _canonical_json(prime_ideal._residue_presentation),
             )
         )
 
     relations = tuple(
-        (
-            id(record),
-            tuple(record.row),
-            tuple(record.quotient_row),
-            tuple(record.source_row),
-            _freeze_authentication_value(record.witness),
-            _freeze_authentication_value(record.norm_smoothness),
-            _freeze_authentication_value(record.archimedean_logs),
-            int(record.log_precision),
-            _freeze_authentication_value(record.provenance),
-        )
-        for record in result.relation_records
+        (id(record), record.canonical_key()) for record in result.relation_records
     )
     presentation_snapshot = (
         id(presentation),
@@ -1946,6 +1926,24 @@ def _cubic_relation_seed_snapshot(seed: Any) -> Any:
         int(presentation.rank),
         tuple(presentation.invariants),
         presentation.order,
+    )
+    collector = seed.collector
+    collector_snapshot = (
+        id(collector),
+        tuple(id(record) for record in collector.records),
+        tuple(
+            (
+                id(admission),
+                id(admission.record),
+                bool(admission.modular_independent),
+                admission.pivot,
+            )
+            for admission in collector.admissions
+        ),
+        int(collector.rank_screen.prime),
+        tuple(sorted(collector.rank_screen._pivots.items())),
+        tuple(sorted(collector._keys)),
+        tuple(collector._admission_receipts),
     )
     proof_diagnostics = (
         diagnostics.get("algorithm"),
@@ -1988,6 +1986,7 @@ def _cubic_relation_seed_snapshot(seed: Any) -> Any:
         tuple(factor_records),
         relations,
         presentation_snapshot,
+        collector_snapshot,
         id(search_state),
         int(search_state.seed),
         int(search_state.random_state),
@@ -2342,16 +2341,14 @@ def bounded_cubic_minkowski_class_number(
                     "sagejs.number_fields.class_group_relations",
                     fromlist=["class_group_relations"],
                 )
-                seed_collector = relation_replay_module.ExactRelationCollector(
-                    order, output_factor_base
+                # Materialization just required every ordinary record to
+                # reproduce the authenticated packed payload byte-for-byte.
+                # Transfer the already verified rank, deduplication, and live
+                # admission receipts without replaying those same records.
+                seed_collector = live_collector.rebind_verified_factor_base(
+                    output_factor_base,
+                    _validated_token=relation_replay_module._VALIDATED_FACTOR_BASE_TOKEN,
                 )
-                for retained_record in relation_records:
-                    # The packed producer proved containment in precisely the
-                    # same HNF lattices.  Materialization above requires every
-                    # canonical factor payload to remain byte-for-byte equal,
-                    # so transferring these module-issued records preserves
-                    # the exact admission boundary without a detached replay.
-                    seed_collector._store_verified(retained_record)
         phase_timings["total"] = time.perf_counter() - total_started
         result = CubicClassNumberResult(
             field,
