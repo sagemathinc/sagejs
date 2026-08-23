@@ -205,11 +205,21 @@ const PYTHON_KEYWORDS = new Set([
 ]);
 
 /**
- * Wolfram global-optimization heads that lower straight to their `wolfram`
- * module counterparts. Their second argument names the optimization
- * variables, which are declared as Sage symbols the way plot ranges are.
+ * Wolfram optimization heads that lower straight to their `wolfram` module
+ * counterparts -- the global `N*` family and the local `Find*` family. Their
+ * second argument names the optimization variables, which are declared as
+ * Sage symbols the way plot ranges are. The two families read that argument
+ * differently (`{x, a, b}` is a region to `NMinimize` and `{x, x0}` a
+ * starting point to `FindMinimum`), but only the Python side has to care:
+ * the symbols to declare are in the same places either way.
  */
 const OPTIMIZATION_HEADS = new Set([
+  "FindArgMax",
+  "FindArgMin",
+  "FindMaxValue",
+  "FindMaximum",
+  "FindMinValue",
+  "FindMinimum",
   "NArgMax",
   "NArgMin",
   "NMaxValue",

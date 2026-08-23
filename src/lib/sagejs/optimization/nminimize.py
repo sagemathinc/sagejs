@@ -73,10 +73,15 @@ are **our documented choices**, not published Wolfram behaviour:
 > "Constraints are generally enforced by adding penalties when points leave
 > the feasible region."
 
-A `Constraint` is an inequality `g(x) >= 0` or an equality `h(x) == 0`. Its
-*violation* is `max(0, -g(x))` or `abs(h(x))` respectively, and a NaN
-constraint value counts as an infinite violation, so a point where a
-constraint cannot be evaluated is never mistaken for a feasible one. The
+A `Constraint` is an inequality `g(x) >= 0` or an equality `h(x) == 0`; the
+class itself, its `inequality`/`equality` builders, and the rule that reads
+a raw `constraints` argument into a list of them live in `constraint.py`,
+shared with `findminimum.py` (see that module's docstring for why a shared
+module rather than one importing the other). What is below is specific to
+this engine: how *this* module turns a constraint into part of the
+objective. Its *violation* is `max(0, -g(x))` or `abs(h(x))` respectively,
+and a NaN constraint value counts as an infinite violation, so a point where
+a constraint cannot be evaluated is never mistaken for a feasible one. The
 method actually sees
 
 ```text
@@ -181,9 +186,18 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 
 from .cobyla import cobyla
+from .constraint import EQUALITY as _EQUALITY
+from .constraint import Constraint
+
+# `equality` and `inequality` were defined here until findminimum.py needed
+# them too. The redundant alias re-exports them, so importing either one
+# from this module keeps working across that move.
+from .constraint import equality as equality
+from .constraint import inequality as inequality
+from .constraint import normalize_constraints as _normalize_constraints
 from .differential_evolution import differential_evolution
 from .global_result import GlobalResult
 from .nelder_mead import nelder_mead
@@ -204,12 +218,6 @@ _DEFAULT_HIGH = 1.0
 
 _DEFAULT_MAX_ITERATIONS = 100
 """The only published numeric `MaxIterations` for `NMinimize` (v4 package)."""
-
-_INEQUALITY = "inequality"
-"""`Constraint.kind` for `g(x) >= 0`."""
-
-_EQUALITY = "equality"
-"""`Constraint.kind` for `h(x) == 0`."""
 
 _AUTOMATIC = "Automatic"
 """Wolfram's `Method -> Automatic`, the default selection rule."""
@@ -283,29 +291,6 @@ class VariableSpec:
     low: float
     high: float
     integer: bool
-
-
-@dataclass(frozen=True)
-class Constraint:
-    """One constraint, either `g(x) >= 0` or `h(x) == 0`.
-
-    `kind` is `"inequality"` or `"equality"`; build instances with
-    `inequality` and `equality` rather than spelling the strings out.
-    `function` maps a coordinate sequence to the constraint's value.
-    """
-
-    kind: str
-    function: Objective
-
-
-def inequality(g: Objective) -> Constraint:
-    """Return the constraint `g(x) >= 0`."""
-    return Constraint(kind=_INEQUALITY, function=g)
-
-
-def equality(h: Objective) -> Constraint:
-    """Return the constraint `h(x) == 0`."""
-    return Constraint(kind=_EQUALITY, function=h)
 
 
 def nminimize(
@@ -435,30 +420,6 @@ def nminimize(
 def _present_shared(options: dict[str, Any]) -> list[str]:
     """Return the `_SHARED_OPTIONS` names actually present in `options`."""
     return [name for name in _SHARED_OPTIONS if name in options]
-
-
-def _normalize_constraints(constraints: Sequence[Any] | None) -> list[Constraint]:
-    """Coerce `constraints` into `Constraint` values, a callable meaning `g >= 0`."""
-    if constraints is None:
-        return []
-    result: list[Constraint] = []
-    for index in range(len(constraints)):
-        entry = constraints[index]
-        if isinstance(entry, Constraint):
-            if entry.kind != _INEQUALITY and entry.kind != _EQUALITY:
-                raise ValueError(
-                    "constraint %d has kind %r, expected %r or %r"
-                    % (index, entry.kind, _INEQUALITY, _EQUALITY)
-                )
-            result.append(entry)
-        elif callable(entry):
-            result.append(inequality(cast(Objective, entry)))
-        else:
-            raise TypeError(
-                "constraint %d must be a `Constraint` or a callable `g` read "
-                "as `g(x) >= 0`" % (index,)
-            )
-    return result
 
 
 def _normalize_variables(

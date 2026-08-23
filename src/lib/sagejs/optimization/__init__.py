@@ -58,6 +58,7 @@ from .brent_minimize import (
     fminbound,
 )
 from .brent_root import BrentRootResult, bisect, brentq
+from .findminimum import LocalResult, LocalSpec, findminimum
 from .gradient_methods import (
     BFGSResult,
     CGResult,
@@ -116,6 +117,8 @@ __all__ = [
     "LSFAIL",
     "LineSearchError",
     "LineSearchResult",
+    "LocalResult",
+    "LocalSpec",
     "MAXFUN",
     "NOPROGRESS",
     "NelderMeadResult",
@@ -131,6 +134,7 @@ __all__ = [
     "bracket",
     "brent",
     "brentq",
+    "findminimum",
     "fmin_bfgs",
     "fmin_cg",
     "fmin_l_bfgs_b",

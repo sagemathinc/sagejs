@@ -326,7 +326,7 @@
       "id": "numerical-optimization",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 620000,
+      "max_source_bytes": 680000,
       "depends_on": ["core-runtime", "python-stdlib", "symbolics"],
       "files": [],
       "prefixes": ["src/lib/sagejs/optimization/"]

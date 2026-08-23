@@ -120,6 +120,7 @@ Table = table
 
 
 _optimization_module_cache = runtime.undefined
+_findminimum_module_cache = runtime.undefined
 
 _INFEASIBLE = ":infeasible"
 """The `flag` suffix `nminimize` appends when its answer stays infeasible."""
@@ -145,6 +146,23 @@ def _optimization_module() -> Any:
             fromlist=["nminimize"],
         )
     return _optimization_module_cache
+
+
+def _findminimum_module() -> Any:
+    """Load the lazy local-minimization module on first use.
+
+    Kept separate from `_optimization_module` because Wolfram's local and
+    global questions are separate functions with separate engines here: a
+    notebook that only calls `FindMinimum` never pays for `nminimize`'s
+    population methods, and the reverse.
+    """
+    global _findminimum_module_cache
+    if _findminimum_module_cache is runtime.undefined:
+        _findminimum_module_cache = __import__(
+            "sagejs.optimization.findminimum",
+            fromlist=["findminimum"],
+        )
+    return _findminimum_module_cache
 
 
 def _is_symbolic(value: Any) -> bool:
@@ -245,7 +263,7 @@ def _relation_parts(value: Any) -> Any:
     return [name, builder(tree[1]), builder(tree[2])]
 
 
-def _constraint(value: Any, variables: list[Any], module: Any) -> Any:
+def _constraint(value: Any, variables: list[Any], module: Any, head: str) -> Any:
     """Turn one Wolfram constraint into an engine-level `Constraint`.
 
     An equation `lhs == rhs` becomes the equality `lhs - rhs == 0`, and each
@@ -255,14 +273,20 @@ def _constraint(value: Any, variables: list[Any], module: Any) -> Any:
     ("Any strong inequalities will be converted to weak inequalities due to
     limits of working with approximate numbers"). A plain callable is read
     as `g(x) >= 0` directly.
+
+    Shared verbatim by `_optimize` (`NMinimize`'s family) and `_find_optimize`
+    (`FindMinimum`'s family) -- the `{f, cons}` pair means the same thing to
+    both, so there is exactly one converter, not one per family. `head`
+    names the caller in the one error this function can raise, so the
+    message stays actionable regardless of which family reached it.
     """
     parts = _relation_parts(value)
     if parts is None:
         if callable(value):
             return module.inequality(value)
         raise ValueError(
-            "NMinimize constraints must be equations, inequalities, or "
-            "callables; combine several of them in a List, not with &&"
+            "%s constraints must be equations, inequalities, or callables; "
+            "combine several of them in a List, not with &&" % (head,)
         )
     orientation = _RELATION_ORIENTATION[parts[0]]
     difference = parts[1] - parts[2] if orientation >= 0 else parts[2] - parts[1]
@@ -302,7 +326,9 @@ def _optimize(
         else:
             constraint_values = [parts[1]]
 
-    constraints = [_constraint(value, symbols, module) for value in constraint_values]
+    constraints = [
+        _constraint(value, symbols, module, "NMinimize") for value in constraint_values
+    ]
     result = module.nminimize(
         _objective_function(objective_value, symbols),
         entries,
@@ -551,6 +577,241 @@ NMaxValue = n_max_value
 class _GraphicsDirective:
     def __init__(self, options: dict[str, Any]) -> None:
         self.options = options
+
+
+def _find_variable_entries(variables: Any) -> list[Any]:
+    """Split a Wolfram `FindMinimum` variable argument into one entry each.
+
+    `FindMinimum`'s variable specifications look like `NMinimize`'s but do
+    not mean the same thing, so they cannot share `_variable_entries`.
+    `NMinimize[f, {x, a, b}]` gives one variable its initial *region*, while
+    `FindMinimum[f, {x, x0}]` gives one variable its *starting point* and
+    `FindMinimum[f, {x, x0, xmin, xmax}]` adds a box. The list forms collide
+    head-on: `{x, y}` is two variables to both functions, but `{x, 1}` is one
+    variable to `FindMinimum` and meaningless to `NMinimize`.
+
+    The rule used here is the one that separates them: a top-level list whose
+    first element is a variable and whose remaining elements are all numbers
+    is a single specification; anything else is a list of specifications.
+    """
+    if not isinstance(variables, (list, tuple)):
+        return [variables]
+    entries = list(variables)
+    if len(entries) < 2:
+        return entries
+    if _is_symbolic(entries[0]) and all(_is_number(item) for item in entries[1:]):
+        return [entries]
+    return entries
+
+
+def _find_spec(entry: Any, index: int, module: Any) -> Any:
+    """Read one `FindMinimum` variable entry into a `LocalSpec`."""
+    if not isinstance(entry, (list, tuple)):
+        return module.LocalSpec(variable=entry, name=str(entry), start=0.0)
+    values = list(entry)
+    variable = values[0]
+    name = str(variable)
+    if len(values) == 1:
+        return module.LocalSpec(variable=variable, name=name, start=0.0)
+    if len(values) == 2:
+        return module.LocalSpec(variable=variable, name=name, start=float(values[1]))
+    if len(values) == 3:
+        # Wolfram's `{x, x0, x1}` supplies two starting values, for the
+        # methods that difference them. Every solver reached from here takes
+        # a single starting point, so this is refused by name instead of
+        # quietly dropping `x1` and reporting a run the caller did not ask
+        # for.
+        raise ValueError(
+            "variable %d is Wolfram's two-starting-value form {x, x0, x1}, "
+            "which is not supported; give {x, x0} or {x, x0, xmin, xmax}" % (index,)
+        )
+    if len(values) == 4:
+        return module.LocalSpec(
+            variable=variable,
+            name=name,
+            start=float(values[1]),
+            low=float(values[2]),
+            high=float(values[3]),
+        )
+    raise ValueError(
+        "variable %d has %d elements; expected a bare variable, {x, x0} or "
+        "{x, x0, xmin, xmax}" % (index, len(values))
+    )
+
+
+def _symbolic_gradient(objective: Any, variables: list[Any]) -> Any:
+    """Compile `grad objective` when the objective is symbolic, else `None`.
+
+    `Expression` has no `gradient()` here, so the gradient is assembled from
+    one `derivative` per variable, each compiled over the same coordinate
+    order — the same construction `sagejs.optimization.sage_api` uses. A
+    non-symbolic objective returns `None`, which leaves each solver to its
+    own forward-difference approximation.
+    """
+    if not _is_symbolic(objective):
+        return None
+    partials = [
+        _symbolic_function(objective.derivative(variable), variables)
+        for variable in variables
+    ]
+
+    def evaluate(point: Any) -> list[float]:
+        return [float(component(point)) for component in partials]
+
+    return evaluate
+
+
+def _find_optimize(
+    problem: Any,
+    variables: Any,
+    maximize: bool,
+    method: str,
+    max_iterations: int | None,
+    tolerance: float,
+) -> Any:
+    """Run the local engine and return `[result, variable_names]`."""
+    module = _findminimum_module()
+    entries = _find_variable_entries(variables)
+    specs = [_find_spec(entries[index], index, module) for index in range(len(entries))]
+    symbols = [spec.variable for spec in specs]
+
+    objective_value = problem
+    constraint_values: list[Any] = []
+    if isinstance(problem, (list, tuple)):
+        parts = list(problem)
+        if len(parts) != 2:
+            raise ValueError(
+                "FindMinimum takes either an objective or the pair {f, cons}"
+            )
+        objective_value = parts[0]
+        if isinstance(parts[1], (list, tuple)):
+            constraint_values = list(parts[1])
+        else:
+            constraint_values = [parts[1]]
+
+    constraints = [
+        _constraint(value, symbols, module, "FindMinimum")
+        for value in constraint_values
+    ]
+    result = module.findminimum(
+        _objective_function(objective_value, symbols),
+        specs,
+        constraints=constraints if len(constraints) else None,
+        gradient=_symbolic_gradient(objective_value, symbols),
+        method=method,
+        max_iterations=max_iterations,
+        tolerance=tolerance,
+        maximize=maximize,
+    )
+    return [result, [spec.name for spec in specs]]
+
+
+def find_minimum(
+    problem: Any,
+    variables: Any,
+    method: str = "Automatic",
+    max_iterations: int | None = None,
+    tolerance: float = 1e-6,
+) -> list[Any]:
+    """Search for a local minimum from a starting point, Wolfram `FindMinimum`.
+
+    `problem` is the objective, or the pair `{f, cons}` whose second element
+    is the constraint or a List of constraints, read exactly as
+    `n_minimize`'s `problem` is (see `_constraint`). A constrained problem
+    always runs on `cobyla.cobyla`, the local engine's only constrained
+    solver, regardless of `method` or of any variable's own box; see
+    `sagejs.optimization.findminimum`'s module docstring for exactly how and
+    why.
+
+    `variables` is a bare variable, a List of them, `{x, x0}` giving one
+    variable its starting value, or `{x, x0, xmin, xmax}` adding a box; a
+    variable given without a starting value begins at `0`. Unlike
+    `NMinimize`, this walks downhill from where it is told to start and
+    reports the first local minimum it settles in, so the answer depends on
+    the starting point.
+
+    Returns `{fmin, {x -> xmin, ...}}`, with each rule carried as a
+    two-element list exactly as `NMinimize` returns it (see `_rules`).
+
+    `method` selects among `"Automatic"`, `"QuasiNewton"`,
+    `"ConjugateGradient"`, `"Newton"` and `"PrincipalAxis"`. **The Wolfram
+    frontend does not lower `Rule` expressions into keyword arguments**, so
+    `Method -> "Newton"` cannot be written in Wolfram source today; select a
+    method through this Python keyword argument instead.
+    """
+    answer = _find_optimize(
+        problem, variables, False, method, max_iterations, tolerance
+    )
+    return [answer[0].fun, _rules(answer[1], answer[0].x)]
+
+
+def find_maximum(
+    problem: Any,
+    variables: Any,
+    method: str = "Automatic",
+    max_iterations: int | None = None,
+    tolerance: float = 1e-6,
+) -> list[Any]:
+    """Search for a local maximum from a starting point, Wolfram `FindMaximum`.
+
+    The maximizing counterpart of `find_minimum`, sharing its engine by
+    minimizing `-objective`; see that docstring for the constrained `{f,
+    cons}` form, the variable forms, and the `method` vocabulary.
+    """
+    answer = _find_optimize(problem, variables, True, method, max_iterations, tolerance)
+    return [answer[0].fun, _rules(answer[1], answer[0].x)]
+
+
+def find_min_value(
+    problem: Any,
+    variables: Any,
+    method: str = "Automatic",
+    max_iterations: int | None = None,
+    tolerance: float = 1e-6,
+) -> Any:
+    """Return just the local minimum value, Wolfram `FindMinValue`."""
+    answer = _find_optimize(
+        problem, variables, False, method, max_iterations, tolerance
+    )
+    return answer[0].fun
+
+
+def find_max_value(
+    problem: Any,
+    variables: Any,
+    method: str = "Automatic",
+    max_iterations: int | None = None,
+    tolerance: float = 1e-6,
+) -> Any:
+    """Return just the local maximum value, Wolfram `FindMaxValue`."""
+    answer = _find_optimize(problem, variables, True, method, max_iterations, tolerance)
+    return answer[0].fun
+
+
+def find_arg_min(
+    problem: Any,
+    variables: Any,
+    method: str = "Automatic",
+    max_iterations: int | None = None,
+    tolerance: float = 1e-6,
+) -> list[Any]:
+    """Return just the minimizing variable values, Wolfram `FindArgMin`."""
+    answer = _find_optimize(
+        problem, variables, False, method, max_iterations, tolerance
+    )
+    return [value for value in answer[0].x]
+
+
+def find_arg_max(
+    problem: Any,
+    variables: Any,
+    method: str = "Automatic",
+    max_iterations: int | None = None,
+    tolerance: float = 1e-6,
+) -> list[Any]:
+    """Return just the maximizing variable values, Wolfram `FindArgMax`."""
+    answer = _find_optimize(problem, variables, True, method, max_iterations, tolerance)
+    return [value for value in answer[0].x]
 
 
 def opacity(value: Any) -> _GraphicsDirective:
@@ -1148,3 +1409,9 @@ GrayLevel = gray_level
 Hue = hue_color
 Directive = directive
 Style = style
+FindMinimum = find_minimum
+FindMaximum = find_maximum
+FindMinValue = find_min_value
+FindMaxValue = find_max_value
+FindArgMin = find_arg_min
+FindArgMax = find_arg_max
