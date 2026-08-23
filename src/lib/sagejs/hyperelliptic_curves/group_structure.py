@@ -74,6 +74,15 @@ def _integer_xgcd(left: int, right: int) -> tuple[int, int, int]:
     return old_r, old_s, old_t
 
 
+def _integer_gcd(left: int, right: int) -> int:
+    """Return the nonnegative gcd of two ordinary exact integers."""
+    left = abs(left)
+    right = abs(right)
+    while right:
+        left, right = right, left % right
+    return left
+
+
 def group_element_key(element: Any, prepared_context: Any = None) -> Any:
     """Return a cheap exact table key for a prime-field Mumford divisor.
 
@@ -520,38 +529,126 @@ class GroupOperationBudget:
         return self.sum(multiples)
 
 
+def _pollard_rho_factor_bounded(value: int, max_steps: int) -> tuple[int | None, int]:
+    """Return one deterministic nontrivial factor and the rho steps used."""
+    if value % 2 == 0:
+        return 2, 0
+    steps = 0
+    constant = 1
+    while constant <= 32 and steps < max_steps:
+        slow = 2 + constant
+        fast = slow
+        divisor = 1
+        while divisor == 1 and steps < max_steps:
+            slow = (slow * slow + constant) % value
+            fast = (fast * fast + constant) % value
+            fast = (fast * fast + constant) % value
+            divisor = _integer_gcd(slow - fast, value)
+            steps += 1
+        if divisor != 1 and divisor != value:
+            return divisor, steps
+        constant += 1
+    return None, steps
+
+
+def _factor_composite_tail_bounded(value: int, max_rho_steps: int) -> list[int]:
+    """Recursively split one composite tail within a shared rho budget."""
+    remaining_steps = max_rho_steps
+    pending = [value]
+    leaves: list[int] = []
+    while pending:
+        current = pending.pop()
+        if sage.is_prime(current):
+            leaves.append(current)
+            continue
+        factor, used_steps = _pollard_rho_factor_bounded(current, remaining_steps)
+        remaining_steps -= used_steps
+        if factor is None:
+            raise JacobianResourceLimitError(
+                "integer factorization exceeded max_rho_steps=" + str(max_rho_steps)
+            )
+        pending.append(factor)
+        pending.append(current // factor)
+    return leaves
+
+
+def _checked_factorization_product(
+    value: int, factors: list[tuple[int, int]]
+) -> list[tuple[int, int]]:
+    """Sort and merge proved prime factors, checking their exact product."""
+    merged: list[tuple[int, int]] = []
+    for prime, exponent in sorted(factors):
+        if not sage.is_prime(prime):
+            raise ArithmeticError("integer factorization produced a composite leaf")
+        if merged and merged[-1][0] == prime:
+            merged[-1] = (prime, merged[-1][1] + exponent)
+        else:
+            merged.append((prime, exponent))
+    product = 1
+    for prime, exponent in merged:
+        product *= prime**exponent
+    if product != value:
+        raise ArithmeticError("integer factorization has the wrong product")
+    return merged
+
+
 def factor_integer_bounded(
     value: Any,
     max_trial_divisions: int = 1_000_000,
-) -> list[tuple[Any, int]]:
-    """Factor a positive integer by bounded trial division and primality proof.
+    max_rho_steps: int = 20_000,
+) -> list[tuple[int, int]]:
+    """Factor a positive integer with separate deterministic work budgets.
 
     This is intended for small fallback workloads. Production-sized orders
     should be factored by Sage.js's integer-factorization service and passed to
-    the group algorithms explicitly. If trial division exhausts its budget,
-    an exact primality proof may finish the remaining cofactor; an unproved
-    composite tail still raises `JacobianResourceLimitError`.
+    the group algorithms explicitly. An exact primality proof handles prime
+    inputs immediately. A proved-composite tail is recursively split by
+    deterministic Pollard rho within `max_rho_steps`; bounded trial division
+    is the independent fallback when rho cannot split it. Every leaf is proved
+    prime, and exhaustion of both budgets fails closed.
     """
     value = _checked_integer(value, "the integer to factor")
     max_trial_divisions = _checked_integer(max_trial_divisions, "max_trial_divisions")
+    max_rho_steps = _checked_integer(max_rho_steps, "max_rho_steps")
     if value <= 0:
         raise ValueError("the integer to factor must be positive")
     if max_trial_divisions < 0:
         raise ValueError("max_trial_divisions must be nonnegative")
+    if max_rho_steps < 0:
+        raise ValueError("max_rho_steps must be nonnegative")
+    if value == 1:
+        return []
+    if sage.is_prime(value):
+        return [(value, 1)]
+
+    # Rho is the bounded fast path for a cofactor already proved composite.
+    # Trial division remains an independent deterministic fallback rather
+    # than imposing up to a million redundant modulus operations first.
+    try:
+        rho_factors = [
+            (prime, 1) for prime in _factor_composite_tail_bounded(value, max_rho_steps)
+        ]
+        return _checked_factorization_product(value, rho_factors)
+    except JacobianResourceLimitError:
+        pass
 
     remaining = value
     divisor = 2
     trials = 0
-    answer: list[tuple[Any, int]] = []
+    answer: list[tuple[int, int]] = []
     while divisor * divisor <= remaining:
         if trials >= max_trial_divisions:
             if sage.is_prime(remaining):
                 answer.append((remaining, 1))
-                return answer
-            raise JacobianResourceLimitError(
-                "integer factorization exceeded max_trial_divisions="
-                + str(max_trial_divisions)
-            )
+            else:
+                raise JacobianResourceLimitError(
+                    "integer factorization exceeded max_trial_divisions="
+                    + str(max_trial_divisions)
+                    + " and max_rho_steps="
+                    + str(max_rho_steps)
+                )
+            remaining = 1
+            break
         trials += 1
         exponent = 0
         while remaining % divisor == 0:
@@ -561,8 +658,10 @@ def factor_integer_bounded(
             answer.append((divisor, exponent))
         divisor = 3 if divisor == 2 else divisor + 2
     if remaining > 1:
+        if not sage.is_prime(remaining):
+            raise ArithmeticError("trial division ended with a composite cofactor")
         answer.append((remaining, 1))
-    return answer
+    return _checked_factorization_product(value, answer)
 
 
 def validate_factorization(

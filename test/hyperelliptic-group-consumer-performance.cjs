@@ -25,7 +25,7 @@ function run(command, args, options = {}) {
   return result.stdout.trim();
 }
 
-test("bounded integer factorization proves prime tails and fails closed", async () => {
+test("bounded integer factorization proves and recursively splits tails", async () => {
   const session = await createSage();
   try {
     const result = await session.evaluate(
@@ -40,13 +40,27 @@ assert factor_integer_bounded(2*101, 1) == [(2, 1), (101, 1)]
 assert factor_integer_bounded(4179926624207, 1000000) == [
     (4179926624207, 1)
 ]
+assert factor_integer_bounded(1000003*1000033, 0) == [
+    (1000003, 1), (1000033, 1)
+]
+assert factor_integer_bounded(1009^4, 0) == [(1009, 4)]
+assert factor_integer_bounded(17139710183594, 1000000) == [
+    (2, 1), (2741009, 1), (3126533, 1)
+]
+assert factor_integer_bounded(3*101, 2, 0) == [(3, 1), (101, 1)]
 
 for composite, budget in ((101*103, 0), (2*101*103, 1)):
     try:
-        factor_integer_bounded(composite, budget)
+        factor_integer_bounded(composite, budget, 0)
         raise AssertionError("an unfactored composite tail was accepted")
     except JacobianResourceLimitError:
         pass
+
+try:
+    factor_integer_bounded(15, 0, -1)
+    raise AssertionError("a negative rho budget was accepted")
+except ValueError:
+    pass
 True`,
       { timeout: 120_000 },
     );
