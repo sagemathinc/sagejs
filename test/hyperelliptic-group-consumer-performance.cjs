@@ -25,6 +25,37 @@ function run(command, args, options = {}) {
   return result.stdout.trim();
 }
 
+test("bounded integer factorization proves prime tails and fails closed", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      String.raw`
+from sagejs.hyperelliptic_curves.group_structure import (
+    JacobianResourceLimitError,
+    factor_integer_bounded,
+)
+
+assert factor_integer_bounded(101, 0) == [(101, 1)]
+assert factor_integer_bounded(2*101, 1) == [(2, 1), (101, 1)]
+assert factor_integer_bounded(4179926624207, 1000000) == [
+    (4179926624207, 1)
+]
+
+for composite, budget in ((101*103, 0), (2*101*103, 1)):
+    try:
+        factor_integer_bounded(composite, budget)
+        raise AssertionError("an unfactored composite tail was accepted")
+    except JacobianResourceLimitError:
+        pass
+True`,
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "True");
+  } finally {
+    await session.close();
+  }
+});
+
 test("group consumers reuse prepared scalar, addition, and sum batches", async () => {
   const session = await createSage();
   try {
