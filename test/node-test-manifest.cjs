@@ -336,6 +336,7 @@ const integration = [
   "test/hyperelliptic-native-cantor.cjs",
   "test/hyperelliptic-native-kummer.cjs",
   "test/hyperelliptic-oracles.cjs",
+  "test/hyperelliptic-period-arb-performance.cjs",
   "test/hyperelliptic-periods.cjs",
   "test/hyperelliptic-rational-performance.cjs",
   "test/hyperelliptic-rational-cantor.cjs",
