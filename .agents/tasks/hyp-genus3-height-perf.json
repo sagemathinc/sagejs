@@ -1,0 +1,104 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-genus3-height-perf",
+  "title": "Hyp Genus3 Height Perf",
+  "lane": "hyperelliptic-curves",
+  "status": "review",
+  "owner": "user",
+  "objective": "Reduce the prepared genus-3 canonical-height theta path by at least fivefold while preserving exact finite replay and Magma agreement.",
+  "base_commit": "76b863adb13c683b265ddc0c987b727fd7291990",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/genus3_heights.py",
+    "test/hyperelliptic-genus3-height-performance.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Magma 2.18-5 pinned fixture"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 33.644,
+      "started_at": "2026-08-23T03:11:09.630Z",
+      "commit": "76b863adb13c683b265ddc0c987b727fd7291990",
+      "workspace_fingerprint": "298ef9527ec04cfe9b7ffb802940358f6b3f6181147960b305960faa9aeb0113",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.949,
+      "started_at": "2026-08-23T03:12:21.058Z",
+      "commit": "76b863adb13c683b265ddc0c987b727fd7291990",
+      "workspace_fingerprint": "6fd647d96bacb2053ab612b05d6e1b65070f677f43c76d53192da61566e6d844",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.748,
+      "started_at": "2026-08-23T03:13:19.514Z",
+      "commit": "76b863adb13c683b265ddc0c987b727fd7291990",
+      "workspace_fingerprint": "6fd647d96bacb2053ab612b05d6e1b65070f677f43c76d53192da61566e6d844",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 914.816,
+      "started_at": "2026-08-23T03:13:31.667Z",
+      "commit": "76b863adb13c683b265ddc0c987b727fd7291990",
+      "workspace_fingerprint": "6fd647d96bacb2053ab612b05d6e1b65070f677f43c76d53192da61566e6d844",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 322.318,
+      "started_at": "2026-08-23T03:28:52.911Z",
+      "commit": "76b863adb13c683b265ddc0c987b727fd7291990",
+      "workspace_fingerprint": "6fd647d96bacb2053ab612b05d6e1b65070f677f43c76d53192da61566e6d844",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Prepared and cached the exact-period A-coordinate map and individual normalized Abel lifts, with exact duplicate/conjugate linear reuse and conservative refinement bounds. Replaced independent cubic theta enumerations by a cached tau-only lattice plan, a reanchored last-coordinate recurrence, and one deterministic traversal for the radius-r and radius-(r+2) sums. The pinned Magma radius-6 public height replay fell from 407.87s to about 73s (5.59x), retained exact finite replay and refinement stability, and agrees with Magma within 1.85e-20. The structural regression independently recomputes the legacy direct lattice sums and checks that a warm radius-4 evaluation uses 170 exponentials instead of 2926 term exponentials.",
+    "risks": [
+      "Theta truncation and rounding remain explicitly nonrigorous; the optimization preserves the existing radius-refinement witness rather than claiming an enclosure.",
+      "The exact-process caches are deliberately bounded (12 theta plans, 12 coordinate maps, and 64 point lifts), so workloads cycling through many unrelated period matrices will see cold-plan costs.",
+      "The optimized pinned replay differs from the stored Sage.js decimal string by about 6e-21 while remaining within the fixture's 2e-20 Magma threshold; any opt-in exact-string replay should be changed to a tolerance comparison by the integration lane.",
+      "pnpm test:changed reached the unit tier but failed only because the new claimed test is not yet registered in the shared central test manifest, which this lane must not edit."
+    ],
+    "next_steps": [
+      "Integration should register test/hyperelliptic-genus3-height-performance.cjs in test/node-test-manifest.cjs and rerun pnpm test:changed.",
+      "Integrate the independent periods.py branch-topology/radial-plan cache; it composes with this lane's exact-support Abel and normalized-coordinate caches.",
+      "Benchmark the prepared path on the pinned x86, ARM64, macOS ARM64, and Windows hosts after integration."
+    ]
+  }
+}
