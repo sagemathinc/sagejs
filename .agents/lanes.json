@@ -28,7 +28,7 @@
     {
       "id": "hyperelliptic-curves",
       "description": "Hyperelliptic curves, local Frobenius data, Jacobians, point counting, and higher-genus native accelerators",
-      "allowed_claims": ["src/baselib/hyperelliptic_curves.py", "src/lib/sagejs/hyperelliptic_curves/", "packages/flint/binding.gyp", "packages/flint/src/addon.c", "packages/flint/src/addon.h", "packages/flint/src/hyperelliptic/", "packages/flint/include/sagejs/hyperelliptic/", "packages/flint/test/hyperelliptic/", "packages/flint/scripts/", "packages/flint/README.md"],
+      "allowed_claims": ["src/baselib/hyperelliptic_curves.py", "src/lib/sagejs/hyperelliptic_curves/", "packages/flint/binding.gyp", "packages/flint/src/addon.c", "packages/flint/src/addon.h", "packages/flint/src/elliptic_lfunction", "packages/flint/src/hyperelliptic/", "packages/flint/include/sagejs/hyperelliptic/", "packages/flint/test/elliptic", "packages/flint/test/hyperelliptic/", "packages/flint/scripts/", "packages/flint/README.md"],
       "required_checks": ["pnpm architecture:check", "pnpm test:baselib:strict", "pnpm test:native"]
     },
     {
