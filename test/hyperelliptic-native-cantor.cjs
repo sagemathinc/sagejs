@@ -576,6 +576,19 @@ attack_points = J0.points(max_elements=10000, max_candidates=100000)
 attack_context = J0.prepared_arithmetic()
 P = attack_context.unpack(attack_context.pack(attack_points[1]))
 Q = attack_context.unpack(attack_context.pack(attack_points[2]))
+foreign_context = J1.prepared_arithmetic()
+foreign_zero = foreign_context.unpack(foreign_context.pack(J1.zero()))
+for attack_algorithm in (selected, "reference"):
+    try:
+        attack_context.add_batch(
+            (P,), (foreign_zero,), algorithm=attack_algorithm
+        )
+    except ValueError as error:
+        assert "this Jacobian" in str(error)
+    else:
+        raise AssertionError(
+            "authenticated gathering accepted a divisor from another parent"
+        )
 serialized_source = attack_context.add_batch((P,), (J0.zero(),))[0]
 serialized_packet = pickle.dumps(serialized_source)
 serialized_roundtrip = pickle.loads(serialized_packet)
