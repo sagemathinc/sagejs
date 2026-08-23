@@ -1,0 +1,70 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-float64-wasm",
+  "title": "Fixed-width helper chaining and Float64 Wasm bridge",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "/root/native_compiler",
+  "objective": "Fix generic fixed-width transitive native helper chaining, then implement a production WebAssembly bridge for same-source Float64Buffer kernels with bounded marshalling, float64 results, mutation-aware copyback, inspectable zero-callback core, and standalone/browser-loader differential coverage",
+  "base_commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+  "claims": [
+    "tools/native-kernel/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "independent fixed-width transitive helper witness with inspected word core",
+      "same-source CPython, dynamic JavaScript, native host, and WebAssembly differential",
+      "inspectable emitted C and manifest ABI"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/float64-conditional.cjs tools/native-kernel/test/wasm-pack-loader.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.828,
+      "started_at": "2026-08-23T04:40:15.987Z",
+      "commit": "1e365737199b61029c57219c859e9de0c8ed26ea",
+      "workspace_fingerprint": "05f82a36fb824073391085e94b73736784c6d5aed64d0dd314e2f3e21edbbc7b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.717,
+      "started_at": "2026-08-23T04:40:21.870Z",
+      "commit": "1e365737199b61029c57219c859e9de0c8ed26ea",
+      "workspace_fingerprint": "05f82a36fb824073391085e94b73736784c6d5aed64d0dd314e2f3e21edbbc7b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The native compiler keeps proved uint64 helper chains in the word core and the production Wasm bridge now supports source-transparent Float64 scalars, Float64Buffer parameters, Float64 results, bounded wasm32 marshalling, and mutation-aware copyback. Independent witnesses cover inspectable zero-callback C, CPython/dynamic/native agreement, direct standalone WASI execution, and the browser-safe pack loader.",
+    "risks": [
+      "Cross-platform production-pack integration remains for the integration lane; this lane validated Linux x64 with an actual WASI clang/sysroot.",
+      "pnpm test:baselib:strict is blocked at the unchanged base by Ruff formatting in bench/hyperelliptic/competitive/sagemath-resident.py, outside this lane's claim."
+    ],
+    "next_steps": [
+      "Cherry-pick the Float64 bridge commit with the analytic period source and register _period_edge_batch_float64 in the shared production-kernel manifest.",
+      "Run the integrated analytic/browser differential and production-pack builds on Linux arm64, Windows x64, and macOS arm64."
+    ]
+  }
+}

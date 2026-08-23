@@ -56,3 +56,19 @@ def uint64_branch(count: uint64) -> float:
     else:
         result = 0.0
     return result
+
+
+@native
+def scaled_buffer_batch(
+    source: Float64Buffer,
+    output: Float64Buffer,
+    scale: float,
+    count: uint64,
+) -> float:
+    """Exercise immutable input, mutable output, and a float scalar."""
+    checksum = 0.0
+    for index in range(count):
+        value = source[index] * scale
+        output[index] = value
+        checksum = checksum + value
+    return checksum
