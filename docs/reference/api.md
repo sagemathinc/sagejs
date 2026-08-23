@@ -5955,7 +5955,7 @@ This API and documentation are adapted from
 - Tags: combinatorics, enumerative combinatorics, partitions, integer sequences
 - Backends: Sage.js exact enumeration, FLINT
 - Sage compatibility: partial — Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented.
-- Limitations: Counting uses FLINT's Hardy-Ramanujan-Rademacher implementation where it is available, and the pentagonal recurrence otherwise.  The recurrence computes every partition number below its argument, so a host without FLINT answers large arguments far more slowly; both paths are exact.  See `bench/compare-partitions.cjs`.
+- Limitations: Counting uses FLINT's Hardy-Ramanujan-Rademacher implementation where it is available, and the pentagonal recurrence otherwise.  The recurrence computes every partition number below its argument, so a host without FLINT answers large arguments far more slowly; both paths are exact.  The first count in a process also pays about 150 ms to bind the native routine, after which a count costs a few milliseconds at any argument.  See `bench/compare-partitions.cjs`.
 
 ### Provenance
 
@@ -6576,7 +6576,7 @@ This API and documentation are adapted from
 - Tags: combinatorics, enumerative combinatorics, partitions, integer sequences
 - Backends: Sage.js exact enumeration, FLINT
 - Sage compatibility: partial — Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented.
-- Limitations: Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration. Counting uses FLINT's Hardy-Ramanujan-Rademacher implementation where it is available, and the pentagonal recurrence otherwise.  The recurrence computes every partition number below its argument, so a host without FLINT answers large arguments far more slowly; both paths are exact.  See `bench/compare-partitions.cjs`.
+- Limitations: Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration. Counting uses FLINT's Hardy-Ramanujan-Rademacher implementation where it is available, and the pentagonal recurrence otherwise.  The recurrence computes every partition number below its argument, so a host without FLINT answers large arguments far more slowly; both paths are exact.  The first count in a process also pays about 150 ms to bind the native routine, after which a count costs a few milliseconds at any argument.  See `bench/compare-partitions.cjs`.
 
 ### Provenance
 

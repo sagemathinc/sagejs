@@ -42,10 +42,12 @@ big-integer additions because it computes every partition number below its
 argument.  Both paths are exact, and `Partitions_n._portable_cardinality`
 exposes the second one for differential testing.
 
-Enumeration, ranking, and sampling stay in ordinary Python.  Addressing a
-member is faster than Sage, which iterates, while listing and uniform sampling
-are slower by roughly the interpreter gap; `bench/compare-partitions.cjs`
-measures all of it against SageMath and PARI/GP.
+Enumeration, ranking, and sampling stay in ordinary Python.  Enumeration walks
+from one member to the next in place instead of descending a fresh recursion,
+and constrained counting fills a table iteratively rather than memoizing a
+recursion, so ranking and sampling pay for one table and then answer in
+milliseconds.  `bench/compare-partitions.cjs` measures all of it against
+SageMath and PARI/GP.
 """
 
 # Ruff's WASM build reports I001 while proposing this same import block.
@@ -495,11 +497,24 @@ class Partition(sage.Element):
         return "\n".join(["*" * part for part in self._entries])
 
 
+def _partition_trusted(entries: list[int], parent: Any) -> Partition:
+    """
+    Build a partition from parts this module generated.
+
+    The public constructor copies and validates its input, which is right for a
+    caller's list and pure overhead for parts an enumerator just produced in
+    order.
+    """
+    answer = Partition([], parent)
+    answer._entries = entries
+    return answer
+
+
 class _PartitionsBase(sage.Parent):
     """Shared behavior for the combinatorial classes of partitions."""
 
     def _element(self, entries: list[int]) -> Partition:
-        return Partition(entries, self)
+        return _partition_trusted(entries, self)
 
     def __contains__(self, value: object) -> bool:
         raise NotImplementedError("membership is defined by each partition class")
@@ -662,6 +677,7 @@ class Partitions_n(_PartitionsBase):
         self._max_length = size if max_length is None else max_length
         self._parts_in = parts_in
         self._count_memo = {}
+        self._table: Any = None
 
     def _constrained(self) -> bool:
         return (
@@ -697,6 +713,43 @@ class Partitions_n(_PartitionsBase):
     def _allows(self, part: int) -> bool:
         return self._parts_in is None or part in self._parts_in
 
+    def _length_free(self) -> bool:
+        """Return whether only the part sizes, and not the count, constrain."""
+        return (
+            self._min_length == 0
+            and self._max_length >= self._size
+            and self._parts_in is None
+        )
+
+    def _size_table(self) -> Any:
+        """
+        Return `f[m][k]`, the partitions of `m` into parts in `[min_part, k]`.
+
+        Filling the table iteratively costs one big-integer addition per cell.
+        The memoized recursion it replaces spent most of its time in dictionary
+        traffic rather than arithmetic, and dictionary writes are an order of
+        magnitude more expensive here than writing to a list.
+        """
+        if self._table is not None:
+            return self._table
+        size = self._size
+        bound = self._max_part if self._max_part < size else size
+        table = []
+        for remaining in range(size + 1):
+            row = [runtime.bigint(0)] * (bound + 1)
+            if remaining == 0:
+                for part in range(bound + 1):
+                    row[part] = runtime.bigint(1)
+            table.append(row)
+        for part in range(self._min_part, bound + 1):
+            for remaining in range(1, size + 1):
+                total = table[remaining][part - 1]
+                if part <= remaining:
+                    total = runtime.native_add(total, table[remaining - part][part])
+                table[remaining][part] = total
+        self._table = table
+        return table
+
     def _count(
         self,
         remaining: int,
@@ -705,6 +758,16 @@ class Partitions_n(_PartitionsBase):
         max_length: int,
     ) -> Any:
         """Count the completions of a partially chosen partition."""
+        if self._length_free():
+            if remaining == 0:
+                return runtime.bigint(1)
+            if max_part < self._min_part:
+                return runtime.bigint(0)
+            table = self._size_table()
+            bound = max_part if max_part < remaining else remaining
+            if bound >= len(table[remaining]):
+                bound = len(table[remaining]) - 1
+            return table[remaining][bound]
         if remaining == 0:
             return runtime.bigint(1) if min_length <= 0 else runtime.bigint(0)
         if max_length <= 0 or max_part < self._min_part:
@@ -760,14 +823,51 @@ class Partitions_n(_PartitionsBase):
                     ):
                         yield [first] + rest
 
+    def _successors(self) -> Iterator[list[int]]:
+        """
+        Enumerate every partition of the size by repeated succession.
+
+        Each member is produced from the previous one in place rather than by
+        descending a fresh recursion, so the cost per member does not grow with
+        the depth of the partition.  The order is the same reverse
+        lexicographic order the recursive generator produces.
+        """
+        size = self._size
+        if size == 0:
+            yield []
+        else:
+            current = [size]
+            while True:
+                yield current[:]
+                # The tail of ones is what the next member redistributes.
+                index = len(current) - 1
+                while index >= 0 and current[index] == 1:
+                    index -= 1
+                if index < 0:
+                    break
+                total = current[index] + (len(current) - index - 1)
+                value = current[index] - 1
+                whole = total // value
+                rest = total - whole * value
+                tail = [value] * whole
+                if rest:
+                    tail.append(rest)
+                current = current[:index] + tail
+
     def __iter__(self) -> Iterator[Partition]:
-        for entries in self._generate(
-            self._size,
-            self._max_part,
-            self._min_length,
-            self._max_length,
-        ):
-            yield self._element(entries)
+        # An unconstrained class is every partition of its size, which the
+        # successor walk produces without recursion.
+        if not self._constrained():
+            for entries in self._successors():
+                yield self._element(entries)
+        else:
+            for entries in self._generate(
+                self._size,
+                self._max_part,
+                self._min_length,
+                self._max_length,
+            ):
+                yield self._element(entries)
 
     def cardinality(self) -> Any:
         """
