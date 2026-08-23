@@ -29,6 +29,8 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
   ]) assert.match(workflow, new RegExp(gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
   assert.match(workflow, /ref: \$\{\{ steps\.source\.outputs\.sha \}\}/);
+  assert.match(workflow, /ref: \$\{\{ github\.sha \}\}/);
+  assert.match(workflow, /path: build\/deployment-control/);
   assert.match(workflow, /git merge-base --is-ancestor "\$SOURCE_SHA" origin\/main/);
   assert.match(workflow, /gh run download "\$SOURCE_RUN_ID"[\s\S]+--name wasm-clean-build-a/);
   const receipt = workflow.indexOf("production-receipt.cjs validate");
@@ -42,6 +44,8 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
   );
   assert.match(workflow, /node --test website\/live\/test\/\*\.test\.mjs/);
   assert.match(workflow, /node --test test\/wasm-deployment-workflow\.cjs/);
+  assert.match(workflow, /build\/deployment-control\/website\/live\/cloudflare\/worker\.mjs/);
+  assert.match(workflow, /build\/cloudflare-deploy\/deployment-control\.sha/);
   assert.match(workflow, /build\/cloudflare-deploy\/package\.json/);
   assert.match(workflow, /workingDirectory: build\/cloudflare-deploy/);
   assert.match(workflow, /packageManager: npm/);
@@ -68,6 +72,8 @@ test("Cloudflare deployment fails closed and checks both remote origins", async 
   assert.match(workflow, /environment:\n\s+name: sagejs-app-\$\{\{ inputs\.target \}\}/);
   assert.match(workflow, /browser-wasm-deployment\.cjs[\s\S]+\$DEPLOYMENT_URL/);
   assert.match(workflow, /--origin "\$SAGEJS_PUBLIC_ORIGIN"/);
+  assert.match(workflow, /for attempt in \$\(seq 1 12\)/);
+  assert.match(workflow, /retrying in 10 seconds/);
   assert.match(workflow, /\.workers\\\.dev/);
   assert.match(workflow, /website\/live\/dist\/_headers/);
   assert.doesNotMatch(

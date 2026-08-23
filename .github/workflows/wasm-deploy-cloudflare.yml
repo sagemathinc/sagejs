@@ -106,6 +106,19 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Check out the deployment control plane
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: build/deployment-control
+          sparse-checkout: |
+            .github/workflows/wasm-deploy-cloudflare.yml
+            docs/webassembly-cloudflare-deployment.md
+            test/wasm-deployment-workflow.cjs
+            website/live/cloudflare
+            website/live/test/cloudflare-deployment.test.mjs
+          sparse-checkout-cone-mode: false
+
       - name: Require production deployments to come from main
         if: inputs.target == 'production'
         env:
@@ -180,6 +193,8 @@ jobs:
             --headers website/live/dist/_headers
           node --test website/live/test/*.test.mjs
           node --test test/wasm-deployment-workflow.cjs
+          node --test build/deployment-control/website/live/test/cloudflare-deployment.test.mjs
+          node --test build/deployment-control/test/wasm-deployment-workflow.cjs
           test -f website/live/dist/runtime-version.json
           test -f website/live/dist/asset-manifest.json
 
@@ -204,6 +219,10 @@ jobs:
           node website/live/cloudflare/upload-r2.mjs \
             --deployment build/cloudflare-deploy/deployment.json \
             --verify-only
+          install -m 0644 \
+            build/deployment-control/website/live/cloudflare/worker.mjs \
+            build/cloudflare-deploy/worker.mjs
+          printf '%s\n' "$GITHUB_SHA" > build/cloudflare-deploy/deployment-control.sha
           echo "release=$(jq -r .release build/cloudflare-deploy/deployment.json)" >>"$GITHUB_OUTPUT"
           echo "worker=$(jq -r .name build/cloudflare-deploy/wrangler.json)" >>"$GITHUB_OUTPUT"
 
@@ -232,6 +251,7 @@ jobs:
           name: sagejs-r2-${{ inputs.target }}-${{ steps.source.outputs.sha }}
           path: |
             build/cloudflare-deploy/deployment.json
+            build/cloudflare-deploy/deployment-control.sha
             build/cloudflare-deploy/wrangler.json
             build/cloudflare-deploy/worker.mjs
           if-no-files-found: error
@@ -278,6 +298,17 @@ jobs:
           SAGEJS_PUBLIC_ORIGIN: ${{ vars.SAGEJS_PUBLIC_ORIGIN }}
         run: |
           set -euo pipefail
-          node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
-            --headers website/live/_headers \
-            --origin "$SAGEJS_PUBLIC_ORIGIN"
+          for attempt in $(seq 1 12); do
+            if node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
+              --headers website/live/_headers \
+              --origin "$SAGEJS_PUBLIC_ORIGIN"
+            then
+              exit 0
+            fi
+            if [[ "$attempt" == 12 ]]; then
+              echo "Production origin did not validate after 12 attempts" >&2
+              exit 1
+            fi
+            echo "Production origin is not ready; retrying in 10 seconds ($attempt/12)" >&2
+            sleep 10
+          done

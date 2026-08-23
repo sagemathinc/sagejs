@@ -59,9 +59,20 @@ export function storageKey(logicalPath, release, encoding = "identity") {
 }
 
 function acceptsBrotli(request) {
-  return (request.headers.get("Accept-Encoding") ?? "")
+  const clientAcceptEncoding = request.cf?.clientAcceptEncoding;
+  const value = typeof clientAcceptEncoding === "string"
+    ? clientAcceptEncoding
+    : (request.headers.get("Accept-Encoding") ?? "");
+  return value
     .split(",")
-    .some((entry) => entry.trim().split(";", 1)[0].toLowerCase() === "br");
+    .some((entry) => {
+      const [encoding, ...parameters] = entry.split(";").map((part) => part.trim());
+      if (encoding.toLowerCase() !== "br") return false;
+      const quality = parameters.find((parameter) => parameter.toLowerCase().startsWith("q="));
+      if (quality === undefined) return true;
+      const parsed = Number(quality.slice(2));
+      return Number.isFinite(parsed) && parsed > 0;
+    });
 }
 
 function cacheRequest(request, logicalPath, release, encoding) {

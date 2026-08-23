@@ -31,6 +31,14 @@ function object(body, contentType = "application/octet-stream") {
   };
 }
 
+function cloudflareRequest(url, clientAcceptEncoding) {
+  const request = new Request(url, { headers: { "Accept-Encoding": "br, gzip" } });
+  Object.defineProperty(request, "cf", {
+    value: Object.freeze({ clientAcceptEncoding }),
+  });
+  return request;
+}
+
 test("Cloudflare Worker maps immutable and release shell objects without path escape", async () => {
   assert.equal(logicalAssetPath(new Request("https://app.sagejs.org/")), "index.html");
   assert.equal(
@@ -61,7 +69,7 @@ test("Cloudflare Worker maps immutable and release shell objects without path es
     },
   };
   const response = await handleRequest(
-    new Request("https://app.sagejs.org/?ignored=yes", { headers: { "Accept-Encoding": "gzip, br" } }),
+    cloudflareRequest("https://app.sagejs.org/?ignored=yes", "gzip, br"),
     { ASSETS: bucket, RELEASE_ID: release },
   );
   assert.equal(response.status, 200);
@@ -76,6 +84,47 @@ test("Cloudflare Worker maps immutable and release shell objects without path es
   );
   assert.equal(unsafe.status, 400);
   assert.equal((await unsafe.text()).trim(), "Invalid asset path");
+});
+
+test("Cloudflare Worker negotiates against the original client encoding", async () => {
+  const keys = [];
+  const bucket = {
+    async get(key) {
+      keys.push(key);
+      if (key === `releases/${release}/identity/runtime-version.json`) {
+        return object('{"identity":true}\n', "application/json; charset=utf-8");
+      }
+      if (key === `releases/${release}/br/runtime-version.json`) {
+        return object("brotli bytes", "application/json; charset=utf-8");
+      }
+      return null;
+    },
+  };
+
+  const identity = await handleRequest(
+    cloudflareRequest("https://app.sagejs.org/runtime-version.json", "identity"),
+    { ASSETS: bucket, RELEASE_ID: release },
+  );
+  assert.equal(identity.headers.get("Content-Encoding"), null);
+  assert.equal(await identity.text(), '{"identity":true}\n');
+  assert.deepEqual(keys, [`releases/${release}/identity/runtime-version.json`]);
+
+  keys.length = 0;
+  const compressed = await handleRequest(
+    cloudflareRequest("https://app.sagejs.org/runtime-version.json", "gzip, br"),
+    { ASSETS: bucket, RELEASE_ID: release },
+  );
+  assert.equal(compressed.headers.get("Content-Encoding"), "br");
+  assert.equal(await compressed.text(), "brotli bytes");
+  assert.deepEqual(keys, [`releases/${release}/br/runtime-version.json`]);
+
+  keys.length = 0;
+  const refused = await handleRequest(
+    cloudflareRequest("https://app.sagejs.org/runtime-version.json", "gzip, br;q=0"),
+    { ASSETS: bucket, RELEASE_ID: release },
+  );
+  assert.equal(refused.headers.get("Content-Encoding"), null);
+  assert.deepEqual(keys, [`releases/${release}/identity/runtime-version.json`]);
 });
 
 test("Cloudflare Worker falls back to identity and fails closed", async () => {
