@@ -801,24 +801,54 @@ def _division_filter_contexts(
     primes: Any,
     maximum: int,
     cancelled: Any,
+    algorithm: str,
 ) -> tuple[Any, ...]:
     """Prepare exact finite-reduction filters for a rational division search."""
     torsion = __import__(
         "sagejs.hyperelliptic_curves.torsion",
         fromlist=[
+            "PreparedRationalReductionBatch",
             "_prepared_reduced_jacobian",
             "_reduce_rational_divisors_prepared",
         ],
     )
-    contexts = []
+    selected_primes = []
     seen = set()
     for raw_prime in primes:
-        if len(contexts) >= maximum:
+        if len(selected_primes) >= maximum:
             break
         prime = _checked_prime(raw_prime, "division_filter_prime")
         if prime in seen:
             continue
         seen.add(prime)
+        selected_primes.append(prime)
+    if not selected_primes:
+        return ()
+    contexts = []
+    _check_cancelled(cancelled, "division-filter preparation")
+    try:
+        rows = torsion.PreparedRationalReductionBatch(
+            jacobian,
+            (target,),
+            cancel=cancelled,
+        ).reduce_many(
+            tuple(selected_primes),
+            algorithm=algorithm,
+            allow_nonintegral=True,
+            packed=True,
+        )
+        for row in rows:
+            reduced_target = row["divisors"][0]
+            if reduced_target is None:
+                continue
+            contexts.append((int(row["prime"]), reduced_target))
+        return tuple(contexts)
+    except (ArithmeticError, NotImplementedError, ValueError, ZeroDivisionError):
+        # Preserve the former prime-by-prime capability envelope if one model
+        # lies outside the packed batch.  This is also the exact fallback used
+        # by certificate replay.
+        contexts = []
+    for prime in selected_primes:
         _check_cancelled(cancelled, "division-filter preparation")
         try:
             reduced_jacobian = torsion._prepared_reduced_jacobian(jacobian, prime)
@@ -831,7 +861,10 @@ def _division_filter_contexts(
             )[0]
         except (ArithmeticError, NotImplementedError, ValueError, ZeroDivisionError):
             continue
-        contexts.append((prime, reduced_jacobian, reduced_target))
+        prepared = reduced_jacobian.prepared_arithmetic(
+            algorithm="auto", max_batch_items=1
+        )
+        contexts.append((prime, prepared.pack(reduced_target)))
     return tuple(contexts)
 
 
@@ -841,74 +874,58 @@ def _filter_division_candidates(
     ell: int,
     contexts: Any,
     cancelled: Any,
+    algorithm: str,
 ) -> tuple[tuple[Any, ...], int]:
     """Apply necessary finite-field divisibility tests to an exact batch."""
     survivors = list(candidates)
+    if not survivors or not contexts:
+        return tuple(survivors), 0
     filtered = 0
     torsion = __import__(
         "sagejs.hyperelliptic_curves.torsion",
-        fromlist=["_reduce_rational_divisors_prepared"],
+        fromlist=[
+            "PreparedRationalReductionBatch",
+            "_packed_scalar_batch_rows",
+        ],
     )
-    for _prime, reduced_jacobian, reduced_target in contexts:
-        if not survivors:
+    rows = torsion.PreparedRationalReductionBatch(
+        jacobian,
+        tuple(survivors),
+        cancel=cancelled,
+    ).reduce_many(
+        tuple(context[0] for context in contexts),
+        algorithm=algorithm,
+        allow_nonintegral=True,
+        packed=True,
+    )
+    rows_by_prime = {int(row["prime"]): row for row in rows}
+    alive = [True for _candidate in survivors]
+    for _prime, packed_target in contexts:
+        if not any(alive):
             break
         _check_cancelled(cancelled, "division-filter batch")
-        reducible = []
+        row = rows_by_prime[int(_prime)]
+        reduced_jacobian = row["reduced_jacobian"]
+        reducible_indices = []
         reduced = []
-        passthrough = []
-        for candidate in survivors:
-            try:
-                reduced_candidate = torsion._reduce_rational_divisors_prepared(
-                    jacobian,
-                    (candidate,),
-                    int(_prime),
-                    reduced_jacobian,
-                    cancel=cancelled,
-                )[0]
-                reducible.append(candidate)
+        for index, reduced_candidate in enumerate(row["divisors"]):
+            if alive[index] and reduced_candidate is not None:
+                reducible_indices.append(index)
                 reduced.append(reduced_candidate)
-            except (ArithmeticError, ValueError, ZeroDivisionError):
-                # Nonintegrality at one auxiliary prime is not evidence that a
-                # rational candidate fails to divide the target.
-                passthrough.append(candidate)
-        matches = None
-        prepared_method = getattr(reduced_jacobian, "prepared_arithmetic", None)
-        if prepared_method is not None and reduced:
-            try:
-                prepared = prepared_method(
-                    algorithm="auto", max_batch_items=len(reduced)
-                )
-                multiples = prepared.scalar_batch(
-                    tuple(reduced), tuple(ell for _candidate in reduced)
-                )
-                matches = tuple(value == reduced_target for value in multiples)
-            except (ArithmeticError, NotImplementedError, RuntimeError, TypeError):
-                matches = None
-        if matches is None:
-            matches = tuple(
-                _scalar_multiple(value, ell) == reduced_target for value in reduced
-            )
-        next_survivors = list(passthrough)
-        for candidate, matches_target in zip(reducible, matches, strict=True):
-            if matches_target:
-                next_survivors.append(candidate)
-            else:
-                filtered += 1
-        # Restore original enumeration order after the reducible/passthrough
-        # partition; exact search semantics use the first candidate in the box.
-        survivor_keys = tuple(
-            _execution_divisor_fingerprint(jacobian, candidate)
-            for candidate in next_survivors
+        multiples = torsion._packed_scalar_batch_rows(
+            reduced_jacobian,
+            tuple(reduced),
+            tuple(ell for _candidate in reduced),
+            algorithm=algorithm,
         )
-        survivors = [
-            candidate
-            for candidate in survivors
-            if any(
-                _execution_divisor_fingerprint(jacobian, candidate) == key
-                for key in survivor_keys
-            )
-        ]
-    return tuple(survivors), filtered
+        matches = tuple(value == packed_target for value in multiples)
+        for index, matches_target in zip(reducible_indices, matches, strict=True):
+            if not matches_target:
+                alive[index] = False
+                filtered += 1
+    return tuple(
+        candidate for index, candidate in enumerate(survivors) if alive[index]
+    ), filtered
 
 
 def search_rational_mumford_division(
@@ -922,6 +939,7 @@ def search_rational_mumford_division(
     filter_primes: Any = (),
     max_filter_primes: Any = 4,
     filter_chunk_size: Any = 64,
+    filter_algorithm: str = "auto",
     cancelled: Any = None,
 ) -> dict[str, Any]:
     """Search a replayable rational Mumford coefficient box exactly.
@@ -947,6 +965,8 @@ def search_rational_mumford_division(
         raise ValueError("division-filter bounds must be positive")
     if cancelled is not None and not callable(cancelled):
         raise TypeError("cancelled must be callable")
+    if filter_algorithm not in ("auto", "native", "reference"):
+        raise ValueError("unknown division-filter algorithm " + repr(filter_algorithm))
     curve = jacobian.curve()
     genus = int(curve.genus())
     if genus not in (2, 3):
@@ -987,6 +1007,7 @@ def search_rational_mumford_division(
         requested_filter_primes,
         maximum_filters,
         cancelled,
+        filter_algorithm,
     )
     checked = 0
     valid = 0
@@ -998,7 +1019,12 @@ def search_rational_mumford_division(
     def test_pending() -> Any:
         nonlocal filtered, exact_tests
         survivors, removed = _filter_division_candidates(
-            jacobian, pending, ell, filter_contexts, cancelled
+            jacobian,
+            pending,
+            ell,
+            filter_contexts,
+            cancelled,
+            filter_algorithm,
         )
         filtered += removed
         for candidate in survivors:
@@ -1082,6 +1108,7 @@ def verify_division_search_certificate(
         filter_primes=certificate.get("requested_filter_primes", ()),
         max_filter_primes=certificate.get("max_filter_primes", 4),
         filter_chunk_size=certificate.get("filter_chunk_size", 64),
+        filter_algorithm="reference",
     )
     if _wire(_division_search_public(rebuilt)) != _wire(
         _division_search_public(certificate)

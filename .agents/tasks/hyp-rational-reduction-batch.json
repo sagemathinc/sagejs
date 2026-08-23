@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-rational-reduction-batch",
+  "title": "Packed rational many-prime reduction batch",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement one-crossing packed QQ Mumford reduction across many primes, retain packed divisors through torsion and saturation consumers, and beat an equal-contract resident Magma benchmark with exact reference replay.",
+  "base_commit": "a22761f7fb3813633953e142e662fc161ef58a33",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/rational_reduction_kernels.py",
+    "src/lib/sagejs/hyperelliptic_curves/torsion.py",
+    "src/lib/sagejs/hyperelliptic_curves/saturation.py",
+    "test/hyperelliptic-rational-reduction-batch.cjs",
+    "bench/hyperelliptic/benchmark-rational-reduction-batch.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "reference-cantor",
+      "magma-2.18-5"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
