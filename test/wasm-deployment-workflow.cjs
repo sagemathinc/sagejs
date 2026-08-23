@@ -36,6 +36,7 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
   assert.match(workflow, /ref: \$\{\{ steps\.source\.outputs\.sha \}\}/);
   assert.match(workflow, /ref: \$\{\{ github\.sha \}\}/);
   assert.match(workflow, /path: build\/deployment-control/);
+  assert.match(workflow, /\.github\/workflows\/wasm-candidate\.yml/);
   assert.match(workflow, /git merge-base --is-ancestor "\$SOURCE_SHA" origin\/main/);
   assert.match(workflow, /gh run download "\$SOURCE_RUN_ID"[\s\S]+--name wasm-clean-build-a/);
   const receipt = workflow.indexOf("production-receipt.cjs validate");
@@ -74,7 +75,7 @@ test("fast candidate artifacts are structurally non-deployable", async () => {
   assert.match(candidate, /--safety-ceilings-only/);
   assert.doesNotMatch(candidate, /cloudflare\/wrangler-action/);
   assert.match(deployment, /\.github\/workflows\/wasm-release\.yml/);
-  assert.doesNotMatch(deployment, /wasm-candidate\.yml/);
+  assert.match(deployment, /\.github\/workflows\/wasm-candidate\.yml/);
   assert.doesNotMatch(deployment, /wasm-candidate-build/);
 });
 

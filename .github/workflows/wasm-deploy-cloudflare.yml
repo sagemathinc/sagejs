@@ -133,6 +133,7 @@ jobs:
           ref: ${{ github.sha }}
           path: build/deployment-control
           sparse-checkout: |
+            .github/workflows/wasm-candidate.yml
             .github/workflows/wasm-deploy-cloudflare.yml
             docs/webassembly-cloudflare-deployment.md
             packages/flint-wasm/scripts/browser-wasm-deployment.cjs
