@@ -147,3 +147,77 @@ True`,
     await session.close();
   }
 });
+
+test("prepared genus-three BSGS uses packed progressions and exact factor strip", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      String.raw`
+from sagejs.hyperelliptic_curves.certified_genus3 import (
+    _deterministic_elements,
+    _prepared_order_certificates,
+)
+from sagejs.hyperelliptic_curves.group_structure import group_element_key
+R = PolynomialRing(GF(5), "x")
+x = R.gen()
+J = HyperellipticCurve(x**7 + x + 1).jacobian()
+D = _deterministic_elements(J, 5, max_x_values=5, max_elements=1)[0]
+
+class InstrumentedPrepared:
+    def __init__(self):
+        self.native_available = True
+        self.scalar_batches = 0
+        self.progression_batches = 0
+    def scalar_batch(self, elements, scalars, max_group_operations=None):
+        self.scalar_batches += 1
+        return tuple(
+            element.scalar_multiple(scalar, algorithm="reference")
+            for element, scalar in zip(elements, scalars)
+        )
+    def progression_batch(
+        self, start, step, count, packed=False, max_group_operations=None
+    ):
+        self.progression_batches += 1
+        values = []
+        current = start
+        for index in range(count):
+            values.append(group_element_key(current) if packed else current)
+            if index + 1 < count:
+                current = current + step
+        return tuple(values)
+
+prepared = InstrumentedPrepared()
+def prepared_factory(algorithm="auto", max_batch_items=100000):
+    return prepared
+J.prepared_arithmetic = prepared_factory
+
+answer = _prepared_order_certificates(
+    J,
+    D,
+    41,
+    7,
+    5,
+    {
+        "max_trial_divisions": 1000,
+        "max_baby_steps": 1000,
+        "max_group_operations": 1000,
+    },
+)
+assert answer["status"] == "found"
+assert answer["annihilating_multiple"] == 55
+assert answer["certificate"]["element_order"] == 55
+assert answer["certificate"]["prime_factors"] == ((5, 1), (11, 1))
+assert answer["diagnostics"]["preparedProgressions"] == 2
+assert answer["diagnostics"]["packedProgressions"] == 2
+assert answer["diagnostics"]["groupOperations"] == 43
+assert prepared.progression_batches == 2
+assert prepared.scalar_batches == 2
+assert (55*D).is_zero() and not (11*D).is_zero() and not (5*D).is_zero()
+True`,
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "True");
+  } finally {
+    await session.close();
+  }
+});
