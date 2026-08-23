@@ -3,6 +3,7 @@
 
 const assert = require("node:assert/strict");
 const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const os = require("node:os");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -180,6 +181,20 @@ function magmaProgram() {
   return String.raw`
 major, minor, patch := GetVersion();
 printf "VERSION|%o.%o.%o\n", major, minor, patch;
+function TimerResolution()
+  values := [];
+  for trial in [1..8] do
+    first := Cputime(); second := first; counter := 0;
+    repeat
+      counter +:= 1;
+      discard := counter*counter;
+      second := Cputime();
+    until second gt first;
+    Append(~values, second-first);
+  end for;
+  return Min(values);
+end function;
+printf "TIMER_RESOLUTION|%o\n", TimerResolution();
 divisor_count := ${divisorCount};
 prime_count := ${primeCount};
 scalar_count := ${scalarCount};
@@ -255,6 +270,9 @@ function runMagma() {
     status: "ok",
     version: output.match(/VERSION\|([^\n]+)/)?.[1]?.trim(),
     timer: "Cputime",
+    timer_resolution_seconds: Number(
+      output.match(/TIMER_RESOLUTION\|([^\n]+)/)?.[1],
+    ),
     repetitions: 5,
     reduction_and_publication_cpu_seconds: reduction,
     reduction_and_publication_median_cpu_seconds: median(reduction),
@@ -291,6 +309,13 @@ function main() {
     const sage = JSON.parse(stdout.trim());
     const report = {
       ...sage,
+      host: {
+        platform: os.platform(),
+        architecture: os.arch(),
+        release: os.release(),
+        cpu_model: os.cpus()[0]?.model || "unknown",
+        node: process.version,
+      },
       contract:
         "prepared QQ basis; one packed reduction crossing for all prime/divisor pairs; lazily retained packed finite rows; exact [2] witness materializes/consumes every row; sampled reference construction; certified torsion replay; compare Sage reduction+witness against Magma construction+witness",
       magma: runMagma(),
