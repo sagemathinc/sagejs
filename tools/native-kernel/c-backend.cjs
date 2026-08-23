@@ -1553,6 +1553,17 @@ function emitFloat64Operation(operation, indent) {
       `${indent}${target} = sqrt(${source});`,
     ].join("\n");
   }
+  if (operation.kind === "float64.negate") {
+    return `${indent}${target} = -${cName(operation.source)};`;
+  }
+  if (operation.kind === "float64.compare" ||
+      operation.kind === "uint64.compare") {
+    const operator = {
+      eq: "==", ne: "!=", lt: "<", le: "<=", gt: ">", ge: ">=",
+    }[operation.operation];
+    return `${indent}${target} = ${cName(operation.left)} ${operator} ` +
+      `${cName(operation.right)};`;
+  }
   if (operation.kind === "uint64.binary") {
     const left = cName(operation.left);
     const right = cName(operation.right);
@@ -1662,6 +1673,24 @@ function emitFloat64Statements(statements, indent) {
       );
       continue;
     }
+    if (statement.kind === "if") {
+      lines.push(
+        emitFloat64Statements(statement.condition.operations, indent),
+        `${indent}if (${cName(statement.condition.value)})`,
+        `${indent}{`,
+        emitFloat64Statements(statement.body, `${indent}    `),
+        `${indent}}`,
+      );
+      if (statement.alternative.length > 0) {
+        lines.push(
+          `${indent}else`,
+          `${indent}{`,
+          emitFloat64Statements(statement.alternative, `${indent}    `),
+          `${indent}}`,
+        );
+      }
+      continue;
+    }
     if (statement.kind === "return") {
       lines.push(
         `${indent}*sagejs_native_output = ${cName(statement.value)};`,
@@ -1698,9 +1727,11 @@ function emitFloat64CoreFunction(fn) {
     if (params.has(local.name)) continue;
     const type = local.type === "uint64"
       ? "uint64_t"
-      : ["Float64Buffer", "Float64Record"].includes(local.type)
-        ? "sagejs_float64_buffer"
-        : "double";
+      : local.type === "bool"
+        ? "int"
+        : ["Float64Buffer", "Float64Record"].includes(local.type)
+          ? "sagejs_float64_buffer"
+          : "double";
     declarations.push(`    ${type} ${cName(local.name)} = {0};`);
   }
   return `${float64CoreSignature(fn)}
