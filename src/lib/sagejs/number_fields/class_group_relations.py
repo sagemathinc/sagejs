@@ -1487,8 +1487,11 @@ class ExactRelationCollector:
         prime_power_numerators: list[int] = []
         prime_power_denominators: list[int] = []
         for prime_ideal, maximum in zip(self.factor_base, maxima, strict=True):
-            packed_powers = ideal_module.packed_valuation_power_bases(
-                prime_ideal, maximum
+            packed_power_method = getattr(prime_ideal, "packed_power_bases", None)
+            packed_powers: Any = (
+                packed_power_method(maximum)
+                if callable(packed_power_method)
+                else ideal_module.packed_valuation_power_bases(prime_ideal, maximum)
             )
             for packed_basis, denominator in packed_powers:
                 prime_power_numerators.extend(packed_basis)

@@ -450,17 +450,26 @@ def _packed_ideal_product(left: Any, right: Any) -> Any:
         return None
 
 
-def _compute_packed_ideal_power_bases(
-    ideal: Any, maximum: int
+def packed_ideal_power_bases_from_basis(
+    field: Any,
+    basis: tuple[int, ...],
+    basis_denominator: int,
+    maximum: int,
 ) -> tuple[tuple[tuple[int, ...], int], ...] | None:
-    """Return packed HNF bases for `I, I^2, ..., I^maximum`."""
-    degree = int(ideal.number_field().degree())
+    """Return packed HNF powers from one canonical numerator basis.
+
+    This is the representation-level boundary used by packed factor-base
+    producers: no `NumberFieldIdeal` is needed merely to feed an exact HNF to
+    the source-transparent power-chain kernel.
+    """
+    degree = int(field.degree())
     if (
         degree < 1
         or degree > MAX_PACKED_IDEAL_PRODUCT_DEGREE
         or maximum < 1
         or maximum > MAX_PACKED_IDEAL_POWER_CHAIN
-        or ideal.is_zero()
+        or len(basis) != degree * degree
+        or int(basis_denominator) <= 0
     ):
         return None
     if _ideal_power_chain_kernel_override is False:
@@ -476,8 +485,7 @@ def _compute_packed_ideal_power_bases(
     if not callable(kernel):
         return None
     try:
-        basis, basis_denominator = _packed_ideal_basis(ideal)
-        tensor, tensor_denominator = _field_multiplication_tensor(ideal.number_field())
+        tensor, tensor_denominator = _field_multiplication_tensor(field)
         maximum_bits = max(
             [1]
             + [abs(value).bit_length() for value in basis]
@@ -519,6 +527,18 @@ def _compute_packed_ideal_power_bases(
         return tuple(answer)
     except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
         return None
+
+
+def _compute_packed_ideal_power_bases(
+    ideal: Any, maximum: int
+) -> tuple[tuple[tuple[int, ...], int], ...] | None:
+    """Return packed HNF bases for `I, I^2, ..., I^maximum`."""
+    if ideal.is_zero():
+        return None
+    basis, basis_denominator = _packed_ideal_basis(ideal)
+    return packed_ideal_power_bases_from_basis(
+        ideal.number_field(), basis, basis_denominator, maximum
+    )
 
 
 def packed_valuation_power_bases(
@@ -934,6 +954,7 @@ __all__ = [
     "integrality_denominator",
     "numerator_ideal",
     "packed_valuation_power_bases",
+    "packed_ideal_power_bases_from_basis",
     "scalar_translate",
     "serialize_ideal",
 ]

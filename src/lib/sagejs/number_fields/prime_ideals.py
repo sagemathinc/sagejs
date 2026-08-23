@@ -1400,6 +1400,181 @@ def _presentation_modulus_is_irreducible(
     )
 
 
+def packed_dedekind_kummer_candidates(
+    order: Any,
+    prime: int,
+    residue_degrees: set[int] | None = None,
+) -> list[dict[str, Any]] | None:
+    """Return exact Dedekind--Kummer data without constructing ideal objects.
+
+    Each record retains the canonical modular ideal, residue presentation, HNF
+    rows, and exact second generator.  The equation order is first certified
+    `p`-maximal, so these data name precisely the prime ideals attached to the
+    irreducible modular factors.  Consumers that need ordinary public ideals
+    may materialize them later; packed relation producers can keep the data in
+    integer buffers and avoid that object boundary entirely.
+    """
+    field = order.number_field()
+    if not _maximal.equation_order_is_p_maximal(field, prime):
+        return None
+    polynomial = _maximal.integral_equation_polynomial(field)
+    coefficients = tuple(int(value) for value in polynomial.list())
+    factors = _om.factor_mod_prime(coefficients, prime)
+    scale = runtime.integer_bigint(field._integral_equation_scale_cache)
+    beta = field.gen() * scale
+    degree = order.degree()
+    table = _modular_table(order, prime)
+    one = [value % prime for value in _order_one_coordinates(order)]
+    if (
+        sum(
+            int(factor.multiplicity) * (len(factor.polynomial) - 1)
+            for factor in factors
+        )
+        != degree
+    ):
+        raise ArithmeticError("Dedekind--Kummer factors have the wrong local degree")
+    answer: list[dict[str, Any]] = []
+    for factor in factors:
+        residue_degree = len(factor.polynomial) - 1
+        if residue_degrees is not None and residue_degree not in residue_degrees:
+            continue
+        second_generator = field.zero()
+        for coefficient in reversed(factor.polynomial):
+            second_generator = second_generator * beta + int(coefficient)
+        exact_coordinates = _field_element_order_coordinates(order, second_generator)
+        if any(value._denominator != 1 for value in exact_coordinates):
+            raise ArithmeticError("a Dedekind--Kummer generator is not integral")
+        modular_coordinates = [
+            int(value._numerator) % prime for value in exact_coordinates
+        ]
+        subspace = _subspace_ideal_generated_by(
+            [modular_coordinates], degree, table, prime
+        )
+        presentation = _primitive_presentation(
+            degree,
+            prime,
+            table,
+            one,
+            subspace,
+            DEFAULT_MAX_PRIMITIVE_CANDIDATES,
+        )
+        rows = _packed_candidate_rows(order, subspace, prime)
+        if rows is None:
+            # This helper is an optimization boundary.  The readable public
+            # decomposition remains the authoritative fallback when the
+            # fixed-shape HNF kernel declines the input.
+            return None
+        answer.append(
+            {
+                "rows": rows,
+                "subspace": subspace,
+                "e": int(factor.multiplicity),
+                "f": residue_degree,
+                "presentation": presentation,
+                "second_generator": second_generator,
+                "table": table,
+                "one": one,
+            }
+        )
+    answer.sort(
+        key=lambda record: tuple(
+            value
+            for row in _encode_rows(record["rows"])
+            for pair in row
+            for value in pair
+        )
+    )
+    return answer
+
+
+def packed_finite_algebra_candidates(
+    order: Any,
+    prime: int,
+    max_candidates: int,
+    residue_degrees: set[int] | None = None,
+) -> list[dict[str, Any]] | None:
+    """Return exact finite-algebra prime data without ordinary ideal objects."""
+    degree = order.degree()
+    table = _modular_table(order, prime)
+    one = [value % prime for value in _order_one_coordinates(order)]
+    radical = _nilradical(degree, prime, one, table)
+    quotient_cache: dict[Any, Any] = {}
+    field_kernels = _monogenic_reduced_field_kernels(
+        radical,
+        degree,
+        prime,
+        table,
+        one,
+        max_candidates,
+        quotient_cache=quotient_cache,
+    )
+    if field_kernels is None:
+        field_kernels = _reduced_field_kernels(
+            radical,
+            degree,
+            prime,
+            table,
+            one,
+            quotient_cache=quotient_cache,
+        )
+    answer: list[dict[str, Any]] = []
+    local_degree_sum = 0
+    for maximal_subspace in field_kernels:
+        presentation = _primitive_presentation(
+            degree,
+            prime,
+            table,
+            one,
+            maximal_subspace,
+            max_candidates,
+            quotient_cache=quotient_cache,
+        )
+        residue_degree = len(presentation["modulus"]) - 1
+        power = maximal_subspace
+        for _exponent in range(degree + 1):
+            next_power = _subspace_product(
+                power, maximal_subspace, degree, table, prime
+            )
+            if next_power == power:
+                break
+            power = next_power
+        else:
+            raise ArithmeticError("a local maximal-ideal power did not stabilize")
+        local_dimension = degree - len(power)
+        if local_dimension < 1 or local_dimension % residue_degree:
+            raise ArithmeticError("a local algebra has inconsistent e/f dimensions")
+        ramification = local_dimension // residue_degree
+        local_degree_sum += ramification * residue_degree
+        if residue_degrees is not None and residue_degree not in residue_degrees:
+            continue
+        rows = _packed_candidate_rows(order, maximal_subspace, prime)
+        if rows is None:
+            return None
+        answer.append(
+            {
+                "rows": rows,
+                "subspace": maximal_subspace,
+                "e": ramification,
+                "f": residue_degree,
+                "presentation": presentation,
+                "second_generator": None,
+                "table": table,
+                "one": one,
+            }
+        )
+    if local_degree_sum != degree:
+        raise ArithmeticError("finite-algebra factors have the wrong local degree")
+    answer.sort(
+        key=lambda record: tuple(
+            value
+            for row in _encode_rows(record["rows"])
+            for pair in row
+            for value in pair
+        )
+    )
+    return answer
+
+
 def _dedekind_kummer_prime_candidate(
     order: Any,
     prime: int,
@@ -1513,6 +1688,23 @@ def _finite_algebra_fallback(
     *,
     use_packed_candidates: bool = False,
 ) -> list[NumberFieldPrimeIdeal]:
+    if use_packed_candidates:
+        packed = packed_finite_algebra_candidates(order, prime, max_candidates)
+        if packed is not None:
+            answer: list[NumberFieldPrimeIdeal] = []
+            for record in packed:
+                candidate = NumberFieldPrimeIdeal(
+                    order,
+                    record["rows"],
+                    prime,
+                    record["e"],
+                    record["f"],
+                    record["presentation"],
+                    _candidate_token=_PACKED_CANDIDATE_TOKEN,
+                )
+                candidate._packed_candidate_pending_replay = True
+                answer.append(candidate)
+            return answer
     degree = order.degree()
     table = _modular_table(order, prime)
     one = [value % prime for value in _order_one_coordinates(order)]
@@ -1944,6 +2136,8 @@ __all__ = [
     "NumberFieldPrimeIdeal",
     "PrimeIdealDecomposition",
     "factor_rational_prime",
+    "packed_dedekind_kummer_candidates",
+    "packed_finite_algebra_candidates",
     "prime_ideal_from_dict",
     "primes_above",
     "serialize_prime_ideal",

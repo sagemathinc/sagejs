@@ -183,10 +183,26 @@ assert packed.diagnostics["relation_search"][
     "relation_prefix_finalized_without_search"
 ] == 1
 assert len(packed.relation_records) == 5
+packed_factor_records = tuple(packed._packed_factor_records)
+assert len(packed_factor_records) == 5
+assert packed._factor_base == ()
+assert [record.to_dict() for record in packed_factor_records] == (
+    packed.certificate.factor_base
+)
 
 from sagejs.number_fields.class_group_relations import ExactRelationCollector, RelationNotSmoothError
+from sagejs.number_fields.ideal_arithmetic import packed_valuation_power_bases
 order = packed_field.maximal_order()
 basis = tuple(order.basis())
+materialized_factor_base = packed.factor_base
+assert packed._packed_factor_records == ()
+assert len(materialized_factor_base) == 5
+for packed_record, prime_ideal in zip(
+    packed_factor_records, materialized_factor_base, strict=True
+):
+    assert packed_record.packed_power_bases(3) == packed_valuation_power_bases(
+        prime_ideal, 3
+    )
 
 # Batch admission replays the packed sieve norm through the determinant of
 # multiplication in the integral order basis.  It must not fall back to a
