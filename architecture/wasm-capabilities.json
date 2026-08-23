@@ -10942,18 +10942,16 @@
         "hyperelliptic-genus2-height-performance",
         "production-kernel-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "Native and same-source exact differentials cover modular and outward fixed-scale dyadic Flynn recurrences on monic, nonmonic, and large-coefficient models. The current tracked Wasm artifact predates this kernel, so browsers use the exact fallback pending a new authenticated pack.",
-      "public_explanation": "Certified genus-2 finite and archimedean Kummer recurrences use the exact same-source fallback in the current WebAssembly release artifact.",
+      "review_note": "The receipt-authenticated production pack compiles all 2 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 0,
-        "fallback_functions": 2,
+        "compiled_functions": 2,
+        "fallback_functions": 0,
         "total_functions": 2,
-        "production_pack": false,
-        "fallback_reasons": [
-          "tracked-production-artifact-predates-hyperelliptic-performance-kernels"
-        ]
+        "production_pack": true,
+        "fallback_reasons": []
       }
     },
     {
@@ -10973,18 +10971,16 @@
         "hyperelliptic-native-cantor",
         "production-kernel-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The full dynamic/native/CPython differential covers genus 2 and 3, generalized h, every genus-2 collision branch, signed 130-bit scalars, one-boundary progressions, and fused bounded BSGS progression search. The current tracked Wasm artifact predates this kernel, so browsers use the exact same-source fallback until a new authenticated pack is checked in.",
-      "public_explanation": "Prepared packed generalized Cantor addition, arithmetic progressions, fused BSGS progression search, and signed scalar multiplication use the exact same-source fallback in the current WebAssembly release artifact; the next authenticated kernel pack will compile the proved odd-prime odd-degree envelope.",
+      "review_note": "The receipt-authenticated production pack compiles all 4 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 4 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 0,
-        "fallback_functions": 4,
+        "compiled_functions": 4,
+        "fallback_functions": 0,
         "total_functions": 4,
-        "production_pack": false,
-        "fallback_reasons": [
-          "tracked-production-artifact-predates-hyperelliptic-performance-kernels"
-        ]
+        "production_pack": true,
+        "fallback_reasons": []
       }
     },
     {
@@ -11002,18 +10998,16 @@
         "hyperelliptic-native-kummer",
         "production-kernel-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The production-pack differential compiles all 3 registered fixed-model Kummer functions with the same-source dynamic implementation as oracle. The current tracked Wasm artifact predates this kernel, so browsers use the exact fallback pending a new authenticated pack.",
-      "public_explanation": "Packed genus-2 prime-field Kummer projection, duplication, and audited degenerate pseudo-addition use the exact same-source fallback in the current WebAssembly release artifact.",
+      "review_note": "The receipt-authenticated production pack compiles all 3 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 0,
-        "fallback_functions": 3,
+        "compiled_functions": 3,
+        "fallback_functions": 0,
         "total_functions": 3,
-        "production_pack": false,
-        "fallback_reasons": [
-          "tracked-production-artifact-predates-hyperelliptic-performance-kernels"
-        ]
+        "production_pack": true,
+        "fallback_reasons": []
       }
     },
     {
@@ -11030,18 +11024,16 @@
       "tests": [
         "production-kernel-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "Native and dynamic binary64 seed quadrature are differential-tested, but the tracked Wasm bridge does not yet marshal Float64Buffer kernels. Browsers retain the exact same-source fallback while the general Float64 production ABI is validated.",
-      "public_explanation": "Packed binary64 period seed quadrature uses its same-source fallback in the current WebAssembly artifact; every published period still requires independent arbitrary-precision refinement and Riemann-relation validation.",
+      "review_note": "The receipt-authenticated production pack compiles all 3 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 0,
-        "fallback_functions": 1,
-        "total_functions": 1,
-        "production_pack": false,
-        "fallback_reasons": [
-          "float64-buffer-production-wasm-bridge-pending"
-        ]
+        "compiled_functions": 3,
+        "fallback_functions": 0,
+        "total_functions": 3,
+        "production_pack": true,
+        "fallback_reasons": []
       }
     },
     {
@@ -11058,18 +11050,16 @@
       "tests": [
         "production-kernel-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The tracked production artifact predates the compact progression scanner and therefore cannot authenticate the changed source family. All three functions retain their tested same-source fallback until the next artifact rebuild.",
-      "public_explanation": "Genus-3 Weil-candidate scans, including compact witness-filtered progressions, use the exact same-source fallback in the current WebAssembly release artifact.",
+      "review_note": "The receipt-authenticated production pack compiles all 3 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 0,
-        "fallback_functions": 3,
+        "compiled_functions": 3,
+        "fallback_functions": 0,
         "total_functions": 3,
-        "production_pack": false,
-        "fallback_reasons": [
-          "tracked-production-artifact-predates-compact-genus3-candidate-scanner"
-        ]
+        "production_pack": true,
+        "fallback_reasons": []
       }
     },
     {
