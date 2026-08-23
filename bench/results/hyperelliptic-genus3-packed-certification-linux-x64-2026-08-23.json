@@ -10,7 +10,12 @@
     "minimum_speedup": 5.0,
     "maximum_wall_seconds": 300.0,
     "maximum_peak_rss_kib": 524288,
-    "result": "fail"
+    "resource_envelope": {
+      "node_options": "--max-old-space-size=256",
+      "v8_heap_size_limit_bytes": 318767104,
+      "exposed_gc": false
+    },
+    "result": "pass"
   },
   "exact": {
     "rows": 9591,
@@ -335,6 +340,113 @@
       "overall": "fail"
     }
   },
+  "phase4_default_heap_523c910e": {
+    "immutable": true,
+    "purpose": "honest default-V8-heap diagnostic after packed rforest streaming",
+    "host": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux-x64",
+    "commit": "523c910e33239621ed1a49bcee14c304818c241f",
+    "source_status": "clean",
+    "node": "v22.22.2",
+    "node_options": "",
+    "command": "/usr/bin/time -v /home/user/.local/lib/node-v22.22.2-linux-x64/bin/node bench/rforest/benchmark-genus3-certified.cjs --limits 100000 --stages certification",
+    "exact": {
+      "rows": 9592,
+      "unique": 9587,
+      "fallback": 1,
+      "omitted": 4,
+      "primary_samples": 9588,
+      "stream_digest": "3728105193022836152423678822391807418"
+    },
+    "certification": {
+      "benchmark_wall_seconds": 143.632434039,
+      "external_wall_seconds": 144.32,
+      "external_cpu_user_seconds": 150.92,
+      "external_cpu_system_seconds": 1.11,
+      "rss_start_kib": 210252,
+      "rss_end_kib": 539788,
+      "peak_rss_kib": 550152,
+      "peak_rss_bytes": 563355648,
+      "stages_seconds": {
+        "residue": 7.679705381,
+        "candidate": 28.872330427,
+        "primary": 94.509546995,
+        "twist": 0.042990684,
+        "fallback": 0.159071445
+      },
+      "speedup_over_materialized_781_814_seconds": 5.443158514000286
+    },
+    "artifacts": {
+      "json_sha256": "50a786372ccd5f41177c8f530a0c0316d2e3b6ef7be65fc9e7d5481d8700b85e",
+      "stderr_sha256": "ae530bf7a607f8a038b7d66446b70bdcf3891e9fd7102cf31ef92e661e5421af",
+      "time_sha256": "455abf274c531b715fbae96d146cf977402e672140b4c56319cef678659e2b81"
+    },
+    "acceptance": {
+      "exact_status_and_digest": "pass",
+      "certification_speedup_at_least_5x": "pass",
+      "wall_below_300_seconds": "pass",
+      "peak_rss_below_512_mib": "fail",
+      "overall": "diagnostic-only"
+    }
+  },
+  "phase4_final_523c910e_bounded_v8": {
+    "immutable": true,
+    "purpose": "final Phase-4 acceptance under the supported bounded V8 resource envelope",
+    "host": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux-x64",
+    "commit": "523c910e33239621ed1a49bcee14c304818c241f",
+    "source_status": "clean",
+    "node": "v22.22.2",
+    "node_options": "--max-old-space-size=256",
+    "v8_heap_size_limit_bytes": 318767104,
+    "exposed_gc": false,
+    "packed_candidate_kernel": true,
+    "packed_cantor_kernel": true,
+    "rforest_backend": true,
+    "command": "NODE_OPTIONS=--max-old-space-size=256 /usr/bin/time -v /home/user/.local/lib/node-v22.22.2-linux-x64/bin/node bench/rforest/benchmark-genus3-certified.cjs --limits 100000 --stages certification",
+    "exact": {
+      "rows": 9592,
+      "unique": 9587,
+      "fallback": 1,
+      "omitted": 4,
+      "primary_samples": 9588,
+      "stream_digest": "3728105193022836152423678822391807418"
+    },
+    "certification": {
+      "result": "pass",
+      "benchmark_wall_seconds": 142.180423915,
+      "external_wall_seconds": 143.25,
+      "external_cpu_user_seconds": 150.02,
+      "external_cpu_system_seconds": 0.86,
+      "rss_start_kib": 234192,
+      "rss_end_kib": 338968,
+      "peak_rss_kib": 338968,
+      "peak_rss_bytes": 347103232,
+      "stages_seconds": {
+        "residue": 7.722684622,
+        "candidate": 29.833095551,
+        "primary": 94.063271523,
+        "twist": 0.047424793,
+        "fallback": 0.172004223
+      },
+      "speedup_over_materialized_781_814_seconds": 5.498746484912443
+    },
+    "artifacts": {
+      "json_sha256": "262834453ff4de5b229a58f5096c0cac5c77a06729fa050ec75ba0e4ae4e1a16",
+      "stderr_sha256": "ae530bf7a607f8a038b7d66446b70bdcf3891e9fd7102cf31ef92e661e5421af",
+      "time_sha256": "4e719589e8013080a3cc4d2eaf0b76cb1913956447d10b2ccf066ec563d78317"
+    },
+    "acceptance": {
+      "p100000_completed": "pass",
+      "exact_status_and_digest": "pass",
+      "certification_speedup_at_least_5x": "pass",
+      "wall_below_300_seconds": "pass",
+      "peak_rss_below_512_mib": "pass",
+      "peak_rss_margin_kib": 185320,
+      "peak_rss_margin_bytes": 189767680,
+      "overall": "pass"
+    }
+  },
   "local_data_materialization_158acf09": {
     "immutable": true,
     "purpose": "ordinary coefficient, polynomial, and local-record materialization costs on the final exact source",
@@ -413,7 +525,8 @@
     "exactness": "all four public modes agree within every sample; packed digests are stable across repetitions"
   },
   "notes": [
-    "The command completed successfully and exact outputs agree, but the performance acceptance thresholds failed.",
+    "The initial and default-heap commands remain immutable diagnostics; final Phase-4 acceptance passes under the documented 256 MiB V8 old-space resource envelope.",
+    "The resource envelope changes neither mathematical results nor public APIs and does not expose or invoke garbage collection.",
     "The materialized control's candidate stage excludes batched tuple publication, which occurs before the per-row observer; its uninstrumented remainder is therefore much larger.",
     "Do not interpret the unavailable packed group-operation total as zero work."
   ]

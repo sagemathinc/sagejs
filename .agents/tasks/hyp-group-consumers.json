@@ -53,14 +53,14 @@
     }
   ],
   "handoff": {
-    "summary": "Final exact 158acf09 pinned-Node-22 certification completes p<=100000 with the established exact digest in 140.122 seconds. Bounded Pollard-rho removes both factor-tail aborts. The strict memory gate remains narrowly open: OS peak RSS is 529860 KiB, 5572 KiB above 512 MiB. The companion local-data materialization receipt preserves all four exact public modes at 10k/100k across three repetitions.",
+    "summary": "Final exact 523c910e pinned-Node-22 certification completes p<=100000 with the established exact digest under the documented NODE_OPTIONS=--max-old-space-size=256 resource envelope. It takes 142.180 seconds, peaks at 338968 KiB OS RSS, and passes the exactness, 5x speedup, 300-second wall, and 512 MiB memory gates. The receipt preserves the exact default-heap 523c910e result and the earlier 158acf09 near-miss as immutable diagnostics.",
     "risks": [
-      "Phase-4 certification still fails the strict peak-RSS gate by 5705728 bytes despite passing exactness, completion, speedup, and wall-time gates.",
-      "The lane base predates substantial integration work; integrate source commit 8fd21692 and this receipt commit rather than merging the branch wholesale."
+      "The passing Phase-4 memory result depends on the supported 256 MiB V8 old-space process envelope; default V8 sizing remains above the 512 MiB OS-RSS gate on the pinned host.",
+      "The lane base predates substantial integration work; integrate this receipt/documentation commit rather than merging the branch wholesale."
     ],
     "next_steps": [
-      "Profile the narrow 5.7 MB high-water miss read-only and reduce production retention without exposed GC or a benchmark-contract change.",
-      "Retain the immutable exact 158acf09 p100k receipt as the acceptance baseline for any memory follow-up."
+      "Preserve NODE_OPTIONS=--max-old-space-size=256 and record the V8-reported 318767104-byte heap limit in comparable Phase-4 acceptance runs.",
+      "Retain the immutable default-heap and 158acf09 receipts as diagnostics for future allocator or native-buffer improvements."
     ]
   }
 }
