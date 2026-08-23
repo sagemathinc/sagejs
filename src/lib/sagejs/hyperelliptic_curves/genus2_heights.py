@@ -369,16 +369,7 @@ def _specialized_duplication_dyadic(
     *,
     scale: int,
 ) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int], tuple[int, int]]:
-    """Evaluate model-specialized Flynn quartics on dyadic intervals.
-
-    The generic exact evaluator intentionally mirrors the source tables.  At
-    the real place, however, rediscovering zero coefficient monomials and
-    rebuilding all four coordinate powers for every sparse term dominates
-    cold height calls. This evaluator consumes the once-specialized tables,
-    shares the sixteen powers, and rounds every multiplication outwards to one
-    common dyadic denominator. Only the four scale logarithms per iteration
-    need the more general `RealBall` interface.
-    """
+    """Evaluate specialized Flynn quartics on fixed-scale dyadic intervals."""
 
     powers: list[tuple[tuple[int, int], ...]] = []
     one = (scale, scale)
@@ -1054,11 +1045,7 @@ def normalized_archimedean_correction(
             }
         )
 
-    # Adjacent scale logarithms can be combined into one logarithm; for four,
-    #   log(s0)/4 + ... + log(s3)/4^4
-    #     = log(s0^64*s1^16*s2^4*s3)/4^4.
-    # Four-step grouping retains an outward dyadic certificate while reducing
-    # transcendental boundary crossings without material interval inflation.
+    # log(s0)/4+...+log(s3)/4^4 = log(s0^64*s1^16*s2^4*s3)/4^4.
     logarithm_block_size = 4
     for block_start in range(0, steps, logarithm_block_size):
         block_end = min(steps, block_start + logarithm_block_size)
