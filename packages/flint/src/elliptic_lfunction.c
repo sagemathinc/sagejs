@@ -2745,6 +2745,10 @@ static int hg_raw_jet_from_completed_arb(
 
 #define SAGEJS_HG_CENTRAL_MAX_POINTS 8000
 #define SAGEJS_HG_PHASE_REANCHOR_MASK 63
+#define SAGEJS_HG_WEIGHT_TABLE_SEGMENTS_PER_UNIT 16
+#define SAGEJS_HG_WEIGHT_TABLE_DEGREE 20
+#define SAGEJS_HG_WEIGHT_TABLE_CHECK_DEGREE 18
+#define SAGEJS_HG_WEIGHT_TABLE_MAX_SEGMENTS 256
 
 typedef struct
 {
@@ -2755,6 +2759,19 @@ typedef struct
     double contour_height;
     slong contour_real;
 } hg_central_weight_plan;
+
+typedef struct
+{
+    slong genus;
+    slong target_bits;
+    slong maximum_derivative;
+    slong segment_start;
+    slong segment_count;
+    hg_central_weight_plan coarse_plan;
+    hg_central_weight_plan fine_plan;
+    arb_ptr coarse_coefficients;
+    arb_ptr fine_coefficients;
+} hg_central_weight_table;
 
 typedef struct
 {
@@ -2851,6 +2868,73 @@ static int hg_central_weight_make_plan(
     plan->work_precision = target_bits + 32;
     plan->contour_step = contour_step;
     plan->contour_height = contour_step * (double) contour_points;
+    plan->contour_real = target_bits >= 160 ? 3 : 2;
+    return 1;
+}
+
+static int hg_central_weight_universal_domain(
+    slong *segment_start,
+    slong *segment_count,
+    const fmpz_t conductor,
+    slong genus,
+    slong cutoff)
+{
+    const double conductor_double = fmpz_get_d(conductor);
+    if (!isfinite(conductor_double) || conductor_double <= 0.0 || cutoff < 1)
+        return 0;
+    const double log_a = log(conductor_double) / 2.0 -
+        (double) genus * log(2.0 * SAGEJS_PI);
+    const double lower = -log_a;
+    const double upper = log((double) cutoff) - log_a;
+    const double scale = (double) SAGEJS_HG_WEIGHT_TABLE_SEGMENTS_PER_UNIT;
+    const double start_double = floor(lower * scale);
+    const double stop_double = ceil(upper * scale);
+    if (!isfinite(start_double) || !isfinite(stop_double) ||
+        stop_double <= start_double ||
+        stop_double - start_double > SAGEJS_HG_WEIGHT_TABLE_MAX_SEGMENTS)
+        return 0;
+    *segment_start = (slong) start_double;
+    *segment_count = (slong) (stop_double - start_double);
+    return 1;
+}
+
+/* Standardize the contour by a bucketed universal log(x) domain.  Unlike the
+ * curve planner, this depends only on genus/order/precision and table domain;
+ * curves whose x=n/A ranges occupy the same buckets consume the same table. */
+static int hg_central_weight_universal_plan(
+    hg_central_weight_plan *plan,
+    slong genus,
+    slong target_bits,
+    slong maximum_derivative,
+    slong cutoff,
+    slong segment_start,
+    slong segment_count,
+    int fine)
+{
+    const double guard_bits = target_bits <= 64 ? 4.0 : 18.0;
+    const double demand = ((double) target_bits + guard_bits) * SAGEJS_LN2;
+    const double scale = (double) SAGEJS_HG_WEIGHT_TABLE_SEGMENTS_PER_UNIT;
+    const double lower = (double) segment_start / scale;
+    const double upper = (double) (segment_start + segment_count) / scale;
+    const double bandwidth = fmax(1.0, fmax(fabs(lower), fabs(upper)));
+    const double step_denominator = demand + bandwidth + 12.0 +
+        (double) maximum_derivative * log(demand + 3.0);
+    double contour_step = 4.0 * SAGEJS_PI / step_denominator;
+    if (!fine) contour_step *= 1.1;
+    const double contour_height =
+        (demand +
+            (1.5 * (double) genus + 3.0) * log(demand + 3.0) + 8.0) /
+        ((double) genus * SAGEJS_PI / 2.0);
+    const double points_double = ceil(contour_height / contour_step);
+    if (!isfinite(contour_step) || contour_step <= 0.0 ||
+        !isfinite(points_double) || points_double < 1.0 ||
+        points_double > SAGEJS_HG_CENTRAL_MAX_POINTS)
+        return 0;
+    plan->cutoff = cutoff;
+    plan->contour_points = (slong) points_double;
+    plan->work_precision = target_bits + 32;
+    plan->contour_step = contour_step;
+    plan->contour_height = contour_step * points_double;
     plan->contour_real = target_bits >= 160 ? 3 : 2;
     return 1;
 }
@@ -3134,6 +3218,360 @@ static int hg_central_weight_finish_grid(
     acb_clear(temporary);
     arb_clear(temporary_arb);
     arb_clear(scale);
+    return 1;
+}
+
+static slong hg_central_weight_table_length(
+    slong segment_count, slong maximum_derivative)
+{
+    return segment_count * (maximum_derivative + 1) *
+        (SAGEJS_HG_WEIGHT_TABLE_DEGREE + 1);
+}
+
+static slong hg_central_weight_table_index(
+    const hg_central_weight_table *table,
+    slong segment,
+    slong order,
+    slong degree)
+{
+    return ((segment * (table->maximum_derivative + 1) + order) *
+        (SAGEJS_HG_WEIGHT_TABLE_DEGREE + 1)) + degree;
+}
+
+static void hg_central_weight_table_clear(hg_central_weight_table *table)
+{
+    if (table == NULL) return;
+    const slong length = hg_central_weight_table_length(
+        table->segment_count, table->maximum_derivative);
+    if (table->fine_coefficients != NULL)
+        _arb_vec_clear(table->fine_coefficients, length);
+    if (table->coarse_coefficients != NULL)
+        _arb_vec_clear(table->coarse_coefficients, length);
+    free(table);
+}
+
+static void hg_central_weight_table_finalize(
+    napi_env env, void *data, void *hint)
+{
+    (void) env;
+    (void) hint;
+    hg_central_weight_table_clear((hg_central_weight_table *) data);
+}
+
+static int hg_central_weight_table_build_grid(
+    arb_ptr coefficients,
+    const hg_central_weight_table *table,
+    const hg_central_weight_plan *plan,
+    const _Atomic uint32_t *cancel)
+{
+    const slong precision = plan->work_precision;
+    const slong contour_count = plan->contour_points + 1;
+    const slong derivative_count = table->maximum_derivative + 1;
+    arb_t center, scale, temporary_arb;
+    arb_init(center);
+    arb_init(scale);
+    arb_init(temporary_arb);
+    acb_t point, gamma_value, gamma_power, exponential, base;
+    acb_t denominator, denominator_power, term, taylor_factor, contribution;
+    acb_init(point);
+    acb_init(gamma_value);
+    acb_init(gamma_power);
+    acb_init(exponential);
+    acb_init(base);
+    acb_init(denominator);
+    acb_init(denominator_power);
+    acb_init(term);
+    acb_init(taylor_factor);
+    acb_init(contribution);
+
+    arb_const_pi(scale, precision);
+    arb_set_d(temporary_arb, plan->contour_step);
+    arb_div(scale, temporary_arb, scale, precision);
+    for (slong segment = 0; segment < table->segment_count; ++segment)
+    {
+        if (cancel != NULL &&
+            atomic_load_explicit(cancel, memory_order_relaxed) != 0)
+            goto hg_table_grid_cancelled;
+        const slong doubled_center =
+            2 * (table->segment_start + segment) + 1;
+        arb_set_si(center, doubled_center);
+        arb_div_ui(center, center,
+            2 * SAGEJS_HG_WEIGHT_TABLE_SEGMENTS_PER_UNIT, precision);
+        for (slong index = 0; index < contour_count; ++index)
+        {
+            if ((index & SAGEJS_HG_PHASE_REANCHOR_MASK) == 0 &&
+                cancel != NULL &&
+                atomic_load_explicit(cancel, memory_order_relaxed) != 0)
+                goto hg_table_grid_cancelled;
+            acb_set_si(point, plan->contour_real);
+            arb_set_d(temporary_arb, plan->contour_step);
+            arb_mul_ui(
+                acb_imagref(point), temporary_arb, (ulong) index, precision);
+            acb_gamma(gamma_value, point, precision);
+            acb_pow_ui(
+                gamma_power, gamma_value, (ulong) table->genus, precision);
+            acb_mul_arb(exponential, point, center, precision);
+            acb_neg(exponential, exponential);
+            acb_exp(exponential, exponential, precision);
+            acb_mul(base, gamma_power, exponential, precision);
+            acb_mul_arb(base, base, scale, precision);
+            if (index != 0 && index != plan->contour_points)
+                acb_mul_ui(base, base, 2, precision);
+            acb_sub_ui(denominator, point, 1, precision);
+            acb_set(denominator_power, denominator);
+            for (slong order = 0; order < derivative_count; ++order)
+            {
+                acb_div(term, base, denominator_power, precision);
+                hg_acb_mul_factorial(term, order, precision);
+                acb_one(taylor_factor);
+                for (slong degree = 0;
+                    degree <= SAGEJS_HG_WEIGHT_TABLE_DEGREE; ++degree)
+                {
+                    if (degree != 0)
+                    {
+                        acb_mul(
+                            taylor_factor, taylor_factor, point, precision);
+                        acb_neg(taylor_factor, taylor_factor);
+                        acb_div_ui(taylor_factor, taylor_factor,
+                            (ulong) degree, precision);
+                    }
+                    acb_mul(
+                        contribution, term, taylor_factor, precision);
+                    const slong table_index = hg_central_weight_table_index(
+                        table, segment, order, degree);
+                    arb_add(coefficients + table_index,
+                        coefficients + table_index,
+                        acb_realref(contribution), precision);
+                }
+                acb_mul(denominator_power, denominator_power, denominator,
+                    precision);
+            }
+        }
+    }
+
+    acb_clear(contribution);
+    acb_clear(taylor_factor);
+    acb_clear(term);
+    acb_clear(denominator_power);
+    acb_clear(denominator);
+    acb_clear(base);
+    acb_clear(exponential);
+    acb_clear(gamma_power);
+    acb_clear(gamma_value);
+    acb_clear(point);
+    arb_clear(temporary_arb);
+    arb_clear(scale);
+    arb_clear(center);
+    return 1;
+
+hg_table_grid_cancelled:
+    acb_clear(contribution);
+    acb_clear(taylor_factor);
+    acb_clear(term);
+    acb_clear(denominator_power);
+    acb_clear(denominator);
+    acb_clear(base);
+    acb_clear(exponential);
+    acb_clear(gamma_power);
+    acb_clear(gamma_value);
+    acb_clear(point);
+    arb_clear(temporary_arb);
+    arb_clear(scale);
+    arb_clear(center);
+    return -1;
+}
+
+static hg_central_weight_table *hg_central_weight_table_build(
+    slong genus,
+    slong target_bits,
+    slong maximum_derivative,
+    slong cutoff,
+    slong segment_start,
+    slong segment_count,
+    const _Atomic uint32_t *cancel)
+{
+    if (target_bits > 64 || maximum_derivative > 4 ||
+        segment_count < 1 ||
+        segment_count > SAGEJS_HG_WEIGHT_TABLE_MAX_SEGMENTS)
+        return NULL;
+    hg_central_weight_table *table =
+        (hg_central_weight_table *) calloc(1, sizeof(*table));
+    if (table == NULL) return NULL;
+    table->genus = genus;
+    table->target_bits = target_bits;
+    table->maximum_derivative = maximum_derivative;
+    table->segment_start = segment_start;
+    table->segment_count = segment_count;
+    if (!hg_central_weight_universal_plan(&table->coarse_plan, genus,
+            target_bits, maximum_derivative, cutoff, segment_start,
+            segment_count, 0) ||
+        !hg_central_weight_universal_plan(&table->fine_plan, genus,
+            target_bits, maximum_derivative, cutoff, segment_start,
+            segment_count, 1))
+    {
+        hg_central_weight_table_clear(table);
+        return NULL;
+    }
+    const slong length =
+        hg_central_weight_table_length(segment_count, maximum_derivative);
+    table->coarse_coefficients = _arb_vec_init(length);
+    table->fine_coefficients = _arb_vec_init(length);
+    const int coarse_built = table->coarse_coefficients != NULL &&
+        table->fine_coefficients != NULL
+        ? hg_central_weight_table_build_grid(table->coarse_coefficients,
+              table, &table->coarse_plan, cancel)
+        : 0;
+    const int fine_built = coarse_built > 0
+        ? hg_central_weight_table_build_grid(table->fine_coefficients, table,
+              &table->fine_plan, cancel)
+        : coarse_built;
+    if (coarse_built <= 0 || fine_built <= 0)
+    {
+        hg_central_weight_table_clear(table);
+        return NULL;
+    }
+    return table;
+}
+
+static int hg_central_weight_table_compatible(
+    const hg_central_weight_table *table,
+    slong genus,
+    slong target_bits,
+    slong maximum_derivative,
+    slong segment_start,
+    slong segment_count)
+{
+    return table != NULL && table->genus == genus &&
+        table->target_bits == target_bits &&
+        table->maximum_derivative == maximum_derivative &&
+        table->segment_start == segment_start &&
+        table->segment_count == segment_count;
+}
+
+static int hg_central_weight_table_evaluate_grid(
+    acb_ptr completed,
+    acb_ptr checked_completed,
+    acb_ptr raw,
+    const int32_t *coefficients,
+    const fmpz_t conductor,
+    int root_number,
+    const hg_central_weight_table *table,
+    const hg_central_weight_plan *plan,
+    slong cutoff,
+    const _Atomic uint32_t *cancel,
+    arb_srcptr table_coefficients)
+{
+    const slong precision = plan->work_precision;
+    const slong derivative_count = table->maximum_derivative + 1;
+    arb_t log_a_exact, logarithm, u, center, delta, weight, checked_weight;
+    arb_t check_power, check_tail;
+    arb_init(log_a_exact);
+    arb_init(logarithm);
+    arb_init(u);
+    arb_init(center);
+    arb_init(delta);
+    arb_init(weight);
+    arb_init(checked_weight);
+    arb_init(check_power);
+    arb_init(check_tail);
+    hg_log_a_exact(log_a_exact, conductor, table->genus, precision);
+    for (slong order = 0; order < derivative_count; ++order)
+    {
+        acb_zero(completed + order);
+        acb_zero(checked_completed + order);
+    }
+    const double log_a_double = fmpz_get_d(conductor) > 0.0
+        ? log(fmpz_get_d(conductor)) / 2.0 -
+            (double) table->genus * log(2.0 * SAGEJS_PI)
+        : 0.0;
+    for (slong n = 1; n <= cutoff; ++n)
+    {
+        if (cancel != NULL &&
+            atomic_load_explicit(cancel, memory_order_relaxed) != 0)
+        {
+            arb_clear(check_tail);
+            arb_clear(check_power);
+            arb_clear(checked_weight);
+            arb_clear(weight);
+            arb_clear(delta);
+            arb_clear(center);
+            arb_clear(u);
+            arb_clear(logarithm);
+            arb_clear(log_a_exact);
+            return -1;
+        }
+        const int32_t coefficient_value = coefficients[n];
+        if (coefficient_value == 0) continue;
+        double u_double = log((double) n) - log_a_double;
+        slong segment = (slong) floor(
+            u_double * SAGEJS_HG_WEIGHT_TABLE_SEGMENTS_PER_UNIT) -
+            table->segment_start;
+        if (segment < 0) segment = 0;
+        if (segment >= table->segment_count)
+            segment = table->segment_count - 1;
+        arb_set_ui(logarithm, (ulong) n);
+        arb_log(logarithm, logarithm, precision);
+        arb_sub(u, logarithm, log_a_exact, precision);
+        const slong doubled_center =
+            2 * (table->segment_start + segment) + 1;
+        arb_set_si(center, doubled_center);
+        arb_div_ui(center, center,
+            2 * SAGEJS_HG_WEIGHT_TABLE_SEGMENTS_PER_UNIT, precision);
+        arb_sub(delta, u, center, precision);
+        arb_pow_ui(check_power, delta,
+            SAGEJS_HG_WEIGHT_TABLE_CHECK_DEGREE + 1, precision);
+        for (slong order = 0; order < derivative_count; ++order)
+        {
+            if (((order & 1) == 0) != (root_number == 1)) continue;
+            slong table_index = hg_central_weight_table_index(table,
+                segment, order, SAGEJS_HG_WEIGHT_TABLE_DEGREE);
+            arb_set(weight, table_coefficients + table_index);
+            for (slong degree = SAGEJS_HG_WEIGHT_TABLE_DEGREE - 1;
+                degree >= 0; --degree)
+            {
+                arb_mul(weight, weight, delta, precision);
+                table_index = hg_central_weight_table_index(
+                    table, segment, order, degree);
+                arb_add(weight, weight,
+                    table_coefficients + table_index, precision);
+            }
+            /* The independently truncated degree-18 value is the full
+             * degree-20 value minus its two-term tail.  Computing that exact
+             * identity with Arb preserves the refinement witness while
+             * avoiding a second 18-step Horner traversal. */
+            table_index = hg_central_weight_table_index(table, segment, order,
+                SAGEJS_HG_WEIGHT_TABLE_CHECK_DEGREE + 2);
+            arb_mul(check_tail, table_coefficients + table_index, delta,
+                precision);
+            table_index = hg_central_weight_table_index(table, segment, order,
+                SAGEJS_HG_WEIGHT_TABLE_CHECK_DEGREE + 1);
+            arb_add(check_tail, check_tail,
+                table_coefficients + table_index, precision);
+            arb_mul(check_tail, check_tail, check_power, precision);
+            arb_sub(checked_weight, weight, check_tail, precision);
+            arb_mul_si(weight, weight, (slong) coefficient_value, precision);
+            arb_mul_si(checked_weight, checked_weight,
+                (slong) coefficient_value, precision);
+            acb_add_arb(completed + order, completed + order, weight, precision);
+            acb_add_arb(checked_completed + order,
+                checked_completed + order, checked_weight, precision);
+        }
+    }
+    acb_t central_point;
+    acb_init(central_point);
+    acb_one(central_point);
+    hg_raw_jet_from_completed_arb(raw, completed, central_point,
+        derivative_count, table->genus, log_a_exact, precision);
+    acb_clear(central_point);
+    arb_clear(check_tail);
+    arb_clear(check_power);
+    arb_clear(checked_weight);
+    arb_clear(weight);
+    arb_clear(delta);
+    arb_clear(center);
+    arb_clear(u);
+    arb_clear(logarithm);
+    arb_clear(log_a_exact);
     return 1;
 }
 
@@ -3858,17 +4296,18 @@ hg_failure:
 napi_value sagejs_hyperelliptic_central_weights(
     napi_env env, napi_callback_info info)
 {
-    napi_value args[8];
-    size_t argc = 8;
+    napi_value args[9];
+    size_t argc = 9;
     if (!check_napi(env,
             napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
         return NULL;
-    if (argc < 6 || argc > 8)
+    if (argc < 6 || argc > 9)
     {
         napi_throw_type_error(env, NULL,
             "hyperellipticCentralWeights expects conductor, root number, "
             "genus, coefficients, precision, maximum derivative, and an "
-            "optional coefficient worker count and cancellation flag");
+            "optional coefficient worker count, cancellation flag, and "
+            "universal weight table");
         return NULL;
     }
 
@@ -3877,6 +4316,9 @@ napi_value sagejs_hyperelliptic_central_weights(
     slong root_number, genus, target_bits, maximum_derivative;
     slong requested_worker_count = 4;
     const _Atomic uint32_t *cancel = NULL;
+    hg_central_weight_table *provided_table = NULL;
+    napi_value provided_table_value = NULL;
+    int table_disabled = 0;
     if (!value_to_fmpz(env, args[0], conductor) ||
         !value_to_slong(env, args[1], -1, 1, &root_number) ||
         !value_to_slong(env, args[2], 2, 3, &genus) ||
@@ -3886,7 +4328,7 @@ napi_value sagejs_hyperelliptic_central_weights(
         (argc == 7 &&
             !value_to_slong(env, args[6], 1, 4,
                 &requested_worker_count)) ||
-        (argc == 8 &&
+        (argc >= 8 &&
             (!value_to_slong(env, args[6], 1, 4,
                  &requested_worker_count) ||
                 !hg_cancellation_pointer(env, args[7], &cancel))) ||
@@ -3894,6 +4336,27 @@ napi_value sagejs_hyperelliptic_central_weights(
     {
         fmpz_clear(conductor);
         return NULL;
+    }
+    if (argc == 9)
+    {
+        napi_valuetype table_type;
+        if (!check_napi(env, napi_typeof(env, args[8], &table_type)))
+        {
+            fmpz_clear(conductor);
+            return NULL;
+        }
+        if (table_type == napi_null || table_type == napi_undefined)
+            table_disabled = 1;
+        else if (table_type != napi_external ||
+            !check_napi(env, napi_get_value_external(
+                env, args[8], (void **) &provided_table)))
+        {
+            fmpz_clear(conductor);
+            napi_throw_type_error(
+                env, NULL, "universal weight table must be a native resource");
+            return NULL;
+        }
+        provided_table_value = args[8];
     }
 
     hg_central_weight_plan coarse_plan, fine_plan;
@@ -3915,7 +4378,11 @@ napi_value sagejs_hyperelliptic_central_weights(
         return NULL;
     }
     const slong available_cutoff = coefficient_view.length - 1;
-    napi_value result, status, rigorous, worker_capability;
+    slong table_segment_start = 0, table_segment_count = 0;
+    const int table_eligible = target_bits <= 64 && maximum_derivative <= 4 &&
+        hg_central_weight_universal_domain(&table_segment_start,
+            &table_segment_count, conductor, genus, fine_plan.cutoff);
+    napi_value result, status, rigorous, worker_capability, table_supported;
 #ifdef _WIN32
     const char *worker_capability_name = "single-worker-windows-fallback";
 #else
@@ -3927,10 +4394,25 @@ napi_value sagejs_hyperelliptic_central_weights(
                 ? "insufficient_coefficients" : "ok",
             NAPI_AUTO_LENGTH, &status)) ||
         !check_napi(env, napi_get_boolean(env, false, &rigorous)) ||
+        !check_napi(
+            env, napi_get_boolean(env, table_eligible, &table_supported)) ||
         !check_napi(env, napi_create_string_utf8(env,
             worker_capability_name, NAPI_AUTO_LENGTH, &worker_capability)) ||
         !set_named(env, result, "status", status) ||
         !set_named(env, result, "rigorous", rigorous) ||
+        !set_named(env, result, "universalWeightTableSupported",
+            table_supported) ||
+        !set_named_slong(env, result, "universalWeightTableSegmentStart",
+            table_segment_start) ||
+        !set_named_slong(env, result, "universalWeightTableSegmentCount",
+            table_segment_count) ||
+        !set_named_slong(env, result, "universalWeightTableDegree",
+            SAGEJS_HG_WEIGHT_TABLE_DEGREE) ||
+        !set_named_slong(env, result, "universalWeightTableCoefficientCount",
+            table_eligible
+                ? 2 * hg_central_weight_table_length(
+                      table_segment_count, maximum_derivative)
+                : 0) ||
         !set_named(env, result, "coefficientWorkerCapability",
             worker_capability) ||
         !set_named_slong(env, result, "genus", genus) ||
@@ -3969,14 +4451,130 @@ napi_value sagejs_hyperelliptic_central_weights(
     acb_ptr coarse_raw = _acb_vec_init(derivative_count);
     acb_ptr fine_completed = _acb_vec_init(derivative_count);
     acb_ptr fine_raw = _acb_vec_init(derivative_count);
+    acb_ptr coarse_table_check = _acb_vec_init(derivative_count);
+    acb_ptr fine_table_check = _acb_vec_init(derivative_count);
     hg_central_weight_stage_diagnostics stage_diagnostics = {0};
     const clock_t total_started = clock();
     const double total_wall_started = hg_wall_seconds();
-    const int computed = hg_central_weight_grid_pair(
-        coarse_completed, coarse_raw, fine_completed, fine_raw,
-        coefficient_view.data, available_cutoff, conductor, (int) root_number,
-        genus, maximum_derivative, &coarse_plan, &fine_plan,
-        requested_worker_count, cancel, &stage_diagnostics);
+    double table_construction_wall_seconds = 0.0;
+    double table_construction_cpu_seconds = 0.0;
+    double table_evaluation_wall_seconds = 0.0;
+    double table_evaluation_cpu_seconds = 0.0;
+    int table_cache_hit = 0;
+    int used_universal_table = 0;
+    int table_build_cancelled = 0;
+    hg_central_weight_table *table = NULL;
+    napi_value table_value = provided_table_value;
+    if (provided_table != NULL)
+    {
+        if (!table_eligible || !hg_central_weight_table_compatible(
+                provided_table, genus, target_bits, maximum_derivative,
+                table_segment_start, table_segment_count))
+        {
+            packed_coefficient_view_clear(&coefficient_view);
+            fmpz_clear(conductor);
+            napi_throw_range_error(env, NULL,
+                "universal central-weight table does not match this plan");
+            goto hg_central_computed_failure;
+        }
+        table = provided_table;
+        table_cache_hit = 1;
+    }
+    else if (table_eligible && !table_disabled)
+    {
+        const clock_t construction_cpu_started = clock();
+        const double construction_started = hg_wall_seconds();
+        table = hg_central_weight_table_build(genus, target_bits,
+            maximum_derivative, fine_plan.cutoff, table_segment_start,
+            table_segment_count, cancel);
+        table_construction_wall_seconds =
+            hg_wall_seconds() - construction_started;
+        table_construction_cpu_seconds =
+            (double) (clock() - construction_cpu_started) /
+            (double) CLOCKS_PER_SEC;
+        table_build_cancelled = table == NULL && cancel != NULL &&
+            atomic_load_explicit(cancel, memory_order_relaxed) != 0;
+        if (table != NULL && !check_napi(env, napi_create_external(env, table,
+                hg_central_weight_table_finalize, NULL, &table_value)))
+        {
+            hg_central_weight_table_clear(table);
+            table = NULL;
+            packed_coefficient_view_clear(&coefficient_view);
+            fmpz_clear(conductor);
+            goto hg_central_computed_failure;
+        }
+        if (table != NULL &&
+            !set_named(env, result, "universalWeightTable", table_value))
+        {
+            packed_coefficient_view_clear(&coefficient_view);
+            fmpz_clear(conductor);
+            goto hg_central_computed_failure;
+        }
+    }
+    if (table != NULL && table_value != NULL &&
+        provided_table_value != NULL &&
+        !set_named(env, result, "universalWeightTable", table_value))
+    {
+        packed_coefficient_view_clear(&coefficient_view);
+        fmpz_clear(conductor);
+        goto hg_central_computed_failure;
+    }
+
+    int computed;
+    if (table_build_cancelled)
+    {
+        computed = -1;
+    }
+    else if (table != NULL)
+    {
+        if (!set_named_slong(env, result, "coarseContourPoints",
+                table->coarse_plan.contour_points) ||
+            !set_named_slong(env, result, "contourPoints",
+                table->fine_plan.contour_points) ||
+            !set_named_double(env, result, "contourStep",
+                table->fine_plan.contour_step) ||
+            !set_named_slong(env, result,
+                "universalWeightTableCoarseContourPoints",
+                table->coarse_plan.contour_points) ||
+            !set_named_slong(env, result,
+                "universalWeightTableContourPoints",
+                table->fine_plan.contour_points))
+        {
+            packed_coefficient_view_clear(&coefficient_view);
+            fmpz_clear(conductor);
+            goto hg_central_computed_failure;
+        }
+        const clock_t evaluation_cpu_started = clock();
+        const double evaluation_started = hg_wall_seconds();
+        const int coarse_evaluated =
+            hg_central_weight_table_evaluate_grid(coarse_completed,
+                coarse_table_check, coarse_raw, coefficient_view.data,
+                conductor, (int) root_number, table, &table->coarse_plan,
+                fine_plan.cutoff, cancel, table->coarse_coefficients);
+        const int fine_evaluated = coarse_evaluated < 0 ? -1 :
+            hg_central_weight_table_evaluate_grid(fine_completed,
+                fine_table_check, fine_raw, coefficient_view.data, conductor,
+                (int) root_number, table, &table->fine_plan,
+                fine_plan.cutoff, cancel, table->fine_coefficients);
+        computed = coarse_evaluated < 0 || fine_evaluated < 0
+            ? -1 : coarse_evaluated && fine_evaluated;
+        table_evaluation_wall_seconds =
+            hg_wall_seconds() - evaluation_started;
+        table_evaluation_cpu_seconds =
+            (double) (clock() - evaluation_cpu_started) /
+            (double) CLOCKS_PER_SEC;
+        used_universal_table = computed;
+        stage_diagnostics.coefficient_worker_count = 1;
+        stage_diagnostics.coefficient_worker_grid_slots = 0;
+    }
+    else
+    {
+        computed = hg_central_weight_grid_pair(coarse_completed, coarse_raw,
+            fine_completed, fine_raw, coefficient_view.data, available_cutoff,
+            conductor, (int) root_number, genus, maximum_derivative,
+            &coarse_plan, &fine_plan, requested_worker_count, cancel,
+            &stage_diagnostics);
+    }
     stage_diagnostics.total_cpu_seconds =
         (double) (clock() - total_started) / (double) CLOCKS_PER_SEC;
     stage_diagnostics.total_wall_seconds =
@@ -3992,8 +4590,10 @@ napi_value sagejs_hyperelliptic_central_weights(
             goto hg_central_computed_failure;
         _acb_vec_clear(fine_raw, derivative_count);
         _acb_vec_clear(fine_completed, derivative_count);
+        _acb_vec_clear(fine_table_check, derivative_count);
         _acb_vec_clear(coarse_raw, derivative_count);
         _acb_vec_clear(coarse_completed, derivative_count);
+        _acb_vec_clear(coarse_table_check, derivative_count);
         return result;
     }
     if (!computed)
@@ -4004,6 +4604,7 @@ napi_value sagejs_hyperelliptic_central_weights(
     }
 
     double maximum_relative_difference = 0.0;
+    double table_tail_relative_difference = 0.0;
     acb_t difference;
     acb_init(difference);
     mag_t magnitude, denominator;
@@ -4020,9 +4621,26 @@ napi_value sagejs_hyperelliptic_central_weights(
         const double relative = mag_get_d(magnitude);
         if (relative > maximum_relative_difference)
             maximum_relative_difference = relative;
+        if (used_universal_table)
+        {
+            acb_sub(difference, fine_completed + index,
+                fine_table_check + index, fine_plan.work_precision);
+            acb_get_mag(magnitude, difference);
+            acb_get_mag(denominator, fine_completed + index);
+            if (mag_cmp_2exp_si(denominator, 0) < 0) mag_one(denominator);
+            mag_div(magnitude, magnitude, denominator);
+            const double table_relative = mag_get_d(magnitude);
+            if (table_relative > table_tail_relative_difference)
+                table_tail_relative_difference = table_relative;
+        }
     }
-    const int is_stable = maximum_relative_difference <=
-        ldexp(1.0, -(target_bits / 2 > 12 ? target_bits / 2 : 12));
+    const int table_is_stable = !used_universal_table ||
+        table_tail_relative_difference <=
+            ldexp(1.0, -(target_bits * 3 / 4 > 16
+                ? target_bits * 3 / 4 : 16));
+    const int is_stable = table_is_stable &&
+        maximum_relative_difference <=
+            ldexp(1.0, -(target_bits / 2 > 12 ? target_bits / 2 : 12));
     mag_clear(denominator);
     mag_clear(magnitude);
     acb_clear(difference);
@@ -4036,15 +4654,29 @@ napi_value sagejs_hyperelliptic_central_weights(
         derivative_count, digits, target_bits + 64);
     napi_value coarse_raw_values = hg_ball_array(env, coarse_raw,
         derivative_count, digits, target_bits + 64);
-    napi_value stable, error_status, algorithm;
+    napi_value stable, error_status, algorithm, table_used, table_hit;
+    napi_value actual_worker_capability;
     if (completed_values == NULL || raw_values == NULL ||
         coarse_completed_values == NULL || coarse_raw_values == NULL ||
         !check_napi(env, napi_get_boolean(env, is_stable, &stable)) ||
+        !check_napi(env,
+            napi_get_boolean(env, used_universal_table, &table_used)) ||
+        !check_napi(env, napi_get_boolean(env, table_cache_hit, &table_hit)) ||
         !check_napi(env, napi_create_string_utf8(env,
-            "arb_roundoff_with_nested_central_weight_contour_refinement",
+            used_universal_table
+                ? "single-worker-universal-table"
+                : worker_capability_name,
+            NAPI_AUTO_LENGTH, &actual_worker_capability)) ||
+        !check_napi(env, napi_create_string_utf8(env,
+            used_universal_table
+                ? "arb_roundoff_with_nested_contour_and_taylor_degree_refinement"
+                : "arb_roundoff_with_nested_central_weight_contour_refinement",
             NAPI_AUTO_LENGTH, &error_status)) ||
         !check_napi(env, napi_create_string_utf8(env,
-            "central-mellin-weights", NAPI_AUTO_LENGTH, &algorithm)) ||
+            used_universal_table
+                ? "universal-central-taylor-weights"
+                : "central-mellin-weights",
+            NAPI_AUTO_LENGTH, &algorithm)) ||
         !set_named(env, result, "completedDerivatives", completed_values) ||
         !set_named(env, result, "rawDerivatives", raw_values) ||
         !set_named(env, result, "coarseCompletedDerivatives",
@@ -4053,6 +4685,23 @@ napi_value sagejs_hyperelliptic_central_weights(
         !set_named(env, result, "refinementStable", stable) ||
         !set_named_double(env, result, "refinementRelativeDifference",
             maximum_relative_difference) ||
+        !set_named(env, result, "universalWeightTableUsed", table_used) ||
+        !set_named(env, result, "universalWeightTableCacheHit", table_hit) ||
+        !set_named_double(env, result,
+            "universalWeightTableConstructionWallSeconds",
+            table_construction_wall_seconds) ||
+        !set_named_double(env, result,
+            "universalWeightTableConstructionCpuSeconds",
+            table_construction_cpu_seconds) ||
+        !set_named_double(env, result,
+            "universalWeightTableEvaluationWallSeconds",
+            table_evaluation_wall_seconds) ||
+        !set_named_double(env, result,
+            "universalWeightTableEvaluationCpuSeconds",
+            table_evaluation_cpu_seconds) ||
+        !set_named_double(env, result,
+            "universalWeightTableTailRelativeDifference",
+            table_tail_relative_difference) ||
         !set_named_slong(env, result, "sharedCoefficientLogarithms",
             stage_diagnostics.coefficient_logarithms) ||
         !set_named_slong(env, result, "coarsePhaseUpdates",
@@ -4065,6 +4714,8 @@ napi_value sagejs_hyperelliptic_central_weights(
             stage_diagnostics.coefficient_worker_grid_slots) ||
         !set_named_slong(env, result, "coefficientWorkerCreationFallbacks",
             stage_diagnostics.coefficient_worker_creation_fallbacks) ||
+        !set_named(env, result, "coefficientWorkerCapability",
+            actual_worker_capability) ||
         !set_named_double(env, result, "coefficientTraversalCpuSeconds",
             stage_diagnostics.coefficient_traversal_cpu_seconds) ||
         !set_named_double(env, result, "coefficientTraversalWallSeconds",
@@ -4083,15 +4734,19 @@ napi_value sagejs_hyperelliptic_central_weights(
 
     _acb_vec_clear(fine_raw, derivative_count);
     _acb_vec_clear(fine_completed, derivative_count);
+    _acb_vec_clear(fine_table_check, derivative_count);
     _acb_vec_clear(coarse_raw, derivative_count);
     _acb_vec_clear(coarse_completed, derivative_count);
+    _acb_vec_clear(coarse_table_check, derivative_count);
     return result;
 
 hg_central_computed_failure:
     _acb_vec_clear(fine_raw, derivative_count);
     _acb_vec_clear(fine_completed, derivative_count);
+    _acb_vec_clear(fine_table_check, derivative_count);
     _acb_vec_clear(coarse_raw, derivative_count);
     _acb_vec_clear(coarse_completed, derivative_count);
+    _acb_vec_clear(coarse_table_check, derivative_count);
     return NULL;
 
 hg_central_failure:

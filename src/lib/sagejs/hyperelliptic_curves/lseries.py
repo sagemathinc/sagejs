@@ -75,7 +75,9 @@ class HyperellipticLseriesNumericalIndeterminacyError(ArithmeticError):
 
 _CENTRAL_PLAN_CACHE: dict[tuple[int, int, int, int, bool], dict[str, Any]] = {}
 _CENTRAL_WEIGHT_CACHE: dict[tuple[int, int, str, int], Any] = {}
+_NATIVE_CENTRAL_WEIGHT_TABLE_CACHE: dict[tuple[Any, ...], Any] = {}
 _CENTRAL_CACHE_LIMIT = 256
+_NATIVE_CENTRAL_WEIGHT_TABLE_CACHE_LIMIT = 8
 _MAX_THETA_DIRICHLET_UPDATES = 200_000_000
 _MAX_THETA_OUTER_UPDATES = 100_000_000
 
@@ -119,6 +121,7 @@ def clear_central_weight_cache() -> None:
     """Clear bounded process-local central plan and reference-weight caches."""
     _CENTRAL_PLAN_CACHE.clear()
     _CENTRAL_WEIGHT_CACHE.clear()
+    _NATIVE_CENTRAL_WEIGHT_TABLE_CACHE.clear()
 
 
 def central_weight_cache_info() -> dict[str, int]:
@@ -126,7 +129,9 @@ def central_weight_cache_info() -> dict[str, int]:
     return {
         "curve_plans": len(_CENTRAL_PLAN_CACHE),
         "reference_weights": len(_CENTRAL_WEIGHT_CACHE),
+        "native_universal_tables": len(_NATIVE_CENTRAL_WEIGHT_TABLE_CACHE),
         "limit": _CENTRAL_CACHE_LIMIT,
+        "native_universal_table_limit": _NATIVE_CENTRAL_WEIGHT_TABLE_CACHE_LIMIT,
     }
 
 
@@ -1150,11 +1155,14 @@ def native_central_weight_values(
     coefficient_prefix: GlobalCoefficientPrefix,
     maximum_derivative: int = 0,
     coefficient_workers: int | None = None,
+    use_universal_table: bool = True,
 ) -> dict[str, Any] | None:
     """Evaluate the one-contour central weights with FLINT Arb/Acb.
 
-    `coefficient_workers` is an internal benchmarking/control hook.  The
-    native backend otherwise selects its bounded production default.
+    `coefficient_workers` and `use_universal_table` are internal
+    benchmarking/control hooks.  The native backend otherwise reuses a
+    bounded process-local, curve-independent table and retains the direct Arb
+    contour as its differential oracle and fallback.
     """
     try:
         backend = runtime.flint_backend()
@@ -1176,16 +1184,47 @@ def native_central_weight_values(
             arguments.append(int(coefficient_workers))
         planned = runtime.reflect.apply(function, backend, arguments)
         required = int(_property(planned, "requiredCutoff"))
+        native_table_supported = bool(
+            _optional_property(planned, "universalWeightTableSupported", False)
+        )
+        table_key: tuple[Any, ...] | None = None
+        prepared_table = None
+        if use_universal_table and native_table_supported:
+            table_key = (
+                "native-central-taylor-v1",
+                genus,
+                int(precision_bits),
+                int(maximum_derivative),
+                int(_property(planned, "universalWeightTableSegmentStart")),
+                int(_property(planned, "universalWeightTableSegmentCount")),
+                int(_property(planned, "universalWeightTableDegree")),
+            )
+            prepared_table = _NATIVE_CENTRAL_WEIGHT_TABLE_CACHE.get(table_key)
         coefficients = coefficient_prefix.through(required)
         if any(value < -(2**31) or value > 2**31 - 1 for value in coefficients):
             return None
         arguments[3] = coefficients
+        if prepared_table is not None or not use_universal_table:
+            if len(arguments) == 6:
+                arguments.append(4)
+            arguments.append(None)
+            arguments.append(prepared_table)
         native = runtime.reflect.apply(function, backend, arguments)
         if str(_property(native, "status")) != "ok":
             raise HyperellipticLseriesResourceError(
                 "the native central-weight coefficient plan was not satisfied",
                 {"required_cutoff": required},
             )
+        published_table = _optional_property(native, "universalWeightTable", None)
+        if table_key is not None and published_table is not None:
+            if (
+                table_key not in _NATIVE_CENTRAL_WEIGHT_TABLE_CACHE
+                and len(_NATIVE_CENTRAL_WEIGHT_TABLE_CACHE)
+                >= _NATIVE_CENTRAL_WEIGHT_TABLE_CACHE_LIMIT
+            ):
+                first_table_key = next(iter(_NATIVE_CENTRAL_WEIGHT_TABLE_CACHE))
+                del _NATIVE_CENTRAL_WEIGHT_TABLE_CACHE[first_table_key]
+            _NATIVE_CENTRAL_WEIGHT_TABLE_CACHE[table_key] = published_table
         raw = _property(native, "rawDerivatives")
         completed = _property(native, "completedDerivatives")
         coarse_raw = _property(native, "coarseRawDerivatives")
@@ -1207,7 +1246,11 @@ def native_central_weight_values(
             for index in range(len(coarse_completed))
         )
         return {
-            "algorithm": "native-arb-central-mellin-weights",
+            "algorithm": (
+                "native-arb-universal-central-taylor-weights"
+                if bool(_optional_property(native, "universalWeightTableUsed", False))
+                else "native-arb-central-mellin-weights"
+            ),
             "status": "ok",
             "precision_bits": precision_bits,
             "work_precision_bits": int(_property(native, "workPrecisionBits")),
@@ -1264,6 +1307,83 @@ def native_central_weight_values(
                 "total_wall_seconds": str(
                     _optional_property(native, "totalWallSeconds", 0)
                 ),
+                "universal_weight_table": {
+                    "supported": native_table_supported,
+                    "enabled": use_universal_table,
+                    "used": bool(
+                        _optional_property(native, "universalWeightTableUsed", False)
+                    ),
+                    "cache_hit": bool(
+                        _optional_property(
+                            native, "universalWeightTableCacheHit", False
+                        )
+                    ),
+                    "segment_start": int(
+                        _optional_property(
+                            native, "universalWeightTableSegmentStart", 0
+                        )
+                    ),
+                    "segment_count": int(
+                        _optional_property(
+                            native, "universalWeightTableSegmentCount", 0
+                        )
+                    ),
+                    "degree": int(
+                        _optional_property(native, "universalWeightTableDegree", 0)
+                    ),
+                    "coefficient_count": int(
+                        _optional_property(
+                            native, "universalWeightTableCoefficientCount", 0
+                        )
+                    ),
+                    "coarse_contour_points": int(
+                        _optional_property(
+                            native,
+                            "universalWeightTableCoarseContourPoints",
+                            0,
+                        )
+                    ),
+                    "fine_contour_points": int(
+                        _optional_property(
+                            native, "universalWeightTableContourPoints", 0
+                        )
+                    ),
+                    "construction_wall_seconds": str(
+                        _optional_property(
+                            native,
+                            "universalWeightTableConstructionWallSeconds",
+                            0,
+                        )
+                    ),
+                    "construction_cpu_seconds": str(
+                        _optional_property(
+                            native,
+                            "universalWeightTableConstructionCpuSeconds",
+                            0,
+                        )
+                    ),
+                    "evaluation_wall_seconds": str(
+                        _optional_property(
+                            native,
+                            "universalWeightTableEvaluationWallSeconds",
+                            0,
+                        )
+                    ),
+                    "evaluation_cpu_seconds": str(
+                        _optional_property(
+                            native,
+                            "universalWeightTableEvaluationCpuSeconds",
+                            0,
+                        )
+                    ),
+                    "tail_relative_difference": str(
+                        _optional_property(
+                            native,
+                            "universalWeightTableTailRelativeDifference",
+                            0,
+                        )
+                    ),
+                },
             },
             "coefficient_backend_counts": dict(coefficient_prefix.backend_counts),
             "coefficient_prefix_extensions": coefficient_prefix.extensions,

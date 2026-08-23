@@ -43,10 +43,40 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test packages/flint/test/elliptic-native.cjs test/hyperelliptic-lseries-performance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.729,
+      "started_at": "2026-08-23T09:49:29.845Z",
+      "commit": "3273e25b0ef8fd72773bedeb232367c7cc89bce4",
+      "workspace_fingerprint": "2410a6b15ef8af56ccd3795780ae6ab347a948f0095c68e01ec94cb5c99d3501",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.039,
+      "started_at": "2026-08-23T09:49:50.365Z",
+      "commit": "3273e25b0ef8fd72773bedeb232367c7cc89bce4",
+      "workspace_fingerprint": "2410a6b15ef8af56ccd3795780ae6ab347a948f0095c68e01ec94cb5c99d3501",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added bounded reusable Arb central-weight Taylor tables keyed only by genus, matched precision, derivative order, and a bucketed universal log-domain. Fresh coefficient-prefix/LFunctionInit cache misses reuse no computed L-value and now run at 15.242 ms/item versus pinned resident PARI at 9.32 ms/item (1.635x) in the corrected 64-bit receipt. The cold 2.201 s table build is timed separately. All Phase 9 gates pass in that receipt: prepared central values 251x, genus-2 derivatives at least 33.35x, and genus-3 derivatives at least 853.74x. The direct one-worker and bounded-four Arb contours remain explicit differential/fallback rows.",
+    "risks": [
+      "The first order-4 64-bit universal table takes about 2.2 seconds to construct; benchmark receipts report it separately and include direct-fallback crossover rows.",
+      "The universal interpolation is deliberately nonrigorous analytically: Arb controls arithmetic roundoff, while independent contour and degree-18 versus degree-20 refinement remain the numerical witnesses.",
+      "Cross-platform execution still needs integration-host receipts; Windows selects the deterministic single-worker universal path and retains the tested one-worker direct fallback.",
+      "Integration must refresh the shared native-export audit and review the hyperelliptic lazy-package byte budget; this lane adds no exported N-API symbol or new native file."
+    ],
+    "next_steps": [
+      "Assess a versioned authenticated precomputed order-4 table artifact or bounded parallel table builder to remove the 2.2-second process-cold stage without exceeding package/startup limits.",
+      "Regenerate integration-owned native audit/package-budget metadata after cherry-picking this lane.",
+      "Run the corrected multi-sample acceptance receipt on bench-1 and cross-platform correctness receipts on Windows x64, Linux arm64, and macOS arm64."
+    ]
   }
 }
