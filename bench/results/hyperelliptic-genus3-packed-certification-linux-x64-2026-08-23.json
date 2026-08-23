@@ -281,6 +281,137 @@
       "architecture": "blocked by pre-existing cross-lane lazy-package budget 765638 > 610000"
     }
   },
+  "phase4_final_158acf09": {
+    "immutable": true,
+    "purpose": "final exact pinned-host acceptance after bounded prime and composite-tail factorization",
+    "host": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux-x64",
+    "commit": "158acf09ae5346882d3e21b1eaa434f9c8f1a3bf",
+    "source_status": "clean",
+    "node": "v22.22.2",
+    "packed_candidate_kernel": true,
+    "packed_cantor_kernel": true,
+    "command": "/usr/bin/time -v /home/user/.local/lib/node-v22.22.2-linux-x64/bin/node bench/rforest/benchmark-genus3-certified.cjs --limits 100000 --stages certification",
+    "exact": {
+      "rows": 9592,
+      "unique": 9587,
+      "fallback": 1,
+      "omitted": 4,
+      "primary_samples": 9588,
+      "stream_digest": "3728105193022836152423678822391807418"
+    },
+    "certification": {
+      "result": "pass",
+      "benchmark_wall_seconds": 140.121974793,
+      "external_wall_seconds": 147.02,
+      "external_cpu_user_seconds": 154.26,
+      "external_cpu_system_seconds": 1.03,
+      "rss_start_kib": 398988,
+      "rss_end_kib": 518996,
+      "peak_rss_kib": 529860,
+      "peak_rss_bytes": 542576640,
+      "stages_seconds": {
+        "residue": 8.170961618,
+        "candidate": 28.532866716,
+        "primary": 92.420949459,
+        "twist": 0.042936086,
+        "fallback": 0.158655643
+      },
+      "speedup_over_materialized_781_814_seconds": 5.579525319857425
+    },
+    "artifacts": {
+      "json_sha256": "52f3e0c249cbbd7290f5d8a8e21e103bc33d539fb110c0ff1f62dbd4a2765136",
+      "stderr_sha256": "ae530bf7a607f8a038b7d66446b70bdcf3891e9fd7102cf31ef92e661e5421af",
+      "time_sha256": "5f923508bc335b3c6dd5bb152534af8050ec1c132820cec759f35d91849e6db3"
+    },
+    "acceptance": {
+      "p100000_completed": "pass",
+      "exact_status_and_digest": "pass",
+      "certification_speedup_at_least_5x": "pass",
+      "wall_below_300_seconds": "pass",
+      "peak_rss_below_512_mib": "fail",
+      "peak_rss_excess_kib": 5572,
+      "peak_rss_excess_bytes": 5705728,
+      "overall": "fail"
+    }
+  },
+  "local_data_materialization_158acf09": {
+    "immutable": true,
+    "purpose": "ordinary coefficient, polynomial, and local-record materialization costs on the final exact source",
+    "host": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux-x64",
+    "commit": "158acf09ae5346882d3e21b1eaa434f9c8f1a3bf",
+    "source_status": "clean",
+    "node": "v22.22.2",
+    "command": "/usr/bin/time -v /home/user/.local/lib/node-v22.22.2-linux-x64/bin/node bench/hyperelliptic/benchmark-local-data-materialization.cjs --output /tmp/group-consumers-158acf09-local-materialization-node22.json",
+    "limits": [10000, 100000],
+    "repeat": 3,
+    "chunk_size": 4096,
+    "external_wall_seconds": 67.89,
+    "external_cpu_user_seconds": 72.1,
+    "external_cpu_system_seconds": 0.65,
+    "external_peak_rss_kib": 522944,
+    "artifact_json_sha256": "c5c65bd24be0d67cf061d754c36a54aa866fdaef11a61cb846bf5800a1ecf657",
+    "artifact_time_sha256": "fa09c3ae43339dedca3b2fd9f70674fe612c4dc70ee0ff5ba3d00b4dc9c61166",
+    "samples": [
+      {
+        "limit": 10000,
+        "repetition": 0,
+        "packed": [57.196356, 250191872, "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d"],
+        "coefficients": [299.245007, 263458816, "(1225, 5736361, 1070, 5746424)"],
+        "public_polynomials": [371.83081, 268963840, "(1225, 5736361, 1070, 5746424)"],
+        "records_coefficients": [2802.39923, 314507264, "(1225, 5736361, 1070, 5746424)"],
+        "records_polynomials": [786.147508, 330760192, "(1225, 5736361, 1070, 5746424)"]
+      },
+      {
+        "limit": 10000,
+        "repetition": 1,
+        "packed": [56.652046, 330760192, "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d"],
+        "coefficients": [213.390463, 333643776, "(1225, 5736361, 1070, 5746424)"],
+        "public_polynomials": [265.886109, 337838080, "(1225, 5736361, 1070, 5746424)"],
+        "records_coefficients": [617.923652, 350027776, "(1225, 5736361, 1070, 5746424)"],
+        "records_polynomials": [715.432484, 365363200, "(1225, 5736361, 1070, 5746424)"]
+      },
+      {
+        "limit": 10000,
+        "repetition": 2,
+        "packed": [57.204826, 365363200, "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d"],
+        "coefficients": [210.220634, 369295360, "(1225, 5736361, 1070, 5746424)"],
+        "public_polynomials": [255.415189, 372310016, "(1225, 5736361, 1070, 5746424)"],
+        "records_coefficients": [597.190523, 384761856, "(1225, 5736361, 1070, 5746424)"],
+        "records_polynomials": [700.960495, 398757888, "(1225, 5736361, 1070, 5746424)"]
+      },
+      {
+        "limit": 100000,
+        "repetition": 0,
+        "packed": [1747.805293, 398757888, "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894"],
+        "coefficients": [2742.503874, 414818304, "(9588, 454396502, 31923, 459539912)"],
+        "public_polynomials": [3092.136806, 413769728, "(9588, 454396502, 31923, 459539912)"],
+        "records_coefficients": [5708.828942, 413769728, "(9588, 454396502, 31923, 459539912)"],
+        "records_polynomials": [6470.399071, 465412096, "(9588, 454396502, 31923, 459539912)"]
+      },
+      {
+        "limit": 100000,
+        "repetition": 1,
+        "packed": [1749.983793, 465412096, "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894"],
+        "coefficients": [2752.654483, 482975744, "(9588, 454396502, 31923, 459539912)"],
+        "public_polynomials": [3122.858325, 518193152, "(9588, 454396502, 31923, 459539912)"],
+        "records_coefficients": [5674.644114, 518455296, "(9588, 454396502, 31923, 459539912)"],
+        "records_polynomials": [6419.777715, 518455296, "(9588, 454396502, 31923, 459539912)"]
+      },
+      {
+        "limit": 100000,
+        "repetition": 2,
+        "packed": [1751.709302, 518455296, "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894"],
+        "coefficients": [2717.539316, 518455296, "(9588, 454396502, 31923, 459539912)"],
+        "public_polynomials": [3101.083056, 535494656, "(9588, 454396502, 31923, 459539912)"],
+        "records_coefficients": [5642.189676, 535494656, "(9588, 454396502, 31923, 459539912)"],
+        "records_polynomials": [6428.353954, 535494656, "(9588, 454396502, 31923, 459539912)"]
+      }
+    ],
+    "sample_tuple_schema": ["wall_ms", "rss_bytes", "exact_digest_or_checksum"],
+    "exactness": "all four public modes agree within every sample; packed digests are stable across repetitions"
+  },
   "notes": [
     "The command completed successfully and exact outputs agree, but the performance acceptance thresholds failed.",
     "The materialized control's candidate stage excludes batched tuple publication, which occurs before the per-row observer; its uninstrumented remainder is therefore much larger.",
