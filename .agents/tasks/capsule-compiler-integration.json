@@ -46,10 +46,67 @@
     "pnpm test:compiler",
     "pnpm test:integration"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/runtime-intrinsics.cjs test/immutable-uint64-capsule.cjs tools/native-kernel/test/immutable-capsule-effects.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.941,
+      "started_at": "2026-08-23T11:57:25.253Z",
+      "commit": "77a20ec4ec88f54b16e8f1c57d582df9de89502b",
+      "workspace_fingerprint": "d6baf14e3dc305ebd333a500a7bc3d9044e15e3c10f9d082b4ecd6b29d93562c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.853,
+      "started_at": "2026-08-23T11:57:32.406Z",
+      "commit": "77a20ec4ec88f54b16e8f1c57d582df9de89502b",
+      "workspace_fingerprint": "d6baf14e3dc305ebd333a500a7bc3d9044e15e3c10f9d082b4ecd6b29d93562c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 302.717,
+      "started_at": "2026-08-23T11:57:44.471Z",
+      "commit": "77a20ec4ec88f54b16e8f1c57d582df9de89502b",
+      "workspace_fingerprint": "d6baf14e3dc305ebd333a500a7bc3d9044e15e3c10f9d082b4ecd6b29d93562c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 48.012,
+      "started_at": "2026-08-23T12:02:59.074Z",
+      "commit": "77a20ec4ec88f54b16e8f1c57d582df9de89502b",
+      "workspace_fingerprint": "d6baf14e3dc305ebd333a500a7bc3d9044e15e3c10f9d082b4ecd6b29d93562c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.598,
+      "started_at": "2026-08-23T12:03:59.694Z",
+      "commit": "77a20ec4ec88f54b16e8f1c57d582df9de89502b",
+      "workspace_fingerprint": "d6baf14e3dc305ebd333a500a7bc3d9044e15e3c10f9d082b4ecd6b29d93562c",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Capsule runtime calls are audited compiler intrinsics with Python-catchable errors, and prime-source UInt64Buffer write effects now propagate positionally through helper graphs. Neutral and production Cantor copy/add/scalar witnesses prove read-only native borrowing while writable positions fail closed.",
+    "risks": [
+      "Unknown helper effects and compiler-owned record arguments intentionally remain writable; adding field-sensitive record effects would require a separate proof model.",
+      "The broad integration tier was interrupted by a concurrent build after three green batches; the resulting unrelated precompiled-worker failure is not a valid current-build receipt."
+    ],
+    "next_steps": [
+      "Cherry-pick 77a20ec4 into the Cantor consumer and rerun its adversarial retained-batch and prepared scalar benchmarks.",
+      "Rerun the full integration tier on the merged integration head without a concurrent build."
+    ]
   }
 }
