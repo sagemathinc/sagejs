@@ -73,15 +73,15 @@
     }
   ],
   "handoff": {
-    "summary": "One exact QQ reduction crossing now feeds a same-source varying-modulus Cantor witness crossing. Prime-major rows and match flags remain canonically packed, uniform torsion scalars avoid pairwise host packing, torsion factor stripping and saturation consume the retained views, and all serialized certificates still replay through the reference path. The final local 1024x32 exact workload took 0.099484416s combined versus the prior bench-1 Magma median of 0.15s; a frozen same-host rerun is still required.",
+    "summary": "One exact QQ reduction crossing now feeds a same-source varying-modulus Cantor witness crossing. Prime-major rows and match flags remain canonically packed, uniform torsion scalars avoid pairwise host packing, torsion factor stripping and saturation consume the retained views, and all serialized certificates still replay through the reference path. The frozen bench-1 acceptance used exact source 28e7d8cc0634c6fc7b8e66a44ca0fac2f7a0dcec on Linux 6.17 x86-64, AMD EPYC 7B13, Node 26.7.0, and Magma 2.18-5. For the identical 1024-divisor by 32-prime contract, both engines returned exact nonzero checksum 28672. Sage.js spent 7.765864192s preparing the QQ basis (cold/excluded from the recurring matched stage), 0.092505344s reducing to retained packed rows, and 0.006032384s on the exact uniform [2] packed witness, hence 0.098537728s recurring. Five resident Magma trials measured construction at [0.01,0.01,0.01,0.01,0.01]s and witness at [0.14,0.13,0.13,0.13,0.14]s, hence 0.14s median combined: Sage.js is 1.421x faster on the recurring matched batch. Sage used time.perf_counter_ns with measured 2816ns resolution; Magma Cputime had 0.01s resolution. Certificate construction was excluded symmetrically from the timing; Sage's serialized certificate verifier is separately covered by the focused exact reference-replay test and Magma has no equal serialized-certificate contract. The same host also exposed the still-open ordinary public QQ addition gate: direct prepared A+B was 0.907320320s/1000 and ordinary public A+B was 0.952599552s/1000 (1.0499x dispatch overhead), while resident Magma trials were [0.01,0.01,0.01,0,0]s/1000. Thus the recurring many-prime gate passes, but ordinary public addition decisively fails at about 95x using Magma's timer-quantized 0.01s median. The exact load-average vector was not retained in the receipt artifact and is therefore reported as unavailable rather than reconstructed.",
     "risks": [
       "The fused public kernel needs integration-owned production/Wasm capability registration before the complete native suite can autoload the changed jacobian_kernels source identity.",
       "The current integrated QQ prepared context lacks negate_batch, so unrelated public rational negation/group-consumer paths require a separate dispatch fix.",
-      "The projected Magma win uses the same EPYC model but is not yet a frozen same-host receipt."
+      "Ordinary public QQ addition remains roughly 95x slower than Magma on this bounded receipt; Magma's 0.01-second timer quantizes the denominator, but the performance miss is decisive."
     ],
     "next_steps": [
       "Integrate the fused kernel capability and refresh native/FFI ratchets, then rerun pnpm test:native.",
-      "Run the bounded 1024x32 Sage/Magma workload and nontrivial public P+Q row on bench-1 after the queued owners release it.",
+      "Remove public QQ addition materialization overhead while keeping an ordinary exact MumfordDivisor result, reference replay, and equal-contract public operator benchmarks.",
       "Complete Windows x64, Linux arm64, and macOS arm64 production-pack validation through integration CI."
     ]
   }
