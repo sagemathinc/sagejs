@@ -18,21 +18,9 @@ import time
 from typing import Any
 
 import sagejs as sage
-import sagejs.number_fields.composite_field_analysis as composite_field_analysis
 import sagejs.number_fields.field_analysis_resource as field_analysis_resource
 import sagejs.runtime as runtime
 from sagejs.native import is_compiled
-from sagejs.number_fields.buchmann_lenstra import (
-    BuchmannLenstraResult,
-    _packed_row_hnf,
-    buchmann_lenstra_multiplier_cycle,
-    check_buchmann_lenstra_general_result,
-    check_buchmann_lenstra_result,
-)
-from sagejs.number_fields.composite_local_merge import (
-    certified_composite_overorder_from_equation,
-    merge_certified_coprime_composite_order,
-)
 from sagejs.number_fields.discriminant_components import (
     certify_decomposition_component,
     check_decomposition_certificate,
@@ -43,43 +31,11 @@ from sagejs.number_fields.discriminant_components import (
     prove_prime_resumable,
     split_decomposition_component,
 )
-from sagejs.number_fields.local_parallel import (
-    JobPayload,
-    LocalCertificationError,
-    LocalWorkerError,
-    local_job_component,
-    local_job_key,
-    local_result_contract,
-    make_local_job,
-    make_local_result,
-    make_schedule,
-    run_local_jobs,
-)
-from sagejs.number_fields.local_parallel_worker import (
-    authenticated_om_worker_proof_matches,
-    cancel_public_om_candidate_job,
-    finish_public_om_candidate_job,
-    public_worker_decision,
-    run_public_local_jobs,
-    start_public_om_candidate_job,
-)
-from sagejs.number_fields.maximal_order_certification import (
-    _scaled_integral_inverse,
-    certify_global_order,
-    check_discriminant_coprime_component_witness,
-    make_composite_local_maximality_witness,
-    make_local_maximality_witness,
-)
 from sagejs.number_fields.maximal_order_contracts import (
     DiscriminantComponent,
     MaximalOrderTrace,
     OrderBasis,
     SelectionDecision,
-)
-from sagejs.number_fields.order_resource import (
-    RESOURCE_COMPLETE,
-    NativeOrderResourceResult,
-    native_order_from_polynomial,
 )
 
 _nf_module = __import__("sagejs._baselib.number_fields", fromlist=["number_fields"])
@@ -91,6 +47,13 @@ _MAX_WORD_PRIME = 0xFFFFFFFFFFFFFFFF
 _FIELD_ANALYSIS_TRIAL_BOUND = 1000
 _FIELD_ANALYSIS_AUTO_MEMORY_BUDGET = 32 * 1024 * 1024
 _FIELD_ANALYSIS_AUTO_WORK_BUDGET = 4_000_000
+_buchmann_lenstra_cache: Any = runtime.undefined
+_composite_local_merge_cache: Any = runtime.undefined
+_composite_field_analysis_cache: Any = runtime.undefined
+_maximal_order_certification_cache: Any = runtime.undefined
+_local_parallel_cache: Any = runtime.undefined
+_local_parallel_worker_cache: Any = runtime.undefined
+_order_resource_cache: Any = runtime.undefined
 
 
 def _maximal_order_module() -> Any:
@@ -98,6 +61,96 @@ def _maximal_order_module() -> Any:
         "sagejs.number_fields.maximal_order",
         fromlist=["maximal_order"],
     )
+
+
+def _buchmann_lenstra_module() -> Any:
+    """Load composite multiplier-ring arithmetic only on fallback routes."""
+    global _buchmann_lenstra_cache
+    if _buchmann_lenstra_cache is runtime.undefined:
+        _buchmann_lenstra_cache = __import__(
+            "sagejs.number_fields.buchmann_lenstra",
+            fromlist=["buchmann_lenstra"],
+        )
+    return _buchmann_lenstra_cache
+
+
+def _composite_local_merge_module() -> Any:
+    """Load coprime local-order merging only after compact analysis declines."""
+    global _composite_local_merge_cache
+    if _composite_local_merge_cache is runtime.undefined:
+        _composite_local_merge_cache = __import__(
+            "sagejs.number_fields.composite_local_merge",
+            fromlist=["composite_local_merge"],
+        )
+    return _composite_local_merge_cache
+
+
+def _composite_field_analysis_module() -> Any:
+    """Load the large composite-analysis backend only for eligible fields."""
+    global _composite_field_analysis_cache
+    if _composite_field_analysis_cache is runtime.undefined:
+        _composite_field_analysis_cache = __import__(
+            "sagejs.number_fields.composite_field_analysis",
+            fromlist=["composite_field_analysis"],
+        )
+    return _composite_field_analysis_cache
+
+
+def _maximal_order_certification_module() -> Any:
+    """Load full certificate replay only when evidence is materialized."""
+    global _maximal_order_certification_cache
+    if _maximal_order_certification_cache is runtime.undefined:
+        _maximal_order_certification_cache = __import__(
+            "sagejs.number_fields.maximal_order_certification",
+            fromlist=["maximal_order_certification"],
+        )
+    return _maximal_order_certification_cache
+
+
+def _local_parallel_module() -> Any:
+    """Load local scheduling only after the compact public path declines."""
+    global _local_parallel_cache
+    if _local_parallel_cache is runtime.undefined:
+        _local_parallel_cache = __import__(
+            "sagejs.number_fields.local_parallel", fromlist=["local_parallel"]
+        )
+    return _local_parallel_cache
+
+
+def _local_parallel_worker_module() -> Any:
+    """Load worker orchestration only when a local fallback requests it."""
+    global _local_parallel_worker_cache
+    if _local_parallel_worker_cache is runtime.undefined:
+        _local_parallel_worker_cache = __import__(
+            "sagejs.number_fields.local_parallel_worker",
+            fromlist=["local_parallel_worker"],
+        )
+    return _local_parallel_worker_cache
+
+
+def _order_resource_module() -> Any:
+    """Load the general native order resource only when it is requested."""
+    global _order_resource_cache
+    if _order_resource_cache is runtime.undefined:
+        _order_resource_cache = __import__(
+            "sagejs.number_fields.order_resource", fromlist=["order_resource"]
+        )
+    return _order_resource_cache
+
+
+def buchmann_lenstra_multiplier_cycle(*args: Any, **kwargs: Any) -> Any:
+    """Lazy public-test seam for the composite multiplier cycle."""
+    return _buchmann_lenstra_module().buchmann_lenstra_multiplier_cycle(*args, **kwargs)
+
+
+def check_buchmann_lenstra_result(*args: Any, **kwargs: Any) -> Any:
+    """Lazy public-test seam for the compact composite proof checker."""
+    return _buchmann_lenstra_module().check_buchmann_lenstra_result(*args, **kwargs)
+
+
+def native_order_from_polynomial(*args: Any, **kwargs: Any) -> Any:
+    """Lazy public-test seam for the general native order resource."""
+    return _order_resource_module().native_order_from_polynomial(*args, **kwargs)
 
 
 def _exact_integer(value: Any) -> int:
@@ -323,7 +376,7 @@ def _merge_coprime_order_bases(
         # elementary divisor therefore divides `denominator`, exactly the
         # precondition of FLINT's modular elementary-divisor HNF algorithm.
         merged = OrderBasis(
-            _packed_row_hnf(generators, denominator),
+            _buchmann_lenstra_module()._packed_row_hnf(generators, denominator),
             denominator,
             canonical=True,
         )
@@ -367,7 +420,7 @@ def _generated_round2_order_result(
     scale: int,
     equation_discriminant: int,
     primes: list[int],
-) -> NativeOrderResourceResult:
+) -> Any:
     """Wrap a generated FLINT batch; certification replays it separately."""
     local_primes = [int(prime) for prime in primes]
     order = _maximal_order_module().maximal_overorder_native(
@@ -378,8 +431,9 @@ def _generated_round2_order_result(
         order, basis, equation_discriminant
     )
     index = _index_from_discriminants(equation_discriminant, order_discriminant)
-    return NativeOrderResourceResult(
-        RESOURCE_COMPLETE,
+    order_resource = _order_resource_module()
+    return order_resource.NativeOrderResourceResult(
+        order_resource.RESOURCE_COMPLETE,
         len(local_primes),
         len(local_primes),
         len(local_primes),
@@ -393,7 +447,7 @@ def _generated_round2_order_result(
 
 
 def _simple_bl_complete_uses_global_theorem(
-    result: BuchmannLenstraResult,
+    result: Any,
     starting_basis: OrderBasis,
     identity_basis: OrderBasis,
 ) -> bool:
@@ -706,8 +760,9 @@ def _local_selection_plan(
     *,
     worker_capability: bool,
     cpu_count: int | None = None,
-) -> tuple[list[JobPayload], dict[tuple[Any, ...], dict[str, Any]], tuple[Any, ...]]:
-    jobs: list[JobPayload] = []
+) -> tuple[list[Any], dict[tuple[Any, ...], dict[str, Any]], tuple[Any, ...]]:
+    parallel = _local_parallel_module()
+    jobs: list[Any] = []
     decisions: dict[tuple[Any, ...], dict[str, Any]] = {}
     forced = (
         None
@@ -725,7 +780,7 @@ def _local_selection_plan(
         )
         metrics = decision.metrics
         predicted = metrics["predicted_micros"]
-        job = make_local_job(
+        job = parallel.make_local_job(
             coefficients,
             prime,
             ordinal,
@@ -736,8 +791,8 @@ def _local_selection_plan(
             algorithm=decision.algorithm,
         )
         jobs.append(job)
-        decisions[local_job_key(job)] = decision.to_dict()
-    schedule = make_schedule(
+        decisions[parallel.local_job_key(job)] = decision.to_dict()
+    schedule = parallel.make_schedule(
         jobs,
         cpu_count=cpu_count,
         worker_capability=worker_capability,
@@ -784,14 +839,16 @@ def inspect_maximal_order_selection(
         worker_capability=worker_capability,
         cpu_count=cpu_count,
     )
-    parallel_decision = public_worker_decision(
+    parallel = _local_parallel_module()
+    worker = _local_parallel_worker_module()
+    parallel_decision = worker.public_worker_decision(
         jobs,
         after_native_fallback=bool(worker_capability),
         cpu_count=cpu_count,
         memory_budget_bytes=memory_budget_bytes,
         worker_capability=worker_capability,
     )
-    schedule = make_schedule(
+    schedule = parallel.make_schedule(
         jobs,
         cpu_count=cpu_count,
         # This public helper is an inspection surface: an explicit `True`
@@ -815,7 +872,7 @@ def inspect_maximal_order_selection(
     else:
         primary = "none"
         primary_reason = "no proven prime has square support in the discriminant"
-    ordered_decisions = [decisions[local_job_key(job)] for job in jobs]
+    ordered_decisions = [decisions[parallel.local_job_key(job)] for job in jobs]
     return {
         "schema": _SELECTOR_SCHEMA,
         "primary": primary,
@@ -1060,7 +1117,9 @@ def _auto_om_local_order_with_proof(
     local_index = selection.result.local_result.index
     discriminant = equation_discriminant // (local_index * local_index)
     canonical_basis = OrderBasis(
-        _packed_row_hnf(selection.result.order_basis.numerator),
+        _buchmann_lenstra_module()._packed_row_hnf(
+            selection.result.order_basis.numerator
+        ),
         selection.result.order_basis.denominator,
         canonical=True,
     )
@@ -1138,7 +1197,7 @@ def _arbitrary_prime_local_order(
         raise ArithmeticError(
             "arbitrary-prime multiplier fallback did not certify a complete local order"
         )
-    if not check_buchmann_lenstra_general_result(
+    if not _buchmann_lenstra_module().check_buchmann_lenstra_general_result(
         coefficients,
         starting_basis,
         fallback,
@@ -1187,7 +1246,9 @@ def _portfolio_basis_contains(
     source_denominator, source_rows = source
     inverse = scaled_inverse
     if inverse is None:
-        inverse = _scaled_integral_inverse([list(row) for row in rows], denominator)
+        inverse = _maximal_order_certification_module()._scaled_integral_inverse(
+            [list(row) for row in rows], denominator
+        )
     if inverse is None or len(source_rows) != len(rows):
         return False
     degree = len(rows)
@@ -1231,12 +1292,14 @@ def _portfolio_bases_generate_final_lattice(
         # elementary-divisor multiple for modular HNF.  Exact canonical
         # equality proves both all containments and that no larger lattice was
         # introduced by the merge.
-        return _packed_row_hnf(
+        return _buchmann_lenstra_module()._packed_row_hnf(
             generators,
             elementary_divisor=denominator,
         ) == [list(row) for row in rows]
     except (ArithmeticError, OverflowError, TypeError, ValueError):
-        inverse = _scaled_integral_inverse([list(row) for row in rows], denominator)
+        inverse = _maximal_order_certification_module()._scaled_integral_inverse(
+            [list(row) for row in rows], denominator
+        )
         return inverse is not None and all(
             _portfolio_basis_contains(container, source, inverse) for source in sources
         )
@@ -1409,7 +1472,7 @@ class _AuthenticatedLocalPortfolio:
                 tuple(int(value) for value in proof_job[1]) == self.coefficients
                 and int(component[1]) == prime
                 and int(component[4]) == equation_valuation
-                and authenticated_om_worker_proof_matches(
+                and _local_parallel_worker_module().authenticated_om_worker_proof_matches(
                     selection,
                     job=proof_job,
                     basis_numerator=[list(row) for row in basis_key[1]],
@@ -1671,7 +1734,7 @@ class _CertificateAdapter:
         coefficients: list[int],
         scale: int,
         equation_discriminant: int,
-        composite_results: dict[int, BuchmannLenstraResult],
+        composite_results: dict[int, Any],
         replay_primes: list[int],
         authenticated_analysis: Any = None,
         authenticated_composite_analysis: Any = None,
@@ -1759,21 +1822,17 @@ class _CertificateAdapter:
                 pass
         composite_analysis = self.authenticated_composite_analysis
         if composite_analysis is not None and candidate is self._candidate:
-            authenticated = (
-                composite_field_analysis.authenticated_composite_field_analysis_matches(
-                    composite_analysis,
-                    polynomial=list(certificate.get("defining_polynomial", [])),
-                    scale=self.scale,
-                    equation_discriminant=int(
-                        certificate.get("equation_discriminant", 0)
-                    ),
-                    basis_numerator=[
-                        list(row) for row in certificate.get("basis_numerator", [])
-                    ],
-                    basis_denominator=int(certificate.get("basis_denominator", 0)),
-                    index=int(certificate.get("index", 0)),
-                    order_discriminant=int(certificate.get("order_discriminant", 0)),
-                )
+            authenticated = _composite_field_analysis_module().authenticated_composite_field_analysis_matches(
+                composite_analysis,
+                polynomial=list(certificate.get("defining_polynomial", [])),
+                scale=self.scale,
+                equation_discriminant=int(certificate.get("equation_discriminant", 0)),
+                basis_numerator=[
+                    list(row) for row in certificate.get("basis_numerator", [])
+                ],
+                basis_denominator=int(certificate.get("basis_denominator", 0)),
+                index=int(certificate.get("index", 0)),
+                order_discriminant=int(certificate.get("order_discriminant", 0)),
             )
             if authenticated:
                 if "component_value" in witness:
@@ -1820,7 +1879,7 @@ class _CertificateAdapter:
                 if abs(int(component.get("value", 0))) == component_value
             ]
             return len(matching_components) == 1 and (
-                check_discriminant_coprime_component_witness(
+                _maximal_order_certification_module().check_discriminant_coprime_component_witness(
                     _exact_integer(candidate.discriminant()),
                     matching_components[0],
                     witness,
@@ -1869,11 +1928,13 @@ class _CertificateAdapter:
                     starting_basis,
                     equation_discriminant=self.equation_disc,
                 )
-                replay_valid = check_buchmann_lenstra_general_result(
-                    self.coefficients,
-                    starting_basis,
-                    replay,
-                    equation_discriminant=self.equation_disc,
+                replay_valid = (
+                    _buchmann_lenstra_module().check_buchmann_lenstra_general_result(
+                        self.coefficients,
+                        starting_basis,
+                        replay,
+                        equation_discriminant=self.equation_disc,
+                    )
                 )
             except Exception:
                 return False
@@ -1945,21 +2006,17 @@ class _CertificateAdapter:
             return matched
         composite_analysis = self.authenticated_composite_analysis
         if composite_analysis is not None and candidate is self._candidate:
-            return (
-                composite_field_analysis.authenticated_composite_field_analysis_matches(
-                    composite_analysis,
-                    polynomial=list(certificate.get("defining_polynomial", [])),
-                    scale=self.scale,
-                    equation_discriminant=int(
-                        certificate.get("equation_discriminant", 0)
-                    ),
-                    basis_numerator=[
-                        list(row) for row in certificate.get("basis_numerator", [])
-                    ],
-                    basis_denominator=int(certificate.get("basis_denominator", 0)),
-                    index=int(certificate.get("index", 0)),
-                    order_discriminant=int(certificate.get("order_discriminant", 0)),
-                )
+            return _composite_field_analysis_module().authenticated_composite_field_analysis_matches(
+                composite_analysis,
+                polynomial=list(certificate.get("defining_polynomial", [])),
+                scale=self.scale,
+                equation_discriminant=int(certificate.get("equation_discriminant", 0)),
+                basis_numerator=[
+                    list(row) for row in certificate.get("basis_numerator", [])
+                ],
+                basis_denominator=int(certificate.get("basis_denominator", 0)),
+                index=int(certificate.get("index", 0)),
+                order_discriminant=int(certificate.get("order_discriminant", 0)),
             )
         analysis = self.authenticated_analysis
         if analysis is None or candidate is not self._candidate:
@@ -2086,10 +2143,9 @@ def _authenticated_composite_square_support(
     # leave ordinary public microcases on the fused field-analysis boundary.
     if _coefficient_bits(coefficients) < 128:
         return None
-    analysis = composite_field_analysis.construct_composite_field_analysis(
-        coefficients, scale
-    )
-    if not composite_field_analysis.authenticated_composite_field_analysis_matches(
+    composite = _composite_field_analysis_module()
+    analysis = composite.construct_composite_field_analysis(coefficients, scale)
+    if not composite.authenticated_composite_field_analysis_matches(
         analysis,
         polynomial=coefficients,
         scale=scale,
@@ -2138,7 +2194,7 @@ def _authenticated_composite_square_support(
     if not check_decomposition_certificate(decomposition, require_proven=False):
         return None
     local_witnesses = [
-        make_local_maximality_witness(
+        _maximal_order_certification_module().make_local_maximality_witness(
             prime,
             "dedekind",
             _valuation(int(analysis.equation_discriminant), prime),
@@ -2146,7 +2202,7 @@ def _authenticated_composite_square_support(
             _valuation(int(analysis.index), prime),
             {"check": "monomial-dedekind-p-maximal"},
         ),
-        make_composite_local_maximality_witness(
+        _maximal_order_certification_module().make_composite_local_maximality_witness(
             support * support,
             "composite-square-support",
             {
@@ -2293,7 +2349,7 @@ def _replace_composite_by_certified_primes(
 def _replace_component_by_certified_split(
     decomposition: dict[str, Any],
     record: dict[str, Any],
-    result: BuchmannLenstraResult,
+    result: Any,
     trace: MaximalOrderTrace,
 ) -> list[dict[str, Any]]:
     """Replace one BL-split branch without factoring the parent component."""
@@ -2417,7 +2473,7 @@ def compute_maximal_order(
                     authenticated_composite_analysis=analysis,
                 )
                 adapter.bind_candidate(order)
-                return certify_global_order(
+                return _maximal_order_certification_module().certify_global_order(
                     adapter,
                     order,
                     decomposition,
@@ -2458,7 +2514,7 @@ def compute_maximal_order(
                 ]
                 index = int(analysis.index)
                 prime_witnesses = [
-                    make_local_maximality_witness(
+                    _maximal_order_certification_module().make_local_maximality_witness(
                         prime,
                         "round2",
                         _valuation(equation_discriminant, prime),
@@ -2477,7 +2533,7 @@ def compute_maximal_order(
                     authenticated_analysis=analysis,
                 )
                 adapter.bind_candidate(order)
-                return certify_global_order(
+                return _maximal_order_certification_module().certify_global_order(
                     adapter,
                     order,
                     decomposition,
@@ -2491,6 +2547,10 @@ def compute_maximal_order(
             order._maximal_order_trace = trace.to_dict()
             return order
 
+    # The compact authenticated routes above cover ordinary public fields.
+    # Load scheduling and worker machinery only after both have declined.
+    parallel = _local_parallel_module()
+    worker = _local_parallel_worker_module()
     equation_order = field.equation_order()
     equation_discriminant = _exact_integer(equation_order.discriminant())
     valuation_cache: dict[tuple[int, int], int] = {}
@@ -2504,7 +2564,7 @@ def compute_maximal_order(
         return cached
 
     om_worker_prime: int | None = None
-    om_worker_job: JobPayload | None = None
+    om_worker_job: Any = None
     om_worker_handle: Any = None
     om_worker_started_ns = 0
 
@@ -2527,7 +2587,7 @@ def compute_maximal_order(
                 "proven-prime",
                 evidence={"source": "deterministic bounded trial division"},
             )
-            om_worker_job = make_local_job(
+            om_worker_job = parallel.make_local_job(
                 coefficients,
                 component,
                 0,
@@ -2539,7 +2599,7 @@ def compute_maximal_order(
             )
             om_worker_started_ns = time.perf_counter_ns()
             try:
-                om_worker_handle = start_public_om_candidate_job(om_worker_job)
+                om_worker_handle = worker.start_public_om_candidate_job(om_worker_job)
             except Exception:
                 om_worker_handle = None
             if om_worker_handle is not None:
@@ -2561,7 +2621,7 @@ def compute_maximal_order(
 
     order = equation_order
     current_basis = _identity_basis(field.degree())
-    composite_results: dict[int, BuchmannLenstraResult] = {}
+    composite_results: dict[int, Any] = {}
     authenticated_composite_projections: dict[int, Any] = {}
     composite_witnesses: list[dict[str, Any]] = []
     processed_composite_supports: tuple[int, ...] = ()
@@ -2639,7 +2699,7 @@ def compute_maximal_order(
                     field,
                     current_basis,
                     OrderBasis(
-                        _packed_row_hnf(om_basis.numerator),
+                        _buchmann_lenstra_module()._packed_row_hnf(om_basis.numerator),
                         om_basis.denominator,
                         canonical=True,
                     ),
@@ -2687,7 +2747,7 @@ def compute_maximal_order(
             om_attempted_primes.add(om_worker_prime)
         else:
             if om_worker_handle is not None:
-                cancel_public_om_candidate_job(om_worker_handle)
+                worker.cancel_public_om_candidate_job(om_worker_handle)
                 om_worker_handle = None
                 om_worker_prime = None
             for record in initial_om_records:
@@ -2728,13 +2788,13 @@ def compute_maximal_order(
             )
             identity_basis = _identity_basis(field.degree())
             starting_basis = identity_basis
-            result = certified_composite_overorder_from_equation(
+            result = _composite_local_merge_module().certified_composite_overorder_from_equation(
                 coefficients,
                 component,
                 equation_discriminant,
             )
             if result.evidence.get("stage") == "q-radical-multiplier-cycle":
-                if not check_buchmann_lenstra_general_result(
+                if not _buchmann_lenstra_module().check_buchmann_lenstra_general_result(
                     coefficients,
                     starting_basis,
                     result,
@@ -2827,7 +2887,7 @@ def compute_maximal_order(
                     return _merge_orders(field, left, right)
 
             order, processed_composite_supports = (
-                merge_certified_coprime_composite_order(
+                _composite_local_merge_module().merge_certified_coprime_composite_order(
                     order,
                     processed_composite_supports,
                     result,
@@ -2838,7 +2898,7 @@ def compute_maximal_order(
             current_basis = _basis_from_order(order, scale)
             composite_results[component_value] = result
             composite_witnesses.append(
-                make_composite_local_maximality_witness(
+                _maximal_order_certification_module().make_composite_local_maximality_witness(
                     component_value,
                     "buchmann-lenstra",
                     {
@@ -3100,7 +3160,7 @@ def compute_maximal_order(
             "selected": False,
         }
         try:
-            issued = finish_public_om_candidate_job(
+            issued = worker.finish_public_om_candidate_job(
                 om_worker_handle,
                 timeout=15,
             )
@@ -3114,12 +3174,12 @@ def compute_maximal_order(
                 canonical=True,
             )
             canonical_basis = OrderBasis(
-                _packed_row_hnf(om_basis.numerator),
+                _buchmann_lenstra_module()._packed_row_hnf(om_basis.numerator),
                 om_basis.denominator,
                 canonical=True,
             )
             local_index = int(candidate[5])
-            if not authenticated_om_worker_proof_matches(
+            if not worker.authenticated_om_worker_proof_matches(
                 om_worker_proof,
                 job=om_worker_job,
                 basis_numerator=om_basis.numerator,
@@ -3175,7 +3235,7 @@ def compute_maximal_order(
             )
         except Exception as error:
             if om_worker_handle is not None:
-                cancel_public_om_candidate_job(om_worker_handle)
+                worker.cancel_public_om_candidate_job(om_worker_handle)
                 om_worker_handle = None
             om_attempted_primes.discard(prime)
             worker_evidence.update(
@@ -3217,22 +3277,22 @@ def compute_maximal_order(
             algorithm,
             worker_capability=False,
         )
-        parallel_decision = public_worker_decision(
+        parallel_decision = worker.public_worker_decision(
             jobs,
             after_native_fallback=(
                 algorithm == "auto" and native_fallback_for_parallel
             ),
         )
         use_public_workers = bool(parallel_decision["selected"])
-        selected_schedule = make_schedule(
+        selected_schedule = parallel.make_schedule(
             jobs,
             worker_capability=use_public_workers,
         )
         worker_details: dict[tuple[Any, ...], dict[str, Any]] = {}
 
-        def run_local_job(job: JobPayload) -> tuple[Any, ...]:
+        def run_local_job(job: Any) -> tuple[Any, ...]:
             started = time.perf_counter_ns()
-            component = local_job_component(job)
+            component = parallel.local_job_component(job)
             prime = component.base
             if prime > _MAX_WORD_PRIME:
                 local_order, used_algorithm, details = _arbitrary_prime_local_order(
@@ -3263,7 +3323,7 @@ def compute_maximal_order(
                 local_discriminant,
             )
             elapsed_micros = max(0, (time.perf_counter_ns() - started) // 1000)
-            key = local_job_key(job)
+            key = parallel.local_job_key(job)
             selected = decisions[key]
             details = dict(details)
             details["used_algorithm"] = used_algorithm
@@ -3272,7 +3332,7 @@ def compute_maximal_order(
             details["local_index"] = local_index
             details["elapsed_micros"] = elapsed_micros
             worker_details[key] = details
-            return make_local_result(
+            return parallel.make_local_result(
                 job,
                 basis.numerator,
                 basis.denominator,
@@ -3289,18 +3349,21 @@ def compute_maximal_order(
 
         if use_public_workers:
             try:
-                local_run = run_public_local_jobs(
+                local_run = worker.run_public_local_jobs(
                     jobs,
                     worker_capability=True,
                 )
                 for payload in local_run[2]:
-                    contract = local_result_contract(payload)
+                    contract = parallel.local_result_contract(payload)
                     key = payload[1]
                     details = dict(contract.evidence)
                     details["selection_decision"] = decisions[key]
                     details["elapsed_micros"] = int(payload[9])
                     worker_details[key] = details
-            except (LocalCertificationError, LocalWorkerError) as error:
+            except (
+                parallel.LocalCertificationError,
+                parallel.LocalWorkerError,
+            ) as error:
                 # Capability can become stale between selection and pool
                 # construction.  Auto mode preserves completeness by returning
                 # to the canonical in-process path after the pool has cancelled.
@@ -3308,14 +3371,14 @@ def compute_maximal_order(
                 parallel_decision["selected"] = False
                 parallel_decision["reason"] = "worker-runtime-fallback"
                 parallel_decision["worker_error"] = str(error)
-                local_run = run_local_jobs(
+                local_run = parallel.run_local_jobs(
                     jobs,
                     run_local_job,
                     worker_capability=False,
                 )
                 selected_schedule = local_run[1]
         else:
-            local_run = run_local_jobs(
+            local_run = parallel.run_local_jobs(
                 jobs,
                 run_local_job,
                 worker_capability=False,
@@ -3323,7 +3386,7 @@ def compute_maximal_order(
         if local_run[1] != selected_schedule:
             raise ArithmeticError("local scheduler selection changed during execution")
         for payload in local_run[2]:
-            contract = local_result_contract(payload)
+            contract = parallel.local_result_contract(payload)
             if contract.basis is None:
                 raise ArithmeticError("a completed local branch omitted its basis")
             local_discriminant = equation_discriminant // (
@@ -3469,7 +3532,7 @@ def compute_maximal_order(
             witness_method = "round2"
             witness_proof = {"check": "independent-round2-fixed-point"}
         prime_witnesses.append(
-            make_local_maximality_witness(
+            _maximal_order_certification_module().make_local_maximality_witness(
                 prime,
                 witness_method,
                 prime_valuation_records[prime][0],
@@ -3540,7 +3603,7 @@ def compute_maximal_order(
     adapter.bind_candidate(order)
 
     def materialize_certificate() -> dict[str, Any]:
-        return certify_global_order(
+        return _maximal_order_certification_module().certify_global_order(
             adapter,
             order,
             decomposition,
