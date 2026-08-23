@@ -254,10 +254,21 @@ except ValueError:
 # record is identical to scalar admission, unavailable kernels return a clean
 # fallback signal, and a successful-but-corrupt kernel cannot admit a row.
 batch_collector = ExactRelationCollector(O, factor_base)
-batch = batch_collector.admit_integral_order_basis_rows((
-    ((2, 0), initial[0].record.row, initial[0].record.provenance),
-))
+canonical_key_calls = 0
+saved_canonical_key = RelationRecord.canonical_key
+def counted_canonical_key(self):
+    global canonical_key_calls
+    canonical_key_calls += 1
+    return saved_canonical_key(self)
+RelationRecord.canonical_key = counted_canonical_key
+try:
+    batch = batch_collector.admit_integral_order_basis_rows((
+        ((2, 0), initial[0].record.row, initial[0].record.provenance),
+    ))
+finally:
+    RelationRecord.canonical_key = saved_canonical_key
 assert batch is not None and len(batch) == 1
+assert canonical_key_calls == 1
 assert batch[0].record.to_dict() == initial[0].record.to_dict()
 assert batch_collector.admission_receipt_diagnostics()[
     "integral_norm_certificates"

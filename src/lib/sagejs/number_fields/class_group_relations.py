@@ -1173,9 +1173,11 @@ class ExactRelationCollector:
             )
         return self._store_verified(relation)
 
-    def _store_verified(self, relation: RelationRecord) -> RelationAdmission:
+    def _store_verified(
+        self, relation: RelationRecord, *, canonical_key: str | None = None
+    ) -> RelationAdmission:
         """Store a relation whose exact objects were verified by its producer."""
-        key = relation.canonical_key()
+        key = relation.canonical_key() if canonical_key is None else canonical_key
         if key in self._keys:
             raise ValueError("the exact relation record was already admitted")
         independent, pivot = self.rank_screen.add(relation.row)
@@ -1605,7 +1607,10 @@ class ExactRelationCollector:
             if key in self._keys or new_keys.get(key, False):
                 raise ValueError("the exact relation record was already admitted")
             new_keys[key] = True
-        admissions = tuple(self._store_verified(record) for record in records)
+        admissions = tuple(
+            self._store_verified(record, canonical_key=key)
+            for record, key in zip(records, new_keys, strict=True)
+        )
         self._admission_receipt_statistics["integral_norm_certificates"] += len(
             admissions
         )
