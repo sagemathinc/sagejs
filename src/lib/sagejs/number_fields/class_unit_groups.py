@@ -1395,6 +1395,7 @@ class ClassUnitGroupEngine:
             "cubic_relation_seed_uses": 0,
             "cubic_relation_seed_relations": 0,
             "cubic_factor_base_seed_uses": 0,
+            "cubic_packed_factor_base_uses": 0,
             "cubic_integral_sieve_uses": 0,
             "cubic_integral_sieve_candidates": 0,
             "cubic_integral_sieve_relations": 0,
@@ -1653,8 +1654,51 @@ class ClassUnitGroupEngine:
             max_memory_bytes=self.limits.max_memory_bytes,
         )
         plan.require_feasible()
-        records = module.build_factor_base(plan)
-        primes = tuple(_value(record, ("prime_ideal", "ideal")) for record in records)
+        records: Any = None
+        primes: tuple[Any, ...] = ()
+        if (
+            not proof
+            and int(self.field.degree()) == 3
+            and self.algorithm == "auto"
+            and int(plan.bound) <= 12
+            and module
+            is _optional_module("sagejs.number_fields.class_group_factor_base")
+        ):
+            try:
+                cubic = __import__(
+                    "sagejs.number_fields.cubic_class_number",
+                    fromlist=["cubic_class_number"],
+                )
+                packed = cubic.packed_cubic_factor_records(plan)
+                packed_values: Any = packed
+                materialize = getattr(
+                    cubic,
+                    "materialize_verified_packed_cubic_factor_records",
+                    None,
+                )
+                verified = (
+                    materialize(tuple(packed_values))
+                    if packed is not None and callable(materialize)
+                    else None
+                )
+                if verified is not None:
+                    verified_values: Any = verified
+                    records, primes = verified_values
+                    self._resource_usage["cubic_packed_factor_base_uses"] += 1
+            except (
+                AttributeError,
+                ArithmeticError,
+                ImportError,
+                TypeError,
+                ValueError,
+            ):
+                records = None
+                primes = ()
+        if records is None:
+            records = module.build_factor_base(plan)
+            primes = tuple(
+                _value(record, ("prime_ideal", "ideal")) for record in records
+            )
         if any(prime is None for prime in primes):
             raise TypeError("factor-base records do not expose exact prime ideals")
         if self.checkpoint_controller is not None:

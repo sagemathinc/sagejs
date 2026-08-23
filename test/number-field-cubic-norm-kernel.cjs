@@ -342,6 +342,32 @@ assert generic_factor_calls == 1
 assert legacy_p_maximal_calls == 0
 assert modular_table_calls == 3
 assert one_coordinate_calls == 1
+# The p=2 index-prime factor requires the complete finite-algebra replay and
+# therefore deliberately declines the selective live materializer.
+assert cubic.materialize_verified_packed_cubic_factor_records(
+    direct_packed_factors
+) is None
+
+# An all-Dedekind--Kummer BDF base can be materialized with the same exact
+# containment, norm, and quotient-field checks as the ordinary constructor.
+verified_field = NumberField(x**3 - x**2 + 7*x + 8, "v")
+verified_plan = factor_bases.factor_base_plan(
+    verified_field.maximal_order(), proof=False, theorem="auto"
+)
+verified_packed = cubic.packed_cubic_factor_records(verified_plan)
+assert verified_packed is not None and len(verified_packed) == 7
+verified_materialization = (
+    cubic.materialize_verified_packed_cubic_factor_records(verified_packed)
+)
+assert verified_materialization is not None
+verified_records, verified_primes = verified_materialization
+assert [record.to_dict() for record in verified_records] == [
+    record.to_dict() for record in factor_bases.build_factor_base(verified_plan)
+]
+assert all(
+    not getattr(prime, "_packed_candidate_pending_replay", True)
+    for prime in verified_primes
+)
 
 packed = cubic.bounded_cubic_minkowski_class_number(packed_field)
 assert packed.complete and packed.order() == 3 and packed.certificate.verify()

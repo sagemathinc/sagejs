@@ -124,6 +124,8 @@ class PackedCubicFactorRecord:
         presentation: dict[str, Any],
         second_generator: Any,
         table: list[list[list[int]]],
+        one_coordinates: list[int],
+        dedekind_kummer: bool,
     ) -> None:
         self.order = order
         self.index = int(index)
@@ -184,6 +186,12 @@ class PackedCubicFactorRecord:
                     witness = prime_module._nf_element_from_row(field, list(row))
                     break
         self.second_generator = witness
+        self.modular_table = tuple(
+            tuple(tuple(int(value) for value in product) for product in left)
+            for left in table
+        )
+        self.modular_one = tuple(int(value) for value in one_coordinates)
+        self.dedekind_kummer = bool(dedekind_kummer)
         self._power_cache: tuple[tuple[tuple[int, ...], int], ...] = ()
 
     def rational_prime(self) -> int:
@@ -326,6 +334,8 @@ def packed_cubic_factor_records(
             )
         if local is None:
             return None
+        for record in local:
+            record["dedekind_kummer"] = p_maximal
         occurrences: dict[int, int] = {}
         for record in local:
             residue_degree = int(record["f"])
@@ -349,6 +359,8 @@ def packed_cubic_factor_records(
             record["presentation"],
             record["second_generator"],
             record["table"],
+            record["one"],
+            record["dedekind_kummer"],
         )
         for index, (_norm, prime, residue_degree, _occurrence, record) in enumerate(
             candidates
@@ -404,6 +416,63 @@ def _materialize_packed_cubic_factor_records(
         restored.append(record)
     records = tuple(restored)
     factors = tuple(record.prime_ideal for record in records)
+    return records, factors
+
+
+def materialize_verified_packed_cubic_factor_records(
+    factor_records: tuple[Any, ...],
+) -> tuple[tuple[Any, ...], tuple[Any, ...]] | None:
+    """Materialize a live packed Dedekind--Kummer base with exact checks.
+
+    The generic class/unit engine needs ordinary prime-ideal objects before
+    relation collection.  For a cubic `p`-maximal equation order, the packed
+    producer already retains the exact modular factor, HNF lattice, quotient
+    presentation, and second generator.  Replay the same independent checks
+    as `_dedekind_kummer_prime_candidate(..., verify_candidate=True)` after
+    materialization.  Index-prime finite-algebra factors deliberately return
+    `None`; their complete product/comaximality replay remains authoritative.
+    """
+    if not factor_records or any(
+        not isinstance(record, PackedCubicFactorRecord)
+        or not record.dedekind_kummer
+        or record.second_generator is None
+        for record in factor_records
+    ):
+        return None
+    records, factors = _materialize_packed_cubic_factor_records(factor_records)
+    prime_module = __import__(
+        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+    )
+    order = factor_records[0].order
+    rational_prime_bases: dict[int, tuple[Any, ...]] = {}
+    for packed, prime_ideal in zip(factor_records, factors, strict=True):
+        rational_prime = packed.prime
+        p_basis = rational_prime_bases.get(rational_prime)
+        if p_basis is None:
+            p_basis = tuple(order.ideal(rational_prime).basis())
+            rational_prime_bases[rational_prime] = p_basis
+        if not prime_module._ideal_arithmetic.ideal_contains_elements(
+            prime_ideal, p_basis + (packed.second_generator,)
+        ):
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer ideal omits p*O or its generator"
+            )
+        if prime_ideal.norm() != rational_prime**packed.residue_degree:
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer ideal has the wrong exact norm"
+            )
+        if not prime_module._presentation_modulus_is_irreducible(
+            packed.presentation, rational_prime, packed.residue_degree
+        ):
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer ideal quotient is not a field"
+            )
+        prime_ideal._packed_candidate_pending_replay = False
+        prime_ideal._verified_modular_algebra = (
+            rational_prime,
+            [[list(product) for product in left] for left in packed.modular_table],
+            list(packed.modular_one),
+        )
     return records, factors
 
 
@@ -2838,5 +2907,6 @@ __all__ = [
     "authenticated_cubic_class_number_result_matches",
     "authenticated_cubic_relation_seed",
     "bounded_cubic_minkowski_class_number",
+    "materialize_verified_packed_cubic_factor_records",
     "packed_cubic_factor_records",
 ]
