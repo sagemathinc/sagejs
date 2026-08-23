@@ -31,7 +31,10 @@ from sagejs.hyperelliptic_curves.genus3_completion import (
 )
 from sagejs.hyperelliptic_curves.group_structure import (
     JacobianResourceLimitError,
+    add_pairs_batched,
+    annihilation_tests_batched,
     factor_integer_bounded,
+    group_element_key,
 )
 from sagejs.hyperelliptic_curves.jacobian import Jacobian, MumfordDivisor
 
@@ -420,12 +423,19 @@ def _deterministic_elements(
     # point validator multiply the identically-zero h polynomial.
     ring = jacobian.polynomial_ring()
     elements: list[Any] = []
+    element_keys: set[Any] = set()
     partial_sum = jacobian.zero()
     for x_value, y_value in points:
         divisor = jacobian._element(ring.gen() - x_value, ring(y_value), False)
-        partial_sum += divisor
+        partial_sum = add_pairs_batched(
+            (partial_sum,),
+            (divisor,),
+            algorithm="auto",
+        )[0]
         for candidate in (divisor, partial_sum):
-            if not candidate.is_zero() and candidate not in elements:
+            key = group_element_key(candidate)
+            if not candidate.is_zero() and key not in element_keys:
+                element_keys.add(key)
                 elements.append(candidate)
                 if len(elements) >= max_elements:
                     return tuple(elements)
@@ -461,25 +471,50 @@ def _dynamic_order_certificates(
     scalar_multiplications = 0
     for element in elements:
         annihilator = None
-        for order in orders:
-            scalar_multiplications += 1
-            if (order * element).is_zero():
-                annihilator = order
+        # Keep native/host buffers bounded while amortizing preparation and
+        # crossings across all candidate orders in the common small window.
+        window = 256
+        for start in range(0, len(orders), window):
+            order_window = orders[start : start + window]
+            tests = annihilation_tests_batched(
+                element,
+                order_window,
+                algorithm="auto",
+            )
+            scalar_multiplications += len(order_window)
+            for order, annihilates in zip(order_window, tests, strict=True):
+                if annihilates:
+                    annihilator = order
+                    break
+            if annihilator is not None:
                 break
         if annihilator is None:
             raise ArithmeticError(
                 "no Weil-candidate order annihilates a sampled Jacobian element"
             )
         factors = factor_integer_bounded(annihilator, max_trial_divisions)
-        element_order = annihilator
+        strip_candidates = []
+        strip_slices = []
         for prime_value, exponent in factors:
             prime_factor = int(prime_value)
+            start = len(strip_candidates)
+            divisor = 1
             for _index in range(int(exponent)):
-                candidate = element_order // prime_factor
-                scalar_multiplications += 1
-                if not (candidate * element).is_zero():
+                divisor *= prime_factor
+                strip_candidates.append(annihilator // divisor)
+            strip_slices.append((prime_factor, start, len(strip_candidates)))
+        strip_tests = annihilation_tests_batched(
+            element,
+            strip_candidates,
+            algorithm="auto",
+        )
+        scalar_multiplications += len(strip_candidates)
+        element_order = annihilator
+        for prime_factor, start, stop in strip_slices:
+            for index in range(start, stop):
+                if not strip_tests[index]:
                     break
-                element_order = candidate
+                element_order //= prime_factor
         certificates.append(
             {
                 "divisor": element,
@@ -543,14 +578,20 @@ def _check_order_certificate(
             },
             0,
         )
-    scalar_multiplications = 1
-    if not (element_order * divisor).is_zero():
+    tested_multiples = [element_order]
+    tested_multiples.extend(element_order // prime for prime, _exponent in factors)
+    tests = annihilation_tests_batched(
+        divisor,
+        tested_multiples,
+        algorithm="reference",
+    )
+    scalar_multiplications = len(tested_multiples)
+    if not tests[0]:
         raise ArithmeticError(
             "a certified element order does not annihilate its divisor"
         )
-    for prime, _exponent in factors:
-        scalar_multiplications += 1
-        if ((element_order // prime) * divisor).is_zero():
+    for annihilates in tests[1:]:
+        if annihilates:
             raise ArithmeticError("a certified element order is not exact")
     return (
         element_order,
@@ -724,8 +765,10 @@ def _completed_square_curve(curve: Any, prime: int) -> Any:
 
 def _unique_orders(values: Iterable[int]) -> tuple[int, ...]:
     answer: list[int] = []
+    seen: set[int] = set()
     for value in values:
-        if value not in answer:
+        if value not in seen:
+            seen.add(value)
             answer.append(value)
     return tuple(answer)
 
@@ -741,28 +784,21 @@ def _order_progressions(
     Keeping coefficient buckets separate avoids treating accidental adjacency
     in the global order set as mathematical structure.
     """
-    buckets: list[tuple[tuple[int, int], list[int]]] = []
+    buckets: dict[tuple[int, int], set[int]] = {}
     for candidate in candidates:
         key = (candidate[0], candidate[1])
-        values = None
-        for bucket_key, bucket_values in buckets:
-            if bucket_key == key:
-                values = bucket_values
-                break
-        if values is None:
-            values = []
-            buckets.append((key, values))
         order = (
             jacobian_order_from_coefficients(candidate, prime)
             if kind == "jacobian"
             else twist_order_from_coefficients(candidate, prime)
         )
-        if order not in values:
-            values.append(order)
+        if key not in buckets:
+            buckets[key] = set()
+        buckets[key].add(order)
 
     answer: list[dict[str, int]] = []
-    for _key, values in buckets:
-        values.sort()
+    for values_set in buckets.values():
+        values = sorted(values_set)
         start = 0
         while start < len(values):
             end = start + 1

@@ -772,12 +772,20 @@ def complete_genus3_lpolynomial(
         filters.append({"kind": "twist_annihilation_test", "index": index})
 
     annihilation_calls = {"jacobian": 0, "twist": 0}
+    annihilation_cache: dict[tuple[str, int, int], bool] = {}
 
-    def passes_test(test: Callable[[int], bool], order: int, kind: str) -> bool:
+    def passes_test(
+        test: Callable[[int], bool], order: int, kind: str, index: int
+    ) -> bool:
+        key = (kind, index, order)
+        cached = annihilation_cache.get(key)
+        if cached is not None:
+            return cached
         annihilation_calls[kind] += 1
         result = test(order)
         if not isinstance(result, bool):
             raise TypeError(kind + " annihilation test must return bool")
+        annihilation_cache[key] = result
         return result
 
     def accept(candidate: Candidate) -> bool:
@@ -791,11 +799,14 @@ def complete_genus3_lpolynomial(
             return False
         if any(candidate_twist_order % witness for witness in twist_witnesses):
             return False
-        if any(not passes_test(test, order, "jacobian") for test in jacobian_tests):
+        if any(
+            not passes_test(test, order, "jacobian", index)
+            for index, test in enumerate(jacobian_tests)
+        ):
             return False
         if any(
-            not passes_test(test, candidate_twist_order, "twist")
-            for test in twist_tests
+            not passes_test(test, candidate_twist_order, "twist", index)
+            for index, test in enumerate(twist_tests)
         ):
             return False
         return True
