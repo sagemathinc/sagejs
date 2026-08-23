@@ -450,13 +450,35 @@
       "prefixes": []
     },
     {
+      "id": "hyperelliptic-curves-kernels",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 150000,
+      "depends_on": [
+        "core-runtime", "native-integration", "python-stdlib", "arithmetic",
+        "hyperelliptic-curves"
+      ],
+      "modules": [
+        "sagejs.hyperelliptic_curves.genus2_kummer_formulas",
+        "sagejs.hyperelliptic_curves.jacobian_kernels",
+        "sagejs.hyperelliptic_curves.jacobian_kummer_native"
+      ],
+      "files": [
+        "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_formulas.py",
+        "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
+        "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py"
+      ],
+      "prefixes": []
+    },
+    {
       "id": "hyperelliptic-curves-algorithms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 610000,
+      "max_source_bytes": 660000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic",
-        "linear-algebra", "numeric-compat", "hyperelliptic-curves"
+        "linear-algebra", "numeric-compat", "hyperelliptic-curves",
+        "hyperelliptic-curves-kernels"
       ],
       "modules": ["sagejs.hyperelliptic_curves"],
       "files": [],
@@ -470,7 +492,8 @@
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic",
         "linear-algebra", "numeric-compat", "hyperelliptic-curves",
-        "hyperelliptic-curves-algorithms", "number-field-global-arithmetic"
+        "hyperelliptic-curves-kernels", "hyperelliptic-curves-algorithms",
+        "number-field-global-arithmetic"
       ],
       "modules": [
         "sagejs.hyperelliptic_curves.bsd",

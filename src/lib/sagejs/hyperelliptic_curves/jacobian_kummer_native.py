@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable, cast
 
-from sagejs.hyperelliptic_curves.genus2_kummer import (
+from sagejs.hyperelliptic_curves.genus2_kummer_formulas import (
     _CLASSICAL_DELTA_1,
     _CLASSICAL_DELTA_2,
     _CLASSICAL_DELTA_3,
