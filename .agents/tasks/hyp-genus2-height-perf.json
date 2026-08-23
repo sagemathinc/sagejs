@@ -113,10 +113,20 @@
       "commit": "1f704a438cf99792c781df18d4e6fa7108ff12a5",
       "workspace_fingerprint": "3fec5edc3c95cfc94fb1c9dc88604beb9e4b59a5d03cd70f3e028731a73a7b84",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-genus2-height-performance.cjs test/hyperelliptic-genus2-heights.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.567,
+      "started_at": "2026-08-23T06:05:39.811Z",
+      "commit": "1914efe6c7e06bd4175aa0ee3620c5a9b0c0c760",
+      "workspace_fingerprint": "c753b73c9a0e7a6c926dc3801803f25c90c0432e1b091e1df14662cbb9f24e05",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added a certified bounded-state modular/dyadic genus-2 canonical-height path with source-transparent arbitrary-Integer finite and archimedean recurrences, identical dynamic fallbacks, a specialized exact-small-step oracle, reusable model/point/pairing contexts, finite and archimedean tail certificates, and propagated pairing/regulator accuracy. Corrected the non-monic binary-sextic discriminant factor, bound every proof and cache artifact to the exact model, and added adversarial regressions plus a resident Magma benchmark at 64, 128, and 256 target bits.",
+    "summary": "Added a certified bounded-state modular/dyadic genus-2 canonical-height path with source-transparent arbitrary-Integer finite and archimedean recurrences, identical dynamic fallbacks, a specialized exact-small-step oracle, reusable model/point/pairing contexts, finite and archimedean tail certificates, and propagated pairing/regulator accuracy. Corrected the non-monic binary-sextic discriminant factor, bound every proof and cache artifact to the exact model, and added adversarial regressions plus a resident Magma benchmark at 64, 128, and 256 target bits. Repeated canonical-height requests now reuse a sealed result whose proof is replayed against the full live model, point, algorithm, and accuracy parameters before every hit; local 64-bit development timings fell from about 37 ms to 2.6 ms warm while retaining all mutation/transplant rejections.",
     "risks": [
       "The production local path currently covers primitive integral classical odd-degree quintics with h=0; generalized, rational-coefficient, and other models retain the guarded exact path.",
       "Legacy Magma 2.18-5 prints a stable arbitrary-looking tail but agrees with the exact Kummer recurrence only through about 100 bits. The benchmark conservatively treats only its 96-bit prefix as an independent oracle; wider Sage.js certificates are theorem-backed and checked against the exact recurrence.",
@@ -128,7 +138,7 @@
       "Move immutable Flynn duplication tables and their generic evaluator into a neutral genus2_kummer_formulas module so both public prime-field Kummer arithmetic and the height layer depend downward without duplication.",
       "When integrating automatic selection changes, preserve legacy resource-guard coverage by making the corresponding test request algorithm='exact' explicitly.",
       "Collect focused runtime receipts on windows, bench-arm, and m1, then optimize only measured architecture-specific regressions.",
-      "Register the production kernel and package routing through the integration lane, then isolate/eliminate the first-use height charge and rerun the accuracy-matched 64-bit bench-1 gate; obtain a modern independent 128/256-bit competitor only if it demonstrates those target accuracies."
+      "Register the production kernel and package routing through the integration lane, independently audit the proof-bound canonical result cache, and rerun the accuracy-matched 64-bit bench-1 gate only after explicit quiet-host coordination. Local post-change timings are about 319 ms object-cold and 2.6 ms warm, but they are not a substitute for the quiet receipt. Obtain a modern independent 128/256-bit competitor only if it demonstrates those target accuracies."
     ]
   }
 }
