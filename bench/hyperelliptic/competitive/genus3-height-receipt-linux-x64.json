@@ -1,0 +1,755 @@
+{
+  "schema": "sagejs.hyperelliptic-genus3-height-acceptance.v1",
+  "generated_at_utc": "2026-08-23T18:57:58.046Z",
+  "acceptance": true,
+  "source": {
+    "commit": "cc61779bb7c8a8c609d5c6aa724830e0486110f2",
+    "status": "",
+    "harness": "bench/hyperelliptic/competitive/genus3-height.cjs",
+    "harness_sha256": "03c7c5ae6e307a2d913b18d489af7cad7cf0cf21c7f9f71781cda6f0363d3c30",
+    "magma_timing_script": "bench/hyperelliptic/competitive/genus3-height-magma.m",
+    "magma_timing_script_sha256": "4639a558f8f38e252e9afa2b821ca03b28cbf7c95fb5ce09b4807fe29660f5d8",
+    "genus3_heights_sha256": "320fa0980d95c3672f913d74a8af299b892ea21174ddb621f13034bce923c26b",
+    "build_receipt_sha256": "34ed9a76347db92ffb386419c11a789b5092338653155f39965ed0a59a99c35a",
+    "build_identity": {
+      "workspaceSha256": "62bd5abafa3889226a2afd3d94ccf404e276898e163e1c1e594729a43842407e",
+      "nativeInputs": [
+        {
+          "package": "fflas",
+          "status": "installed",
+          "files": [
+            {
+              "path": "packages/fflas/build/generated-ffi/manifest.json",
+              "bytes": 2301,
+              "sha256": "558e489dfa437cb5b83ab633bbb9c950e76ac3617cc578db7dc5156af76068b9"
+            },
+            {
+              "path": "packages/fflas/build/generated-ffi/sagejs_fflas_ffi.node",
+              "bytes": 7414664,
+              "sha256": "f0fbc85c402608160884e9f0913f4ceeb4712c287fc79e9a6d24bcdb1ca859ed"
+            }
+          ]
+        },
+        {
+          "package": "flint",
+          "status": "installed",
+          "files": [
+            {
+              "path": "packages/flint/build/generated-ffi/manifest.json",
+              "bytes": 71394,
+              "sha256": "e7297aba4e6576f2ac2b7314d86b38b57be3dbb67429ef0c35e2e0ee8ef88833"
+            },
+            {
+              "path": "packages/flint/build/generated-ffi/sagejs_flint_ffi.node",
+              "bytes": 19849392,
+              "sha256": "5f4d557e850efbe2fc2be6e1c455f40712fa52f2ec9fb3c2b11cbd1b102d5c6f"
+            }
+          ]
+        },
+        {
+          "package": "graph",
+          "status": "installed",
+          "files": [
+            {
+              "path": "packages/graph/build/generated-ffi/manifest.json",
+              "bytes": 978,
+              "sha256": "6225b48c5320a63968d5d705004c503bae8e2eeec80ecf26cbc7a9466876620d"
+            },
+            {
+              "path": "packages/graph/build/generated-ffi/sagejs_igraph_ffi.node",
+              "bytes": 1009024,
+              "sha256": "4c76263161b21e323bc9a735821febb365dc195f6beeeec124506c7c05087def"
+            }
+          ]
+        },
+        {
+          "package": "m4ri",
+          "status": "installed",
+          "files": [
+            {
+              "path": "packages/m4ri/build/generated-ffi/manifest.json",
+              "bytes": 5396,
+              "sha256": "d3284879530553a951ac3e7761d612a00b8f2a2da7672d4c162f5531c58af1e5"
+            },
+            {
+              "path": "packages/m4ri/build/generated-ffi/sagejs_m4ri_ffi.node",
+              "bytes": 301008,
+              "sha256": "8b26389882a26cecf60bb58dda83c5e830bb068b6610103dd7437d023d6cf15d"
+            }
+          ]
+        },
+        {
+          "package": "flint",
+          "kind": "direct-addon",
+          "status": "installed",
+          "files": [
+            {
+              "path": "packages/flint/build/Release/sagejs_flint.node",
+              "bytes": 25465232,
+              "sha256": "8c4b76ba3bb202be30de48498a22f4d3e05a3b366bb5ecb5d6e69815ac946fa7"
+            },
+            {
+              "path": "packages/flint/build/Release/sagejs_flint.manifest.json",
+              "bytes": 417,
+              "sha256": "01cf91432580a1846bcf1ad68f2caf79f30afb2ab26e4f27faf0be71d4679eef"
+            }
+          ]
+        },
+        {
+          "package": "graph",
+          "kind": "direct-addon",
+          "status": "installed",
+          "files": [
+            {
+              "path": "packages/graph/build/Release/sagejs_graph.node",
+              "bytes": 1502832,
+              "sha256": "04f166404ebaf84a6e2ec95859730b02f8442d2983569abfcd2101b40f918d97"
+            }
+          ]
+        }
+      ],
+      "node": "22.22.2",
+      "v8": "12.4.254.21-node.39",
+      "platform": "linux",
+      "architecture": "x64"
+    }
+  },
+  "fixtures": {
+    "sagejs_script_sha256": "b54ccb6868566a42c6f2103f6fe5387fdcc0f7ae95bcac2a3f296c6440be68d0",
+    "sagejs_manifest_sha256": "23ff76e7e8fc5bccb5802c9d931090430a1b0d7d813f6f3bd810827fbedeb1c3",
+    "magma_script_sha256": "0452ac450ee1df366f303ed9bde2562628f28b1f96a15ec650bd816d79858e2a",
+    "magma_transcript_sha256": "34e37ec17ee9d4daa0dadfbd8bbf914c7129babf6f7d20b40d70b4e2c85acc10",
+    "magma_height": "2.140344148274058861323964793585361420925496626366201001308229370095855452111046427960090404459654664891147583303833777382034516531210481375968121563629849298547",
+    "requested_precision_bits": 64,
+    "abel_max_refinements": 6,
+    "theta_radius": 6,
+    "classification": "slow numerical comparison; not rigorous"
+  },
+  "timing_contract": {
+    "process_cold": "executable startup through one full public answer",
+    "object_cold": "resident runtime; caches cleared; new ring, curve, Jacobian, divisor, and first full public answer",
+    "prepared_first": "explicit verified period construction excluded; exact finite replay and first Abel/theta preparation included",
+    "warm": "same move and verified period; exact finite replay and theta arithmetic repeated; no canonical-height result cache",
+    "historical_direct": "one process-cold exact checkout at 302bf8ccb3e3b71901e646f9ee75877d61640298; identical fixture script",
+    "statistics": "median, minimum, maximum, and median absolute deviation; wall and mathematical-process CPU samples"
+  },
+  "sample_policy": {
+    "diagnostic_smoke": false,
+    "sagejs_object_cold_repetitions": 3,
+    "sagejs_prepared_first_repetitions": 3,
+    "sagejs_warmups": 1,
+    "sagejs_warm_repetitions": 5,
+    "historical_direct_repetitions": 1,
+    "magma_object_cold_repetitions": 3,
+    "magma_warmups": 1,
+    "magma_warm_repetitions": 5
+  },
+  "host": {
+    "captured_at_utc": "2026-08-23T18:57:58.049Z",
+    "hostname": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux",
+    "release": "6.17.0-1022-gcp",
+    "architecture": "x64",
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpus": 8,
+    "total_memory_bytes": 33649016832,
+    "free_memory_bytes": 32485154816,
+    "node": "v22.22.2",
+    "commands": [
+      {
+        "command": "uptime",
+        "status": 0,
+        "stdout": "18:57:58 up 1 day,  8:54,  1 user,  load average: 0.31, 0.81, 0.93",
+        "stderr": ""
+      },
+      {
+        "command": "uname -a",
+        "status": 0,
+        "stdout": "Linux cocalc-vm-51c5044ca6d3406d983e0f10 6.17.0-1022-gcp #25-Ubuntu SMP Sat Jul 25 01:12:40 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux",
+        "stderr": ""
+      },
+      {
+        "command": "lscpu",
+        "status": 0,
+        "stdout": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           48 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  8\nOn-line CPU(s) list:                     0-7\nVendor ID:                               AuthenticAMD\nModel name:                              AMD EPYC 7B13\nCPU family:                              25\nModel:                                   1\nThread(s) per core:                      1\nCore(s) per socket:                      8\nSocket(s):                               1\nStepping:                                0\nBogoMIPS:                                4899.99\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext ssbd ibrs ibpb stibp vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 clzero xsaveerptr arat umip vaes vpclmulqdq rdpid fsrm\nHypervisor vendor:                       KVM\nVirtualization type:                     full\nL1d cache:                               256 KiB (8 instances)\nL1i cache:                               256 KiB (8 instances)\nL2 cache:                                4 MiB (8 instances)\nL3 cache:                                32 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-7\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Mitigation; Safe RET\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Mitigation; Clear CPU buffers\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected",
+        "stderr": ""
+      },
+      {
+        "command": "free -b",
+        "status": 0,
+        "stdout": "total        used        free      shared  buff/cache   available\nMem:     33649016832  1164460032  1479962624     1105920 31489511424 32484556800\nSwap:              0           0           0",
+        "stderr": ""
+      },
+      {
+        "command": "ps -eo pid,ppid,comm,%cpu,%mem,rss --sort=-%cpu | head -25",
+        "status": 0,
+        "stdout": "PID    PPID COMMAND         %CPU %MEM   RSS\n1004956 1004955 node            17.3  0.1 50476\n1004885       1 systemd         13.3  0.0 11544\n1004881     842 sshd             1.1  0.0 10464\n      1       0 systemd          0.0  0.0 12848\n 940517       2 kworker/u32:2+i  0.0  0.0     0\n 941493       2 kworker/u32:1-i  0.0  0.0     0\n     15       2 rcu_sched        0.0  0.0     0\n    708       1 google_osconfig  0.0  0.1 49128\n 940573       2 kworker/u32:3-i  0.0  0.0     0\n    177       1 systemd-journal  0.0  0.2 84200\n    977       1 google_guest_ag  0.0  0.0 23272\n    241       1 multipathd       0.0  0.0 26372\n     97       2 hwrng            0.0  0.0     0\n 940814       2 kworker/u32:0-i  0.0  0.0     0\n 940614       2 kworker/2:1-eve  0.0  0.0     0\n    693       1 dbus-daemon      0.0  0.0  5104\n 942735       2 kworker/3:0-eve  0.0  0.0     0\n     73       2 kcompactd0       0.0  0.0     0\n    754       1 snapd            0.0  0.1 41784\n 942326       2 kworker/0:1-eve  0.0  0.0     0\n 928252       2 kworker/1:0-eve  0.0  0.0     0\n 932894       2 kworker/6:2-eve  0.0  0.0     0\n   1178       1 systemd-logind   0.0  0.0  7824\n 942197       2 kworker/7:2-cgr  0.0  0.0     0",
+        "stderr": ""
+      },
+      {
+        "command": "for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do test -r \"$f\" && printf \"%s=\" \"$f\" && cat \"$f\"; done",
+        "status": 1,
+        "stdout": "",
+        "stderr": ""
+      }
+    ],
+    "algorithm_environment": {}
+  },
+  "sagejs": {
+    "backend": {
+      "id": "sagejs",
+      "node": "v22.22.2",
+      "numerical_classification": "radius-refinement-stable; truncation and rounding not enclosed",
+      "rigorous": false,
+      "finite_contract": "exact complete finite-plan replay"
+    },
+    "process_cold": {
+      "mode": "process-cold",
+      "contract": "Node/Sage.js startup through the full public radius-6 canonical-height answer",
+      "wall_samples_ms": [
+        55797.370065
+      ],
+      "wall": {
+        "median_ms": 55797.370065,
+        "min_ms": 55797.370065,
+        "max_ms": 55797.370065,
+        "mad_ms": 0,
+        "samples": 1
+      },
+      "resources": {
+        "peak_rss_kib": 412176,
+        "user_seconds": 58.63,
+        "system_seconds": 0.49
+      },
+      "result": {
+        "height": "2.1403441482740588613424112263975497470400277828299",
+        "archimedean": "9.6559667042322827251222545279484700456822146237329",
+        "finite": "-5.3752784076841650024374320751533705516021590580731",
+        "candidate_primes": [
+          "2",
+          "3",
+          "13",
+          "101",
+          "389",
+          "38677"
+        ],
+        "finite_coefficients": [
+          "-3",
+          "-3",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "theta_refinement_stable": true,
+        "finite_plan_complete": true,
+        "finite_exact": true,
+        "rigorous": false,
+        "magma_absolute_error": "1.84464328121883261145311564637e-20"
+      }
+    },
+    "resident": {
+      "object_cold": {
+        "cpu_samples_ms": [
+          53971.643924713135,
+          52240.912437438965,
+          52260.53547859192
+        ],
+        "result": {
+          "abel_component_count": 15,
+          "abel_prepared_cache_hits": 11,
+          "archimedean": "9.6559667042322827251222545279484700456822146237329",
+          "archimedean_move_verified": true,
+          "cache_sizes": {
+            "abel_coordinate": 1,
+            "normalized_abel": 4,
+            "theta_plan": 1
+          },
+          "candidate_primes": [
+            "2",
+            "3",
+            "13",
+            "101",
+            "389",
+            "38677"
+          ],
+          "finite": "-5.3752784076841650024374320751533705516021590580731",
+          "finite_coefficients": [
+            "-3",
+            "-3",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          "finite_exact": true,
+          "finite_plan_complete": true,
+          "height": "2.1403441482740588613424112263975497470400277828299",
+          "magma_absolute_error": "1.84464328121883261145311564637e-20",
+          "period_cache_hit": false,
+          "rigorous": false,
+          "theta_evaluation_count": 16,
+          "theta_exponential_evaluations": 5219,
+          "theta_plan_cache_hits": 15,
+          "theta_refinement_stable": true
+        },
+        "wall_samples_ms": [
+          53971.715450286865,
+          52240.936279296875,
+          52260.62536239624
+        ],
+        "wall": {
+          "median_ms": 52260.62536239624,
+          "min_ms": 52240.936279296875,
+          "max_ms": 53971.715450286865,
+          "mad_ms": 19.689083099365234,
+          "samples": 3
+        },
+        "cpu": {
+          "median_ms": 52260.53547859192,
+          "min_ms": 52240.912437438965,
+          "max_ms": 53971.643924713135,
+          "mad_ms": 19.6230411529541,
+          "samples": 3
+        }
+      },
+      "prepared_first": {
+        "cpu_samples_ms": [
+          52152.77147293091,
+          52167.383909225464,
+          52168.35522651672
+        ],
+        "result": {
+          "abel_component_count": 15,
+          "abel_prepared_cache_hits": 11,
+          "archimedean": "9.6559667042322827251222545279484700456822146237329",
+          "archimedean_move_verified": true,
+          "cache_sizes": {
+            "abel_coordinate": 1,
+            "normalized_abel": 4,
+            "theta_plan": 1
+          },
+          "candidate_primes": [
+            "2",
+            "3",
+            "13",
+            "101",
+            "389",
+            "38677"
+          ],
+          "finite": "-5.3752784076841650024374320751533705516021590580731",
+          "finite_coefficients": [
+            "-3",
+            "-3",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          "finite_exact": true,
+          "finite_plan_complete": true,
+          "height": "2.1403441482740588613424112263975497470400277828299",
+          "magma_absolute_error": "1.84464328121883261145311564637e-20",
+          "period_cache_hit": false,
+          "rigorous": false,
+          "theta_evaluation_count": 16,
+          "theta_exponential_evaluations": 5219,
+          "theta_plan_cache_hits": 15,
+          "theta_refinement_stable": true
+        },
+        "setup_cpu_samples_ms": [
+          25.17533302307129,
+          25.74944496154785,
+          23.679018020629883
+        ],
+        "setup_wall_samples_ms": [
+          25.208711624145508,
+          25.774002075195312,
+          23.69976043701172
+        ],
+        "wall_samples_ms": [
+          52152.80842781067,
+          52167.40369796753,
+          52168.37739944458
+        ],
+        "wall": {
+          "median_ms": 52167.40369796753,
+          "min_ms": 52152.80842781067,
+          "max_ms": 52168.37739944458,
+          "mad_ms": 0.9737014770507812,
+          "samples": 3
+        },
+        "cpu": {
+          "median_ms": 52167.383909225464,
+          "min_ms": 52152.77147293091,
+          "max_ms": 52168.35522651672,
+          "mad_ms": 0.9713172912597656,
+          "samples": 3
+        },
+        "setup_wall": {
+          "median_ms": 25.208711624145508,
+          "min_ms": 23.69976043701172,
+          "max_ms": 25.774002075195312,
+          "mad_ms": 0.5652904510498047,
+          "samples": 3
+        },
+        "setup_cpu": {
+          "median_ms": 25.17533302307129,
+          "min_ms": 23.679018020629883,
+          "max_ms": 25.74944496154785,
+          "mad_ms": 0.5741119384765625,
+          "samples": 3
+        }
+      },
+      "schema": "sagejs.hyperelliptic-genus3-height-resident.v1",
+      "warm": {
+        "cpu_samples_ms": [
+          22117.90919303894,
+          22166.889190673828,
+          22121.397972106934,
+          22062.46066093445,
+          22093.712091445923
+        ],
+        "result": {
+          "abel_component_count": 15,
+          "abel_prepared_cache_hits": 15,
+          "archimedean": "9.6559667042322827251222545279484700456822146237329",
+          "archimedean_move_verified": true,
+          "cache_sizes": {
+            "abel_coordinate": 1,
+            "normalized_abel": 4,
+            "theta_plan": 1
+          },
+          "candidate_primes": [
+            "2",
+            "3",
+            "13",
+            "101",
+            "389",
+            "38677"
+          ],
+          "finite": "-5.3752784076841650024374320751533705516021590580731",
+          "finite_coefficients": [
+            "-3",
+            "-3",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          "finite_exact": true,
+          "finite_plan_complete": true,
+          "height": "2.1403441482740588613424112263975497470400277828299",
+          "magma_absolute_error": "1.84464328121883261145311564637e-20",
+          "period_cache_hit": false,
+          "rigorous": false,
+          "theta_evaluation_count": 16,
+          "theta_exponential_evaluations": 4640,
+          "theta_plan_cache_hits": 16,
+          "theta_refinement_stable": true
+        },
+        "wall_samples_ms": [
+          22117.955923080444,
+          22166.913270950317,
+          22121.419668197632,
+          22062.48188018799,
+          22093.734979629517
+        ],
+        "warmups": 1,
+        "wall": {
+          "median_ms": 22117.955923080444,
+          "min_ms": 22062.48188018799,
+          "max_ms": 22166.913270950317,
+          "mad_ms": 24.220943450927734,
+          "samples": 5
+        },
+        "cpu": {
+          "median_ms": 22117.90919303894,
+          "min_ms": 22062.46066093445,
+          "max_ms": 22166.889190673828,
+          "mad_ms": 24.197101593017578,
+          "samples": 5
+        }
+      },
+      "resources": {
+        "peak_rss_kib": 527408,
+        "user_seconds": 455.25,
+        "system_seconds": 0.99
+      },
+      "process_wall_ms": 449135.13286699995
+    }
+  },
+  "historical_direct": {
+    "mode": "historical-direct-process-cold",
+    "contract": "exact preoptimization checkout startup through the identical public fixture script",
+    "commit": "302bf8ccb3e3b71901e646f9ee75877d61640298",
+    "source_sha256": "bbb249c85b0d915d578f52c25597781992c9ce060d2c1d942cc3ad78fc6c236a",
+    "fixture_script_sha256": "b54ccb6868566a42c6f2103f6fe5387fdcc0f7ae95bcac2a3f296c6440be68d0",
+    "build_receipt_sha256": "25f416077f26893e335064479a7b8a934a48935d0975d5e55b3bbd2c738b9922",
+    "build_identity": {
+      "workspaceSha256": "8ae77836ad67adc942ab894bf96f9fa98de1b3582b13196b81deaaf7d2ce223b",
+      "nativeInputs": [
+        {
+          "package": "fflas",
+          "status": "installed",
+          "files": [
+            {
+              "path": "packages/fflas/build/generated-ffi/manifest.json",
+              "bytes": 2301,
+              "sha256": "941e05f0009450a45aa29746b83732b74e83c0074145936c373a1a7ec15c71c8"
+            },
+            {
+              "path": "packages/fflas/build/generated-ffi/sagejs_fflas_ffi.node",
+              "bytes": 7414664,
+              "sha256": "52f712ed0b483491797cfe61302ffb977d90017f08e3892a96d877f330c84ff7"
+            }
+          ]
+        },
+        {
+          "package": "flint",
+          "status": "installed",
+          "files": [
+            {
+              "path": "packages/flint/build/generated-ffi/manifest.json",
+              "bytes": 65949,
+              "sha256": "d628bbc151b431be3b11584630503176cfaf3f08ce279c2dfa79444645a80efa"
+            },
+            {
+              "path": "packages/flint/build/generated-ffi/sagejs_flint_ffi.node",
+              "bytes": 19784560,
+              "sha256": "0ab1b2c7876401cb88a14b14eef47240a23564d27e880eadf9ddd27268fab874"
+            }
+          ]
+        },
+        {
+          "package": "graph",
+          "status": "installed",
+          "files": [
+            {
+              "path": "packages/graph/build/generated-ffi/manifest.json",
+              "bytes": 978,
+              "sha256": "e6896ae7b6b2a92b68337da24910d8ce2582b6dd2cd12e6103928cddbea21f53"
+            },
+            {
+              "path": "packages/graph/build/generated-ffi/sagejs_igraph_ffi.node",
+              "bytes": 1009024,
+              "sha256": "a336e31e524d57c0cdc5bc333763c66173e86a1bb7f5aab90c9e8190a4501f89"
+            }
+          ]
+        },
+        {
+          "package": "m4ri",
+          "status": "installed",
+          "files": [
+            {
+              "path": "packages/m4ri/build/generated-ffi/manifest.json",
+              "bytes": 5396,
+              "sha256": "663b7214540c8fb29ad3e0aa906678468b219ed8fd1ca9cf28f53d094aa9448a"
+            },
+            {
+              "path": "packages/m4ri/build/generated-ffi/sagejs_m4ri_ffi.node",
+              "bytes": 301008,
+              "sha256": "1f79134ba3716d07d6e05a43601df4cd4edbdc88e82507bb653fcfaf0328de36"
+            }
+          ]
+        },
+        {
+          "package": "flint",
+          "kind": "direct-addon",
+          "status": "installed",
+          "files": [
+            {
+              "path": "packages/flint/build/Release/sagejs_flint.node",
+              "bytes": 25387184,
+              "sha256": "ade7daeb1178d0584efbfb986f1d73c01a4a1088696a16ea8a39a939a4d89d03"
+            },
+            {
+              "path": "packages/flint/build/Release/sagejs_flint.manifest.json",
+              "bytes": 417,
+              "sha256": "8d660d3f29c2b2558d1545fa10a4d68ab219be3ae49e703d894fa0f3471ee6eb"
+            }
+          ]
+        },
+        {
+          "package": "graph",
+          "kind": "direct-addon",
+          "status": "installed",
+          "files": [
+            {
+              "path": "packages/graph/build/Release/sagejs_graph.node",
+              "bytes": 1502832,
+              "sha256": "04f166404ebaf84a6e2ec95859730b02f8442d2983569abfcd2101b40f918d97"
+            }
+          ]
+        }
+      ],
+      "node": "22.22.2",
+      "v8": "12.4.254.21-node.39",
+      "platform": "linux",
+      "architecture": "x64"
+    },
+    "algorithm_witness": "def _theta_sum; no _prepared_theta_lattice",
+    "wall_samples_ms": [
+      406497.24723100004
+    ],
+    "wall": {
+      "median_ms": 406497.24723100004,
+      "min_ms": 406497.24723100004,
+      "max_ms": 406497.24723100004,
+      "mad_ms": 0,
+      "samples": 1
+    },
+    "resources": {
+      "peak_rss_kib": 543220,
+      "user_seconds": 410.97,
+      "system_seconds": 1.04
+    },
+    "result": {
+      "height": "2.1403441482740588613361202616675490537221410775436",
+      "archimedean": "9.6559667042322827251096725984884686590464412131603",
+      "finite": "-5.3752784076841650024374320751533705516021590580731",
+      "candidate_primes": [
+        "2",
+        "3",
+        "13",
+        "101",
+        "389",
+        "38677"
+      ],
+      "finite_coefficients": [
+        "-3",
+        "-3",
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "magma_absolute_error": "1.21554680821876327966444511774e-20",
+      "theta_refinement_stable": true,
+      "finite_plan_complete": true,
+      "finite_exact": true,
+      "rigorous": false
+    }
+  },
+  "magma": {
+    "backend": {
+      "id": "magma",
+      "version": "2.18-5",
+      "executable": "/home/user/magma-2.18/bin/magma",
+      "executable_sha256": "ea6aac1bcb8633a40a958a46e0e1cfd0faa4aac0bbacc7c9bae399a0167dfc1f",
+      "timing_classification": "descriptive/non-gating"
+    },
+    "comparison_contract": {
+      "comparable": "same canonical-height scalar, curve isomorphism, normalization, and at least 64-bit decimal accuracy",
+      "not_comparable": "Magma exposes neither Sage.js's exact finite-plan certificate nor its radius-refinement witness",
+      "timing_use": "descriptive only; no Sage.js/Magma speed gate is asserted",
+      "magma_rigorous": false,
+      "magma_accuracy_label": "external numerical oracle; not an interval proof",
+      "sagejs_rigorous": false,
+      "sagejs_accuracy_label": "radius-refinement-stable; truncation and rounding not enclosed"
+    },
+    "process_cold": {
+      "wall_samples_ms": [
+        1894.7123109999811
+      ],
+      "wall": {
+        "median_ms": 1894.7123109999811,
+        "min_ms": 1894.7123109999811,
+        "max_ms": 1894.7123109999811,
+        "mad_ms": 0,
+        "samples": 1
+      },
+      "inner_wall_ms": 1720,
+      "inner_cpu_ms": 1720,
+      "resources": {
+        "peak_rss_kib": 49688,
+        "user_seconds": 1.75,
+        "system_seconds": 0.13
+      },
+      "result": {
+        "height": "2.14034414827405886132"
+      }
+    },
+    "object_cold": {
+      "wall_samples_ms": [
+        1670,
+        730,
+        720
+      ],
+      "cpu_samples_ms": [
+        1660,
+        730,
+        720
+      ],
+      "wall": {
+        "median_ms": 730,
+        "min_ms": 720,
+        "max_ms": 1670,
+        "mad_ms": 10,
+        "samples": 3
+      },
+      "cpu": {
+        "median_ms": 730,
+        "min_ms": 720,
+        "max_ms": 1660,
+        "mad_ms": 10,
+        "samples": 3
+      }
+    },
+    "warm": {
+      "warmups": 1,
+      "wall_samples_ms": [
+        790,
+        760,
+        760,
+        760,
+        770
+      ],
+      "cpu_samples_ms": [
+        790,
+        760,
+        760,
+        760,
+        770
+      ],
+      "wall": {
+        "median_ms": 760,
+        "min_ms": 760,
+        "max_ms": 790,
+        "mad_ms": 0,
+        "samples": 5
+      },
+      "cpu": {
+        "median_ms": 760,
+        "min_ms": 760,
+        "max_ms": 790,
+        "mad_ms": 0,
+        "samples": 5
+      }
+    },
+    "resources": {
+      "peak_rss_kib": 42288,
+      "user_seconds": 8.95,
+      "system_seconds": 0.13
+    },
+    "result": {
+      "height": "2.14034414827405886132",
+      "height_50": "2.1403441482740588613239647935853614209254966263662",
+      "oracle_absolute_error": "3.964793585361420925496626366201001308229370095855452111046427960090404459654664891147583303833777382034516531210481375968121563629849298547e-21",
+      "precision_decimal_digits": 21,
+      "rigorous": false
+    }
+  },
+  "validation": {
+    "exact_finite_replay": true,
+    "finite_support_digest": "bdeaef13e03eb5877e21ca8c85fdb777cfcdfceb4f1964c6e008971cb6e7059f",
+    "refinement_stable": true,
+    "rigorous": false,
+    "current_magma_absolute_error": "1.84464328121883261145311564637e-20",
+    "current_magma_error_at_most_2e_20": true,
+    "historical_magma_error_at_most_2e_20": true,
+    "same_host_process_cold_speedup": 7.285240267730529,
+    "fivefold_exit_gate": true,
+    "magma_timing_gate": "not-applicable; descriptive/non-gating"
+  }
+}
