@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include <flint/acb.h>
 #include <flint/acb_poly.h>
@@ -2725,6 +2726,16 @@ typedef struct
     slong contour_real;
 } hg_central_weight_plan;
 
+typedef struct
+{
+    slong coefficient_logarithms;
+    slong coarse_phase_updates;
+    slong fine_phase_updates;
+    double coefficient_traversal_cpu_seconds;
+    double coarse_completion_cpu_seconds;
+    double fine_completion_cpu_seconds;
+} hg_central_weight_stage_diagnostics;
+
 static int hg_central_weight_make_plan(
     hg_central_weight_plan *plan,
     const fmpz_t conductor,
@@ -2956,6 +2967,269 @@ static int hg_central_weight_grid(
     _acb_vec_clear(bases, contour_count);
     (void) conductor;
     return 1;
+}
+
+/* Complete one already accumulated vertical Dirichlet grid.  The paired
+ * driver below deliberately keeps the coarse and fine phase grids distinct,
+ * but shares exact coefficient logarithms and amplitudes before reaching
+ * this stage. */
+static int hg_central_weight_finish_grid(
+    acb_ptr completed,
+    acb_ptr raw,
+    acb_ptr bases,
+    int root_number,
+    slong genus,
+    slong maximum_derivative,
+    const hg_central_weight_plan *plan,
+    const arb_t log_a_exact)
+{
+    const slong precision = plan->work_precision;
+    const slong contour_count = plan->contour_points + 1;
+    const slong derivative_count = maximum_derivative + 1;
+    arb_t scale, temporary_arb;
+    arb_init(scale);
+    arb_init(temporary_arb);
+    acb_t temporary, point, gamma_value, gamma_power;
+    acb_t denominator_value, denominator_power, term, central_point;
+    acb_init(temporary);
+    acb_init(point);
+    acb_init(gamma_value);
+    acb_init(gamma_power);
+    acb_init(denominator_value);
+    acb_init(denominator_power);
+    acb_init(term);
+    acb_init(central_point);
+
+    for (slong index = 0; index < contour_count; ++index)
+    {
+        acb_set_si(point, plan->contour_real);
+        arb_set_d(temporary_arb, plan->contour_step);
+        arb_mul_ui(
+            acb_imagref(point), temporary_arb, (ulong) index, precision);
+        acb_gamma(gamma_value, point, precision);
+        acb_pow_ui(gamma_power, gamma_value, (ulong) genus, precision);
+        acb_mul(bases + index, bases + index, gamma_power, precision);
+        acb_mul_arb(temporary, point, log_a_exact, precision);
+        acb_exp(temporary, temporary, precision);
+        acb_mul(bases + index, bases + index, temporary, precision);
+        if (index == plan->contour_points)
+            acb_mul_2exp_si(bases + index, bases + index, -1);
+    }
+
+    for (slong order = 0; order < derivative_count; ++order)
+        acb_zero(completed + order);
+    for (slong index = 0; index < contour_count; ++index)
+    {
+        acb_set_si(point, plan->contour_real);
+        arb_set_d(temporary_arb, plan->contour_step);
+        arb_mul_ui(
+            acb_imagref(point), temporary_arb, (ulong) index, precision);
+        acb_sub_ui(denominator_value, point, 1, precision);
+        acb_set(denominator_power, denominator_value);
+        for (slong order = 0; order < derivative_count; ++order)
+        {
+            if (((order & 1) == 0) == (root_number == 1))
+            {
+                acb_div(term, bases + index, denominator_power, precision);
+                hg_acb_mul_factorial(term, order, precision);
+                arb_mul_ui(temporary_arb, acb_realref(term), 2, precision);
+                if (index == 0)
+                    arb_mul_2exp_si(temporary_arb, temporary_arb, -1);
+                acb_add_arb(
+                    completed + order,
+                    completed + order,
+                    temporary_arb,
+                    precision);
+            }
+            acb_mul(
+                denominator_power,
+                denominator_power,
+                denominator_value,
+                precision);
+        }
+    }
+    arb_const_pi(scale, precision);
+    arb_set_d(temporary_arb, plan->contour_step);
+    arb_div(scale, temporary_arb, scale, precision);
+    for (slong order = 0; order < derivative_count; ++order)
+        acb_mul_arb(completed + order, completed + order, scale, precision);
+
+    acb_one(central_point);
+    hg_raw_jet_from_completed_arb(
+        raw,
+        completed,
+        central_point,
+        derivative_count,
+        genus,
+        log_a_exact,
+        precision);
+
+    acb_clear(central_point);
+    acb_clear(term);
+    acb_clear(denominator_power);
+    acb_clear(denominator_value);
+    acb_clear(gamma_power);
+    acb_clear(gamma_value);
+    acb_clear(point);
+    acb_clear(temporary);
+    arb_clear(temporary_arb);
+    arb_clear(scale);
+    return 1;
+}
+
+static int hg_central_weight_grid_pair(
+    acb_ptr coarse_completed,
+    acb_ptr coarse_raw,
+    acb_ptr fine_completed,
+    acb_ptr fine_raw,
+    const int32_t *coefficients,
+    slong available_cutoff,
+    const fmpz_t conductor,
+    int root_number,
+    slong genus,
+    slong maximum_derivative,
+    const hg_central_weight_plan *coarse_plan,
+    const hg_central_weight_plan *fine_plan,
+    hg_central_weight_stage_diagnostics *diagnostics)
+{
+    if (available_cutoff < coarse_plan->cutoff ||
+        available_cutoff < fine_plan->cutoff ||
+        (root_number != -1 && root_number != 1))
+        return 0;
+    if (coarse_plan->cutoff != fine_plan->cutoff ||
+        coarse_plan->work_precision != fine_plan->work_precision ||
+        coarse_plan->contour_real != fine_plan->contour_real)
+    {
+        const clock_t fallback_started = clock();
+        const int answer = hg_central_weight_grid(
+                coarse_completed, coarse_raw, coefficients, available_cutoff,
+                conductor, root_number, genus, maximum_derivative,
+                coarse_plan) &&
+            hg_central_weight_grid(
+                fine_completed, fine_raw, coefficients, available_cutoff,
+                conductor, root_number, genus, maximum_derivative, fine_plan);
+        diagnostics->coefficient_traversal_cpu_seconds =
+            (double) (clock() - fallback_started) / (double) CLOCKS_PER_SEC;
+        return answer;
+    }
+    const slong precision = fine_plan->work_precision;
+    const slong coarse_count = coarse_plan->contour_points + 1;
+    const slong fine_count = fine_plan->contour_points + 1;
+    const int reanchor_phases = precision >= 192;
+    acb_ptr coarse_bases = _acb_vec_init(coarse_count);
+    acb_ptr fine_bases = _acb_vec_init(fine_count);
+
+    arb_t logarithm, amplitude, angle, sine, cosine;
+    arb_t log_a_exact;
+    arb_init(logarithm);
+    arb_init(amplitude);
+    arb_init(angle);
+    arb_init(sine);
+    arb_init(cosine);
+    arb_init(log_a_exact);
+    acb_t phase, phase_step;
+    acb_init(phase);
+    acb_init(phase_step);
+
+    diagnostics->coefficient_logarithms = 0;
+    diagnostics->coarse_phase_updates = 0;
+    diagnostics->fine_phase_updates = 0;
+    const clock_t coefficient_started = clock();
+    hg_log_a_exact(log_a_exact, conductor, genus, precision);
+    for (slong n = 1; n <= fine_plan->cutoff; ++n)
+    {
+        const int32_t coefficient_value = coefficients[n];
+        if (coefficient_value == 0) continue;
+        ++diagnostics->coefficient_logarithms;
+        arb_set_ui(logarithm, (ulong) n);
+        arb_log(logarithm, logarithm, precision);
+        /* `Re(s)` is the small exact integer 2 or 3.  Form a_n/n^Re(s)
+         * directly instead of exponentiating `-Re(s)*log(n)`.  This is both
+         * faster and a tighter Arb enclosure, while the exact logarithm is
+         * still shared by the independent coarse/fine phase grids. */
+        ulong amplitude_denominator = (ulong) n * (ulong) n;
+        if (fine_plan->contour_real == 3)
+            amplitude_denominator *= (ulong) n;
+        arb_set_si(amplitude, (slong) coefficient_value);
+        arb_div_ui(
+            amplitude, amplitude, amplitude_denominator, precision);
+
+        arb_set_d(angle, -coarse_plan->contour_step);
+        arb_mul(angle, angle, logarithm, precision);
+        arb_sin_cos(sine, cosine, angle, precision);
+        acb_set_arb_arb(phase_step, cosine, sine);
+        acb_one(phase);
+        for (slong index = 0; index < coarse_count; ++index)
+        {
+            if (reanchor_phases && index != 0 &&
+                (index & SAGEJS_HG_PHASE_REANCHOR_MASK) == 0)
+            {
+                arb_set_d(angle, -coarse_plan->contour_step);
+                arb_mul_ui(angle, angle, (ulong) index, precision);
+                arb_mul(angle, angle, logarithm, precision);
+                arb_sin_cos(sine, cosine, angle, precision);
+                acb_set_arb_arb(phase, cosine, sine);
+            }
+            acb_addmul_arb(
+                coarse_bases + index, phase, amplitude, precision);
+            if (index + 1 < coarse_count &&
+                (!reanchor_phases ||
+                    ((index + 1) & SAGEJS_HG_PHASE_REANCHOR_MASK) != 0))
+                acb_mul(phase, phase, phase_step, precision);
+        }
+        diagnostics->coarse_phase_updates += coarse_count;
+
+        arb_set_d(angle, -fine_plan->contour_step);
+        arb_mul(angle, angle, logarithm, precision);
+        arb_sin_cos(sine, cosine, angle, precision);
+        acb_set_arb_arb(phase_step, cosine, sine);
+        acb_one(phase);
+        for (slong index = 0; index < fine_count; ++index)
+        {
+            if (reanchor_phases && index != 0 &&
+                (index & SAGEJS_HG_PHASE_REANCHOR_MASK) == 0)
+            {
+                arb_set_d(angle, -fine_plan->contour_step);
+                arb_mul_ui(angle, angle, (ulong) index, precision);
+                arb_mul(angle, angle, logarithm, precision);
+                arb_sin_cos(sine, cosine, angle, precision);
+                acb_set_arb_arb(phase, cosine, sine);
+            }
+            acb_addmul_arb(fine_bases + index, phase, amplitude, precision);
+            if (index + 1 < fine_count &&
+                (!reanchor_phases ||
+                    ((index + 1) & SAGEJS_HG_PHASE_REANCHOR_MASK) != 0))
+                acb_mul(phase, phase, phase_step, precision);
+        }
+        diagnostics->fine_phase_updates += fine_count;
+    }
+    diagnostics->coefficient_traversal_cpu_seconds =
+        (double) (clock() - coefficient_started) / (double) CLOCKS_PER_SEC;
+
+    const clock_t coarse_started = clock();
+    const int coarse_ok = hg_central_weight_finish_grid(
+        coarse_completed, coarse_raw, coarse_bases, root_number, genus,
+        maximum_derivative, coarse_plan, log_a_exact);
+    diagnostics->coarse_completion_cpu_seconds =
+        (double) (clock() - coarse_started) / (double) CLOCKS_PER_SEC;
+    const clock_t fine_started = clock();
+    const int fine_ok = hg_central_weight_finish_grid(
+        fine_completed, fine_raw, fine_bases, root_number, genus,
+        maximum_derivative, fine_plan, log_a_exact);
+    diagnostics->fine_completion_cpu_seconds =
+        (double) (clock() - fine_started) / (double) CLOCKS_PER_SEC;
+
+    acb_clear(phase_step);
+    acb_clear(phase);
+    arb_clear(log_a_exact);
+    arb_clear(cosine);
+    arb_clear(sine);
+    arb_clear(angle);
+    arb_clear(amplitude);
+    arb_clear(logarithm);
+    _acb_vec_clear(fine_bases, fine_count);
+    _acb_vec_clear(coarse_bases, coarse_count);
+    return coarse_ok && fine_ok;
 }
 
 static int hg_lseries_grid(
@@ -3492,14 +3766,12 @@ napi_value sagejs_hyperelliptic_central_weights(
     acb_ptr coarse_raw = _acb_vec_init(derivative_count);
     acb_ptr fine_completed = _acb_vec_init(derivative_count);
     acb_ptr fine_raw = _acb_vec_init(derivative_count);
-    const int computed = hg_central_weight_grid(
-            coarse_completed, coarse_raw, coefficient_view.data,
-            available_cutoff, conductor, (int) root_number, genus,
-            maximum_derivative, &coarse_plan) &&
-        hg_central_weight_grid(
-            fine_completed, fine_raw, coefficient_view.data,
-            available_cutoff, conductor, (int) root_number, genus,
-            maximum_derivative, &fine_plan);
+    hg_central_weight_stage_diagnostics stage_diagnostics = {0};
+    const int computed = hg_central_weight_grid_pair(
+        coarse_completed, coarse_raw, fine_completed, fine_raw,
+        coefficient_view.data, available_cutoff, conductor, (int) root_number,
+        genus, maximum_derivative, &coarse_plan, &fine_plan,
+        &stage_diagnostics);
     packed_coefficient_view_clear(&coefficient_view);
     fmpz_clear(conductor);
     if (!computed)
@@ -3559,6 +3831,18 @@ napi_value sagejs_hyperelliptic_central_weights(
         !set_named(env, result, "refinementStable", stable) ||
         !set_named_double(env, result, "refinementRelativeDifference",
             maximum_relative_difference) ||
+        !set_named_slong(env, result, "sharedCoefficientLogarithms",
+            stage_diagnostics.coefficient_logarithms) ||
+        !set_named_slong(env, result, "coarsePhaseUpdates",
+            stage_diagnostics.coarse_phase_updates) ||
+        !set_named_slong(env, result, "finePhaseUpdates",
+            stage_diagnostics.fine_phase_updates) ||
+        !set_named_double(env, result, "coefficientTraversalCpuSeconds",
+            stage_diagnostics.coefficient_traversal_cpu_seconds) ||
+        !set_named_double(env, result, "coarseCompletionCpuSeconds",
+            stage_diagnostics.coarse_completion_cpu_seconds) ||
+        !set_named_double(env, result, "fineCompletionCpuSeconds",
+            stage_diagnostics.fine_completion_cpu_seconds) ||
         !set_named(env, result, "analyticErrorStatus", error_status) ||
         !set_named(env, result, "algorithm", algorithm))
         goto hg_central_computed_failure;

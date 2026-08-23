@@ -147,6 +147,9 @@ class GlobalCoefficientPrefix:
         self._reciprocal_coefficients: dict[int, list[Any]] = {}
         self._local_prime_bound = 1
         self._coefficient_stream = "public-local-data"
+        self._prepared_evaluation_cache: dict[tuple[Any, ...], dict[str, Any]] = {}
+        self._prepared_evaluation_cache_hits = 0
+        self._prepared_evaluation_cache_subsumption_hits = 0
 
     @staticmethod
     def _smallest_prime_table(bound: int) -> list[int]:
@@ -281,6 +284,12 @@ class GlobalCoefficientPrefix:
                 {} if backend_counts is None else backend_counts
             ).items()
         }
+        # A seeded prefix may replace every coefficient used by an earlier
+        # analytic result.  Never retain a curve-specific numerical plan
+        # across that exact-state transition.
+        self._prepared_evaluation_cache.clear()
+        self._prepared_evaluation_cache_hits = 0
+        self._prepared_evaluation_cache_subsumption_hits = 0
 
     def diagnostics(self) -> dict[str, Any]:
         """Return exact-prefix reuse and local-stream diagnostics."""
@@ -291,6 +300,11 @@ class GlobalCoefficientPrefix:
             "cached_euler_factors": len(self._euler_factors),
             "coefficient_stream": self._coefficient_stream,
             "backend_counts": dict(self.backend_counts),
+            "prepared_evaluation_entries": len(self._prepared_evaluation_cache),
+            "prepared_evaluation_hits": self._prepared_evaluation_cache_hits,
+            "prepared_evaluation_subsumption_hits": (
+                self._prepared_evaluation_cache_subsumption_hits
+            ),
         }
 
 
@@ -337,6 +351,11 @@ def _deserialized_complex(value: Any) -> Any:
 
 def _property(value: Any, name: str) -> Any:
     return runtime.reflect.get(value, name)
+
+
+def _optional_property(value: Any, name: str, default: Any = None) -> Any:
+    answer = _property(value, name)
+    return default if answer is runtime.undefined else answer
 
 
 def _ball_pair(value: Any) -> tuple[str, str]:
@@ -1195,6 +1214,27 @@ def native_central_weight_values(
             "contour_step": str(_property(native, "contourStep")),
             "contour_real": int(_property(native, "contourReal")),
             "coefficient_terms": int(_property(native, "coefficientTerms")),
+            "native_stage_diagnostics": {
+                "shared_coarse_fine_coefficient_traversal": True,
+                "shared_coefficient_logarithms": int(
+                    _optional_property(native, "sharedCoefficientLogarithms", 0)
+                ),
+                "coarse_phase_updates": int(
+                    _optional_property(native, "coarsePhaseUpdates", 0)
+                ),
+                "fine_phase_updates": int(
+                    _optional_property(native, "finePhaseUpdates", 0)
+                ),
+                "coefficient_traversal_cpu_seconds": str(
+                    _optional_property(native, "coefficientTraversalCpuSeconds", 0)
+                ),
+                "coarse_completion_cpu_seconds": str(
+                    _optional_property(native, "coarseCompletionCpuSeconds", 0)
+                ),
+                "fine_completion_cpu_seconds": str(
+                    _optional_property(native, "fineCompletionCpuSeconds", 0)
+                ),
+            },
             "coefficient_backend_counts": dict(coefficient_prefix.backend_counts),
             "coefficient_prefix_extensions": coefficient_prefix.extensions,
             "values": [
@@ -1292,6 +1332,7 @@ class HyperellipticLSeries:
             # of copying every Arb diagnostic and derivative twice.
             reused = dict(cached)
             reused["cache_hit"] = True
+            reused["cache_scope"] = "lseries"
             reused["cache_reused_maximum_derivative"] = int(maximum_derivative)
             self._last_diagnostics = reused
             return reused, bits
@@ -1309,10 +1350,52 @@ class HyperellipticLSeries:
                 self._evaluation_cache_subsumption_hits += 1
                 reused = dict(candidate)
                 reused["cache_hit"] = True
+                reused["cache_scope"] = "lseries"
                 reused["cache_reused_maximum_derivative"] = int(candidate_order)
                 reused["requested_maximum_derivative"] = int(maximum_derivative)
                 self._last_diagnostics = reused
                 return reused, bits
+        prepared_cache = (
+            self._coefficient_prefix._prepared_evaluation_cache
+            if central and isinstance(self._coefficient_prefix, GlobalCoefficientPrefix)
+            else None
+        )
+        if prepared_cache is not None:
+            prepared = prepared_cache.get(cache_key)
+            if prepared is not None:
+                self._evaluation_cache_hits += 1
+                self._coefficient_prefix._prepared_evaluation_cache_hits += 1
+                reused = dict(prepared)
+                reused["cache_hit"] = True
+                reused["cache_scope"] = "coefficient-prefix"
+                reused["cache_reused_maximum_derivative"] = int(maximum_derivative)
+                self._evaluation_cache[cache_key] = prepared
+                self._last_diagnostics = reused
+                return reused, bits
+            for candidate_key, candidate in prepared_cache.items():
+                (
+                    candidate_pairs,
+                    candidate_bits,
+                    candidate_order,
+                    candidate_algorithm,
+                ) = candidate_key
+                if (
+                    candidate_pairs == tuple(pairs)
+                    and candidate_bits == bits
+                    and candidate_algorithm == algorithm
+                    and int(candidate_order) > int(maximum_derivative)
+                ):
+                    self._evaluation_cache_hits += 1
+                    self._evaluation_cache_subsumption_hits += 1
+                    self._coefficient_prefix._prepared_evaluation_cache_hits += 1
+                    self._coefficient_prefix._prepared_evaluation_cache_subsumption_hits += 1
+                    reused = dict(candidate)
+                    reused["cache_hit"] = True
+                    reused["cache_scope"] = "coefficient-prefix"
+                    reused["cache_reused_maximum_derivative"] = int(candidate_order)
+                    reused["requested_maximum_derivative"] = int(maximum_derivative)
+                    self._last_diagnostics = reused
+                    return reused, bits
         result = None
         if central and algorithm != "inverse_mellin":
             if algorithm != "reference":
@@ -1358,6 +1441,7 @@ class HyperellipticLSeries:
                 "the hyperelliptic L-series refinement did not stabilize"
             )
         result["cache_hit"] = False
+        result["cache_scope"] = "fresh"
         result["requested_maximum_derivative"] = int(maximum_derivative)
         if len(self._evaluation_cache) >= 32:
             first_key = next(iter(self._evaluation_cache))
@@ -1367,6 +1451,11 @@ class HyperellipticLSeries:
         # `value_ball()`, and `LFunctionInit.diagnostics()` detach it before
         # crossing the public boundary.
         self._evaluation_cache[cache_key] = result
+        if prepared_cache is not None:
+            if len(prepared_cache) >= 32:
+                first_prepared_key = next(iter(prepared_cache))
+                del prepared_cache[first_prepared_key]
+            prepared_cache[cache_key] = result
         self._last_diagnostics = result
         return result, bits
 

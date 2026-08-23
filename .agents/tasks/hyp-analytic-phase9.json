@@ -7,9 +7,11 @@
   "status": "active",
   "owner": "user",
   "objective": "Measure and close the matched-work Phase 9 LFunctionInit, prepared central-value, and central-derivative performance gates against pinned PARI while preserving exact model and coefficient provenance.",
-  "base_commit": "846138009da6e2adeb0394929f9b0bb1e317da6d",
+  "base_commit": "98dd4fa93d7c52b59dc6bb236aadee5bbe3dac43",
   "claims": [
     "src/lib/sagejs/hyperelliptic_curves/lseries.py",
+    "packages/flint/src/elliptic_lfunction.c",
+    "packages/flint/test/elliptic-native.cjs",
     "bench/hyperelliptic/benchmark-analytic-competitive.cjs",
     "test/hyperelliptic-lseries-performance.cjs"
   ],
