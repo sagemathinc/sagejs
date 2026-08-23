@@ -29,6 +29,7 @@ execFileSync(
 
 const setup = String.raw`
 from sagejs.hyperelliptic_curves.genus2_heights import (
+    Genus2HeightCapabilityError,
     HeightContext,
     canonical_height,
     height_pairing,
