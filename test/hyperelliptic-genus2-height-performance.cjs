@@ -1061,6 +1061,30 @@ assert set(batch_data["stage_milliseconds"]) == {
     "exact_outward_logarithms",
     "exact_small_step_oracle",
 }
+pairing_diagnostics = batch_pairing.diagnostics
+assert set(pairing_diagnostics["cold_proof_stages_ms"]) == {
+    "pairwise_divisor_sums",
+    "authenticated_missing_scan",
+    "automatic_bound_authentication",
+    "certified_local_height_batch",
+    "authenticated_record_assembly",
+    "direct_primitive_polarization",
+}
+off_diagonal = pairing_diagnostics["off_diagonal_height_data"]
+assert len(off_diagonal) == 1
+assert off_diagonal[0]["left"] == 0 and off_diagonal[0]["right"] == 1
+off_diagonal_ball = off_diagonal[0]["sum_height"]["enclosure"]
+assert RealBall(
+    off_diagonal_ball["lower"],
+    off_diagonal_ball["upper"],
+    precision_bits=64,
+).intersection(scalar_sum.ball) is not None
+assert batch_pairing.to_dict()["diagnostics"] == pairing_diagnostics
+# Public lazy-diagnostic egress is detached: neither a returned dictionary nor
+# an object.__setattr__ attack on this capsule can poison the hidden primitive
+# record used by the next authenticated cache hit.
+pairing_diagnostics["algorithm"] = "poisoned"
+object.__setattr__(batch_pairing.height_results[0], "_diagnostics", {})
 batch_diagnostics = batch_context.diagnostics()
 assert batch_diagnostics["canonical_height_cache_entries"] == 3
 assert batch_diagnostics["canonical_height_cache_hits"] == 0
@@ -1076,6 +1100,8 @@ warm_pairing = height_pairing(
     context=batch_context,
 )
 assert warm_pairing.matrix[0][1].lower == batch_pairing.matrix[0][1].lower
+assert warm_pairing.diagnostics["algorithm"] == "quadratic-height-polarization"
+assert warm_pairing.height_results[0].diagnostics["batch"]["point_count"] == 3
 assert batch_context.diagnostics()["height_pairing_cache_hits"] == pair_hits_before+1
 
 partial_context = HeightContext(J)

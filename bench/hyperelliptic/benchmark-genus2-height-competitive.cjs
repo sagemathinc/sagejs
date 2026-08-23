@@ -161,7 +161,8 @@ async function sageRows() {
         "assert height_bench_pairing.rigorous and height_bench_regulator.rigorous",
         "height_bench_pair_batch = height_bench_pairing.height_results[0].diagnostics['batch']",
         "height_bench_pair_stages = height_bench_pair_batch['stage_milliseconds']",
-        "str(height_bench_pair_cold)+'|'+str(height_bench_pair_warm_ms)+'|'+str(height_bench_reg_warm)+'|'+str(height_bench_regulator.ball.lower)+'|'+str(height_bench_regulator.ball.upper)+'|'+str(height_bench_pair_batch['point_count'])+'|'+str(height_bench_pair_stages['shared_preparation'])+'|'+str(height_bench_pair_stages['modular_recurrence'])+'|'+str(height_bench_pair_stages['dyadic_recurrence'])+'|'+str(height_bench_pair_stages['exact_outward_logarithms'])+'|'+str(height_bench_pair_stages['exact_small_step_oracle'])+'|'+str(height_bench_pairing.height_results[0].diagnostics['archimedean_correction']['diagnostics']['scale_logarithm_precision_bits'])+'|'+str(height_bench_pairing.height_results[0].diagnostics['archimedean_correction']['diagnostics']['recurrence_backend'])",
+        "height_bench_pair_proof_stages = height_bench_pairing._diagnostics.get('cold_proof_stages_ms', {})",
+        "str(height_bench_pair_cold)+'|'+str(height_bench_pair_warm_ms)+'|'+str(height_bench_reg_warm)+'|'+str(height_bench_regulator.ball.lower)+'|'+str(height_bench_regulator.ball.upper)+'|'+str(height_bench_pair_batch['point_count'])+'|'+str(height_bench_pair_stages['shared_preparation'])+'|'+str(height_bench_pair_stages['modular_recurrence'])+'|'+str(height_bench_pair_stages['dyadic_recurrence'])+'|'+str(height_bench_pair_stages['exact_outward_logarithms'])+'|'+str(height_bench_pair_stages['exact_small_step_oracle'])+'|'+str(height_bench_pairing.height_results[0].diagnostics['archimedean_correction']['diagnostics']['scale_logarithm_precision_bits'])+'|'+str(height_bench_pairing.height_results[0].diagnostics['archimedean_correction']['diagnostics']['recurrence_backend'])+'|'+str(height_bench_pair_proof_stages.get('authenticated_record_assembly', 0))+'|'+str(height_bench_pair_proof_stages.get('direct_primitive_polarization', 0))+'|'+str(height_bench_pair_proof_stages.get('pairwise_divisor_sums', 0))+'|'+str(height_bench_pair_proof_stages.get('authenticated_missing_scan', 0))+'|'+str(height_bench_pair_proof_stages.get('automatic_bound_authentication', 0))+'|'+str(height_bench_pair_proof_stages.get('certified_local_height_batch', 0))",
       ].join("\n"),
       { timeout: 900_000 },
     );
@@ -182,7 +183,8 @@ async function sageRows() {
         "assert height_bench_rank4.rigorous",
         "height_bench_rank4_batch = height_bench_rank4.height_results[0].diagnostics['batch']",
         "height_bench_rank4_stages = height_bench_rank4_batch['stage_milliseconds']",
-        "str(height_bench_rank4_cold)+'|'+str(height_bench_rank4_warm_ms)+'|'+str(height_bench_rank4_context.diagnostics()['height_pairing_cache_hits'])+'|'+str(height_bench_rank4_context.diagnostics()['canonical_height_cache_entries'])+'|'+str(height_bench_rank4_batch['point_count'])+'|'+str(height_bench_rank4_stages['shared_preparation'])+'|'+str(height_bench_rank4_stages['modular_recurrence'])+'|'+str(height_bench_rank4_stages['dyadic_recurrence'])+'|'+str(height_bench_rank4_stages['exact_outward_logarithms'])+'|'+str(height_bench_rank4_stages['exact_small_step_oracle'])",
+        "height_bench_rank4_proof_stages = height_bench_rank4._diagnostics.get('cold_proof_stages_ms', {})",
+        "str(height_bench_rank4_cold)+'|'+str(height_bench_rank4_warm_ms)+'|'+str(height_bench_rank4_context.diagnostics()['height_pairing_cache_hits'])+'|'+str(height_bench_rank4_context.diagnostics()['canonical_height_cache_entries'])+'|'+str(height_bench_rank4_batch['point_count'])+'|'+str(height_bench_rank4_stages['shared_preparation'])+'|'+str(height_bench_rank4_stages['modular_recurrence'])+'|'+str(height_bench_rank4_stages['dyadic_recurrence'])+'|'+str(height_bench_rank4_stages['exact_outward_logarithms'])+'|'+str(height_bench_rank4_stages['exact_small_step_oracle'])+'|'+str(height_bench_rank4_proof_stages.get('authenticated_record_assembly', 0))+'|'+str(height_bench_rank4_proof_stages.get('direct_primitive_polarization', 0))+'|'+str(height_bench_rank4_proof_stages.get('pairwise_divisor_sums', 0))+'|'+str(height_bench_rank4_proof_stages.get('authenticated_missing_scan', 0))+'|'+str(height_bench_rank4_proof_stages.get('automatic_bound_authentication', 0))+'|'+str(height_bench_rank4_proof_stages.get('certified_local_height_batch', 0))",
       ].join("\n"),
       { timeout: 900_000 },
     );
@@ -205,6 +207,14 @@ async function sageRows() {
         },
         logarithmPrecisionBits: Number(fields[11]),
         recurrenceBackend: fields[12],
+        coldProofStagesMilliseconds: {
+          authenticatedRecordAssembly: Number(fields[13]),
+          directPrimitivePolarization: Number(fields[14]),
+          pairwiseDivisorSums: Number(fields[15]),
+          authenticatedMissingScan: Number(fields[16]),
+          automaticBoundAuthentication: Number(fields[17]),
+          certifiedLocalHeightBatch: Number(fields[18]),
+        },
       },
       rank4: {
         targetBits: target,
@@ -220,6 +230,14 @@ async function sageRows() {
           dyadicRecurrence: Number(rank4Fields[7]),
           exactOutwardLogarithms: Number(rank4Fields[8]),
           exactSmallStepOracle: Number(rank4Fields[9]),
+        },
+        coldProofStagesMilliseconds: {
+          authenticatedRecordAssembly: Number(rank4Fields[10]),
+          directPrimitivePolarization: Number(rank4Fields[11]),
+          pairwiseDivisorSums: Number(rank4Fields[12]),
+          authenticatedMissingScan: Number(rank4Fields[13]),
+          automaticBoundAuthentication: Number(rank4Fields[14]),
+          certifiedLocalHeightBatch: Number(rank4Fields[15]),
         },
       },
     };
