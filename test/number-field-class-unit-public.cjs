@@ -309,6 +309,7 @@ test("public cubic fallback resumes its authenticated exact relation prefix", ()
   const output = runPublic(String.raw`
 import sagejs.number_fields.cubic_class_number as cubic_module
 import sagejs.number_fields.class_unit_groups as class_unit_module
+import sagejs.number_fields.class_unit_context as context_module
 import sagejs.number_fields.class_unit_analytic as analytic_module
 
 analytic_replays = 0
@@ -449,11 +450,15 @@ assert limited_result.complete and limited_result.class_number() == 2
 assert limited_result.diagnostics["resources"]["cubic_factor_base_seed_uses"] == 0
 
 # A failed live construction hint falls back to the unchanged full map replay.
-original_live_verifier = class_unit_module._EngineClassGroup._verify_live_construction
+original_live_verifier = (
+    context_module.ClassUnitGroupContext._verify_live_class_group_construction
+)
 original_saturation_validator = (
     class_unit_module._standard_live_saturation_record_is_valid
 )
-class_unit_module._EngineClassGroup._verify_live_construction = lambda self, token: False
+context_module.ClassUnitGroupContext._verify_live_class_group_construction = (
+    lambda self, token, group: False
+)
 class_unit_module._standard_live_saturation_record_is_valid = (
     lambda record, field, order: False
 )
@@ -469,7 +474,9 @@ try:
     assert replay_resources["saturation_live_authentication_fallback_replays"] == 1
     assert replayed.class_group().verify()
 finally:
-    class_unit_module._EngineClassGroup._verify_live_construction = original_live_verifier
+    context_module.ClassUnitGroupContext._verify_live_class_group_construction = (
+        original_live_verifier
+    )
     class_unit_module._standard_live_saturation_record_is_valid = (
         original_saturation_validator
     )

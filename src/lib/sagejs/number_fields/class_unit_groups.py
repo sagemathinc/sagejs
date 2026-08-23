@@ -36,8 +36,6 @@ MAX_UNCONDITIONAL_CUBIC_RELATION_SEED_SIZE = 10
 DEFAULT_CUBIC_SATURATION_RELATION_BATCH = 12
 MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 
-_AUTHENTICATED_ENGINE_CLASS_GROUP_TOKEN = object()
-_AUTHENTICATED_ENGINE_CLASS_GROUP_PRESENTATION_TOKEN = object()
 _VERIFIED_ENGINE_PRESENTATION_TOKEN = object()
 _CUBIC_RELATION_SEED_UNREAD = object()
 
@@ -843,118 +841,6 @@ class _EngineClassGroup:
         except (KeyError, AttributeError, TypeError, ValueError, ArithmeticError):
             return False
 
-    def _verify_live_construction(self, token: object) -> bool:
-        """Authenticate the exact producer state without generic map replay.
-
-        The engine has just built each generator ideal from its authenticated
-        factor-base row.  Factoring that same ideal through the public map is
-        a useful detached check, but it repeats exact ideal arithmetic at the
-        live producer boundary.  Here we instead bind the retained collector,
-        its admission receipts, the verified presentation, and every
-        generator ideal to the exact row which constructed it.  Public and
-        detached calls to `verify()` continue to exercise the generic ideal
-        maps above.
-        """
-        if token not in (
-            _AUTHENTICATED_ENGINE_CLASS_GROUP_TOKEN,
-            _AUTHENTICATED_ENGINE_CLASS_GROUP_PRESENTATION_TOKEN,
-        ):
-            return False
-        try:
-            collector = self._relation_reconstructor
-            if (
-                collector is None
-                or getattr(collector, "order", None) is not self._order
-            ):
-                return False
-            retained_factors = tuple(getattr(collector, "factor_base", ()))
-            if len(retained_factors) != len(self._factor_base) or any(
-                retained is not supplied
-                for retained, supplied in zip(
-                    retained_factors, self._factor_base, strict=True
-                )
-            ):
-                return False
-            retained_relations = tuple(getattr(collector, "records", ()))
-            if len(retained_relations) != len(self._relations) or any(
-                retained is not supplied
-                for retained, supplied in zip(
-                    retained_relations, self._relations, strict=True
-                )
-            ):
-                return False
-            if (
-                token is not _AUTHENTICATED_ENGINE_CLASS_GROUP_PRESENTATION_TOKEN
-                and not self._presentation.verify()
-            ):
-                return False
-            presentation_rows = tuple(
-                tuple(int(value) for value in row.dense())
-                for row in self._presentation.relation_rows
-            )
-            relation_rows = tuple(
-                tuple(int(value) for value in record.row) for record in self._relations
-            )
-            if relation_rows != presentation_rows:
-                return False
-            if token is _AUTHENTICATED_ENGINE_CLASS_GROUP_PRESENTATION_TOKEN:
-                relation_module = _optional_module(
-                    "sagejs.number_fields.class_group_relations"
-                )
-                verify_prefix = getattr(
-                    collector, "_all_records_live_authenticated", None
-                )
-                if (
-                    relation_module is None
-                    or not callable(verify_prefix)
-                    or not verify_prefix(
-                        relation_module._LIVE_VERIFIED_RELATION_PREFIX_TOKEN
-                    )
-                ):
-                    return False
-            else:
-                verify_admission = getattr(collector, "verify_admission_receipt", None)
-                if not callable(verify_admission) or not all(
-                    verify_admission(self._order, self._factor_base, record)
-                    for record in self._relations
-                ):
-                    return False
-
-            positions = tuple(self._presentation.invariant_positions)
-            expected_rows = tuple(
-                tuple(
-                    int(value)
-                    for value in self._presentation.smith_right_inverse[position]
-                )
-                for position in positions
-            )
-            if expected_rows != self._generator_rows:
-                return False
-            reconstruct = getattr(collector, "reconstruct_factor_base_ideal", None)
-            if not callable(reconstruct):
-                return False
-            if len(self._generator_ideals) != len(self._generator_rows):
-                return False
-            for index, (row, ideal) in enumerate(
-                zip(self._generator_rows, self._generator_ideals, strict=True)
-            ):
-                if reconstruct(row) != ideal:
-                    return False
-                coordinates = tuple(
-                    int(value) for value in self._presentation.class_coordinates(row)
-                )
-                expected_coordinates = tuple(
-                    1 if coordinate == index else 0
-                    for coordinate in range(len(self._invariants))
-                )
-                if coordinates != expected_coordinates:
-                    return False
-                if self._gens[index].order() != self._invariants[index]:
-                    return False
-            return True
-        except (KeyError, AttributeError, TypeError, ValueError, ArithmeticError):
-            return False
-
 
 class ClassUnitComputation:
     """Terminal result; incomplete states never expose a proved class group."""
@@ -1541,6 +1427,14 @@ class ClassUnitGroupEngine:
         bind = getattr(self.context, "_bind_live_analytic_proof", None)
         if callable(bind) and self._live_context_token is not None:
             bind(self._live_context_token, proof)
+
+    def _verify_context_class_group_construction(self, group: Any) -> bool:
+        verify = getattr(self.context, "_verify_live_class_group_construction", None)
+        return bool(
+            callable(verify)
+            and self._live_context_token is not None
+            and verify(self._live_context_token, group)
+        )
 
     def _context_analytic_proof(self) -> tuple[Any, ...] | None:
         retained = getattr(self.context, "_live_analytic_proof", None)
@@ -4144,15 +4038,7 @@ class ClassUnitGroupEngine:
             collector,
         )
         self._resource_usage["class_group_live_authentication_requests"] += 1
-        live_verified = group._verify_live_construction(
-            (
-                _AUTHENTICATED_ENGINE_CLASS_GROUP_PRESENTATION_TOKEN
-                if self.progress is None
-                and not self._cancelled_callback_supplied
-                and self.checkpoint_controller is None
-                else _AUTHENTICATED_ENGINE_CLASS_GROUP_TOKEN
-            )
-        )
+        live_verified = self._verify_context_class_group_construction(group)
         if live_verified:
             self._resource_usage["class_group_live_authentication_hits"] += 1
         else:

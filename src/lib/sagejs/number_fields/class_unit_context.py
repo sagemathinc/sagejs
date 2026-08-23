@@ -601,6 +601,119 @@ class _LiveClassUnitArtifacts:
         self.saturation_live_authority_available = False
         return accepted
 
+    def verify_class_group_construction(self, group: Any) -> bool:
+        """Authenticate a class group built from this uninterrupted live state.
+
+        The context authenticated the exact collector prefix when relations
+        were bound.  A reusable context has no progress, cancellation, or
+        checkpoint callback which could interpose between that boundary and
+        class-group construction.  Bind the resulting group back to those
+        retained objects and replay only the generator rows which the engine
+        has just materialized.  Detached contexts have no live artifacts and
+        continue through the group's independent public verifier.
+        """
+        if self.sealed or not self.reusable:
+            return False
+        try:
+            collector = self.collector
+            presentation = self.presentation
+            if (
+                collector is None
+                or presentation is None
+                or getattr(group, "_order", None) is not self.order
+                or getattr(group, "_relation_reconstructor", None) is not collector
+                or getattr(group, "_presentation", None) is not presentation
+            ):
+                return False
+            current_factors = tuple(getattr(collector, "factor_base", ()))
+            group_factors = tuple(getattr(group, "_factor_base", ()))
+            if (
+                len(current_factors) != len(self.factor_base)
+                or len(group_factors) != len(self.factor_base)
+                or any(
+                    retained is not current
+                    for retained, current in zip(
+                        self.factor_base, current_factors, strict=True
+                    )
+                )
+                or any(
+                    retained is not supplied
+                    for retained, supplied in zip(
+                        self.factor_base, group_factors, strict=True
+                    )
+                )
+            ):
+                return False
+            current_relations = tuple(getattr(collector, "records", ()))
+            group_relations = tuple(getattr(group, "_relations", ()))
+            if (
+                len(current_relations) != len(self.relations)
+                or len(group_relations) != len(self.relations)
+                or any(
+                    retained is not current
+                    for retained, current in zip(
+                        self.relations, current_relations, strict=True
+                    )
+                )
+                or any(
+                    retained is not supplied
+                    for retained, supplied in zip(
+                        self.relations, group_relations, strict=True
+                    )
+                )
+            ):
+                return False
+            presentation_rows = tuple(
+                tuple(int(value) for value in row.dense())
+                for row in presentation.relation_rows
+            )
+            relation_rows = tuple(
+                tuple(int(value) for value in record.row) for record in self.relations
+            )
+            if presentation_rows != relation_rows:
+                return False
+            invariants = tuple(int(value) for value in presentation.invariants)
+            if tuple(getattr(group, "_invariants", ())) != invariants:
+                return False
+            positions = tuple(presentation.invariant_positions)
+            expected_rows = tuple(
+                tuple(
+                    int(value) for value in presentation.smith_right_inverse[position]
+                )
+                for position in positions
+            )
+            generator_rows = tuple(getattr(group, "_generator_rows", ()))
+            generator_ideals = tuple(getattr(group, "_generator_ideals", ()))
+            generators = tuple(getattr(group, "_gens", ()))
+            if (
+                generator_rows != expected_rows
+                or len(generator_ideals) != len(expected_rows)
+                or len(generators) != len(invariants)
+            ):
+                return False
+            reconstruct = getattr(collector, "reconstruct_factor_base_ideal", None)
+            if not callable(reconstruct):
+                return False
+            for index, (row, ideal) in enumerate(
+                zip(generator_rows, generator_ideals, strict=True)
+            ):
+                if reconstruct(row) != ideal:
+                    return False
+                coordinates = tuple(
+                    int(value) for value in presentation.class_coordinates(row)
+                )
+                expected_coordinates = tuple(
+                    1 if coordinate == index else 0
+                    for coordinate in range(len(invariants))
+                )
+                if coordinates != expected_coordinates:
+                    return False
+                if generators[index].order() != invariants[index]:
+                    return False
+            return True
+        except (KeyError, AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
     def retain_terminal(
         self,
         *,
@@ -848,6 +961,12 @@ class ClassUnitGroupContext:
             raise TypeError("live saturation state is engine-owned")
         live = self._live_artifacts
         return None if live is None else live.saturation_record
+
+    def _verify_live_class_group_construction(self, token: Any, group: Any) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live class-group state is engine-owned")
+        live = self._live_artifacts
+        return bool(live is not None and live.verify_class_group_construction(group))
 
     def _retain_live_terminal(
         self,
