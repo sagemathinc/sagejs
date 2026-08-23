@@ -485,10 +485,10 @@
       "prefixes": ["src/lib/sagejs/hyperelliptic_curves/"]
     },
     {
-      "id": "hyperelliptic-curves-bsd",
+      "id": "hyperelliptic-curves-heights",
       "layer": 8,
       "startup": "lazy",
-      "max_source_bytes": 850000,
+      "max_source_bytes": 400000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic",
         "linear-algebra", "numeric-compat", "hyperelliptic-curves",
@@ -496,13 +496,36 @@
         "number-field-global-arithmetic"
       ],
       "modules": [
-        "sagejs.hyperelliptic_curves.bsd",
-        "sagejs.hyperelliptic_curves.bsd_pipeline",
-        "sagejs.hyperelliptic_curves.deficiency",
         "sagejs.hyperelliptic_curves.genus2_heights",
         "sagejs.hyperelliptic_curves.genus2_kummer",
         "sagejs.hyperelliptic_curves.genus3_heights",
-        "sagejs.hyperelliptic_curves.periods",
+        "sagejs.hyperelliptic_curves.periods"
+      ],
+      "files": [
+        "src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+        "src/lib/sagejs/hyperelliptic_curves/genus2_heights.py",
+        "src/lib/sagejs/hyperelliptic_curves/genus2_kummer.py",
+        "src/lib/sagejs/hyperelliptic_curves/genus3_heights.py",
+        "src/lib/sagejs/hyperelliptic_curves/periods.py"
+      ],
+      "prefixes": []
+    },
+    {
+      "id": "hyperelliptic-curves-bsd",
+      "layer": 9,
+      "startup": "lazy",
+      "max_source_bytes": 650000,
+      "depends_on": [
+        "core-runtime", "native-integration", "python-stdlib", "arithmetic",
+        "linear-algebra", "numeric-compat", "hyperelliptic-curves",
+        "hyperelliptic-curves-kernels", "hyperelliptic-curves-algorithms",
+        "hyperelliptic-curves-heights",
+        "number-field-global-arithmetic"
+      ],
+      "modules": [
+        "sagejs.hyperelliptic_curves.bsd",
+        "sagejs.hyperelliptic_curves.bsd_pipeline",
+        "sagejs.hyperelliptic_curves.deficiency",
         "sagejs.hyperelliptic_curves.saturation",
         "sagejs.hyperelliptic_curves.tamagawa",
         "sagejs.hyperelliptic_curves.torsion"
@@ -510,14 +533,9 @@
       "files": [
         "src/lib/sagejs/hyperelliptic_curves/_test_bsd.py",
         "src/lib/sagejs/hyperelliptic_curves/_test_deficiency.py",
-        "src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
         "src/lib/sagejs/hyperelliptic_curves/bsd.py",
         "src/lib/sagejs/hyperelliptic_curves/bsd_pipeline.py",
         "src/lib/sagejs/hyperelliptic_curves/deficiency.py",
-        "src/lib/sagejs/hyperelliptic_curves/genus2_heights.py",
-        "src/lib/sagejs/hyperelliptic_curves/genus2_kummer.py",
-        "src/lib/sagejs/hyperelliptic_curves/genus3_heights.py",
-        "src/lib/sagejs/hyperelliptic_curves/periods.py",
         "src/lib/sagejs/hyperelliptic_curves/saturation.py",
         "src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
         "src/lib/sagejs/hyperelliptic_curves/torsion.py"
