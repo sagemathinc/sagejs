@@ -28,6 +28,38 @@ typedef struct
 typedef sagejs_fmpq_polynomial_workspace_struct
     sagejs_fmpq_polynomial_workspace_t[1];
 
+/*
+ * One immutable Mumford `(u,v)` pair copied out of mutable workspace slots.
+ *
+ * Keeping both polynomials under one owner prevents callers from transplanting
+ * independently borrowed components.  This is an exact representation
+ * primitive only: the source-transparent Python kernel remains responsible
+ * for every Cantor formula and for proving that the copied slots are reduced.
+ */
+
+typedef struct
+{
+    sagejs_fmpq_polynomial_struct u;
+    sagejs_fmpq_polynomial_struct v;
+} sagejs_fmpq_polynomial_pair_struct;
+
+typedef sagejs_fmpq_polynomial_pair_struct
+    sagejs_fmpq_polynomial_pair_t[1];
+
+static inline void sagejs_fmpq_polynomial_pair_clear(
+    sagejs_fmpq_polynomial_pair_t pair)
+{
+    sagejs_fmpq_polynomial_clear(&pair->u);
+    sagejs_fmpq_polynomial_clear(&pair->v);
+}
+
+static inline size_t sagejs_fmpq_polynomial_pair_allocated_bytes(
+    const sagejs_fmpq_polynomial_pair_t pair)
+{
+    return sagejs_retained_size_add(
+        pair->u.retained_bytes, pair->v.retained_bytes);
+}
+
 static inline int sagejs_fmpq_polynomial_workspace_valid_slot(
     const sagejs_fmpq_polynomial_workspace_t workspace, uint64_t slot)
 {
@@ -94,6 +126,37 @@ static inline int sagejs_fmpq_polynomial_workspace_load(
         !source->sealed)
         return 0;
     fmpq_poly_set(workspace->slots + (slong) output, source->value);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_workspace_copy_pair_out(
+    sagejs_fmpq_polynomial_pair_t result,
+    const sagejs_fmpq_polynomial_workspace_t workspace,
+    uint64_t u_slot, uint64_t v_slot)
+{
+    if (!sagejs_fmpq_polynomial_workspace_valid_slot(workspace, u_slot) ||
+        !sagejs_fmpq_polynomial_workspace_valid_slot(workspace, v_slot))
+        return 0;
+    fmpq_poly_init(result->u.value);
+    fmpq_poly_set(result->u.value, workspace->slots + (slong) u_slot);
+    sagejs_fmpq_polynomial_finish_result(&result->u);
+    fmpq_poly_init(result->v.value);
+    fmpq_poly_set(result->v.value, workspace->slots + (slong) v_slot);
+    sagejs_fmpq_polynomial_finish_result(&result->v);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_workspace_load_pair(
+    sagejs_fmpq_polynomial_workspace_t workspace,
+    uint64_t u_output, uint64_t v_output,
+    const sagejs_fmpq_polynomial_pair_t source)
+{
+    if (!sagejs_fmpq_polynomial_workspace_valid_slot(workspace, u_output) ||
+        !sagejs_fmpq_polynomial_workspace_valid_slot(workspace, v_output) ||
+        u_output == v_output || !source->u.sealed || !source->v.sealed)
+        return 0;
+    fmpq_poly_set(workspace->slots + (slong) u_output, source->u.value);
+    fmpq_poly_set(workspace->slots + (slong) v_output, source->v.value);
     return 1;
 }
 
@@ -289,8 +352,14 @@ static inline int sagejs_fmpq_polynomial_workspace_coefficient_numerator(
         index >= (uint64_t) fmpq_poly_length(
             workspace->slots + (slong) slot))
         return 0;
-    fmpz_set(result,
-        fmpq_poly_numref(workspace->slots + (slong) slot) + (slong) index);
+    const fmpq_poly_struct *value = workspace->slots + (slong) slot;
+    fmpz_t divisor;
+    fmpz_init(divisor);
+    fmpz_gcd(divisor, fmpq_poly_numref(value) + (slong) index,
+        fmpq_poly_denref(value));
+    fmpz_divexact(result,
+        fmpq_poly_numref(value) + (slong) index, divisor);
+    fmpz_clear(divisor);
     return 1;
 }
 
@@ -303,7 +372,13 @@ static inline int sagejs_fmpq_polynomial_workspace_coefficient_denominator(
         index >= (uint64_t) fmpq_poly_length(
             workspace->slots + (slong) slot))
         return 0;
-    fmpz_set(result, fmpq_poly_denref(workspace->slots + (slong) slot));
+    const fmpq_poly_struct *value = workspace->slots + (slong) slot;
+    fmpz_t divisor;
+    fmpz_init(divisor);
+    fmpz_gcd(divisor, fmpq_poly_numref(value) + (slong) index,
+        fmpq_poly_denref(value));
+    fmpz_divexact(result, fmpq_poly_denref(value), divisor);
+    fmpz_clear(divisor);
     return 1;
 }
 

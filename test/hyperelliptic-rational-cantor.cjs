@@ -36,15 +36,21 @@ from sagejs.native import is_compiled
 from sagejs.ffi.flint import (
     fmpq_polynomial_workspace,
     fmpq_polynomial_workspace_allocated_bytes,
+    fmpq_polynomial_workspace_copy_pair_out,
+    fmpq_polynomial_workspace_load_pair,
 )
 from sagejs.hyperelliptic_curves.jacobian_rational_native import (
     PreparedRationalJacobianArithmetic,
     rational_cantor_add,
+    rational_cantor_add_pairs,
     rational_cantor_scalar,
+    rational_cantor_scalar_pair,
 )
 
 compiled = is_compiled(rational_cantor_add)
 assert compiled == is_compiled(rational_cantor_scalar)
+assert compiled == is_compiled(rational_cantor_add_pairs)
+assert compiled == is_compiled(rational_cantor_scalar_pair)
 selected = "native" if compiled else "reference"
 
 
@@ -81,6 +87,52 @@ def check_curve(curve):
         J.genus(),
     )
     assert context._unpack_output(raw_output) == P._scalar_multiple_reference(2)
+    raw_pair = fmpq_polynomial_workspace_copy_pair_out(raw_workspace, 6, 7)
+    assert not raw_pair.closed
+    assert not hasattr(raw_pair, "u") and not hasattr(raw_pair, "v")
+    dynamic_add_pairs = getattr(
+        rational_cantor_add_pairs, "javascript", rational_cantor_add_pairs
+    )
+    assert dynamic_add_pairs(
+        raw_output,
+        raw_workspace,
+        J.f()._exact_polynomial_resource(),
+        J.h()._exact_polynomial_resource(),
+        raw_pair,
+        raw_pair,
+        J.genus(),
+    )
+    assert context._unpack_output(raw_output) == P._scalar_multiple_reference(4)
+    dynamic_scalar_pair = getattr(
+        rational_cantor_scalar_pair, "javascript", rational_cantor_scalar_pair
+    )
+    assert dynamic_scalar_pair(
+        raw_output,
+        raw_workspace,
+        J.f()._exact_polynomial_resource(),
+        J.h()._exact_polynomial_resource(),
+        raw_pair,
+        3,
+        J.genus(),
+        32,
+    )
+    assert context._unpack_output(raw_output) == P._scalar_multiple_reference(6)
+    assert fmpq_polynomial_workspace_load_pair(raw_workspace, 14, 15, raw_pair)
+    try:
+        fmpq_polynomial_workspace_load_pair(raw_workspace, 14, 14, raw_pair)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("an overlapping opaque pair load was accepted")
+    raw_pair.close()
+    raw_pair.close()
+    assert raw_pair.closed
+    try:
+        fmpq_polynomial_workspace_load_pair(raw_workspace, 14, 15, raw_pair)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a closed opaque pair resource was loaded")
     assert fmpq_polynomial_workspace_allocated_bytes(raw_workspace) > 0
     raw_workspace.close()
     assert raw_workspace.closed
@@ -104,6 +156,31 @@ def check_curve(curve):
     public_sum, public_diagnostics = P.add(P, diagnostics=True)
     assert public_sum == P + P
     assert public_diagnostics["selected"] == ("native" if compiled else "reference")
+    if compiled:
+        retained = P + P
+        assert not retained.is_materialized()
+        retained_row = public_context.pack(retained)
+        retained_hash = hash(retained)
+        # Later workspace activity and a chained public operation must consume
+        # the opaque retained pair without publishing or mutating its exact row.
+        for index in range(2, 9):
+            context.scalar_batch((P,), (index,))
+        chained = retained + P
+        assert not retained.is_materialized()
+        assert not chained.is_materialized()
+        assert chained == P.scalar_multiple(3, algorithm="reference")
+        assert public_context.pack(retained) == retained_row
+        assert hash(retained) == retained_hash
+        public_context.close()
+        recreated = J.prepared_arithmetic()
+        assert recreated is not public_context and not recreated.closed
+        assert retained + P == chained
+        assert not retained.is_materialized()
+        u_value, v_value = retained.uv()
+        assert u_value is not None and v_value is not None
+        assert retained.is_materialized()
+        assert recreated.pack(retained) == retained_row
+        assert hash(retained) == retained_hash
     scalars = (-17, -3, -1, 0, 1, 2, 7, 19)
     points = tuple(values[index] for index in range(len(scalars)))
     products = context.scalar_batch(points, scalars)
@@ -135,6 +212,87 @@ fingerprints = (
     check_curve(HyperellipticCurve(x**7 + x + 1, x**2)),
 )
 assert len(set(fingerprints)) == 4
+
+
+# The rational retained binding is not a writable module attribute or object
+# slot.  Rebinding public module helpers and injecting plausible attributes
+# therefore cannot forge, transplant, or split its exact representation.
+import sagejs.hyperelliptic_curves.jacobian_rational_native as rational_module
+
+security_curve = HyperellipticCurve(x**5 + x + 1)
+security_jacobian = security_curve.jacobian()
+security_point = security_jacobian((0, 1))
+security_result = security_point + security_point
+assert not security_result.is_materialized()
+security_context = security_jacobian.prepared_arithmetic()
+security_row = security_context.pack(security_result)
+security_hash = hash(security_result)
+assert not hasattr(rational_module, "_install_retained_rational_mumford_state")
+for forbidden in (
+    "_RationalMumfordBinding",
+    "_retained_rational_weak_map",
+    "_retained_rational_publisher",
+    "_retained_rational_token",
+):
+    assert not hasattr(rational_module, forbidden)
+
+for name in (
+    "_rational_mumford_binding",
+    "_RationalMumfordBinding",
+    "_retained_rational_pair",
+):
+    try:
+        object.__setattr__(security_result, name, (security_point, security_row))
+    except AttributeError:
+        pass
+assert security_context.pack(security_result) == security_row
+assert hash(security_result) == security_hash
+object.__setattr__(security_result, "_packed_hash", -1234567)
+assert hash(security_result) == security_hash
+
+saved_values = rational_module.integer_buffer_values
+saved_copy = rational_module.fmpq_polynomial_workspace_copy_pair_out
+saved_load = rational_module.fmpq_polynomial_workspace_load
+saved_resource = rational_module._resource
+saved_add_pairs = rational_module.rational_cantor_add_pairs
+try:
+    rational_module.integer_buffer_values = None
+    rational_module.fmpq_polynomial_workspace_copy_pair_out = None
+    rational_module.fmpq_polynomial_workspace_load = None
+    rational_module._resource = None
+    rational_module.rational_cantor_add_pairs = None
+    guarded = security_result + security_point
+    assert guarded == security_point.scalar_multiple(3, algorithm="reference")
+finally:
+    rational_module.integer_buffer_values = saved_values
+    rational_module.fmpq_polynomial_workspace_copy_pair_out = saved_copy
+    rational_module.fmpq_polynomial_workspace_load = saved_load
+    rational_module._resource = saved_resource
+    rational_module.rational_cantor_add_pairs = saved_add_pairs
+
+assert security_context.pack(security_result) == security_row
+assert hash(security_result) == security_hash
+reconstructor, arguments = security_result.__reduce__()
+restored = reconstructor(*arguments)
+assert restored == security_result
+assert restored.__reduce__()[1] == arguments
+assert security_context.pack(security_result) == security_row
+assert hash(security_result) == security_hash
+
+foreign_jacobian = HyperellipticCurve(x**5 + x + 1).jacobian()
+foreign_point = foreign_jacobian((0, 1))
+original_parent = security_result._parent
+try:
+    object.__setattr__(security_result, "_parent", foreign_jacobian)
+    try:
+        foreign_point + security_result
+    except (ArithmeticError, TypeError):
+        pass
+    else:
+        raise AssertionError("a retained pair was transplanted to another Jacobian")
+finally:
+    object.__setattr__(security_result, "_parent", original_parent)
+assert security_context.pack(security_result) == security_row
 
 
 def check_rational_two_torsion(polynomial):
@@ -209,6 +367,23 @@ except RuntimeError as error:
 else:
     raise AssertionError("prepared workspace memory bound was ignored")
 
+retained_limit = PreparedRationalJacobianArithmetic(T.parent())
+retained_limit._max_memory_bytes = (
+    fmpq_polynomial_workspace_allocated_bytes(retained_limit._workspace)
+    + retained_limit._retained_pair_bound
+    - 1
+)
+try:
+    retained_limit.add_batch((T,), (T,))
+except RuntimeError as error:
+    assert "max_memory_bytes" in str(error)
+else:
+    raise AssertionError("opaque retained output memory bound was ignored")
+assert not retained_limit._busy
+retained_limit._max_memory_bytes = None
+assert retained_limit.add_batch((T,), (T,))[0] == T + T
+retained_limit.close()
+
 lifecycle = PreparedRationalJacobianArithmetic(T.parent())
 assert not lifecycle.closed
 lifecycle.close()
@@ -242,6 +417,22 @@ test("prepared rational Cantor arithmetic differentially replays genus 2 and 3",
     assert.match(explanation, /host-isolated core: yes/);
     assert.match(explanation, /0 callbacks inside core/);
     assert.match(explanation, /FmpqPolynomialWorkspace/);
+    for (const functionName of [
+      "rational_cantor_add_pairs",
+      "rational_cantor_scalar_pair",
+    ]) {
+      const retainedExplanation = run(process.execPath, [
+        sagejs,
+        "native",
+        "explain",
+        source,
+        "--function",
+        functionName,
+      ]);
+      assert.match(retainedExplanation, /host-isolated core: yes/);
+      assert.match(retainedExplanation, /0 callbacks inside core/);
+      assert.match(retainedExplanation, /FmpqPolynomialPair/);
+    }
     run(process.execPath, [
       sagejs,
       "native",

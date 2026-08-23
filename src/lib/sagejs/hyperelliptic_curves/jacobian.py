@@ -429,6 +429,8 @@ class MumfordDivisor(sage.Element):
             right_u, right_v = other.uv()
             u, v = self._parent._compose(left_u, left_v, right_u, right_v)
             return self._parent._element(u, v, False)
+        if not diagnostics and hasattr(context, "_add_one"):
+            return context._add_one(self, other)
         result = context.add_batch((self,), (other,), diagnostics=diagnostics)
         if diagnostics:
             values, record = result
@@ -451,6 +453,8 @@ class MumfordDivisor(sage.Element):
         return result[0]
 
     def __add__(self, other: Any) -> Any:
+        if isinstance(other, MumfordDivisor) and other._parent is self._parent:
+            return self.add(other)
         return runtime.coercion_model.binOp("add", self, other)
 
     def __radd__(self, other: Any) -> Any:
