@@ -363,6 +363,39 @@ except Genus2HeightCapabilityError:
 finally:
     J._f = original_f
 assert mutated_model_alias_rejected
+J._f = original_f + x**6
+unsupported_f_degree_alias_rejected = False
+try:
+    height_pairing(
+        [P, Q],
+        steps=6,
+        precision=80,
+        target_bits=32,
+        algorithm="local",
+        context=context,
+    )
+except Genus2HeightCapabilityError:
+    unsupported_f_degree_alias_rejected = True
+finally:
+    J._f = original_f
+assert unsupported_f_degree_alias_rejected
+original_h = J._h
+J._h = x**4
+unsupported_h_degree_alias_rejected = False
+try:
+    height_pairing(
+        [P, Q],
+        steps=6,
+        precision=80,
+        target_bits=32,
+        algorithm="local",
+        context=context,
+    )
+except Genus2HeightCapabilityError:
+    unsupported_h_degree_alias_rejected = True
+finally:
+    J._h = original_h
+assert unsupported_h_degree_alias_rejected
 original_v = Q._v
 Q._v = R(0)
 mutated_point_key = (tuple([P, Q]), 6, 80, 32, "local")
@@ -412,6 +445,8 @@ assert pairing_cache_tamper_rejected
     bare_result_transplant_rejected,
     cross_model_transplant_rejected,
     mutated_model_alias_rejected,
+    unsupported_f_degree_alias_rejected,
+    unsupported_h_degree_alias_rejected,
     mutated_point_alias_rejected,
     pairing_cache_tamper_rejected,
 ]
@@ -420,7 +455,7 @@ assert pairing_cache_tamper_rejected
     );
     assert.match(
       result.repr,
-      /^\[\d+, True, True, 'certified-positive', True, 1, True, True, True, True, True, True\]$/,
+      /^\[\d+, True, True, 'certified-positive', True, 1, True, True, True, True, True, True, True, True\]$/,
     );
   } finally {
     await session.close();
