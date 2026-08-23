@@ -10,7 +10,7 @@
     {
       "id": "compiler-runtime",
       "description": "Parser, compiler, runtime, modes, kernels, and language semantics",
-      "allowed_claims": [".agents/lanes.json", "architecture/native-boundaries.json", "architecture/wasm-capabilities.json", "architecture/wasm-capabilities-report.json", "src/ast_types.py", "src/runtime/", "src/tree_sitter/", "src/output/", "src/baselib/builtins.py", "src/baselib/byte_strings.py", "src/baselib/containers.py", "src/baselib/internal.py", "src/baselib/sagejs/runtime.py", "src/baselib/sagejs/runtime.pyi", "src/baselib/sagejs_bootstrap.py", "src/lib/sagejs/kernels/arithmetic/", "tools/", "bootstrap/"],
+      "allowed_claims": [".agents/lanes.json", "architecture/native-boundaries.json", "architecture/wasm-capabilities.json", "architecture/wasm-capabilities-report.json", "architecture/wasm-workload-dashboard.json", "src/ast_types.py", "src/runtime/", "src/tree_sitter/", "src/output/", "src/baselib/builtins.py", "src/baselib/byte_strings.py", "src/baselib/containers.py", "src/baselib/internal.py", "src/baselib/sagejs/runtime.py", "src/baselib/sagejs/runtime.pyi", "src/baselib/sagejs_bootstrap.py", "src/lib/sagejs/kernels/arithmetic/", "tools/", "bootstrap/"],
       "required_checks": ["pnpm build", "pnpm test:compiler", "pnpm test:integration"]
     },
     {
