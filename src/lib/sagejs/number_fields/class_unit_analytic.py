@@ -3060,15 +3060,30 @@ def _is_prime(value: int) -> bool:
 def _primes_below(bound: int) -> list[int]:
     if bound <= 2:
         return []
-    sieve = bytearray(b"\x01") * bound
-    sieve[0:2] = b"\x00\x00"
-    prime = 2
-    while prime * prime < bound:
-        if sieve[prime]:
-            start = prime * prime
-            sieve[start:bound:prime] = b"\x00" * (((bound - 1 - start) // prime) + 1)
-        prime += 1
-    return [value for value in range(2, bound) if sieve[value]]
+    # Reuse Sage.js's canonical exact prime service.  Its retained sieve is
+    # shared with maximal-order splitting, whereas spelling a bytearray sieve
+    # here repeated the same prime enumeration inside every analytic workspace
+    # and lowered poorly through the Python runtime.
+    try:
+        base_module = __import__(
+            "sagejs._baselib.number_fields", fromlist=["number_fields"]
+        )
+        prime_range = base_module._nf_global("prime_range")
+        return [int(value) for value in prime_range(int(bound))]
+    except (AttributeError, ImportError):
+        # Keep this mathematical module directly executable under ordinary
+        # CPython, where Sage.js's baselib registry is intentionally absent.
+        sieve = bytearray(b"\x01") * bound
+        sieve[0:2] = b"\x00\x00"
+        prime = 2
+        while prime * prime < bound:
+            if sieve[prime]:
+                start = prime * prime
+                sieve[start:bound:prime] = b"\x00" * (
+                    ((bound - 1 - start) // prime) + 1
+                )
+            prime += 1
+        return [value for value in range(2, bound) if sieve[value]]
 
 
 def _factor_pair(value: Any) -> tuple[int, int]:

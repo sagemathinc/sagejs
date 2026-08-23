@@ -845,7 +845,10 @@ import sagejs.number_fields.zeta_coefficient_kernel as kernel_module
 from sagejs.number_fields.class_unit_analytic import (
     IntervalBallField,
     _dyadic_mantissas,
+    _primes_below,
 )
+
+assert _primes_below(30) == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
 
 flint_kernel = kernel_module.assemble_bf_integer_transcendental_endpoints_flint
 source_kernel = kernel_module.assemble_bf_integer_transcendental_endpoints
