@@ -1775,10 +1775,156 @@ def packed_cantor_search_progression(
     )
 
 
+@native
+def packed_cantor_scalar_many_primes(
+    output: UInt64Buffer,
+    statuses: UInt64Buffer,
+    diagnostics: UInt64Buffer,
+    models: UInt64Buffer,
+    elements: UInt64Buffer,
+    element_statuses: UInt64Buffer,
+    targets: UInt64Buffer,
+    scalar_words: UInt64Buffer,
+    primes: UInt64Buffer,
+    divisor_count: uint64,
+    prime_count: uint64,
+    words_per_scalar: uint64,
+    uniform_scalar: uint64,
+    genus: uint64,
+    domain_modulus: PrimeFieldModulus,
+) -> bool:
+    """Multiply retained prime-major rows for many moduli in one call.
+
+    `domain_modulus` selects and validates the prime-source compiler family;
+    the caller supplies the first checked modulus. Arithmetic itself uses each
+    prime-major block's locally checked modulus while reusing one finite Cantor
+    workspace across the whole batch. Status zero is unavailable, statuses two
+    and four match the requested target, and statuses three and four mark a
+    nonidentity input. The three diagnostics count available, nonidentity, and
+    matching pairs respectively.
+    """
+    pair_count = divisor_count * prime_count
+    valid = (
+        (genus == 2 or genus == 3)
+        and words_per_scalar > 0
+        and prime_count > 0
+        and len(primes) == prime_count
+        and len(models) == prime_count * 12
+        and len(elements) == pair_count * 8
+        and len(element_statuses) == pair_count
+        and len(targets) == prime_count * 8
+        and (
+            (uniform_scalar != 0 and len(scalar_words) == words_per_scalar)
+            or (
+                uniform_scalar == 0
+                and len(scalar_words) == pair_count * words_per_scalar
+            )
+        )
+        and len(output) == pair_count * 8
+        and len(statuses) == pair_count
+        and len(diagnostics) == 3
+    )
+    if not valid:
+        return False
+    diagnostics[0] = 0
+    diagnostics[1] = 0
+    diagnostics[2] = 0
+    model = prime_zeros(12)
+    store = prime_zeros(16 * 52)
+    accumulator = prime_zeros(8)
+    addend = prime_zeros(8)
+    temporary = prime_zeros(8)
+    prime_index: uint64 = 0
+    while prime_index < prime_count:
+        raw_modulus: uint64 = primes[prime_index]
+        if raw_modulus < 3 or raw_modulus > 4294967295 or raw_modulus % 2 == 0:
+            return False
+        modulus: PrimeFieldModulus = raw_modulus
+        model_index: uint64 = 0
+        while model_index < 12:
+            model[model_index] = models[prime_index * 12 + model_index]
+            model_index += 1
+        zero_h = model[8] == 0 and model[9] == 0 and model[10] == 0 and model[11] == 0
+        divisor_index: uint64 = 0
+        while divisor_index < divisor_count:
+            pair_index = prime_index * divisor_count + divisor_index
+            scalar_offset = pair_index * words_per_scalar
+            if uniform_scalar != 0:
+                scalar_offset = 0
+            if element_statuses[pair_index] == 0:
+                statuses[pair_index] = 0
+            elif (
+                zero_h
+                and elements[pair_index * 8 + 5] == 0
+                and elements[pair_index * 8 + 6] == 0
+                and elements[pair_index * 8 + 7] == 0
+            ):
+                # For `h=0`, a reduced Mumford row `(u,0)` is its own inverse.
+                # Its multiple is therefore the identity for an even scalar
+                # and the original canonical row for an odd scalar.  Retained
+                # rows already passed the exact QQ reduction kernel, so this
+                # is an exact group-law shortcut rather than a heuristic.
+                output_index: uint64 = 0
+                if scalar_words[scalar_offset] % 2 == 0:
+                    while output_index < 8:
+                        output[pair_index * 8 + output_index] = 0
+                        output_index += 1
+                    output[pair_index * 8 + 1] = 1
+                else:
+                    while output_index < 8:
+                        output[pair_index * 8 + output_index] = elements[
+                            pair_index * 8 + output_index
+                        ]
+                        output_index += 1
+                statuses[pair_index] = 1
+            else:
+                statuses[pair_index] = _cantor_scalar_one(
+                    output,
+                    pair_index * 8,
+                    elements,
+                    pair_index * 8,
+                    scalar_words,
+                    scalar_offset,
+                    words_per_scalar,
+                    0,
+                    model,
+                    genus,
+                    modulus,
+                    store,
+                    accumulator,
+                    addend,
+                    temporary,
+                )
+                if statuses[pair_index] == 0:
+                    return False
+            if element_statuses[pair_index] != 0:
+                diagnostics[0] = diagnostics[0] + 1
+                matches_target = True
+                output_index = 0
+                while output_index < 8:
+                    if (
+                        output[pair_index * 8 + output_index]
+                        != targets[prime_index * 8 + output_index]
+                    ):
+                        matches_target = False
+                    output_index += 1
+                statuses[pair_index] = 1
+                if matches_target:
+                    statuses[pair_index] = 2
+                    diagnostics[2] = diagnostics[2] + 1
+                if elements[pair_index * 8] != 0:
+                    statuses[pair_index] = statuses[pair_index] + 2
+                    diagnostics[1] = diagnostics[1] + 1
+            divisor_index += 1
+        prime_index += 1
+    return True
+
+
 __all__ = [
     "packed_cantor_add_batch",
     "packed_cantor_copy_batch",
     "packed_cantor_progression_batch",
+    "packed_cantor_scalar_many_primes",
     "packed_cantor_search_progression",
     "packed_cantor_scalar_batch",
 ]

@@ -921,6 +921,7 @@ class _PackedFiniteMumfordRows:
     def __init__(
         self,
         output: Any,
+        status_buffer: Any,
         statuses: Any,
         output_cache: Any,
         start: int,
@@ -928,6 +929,7 @@ class _PackedFiniteMumfordRows:
         cancel: Any,
     ) -> None:
         self._output = output
+        self._status_buffer = status_buffer
         self._statuses = statuses
         self._output_cache = output_cache
         self._start = start
@@ -954,6 +956,38 @@ class _PackedFiniteMumfordRows:
             self._output_cache[0] = values
         offset = pair_index * 8
         return tuple(int(values[offset + word]) for word in range(8))
+
+    def __iter__(self) -> Any:
+        index = 0
+        while index < self._count:
+            yield self[index]
+            index += 1
+
+
+class _PackedFiniteWitnessRows:
+    """A lazy view of exact match flags retained in one native buffer."""
+
+    def __init__(self, statuses: Any, start: int, count: int, cancel: Any) -> None:
+        self._statuses = statuses
+        self._start = start
+        self._count = count
+        self._cancel = cancel
+
+    def __len__(self) -> int:
+        return self._count
+
+    def __getitem__(self, raw_index: Any) -> Any:
+        index = int(raw_index)
+        if index < 0:
+            index += self._count
+        if index < 0 or index >= self._count:
+            raise IndexError("packed finite witness index out of range")
+        if index % 256 == 0:
+            _check_cancel(self._cancel, "packed finite witness materialization")
+        encoded = int(self._statuses[self._start + index])
+        if encoded == 0:
+            return None
+        return encoded in (2, 4)
 
     def __iter__(self) -> Any:
         index = 0
@@ -1016,6 +1050,21 @@ class PreparedRationalReductionBatch:
                     denominators.append(denominator)
                     bit_count += max(1, abs(numerator).bit_length())
                     bit_count += max(1, denominator.bit_length())
+        model_numerators = []
+        model_denominators = []
+        for polynomial, capacity in ((jacobian.f(), 8), (jacobian.h(), 4)):
+            coefficients = polynomial.list()
+            for index in range(capacity):
+                coefficient = coefficients[index] if index < len(coefficients) else 0
+                numerator, denominator = _rational_pair(coefficient)
+                model_numerators.append(numerator)
+                model_denominators.append(denominator)
+                bit_count += max(1, abs(numerator).bit_length())
+                bit_count += max(1, denominator.bit_length())
+        branch_discriminant = (jacobian.h() ** 2 + 4 * jacobian.f()).discriminant()
+        bad_reduction_numerator, _bad_reduction_denominator = _rational_pair(
+            branch_discriminant
+        )
         estimated_bytes = 512 + len(checked) * 256 + (bit_count + 7) // 8
         if estimated_bytes > maximum:
             raise RationalTorsionCapabilityError(
@@ -1038,6 +1087,9 @@ class PreparedRationalReductionBatch:
         self._degrees = tuple(degrees)
         self._numerators = tuple(numerators)
         self._denominators = tuple(denominators)
+        self._model_numerators = tuple(model_numerators)
+        self._model_denominators = tuple(model_denominators)
+        self._bad_reduction_numerator = bad_reduction_numerator
         self._native_input_cache: tuple[Any, Any, Any, Any] | None = None
 
     def _kernel(self) -> Any:
@@ -1065,6 +1117,33 @@ class PreparedRationalReductionBatch:
         # Lazy row consumption may additionally materialize the eight output
         # words as exact host integers.  Charge that peak before the kernel.
         return int(prime_count) * len(self.divisors) * 8 * 8
+
+    def _packed_models(self, primes: Any) -> tuple[tuple[int, ...], ...]:
+        """Reduce the fixed QQ model without constructing finite objects."""
+        answer = []
+        for prime in primes:
+            if self._bad_reduction_numerator % int(prime) == 0:
+                raise ArithmeticError(
+                    "the hyperelliptic model has bad reduction at p=" + str(prime)
+                )
+            model = []
+            for numerator, denominator in zip(
+                self._model_numerators,
+                self._model_denominators,
+                strict=True,
+            ):
+                residue = denominator % int(prime)
+                if residue == 0:
+                    raise ArithmeticError(
+                        "the hyperelliptic model is nonintegral at p=" + str(prime)
+                    )
+                model.append(
+                    (numerator % int(prime))
+                    * pow(residue, int(prime) - 2, int(prime))
+                    % int(prime)
+                )
+            answer.append(tuple(model))
+        return tuple(answer)
 
     def reduce_many(
         self,
@@ -1191,6 +1270,7 @@ class PreparedRationalReductionBatch:
                 packed=packed,
                 diagnostics=diagnostics,
             )
+        packed_models = self._packed_models(values) if packed else ()
         degrees, numerators, denominators = self._kernel_inputs(kernel)
         output = kernel_uint64_zeros(kernel, pair_count * 8)
         statuses = kernel_uint64_zeros(kernel, pair_count)
@@ -1219,18 +1299,10 @@ class PreparedRationalReductionBatch:
                     )
         rows = []
         for prime_index, prime in enumerate(values):
-            reduced_jacobian = _prepared_reduced_jacobian(self.jacobian, prime)
-            prepared = reduced_jacobian.prepared_arithmetic(
-                algorithm="auto", max_batch_items=max(1, len(self.divisors))
-            )
-            publisher = getattr(prepared, "_new_packed_divisor", None)
-            if not packed and publisher is None:
-                raise NotImplementedError(
-                    "the finite prepared context cannot retain proved packed rows"
-                )
             if packed:
                 reduced = _PackedFiniteMumfordRows(
                     output,
+                    statuses,
                     status_values,
                     output_cache,
                     prime_index * len(self.divisors),
@@ -1241,12 +1313,18 @@ class PreparedRationalReductionBatch:
                     {
                         "prime": prime,
                         "algorithm": self.algorithm,
-                        "reduced_jacobian": reduced_jacobian,
+                        "reduced_jacobian": None,
+                        "model_coefficients": packed_models[prime_index],
                         "divisors": reduced,
                         "fingerprints": self.fingerprints,
                     }
                 )
                 continue
+            reduced_jacobian = _prepared_reduced_jacobian(self.jacobian, prime)
+            prepared = reduced_jacobian.prepared_arithmetic(
+                algorithm="auto", max_batch_items=max(1, len(self.divisors))
+            )
+            publisher = getattr(prepared, "_new_packed_divisor", None)
             if publisher is None:
                 raise NotImplementedError(
                     "the finite prepared context cannot publish proved packed rows"
@@ -1286,6 +1364,302 @@ class PreparedRationalReductionBatch:
             "packed_results": packed,
         }
         return (answer, record) if diagnostics else answer
+
+    def scalar_zero_many(
+        self,
+        reduction_rows: Any,
+        scalars: Any,
+        *,
+        algorithm: str = "auto",
+        targets: Any = None,
+        packed: bool = False,
+        diagnostics: bool = False,
+    ) -> Any:
+        """Test varying scalars on all retained prime-major rows.
+
+        Native execution consumes the reduction output/status buffers directly
+        and changes model/modulus inside one finite-kernel call. With `targets`
+        supplied it tests equality to one packed target per prime; otherwise it
+        tests the identity. A single integer `scalars` value uses one retained
+        scalar for every pair; a matrix permits pair-specific scalars. With
+        `packed=True`, exact match flags remain in bounded lazy prime-major
+        views. `None` marks a source row that was nonintegral at that prime and
+        is never a failed mathematical witness.
+        """
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown packed witness algorithm " + repr(algorithm))
+        rows = tuple(reduction_rows)
+        uniform_scalar = None
+        scalar_rows = None
+        if isinstance(scalars, int):
+            uniform_scalar = int(scalars)
+        else:
+            scalar_rows = tuple(tuple(int(value) for value in row) for row in scalars)
+        target_rows = None if targets is None else tuple(targets)
+        if scalar_rows is not None and len(rows) != len(scalar_rows):
+            raise ValueError("packed witness prime/scalar rows have different lengths")
+        if not rows:
+            result: tuple[Any, ...] = ()
+            record = {"requested": algorithm, "selected": "reference", "count": 0}
+            return (result, record) if diagnostics else result
+        if target_rows is not None:
+            if len(target_rows) != len(rows):
+                raise ValueError("packed witness targets have the wrong prime count")
+            if any(target is None or len(target) != 8 for target in target_rows):
+                raise ValueError(
+                    "every packed witness target must be an eight-word row"
+                )
+        count = len(self.divisors)
+        if scalar_rows is not None and any(len(row) != count for row in scalar_rows):
+            raise ValueError("a packed witness scalar row has the wrong length")
+        if uniform_scalar is not None and uniform_scalar < 0:
+            raise ValueError("packed finite witnesses require a nonnegative scalar")
+        if scalar_rows is not None and any(
+            value < 0 for row in scalar_rows for value in row
+        ):
+            raise ValueError("packed finite witnesses require nonnegative scalars")
+        views = tuple(row.get("divisors") for row in rows)
+        if not all(isinstance(view, _PackedFiniteMumfordRows) for view in views):
+            if algorithm == "native":
+                raise NotImplementedError(
+                    "native fused witnesses require retained rows"
+                )
+            answer = []
+            for row_index, row in enumerate(rows):
+                scalar_row = (
+                    tuple(uniform_scalar for _value in row["divisors"])
+                    if scalar_rows is None
+                    else scalar_rows[row_index]
+                )
+                values = row["divisors"]
+                products = _packed_scalar_batch_rows(
+                    row["reduced_jacobian"],
+                    tuple(value for value in values if value is not None),
+                    tuple(
+                        scalar
+                        for value, scalar in zip(values, scalar_row, strict=True)
+                        if value is not None
+                    ),
+                    algorithm="reference",
+                )
+                product_index = 0
+                prime_answer = []
+                for value in values:
+                    if value is None:
+                        prime_answer.append(None)
+                    else:
+                        product = products[product_index]
+                        target = (
+                            None if target_rows is None else target_rows[len(answer)]
+                        )
+                        prime_answer.append(
+                            product[0] == 0 if target is None else product == target
+                        )
+                        product_index += 1
+                answer.append(tuple(prime_answer))
+            result = tuple(answer)
+            record = {
+                "requested": algorithm,
+                "selected": "reference",
+                "prime_count": len(rows),
+                "divisor_count": count,
+                "kernel_crossings": 0,
+            }
+            return (result, record) if diagnostics else result
+        first_view = views[0]
+        if not all(
+            view._output is first_view._output
+            and view._status_buffer is first_view._status_buffer
+            and view._count == count
+            for view in views
+        ):
+            raise ValueError("packed witness rows do not share one reduction buffer")
+        if algorithm == "reference":
+            # Materialize only for the explicit dynamic oracle.
+            materialized = []
+            for row in rows:
+                materialized.append(
+                    {
+                        **row,
+                        "divisors": tuple(row["divisors"]),
+                    }
+                )
+            return self.scalar_zero_many(
+                tuple(materialized),
+                uniform_scalar if scalar_rows is None else scalar_rows,
+                algorithm="reference",
+                targets=target_rows,
+                packed=packed,
+                diagnostics=diagnostics,
+            )
+        module = __import__(
+            "sagejs.hyperelliptic_curves.jacobian_kernels",
+            fromlist=["packed_cantor_scalar_many_primes"],
+        )
+        kernel = module.packed_cantor_scalar_many_primes
+        if not is_compiled(kernel):
+            if algorithm == "native":
+                raise NotImplementedError(
+                    "the fused packed witness kernel is unavailable"
+                )
+            return self.scalar_zero_many(
+                rows,
+                uniform_scalar if scalar_rows is None else scalar_rows,
+                algorithm="reference",
+                targets=target_rows,
+                packed=packed,
+                diagnostics=diagnostics,
+            )
+        pair_count = len(rows) * count
+        uniform_value = 0 if uniform_scalar is None else uniform_scalar
+        maximum_bits = (
+            uniform_value.bit_length()
+            if scalar_rows is None
+            else max(
+                (value.bit_length() for row in scalar_rows for value in row), default=0
+            )
+        )
+        words_per_scalar = max(1, (maximum_bits + 63) // 64)
+        scalar_word_count = (
+            words_per_scalar if scalar_rows is None else pair_count * words_per_scalar
+        )
+        # Output rows/statuses, scalar words, per-prime models/targets/moduli,
+        # and the three-word aggregate are all live at the native boundary.
+        fused_bytes = (
+            pair_count * 9 * 8
+            + scalar_word_count * 8
+            + len(rows) * (12 + 8 + 1) * 8
+            + 3 * 8
+        )
+        retained_bytes = self._reduction_batch_bytes(len(rows))
+        if self.estimated_bytes + retained_bytes + fused_bytes > self.max_memory_bytes:
+            raise RationalTorsionCapabilityError(
+                "fused packed witnesses exceed max_memory_bytes="
+                + str(self.max_memory_bytes),
+                {
+                    "estimated_input_bytes": self.estimated_bytes,
+                    "retained_reduction_bytes": retained_bytes,
+                    "fused_output_bytes": fused_bytes,
+                },
+            )
+        _check_cancel(self.cancel, "fused packed witness preparation")
+        scalar_words = []
+        if scalar_rows is None:
+            magnitude = uniform_value
+            for _word_index in range(words_per_scalar):
+                scalar_words.append(magnitude % (1 << 64))
+                magnitude //= 1 << 64
+        else:
+            for prime_index, scalar_row in enumerate(scalar_rows):
+                if prime_index % 16 == 0:
+                    _check_cancel(self.cancel, "fused packed scalar packing")
+                for value in scalar_row:
+                    magnitude = value
+                    for _word_index in range(words_per_scalar):
+                        scalar_words.append(magnitude % (1 << 64))
+                        magnitude //= 1 << 64
+        models = []
+        primes = []
+        packed_targets = []
+        for prime_index, row in enumerate(rows):
+            if prime_index % 16 == 0:
+                _check_cancel(self.cancel, "fused packed model packing")
+            model_coefficients = row.get("model_coefficients")
+            if model_coefficients is None:
+                reduced_jacobian = row["reduced_jacobian"]
+                prepared = reduced_jacobian.prepared_arithmetic(
+                    algorithm="native", max_batch_items=max(1, count)
+                )
+                model_coefficients = prepared.model_coefficients
+            models.extend(int(value) for value in model_coefficients)
+            primes.append(int(row["prime"]))
+            target = (
+                (0, 1, 0, 0, 0, 0, 0, 0)
+                if target_rows is None
+                else target_rows[prime_index]
+            )
+            packed_targets.extend(int(value) for value in target)
+        output = kernel_uint64_zeros(kernel, pair_count * 8)
+        statuses = kernel_uint64_zeros(kernel, pair_count)
+        kernel_diagnostics = kernel_uint64_zeros(kernel, 3)
+        accepted = kernel(
+            output,
+            statuses,
+            kernel_diagnostics,
+            kernel_uint64_buffer(kernel, models),
+            first_view._output,
+            first_view._status_buffer,
+            kernel_uint64_buffer(kernel, packed_targets),
+            kernel_uint64_buffer(kernel, scalar_words),
+            kernel_uint64_buffer(kernel, primes),
+            count,
+            len(rows),
+            words_per_scalar,
+            1 if scalar_rows is None else 0,
+            int(self.jacobian.genus()),
+            primes[0],
+        )
+        if not accepted:
+            raise ArithmeticError("the fused packed witness kernel failed closed")
+        _check_cancel(self.cancel, "fused packed witness publication")
+        input_statuses = first_view._statuses
+        output_statuses = integer_buffer_values(statuses)
+        diagnostic_values = integer_buffer_values(kernel_diagnostics)
+        source_nonzero_count = int(diagnostic_values[1])
+        if packed:
+            result = tuple(
+                _PackedFiniteWitnessRows(
+                    output_statuses,
+                    prime_index * count,
+                    count,
+                    self.cancel,
+                )
+                for prime_index in range(len(rows))
+            )
+            record = {
+                "requested": algorithm,
+                "selected": "native",
+                "prime_count": len(rows),
+                "divisor_count": count,
+                "kernel_crossings": 1,
+                "retained_reduction_bytes": retained_bytes,
+                "fused_output_bytes": fused_bytes,
+                "available_count": int(diagnostic_values[0]),
+                "source_nonzero_count": source_nonzero_count,
+                "matches_target_count": int(diagnostic_values[2]),
+                "packed_results": True,
+            }
+            return (result, record) if diagnostics else result
+        answer = []
+        for prime_index in range(len(rows)):
+            if prime_index % 16 == 0:
+                _check_cancel(self.cancel, "fused packed witness decoding")
+            prime_answer = []
+            for divisor_index in range(count):
+                pair_index = prime_index * count + divisor_index
+                if int(input_statuses[pair_index]) != 1:
+                    prime_answer.append(None)
+                elif int(output_statuses[pair_index]) == 0:
+                    raise ArithmeticError("a fused packed witness item failed")
+                else:
+                    encoded_status = int(output_statuses[pair_index])
+                    prime_answer.append(encoded_status in (2, 4))
+            answer.append(tuple(prime_answer))
+        result = tuple(answer)
+        record = {
+            "requested": algorithm,
+            "selected": "native",
+            "prime_count": len(rows),
+            "divisor_count": count,
+            "kernel_crossings": 1,
+            "retained_reduction_bytes": retained_bytes,
+            "fused_output_bytes": fused_bytes,
+            "source_nonzero_count": source_nonzero_count,
+            "available_count": int(diagnostic_values[0]),
+            "matches_target_count": int(diagnostic_values[2]),
+            "packed_results": False,
+        }
+        return (result, record) if diagnostics else result
 
     def reduce_prime(self, prime: Any) -> dict[str, Any]:
         """Reduce the entire prepared basis at one checked good prime."""
@@ -1622,6 +1996,111 @@ def _exact_order_without_reductions(
     return order, tuple(order_factors)
 
 
+def _packed_reduction_order_witness_matrix(
+    prepared: PreparedRationalReductionBatch,
+    reduction_rows: Any,
+    exact: Any,
+    finite_rows: Any,
+) -> tuple[tuple[dict[str, Any], ...], ...]:
+    """Factor and strip every prime/divisor pair through fused buffers."""
+    rows = tuple(reduction_rows)
+    exact_values = tuple(exact)
+    finite_values = tuple(finite_rows)
+    orders = [
+        [int(value[0]) for value in exact_values] for _prime_index in range(len(rows))
+    ]
+    initial_orders = tuple(int(value[0]) for value in exact_values)
+    initial_scalars: Any = tuple(tuple(row) for row in orders)
+    if initial_orders and all(value == initial_orders[0] for value in initial_orders):
+        initial_scalars = initial_orders[0]
+    annihilated = prepared.scalar_zero_many(rows, initial_scalars, packed=True)
+    for prime_index, prime_row in enumerate(annihilated):
+        for divisor_index, is_zero in enumerate(prime_row):
+            if is_zero is False:
+                raise ArithmeticError(
+                    "a rational divisor order does not annihilate its reduction"
+                )
+            if is_zero is None:
+                orders[prime_index][divisor_index] = 0
+    factor_primes = []
+    for _order, factors in exact_values:
+        for factor_prime, _exponent in factors:
+            value = int(factor_prime)
+            if value not in factor_primes:
+                factor_primes.append(value)
+    for factor_prime in factor_primes:
+        blocked: set[tuple[int, int]] = set()
+        while True:
+            selected = []
+            candidates = []
+            for prime_index, prime_orders in enumerate(orders):
+                scalar_row = []
+                for divisor_index, order in enumerate(prime_orders):
+                    key = (prime_index, divisor_index)
+                    if order > 0 and order % factor_prime == 0 and key not in blocked:
+                        selected.append(key)
+                        scalar_row.append(order // factor_prime)
+                    else:
+                        scalar_row.append(0)
+                candidates.append(tuple(scalar_row))
+            if not selected:
+                break
+            zeroes = prepared.scalar_zero_many(rows, tuple(candidates), packed=True)
+            changed = False
+            for prime_index, divisor_index in selected:
+                candidate = candidates[prime_index][divisor_index]
+                is_zero = zeroes[prime_index][divisor_index]
+                if is_zero is True:
+                    orders[prime_index][divisor_index] = candidate
+                    changed = True
+                else:
+                    blocked.add((prime_index, divisor_index))
+            if not changed:
+                break
+    answer = []
+    for prime_index, row in enumerate(finite_values):
+        residue_prime = _canonical_positive_integer(row.get("prime"), "reduction prime")
+        finite_order = _canonical_positive_integer(
+            row.get("jacobian_order"), "finite Jacobian order"
+        )
+        prime_answer = []
+        for divisor_index, (rational_order, _factors) in enumerate(exact_values):
+            reduced_order = orders[prime_index][divisor_index]
+            if reduced_order == 0:
+                prime_answer.append(
+                    {
+                        "prime": str(residue_prime),
+                        "status": "nonintegral",
+                        "reason": "the Mumford representative has a denominator divisible by p="
+                        + str(residue_prime),
+                    }
+                )
+                continue
+            rational_value = int(rational_order)
+            if rational_value % reduced_order != 0:
+                raise ArithmeticError(
+                    "a reduced divisor order does not divide its QQ order"
+                )
+            if finite_order % reduced_order != 0:
+                raise ArithmeticError("a reduced divisor order does not divide #J(F_p)")
+            quotient = rational_value // reduced_order
+            if not _is_power_of_prime(quotient, residue_prime):
+                raise ArithmeticError(
+                    "the specialization order quotient is not residue-characteristic primary"
+                )
+            prime_answer.append(
+                {
+                    "prime": str(residue_prime),
+                    "status": "verified",
+                    "finite_jacobian_order": str(finite_order),
+                    "reduction_order": str(reduced_order),
+                    "specialization_kernel_quotient": str(quotient),
+                }
+            )
+        answer.append(tuple(prime_answer))
+    return tuple(answer)
+
+
 def _order_certificates_batch(
     jacobian: Any,
     divisors: Any,
@@ -1651,15 +2130,17 @@ def _order_certificates_batch(
 
     witnesses: list[list[Any]] = [[] for _divisor in checked]
     packed_rows = {}
+    prepared_batch = None
     if checked:
         reduction_primes = tuple(
             _canonical_positive_integer(row.get("prime"), "reduction prime")
             for row in reduction_rows
         )
         try:
-            prepared_reductions = PreparedRationalReductionBatch(
+            prepared_batch = PreparedRationalReductionBatch(
                 jacobian, checked, cancel=cancel
-            ).reduce_many(
+            )
+            prepared_reductions = prepared_batch.reduce_many(
                 reduction_primes,
                 algorithm="auto",
                 allow_nonintegral=True,
@@ -1673,8 +2154,30 @@ def _order_certificates_batch(
             # less capable.  The per-prime reference path below preserves the
             # prior unsupported/nonintegral witness semantics.
             packed_rows = {}
-    for row in reduction_rows:
+            prepared_batch = None
+    fused_witnesses = None
+    if prepared_batch is not None and all(
+        _canonical_positive_integer(row.get("prime"), "reduction prime") in packed_rows
+        for row in reduction_rows
+    ):
+        ordered_rows = tuple(
+            packed_rows[
+                _canonical_positive_integer(row.get("prime"), "reduction prime")
+            ]
+            for row in reduction_rows
+        )
+        fused_witnesses = _packed_reduction_order_witness_matrix(
+            prepared_batch,
+            ordered_rows,
+            tuple(exact),
+            reduction_rows,
+        )
+    for row_index, row in enumerate(reduction_rows):
         _check_cancel(cancel, "finite order witnesses")
+        if fused_witnesses is not None:
+            for divisor_index, witness in enumerate(fused_witnesses[row_index]):
+                witnesses[divisor_index].append(witness)
+            continue
         prime = _canonical_positive_integer(row.get("prime"), "reduction prime")
         packed_row = packed_rows.get(prime)
         if packed_row is None:
