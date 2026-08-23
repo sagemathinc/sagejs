@@ -233,6 +233,12 @@ function atomicWrite(filename, value) {
 
 async function run(options) {
   const started = performance.now();
+  const deadline = started + options.maximumWallSeconds * 1000;
+  const remaining = () => {
+    const milliseconds = Math.floor(deadline - performance.now());
+    if (milliseconds < 1_000) throw new Error("Phase-9 acceptance wall-time bound expired");
+    return milliseconds;
+  };
   const sourceStatus = git("status", "--short");
   const sourceCommit = git("rev-parse", "HEAD");
   const implementationBaseIsAncestor =
@@ -266,23 +272,25 @@ async function run(options) {
   if (provisioning.pari.version !== "2.18.1 (alpha)") {
     throw new Error(`unexpected PARI version: ${provisioning.pari.version}`);
   }
-  const timeout = options.maximumWallSeconds * 1000;
   const pariBefore = runCompetitive({
     gp: options.gp,
     samples: options.samples,
     precisionBits: options.precisionBits,
     pariOnly: true,
-    timeout,
+    timeout: remaining(),
   });
   const competitive = runCompetitive({
     gp: options.gp,
     samples: options.samples,
     precisionBits: options.precisionBits,
     pariOnly: false,
-    timeout,
+    timeout: remaining(),
   });
   const bracketedRows = bracketedPariRows([pariBefore, competitive]);
-  const evidence = await collectEvidence({ precisionBits: options.precisionBits });
+  const evidence = await collectEvidence({
+    precisionBits: options.precisionBits,
+    timeoutMs: remaining(),
+  });
   const gates = acceptanceGates(
     competitive,
     bracketedRows,
