@@ -206,6 +206,96 @@ def packed_cubic_norm_form_target_slice(
 
 
 @native
+def packed_cubic_norm_form_first_obstruction_in_place(
+    metadata: IntegerBuffer,
+    coefficients: IntegerBuffer,
+    ideal_norm: int,
+    max_modulus: uint64,
+    remaining_states: uint64,
+) -> bool:
+    """Find the first prime modulus obstructing a ternary cubic norm.
+
+    `metadata` receives the accounted residue states, the first obstructing
+    prime (or zero), that prime's cube, and a completion flag.  State
+    accounting deliberately charges the full cube for every tested modulus,
+    even when a represented target is found early, matching the readable
+    verifier's immutable work budget.
+    """
+    maximum_modulus: uint64 = 257
+    valid = (
+        len(metadata) == 4
+        and len(coefficients) == 10
+        and ideal_norm > 0
+        and max_modulus >= 2
+        and max_modulus <= maximum_modulus
+    )
+    if not valid:
+        return False
+    metadata[0] = 0
+    metadata[1] = 0
+    metadata[2] = 0
+    metadata[3] = 0
+    one: uint64 = 1
+    modulus: uint64 = 2
+    while modulus <= max_modulus:
+        prime = True
+        divisor: uint64 = 2
+        while prime and divisor * divisor <= modulus:
+            if modulus % divisor == 0:
+                prime = False
+            divisor = divisor + one
+        if prime:
+            states = modulus * modulus * modulus
+            if metadata[0] + states > remaining_states:
+                return True
+            c300 = coefficients[0] % modulus
+            c030 = coefficients[1] % modulus
+            c003 = coefficients[2] % modulus
+            c210 = coefficients[3] % modulus
+            c201 = coefficients[4] % modulus
+            c120 = coefficients[5] % modulus
+            c021 = coefficients[6] % modulus
+            c102 = coefficients[7] % modulus
+            c012 = coefficients[8] % modulus
+            c111 = coefficients[9] % modulus
+            positive_target = ideal_norm % modulus
+            negative_target = (-ideal_norm) % modulus
+            represented = False
+            x: uint64 = 0
+            while not represented and x < modulus:
+                y: uint64 = 0
+                while not represented and y < modulus:
+                    z: uint64 = 0
+                    while not represented and z < modulus:
+                        value = (
+                            c300 * x * x * x
+                            + c030 * y * y * y
+                            + c003 * z * z * z
+                            + c210 * x * x * y
+                            + c201 * x * x * z
+                            + c120 * x * y * y
+                            + c021 * y * y * z
+                            + c102 * x * z * z
+                            + c012 * y * z * z
+                            + c111 * x * y * z
+                        ) % modulus
+                        if value == positive_target or value == negative_target:
+                            represented = True
+                        z = z + one
+                    y = y + one
+                x = x + one
+            metadata[0] += states
+            if not represented:
+                metadata[1] = modulus
+                metadata[2] = states
+                metadata[3] = 1
+                return True
+        modulus = modulus + one
+    metadata[3] = 1
+    return True
+
+
+@native
 def packed_cubic_norm_smooth_candidates_in_place(
     metadata: IntegerBuffer,
     coefficient_output: IntegerBuffer,
@@ -1721,6 +1811,7 @@ def packed_composite_dedekind_basis_in_place(
 __all__ = [
     "packed_composite_dedekind_basis_in_place",
     "packed_composite_dedekind_enlargement_in_place",
+    "packed_cubic_norm_form_first_obstruction_in_place",
     "packed_cubic_norm_form_target_slice",
     "packed_cubic_order_norm_form_coefficients_in_place",
     "packed_cubic_norm_smooth_candidates_in_place",

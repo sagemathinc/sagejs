@@ -584,12 +584,10 @@ def _cubic_relative_basis_rows(
     return tuple(answer)
 
 
-def _cubic_norm_form_coefficients_from_rows(
-    order: Any, rows: tuple[tuple[Any, ...], ...]
-) -> tuple[int, ...] | None:
-    coordinates = _cubic_relative_basis_rows(order, rows)
-    if coordinates is None:
-        return None
+def _cubic_norm_form_coefficients_from_relative_rows(
+    order: Any, coordinates: tuple[tuple[int, ...], ...]
+) -> tuple[int, ...]:
+    """Transform the cached order norm form from precomputed integral rows."""
     order_coefficients = _order_cubic_norm_form_coefficients(order)
     values: list[int] = []
     for x, y, z in _CUBIC_NORM_FORM_INTERPOLATION_POINTS:
@@ -724,9 +722,9 @@ def _find_packed_cubic_norm_obstruction(
     rows, expected_norm = packed_basis
     order = factor_base[0].order
     coordinates = _cubic_relative_basis_rows(order, rows)
-    coefficients = _cubic_norm_form_coefficients_from_rows(order, rows)
-    if coordinates is None or coefficients is None:
+    if coordinates is None:
         return None
+    coefficients = _cubic_norm_form_coefficients_from_relative_rows(order, coordinates)
     prime_module = __import__(
         "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
     )
@@ -736,6 +734,60 @@ def _find_packed_cubic_norm_obstruction(
     norm = abs(int(determinant))
     if norm != expected_norm:
         raise ArithmeticError("a packed factor-base product has the wrong exact norm")
+    if cancelled is None and _cubic_norm_form_kernel_override is None:
+        try:
+            kernel_module = __import__(
+                "sagejs.number_fields.bl_composite_kernel",
+                fromlist=["bl_composite_kernel"],
+            )
+            native_module = __import__("sagejs.native", fromlist=["native"])
+            kernel = kernel_module.packed_cubic_norm_form_first_obstruction_in_place
+            metadata = native_module.kernel_integer_zeros(kernel, 4, 16)
+            if kernel(
+                metadata,
+                native_module.kernel_integer_buffer(kernel, coefficients),
+                norm,
+                max_modulus,
+                remaining_states,
+            ):
+                values = tuple(
+                    int(value)
+                    for value in native_module.integer_buffer_values(metadata)
+                )
+                used, modulus, states, complete = values
+                valid = bool(
+                    len(values) == 4
+                    and 0 <= used <= remaining_states
+                    and complete in (0, 1)
+                    and (
+                        (modulus == 0 and states == 0)
+                        or (
+                            complete == 1
+                            and 2 <= modulus <= max_modulus
+                            and sage.is_prime(modulus)
+                            and states == modulus**3
+                            and states <= used
+                        )
+                    )
+                )
+                if valid and modulus:
+                    return (
+                        {
+                            **line,
+                            "integral_ideal": _packed_cubic_integral_ideal_payload(
+                                order, rows
+                            ),
+                            "ideal_norm": norm,
+                            "norm_form_coefficients": list(coefficients),
+                            "modulus": modulus,
+                            "residue_states": states,
+                        },
+                        used,
+                    )
+                if valid and (complete == 1 or used < remaining_states):
+                    return (None, used)
+        except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+            pass
     used = 0
     for modulus in range(2, max_modulus + 1):
         if not sage.is_prime(modulus):

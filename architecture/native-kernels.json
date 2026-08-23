@@ -504,7 +504,10 @@
     {
       "id": "number-field-cubic-norm-obstruction-production",
       "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
-      "functions": ["packed_cubic_norm_form_target_slice"],
+      "functions": [
+        "packed_cubic_norm_form_first_obstruction_in_place",
+        "packed_cubic_norm_form_target_slice"
+      ],
       "semantic_domain": "bounded exhaustive target search for exact ternary cubic norm forms modulo a proved rational prime",
       "fallback": "same-source",
       "host_isolation": "certified",

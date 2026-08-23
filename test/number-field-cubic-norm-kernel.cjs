@@ -23,11 +23,15 @@ function run(executable, args, source, timeout = 120_000) {
 }
 
 const kernelDifferential = String.raw`
-from sagejs.native import kernel_integer_buffer
-from sagejs.number_fields.bl_composite_kernel import packed_cubic_norm_form_target_slice
+from sagejs.native import integer_buffer_values, kernel_integer_buffer, kernel_integer_zeros
+from sagejs.number_fields.bl_composite_kernel import packed_cubic_norm_form_first_obstruction_in_place, packed_cubic_norm_form_target_slice
 
 packed = packed_cubic_norm_form_target_slice
 dynamic = getattr(packed, "__sagejs_native_source__", packed)
+obstruction_packed = packed_cubic_norm_form_first_obstruction_in_place
+obstruction_dynamic = getattr(
+    obstruction_packed, "__sagejs_native_source__", obstruction_packed
+)
 coefficients = [170, 5745, 18000, 1585, 2345, 5115, 25215, 11100, 36900, 15075]
 
 for function in (dynamic, packed):
@@ -37,6 +41,21 @@ for function in (dynamic, packed):
     assert function(values, 19, 7, 7, 5, 14) == 1
     assert function(values, 1, 0, 1, 0, 0) == 0
     assert function(values, 19, 8, 7, 5, 14) == 0
+
+for function in (obstruction_dynamic, obstruction_packed):
+    values = kernel_integer_buffer(function, coefficients)
+    metadata = kernel_integer_zeros(function, 4, 16)
+    assert function(metadata, values, 5, 31, 500000)
+    assert tuple(integer_buffer_values(metadata)) == (15803, 19, 6859, 1)
+    bounded = kernel_integer_zeros(function, 4, 16)
+    assert function(bounded, values, 5, 7, 500000)
+    assert tuple(integer_buffer_values(bounded)) == (503, 0, 0, 1)
+    capped = kernel_integer_zeros(function, 4, 16)
+    assert function(capped, values, 5, 31, 500)
+    assert tuple(integer_buffer_values(capped)) == (160, 0, 0, 0)
+    assert not function(
+        kernel_integer_zeros(function, 3, 16), values, 5, 31, 500000
+    )
 `;
 
 const relationSieveDifferential = String.raw`
@@ -158,9 +177,9 @@ test("packed cubic norm obstruction matches ordinary Python", () => {
   const output = run(
     sagejs,
     ["--python", "-"],
-    `${kernelDifferential}\nfrom sagejs.native import is_compiled\nprint(is_compiled(packed))\n`,
+    `${kernelDifferential}\nfrom sagejs.native import is_compiled\nprint(is_compiled(packed), is_compiled(obstruction_packed))\n`,
   );
-  assert.equal(output, "True");
+  assert.equal(output, "True True");
 });
 
 test("packed cubic integral relation sieve matches ordinary Python", () => {
