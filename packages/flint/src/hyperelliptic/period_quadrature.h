@@ -9,6 +9,8 @@ extern "C" {
 
 napi_value sagejs_hyperelliptic_period_edge_batch_arb(
     napi_env env, napi_callback_info info);
+napi_value sagejs_hyperelliptic_abel_jacobi_batch_arb(
+    napi_env env, napi_callback_info info);
 napi_value sagejs_hyperelliptic_real_period_arb(
     napi_env env, napi_callback_info info);
 

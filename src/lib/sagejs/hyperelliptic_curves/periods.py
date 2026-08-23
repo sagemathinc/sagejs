@@ -63,6 +63,7 @@ __all__ = [
     "HyperellipticPeriodCapabilityError",
     "HyperellipticPeriodResult",
     "abel_jacobi",
+    "abel_jacobi_batch",
     "clear_period_cache",
     "period_cache_info",
     "real_period",
@@ -913,6 +914,155 @@ def _edge_integrals_arb(
         "decimal_digits": digits,
     }
     return (answer, diagnostics)
+
+
+def _complete_abel_jacobi_batch_arb(
+    f_coefficients: list[Any],
+    h_coefficients: list[Any],
+    point_coordinates: list[tuple[Any, Any]],
+    genus: int,
+    requested_bits: int,
+    max_refinements: int,
+    initial_panels: int,
+    quadrature_order: int,
+) -> dict[str, Any] | None:
+    """Evaluate a bounded point batch with two arbitrary-precision witnesses."""
+    backend = runtime.flint_backend()
+    function = runtime.reflect.get(backend, "hyperellipticAbelJacobiBatchArb")
+    if function is runtime.undefined:
+        return None
+    native = runtime.reflect.apply(
+        function,
+        backend,
+        [
+            [_exact_text(value) for value in f_coefficients],
+            [_exact_text(value) for value in h_coefficients],
+            [
+                [_exact_text(x_value), _exact_text(y_value)]
+                for x_value, y_value in point_coordinates
+            ],
+            genus,
+            requested_bits,
+            max_refinements,
+            initial_panels,
+            quadrature_order,
+        ],
+    )
+    if str(runtime.reflect.get(native, "status")) != "ok":
+        return None
+    raw_runs = runtime.reflect.get(native, "refinementRuns")
+    if len(raw_runs) < 2:
+        raise ArithmeticError(
+            "the Arb Abel--Jacobi batch did not return two refinement witnesses"
+        )
+    point_count = int(runtime.reflect.get(native, "pointCount"))
+    if point_count != len(point_coordinates):
+        raise ArithmeticError("the Arb Abel--Jacobi batch returned the wrong size")
+    raw_values = runtime.reflect.get(native, "values")
+    if len(raw_values) != point_count * genus:
+        raise ArithmeticError("the Arb Abel--Jacobi batch returned the wrong shape")
+    accuracy_bits = int(runtime.reflect.get(native, "arithmeticAccuracyBits"))
+    if accuracy_bits <= 44:
+        raise ArithmeticError(
+            "the Arb Abel--Jacobi batch did not retain arbitrary-precision evidence"
+        )
+    branch_order = [int(value) for value in runtime.reflect.get(native, "branchOrder")]
+    directions = [int(value) for value in runtime.reflect.get(native, "rayDirections")]
+    clearances = [str(value) for value in runtime.reflect.get(native, "rayClearances")]
+    if (
+        len(branch_order) not in (2 * genus + 1, 2 * genus + 2)
+        or len(directions) != point_count
+        or len(clearances) != point_count
+        or any(direction < 0 or direction >= 16 for direction in directions)
+    ):
+        raise ArithmeticError("the Arb Abel--Jacobi path evidence is malformed")
+    runs = []
+    previous_bits = 0
+    previous_panels = 0
+    for raw in raw_runs:
+        work_bits = int(runtime.reflect.get(raw, "workPrecisionBits"))
+        panels = int(runtime.reflect.get(raw, "quadraturePanels"))
+        order = int(runtime.reflect.get(raw, "quadratureOrder"))
+        samples = int(runtime.reflect.get(raw, "sampleEvaluations"))
+        engine = str(runtime.reflect.get(raw, "engine"))
+        raw_timings = runtime.reflect.get(raw, "stageTimingsMs")
+        if (
+            engine != "arb-acb-abel-jacobi-batch"
+            or work_bits <= previous_bits
+            or panels <= previous_panels
+            or order < 8
+            or order > 64
+            or samples != point_count * panels * order
+        ):
+            raise ArithmeticError(
+                "the Arb Abel--Jacobi batch returned malformed refinement evidence"
+            )
+        runs.append(
+            {
+                "engine": engine,
+                "work_precision_bits": work_bits,
+                "quadrature_panels": panels,
+                "quadrature_order": order,
+                "sample_evaluations": samples,
+                "stage_timings_ms": {
+                    "root_conversion": float(
+                        runtime.reflect.get(raw_timings, "rootConversion")
+                    ),
+                    "ray_planning": float(
+                        runtime.reflect.get(raw_timings, "rayPlanning")
+                    ),
+                    "quadrature": float(runtime.reflect.get(raw_timings, "quadrature")),
+                },
+            }
+        )
+        previous_bits = work_bits
+        previous_panels = panels
+    vectors = []
+    for point_index in range(point_count):
+        vector = []
+        for differential in range(genus):
+            item = raw_values[point_index * genus + differential]
+            vector.append(
+                (
+                    str(runtime.reflect.get(item, "realMidpoint")),
+                    str(runtime.reflect.get(item, "imagMidpoint")),
+                )
+            )
+        vectors.append(vector)
+    raw_stage_timings = runtime.reflect.get(native, "stageTimingsMs")
+    return {
+        "vectors": vectors,
+        "branch_order": branch_order,
+        "ray_directions": directions,
+        "ray_clearances": clearances,
+        "refinement_difference": str(
+            runtime.reflect.get(native, "refinementDifference")
+        ),
+        "refinement_tolerance": str(runtime.reflect.get(native, "refinementTolerance")),
+        "refinement_runs": runs,
+        "work_precision_bits": int(runtime.reflect.get(native, "workPrecisionBits")),
+        "achieved_stability_bits": int(
+            runtime.reflect.get(native, "achievedStabilityBits")
+        ),
+        "arithmetic_accuracy_bits": accuracy_bits,
+        "stage_timings_ms": {
+            "model_validation": float(
+                runtime.reflect.get(raw_stage_timings, "modelValidation")
+            ),
+            "exact_root_isolation": float(
+                runtime.reflect.get(raw_stage_timings, "exactRootIsolation")
+            ),
+            "branch_planning": float(
+                runtime.reflect.get(raw_stage_timings, "branchPlanning")
+            ),
+            "refinement_assembly": float(
+                runtime.reflect.get(raw_stage_timings, "refinementAssembly")
+            ),
+            "result_assembly": float(
+                runtime.reflect.get(raw_stage_timings, "resultAssembly")
+            ),
+        },
+    }
 
 
 def _complete_real_period_arb(
@@ -2423,6 +2573,24 @@ def _point_key(point: Any) -> str:
     return "(" + _exact_text(x_value) + "," + _exact_text(y_value) + ")"
 
 
+def _abel_cache_key(
+    curve: Any,
+    points: list[Any],
+    prec: int,
+    max_refinements: int,
+    quadrature_order: int,
+    initial_panels: int,
+) -> tuple[Any, ...]:
+    return (
+        _model_key(curve),
+        tuple(_point_key(point) for point in points),
+        prec,
+        max_refinements,
+        quadrature_order,
+        initial_panels,
+    )
+
+
 def _abel_data(
     curve: Any,
     points: list[Any],
@@ -2432,9 +2600,9 @@ def _abel_data(
     initial_panels: int,
     use_cache: bool,
 ) -> tuple[dict[str, Any], bool]:
-    key = (
-        _model_key(curve),
-        tuple(_point_key(point) for point in points),
+    key = _abel_cache_key(
+        curve,
+        points,
         prec,
         max_refinements,
         quadrature_order,
@@ -2695,8 +2863,13 @@ class AbelJacobiResult:
                 int(final["quadrature_panels"]),
                 int(final["quadrature_order"]),
             )
+            native_batch = final.get("engine") == "arb-acb-abel-jacobi-batch"
             checks["path_bound"] = (
-                tuple(recomputed["branch_order"]) == tuple(self._data["branch_order"])
+                (
+                    native_batch
+                    or tuple(recomputed["branch_order"])
+                    == tuple(self._data["branch_order"])
+                )
                 and list(recomputed["directions"]) == list(self._data["ray_directions"])
                 and all(
                     clearance == mp.inf or clearance > 0
@@ -2748,21 +2921,27 @@ class AbelJacobiResult:
     verify = internal_consistency
 
     def diagnostics(self) -> dict[str, Any]:
-        return _clone_data(
-            {
-                "support": list(self._data["support"]),
-                "basepoint": "infinity",
-                "branch_order": list(self._data["branch_order"]),
-                "ray_directions": list(self._data["ray_directions"]),
-                "ray_clearances": list(self._data["ray_clearances"]),
-                "refinement_difference": self._data["refinement_difference"],
-                "refinement_tolerance": self._data["refinement_tolerance"],
-                "refinement_runs": list(self._data["refinement_runs"]),
-                "analytic_error_status": self._data["analytic_error_status"],
-                "cache_hit": self.cache_hit,
-                "rigorous": False,
-            }
-        )
+        diagnostics = {
+            "support": list(self._data["support"]),
+            "basepoint": "infinity",
+            "branch_order": list(self._data["branch_order"]),
+            "ray_directions": list(self._data["ray_directions"]),
+            "ray_clearances": list(self._data["ray_clearances"]),
+            "refinement_difference": self._data["refinement_difference"],
+            "refinement_tolerance": self._data["refinement_tolerance"],
+            "refinement_runs": list(self._data["refinement_runs"]),
+            "analytic_error_status": self._data["analytic_error_status"],
+            "cache_hit": self.cache_hit,
+            "rigorous": False,
+        }
+        for key in (
+            "native_achieved_stability_bits",
+            "native_arithmetic_accuracy_bits",
+            "native_stage_timings_ms",
+        ):
+            if key in self._data:
+                diagnostics[key] = self._data[key]
+        return _clone_data(diagnostics)
 
     def to_dict(self) -> dict[str, Any]:
         return _clone_data(
@@ -2954,6 +3133,30 @@ class HyperellipticPeriodResult:
         return abel_jacobi(
             self._curve,
             point_or_split_mumford,
+            period_result=self,
+            basepoint=basepoint,
+            prec=self.precision_bits if prec is None else prec,
+            max_refinements=max_refinements,
+            quadrature_order=quadrature_order,
+            initial_panels=initial_panels,
+            use_cache=use_cache,
+        )
+
+    def abel_jacobi_batch(
+        self,
+        points: Any,
+        *,
+        basepoint: str = "infinity",
+        prec: int | None = None,
+        max_refinements: int = 3,
+        quadrature_order: int = 16,
+        initial_panels: int = 4,
+        use_cache: bool = True,
+    ) -> tuple[AbelJacobiResult, ...]:
+        """Return point lifts sharing this period lattice and one root plan."""
+        return abel_jacobi_batch(
+            self._curve,
+            points,
             period_result=self,
             basepoint=basepoint,
             prec=self.precision_bits if prec is None else prec,
@@ -3243,9 +3446,7 @@ def abel_jacobi(
             initial_panels=initial_panels,
             use_cache=use_cache,
         )
-    elif period_result._curve is not curve or period_result._model_data[
-        "model_key"
-    ] != _model_key(curve):
+    elif period_result._curve is not curve:
         raise ValueError("the supplied period result belongs to a different curve")
     elif requested_bits > min(
         period_result.precision_bits,
@@ -3271,6 +3472,188 @@ def abel_jacobi(
         bool(use_cache),
     )
     return AbelJacobiResult(curve, points, data, period_result, cache_hit)
+
+
+def abel_jacobi_batch(
+    curve: Any,
+    points: Any,
+    *,
+    period_result: HyperellipticPeriodResult | None = None,
+    basepoint: str = "infinity",
+    prec: int = 128,
+    max_refinements: int = 3,
+    quadrature_order: int = 16,
+    initial_panels: int = 4,
+    use_cache: bool = True,
+) -> tuple[AbelJacobiResult, ...]:
+    """Return a bounded batch of point lifts sharing one exact root plan.
+
+    The batch accepts from 1 through 64 affine rational points on the same
+    odd-degree `QQ` model.  One FLINT boundary validates the exact points,
+    isolates the roots once, and evaluates every differential along every
+    ray in each of at least two Arb/Acb refinements.  The ordinary scalar
+    implementation remains the capability fallback and independently replays
+    each returned result when `verify()` is requested.
+    """
+    if basepoint != "infinity":
+        raise HyperellipticPeriodCapabilityError(
+            "unsupported_abel_jacobi_basepoint",
+            "the initial Abel--Jacobi envelope requires the unique odd-degree point at infinity",
+        )
+    batch = list(points)
+    if not batch or len(batch) > 64:
+        raise ValueError("an Abel--Jacobi batch must contain from 1 through 64 points")
+    for point in batch:
+        if not hasattr(point, "parent") or point.parent() is not curve:
+            raise TypeError("every Abel--Jacobi batch point must belong to the curve")
+    completed, _coefficients = _completed_model(curve)
+    if int(completed.degree()) != 2 * int(curve.genus()) + 1:
+        raise HyperellipticPeriodCapabilityError(
+            "ambiguous_infinity_basepoint",
+            "even-degree models have two geometric points at infinity; supply a future explicit basepoint implementation",
+        )
+    requested_bits = int(prec)
+    max_refinements = int(max_refinements)
+    quadrature_order = int(quadrature_order)
+    initial_panels = int(initial_panels)
+    if requested_bits < 32 or requested_bits > 1024:
+        raise ValueError("Abel--Jacobi precision must be between 32 and 1024 bits")
+    if max_refinements < 2 or max_refinements > 6:
+        raise ValueError("max_refinements must be between 2 and 6")
+    if quadrature_order < 8 or quadrature_order > 64:
+        raise ValueError("quadrature_order must be between 8 and 64")
+    if initial_panels < 1 or initial_panels > 64:
+        raise ValueError("initial_panels must be between 1 and 64")
+    if period_result is None:
+        period_result = real_period(
+            curve,
+            prec=requested_bits,
+            max_refinements=max_refinements,
+            quadrature_order=quadrature_order,
+            initial_panels=initial_panels,
+            use_cache=use_cache,
+        )
+    elif period_result._curve is not curve:
+        raise ValueError("the supplied period result belongs to a different curve")
+    elif requested_bits > min(
+        period_result.precision_bits,
+        period_result.achieved_stability_bits,
+    ):
+        raise HyperellipticPeriodCapabilityError(
+            "period_precision_too_low",
+            "Abel--Jacobi precision cannot exceed the achieved stability of the supplied period lattice",
+            {
+                "requested_precision_bits": requested_bits,
+                "period_precision_bits": period_result.precision_bits,
+                "period_achieved_stability_bits": period_result.achieved_stability_bits,
+            },
+        )
+    keys = [
+        _abel_cache_key(
+            curve,
+            [point],
+            requested_bits,
+            max_refinements,
+            quadrature_order,
+            initial_panels,
+        )
+        for point in batch
+    ]
+    if use_cache and all(key in _ABEL_CACHE for key in keys):
+        _CACHE_STATS["abel_hits"] += len(keys)
+        return tuple(
+            AbelJacobiResult(
+                curve,
+                [point],
+                _clone_data(_ABEL_CACHE[key]),
+                period_result,
+                True,
+            )
+            for point, key in zip(batch, keys, strict=True)
+        )
+    if any(point.is_at_infinity() for point in batch):
+        return tuple(
+            abel_jacobi(
+                curve,
+                point,
+                period_result=period_result,
+                basepoint=basepoint,
+                prec=requested_bits,
+                max_refinements=max_refinements,
+                quadrature_order=quadrature_order,
+                initial_panels=initial_panels,
+                use_cache=use_cache,
+            )
+            for point in batch
+        )
+    f_value, h_value = _model_coefficient_lists(curve)
+    coordinates = [point.xy() for point in batch]
+    native = _complete_abel_jacobi_batch_arb(
+        f_value,
+        h_value,
+        coordinates,
+        int(curve.genus()),
+        requested_bits,
+        max_refinements,
+        initial_panels,
+        quadrature_order,
+    )
+    if native is None:
+        return tuple(
+            abel_jacobi(
+                curve,
+                point,
+                period_result=period_result,
+                basepoint=basepoint,
+                prec=requested_bits,
+                max_refinements=max_refinements,
+                quadrature_order=quadrature_order,
+                initial_panels=initial_panels,
+                use_cache=use_cache,
+            )
+            for point in batch
+        )
+    answer = []
+    for point_index, (point, key) in enumerate(zip(batch, keys, strict=True)):
+        direction = native["ray_directions"][point_index]
+        refinement_runs = []
+        for run in native["refinement_runs"]:
+            refinement_runs.append(
+                {
+                    **dict(run),
+                    "branch_order": list(native["branch_order"]),
+                    "ray_directions": [direction],
+                }
+            )
+        data = {
+            "model_key": _model_key(curve),
+            "genus": int(curve.genus()),
+            "precision_bits": requested_bits,
+            "work_precision_bits": native["work_precision_bits"],
+            "support": [_point_key(point)],
+            "basepoint": "infinity",
+            "vector": list(native["vectors"][point_index]),
+            "branch_order": list(native["branch_order"]),
+            "ray_directions": [direction],
+            "ray_clearances": [native["ray_clearances"][point_index]],
+            "refinement_difference": native["refinement_difference"],
+            "refinement_tolerance": native["refinement_tolerance"],
+            "refinement_runs": refinement_runs,
+            "refinement_stable": True,
+            "rigorous": False,
+            "analytic_error_status": (
+                "estimated_by_two_arbitrary_precision_batch_refinements"
+            ),
+            "native_achieved_stability_bits": native["achieved_stability_bits"],
+            "native_arithmetic_accuracy_bits": native["arithmetic_accuracy_bits"],
+            "native_stage_timings_ms": dict(native["stage_timings_ms"]),
+        }
+        if use_cache:
+            if len(_ABEL_CACHE) >= _CACHE_LIMIT:
+                del _ABEL_CACHE[next(iter(_ABEL_CACHE))]
+            _ABEL_CACHE[key] = _clone_data(data)
+        answer.append(AbelJacobiResult(curve, [point], data, period_result, False))
+    return tuple(answer)
 
 
 def clear_period_cache() -> None:
