@@ -1,0 +1,177 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-wasm-packaging",
+  "title": "Authenticated hyperelliptic Wasm production pack",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Build and publish receipt-authenticated flint-wasm production artifacts containing the same-source hyperelliptic Cantor, Kummer, genus-2 height, Float64 period, and genus-3 candidate kernels, with direct-WASI, browser-loader, and browser-public differentials and exact artifact provenance",
+  "base_commit": "74ce23f2c607a1cf6ac89152be6a40a3184f2bd5",
+  "claims": [
+    "packages/flint-wasm/",
+    "tools/native-kernel/wasm-pack-loader.mjs",
+    "tools/native-kernel/test/wasm-pack-loader.cjs",
+    "scripts/precompiled-python-packages.json",
+    "scripts/generate-wasm-kernel-coverage.cjs",
+    "architecture/wasm-capabilities.json",
+    "architecture/wasm-capabilities-report.json",
+    "architecture/wasm-workload-dashboard.json",
+    "architecture/wasm-workload-dashboard.md",
+    "test/wasm-production-native-kernels.cjs",
+    "test/wasm-production-resource-closure.cjs",
+    "test/browser-hyperelliptic-wasm-production.cjs",
+    "test/node-test-manifest.cjs",
+    "test/typed-math-lowering.cjs",
+    "test/wasm-capabilities.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "direct WASI and authenticated browser pack loader",
+      "public browser hyperelliptic workflows"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test packages/flint-wasm/test/hyperelliptic-production-kernels.test.mjs",
+    "node --test test/wasm-production-native-kernels.cjs test/wasm-production-resource-closure.cjs tools/native-kernel/test/wasm-pack-loader.cjs packages/flint-wasm/test/kernel-pack-exports.test.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:portable"
+  ],
+  "runs": [
+    {
+      "command": "node --test packages/flint-wasm/test/hyperelliptic-production-kernels.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.672,
+      "started_at": "2026-08-23T07:07:31.696Z",
+      "commit": "14ee574b8dac3b8b0e50cfc8474f788367902788",
+      "workspace_fingerprint": "d64454d5449b86af227f8fce5b4b4330a69d0d04e105974b14b721bfb73f8609",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.12,
+      "started_at": "2026-08-23T07:07:49.712Z",
+      "commit": "14ee574b8dac3b8b0e50cfc8474f788367902788",
+      "workspace_fingerprint": "d64454d5449b86af227f8fce5b4b4330a69d0d04e105974b14b721bfb73f8609",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.828,
+      "started_at": "2026-08-23T07:08:00.923Z",
+      "commit": "14ee574b8dac3b8b0e50cfc8474f788367902788",
+      "workspace_fingerprint": "d64454d5449b86af227f8fce5b4b4330a69d0d04e105974b14b721bfb73f8609",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/wasm-production-native-kernels.cjs test/wasm-production-resource-closure.cjs tools/native-kernel/test/wasm-pack-loader.cjs packages/flint-wasm/test/kernel-pack-exports.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.297,
+      "started_at": "2026-08-23T07:08:45.469Z",
+      "commit": "14ee574b8dac3b8b0e50cfc8474f788367902788",
+      "workspace_fingerprint": "d64454d5449b86af227f8fce5b4b4330a69d0d04e105974b14b721bfb73f8609",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 67.754,
+      "started_at": "2026-08-23T07:19:37.317Z",
+      "commit": "14ee574b8dac3b8b0e50cfc8474f788367902788",
+      "workspace_fingerprint": "0c3e86ae1cc266c3dc48661679f9683f51d4156a1a5217e5dc106c32ded3b009",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 56.205,
+      "started_at": "2026-08-23T07:20:59.035Z",
+      "commit": "14ee574b8dac3b8b0e50cfc8474f788367902788",
+      "workspace_fingerprint": "0c3e86ae1cc266c3dc48661679f9683f51d4156a1a5217e5dc106c32ded3b009",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 76.187,
+      "started_at": "2026-08-23T07:28:03.351Z",
+      "commit": "14ee574b8dac3b8b0e50cfc8474f788367902788",
+      "workspace_fingerprint": "8b106b560961d1423ef2f0ddded3edaf5997404ff4f1138c1251fb966b099208",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test packages/flint-wasm/test/hyperelliptic-production-kernels.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.512,
+      "started_at": "2026-08-23T07:29:25.460Z",
+      "commit": "14ee574b8dac3b8b0e50cfc8474f788367902788",
+      "workspace_fingerprint": "8b106b560961d1423ef2f0ddded3edaf5997404ff4f1138c1251fb966b099208",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/wasm-production-native-kernels.cjs test/wasm-production-resource-closure.cjs tools/native-kernel/test/wasm-pack-loader.cjs packages/flint-wasm/test/kernel-pack-exports.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.866,
+      "started_at": "2026-08-23T07:29:42.754Z",
+      "commit": "14ee574b8dac3b8b0e50cfc8474f788367902788",
+      "workspace_fingerprint": "8b106b560961d1423ef2f0ddded3edaf5997404ff4f1138c1251fb966b099208",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.002,
+      "started_at": "2026-08-23T07:30:10.923Z",
+      "commit": "14ee574b8dac3b8b0e50cfc8474f788367902788",
+      "workspace_fingerprint": "8b106b560961d1423ef2f0ddded3edaf5997404ff4f1138c1251fb966b099208",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 42.425,
+      "started_at": "2026-08-23T07:30:24.012Z",
+      "commit": "14ee574b8dac3b8b0e50cfc8474f788367902788",
+      "workspace_fingerprint": "8b106b560961d1423ef2f0ddded3edaf5997404ff4f1138c1251fb966b099208",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Built the pinned CoWasm/WASI toolchain and a receipt-authenticated production package from mathematical source commit 74ce23f2c607a1cf6ac89152be6a40a3184f2bd5: 42 registered kernel families, 35 production families, 245 compiled functions, and zero unsupported production functions. The artifact now contains all 15 registered hyperelliptic Cantor, Kummer, genus-2 height, Float64 period, and genus-3 candidate functions. Added the missing Float64 result export and a checked Python numeric-to-Float64 ABI, completed the browser lazy-module closure, regenerated release capabilities and workload evidence, and added exact dynamic/direct-WASI/relocated-Node/relocated-Chromium differentials with authenticated route telemetry. Production artifact identity is sha256:8d608901aad77ca5a3bf3fe593c0fd5c576555add8676f2c65c9d964f5d0d541; kernel-flint.wasm is 5750054 bytes (sha256 8cbcc9d7cd194cd4b04c156f472597c0830b777e422727c1a50e885e99cf86c8) and kernel-gmp.wasm is 2276439 bytes (sha256 2261e4f7c5b7306a337a4dbdac707c9ff71fadd87adaadc7172f305f50c90c76). The manifest contains only canonical package-relative logical sources and excludes the desktop-only rational QQ workspace FFI.",
+    "risks": [
+      "The generated package dist/ artifact is intentionally ignored and must be rebuilt or published by the release pipeline; its checked build receipt records source Git 74ce23f2c607a1cf6ac89152be6a40a3184f2bd5 and the digests above.",
+      "The broad pnpm test:changed selector compares this long-lived worktree against a stale origin/main and selects 128 upstream files outside this lane; the lane instead records passing focused package, architecture, strict-baselib, complete portable, direct-WASI, relocated-Node, and relocated-Chromium gates. The optional desktop FLINT addon was prepared locally only to exercise the portable fallback corpus and is not part of the Wasm artifact."
+    ],
+    "next_steps": [
+      "Cherry-pick this packaging commit onto the integration head while preserving the artifact receipt's honest 74ce mathematical-source provenance; rerun the public negation/subtraction host tests added after that source commit.",
+      "Publish or rebuild packages/flint-wasm/dist from the pinned content-addressed toolchain when producing the distributable package."
+    ]
+  }
+}

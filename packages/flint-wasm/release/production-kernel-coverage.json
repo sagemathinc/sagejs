@@ -3,11 +3,11 @@
   "source_registry": "architecture/native-kernels.json",
   "totals": {
     "registered_kernels": 42,
-    "production_kernels": 30,
-    "compiled_functions": 230,
+    "production_kernels": 35,
+    "compiled_functions": 245,
     "unsupported_production_functions": 0,
-    "non_production_functions": 43,
-    "same_source_fallback_functions": 43
+    "non_production_functions": 30,
+    "same_source_fallback_functions": 30
   },
   "kernels": [
     {
@@ -155,58 +155,48 @@
     },
     {
       "id": "genus2-kummer-height-production",
-      "production": false,
-      "status": "fallback",
-      "compiled_functions": 0,
-      "fallback_functions": 2,
+      "production": true,
+      "status": "available",
+      "compiled_functions": 2,
+      "fallback_functions": 0,
       "total_functions": 2,
-      "fallback_reasons": [
-        "tracked-production-artifact-predates-hyperelliptic-performance-kernels"
-      ]
+      "fallback_reasons": []
     },
     {
       "id": "genus3-weil-candidate-production",
-      "production": false,
-      "status": "fallback",
-      "compiled_functions": 0,
-      "fallback_functions": 3,
+      "production": true,
+      "status": "available",
+      "compiled_functions": 3,
+      "fallback_functions": 0,
       "total_functions": 3,
-      "fallback_reasons": [
-        "tracked-production-artifact-predates-compact-genus3-candidate-scanner"
-      ]
+      "fallback_reasons": []
     },
     {
       "id": "hyperelliptic-cantor-production",
-      "production": false,
-      "status": "fallback",
-      "compiled_functions": 0,
-      "fallback_functions": 4,
+      "production": true,
+      "status": "available",
+      "compiled_functions": 4,
+      "fallback_functions": 0,
       "total_functions": 4,
-      "fallback_reasons": [
-        "tracked-production-artifact-predates-hyperelliptic-performance-kernels"
-      ]
+      "fallback_reasons": []
     },
     {
       "id": "hyperelliptic-kummer-production",
-      "production": false,
-      "status": "fallback",
-      "compiled_functions": 0,
-      "fallback_functions": 3,
+      "production": true,
+      "status": "available",
+      "compiled_functions": 3,
+      "fallback_functions": 0,
       "total_functions": 3,
-      "fallback_reasons": [
-        "tracked-production-artifact-predates-hyperelliptic-performance-kernels"
-      ]
+      "fallback_reasons": []
     },
     {
       "id": "hyperelliptic-period-edge-batch-production",
-      "production": false,
-      "status": "fallback",
-      "compiled_functions": 0,
-      "fallback_functions": 1,
-      "total_functions": 1,
-      "fallback_reasons": [
-        "float64-buffer-production-wasm-bridge-pending"
-      ]
+      "production": true,
+      "status": "available",
+      "compiled_functions": 3,
+      "fallback_functions": 0,
+      "total_functions": 3,
+      "fallback_reasons": []
     },
     {
       "id": "number-field-composite-analysis-production",

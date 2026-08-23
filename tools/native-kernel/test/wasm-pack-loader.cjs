@@ -363,12 +363,30 @@ test("browser-safe loader marshals bounded Float64 buffers and results", async (
   const output = new Float64Array(3);
   assert.equal(batch(input, output, 2.0, 3n), 7.0);
   assert.deepEqual(Array.from(output), [3.0, -4.0, 8.0]);
+  const boxedPythonFloat = Object.freeze(Object(2.0));
+  assert.equal(batch(input, output, boxedPythonFloat, 3n), 7.0);
+  assert.deepEqual(Array.from(output), [3.0, -4.0, 8.0]);
+  const sageReal = Object.freeze({ __float__: () => Object(2.0) });
+  assert.equal(batch(input, output, sageReal, 3n), 7.0);
+  assert.deepEqual(Array.from(output), [3.0, -4.0, 8.0]);
   assert.throws(
     () => batch({ length: 0x2000_0000 }, output, 2.0, 3n),
     /bounded wasm32 allocation ABI/,
   );
   assert.throws(
     () => batch(input, output, 2n, 3n),
-    /Float64 arguments require a JavaScript number/,
+    /Float64 arguments require a JavaScript number or Python numeric value/,
+  );
+  assert.throws(
+    () => batch(input, output, "2.0", 3n),
+    /Float64 arguments require a JavaScript number or Python numeric value/,
+  );
+  assert.throws(
+    () => batch(input, output, { valueOf: () => 2.0 }, 3n),
+    /Float64 arguments require a JavaScript number or Python numeric value/,
+  );
+  assert.throws(
+    () => batch(input, output, { __float__: () => "2.0" }, 3n),
+    /Float64 arguments require a JavaScript number or Python numeric value/,
   );
 });

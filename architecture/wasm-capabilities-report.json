@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "d27b0bf378f07ea5ad846c421526915195473afde927b4605848aec61eccf311",
+  "source_sha256": "cf07dd2d01927596dafebb616e0f24baca021735c9cae41955c6b38320de7b60",
   "counts": {
     "total": 985,
     "by_kind": {
@@ -20,9 +20,9 @@
       "shared-core": 44
     },
     "by_status": {
-      "available": 515,
+      "available": 520,
       "desktop-only": 36,
-      "fallback": 434
+      "fallback": 429
     }
   },
   "workflow_aliases": {
@@ -6089,32 +6089,32 @@
       "id": "kernel:genus2-kummer-height-production",
       "family": "genus2-kummer-height",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "kernel-gmp",
       "public_consumers": [
         "genus2-canonical-height",
         "genus2-height-pairing-and-regulator"
       ],
-      "explanation": "Certified genus-2 finite and archimedean Kummer recurrences use the exact same-source fallback in the current WebAssembly release artifact."
+      "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:genus3-weil-candidate-production",
       "family": "genus3-weil-candidate",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "kernel-gmp",
       "public_consumers": [
         "genus3-weil-candidate"
       ],
-      "explanation": "Genus-3 Weil-candidate scans, including compact witness-filtered progressions, use the exact same-source fallback in the current WebAssembly release artifact."
+      "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:hyperelliptic-cantor-production",
       "family": "hyperelliptic-cantor",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "kernel-gmp",
       "public_consumers": [
@@ -6122,31 +6122,31 @@
         "hyperelliptic-group-structure",
         "hyperelliptic-torsion-and-saturation"
       ],
-      "explanation": "Prepared packed generalized Cantor addition, arithmetic progressions, fused BSGS progression search, and signed scalar multiplication use the exact same-source fallback in the current WebAssembly release artifact; the next authenticated kernel pack will compile the proved odd-prime odd-degree envelope."
+      "explanation": "All 4 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:hyperelliptic-kummer-production",
       "family": "hyperelliptic-kummer",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "kernel-gmp",
       "public_consumers": [
         "genus2-prime-kummer"
       ],
-      "explanation": "Packed genus-2 prime-field Kummer projection, duplication, and audited degenerate pseudo-addition use the exact same-source fallback in the current WebAssembly release artifact."
+      "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:hyperelliptic-period-edge-batch-production",
       "family": "hyperelliptic-period-edge-batch",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "hyperelliptic-periods"
       ],
-      "explanation": "Packed binary64 period seed quadrature uses its same-source fallback in the current WebAssembly artifact; every published period still requires independent arbitrary-precision refinement and Riemann-relation validation."
+      "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:number-field-composite-analysis-production",

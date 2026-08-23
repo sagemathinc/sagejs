@@ -177,6 +177,41 @@ function integerFromLimbs(sign, limbs) {
   return sign < 0 ? -value : value;
 }
 
+function directFloat64Value(argument) {
+  if (typeof argument === "number") return argument;
+  if (argument !== null && typeof argument === "object") {
+    try {
+      // Python floats whose binary64 value is integral are genuine boxed
+      // Numbers so that the runtime can preserve their Python type identity.
+      // Calling the intrinsic directly accepts only objects with Number's
+      // internal slot; arbitrary valueOf()/Symbol.toPrimitive hooks cannot
+      // cross the typed Wasm boundary.
+      return Number.prototype.valueOf.call(argument);
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+function float64Value(argument) {
+  const direct = directFloat64Value(argument);
+  if (direct !== undefined) return direct;
+  if (argument !== null &&
+      (typeof argument === "object" || typeof argument === "function")) {
+    const convert = Reflect.get(argument, "__float__");
+    if (typeof convert === "function") {
+      const converted = directFloat64Value(
+        Reflect.apply(convert, argument, []),
+      );
+      if (converted !== undefined) return converted;
+    }
+  }
+  throw new TypeError(
+    "Float64 arguments require a JavaScript number or Python numeric value",
+  );
+}
+
 function isPackedIntegerBuffer(argument) {
   return argument !== null && typeof argument === "object" &&
     argument.sizes instanceof Int32Array &&
@@ -405,10 +440,7 @@ function makeMarshaller(instance, runtime, resourceBridge) {
       return [BigInt(argument)];
     }
     if (parameter.type === "Float64") {
-      if (typeof argument !== "number") {
-        throw new TypeError("Float64 arguments require a JavaScript number");
-      }
-      return [argument];
+      return [float64Value(argument)];
     }
     if (
       ["Float64Buffer", "IntegerBuffer", "Int64Buffer", "UInt64Buffer"]
