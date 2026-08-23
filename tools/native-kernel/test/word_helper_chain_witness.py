@@ -35,5 +35,8 @@ def transitive_word_helper_witness(
     modulus: PrimeFieldModulus,
 ) -> bool:
     """Exercise fixed-width helpers from a prime-field public kernel."""
-    length = copy_fixed_span(storage, 0, 16, 4)
+    target: uint64 = 0
+    source: uint64 = 16
+    span: uint64 = 4
+    length = copy_fixed_span(storage, target, source, span)
     return length == 4
