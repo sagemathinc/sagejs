@@ -526,8 +526,18 @@ assert resources["relation_witness_logarithm_requests"] == 0
 assert resources["dependency_unit_eager_candidates"] == 3
 assert resources["dependency_unit_materializations"] == 3
 assert resources["unit_live_relation_authority_hits"] == 1
+assert resources["generation_live_relation_payload_hits"] >= 1
 assert resources["relation_witness_decode_requests"] <= 3 * resources["relations"]
 assert result.saturation_record.attempts == ()
+
+# The live payload projection may share normalized nested containers only until
+# the analytic certificate captures its canonical bytes.  A later mutation of
+# the retained producer record must therefore invalidate, never silently alter,
+# the proof; restoring the exact state restores detached replay.
+artifact.relation_records[0].provenance["post-certificate-mutation"] = True
+assert not result.saturation_record.verify()
+del artifact.relation_records[0].provenance["post-certificate-mutation"]
+assert result.saturation_record.verify()
 
 # Progress callbacks remain an interposition boundary.  They retain both the
 # issuance and consumption snapshots instead of using the synchronous token.
@@ -545,6 +555,9 @@ try:
 finally:
     class_unit_module._saturation_record_live_snapshot = original_snapshot
 assert callback_result.complete
+assert callback_result.diagnostics["resources"][
+    "generation_live_relation_payload_hits"
+] == 0
 assert snapshot_calls[0] >= 2
 assert events
 

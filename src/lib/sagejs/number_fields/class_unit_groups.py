@@ -1442,6 +1442,7 @@ class ClassUnitGroupEngine:
             "generation_verification_cache_hits": 0,
             "generation_verification_live_authentication_hits": 0,
             "generation_verification_full_replays": 0,
+            "generation_live_relation_payload_hits": 0,
             "generation_reconstruction_calls": 0,
             "generation_reconstruction_cache_hits": 0,
             "generation_admission_receipt_requests": 0,
@@ -3341,6 +3342,29 @@ class ClassUnitGroupEngine:
         _defer_live_authentication: bool = False,
     ) -> tuple[dict[str, Any], Any]:
         """Bind the exact class-generation theorem consumed by `h*R`."""
+        relation_payloads: Any = None
+        if (
+            self.progress is None
+            and not self._cancelled_callback_supplied
+            and self.checkpoint_controller is None
+        ):
+            live_payloads = getattr(collector, "_live_relation_payloads", None)
+            relation_module = self.components.relations
+            live_token = getattr(
+                relation_module, "_LIVE_VERIFIED_RELATION_PREFIX_TOKEN", None
+            )
+            if callable(live_payloads) and live_token is not None:
+                try:
+                    live_values: Any = live_payloads(live_token)
+                    relation_payloads = list(live_values)
+                except (AttributeError, TypeError, ValueError, ArithmeticError):
+                    relation_payloads = None
+        if relation_payloads is None:
+            relation_payloads = [
+                _component_payload(record) for record in collector.records
+            ]
+        else:
+            self._resource_usage["generation_live_relation_payload_hits"] += 1
         evidence = {
             "schema": "sagejs.number-fields/class-generation-authority-v1",
             "proof_status": proof_status,
@@ -3348,7 +3372,7 @@ class ClassUnitGroupEngine:
             "assumptions": list(plan.assumptions),
             "bound": int(plan.bound),
             "factor_base": [_component_payload(prime) for prime in factor_base],
-            "relations": [_component_payload(record) for record in collector.records],
+            "relations": relation_payloads,
             "presentation": _component_payload(presentation),
         }
         (
