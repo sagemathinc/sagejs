@@ -1,6 +1,6 @@
 # Hyperelliptic cross-platform acceptance
 
-This directory measures two exact workloads that are already integrated into
+This directory measures three exact workloads that are already integrated into
 Sage.js:
 
 - the packed smalljac and coefficient-only genus-2 local-factor streams;
