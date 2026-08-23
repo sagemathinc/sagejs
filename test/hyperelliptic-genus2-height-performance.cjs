@@ -528,11 +528,17 @@ assert regulator_after_endpoint_poison.status == "certified-positive"
 # the familiar module-private helper after a genuine cache fill must not alter
 # any newly reconstructed rigorous capsule.
 original_ball_decoder = height_module._ball_from_data
+original_ball_encoder = height_module._ball_data
+original_data_decoder = height_module._decode_data
+original_data_encoder = height_module._encode_data
 decoder_alias_ignored = False
 try:
     height_module._ball_from_data = (
         lambda data: RealBall(999, precision_bits=80, rigorous=True)
     )
+    height_module._ball_data = lambda value: fake_height._ball_data
+    height_module._decode_data = lambda data: "poisoned-source"
+    height_module._encode_data = lambda data: ("scalar", "poisoned-source")
     decoder_height = canonical_height(
         P, precision=80, target_bits=16, context=context
     )
@@ -572,6 +578,9 @@ try:
     )
 finally:
     height_module._ball_from_data = original_ball_decoder
+    height_module._ball_data = original_ball_encoder
+    height_module._decode_data = original_data_decoder
+    height_module._encode_data = original_data_encoder
 assert decoder_alias_ignored
 pairing_parameter_misses = context.diagnostics()["height_pairing_cache_misses"]
 pairing_parameter = height_pairing(
