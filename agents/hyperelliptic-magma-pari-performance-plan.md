@@ -341,6 +341,17 @@ The public divisor still presents ordinary polynomial `u,v` data.  Packed
 storage is a prepared execution/serialization representation, not a second
 public mathematical type.
 
+The first packed ABI is explicitly versioned for an odd-degree model with one
+distinguished rational point at infinity.  It must reject even-degree models
+before packing.  Magma's canonical sextic/octic divisor representation shows
+why this distinction is mathematical rather than cosmetic: a generic
+even-degree class also carries an infinity/weight integer and can require
+`deg(v)=g+1`.  A later even-degree ABI must therefore add that integer and a
+`g+2`-slot `v` array (or use a proved explicit odd-degree isomorphism); it must
+not reinterpret the odd-degree bytes.  Until then, even-degree group-law
+benchmark cells are recorded as unsupported, while their local-factor,
+period, and analytic cells remain in the corpus.
+
 ### Source-transparent Cantor core
 
 Keep one ordinary typed-Python mathematical body for:
