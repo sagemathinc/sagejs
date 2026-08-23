@@ -42,6 +42,7 @@ from sagejs.hyperelliptic_curves.genus2_kummer import (
 )
 from sagejs.hyperelliptic_curves.genus2_kummer_height_kernel import (
     dyadic_kummer_height_recurrence,
+    modular_kummer_height_recurrence,
 )
 from sagejs.native import (
     integer_buffer_values,
@@ -434,6 +435,23 @@ def _validated_specialized_terms(
             },
         )
     return expected
+
+
+def _flatten_specialized_terms(
+    terms: tuple[tuple[tuple[int, int, int, int, int], ...], ...],
+) -> tuple[list[int], list[int], list[int], int]:
+    """Return sparse coefficients, exponents, row counts, and coefficient bits."""
+    coefficients: list[int] = []
+    exponents: list[int] = []
+    term_counts: list[int] = []
+    coefficient_bits = 1
+    for table in terms:
+        term_counts.append(len(table))
+        for term in table:
+            coefficient_bits = max(coefficient_bits, abs(term[0]).bit_length())
+            coefficients.append(term[0])
+            exponents.extend(term[1:])
+    return coefficients, exponents, term_counts, coefficient_bits
 
 
 _AUTOMATIC_HEIGHT_BOUND_PROOF = object()
@@ -854,6 +872,32 @@ def _specialized_duplication_mod(
     return cast(tuple[int, int, int, int], tuple(output))
 
 
+def _specialized_duplication_exact(
+    coordinates: tuple[int, int, int, int],
+    terms: tuple[tuple[tuple[int, int, int, int, int], ...], ...],
+) -> tuple[int, int, int, int]:
+    """Evaluate specialized Flynn quartics over exact Python integers."""
+    powers: list[tuple[int, ...]] = []
+    for coordinate in coordinates:
+        row = [1, coordinate]
+        for _exponent in range(2, 5):
+            row.append(row[-1] * coordinate)
+        powers.append(tuple(row))
+    output: list[int] = []
+    for table in terms:
+        total = 0
+        for coefficient, exponent1, exponent2, exponent3, exponent4 in table:
+            value = coefficient
+            for index, exponent in enumerate(
+                (exponent1, exponent2, exponent3, exponent4)
+            ):
+                if exponent:
+                    value *= powers[index][exponent]
+            total += value
+        output.append(total)
+    return cast(tuple[int, int, int, int], tuple(output))
+
+
 def _finite_correction_steps(discriminant_bound: int, precision: int) -> int:
     # log(D) < bit_length(D), so this integer test conservatively enforces
     # log(D)/(3*4^steps) <= 2^-precision without a floating comparison.
@@ -938,23 +982,66 @@ def factorization_free_finite_correction(
     coordinates = kummer_coordinates(divisor).coordinates()
     specialized_terms = _validated_specialized_terms(jacobian, specialized_terms)
     partial = _zero_ball(precision, "empty-finite-correction-sum")
-    gcd_values: list[str] = []
+    gcd_integers: list[int] = []
     modulus = discriminant_bound ** (steps + 2)
-    for index in range(steps):
-        raw = _specialized_duplication_mod(coordinates, specialized_terms, modulus)
-        content = _common_content(raw)
-        common = _gcd(discriminant_bound, content)
-        if common == 0:
+    recurrence_backend = "dynamic-python"
+    if is_compiled(modular_kummer_height_recurrence):
+        recurrence_backend = "native-integer-buffer"
+        coefficients, exponents, term_counts, _coefficient_bits = (
+            _flatten_specialized_terms(specialized_terms)
+        )
+        packed_coefficients = kernel_integer_buffer(
+            modular_kummer_height_recurrence, coefficients
+        )
+        packed_exponents = kernel_uint64_buffer(
+            modular_kummer_height_recurrence, exponents
+        )
+        packed_counts = kernel_uint64_buffer(
+            modular_kummer_height_recurrence, term_counts
+        )
+        packed_output = kernel_integer_zeros(
+            modular_kummer_height_recurrence,
+            _host_buffer_length(steps),
+            _host_buffer_length(max(2, (discriminant_bound.bit_length() + 63) // 64)),
+        )
+        status = modular_kummer_height_recurrence(
+            packed_output,
+            packed_coefficients,
+            packed_exponents,
+            packed_counts,
+            coordinates[0],
+            coordinates[1],
+            coordinates[2],
+            coordinates[3],
+            discriminant_bound,
+            modulus,
+            steps,
+        )
+        if status == -1:
+            raise RuntimeError("invalid packed modular Kummer recurrence plan")
+        if status == -2:
             raise ArithmeticError("modular Kummer duplication lost all precision")
-        gcd_values.append(str(common))
+        if status != steps:
+            raise RuntimeError("incomplete packed modular Kummer recurrence")
+        gcd_integers = [int(value) for value in integer_buffer_values(packed_output)]
+    else:
+        for _index in range(steps):
+            raw = _specialized_duplication_mod(coordinates, specialized_terms, modulus)
+            content = _common_content(raw)
+            common = _gcd(discriminant_bound, content)
+            if common == 0:
+                raise ArithmeticError("modular Kummer duplication lost all precision")
+            gcd_integers.append(common)
+            coordinates = cast(
+                tuple[int, int, int, int],
+                tuple(int(value // common) for value in raw),
+            )
+
+    for index, common in enumerate(gcd_integers):
         if common > 1:
             partial = partial + field.log_integer(common) / RealBall(
                 4 ** (index + 1), precision_bits=precision
             )
-        coordinates = cast(
-            tuple[int, int, int, int],
-            tuple(int(value // common) for value in raw),
-        )
 
     tail = field.log_integer(discriminant_bound) / RealBall(
         3 * 4**steps, precision_bits=precision
@@ -971,7 +1058,8 @@ def factorization_free_finite_correction(
             "finite_correction": "certified",
             "discriminant_bound_D": str(discriminant_bound),
             "modulus_exponent": steps + 2,
-            "raw_duplication_gcds": tuple(gcd_values),
+            "raw_duplication_gcds": tuple(str(value) for value in gcd_integers),
+            "recurrence_backend": recurrence_backend,
             "factorization_used": False,
             "specialized_quartic_term_counts": tuple(
                 len(table) for table in specialized_terms
@@ -1094,20 +1182,18 @@ def normalized_archimedean_correction(
     recurrence_backend = "dynamic-python"
     if is_compiled(dyadic_kummer_height_recurrence):
         recurrence_backend = "native-integer-buffer"
-        flat_terms: list[int] = []
-        term_counts: list[int] = []
-        coefficient_bits = 1
-        for table in specialized_terms:
-            term_counts.append(len(table))
-            for term in table:
-                coefficient_bits = max(coefficient_bits, abs(term[0]).bit_length())
-                flat_terms.extend(term)
+        coefficients, exponents, term_counts, coefficient_bits = (
+            _flatten_specialized_terms(specialized_terms)
+        )
         packed_state = kernel_integer_buffer(
             dyadic_kummer_height_recurrence,
             [endpoint for value in coordinates for endpoint in value],
         )
-        packed_terms = kernel_integer_buffer(
-            dyadic_kummer_height_recurrence, flat_terms
+        packed_coefficients = kernel_integer_buffer(
+            dyadic_kummer_height_recurrence, coefficients
+        )
+        packed_exponents = kernel_uint64_buffer(
+            dyadic_kummer_height_recurrence, exponents
         )
         packed_counts = kernel_uint64_buffer(
             dyadic_kummer_height_recurrence, term_counts
@@ -1126,7 +1212,8 @@ def normalized_archimedean_correction(
         status = dyadic_kummer_height_recurrence(
             packed_output,
             packed_state,
-            packed_terms,
+            packed_coefficients,
+            packed_exponents,
             packed_counts,
             packed_scratch,
             dyadic_scale,
@@ -1298,6 +1385,7 @@ class HeightContext:
             )
         except Exception:
             self._classical_duplication_terms = None
+        self._trusted_classical_duplication_terms = self._classical_duplication_terms
         try:
             l1_bound = classical_duplication_l1_bound(jacobian)
             self._duplication_overhead_bits_upper = 4 * len(str(l1_bound)) + 8
@@ -1444,6 +1532,14 @@ class HeightContext:
         steps: int,
     ) -> FiniteHeightCorrectionResult:
         """Return a cached certified finite correction."""
+        if (
+            self._classical_duplication_terms
+            is not self._trusted_classical_duplication_terms
+        ):
+            raise Genus2HeightCapabilityError(
+                "cached Flynn tables do not match the exact Jacobian model",
+                {"specialized_quartics": "rejected-mutated-height-context"},
+            )
         key = (self._key(divisor), int(precision), int(steps))
         cached = self._finite_corrections.get(key)
         if cached is not None:
@@ -1469,6 +1565,21 @@ class HeightContext:
         target_bits: int | None,
     ) -> ArchimedeanHeightCorrectionResult:
         """Return a cached normalized real-place correction."""
+        if bounds.diagnostics.get(
+            "automatic_bound"
+        ) != "certified" or not bounds._certified_for(self.jacobian):
+            raise Genus2HeightCapabilityError(
+                "normalized real correction requires model-bound automatic bounds",
+                bounds.diagnostics,
+            )
+        if (
+            self._classical_duplication_terms
+            is not self._trusted_classical_duplication_terms
+        ):
+            raise Genus2HeightCapabilityError(
+                "cached Flynn tables do not match the exact Jacobian model",
+                {"specialized_quartics": "rejected-mutated-height-context"},
+            )
         key = (
             self._key(divisor),
             int(precision),
@@ -1966,13 +2077,11 @@ def canonical_height(
             if working_precision < guarded_precision:
                 working_precision = guarded_precision
                 field = context.field(working_precision)
-                guarded_bounds = context.automatic_bounds(working_precision)
-                if guarded_bounds is None:
-                    raise Genus2HeightCapabilityError(
-                        "guarded local iteration lost certified model bounds",
-                        {},
-                    )
-                bounds = guarded_bounds
+                # The automatic endpoints are exact outward rational bounds.
+                # Raising the orbit precision therefore does not require
+                # repeating the root-separation proof: its already certified
+                # endpoint remains valid, and its rounding width is divided
+                # by `4^selected_steps` in the omitted tail.
         initial = context.kummer(divisor)
         initial_height_integer = initial.naive_height_integer()
         initial_naive_height = field.log_integer(initial_height_integer)
@@ -2017,36 +2126,24 @@ def canonical_height(
             )
 
         oracle_steps = min(2, selected_steps)
-        oracle_chain = context.chain(divisor, oracle_steps)
-        if _find_kummer_repeat(oracle_chain):
-            return CanonicalHeightResult(
-                _zero_ball(working_precision, "exact-kummer-cycle-torsion-height"),
-                status="exact-torsion-zero",
-                steps=oracle_steps,
-                provenance=divisor_provenance(divisor),
-                bounds=None,
-                diagnostics={
-                    "torsion_certificate": "repeated-exact-kummer-coordinate",
-                    "requested_algorithm": algorithm,
-                    "selected_algorithm": "exact-small-step-torsion-oracle",
-                    "requested_precision_bits": precision,
-                    "target_bits": target_bits,
-                    "context": context.diagnostics(),
-                },
-            )
+        oracle_coordinates = context.kummer(divisor).coordinates()
+        oracle_seen = {oracle_coordinates}
         scale_enclosures = archimedean.diagnostics["scale_enclosures"]
         finite_gcds = finite.diagnostics["raw_duplication_gcds"]
         oracle_scales: list[str] = []
         oracle_gcds: list[str] = []
         for index in range(oracle_steps):
-            source_height = oracle_chain[index].naive_height_integer()
-            raw_coordinates = cast(
-                tuple[int, int, int, int],
-                tuple(
-                    _rational_pair(value)[0]
-                    for value in oracle_chain[
-                        index + 1
-                    ].raw_coordinates_before_normalization()
+            source_height = max(abs(value) for value in oracle_coordinates)
+            raw_coordinates = _specialized_duplication_exact(
+                oracle_coordinates,
+                cast(
+                    tuple[
+                        tuple[tuple[int, int, int, int, int], ...],
+                        tuple[tuple[int, int, int, int, int], ...],
+                        tuple[tuple[int, int, int, int, int], ...],
+                        tuple[tuple[int, int, int, int, int], ...],
+                    ],
+                    context._trusted_classical_duplication_terms,
                 ),
             )
             raw_height = max(abs(value) for value in raw_coordinates)
@@ -2077,6 +2174,35 @@ def canonical_height(
                 )
             oracle_scales.append(scale_text)
             oracle_gcds.append(str(content))
+            oracle_coordinates = cast(
+                tuple[int, int, int, int],
+                tuple(value // content for value in raw_coordinates),
+            )
+            for value in oracle_coordinates:
+                if value != 0:
+                    if value < 0:
+                        oracle_coordinates = cast(
+                            tuple[int, int, int, int],
+                            tuple(-entry for entry in oracle_coordinates),
+                        )
+                    break
+            if oracle_coordinates in oracle_seen:
+                return CanonicalHeightResult(
+                    _zero_ball(working_precision, "exact-kummer-cycle-torsion-height"),
+                    status="exact-torsion-zero",
+                    steps=index + 1,
+                    provenance=divisor_provenance(divisor),
+                    bounds=None,
+                    diagnostics={
+                        "torsion_certificate": "repeated-exact-kummer-coordinate",
+                        "requested_algorithm": algorithm,
+                        "selected_algorithm": "exact-small-step-torsion-oracle",
+                        "requested_precision_bits": precision,
+                        "target_bits": target_bits,
+                        "context": context.diagnostics(),
+                    },
+                )
+            oracle_seen.add(oracle_coordinates)
         return CanonicalHeightResult(
             ball,
             status="certified-enclosure",
