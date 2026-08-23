@@ -52,6 +52,7 @@ test.after(() => {
 
 const publicSource = String.raw`
 import json
+import sagejs.runtime as runtime
 from sagejs.hyperelliptic_curves.genus2_kummer_height_kernel import (
     dyadic_kummer_height_recurrence,
     modular_kummer_height_recurrence,
@@ -194,7 +195,7 @@ period_checksum = _period_edge_batch_float64(
     kernel_float64_buffer(_period_edge_batch_float64, [0.0, 0.0, 1.0, 0.0]),
     kernel_float64_buffer(_period_edge_batch_float64, [2.0, 0.0]),
     kernel_float64_buffer(_period_edge_batch_float64, [0.0, 1.0]),
-    period_output, 1.0, 1, 1, 1, 1,
+    period_output, runtime.parse_float("1.0"), 1, 1, 1, 1,
 )
 sign_output = kernel_float64_zeros(_period_sign_mask_float64_kernel, 1)
 sign_result = _period_sign_mask_float64_kernel(
@@ -272,12 +273,15 @@ print(json.dumps(record, sort_keys=True, separators=(",", ":")))
 `;
 
 function dynamicOracle() {
+  const environment = { ...process.env, SAGEJS_NATIVE_MODE: "dynamic" };
+  delete environment.SAGEJS_NATIVE_DISABLE;
+  delete environment.SAGEJS_NATIVE_REQUIRED;
   const run = spawnSync(process.execPath, [
     path.join(repositoryRoot, "bin", "sagejs"), "--python",
   ], {
     cwd: repositoryRoot,
     encoding: "utf8",
-    env: { ...process.env, SAGEJS_NATIVE_DISABLE: "1" },
+    env: environment,
     input: publicSource,
     maxBuffer: 8 * 1024 * 1024,
   });
@@ -327,9 +331,9 @@ test("authenticated production packs execute every hyperelliptic source family",
   const expected = dynamicOracle();
   const { manifest, runtime } = await productionRuntime();
   const expectedFunctions = new Map([
-    ["genus2-kummer-height-production", 2],
+    ["genus2-kummer-height-production", 6],
     ["genus3-weil-candidate-production", 3],
-    ["hyperelliptic-cantor-production", 4],
+    ["hyperelliptic-cantor-production", 7],
     ["hyperelliptic-kummer-production", 3],
     ["hyperelliptic-period-edge-batch-production", 3],
   ]);
