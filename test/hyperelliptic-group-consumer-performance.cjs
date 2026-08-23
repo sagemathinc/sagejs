@@ -425,6 +425,88 @@ True`,
   }
 });
 
+test("packed rforest views preserve public rows and fail closed", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      String.raw`
+import sagejs.hyperelliptic_curves.rforest as rforest_module
+from sagejs.hyperelliptic_curves.certified_genus3 import rforest_genus3_local_factors
+from sagejs.hyperelliptic_curves.rforest import rforest_hasse_witt_rows
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+C = HyperellipticCurve((x**7 + x + 1)/3)
+packed = rforest_module._rforest_hasse_witt_packed(C, 2, 101)
+public = rforest_hasse_witt_rows(C, 2, 101)
+internal_rows = [
+    rforest_module._rforest_packed_row(packed, index)
+    for index in range(packed.row_count)
+]
+assert internal_rows == public["rows"]
+assert packed.normalization == public["normalization"]
+assert packed.backend_version == public["backend_version"]
+assert packed.genus == public["genus"] == 3
+assert packed.excluded_denominator == public["excluded_denominator"] == 3
+assert packed.truncated == public["truncated"] is False
+assert packed.required_rows == public["required_rows"] == len(internal_rows)
+assert internal_rows[0] == {
+    "prime": 2,
+    "available": False,
+    "residues": None,
+    "status": "unsupported_characteristic",
+}
+assert internal_rows[1] == {
+    "prime": 3,
+    "available": False,
+    "residues": None,
+    "status": "excluded_model",
+}
+
+limited = rforest_module._rforest_hasse_witt_packed(C, 2, 101, max_rows=3)
+limited_public = rforest_hasse_witt_rows(C, 2, 101, max_rows=3)
+assert limited.truncated and limited.row_count == 3
+assert limited.required_rows == public["required_rows"]
+assert [
+    rforest_module._rforest_packed_row(limited, index)
+    for index in range(limited.row_count)
+] == limited_public["rows"]
+for index in (-1, limited.row_count):
+    try:
+        rforest_module._rforest_packed_row(limited, index)
+        raise AssertionError("an invalid packed row index was accepted")
+    except IndexError:
+        pass
+
+checked = rforest_module._rforest_hasse_witt_packed(C, 2, 19)
+checked_primes = [
+    int(checked.primes[index])
+    for index in range(checked.row_count)
+]
+assert checked_primes == [2, 3, 5, 7, 11, 13, 17, 19]
+assert all(is_prime(prime) for prime in checked_primes)
+
+cancelled_events = []
+def cancel_observer(event, details):
+    cancelled_events.append(event)
+    if event == "residue_end":
+        raise RuntimeError("cancel-packed-stream")
+stream = rforest_genus3_local_factors(C, 2, 101, stage_observer=cancel_observer)
+try:
+    next(stream)
+    raise AssertionError("cancelled packed stream returned a row")
+except RuntimeError as error:
+    assert str(error) == "cancel-packed-stream"
+assert cancelled_events == ["residue_start", "residue_end"]
+True`,
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "True");
+  } finally {
+    await session.close();
+  }
+});
+
 test("packed genus-three witnesses match public reductions and detach certificates", async () => {
   const session = await createSage();
   try {

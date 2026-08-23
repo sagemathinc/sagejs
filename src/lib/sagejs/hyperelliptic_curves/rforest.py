@@ -7,6 +7,7 @@ explicit exact-completion diagnostic, never a public local-factor backend.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Mapping
 
 import sagejs as sage
@@ -18,6 +19,31 @@ from sagejs.hyperelliptic_curves.genus3_completion import (
 _capability_cache: Any = runtime.undefined
 _SIGNED64_MIN = -(2**63)
 _SIGNED64_MAX = 2**63 - 1
+
+
+@dataclass(frozen=True)
+class _RforestPackedBatch:
+    """Validated compact rforest rows retained in their native buffers."""
+
+    normalization: str
+    backend_version: str
+    genus: int
+    excluded_denominator: int
+    truncated: bool
+    required_rows: int
+    row_count: int
+    start: int
+    stop: int
+    primes: Any
+    good: Any
+    coefficient_counts: Any
+    coefficients: Any
+    row_status: Any
+    forest_status: int
+    direct_status: int
+    singular_status: int
+    unsupported_characteristic_status: int
+    resource_limit_status: int
 
 
 def _property(value: Any, name: str) -> Any:
@@ -132,20 +158,24 @@ def _raise_batch_error(status: int, status_name: str) -> None:
     raise RuntimeError(message)
 
 
-def rforest_hasse_witt_rows(
+def _rforest_hasse_witt_packed(
     curve: Any,
     start: Any,
     stop: Any,
     *,
     max_rows: int = 0,
-) -> dict[str, Any]:
-    """Return checked modular Hasse--Witt rows in a closed prime interval.
+) -> _RforestPackedBatch:
+    """Return a checked compact view of one native rforest traversal.
 
     A row is `available` only when residues were computed for the original
     rational model. Other statuses distinguish a singular supplied model, an
     unsupported characteristic, a resource limit, and primes excluded by
     denominator clearing; none of the unavailable statuses alone proves bad
     reduction of the rational curve.
+
+    The retained typed buffers are private implementation data. This internal
+    view avoids eagerly publishing thousands of Python dictionaries when a
+    streaming consumer needs only a bounded current window.
     """
     capability = rforest_capabilities()
     if capability is None:
@@ -214,14 +244,18 @@ def rforest_hasse_witt_rows(
     ]:
         raise RuntimeError("rforest returned malformed packed arrays")
 
-    status_names = {
-        _status("ROW_FOREST"): "forest",
-        _status("ROW_DIRECT"): "direct",
-        _status("ROW_SINGULAR_MODEL"): "singular_model",
-        _status("ROW_UNSUPPORTED_CHARACTERISTIC"): "unsupported_characteristic",
-        _status("ROW_RESOURCE_LIMIT"): "resource_limit",
-    }
-    rows = []
+    forest_status = _status("ROW_FOREST")
+    direct_status = _status("ROW_DIRECT")
+    singular_status = _status("ROW_SINGULAR_MODEL")
+    unsupported_characteristic_status = _status("ROW_UNSUPPORTED_CHARACTERISTIC")
+    resource_limit_status = _status("ROW_RESOURCE_LIMIT")
+    allowed_row_statuses = [
+        forest_status,
+        direct_status,
+        singular_status,
+        unsupported_characteristic_status,
+        resource_limit_status,
+    ]
     previous = 0
     for index in range(row_count):
         prime = int(runtime.integer_bigint(primes[index]))
@@ -233,7 +267,7 @@ def rforest_hasse_witt_rows(
             or prime > int(stop_exact)
             or prime <= previous
             or not sage.is_prime(prime)
-            or row_code not in status_names
+            or row_code not in allowed_row_statuses
             or is_good not in [0, 1]
         ):
             raise RuntimeError("rforest returned an invalid prime row")
@@ -243,7 +277,7 @@ def rforest_hasse_witt_rows(
             for offset in range(3)
         )
         if is_good:
-            if row_code not in [_status("ROW_FOREST"), _status("ROW_DIRECT")]:
+            if row_code not in [forest_status, direct_status]:
                 raise RuntimeError("rforest marked a failed row as good")
             if count != genus or any(
                 value < 0 or value >= prime for value in residue_values[:genus]
@@ -251,33 +285,97 @@ def rforest_hasse_witt_rows(
                 raise RuntimeError("rforest returned noncanonical residues")
             if any(value != 0 for value in residue_values[genus:]):
                 raise RuntimeError("rforest returned nonzero unused coefficients")
-            residues: tuple[int, ...] | None = residue_values[:genus]
         else:
             if count != 0 or any(value != 0 for value in residue_values):
                 raise RuntimeError("rforest returned inconsistent failed-row data")
-            residues = None
-        if excluded_denominator % prime == 0:
-            available = False
-            residues = None
-            public_status = "excluded_model"
-        else:
-            available = bool(is_good)
-            public_status = status_names[row_code]
-        rows.append(
-            {
-                "prime": prime,
-                "available": available,
-                "residues": residues,
-                "status": public_status,
-            }
+    return _RforestPackedBatch(
+        normalization="det(I-T*W) mod p",
+        backend_version=str(_property(batch, "backendVersion")),
+        genus=genus,
+        excluded_denominator=excluded_denominator,
+        truncated=truncated,
+        required_rows=required_rows,
+        row_count=row_count,
+        start=int(start_exact),
+        stop=int(stop_exact),
+        primes=primes,
+        good=good,
+        coefficient_counts=counts,
+        coefficients=coefficients,
+        row_status=row_status,
+        forest_status=forest_status,
+        direct_status=direct_status,
+        singular_status=singular_status,
+        unsupported_characteristic_status=unsupported_characteristic_status,
+        resource_limit_status=resource_limit_status,
+    )
+
+
+def _rforest_packed_status_name(batch: _RforestPackedBatch, row_code: int) -> str:
+    if row_code == batch.forest_status:
+        return "forest"
+    if row_code == batch.direct_status:
+        return "direct"
+    if row_code == batch.singular_status:
+        return "singular_model"
+    if row_code == batch.unsupported_characteristic_status:
+        return "unsupported_characteristic"
+    if row_code == batch.resource_limit_status:
+        return "resource_limit"
+    raise RuntimeError("rforest retained an invalid row status")
+
+
+def _rforest_packed_row(batch: _RforestPackedBatch, index: int) -> dict[str, Any]:
+    """Materialize one already-validated public row from a compact batch."""
+    if index < 0 or index >= batch.row_count:
+        raise IndexError("rforest packed row index is out of range")
+    prime = int(runtime.integer_bigint(batch.primes[index]))
+    is_good = int(batch.good[index])
+    row_code = int(batch.row_status[index])
+    if is_good:
+        residues: tuple[int, ...] | None = tuple(
+            int(runtime.integer_bigint(batch.coefficients[3 * index + offset]))
+            for offset in range(batch.genus)
         )
+    else:
+        residues = None
+    if batch.excluded_denominator % prime == 0:
+        available = False
+        residues = None
+        public_status = "excluded_model"
+    else:
+        available = bool(is_good)
+        public_status = _rforest_packed_status_name(batch, row_code)
     return {
-        "normalization": "det(I-T*W) mod p",
-        "backend_version": str(_property(batch, "backendVersion")),
-        "genus": genus,
-        "excluded_denominator": excluded_denominator,
-        "truncated": truncated,
-        "required_rows": required_rows,
+        "prime": prime,
+        "available": available,
+        "residues": residues,
+        "status": public_status,
+    }
+
+
+def rforest_hasse_witt_rows(
+    curve: Any,
+    start: Any,
+    stop: Any,
+    *,
+    max_rows: int = 0,
+) -> dict[str, Any]:
+    """Return checked modular Hasse--Witt rows in a closed prime interval.
+
+    This public function preserves the eager row-dictionary contract. Internal
+    streaming consumers use the same checked packed boundary and materialize
+    only a bounded current window.
+    """
+    packed = _rforest_hasse_witt_packed(curve, start, stop, max_rows=max_rows)
+    rows = [_rforest_packed_row(packed, index) for index in range(packed.row_count)]
+    return {
+        "normalization": packed.normalization,
+        "backend_version": packed.backend_version,
+        "genus": packed.genus,
+        "excluded_denominator": packed.excluded_denominator,
+        "truncated": packed.truncated,
+        "required_rows": packed.required_rows,
         "rows": rows,
     }
 
