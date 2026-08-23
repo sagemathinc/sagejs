@@ -75,6 +75,7 @@ from sagejs.hyperelliptic_curves.jacobian_kernels import (
     packed_cantor_search_progression,
     packed_cantor_scalar_batch,
 )
+from sagejs.hyperelliptic_curves.jacobian_native import PreparedDivisorBatch
 
 compiled = is_compiled(packed_cantor_add_batch)
 assert compiled == is_compiled(packed_cantor_scalar_batch)
@@ -124,11 +125,33 @@ def check_curve(curve, exhaustive):
     actual, diagnostics = context.add_batch(
         left, right, algorithm=selected, diagnostics=True
     )
-    lazy_sample = actual[:min(8, len(actual))]
     if compiled:
-        assert all(not divisor.is_materialized() for divisor in lazy_sample)
+        assert isinstance(actual, PreparedDivisorBatch)
+        assert actual.published_count == 0
     assert actual == expected
     if compiled:
+        # Equality compares canonical rows and a subsequent operation consumes
+        # the frozen packed sequence without publishing individual divisors.
+        assert actual.published_count == 0
+        pipeline = context.add_batch(actual, actual, algorithm="native")
+        assert actual.published_count == 0
+        assert isinstance(pipeline, PreparedDivisorBatch)
+        assert pipeline.published_count == 0
+        pipeline_reference = context.add_batch(
+            expected, expected, algorithm="reference"
+        )
+        assert pipeline == pipeline_reference
+        assert pipeline.published_count == 0
+        frozen_rows = pipeline._rows_for(context)
+        try:
+            frozen_rows[0] = 99
+        except TypeError:
+            pass
+        else:
+            raise AssertionError("packed batch storage was mutable")
+        lazy_sample = actual[:min(8, len(actual))]
+        assert actual.published_count == len(lazy_sample)
+        assert all(not divisor.is_materialized() for divisor in lazy_sample)
         # Canonical-key equality, hashing, truth, and another prepared pack do
         # not force polynomial allocation.
         for divisor in lazy_sample:
@@ -149,6 +172,7 @@ def check_curve(curve, exhaustive):
             materialize=True,
         )
         assert forced == expected[:8]
+        assert isinstance(forced, tuple)
         assert all(divisor.is_materialized() for divisor in forced)
         timings = diagnostics.to_dict()["timings_ns"]
         assert "publication" in timings and "materialization" in timings
@@ -417,6 +441,12 @@ attack_points = J0.points(max_elements=10000, max_candidates=100000)
 P = attack_points[1]
 Q = attack_points[2]
 attack_context = J0.prepared_arithmetic()
+try:
+    PreparedDivisorBatch(attack_context, (0, 1, 0, 0, 0, 0, 0, 0), 1)
+except TypeError:
+    pass
+else:
+    raise AssertionError("the public packed-batch constructor accepted forged rows")
 P_hash = hash(P)
 P_repr = repr(P)
 Q_row = attack_context.pack(Q)
@@ -441,6 +471,21 @@ assert P != Q
 assert hash(P) == P_hash
 assert repr(P) == P_repr
 assert attack_context.add_batch((P,), (J0.zero(),))[0] == P
+if compiled:
+    first_batch = attack_context.add_batch((P,), (J0.zero(),), algorithm="native")
+    second_batch = attack_context.add_batch((Q,), (J0.zero(),), algorithm="native")
+    batch_binding_name = "_PreparedDivisorBatch__binding"
+    first_binding = getattr(first_batch, batch_binding_name)
+    second_binding = getattr(second_batch, batch_binding_name)
+    object.__setattr__(first_batch, batch_binding_name, second_binding)
+    try:
+        first_batch[0]
+    except ArithmeticError as error:
+        assert "binding was corrupted" in str(error)
+    else:
+        raise AssertionError("a transplanted batch binding did not fail closed")
+    object.__setattr__(first_batch, batch_binding_name, first_binding)
+    assert first_batch[0] == P
 
 try:
     HyperellipticCurve(x**6 + x + 1).jacobian()

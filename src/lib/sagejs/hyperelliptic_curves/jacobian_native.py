@@ -178,6 +178,114 @@ class PreparedSearchDiagnostics:
         return "PreparedSearchDiagnostics(" + repr(self.to_dict()) + ")"
 
 
+class PreparedDivisorBatch:
+    """Immutable sequence of lazily published canonical packed divisors.
+
+    One immutable tuple backs the whole batch.  Indexing publishes and caches
+    an ordinary public divisor, while equality and a subsequent prepared
+    operation can consume canonical rows without allocating one Python object
+    per item.  The public constructor is intentionally closed: only a prepared
+    context may publish rows already proved by its kernel.
+    """
+
+    __slots__ = ("__binding", "__published")
+
+    def __init__(self, *_args: Any, **_keywords: Any) -> None:
+        raise TypeError("prepared divisor batches are published by their context")
+
+    def _state(self) -> tuple[Any, tuple[int, ...], int]:
+        binding = self.__binding
+        if binding[0] is not self:
+            raise ArithmeticError("a prepared divisor batch binding was corrupted")
+        return binding[1], binding[2], binding[3]
+
+    def __len__(self) -> int:
+        return self._state()[2]
+
+    @property
+    def published_count(self) -> int:
+        """Return how many element wrappers have been demanded so far."""
+        return len(self.__published)
+
+    def _rows_for(self, context: Any) -> tuple[int, ...]:
+        owner, packed, _count = self._state()
+        if context is not owner:
+            raise ValueError("a prepared divisor batch belongs to another context")
+        return packed
+
+    def _row(self, index: int) -> tuple[int, ...]:
+        _owner, packed, _count = self._state()
+        offset = 8 * index
+        return (
+            packed[offset],
+            packed[offset + 1],
+            packed[offset + 2],
+            packed[offset + 3],
+            packed[offset + 4],
+            packed[offset + 5],
+            packed[offset + 6],
+            packed[offset + 7],
+        )
+
+    def __getitem__(self, index: Any) -> Any:
+        owner, packed, count = self._state()
+        if isinstance(index, slice):
+            return tuple(self[position] for position in range(count)[index])
+        position = _exact_integer(index, "batch index")
+        if position < 0:
+            position += count
+        if position < 0 or position >= count:
+            raise IndexError("prepared divisor batch index out of range")
+        cached = self.__published.get(position)
+        if cached is None:
+            cached = owner._publish_kernel_output(packed, 8 * position)
+            self.__published[position] = cached
+        return cached
+
+    def __iter__(self) -> Any:
+        _owner, _packed, count = self._state()
+        index = 0
+        while index < count:
+            yield self[index]
+            index += 1
+
+    def __eq__(self, other: object) -> bool:
+        if other is self:
+            return True
+        try:
+            context, packed, count = self._state()
+            if len(other) != count:  # type: ignore[arg-type]
+                return False
+            if isinstance(other, PreparedDivisorBatch):
+                other_context, other_packed, _other_count = other._state()
+                if other_context is context:
+                    return packed == other_packed
+            index = 0
+            while index < count:
+                if self._row(index) != context.pack(other[index]):  # type: ignore[index]
+                    return False
+                index += 1
+            return True
+        except (ArithmeticError, IndexError, TypeError, ValueError):
+            return False
+
+    def __add__(self, other: Any) -> tuple[Any, ...]:
+        return tuple(self) + tuple(other)
+
+    def __radd__(self, other: Any) -> tuple[Any, ...]:
+        return tuple(other) + tuple(self)
+
+    def __repr__(self) -> str:
+        return repr(tuple(self))
+
+    def materialize(self) -> tuple[Any, ...]:
+        """Return an ordinary tuple after constructing every `(u,v)` pair."""
+        answer = tuple(self)
+        for divisor in answer:
+            divisor.uv()
+        return answer
+
+
 def _exact_integer(value: Any, name: str) -> int:
     if isinstance(value, bool):
         raise TypeError(name + " must be an integer")
@@ -538,6 +646,23 @@ class PreparedJacobianArithmetic:
                 + str(self._max_batch_items)
             )
 
+    def _pack_public_batch(
+        self,
+        values: Any,
+        cache: dict[int, tuple[int, ...]] | None = None,
+    ) -> list[int]:
+        """Flatten public rows, packing each repeated divisor identity once."""
+        rows: list[int] = []
+        known = {} if cache is None else cache
+        for divisor in values:
+            key = id(divisor)
+            row = known.get(key)
+            if row is None:
+                row = self.pack(divisor)
+                known[key] = row
+            rows.extend(row)
+        return rows
+
     def pack(self, divisor: Any) -> tuple[int, ...]:
         """Return the canonical odd-degree v1 eight-word row."""
         if self.prime is None:
@@ -637,6 +762,24 @@ class PreparedJacobianArithmetic:
         )
         return self._new_packed_divisor(row)
 
+    def _publish_kernel_batch(self, output: Any, count: int) -> PreparedDivisorBatch:
+        """Freeze one proved native output buffer as a lazy public sequence."""
+        # The compiled boundary already exposes a checked BigUint64Array.
+        # Freezing it as a tuple is a single bulk sequence copy; converting
+        # each word through Python's generic `int` constructor costs more than
+        # the complete fixed-degree group law and adds no validation.
+        packed = tuple(output)
+        if len(packed) != 8 * count:
+            raise ArithmeticError("a packed Cantor kernel returned the wrong span")
+        batch = object.__new__(PreparedDivisorBatch)
+        object.__setattr__(
+            batch,
+            "_PreparedDivisorBatch__binding",
+            (batch, self, packed, count),
+        )
+        object.__setattr__(batch, "_PreparedDivisorBatch__published", {})
+        return batch
+
     def unpack(self, row: Any) -> Any:
         """Validate and publish one canonical odd-degree v1 row."""
         values = self._canonical_row(row)
@@ -672,45 +815,69 @@ class PreparedJacobianArithmetic:
         diagnostics: bool = False,
         materialize: bool = False,
     ) -> Any:
-        left_values = tuple(lefts)
-        right_values = tuple(rights)
+        left_is_packed = isinstance(lefts, PreparedDivisorBatch)
+        right_is_packed = isinstance(rights, PreparedDivisorBatch)
+        left_values: Any = lefts if left_is_packed else tuple(lefts)
+        right_values: Any = rights if right_is_packed else tuple(rights)
         if len(left_values) != len(right_values):
             raise ValueError("left and right batches must have the same length")
         self._check_batch_size(len(left_values))
-        for value in left_values + right_values:
-            if value.parent() is not self._jacobian:
-                raise ValueError("every batch divisor must lie in this Jacobian")
+        if left_is_packed:
+            left_values._rows_for(self)
+        else:
+            for value in left_values:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
+        if right_is_packed:
+            right_values._rows_for(self)
+        else:
+            for value in right_values:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
         selected, reason = self._selection(algorithm)
         started = time.perf_counter_ns()
-        left_rows = ()
-        right_rows = ()
+        packed_left = None
+        packed_right = None
         if selected == "native":
-            left_rows = tuple(
-                value for divisor in left_values for value in self.pack(divisor)
-            )
-            right_rows = tuple(
-                value for divisor in right_values for value in self.pack(divisor)
-            )
+            packed_cache: dict[int, tuple[int, ...]] = {}
+            if left_is_packed:
+                packed_left = kernel_uint64_buffer(
+                    self._add_kernel, left_values._rows_for(self)
+                )
+            else:
+                left_rows = self._pack_public_batch(left_values, packed_cache)
+                packed_left = kernel_uint64_buffer(self._add_kernel, left_rows)
+            if right_is_packed:
+                if right_values is left_values:
+                    packed_right = packed_left
+                else:
+                    packed_right = kernel_uint64_buffer(
+                        self._add_kernel, right_values._rows_for(self)
+                    )
+            else:
+                right_rows = self._pack_public_batch(right_values, packed_cache)
+                packed_right = kernel_uint64_buffer(self._add_kernel, right_rows)
         pack_ns = time.perf_counter_ns() - started
         statuses: tuple[int, ...] = ()
         validation_ns = 0
         materialization_ns = 0
         if selected == "reference":
+            left_public = tuple(left_values)
+            right_public = tuple(right_values)
             started = time.perf_counter_ns()
             answer = tuple(
                 self._reference_add(left, right)
-                for left, right in zip(left_values, right_values, strict=True)
+                for left, right in zip(left_public, right_public, strict=True)
             )
             kernel_ns = time.perf_counter_ns() - started
             unpack_ns = 0
-            statuses = tuple(100 for _value in answer)
+            if diagnostics:
+                statuses = tuple(100 for _value in answer)
         else:
             assert self.prime is not None
             output = kernel_uint64_zeros(self._add_kernel, len(left_values) * 8)
             status_buffer = kernel_uint64_zeros(self._add_kernel, len(left_values))
             model = kernel_uint64_buffer(self._add_kernel, self._model)
-            packed_left = kernel_uint64_buffer(self._add_kernel, left_rows)
-            packed_right = kernel_uint64_buffer(self._add_kernel, right_rows)
             started = time.perf_counter_ns()
             accepted = self._add_kernel(
                 output,
@@ -727,23 +894,24 @@ class PreparedJacobianArithmetic:
                 raise ArithmeticError(
                     "the packed Cantor addition kernel rejected a validated batch"
                 )
-            statuses = tuple(
-                int(status_buffer[index]) for index in range(len(left_values))
-            )
-            if any(status == 0 for status in statuses):
-                raise ArithmeticError("the packed Cantor kernel returned a failed item")
+            if diagnostics:
+                statuses = tuple(
+                    int(status_buffer[index]) for index in range(len(left_values))
+                )
             started = time.perf_counter_ns()
-            answer = tuple(
-                self._publish_kernel_output(output, 8 * item)
-                for item in range(len(left_values))
-            )
+            answer = self._publish_kernel_batch(output, len(left_values))
             unpack_ns = time.perf_counter_ns() - started
         if materialize:
             started = time.perf_counter_ns()
-            for divisor_value in answer:
-                divisor: Any = divisor_value
-                divisor.uv()
+            if isinstance(answer, PreparedDivisorBatch):
+                answer = answer.materialize()
+            else:
+                for divisor_value in answer:
+                    divisor: Any = divisor_value
+                    divisor.uv()
             materialization_ns = time.perf_counter_ns() - started
+        if not diagnostics:
+            return answer
         record = PreparedBatchDiagnostics(
             operation="add",
             requested=self._algorithm if algorithm is None else algorithm,
@@ -757,7 +925,7 @@ class PreparedJacobianArithmetic:
             validation_ns=validation_ns,
             statuses=statuses,
         )
-        return (answer, record) if diagnostics else answer
+        return answer, record
 
     def double_batch(
         self,
@@ -767,10 +935,9 @@ class PreparedJacobianArithmetic:
         diagnostics: bool = False,
         materialize: bool = False,
     ) -> Any:
-        values: tuple[Any, ...] = tuple(elements)
         result = self.add_batch(
-            values,
-            values,
+            elements,
+            elements,
             algorithm=algorithm,
             diagnostics=diagnostics,
             materialize=materialize,
@@ -837,7 +1004,7 @@ class PreparedJacobianArithmetic:
             )
             kernel_ns = time.perf_counter_ns() - started
             unpack_ns = 0
-            statuses = tuple(100 for _value in answer)
+            statuses = tuple(100 for _value in answer) if diagnostics else ()
         else:
             assert self.prime is not None
             output = kernel_uint64_zeros(self._progression_kernel, length * 8)
@@ -858,7 +1025,11 @@ class PreparedJacobianArithmetic:
                 raise ArithmeticError(
                     "the packed Cantor progression kernel rejected validated input"
                 )
-            statuses = tuple(int(status_buffer[index]) for index in range(length))
+            statuses = (
+                tuple(int(status_buffer[index]) for index in range(length))
+                if diagnostics
+                else ()
+            )
             if packed:
                 answer = tuple(
                     tuple(int(output[8 * item + index]) for index in range(8))
@@ -867,17 +1038,19 @@ class PreparedJacobianArithmetic:
                 unpack_ns = 0
             else:
                 started = time.perf_counter_ns()
-                answer = tuple(
-                    self._publish_kernel_output(output, 8 * item)
-                    for item in range(length)
-                )
+                answer = self._publish_kernel_batch(output, length)
                 unpack_ns = time.perf_counter_ns() - started
         if materialize:
             started = time.perf_counter_ns()
-            for divisor_value in answer:
-                divisor: Any = divisor_value
-                divisor.uv()
+            if isinstance(answer, PreparedDivisorBatch):
+                answer = answer.materialize()
+            else:
+                for divisor_value in answer:
+                    divisor: Any = divisor_value
+                    divisor.uv()
             materialization_ns = time.perf_counter_ns() - started
+        if not diagnostics:
+            return answer
         record = PreparedBatchDiagnostics(
             operation="progression",
             requested=self._algorithm if algorithm is None else algorithm,
@@ -891,7 +1064,7 @@ class PreparedJacobianArithmetic:
             validation_ns=validation_ns,
             statuses=statuses,
         )
-        return (answer, record) if diagnostics else answer
+        return answer, record
 
     def scalar_batch(
         self,
@@ -903,14 +1076,18 @@ class PreparedJacobianArithmetic:
         materialize: bool = False,
         max_group_operations: Any = None,
     ) -> Any:
-        values = tuple(elements)
+        values_are_packed = isinstance(elements, PreparedDivisorBatch)
+        values: Any = elements if values_are_packed else tuple(elements)
         scalar_values = tuple(_exact_integer(value, "scalar") for value in scalars)
         if len(values) != len(scalar_values):
             raise ValueError("element and scalar batches must have the same length")
         self._check_batch_size(len(values))
-        for value in values:
-            if value.parent() is not self._jacobian:
-                raise ValueError("every batch divisor must lie in this Jacobian")
+        if values_are_packed:
+            values._rows_for(self)
+        else:
+            for value in values:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
         if max_group_operations is not None:
             operation_limit = _exact_integer(
                 max_group_operations, "max_group_operations"
@@ -933,9 +1110,15 @@ class PreparedJacobianArithmetic:
                     )
         selected, reason = self._selection(algorithm)
         started = time.perf_counter_ns()
-        rows = ()
+        packed_rows = None
         if selected == "native":
-            rows = tuple(value for divisor in values for value in self.pack(divisor))
+            if values_are_packed:
+                packed_rows = kernel_uint64_buffer(
+                    self._scalar_kernel, values._rows_for(self)
+                )
+            else:
+                rows = self._pack_public_batch(values)
+                packed_rows = kernel_uint64_buffer(self._scalar_kernel, rows)
         maximum_bits = max(
             (_bit_length(abs(value)) for value in scalar_values), default=0
         )
@@ -952,14 +1135,15 @@ class PreparedJacobianArithmetic:
         validation_ns = 0
         materialization_ns = 0
         if selected == "reference":
+            public_values = tuple(values)
             started = time.perf_counter_ns()
             answer = tuple(
                 self._reference_scalar(value, scalar)
-                for value, scalar in zip(values, scalar_values, strict=True)
+                for value, scalar in zip(public_values, scalar_values, strict=True)
             )
             kernel_ns = time.perf_counter_ns() - started
             unpack_ns = 0
-            statuses = tuple(100 for _value in answer)
+            statuses = tuple(100 for _value in answer) if diagnostics else ()
         else:
             assert self.prime is not None
             output = kernel_uint64_zeros(self._scalar_kernel, len(values) * 8)
@@ -969,7 +1153,7 @@ class PreparedJacobianArithmetic:
                 output,
                 status_buffer,
                 kernel_uint64_buffer(self._scalar_kernel, self._model),
-                kernel_uint64_buffer(self._scalar_kernel, rows),
+                packed_rows,
                 kernel_uint64_buffer(self._scalar_kernel, words),
                 kernel_uint64_buffer(self._scalar_kernel, signs),
                 len(values),
@@ -982,18 +1166,24 @@ class PreparedJacobianArithmetic:
                 raise ArithmeticError(
                     "the packed Cantor scalar kernel rejected a validated batch"
                 )
-            statuses = tuple(int(status_buffer[index]) for index in range(len(values)))
-            started = time.perf_counter_ns()
-            answer = tuple(
-                self._publish_kernel_output(output, 8 * item)
-                for item in range(len(values))
+            statuses = (
+                tuple(int(status_buffer[index]) for index in range(len(values)))
+                if diagnostics
+                else ()
             )
+            started = time.perf_counter_ns()
+            answer = self._publish_kernel_batch(output, len(values))
             unpack_ns = time.perf_counter_ns() - started
         if materialize:
             started = time.perf_counter_ns()
-            for divisor in answer:
-                divisor.uv()
+            if isinstance(answer, PreparedDivisorBatch):
+                answer = answer.materialize()
+            else:
+                for divisor in answer:
+                    divisor.uv()
             materialization_ns = time.perf_counter_ns() - started
+        if not diagnostics:
+            return answer
         record = PreparedBatchDiagnostics(
             operation="scalar",
             requested=self._algorithm if algorithm is None else algorithm,
@@ -1007,7 +1197,7 @@ class PreparedJacobianArithmetic:
             validation_ns=validation_ns,
             statuses=statuses,
         )
-        return (answer, record) if diagnostics else answer
+        return answer, record
 
     def _reference_scalar(self, value: Any, scalar: int) -> Any:
         if scalar < 0:

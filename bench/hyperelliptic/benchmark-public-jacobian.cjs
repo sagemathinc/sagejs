@@ -133,6 +133,11 @@ for genus, curve in [
 
     native_add()
     native_scalar()
+    retained_input = context.add_batch(left, right, algorithm="native")
+    assert retained_input.published_count == 0
+    retained_add = lambda: context.add_batch(
+        retained_input, retained_input, algorithm="native"
+    )
     _diagnostic_add_result, add_diagnostics = context.add_batch(
         left, right, algorithm="native", diagnostics=True
     )
@@ -146,6 +151,7 @@ for genus, curve in [
         )
     )
     native_add_ns, native_add_result = timed(native_add)
+    retained_add_ns, retained_add_result = timed(retained_add)
     native_add_materialized_ns, native_add_materialized_result = timed(
         native_add_materialized
     )
@@ -161,6 +167,8 @@ for genus, curve in [
     native_search_ns, native_search_result = timed(native_search, 3)
     reference_search_ns, reference_search_result = timed(reference_search, 1)
     assert native_add_result == reference_add_result
+    assert retained_input.published_count == 0
+    assert retained_add_result.published_count == 0
     assert native_add_materialized_result == reference_add_result
     assert all(not value.is_materialized() for value in native_add_result)
     assert all(value.is_materialized() for value in native_add_materialized_result)
@@ -177,6 +185,9 @@ for genus, curve in [
         "scalar_throughput_items": scalar_throughput_items,
         "scalar_bits": 256,
         "native_add_median_ns": native_add_ns,
+        "retained_add_median_ns": retained_add_ns,
+        "retained_add_published_input": retained_input.published_count,
+        "retained_add_published_output": retained_add_result.published_count,
         "native_add_materialized_median_ns": native_add_materialized_ns,
         "native_add_stages": add_diagnostics.to_dict()["timings_ns"],
         "native_add_materialized_stages": (
