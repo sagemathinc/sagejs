@@ -276,9 +276,17 @@ J = HyperellipticCurve(x**5 + x + 1, x**2 + 1).jacobian()
 assert J.order() == 32
 assert J.group_structure(algorithm="basis", seed=3) == (2, 2, 8)
 assert J.group_structure(algorithm="exhaustive", seed=3) == (2, 2, 8)
-G, phi = J.abelian_group(algorithm="basis", seed=3)
+original_generic_basis = J._generic_group_basis
+def forbidden_repeated_basis(*_args, **_kwds):
+    raise AssertionError("a complete tiny group must reuse exhaustive points")
+J._generic_group_basis = forbidden_repeated_basis
+try:
+    G, phi = J.abelian_group(algorithm="exhaustive", seed=3)
+finally:
+    J._generic_group_basis = original_generic_basis
 assert G.invariants() == (2, 2, 8)
 assert len(phi._inverse_coordinates) == 32
+assert phi._certificate is None
 assert phi.verify()
 certificate = J.group_structure_certificate(algorithm="basis", seed=3)
 assert certificate["algorithms"]["group_law"] == "generalized-cantor-odd-degree.v1"
