@@ -622,7 +622,7 @@ def element_order_from_multiple(
     )
     if not annihilates[0]:
         raise ValueError("the supplied multiple does not annihilate the element")
-    order = int(multiple)
+    order = multiple
     for prime, start, stop in slices:
         for index in range(start, stop):
             if not annihilates[index]:
