@@ -1,0 +1,62 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-qq-public-fused",
+  "title": "Fused retained QQ public Cantor publication",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reduce exact ordinary genus-2/3 QQ Mumford P+Q toward 0.020 ms by eliminating measured runtime crossings while preserving canonical-row authority, opaque ownership, reference certificates, and adversarial lifecycle guarantees",
+  "base_commit": "7f4528478cc80042981d8bcaee75d0c5a1c3b5a7",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/jacobian.py",
+    "src/lib/sagejs/hyperelliptic_curves/jacobian_rational_native.py",
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/include/sagejs/hyperelliptic/rational_jacobian_ffi.h",
+    "packages/flint/generated/ffi_host.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "architecture/native-boundaries.json",
+    "architecture/package-graph.json",
+    "architecture/wasm-capabilities.json",
+    "architecture/wasm-capabilities-report.json",
+    "architecture/wasm-workload-dashboard.json",
+    "architecture/wasm-workload-dashboard.md",
+    "test/ffi.cjs",
+    "test/hyperelliptic-rational-cantor.cjs",
+    "bench/hyperelliptic/benchmark-rational-cantor.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "reference-cantor",
+      "magma-2.18-5"
+    ],
+    "exceptions": [
+      "One generated opaque FLINT resource and atomic workspace move/load primitives preserve an indivisible exact Mumford representation; every Cantor formula remains in ordinary typed Python"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

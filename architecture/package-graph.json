@@ -453,7 +453,7 @@
       "id": "hyperelliptic-curves-kernels",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 205000,
+      "max_source_bytes": 220000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic",
         "hyperelliptic-curves"

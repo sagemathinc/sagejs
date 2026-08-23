@@ -13,6 +13,7 @@ from sagejs.ffi.flint import (
     ExactPolynomialFactorization,
     FlintByteRegion,
     FmpqMatrix,
+    FmpqMumfordResult,
     FmpqPolynomial,
     FmpqPolynomialDivisionResult,
     FmpqPolynomialPair,
@@ -77,6 +78,8 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_workspace_load as _ffi_fmpq_polynomial_workspace_load,
     fmpq_polynomial_workspace_copy_pair_out as _ffi_fmpq_polynomial_workspace_copy_pair_out,
     fmpq_polynomial_workspace_load_pair as _ffi_fmpq_polynomial_workspace_load_pair,
+    fmpq_polynomial_workspace_move_mumford_result_out as _ffi_fmpq_polynomial_workspace_move_mumford_result_out,
+    fmpq_polynomial_workspace_load_mumford_result as _ffi_fmpq_polynomial_workspace_load_mumford_result,
     fmpq_polynomial_workspace_zero as _ffi_fmpq_polynomial_workspace_zero,
     fmpq_polynomial_workspace_one as _ffi_fmpq_polynomial_workspace_one,
     fmpq_polynomial_workspace_copy as _ffi_fmpq_polynomial_workspace_copy,
@@ -860,6 +863,38 @@ def ffiFmpqPolynomialWorkspaceLoadPair(
         u_output,
         v_output,
         source,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceMoveMumfordResultOut(
+    workspace: FmpqPolynomialWorkspace,
+    u_slot: uint64,
+    v_slot: uint64,
+    genus: uint64,
+) -> FmpqMumfordResult:
+    return _ffi_fmpq_polynomial_workspace_move_mumford_result_out(
+        workspace,
+        u_slot,
+        v_slot,
+        genus,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceLoadMumfordResult(
+    workspace: FmpqPolynomialWorkspace,
+    u_output: uint64,
+    v_output: uint64,
+    source: FmpqMumfordResult,
+    genus: uint64,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_load_mumford_result(
+        workspace,
+        u_output,
+        v_output,
+        source,
+        genus,
     )
 
 
