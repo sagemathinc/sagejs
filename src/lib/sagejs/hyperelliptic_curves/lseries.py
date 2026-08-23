@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import cmath
 import math
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 import sagejs as sage
 import sagejs.runtime as runtime
@@ -76,6 +76,43 @@ class HyperellipticLseriesNumericalIndeterminacyError(ArithmeticError):
 _CENTRAL_PLAN_CACHE: dict[tuple[int, int, int, int, bool], dict[str, Any]] = {}
 _CENTRAL_WEIGHT_CACHE: dict[tuple[int, int, str, int], Any] = {}
 _CENTRAL_CACHE_LIMIT = 256
+_MAX_THETA_DIRICHLET_UPDATES = 200_000_000
+_MAX_THETA_OUTER_UPDATES = 100_000_000
+
+
+def _clone_public_data(value: Any) -> Any:
+    """Detach nested public diagnostics from reusable internal state."""
+    if isinstance(value, dict):
+        return {key: _clone_public_data(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_clone_public_data(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_clone_public_data(item) for item in value)
+    return value
+
+
+def _curve_model_key(curve: Any) -> tuple[Any, ...]:
+    """Return an exact key for the coefficient model bound to a prefix."""
+    f_value, h_value = curve.hyperelliptic_polynomials()
+    return (
+        str(curve.base_ring()),
+        int(curve.genus()),
+        tuple(str(value) for value in f_value.list()),
+        tuple(str(value) for value in h_value.list()),
+    )
+
+
+def _coefficient_prefix_matches_curve(prefix: Any, curve: Any) -> bool:
+    """Check ordinary and exact quadratic-twist coefficient views."""
+    if isinstance(prefix, GlobalCoefficientPrefix):
+        return prefix.model_key == _curve_model_key(curve)
+    base = getattr(prefix, "base", None)
+    source = getattr(curve, "source", None)
+    if not isinstance(base, GlobalCoefficientPrefix) or source is None:
+        return False
+    if getattr(prefix, "discriminant", None) != getattr(curve, "discriminant", None):
+        return False
+    return base.model_key == _curve_model_key(source)
 
 
 def clear_central_weight_cache() -> None:
@@ -98,7 +135,8 @@ class GlobalCoefficientPrefix:
 
     def __init__(self, curve: Any) -> None:
         self.curve = curve
-        self.values = [0, 1]
+        self._model_key = _curve_model_key(curve)
+        self._values = [0, 1]
         self.extensions = 0
         self.backend_counts: dict[str, int] = {}
         self.bad_primes = {
@@ -123,12 +161,22 @@ class GlobalCoefficientPrefix:
                         table[multiple] = prime
         return table
 
+    @property
+    def values(self) -> tuple[int, ...]:
+        """Return an immutable snapshot of the exact cached prefix."""
+        return tuple(self._values)
+
+    @property
+    def model_key(self) -> tuple[Any, ...]:
+        """Return the exact hyperelliptic model identity for this prefix."""
+        return self._model_key
+
     def through(self, cutoff: int) -> list[int]:
         if cutoff < 1:
             cutoff = 1
-        if cutoff < len(self.values):
-            return self.values[: cutoff + 1]
-        previous_cutoff = len(self.values) - 1
+        if cutoff < len(self._values):
+            return list(self._values[: cutoff + 1])
+        previous_cutoff = len(self._values) - 1
         smallest = self._smallest_prime_table(cutoff)
         start = max(2, self._local_prime_bound + 1)
         packed_chunks = None
@@ -204,12 +252,12 @@ class GlobalCoefficientPrefix:
             while remaining % prime == 0:
                 remaining //= prime
                 exponent += 1
-            self.values.append(
+            self._values.append(
                 int(self._reciprocal_coefficients[prime][exponent])
-                * self.values[remaining]
+                * self._values[remaining]
             )
         self.extensions += 1
-        return self.values
+        return list(self._values)
 
     def _seed_exact_values(
         self,
@@ -226,7 +274,7 @@ class GlobalCoefficientPrefix:
         if len(values) < 2 or int(values[0]) != 0 or int(values[1]) != 1:
             raise ValueError("an exact coefficient prefix must begin with [0, 1]")
         checked = [int(value) for value in values]
-        self.values = checked
+        self._values = checked
         self.backend_counts = {
             str(name): int(count)
             for name, count in dict(
@@ -237,7 +285,7 @@ class GlobalCoefficientPrefix:
     def diagnostics(self) -> dict[str, Any]:
         """Return exact-prefix reuse and local-stream diagnostics."""
         return {
-            "bound": len(self.values) - 1,
+            "bound": len(self._values) - 1,
             "extensions": self.extensions,
             "local_prime_bound": self._local_prime_bound,
             "cached_euler_factors": len(self._euler_factors),
@@ -345,13 +393,25 @@ def _plan(
         log_a + genus * mp.log((demand + maximum_real_offset * 8 + 8) / genus) + 2,
     )
     outer_points = int(mp.ceil(outer_height / outer_step))
-    if cutoff > 2_000_000 or inverse_points > 4000 or outer_points > 20000:
+    dirichlet_updates = cutoff * (inverse_points + 1)
+    theta_updates = (inverse_points + 1) * (outer_points + 1)
+    if (
+        cutoff > 2_000_000
+        or inverse_points > 4000
+        or outer_points > 20000
+        or dirichlet_updates > _MAX_THETA_DIRICHLET_UPDATES
+        or theta_updates > _MAX_THETA_OUTER_UPDATES
+    ):
         raise HyperellipticLseriesResourceError(
             "the hyperelliptic L-series plan exceeds resource limits",
             {
                 "cutoff": cutoff,
                 "inverse_mellin_points": inverse_points,
                 "outer_points": outer_points,
+                "dirichlet_updates": dirichlet_updates,
+                "theta_updates": theta_updates,
+                "maximum_dirichlet_updates": _MAX_THETA_DIRICHLET_UPDATES,
+                "maximum_theta_updates": _MAX_THETA_OUTER_UPDATES,
             },
         )
     return {
@@ -367,7 +427,7 @@ def _plan(
 
 
 def _dirichlet_vertical_values(
-    values: list[int], logarithms: list[Any], step: Any, point_count: int
+    values: Sequence[int], logarithms: list[Any], step: Any, point_count: int
 ) -> list[Any]:
     """Evaluate one vertical Dirichlet-polynomial progression.
 
@@ -391,7 +451,7 @@ def _dirichlet_vertical_values(
 
 
 def _theta_grid(
-    coefficients: list[int],
+    coefficients: Sequence[int],
     genus: int,
     plan: dict[str, Any],
 ) -> tuple[list[Any], list[Any], int]:
@@ -442,7 +502,7 @@ def _theta_grid(
 
 
 def _theta_grid_machine(
-    values: list[int], genus: int, plan: dict[str, Any]
+    values: Sequence[int], genus: int, plan: dict[str, Any]
 ) -> tuple[list[Any], list[Any], int]:
     """Evaluate the expensive Fourier sums with binary64 arithmetic."""
     logarithms = [math.log(index) for index in range(1, len(values) + 1)]
@@ -707,7 +767,7 @@ def _central_weight_plan(
 
 
 def _central_weight_contour(
-    coefficients: list[int],
+    coefficients: Sequence[int],
     genus: int,
     root_number: int,
     maximum_derivative: int,
@@ -1178,11 +1238,14 @@ class HyperellipticLSeries:
         self, curve: Any, coefficient_prefix: GlobalCoefficientPrefix | None = None
     ) -> None:
         self._curve = curve
-        self._coefficient_prefix = (
-            GlobalCoefficientPrefix(curve)
-            if coefficient_prefix is None
-            else coefficient_prefix
-        )
+        if coefficient_prefix is None:
+            self._coefficient_prefix = GlobalCoefficientPrefix(curve)
+        else:
+            if not _coefficient_prefix_matches_curve(coefficient_prefix, curve):
+                raise ValueError(
+                    "the coefficient prefix belongs to a different hyperelliptic model"
+                )
+            self._coefficient_prefix = coefficient_prefix
         self._last_diagnostics: Any = None
         self._evaluation_cache: dict[tuple[Any, ...], dict[str, Any]] = {}
         self._evaluation_cache_hits = 0
@@ -1219,10 +1282,10 @@ class HyperellipticLSeries:
         cached = self._evaluation_cache.get(cache_key)
         if cached is not None:
             self._evaluation_cache_hits += 1
-            reused = dict(cached)
+            reused = _clone_public_data(cached)
             reused["cache_hit"] = True
             reused["cache_reused_maximum_derivative"] = int(maximum_derivative)
-            self._last_diagnostics = reused
+            self._last_diagnostics = _clone_public_data(reused)
             return reused, bits
         for candidate_key, candidate in self._evaluation_cache.items():
             candidate_pairs, candidate_bits, candidate_order, candidate_algorithm = (
@@ -1236,11 +1299,11 @@ class HyperellipticLSeries:
             ):
                 self._evaluation_cache_hits += 1
                 self._evaluation_cache_subsumption_hits += 1
-                reused = dict(candidate)
+                reused = _clone_public_data(candidate)
                 reused["cache_hit"] = True
                 reused["cache_reused_maximum_derivative"] = int(candidate_order)
                 reused["requested_maximum_derivative"] = int(maximum_derivative)
-                self._last_diagnostics = reused
+                self._last_diagnostics = _clone_public_data(reused)
                 return reused, bits
         result = None
         if central and algorithm != "inverse_mellin":
@@ -1291,8 +1354,8 @@ class HyperellipticLSeries:
         if len(self._evaluation_cache) >= 32:
             first_key = next(iter(self._evaluation_cache))
             del self._evaluation_cache[first_key]
-        self._evaluation_cache[cache_key] = result
-        self._last_diagnostics = result
+        self._evaluation_cache[cache_key] = _clone_public_data(result)
+        self._last_diagnostics = _clone_public_data(result)
         return result, bits
 
     @staticmethod
@@ -1465,8 +1528,8 @@ class HyperellipticLSeries:
                 "the selected evaluator does not return Arb balls"
             )
         return {
-            "raw": balls[0]["raw"][0],
-            "completed": balls[0]["completed"][0],
+            "raw": _clone_public_data(balls[0]["raw"][0]),
+            "completed": _clone_public_data(balls[0]["completed"][0]),
             "rigorous": bool(result["rigorous"]),
             "arithmetic_balls_rigorous": bool(
                 result.get("arithmetic_balls_rigorous", False)
@@ -1476,7 +1539,7 @@ class HyperellipticLSeries:
         }
 
     def last_diagnostics(self) -> Any:
-        return self._last_diagnostics
+        return _clone_public_data(self._last_diagnostics)
 
     def cache_diagnostics(self) -> dict[str, Any]:
         """Return reusable evaluation and exact-coefficient cache statistics."""
@@ -1511,12 +1574,13 @@ class LFunctionInit:
         self._domain = domain
         self._algorithm = str(algorithm)
         self._closed = False
-        self._central_result, _bits = lseries._evaluate(
+        central_result, _bits = lseries._evaluate(
             [1],
             self._precision,
             self._maximum_order,
             self._algorithm,
         )
+        self._central_result = _clone_public_data(central_result)
         raw_values = self._central_result["values"][0]["raw_derivatives"]
         completed_values = self._central_result["values"][0]["completed_derivatives"]
         self._central_raw: tuple[Any, ...] = tuple(
@@ -1667,16 +1731,18 @@ class LFunctionInit:
 
     def diagnostics(self) -> Any:
         self._check_open()
-        return {
-            "precision_bits": self._precision,
-            "maximum_derivative": self._maximum_order,
-            "domain": self._domain,
-            "algorithm": self._central_result["algorithm"],
-            "central": self._central_result,
-            "cached_points": len(self._point_cache),
-            "prepared_derivatives": len(self._central_raw),
-            "lseries_cache": self._lseries.cache_diagnostics(),
-        }
+        return _clone_public_data(
+            {
+                "precision_bits": self._precision,
+                "maximum_derivative": self._maximum_order,
+                "domain": self._domain,
+                "algorithm": self._central_result["algorithm"],
+                "central": self._central_result,
+                "cached_points": len(self._point_cache),
+                "prepared_derivatives": len(self._central_raw),
+                "lseries_cache": self._lseries.cache_diagnostics(),
+            }
+        )
 
 
 __all__ = [

@@ -186,3 +186,92 @@ True
     }
   },
 );
+
+test(
+  "prepared analytic caches cannot be poisoned through public diagnostics",
+  { timeout: 180_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+C = HyperellipticCurve(x, x**3-x+1)
+L = C.lseries()
+jet = tuple(L.central_jet(2, prec=32, algorithm="native"))
+diagnostics = L.last_diagnostics()
+diagnostics["values"][0]["raw_derivatives"] = (("999", "0"),)
+diagnostics["balls"][0]["raw"][0]["real_midpoint"] = "999"
+assert tuple(L.central_jet(2, prec=32, algorithm="native")) == jet
+assert L.last_diagnostics()["values"][0]["raw_derivatives"][0] != ("999", "0")
+initialized = L.init(prec=32, max_order=2, algorithm="native")
+rank = initialized.analytic_rank()
+prepared = tuple(initialized.central_jet())
+init_diagnostics = initialized.diagnostics()
+init_diagnostics["central"]["values"][0]["completed_derivatives"] = (("0", "0"),)
+assert initialized.analytic_rank() == rank
+assert tuple(initialized.central_jet()) == prepared
+True
+`);
+      assert.equal(result.repr, "True");
+    } finally {
+      await session.close();
+    }
+  },
+);
+
+test(
+  "exact coefficient prefixes are immutable and bound to an exact model",
+  { timeout: 180_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(String.raw`
+from sagejs.hyperelliptic_curves.lseries import GlobalCoefficientPrefix, HyperellipticLSeries
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+C = HyperellipticCurve(x, x**3-x+1)
+prefix = GlobalCoefficientPrefix(C)
+values = prefix.through(80)
+assert isinstance(values, list) and isinstance(prefix.values, tuple)
+values[2] = 999
+assert prefix.through(80)[2] != 999
+C_same = HyperellipticCurve(x, x**3-x+1)
+HyperellipticLSeries(C_same, prefix)
+C_other = HyperellipticCurve(x, x**3-x+2)
+try:
+    HyperellipticLSeries(C_other, prefix)
+    raise AssertionError("a cross-model prefix transplant was accepted")
+except ValueError:
+    pass
+True
+`);
+      assert.equal(result.repr, "True");
+    } finally {
+      await session.close();
+    }
+  },
+);
+
+test(
+  "general L-series plans reject excessive aggregate work before evaluation",
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(String.raw`
+from sagejs.hyperelliptic_curves.lseries import _plan, HyperellipticLseriesResourceError
+try:
+    _plan(4000, 3, 512, [1], fine=True)
+    raise AssertionError("an excessive aggregate plan was accepted")
+except HyperellipticLseriesResourceError as error:
+    diagnostics = error.diagnostics
+assert diagnostics["dirichlet_updates"] > diagnostics["maximum_dirichlet_updates"]
+assert diagnostics["theta_updates"] <= diagnostics["maximum_theta_updates"]
+True
+`);
+      assert.equal(result.repr, "True");
+    } finally {
+      await session.close();
+    }
+  },
+);
