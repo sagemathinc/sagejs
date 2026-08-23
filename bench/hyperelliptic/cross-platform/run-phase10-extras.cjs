@@ -278,7 +278,7 @@ async function wasmReceipt(repeat) {
     { timeout: 180_000 },
   );
   assert.equal(recovery.stdout.trim(), "42");
-  const productionTest = requiredCommand(
+  const productionTest = command(
     process.execPath,
     [
       "--test",
@@ -321,6 +321,10 @@ async function wasmReceipt(repeat) {
       recovery_stdout: recovery.stdout.trim(),
     },
     package_load_test: {
+      status: productionTest.exit_code === 0 ? "passed" : "failed",
+      exit_code: productionTest.exit_code,
+      signal: productionTest.signal,
+      error: productionTest.error,
       elapsed_ms: productionTest.elapsed_ms,
       stdout_sha256: sha256(productionTest.stdout),
       stdout: productionTest.stdout.trim(),
