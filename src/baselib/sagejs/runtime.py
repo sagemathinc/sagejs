@@ -192,6 +192,32 @@ def immutable_uint64_capsule_copy(capsule, owner, model, format, count):
         raise TypeError(message)
 
 
+def immutable_uint64_capsule_gather(
+    destination_owner,
+    source_owners,
+    source_model,
+    source_format,
+    source_count,
+    item_words,
+    destination_model,
+    destination_format,
+    destination_count,
+):
+    """Gather privately registered rows into one new opaque capsule.
+
+    `source_owners` must be an immutable tuple. Source and destination logical
+    bindings are explicit; the dynamic path must request an owned copy before
+    reading the gathered words.
+    """
+    try:
+        return r"%js globalThis.__sagejs_gather_immutable_uint64_capsules__(destination_owner, source_owners, source_model, source_format, source_count, item_words, destination_model, destination_format, destination_count)"
+    except:
+        message = r"%js ρσ_last_exception.message"
+        if r"%js ρσ_last_exception instanceof RangeError":
+            raise ValueError(message)
+        raise TypeError(message)
+
+
 def integer_buffer(source, minimum_word_capacity=1):
     """Pack primitive exact integers into owned signed-limb storage."""
     return ρσ_integer_buffer(source, minimum_word_capacity)
