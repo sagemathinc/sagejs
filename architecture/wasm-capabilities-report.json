@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "cab1341d59d7f08c031a4d366db3a548b653a831eb7198c62f9931bad444a218",
+  "source_sha256": "303a72f99ce385589773e2072bd48b63c0791c34868b3f8b97db8f714ab0e8c7",
   "counts": {
-    "total": 991,
+    "total": 994,
     "by_kind": {
       "declared-ffi-function": 435,
       "declared-ffi-resource": 31,
       "napi-export": 320,
       "production-kernel": 43,
-      "runtime-intrinsic": 137,
+      "runtime-intrinsic": 140,
       "specialist-capability": 25
     },
     "by_disposition": {
       "compiled-source": 43,
       "desktop-only": 39,
       "generated-wasm": 302,
-      "portable-fallback": 563,
+      "portable-fallback": 566,
       "shared-core": 44
     },
     "by_status": {
-      "available": 521,
+      "available": 524,
       "desktop-only": 39,
       "fallback": 431
     }
@@ -10744,6 +10744,42 @@
     },
     {
       "id": "runtime:global_object",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:immutable_uint64_capsule",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:immutable_uint64_capsule_copy",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:immutable_uint64_capsule_lease",
       "family": "runtime",
       "disposition": "portable-fallback",
       "status": "available",

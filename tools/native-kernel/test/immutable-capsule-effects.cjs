@@ -34,13 +34,25 @@ function run(command, args, options = {}) {
   return result.stdout.trim();
 }
 
-test("prime-source buffers fail closed without effect metadata", async () => {
+test("prime-source buffers prove transitive positional write effects", async () => {
   const ir = await lowerSource(witnessSource, witnessPath);
   const fn = ir.functions.find((candidate) =>
     candidate.name === "accumulate_prime_words"
   );
   assert.equal(fn.kernelKind, "prime-field-source");
-  assert.equal(fn.analysis.effects, undefined);
+  assert.deepEqual(fn.analysis.effects.externalWrites, ["output", "scratch"]);
+  assert.deepEqual(
+    ir.functions.find((candidate) =>
+      candidate.name === "accumulate_prime_row"
+    ).analysis.effects.externalWrites,
+    [],
+  );
+  assert.deepEqual(
+    ir.functions.find((candidate) =>
+      candidate.name === "publish_prime_word"
+    ).analysis.effects.externalWrites,
+    ["output", "scratch"],
+  );
 
   const generated = generateJavaScript(ir, {
     cacheKey: "0123456789abcdef",
@@ -53,7 +65,11 @@ test("prime-source buffers fail closed without effect metadata", async () => {
   );
   assert.match(
     generated,
-    /uint64NativeBuffer\(source, "source", true\)/,
+    /uint64NativeBuffer\(source, "source", false\)/,
+  );
+  assert.match(
+    generated,
+    /uint64NativeBuffer\(scratch, "scratch", true\)/,
   );
   assert.doesNotMatch(generated, /analysis\.effects/);
 
@@ -63,14 +79,65 @@ test("prime-source buffers fail closed without effect metadata", async () => {
       candidate.name === fn.name ? { ...candidate, analysis: undefined } : candidate
     ),
   };
-  assert.doesNotThrow(() => generateJavaScript(absentAnalysis, {
+  const absentGenerated = generateJavaScript(absentAnalysis, {
     cacheKey: "0123456789abcdef",
     sourceHash: "fedcba9876543210",
     moduleIdentity: "0123456789abcdef",
-  }));
+  });
+  assert.match(
+    absentGenerated,
+    /uint64NativeBuffer\(source, "source", true\)/,
+  );
 });
 
-test("absent effect metadata preserves dynamic, native, and CPython results", async () => {
+test("production Cantor batches borrow only proved read-only inputs", async () => {
+  const sourcePath = join(
+    root,
+    "src",
+    "lib",
+    "sagejs",
+    "hyperelliptic_curves",
+    "jacobian_kernels.py",
+  );
+  const ir = await lowerSource(readFileSync(sourcePath, "utf8"), sourcePath);
+  const productionFunctions = [
+    {
+      name: ["packed", "cantor", "copy", "batch"].join("_"),
+      readOnly: ["model", "left", "right"],
+    },
+    {
+      name: ["packed", "cantor", "add", "batch"].join("_"),
+      readOnly: ["model", "left", "right"],
+    },
+    {
+      name: ["packed", "cantor", "scalar", "batch"].join("_"),
+      readOnly: ["model", "elements", "scalar_words", "scalar_signs"],
+    },
+  ];
+  for (const { name, readOnly } of productionFunctions) {
+    const fn = ir.functions.find((candidate) => candidate.name === name);
+    assert.deepEqual(fn.analysis.effects.externalWrites, ["output", "statuses"]);
+    const generated = generateJavaScript({ ...ir, functions: [fn] }, {
+      cacheKey: "0123456789abcdef",
+      sourceHash: "fedcba9876543210",
+      moduleIdentity: "0123456789abcdef",
+    });
+    for (const parameter of ["output", "statuses"]) {
+      assert.match(
+        generated,
+        new RegExp(`uint64NativeBuffer\\(${parameter}, "${parameter}", true\\)`),
+      );
+    }
+    for (const parameter of readOnly) {
+      assert.match(
+        generated,
+        new RegExp(`uint64NativeBuffer\\(${parameter}, "${parameter}", false\\)`),
+      );
+    }
+  }
+});
+
+test("transitive effects preserve dynamic, native, CPython, and lease results", async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-capsule-effects-"));
   const executable = join(temporary, "immutable_capsule_effects_witness.py");
   const cacheRoot = join(temporary, "cache");
@@ -80,10 +147,32 @@ from sagejs.native import is_compiled
 
 compiled = is_compiled(accumulate_prime_words)
 output = runtime.uint64_buffer([0]) if compiled else [0]
-source = runtime.uint64_buffer([11, 17, 23]) if compiled else [11, 17, 23]
+scratch = runtime.uint64_buffer([0]) if compiled else [0]
+owner = object()
+model = "neutral-model-v1"
+capsule = runtime.immutable_uint64_capsule(
+    runtime.uint64_buffer([11, 17, 23]), owner, model, "neutral-row-v1", 3
+)
+source = (
+    runtime.immutable_uint64_capsule_lease(
+        capsule, owner, model, "neutral-row-v1", 3
+    )
+    if compiled
+    else runtime.immutable_uint64_capsule_copy(
+        capsule, owner, model, "neutral-row-v1", 3
+    )
+)
 modulus = runtime.bigint(101) if compiled else 101
-assert accumulate_prime_words(output, source, 3, modulus)
+assert accumulate_prime_words(output, source, scratch, 3, modulus)
 assert int(output[0]) == 51
+assert int(scratch[0]) == 51
+if compiled:
+    rejected = False
+    try:
+        accumulate_prime_words(source, output, scratch, 1, modulus)
+    except TypeError:
+        rejected = True
+    assert rejected
 print("compiled=" + str(compiled))
 print("IMMUTABLE_CAPSULE_EFFECTS_OK")
 `;
@@ -118,8 +207,10 @@ print("IMMUTABLE_CAPSULE_EFFECTS_OK")
       `sys.path.insert(0, ${JSON.stringify(witnessDirectory)})`,
       "from immutable_capsule_effects_witness import accumulate_prime_words",
       "output = [0]",
-      "assert accumulate_prime_words(output, [11, 17, 23], 3, 101)",
+      "scratch = [0]",
+      "assert accumulate_prime_words(output, [11, 17, 23], scratch, 3, 101)",
       "assert output == [51]",
+      "assert scratch == [51]",
       "print('cpython-ok')",
       "",
     ].join("\n");
