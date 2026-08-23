@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "f39d8bd50e61a86eb373bf60d66b454ce1a8f086d4a47e0d9147282747b30c3d",
+  "source_sha256": "518084ba8b238f23157e6e2fc4de07241c42edec22d492c5e23318ee45d9c978",
   "counts": {
-    "total": 962,
+    "total": 963,
     "by_kind": {
       "declared-ffi-function": 414,
       "declared-ffi-resource": 29,
       "napi-export": 317,
       "production-kernel": 40,
       "runtime-intrinsic": 137,
-      "specialist-capability": 25
+      "specialist-capability": 26
     },
     "by_disposition": {
       "compiled-source": 40,
       "desktop-only": 14,
       "generated-wasm": 320,
       "portable-fallback": 544,
-      "shared-core": 44
+      "shared-core": 45
     },
     "by_status": {
-      "available": 536,
+      "available": 537,
       "desktop-only": 14,
       "fallback": 412
     }
@@ -138,6 +138,9 @@
       "napi:@sagemath/sagejs-flint:zetaZeros",
       "napi:@sagemath/sagejs-flint:complexEi",
       "napi:@sagemath/sagejs-flint:complexBesselI"
+    ],
+    "numpy-vertical-slice": [
+      "specialist:numpy-ts"
     ],
     "quadratic-dedekind-zeta-batch": [
       "analytic:riemann-zeta-batch",
@@ -11701,6 +11704,18 @@
         "Matrix(GF(2))"
       ],
       "explanation": "M4RI has a generated owned-resource Wasm adapter and a same-source dynamic fallback."
+    },
+    {
+      "id": "specialist:numpy-ts",
+      "family": "numerical",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "explicit-browser-capability-error-if-the-receipted-specialist-is-unavailable",
+      "wasm_module": "numpy-ts",
+      "public_consumers": [
+        "the initial Python-facing numpy compatibility facade"
+      ],
+      "explanation": "The documented initial NumPy compatibility slice uses the pinned numpy-ts typed-array and Zig-WebAssembly backend in browsers without adding it to ordinary application startup."
     },
     {
       "id": "specialist:rforest",

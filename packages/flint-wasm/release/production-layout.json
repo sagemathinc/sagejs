@@ -200,6 +200,16 @@
           "gzipBytes": 1600000,
           "brotliBytes": 1250000
         }
+      },
+      {
+        "id": "numpy",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": ["numpy-ts.mjs"],
+        "maximumCompressedDelta": {
+          "gzipBytes": 675000,
+          "brotliBytes": 430000
+        }
       }
     ]
   },
@@ -232,6 +242,7 @@
     "wasi-runtime.mjs",
     "ffi-production-closure.json",
     "native-kernels/index.json",
+    "numpy-ts.mjs",
     "kernel-flint-resource-backend.mjs",
     "wasm-pack-loader.mjs",
     "web-tree-sitter.wasm",

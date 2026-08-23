@@ -140,6 +140,14 @@
           "test/baselib-boundaries.cjs"
         ]
       },
+      "numpy-ts-browser-differential": {
+        "differential": true,
+        "paths": [
+          "test/numpy-module.cjs",
+          "packages/flint-wasm/test/evaluator-host.test.mjs",
+          "packages/flint-wasm/test/browser-wasm-parity.mjs"
+        ]
+      },
       "graph-public-fallback-differential": {
         "differential": true,
         "paths": [
@@ -311,6 +319,11 @@
         "source": "packages/flint-wasm/scripts/build.cjs"
       },
       {
+        "id": "specialist:numpy-ts",
+        "family": "numerical",
+        "source": "src/lib/numpy.py"
+      },
+      {
         "id": "specialist:fflas-ffpack",
         "family": "dense-prime-matrices",
         "source": "packages/fflas/package.json"
@@ -442,6 +455,9 @@
       "napi:@sagemath/sagejs-flint:zetaZeros",
       "napi:@sagemath/sagejs-flint:complexEi",
       "napi:@sagemath/sagejs-flint:complexBesselI"
+    ],
+    "numpy-vertical-slice": [
+      "specialist:numpy-ts"
     ],
     "hyperelliptic-smalljac-local-factors": [
       "specialist:smalljac"
@@ -20583,6 +20599,30 @@
         "path": "packages/flint-wasm/test/browser-wasm-serialization.mjs"
       },
       "public_explanation": "Canonical SagePack serialization is available in browsers and produces the same exact byte representation as the Node runtime."
+    },
+    {
+      "id": "specialist:numpy-ts",
+      "family": "numerical",
+      "source": "src/lib/numpy.py",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "explicit-browser-capability-error-if-the-receipted-specialist-is-unavailable",
+      "wasm_module": "numpy-ts",
+      "public_consumers": [
+        "the initial Python-facing numpy compatibility facade"
+      ],
+      "tests": [
+        "numpy-ts-browser-differential",
+        "browser-wasm-workflow-parity"
+      ],
+      "review_note": "The pinned numpy-ts browser bundle is a separately budgeted, receipt-authenticated specialist loaded only after the compiler observes a NumPy import; the Python facade retains ownership of compatibility semantics.",
+      "kind": "specialist-capability",
+      "reviewed": true,
+      "availability_evidence": {
+        "path": "packages/flint-wasm/scripts/build.cjs"
+      },
+      "public_explanation": "The documented initial NumPy compatibility slice uses the pinned numpy-ts typed-array and Zig-WebAssembly backend in browsers without adding it to ordinary application startup.",
+      "shared_core": "src/lib/numpy.py"
     },
     {
       "id": "specialist:symbolic-find-root-wasm",

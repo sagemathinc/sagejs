@@ -430,6 +430,21 @@
       }
     },
     {
+      "id": "numpy-vertical-slice",
+      "family": "numerical",
+      "workflow": "numpy-vertical-slice",
+      "tier": "release",
+      "requires": [
+        { "id": "specialist:numpy-ts", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "import numpy as np\na = np.arange(12, dtype=np.int32).reshape(3, 4)\nview = a[:, 1:3]\nview[0, 0] = 99\nprint(type(a).__name__, a.dtype.name, a.shape)\nprint((a + 2).sum(axis=0).tolist())\nprint(round(float(np.linalg.det(np.array([[1.5, 2.0], [3.0, 4.5]]))), 10))",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "ndarray int32 (3, 4)\n[18, 119, 24, 27]\n0.75\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "riemann-zeta-batch",
       "family": "analytic-functions",
       "workflow": "riemann-zeta-batch",

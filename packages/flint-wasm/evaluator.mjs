@@ -362,6 +362,36 @@ function createGlobalInstaller(target) {
   };
 }
 
+export function createBrowserRuntimeModules({
+  numpy = new URL("./dist/numpy-ts.mjs", import.meta.url),
+  importNumpy = (url) => import(String(url)),
+} = {}) {
+  const modules = new Map();
+  let numpyPromise;
+  const requiresNumpy = (imports) => imports.some(
+    (name) => name === "numpy" || name.startsWith("numpy."),
+  );
+  return Object.freeze({
+    async prepare(imports) {
+      if (!requiresNumpy(imports)) return [];
+      numpyPromise ??= Promise.resolve(importNumpy(numpy)).then((module) => {
+        if (module === null || typeof module !== "object" ||
+            typeof module.array !== "function" ||
+            typeof module.NDArray !== "function") {
+          throw new TypeError("browser numpy-ts specialist is invalid");
+        }
+        modules.set("numpy-ts", module);
+        return module;
+      });
+      await numpyPromise;
+      return ["specialist:numpy-ts"];
+    },
+    get(name) {
+      return modules.get(name);
+    },
+  });
+}
+
 /**
  * Create a persistent Sage.js evaluator in the current isolated worker.
  *
@@ -381,6 +411,7 @@ export async function instantiateSageEvaluator({
   nativeKernels = undefined,
   m4ri,
   symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
+  numpy = new URL("./dist/numpy-ts.mjs", import.meta.url),
   compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
   compilerFrontend = new URL("./dist/compiler-frontend.mjs", import.meta.url),
   treeSitterRuntime = new URL("./dist/web-tree-sitter.wasm", import.meta.url),
@@ -391,6 +422,7 @@ export async function instantiateSageEvaluator({
   instantiateFlint = instantiateFlintFactor,
   instantiateM4riBackend = instantiateM4ri,
   importSymbolic = (url) => import(String(url)),
+  importNumpy = (url) => import(String(url)),
   fetchLazyModules = fetchLazyModuleBundle,
   createConwayData = createLazyAuthenticatedConwayData,
   fetchDynamicPrograms = async (url) => {
@@ -408,6 +440,7 @@ export async function instantiateSageEvaluator({
   const language = new CompilerWorker(compilerWorker, WorkerConstructor);
   const globals = createGlobalInstaller(globalThis);
   const capabilityDispatchTrace = createCapabilityDispatchTrace();
+  const runtimeModules = createBrowserRuntimeModules({ numpy, importNumpy });
   const abort = (error) => {
     try {
       conwayDataResource?.close();
@@ -612,6 +645,8 @@ export async function instantiateSageEvaluator({
     if (name === "@sagemath/sagejs-symbolic") {
       return symbolicBackendModule;
     }
+    const runtimeModule = runtimeModules.get(name);
+    if (runtimeModule !== undefined) return runtimeModule;
     throw new Error(`module ${JSON.stringify(name)} is unavailable in browser`);
   };
   const browserEnvironment = createBrowserEnvironment();
@@ -873,7 +908,9 @@ export async function instantiateSageEvaluator({
       typeof compiled !== "object" ||
       typeof compiled.javascript !== "string" ||
       !Array.isArray(compiled.dynamicImports) ||
-      compiled.dynamicImports.some((name) => typeof name !== "string")
+      compiled.dynamicImports.some((name) => typeof name !== "string") ||
+      !Array.isArray(compiled.moduleImports) ||
+      compiled.moduleImports.some((name) => typeof name !== "string")
     ) {
       throw new TypeError("browser compiler returned an invalid program");
     }
@@ -896,6 +933,16 @@ export async function instantiateSageEvaluator({
       return graphic;
     };
     try {
+      const runtimeCapabilityIds = await runtimeModules.prepare(
+        compiled.moduleImports,
+      );
+      for (const capabilityId of runtimeCapabilityIds) {
+        capabilityDispatchTrace.record(
+          capabilityId,
+          "receipt-backed-wasm-artifact",
+          { executionTarget: "wasm-artifact" },
+        );
+      }
       for (const name of compiled.dynamicImports) lazyModuleLoader(name);
       const value = globalEvaluate(compiled.javascript);
       return {

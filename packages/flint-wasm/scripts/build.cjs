@@ -129,6 +129,12 @@ const symbolicBackendOutput = path.join(
   outputDirectory,
   "symbolic-backend.mjs",
 );
+const numpyBackendOutput = path.join(outputDirectory, "numpy-ts.mjs");
+const numpyBackendSource = path.resolve(
+  path.dirname(require.resolve("numpy-ts")),
+  "..",
+  "numpy-ts.browser.js",
+);
 const serializationOutput = path.join(
   outputDirectory,
   "serialization.mjs",
@@ -270,6 +276,7 @@ requirePath(
   "built Sage.js baselib (run `pnpm build` first)",
   baselibSource,
 );
+requirePath("pinned numpy-ts browser bundle", numpyBackendSource);
 for (const filename of [
   "web-tree-sitter.wasm",
   "tree-sitter-python.wasm",
@@ -762,6 +769,7 @@ const compilerFrontendBuild = {
 };
 fs.copyFileSync(compilerSource, compilerOutput);
 fs.copyFileSync(baselibSource, baselibOutput);
+fs.copyFileSync(numpyBackendSource, numpyBackendOutput);
 for (const filename of [
   "web-tree-sitter.wasm",
   "tree-sitter-python.wasm",
@@ -934,6 +942,7 @@ const receipt = writeProductionReceipt({
     ]),
     compilerSource,
     baselibSource,
+    numpyBackendSource,
     compilerFrontendBuildHelper,
     ...["web-tree-sitter.wasm", "tree-sitter-python.wasm", "tree-sitter-sage.wasm"]
       .map((name) => path.join(vendorDirectory, name)),

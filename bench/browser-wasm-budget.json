@@ -11,9 +11,9 @@
   },
   "artifact_baseline": {
     "totals": {
-      "bytes": 126884016,
-      "gzip_bytes": 18835620,
-      "brotli_bytes": 11883093
+      "bytes": 141974160,
+      "gzip_bytes": 20699924,
+      "brotli_bytes": 12983150
     }
   },
   "performance_baseline": {
