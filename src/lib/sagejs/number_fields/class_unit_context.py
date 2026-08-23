@@ -457,6 +457,7 @@ class _LiveClassUnitArtifacts:
         self.generation_live_authority_available = False
         self.generation_verification_active = True
         self.saturation_record: Any = None
+        self.saturation_live_authority_available = False
         self.class_group: Any = None
         self.unit_group: Any = None
         self.sealed = False
@@ -585,10 +586,20 @@ class _LiveClassUnitArtifacts:
             return None
         return self.generation_hashes[1], self.generation_hashes[2]
 
-    def bind_saturation_record(self, record: Any) -> None:
+    def bind_saturation_record(self, record: Any, *, authenticated: bool) -> None:
         if self.sealed:
             raise ValueError("a sealed class/unit context cannot accept saturation")
         self.saturation_record = record
+        self.saturation_live_authority_available = bool(self.reusable and authenticated)
+
+    def consume_saturation_record(self, record: Any) -> bool:
+        accepted = bool(
+            not self.sealed
+            and self.saturation_live_authority_available
+            and record is self.saturation_record
+        )
+        self.saturation_live_authority_available = False
+        return accepted
 
     def retain_terminal(
         self,
@@ -612,6 +623,7 @@ class _LiveClassUnitArtifacts:
         self.class_group = class_group
         self.unit_group = unit_group
         self.deactivate_generation_verification()
+        self.saturation_live_authority_available = False
         self.sealed = True
 
     def diagnostics(self) -> dict[str, Any]:
@@ -628,6 +640,9 @@ class _LiveClassUnitArtifacts:
             "generation_verification_active": self.generation_verification_active,
             "generation_verification_entries": len(self.generation_verification_cache),
             "has_saturation_record": self.saturation_record is not None,
+            "saturation_live_authority_available": (
+                self.saturation_live_authority_available
+            ),
             "has_class_group": self.class_group is not None,
             "has_unit_group": self.unit_group is not None,
         }
@@ -813,12 +828,20 @@ class ClassUnitGroupContext:
         live = self._live_artifacts
         return None if live is None else live.dependency_hashes(collector, presentation)
 
-    def _bind_live_saturation_record(self, token: Any, record: Any) -> None:
+    def _bind_live_saturation_record(
+        self, token: Any, record: Any, *, authenticated: bool
+    ) -> None:
         if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
             raise TypeError("live saturation state is engine-owned")
         live = self._live_artifacts
         if live is not None:
-            live.bind_saturation_record(record)
+            live.bind_saturation_record(record, authenticated=authenticated)
+
+    def _consume_live_saturation_record(self, token: Any, record: Any) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live saturation state is engine-owned")
+        live = self._live_artifacts
+        return bool(live is not None and live.consume_saturation_record(record))
 
     def _live_saturation_record(self, token: Any) -> Any:
         if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:

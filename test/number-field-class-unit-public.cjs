@@ -365,9 +365,9 @@ group._presentation.order = retained_group_order
 assert group.verify()
 record = result.saturation_record
 assert "_live_authentication" not in record.__dict__
-assert not class_unit_module._authenticated_live_saturation_record_matches(
-    record, K, K.maximal_order()
-)
+assert not result.context.live_diagnostics()[
+    "saturation_live_authority_available"
+]
 assert analytic_replays == 0
 assert record.verify(K, K.maximal_order())
 assert analytic_replays == 1
@@ -384,9 +384,6 @@ assert record.reason == "rigorous hR index-one validation after bounded saturati
 # The authority is only a live optimization hint.  Any mutation invalidates
 # it, and the public verifier still fails closed against the content hash.
 record.reason += " (mutated)"
-assert not class_unit_module._authenticated_live_saturation_record_matches(
-    record, K, K.maximal_order()
-)
 assert not record.verify(K, K.maximal_order())
 
 # A mutated live prefix is only a failed optimization hint.  It cannot enter
@@ -453,7 +450,13 @@ assert limited_result.diagnostics["resources"]["cubic_factor_base_seed_uses"] ==
 
 # A failed live construction hint falls back to the unchanged full map replay.
 original_live_verifier = class_unit_module._EngineClassGroup._verify_live_construction
+original_saturation_validator = (
+    class_unit_module._standard_live_saturation_record_is_valid
+)
 class_unit_module._EngineClassGroup._verify_live_construction = lambda self, token: False
+class_unit_module._standard_live_saturation_record_is_valid = (
+    lambda record, field, order: False
+)
 try:
     V = NumberField(x**3 + 4*x - 1, "v")
     assert V.class_number(proof=False) == 2
@@ -462,9 +465,14 @@ try:
     assert replay_resources["class_group_live_authentication_requests"] == 1
     assert replay_resources["class_group_live_authentication_hits"] == 0
     assert replay_resources["class_group_live_authentication_fallback_replays"] == 1
+    assert replay_resources["saturation_live_authentication_hits"] == 0
+    assert replay_resources["saturation_live_authentication_fallback_replays"] == 1
     assert replayed.class_group().verify()
 finally:
     class_unit_module._EngineClassGroup._verify_live_construction = original_live_verifier
+    class_unit_module._standard_live_saturation_record_is_valid = (
+        original_saturation_validator
+    )
 print("cubic-relation-seed-ok")
 `, 180_000);
   assert.equal(output, "cubic-relation-seed-ok");
@@ -569,19 +577,19 @@ assert result.saturation_record.verify()
 
 # Progress callbacks remain an interposition boundary.  They retain both the
 # issuance and consumption snapshots instead of using the synchronous token.
-snapshot_calls = [0]
-original_snapshot = class_unit_module._saturation_record_live_snapshot
-def counted_snapshot(record):
-    snapshot_calls[0] += 1
-    return original_snapshot(record)
-class_unit_module._saturation_record_live_snapshot = counted_snapshot
+replay_calls = [0]
+original_replay = class_unit_module.ClassUnitSaturationRecord.verify
+def counted_replay(record, *args, **kwargs):
+    replay_calls[0] += 1
+    return original_replay(record, *args, **kwargs)
+class_unit_module.ClassUnitSaturationRecord.verify = counted_replay
 try:
     events = []
     callback_result = class_unit_module.compute_class_unit_group(
         K, proof=False, progress=events.append
     )
 finally:
-    class_unit_module._saturation_record_live_snapshot = original_snapshot
+    class_unit_module.ClassUnitSaturationRecord.verify = original_replay
 assert callback_result.complete
 assert callback_result.diagnostics["resources"][
     "generation_live_relation_payload_hits"
@@ -591,7 +599,14 @@ assert not callback_context["reusable"] and callback_context["sealed"]
 assert callback_context["relation_count"] == len(
     callback_result.conditional_relation_records
 )
-assert snapshot_calls[0] >= 2
+assert not callback_context["saturation_live_authority_available"]
+assert callback_result.diagnostics["resources"][
+    "saturation_live_authentication_hits"
+] == 0
+assert callback_result.diagnostics["resources"][
+    "saturation_live_authentication_fallback_replays"
+] == 1
+assert replay_calls[0] >= 1
 assert events
 
 # The completed unconditional computation also satisfies proof=True without a
