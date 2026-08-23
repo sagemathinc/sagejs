@@ -1,0 +1,172 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-integer-buffer-native",
+  "title": "Exact IntegerBuffer native specialization",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Keep exact IntegerBuffer loads on efficient isolated exact paths through transitive typed helpers, with neutral same-source dynamic/native/CPython/emitted-core evidence",
+  "base_commit": "2d4b1fe786d804cce0156a1cae2513d94658fba8",
+  "claims": [
+    "tools/native-kernel/",
+    "test/native-kernel.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "native",
+      "emitted-core"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm architecture:check",
+    "node --test test/native-kernel.cjs",
+    "node --test tools/native-kernel/test/exact-integer-buffer-specialization.cjs",
+    "node --test test/number-field-maximal-order-degree90-checker.cjs test/number-field-maximal-order-degree90-table.cjs test/number-field-maximal-order-engine.cjs",
+    "env SAGEJS_NATIVE_REQUIRED=1 ./bin/sagejs src/lib/sagejs/hyperelliptic_curves/_test_genus3_candidates.py"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/exact-integer-buffer-specialization.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.635,
+      "started_at": "2026-08-23T07:52:12.469Z",
+      "commit": "2d4b1fe786d804cce0156a1cae2513d94658fba8",
+      "workspace_fingerprint": "2bded4235a35378c055dd1bd7c59420e3f9ac01a4610e4eb1df59b8b1ca9286f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.907,
+      "started_at": "2026-08-23T07:52:19.526Z",
+      "commit": "2d4b1fe786d804cce0156a1cae2513d94658fba8",
+      "workspace_fingerprint": "2bded4235a35378c055dd1bd7c59420e3f9ac01a4610e4eb1df59b8b1ca9286f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.92,
+      "started_at": "2026-08-23T07:53:26.252Z",
+      "commit": "2d4b1fe786d804cce0156a1cae2513d94658fba8",
+      "workspace_fingerprint": "2bded4235a35378c055dd1bd7c59420e3f9ac01a4610e4eb1df59b8b1ca9286f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 48.572,
+      "started_at": "2026-08-23T07:53:37.358Z",
+      "commit": "2d4b1fe786d804cce0156a1cae2513d94658fba8",
+      "workspace_fingerprint": "2bded4235a35378c055dd1bd7c59420e3f9ac01a4610e4eb1df59b8b1ca9286f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 260.945,
+      "started_at": "2026-08-23T07:54:34.155Z",
+      "commit": "2d4b1fe786d804cce0156a1cae2513d94658fba8",
+      "workspace_fingerprint": "2bded4235a35378c055dd1bd7c59420e3f9ac01a4610e4eb1df59b8b1ca9286f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/exact-integer-buffer-specialization.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.224,
+      "started_at": "2026-08-23T08:11:21.204Z",
+      "commit": "2d4b1fe786d804cce0156a1cae2513d94658fba8",
+      "workspace_fingerprint": "ff5eec1fe538ae4689e7fade082589b522fd919a8974247c57be0dee4d262d0e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-maximal-order-degree90-checker.cjs test/number-field-maximal-order-degree90-table.cjs test/number-field-maximal-order-engine.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.423,
+      "started_at": "2026-08-23T08:11:36.270Z",
+      "commit": "2d4b1fe786d804cce0156a1cae2513d94658fba8",
+      "workspace_fingerprint": "ff5eec1fe538ae4689e7fade082589b522fd919a8974247c57be0dee4d262d0e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_NATIVE_REQUIRED=1 ./bin/sagejs src/lib/sagejs/hyperelliptic_curves/_test_genus3_candidates.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.233,
+      "started_at": "2026-08-23T08:11:54.382Z",
+      "commit": "2d4b1fe786d804cce0156a1cae2513d94658fba8",
+      "workspace_fingerprint": "ff5eec1fe538ae4689e7fade082589b522fd919a8974247c57be0dee4d262d0e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.268,
+      "started_at": "2026-08-23T08:12:10.782Z",
+      "commit": "2d4b1fe786d804cce0156a1cae2513d94658fba8",
+      "workspace_fingerprint": "ff5eec1fe538ae4689e7fade082589b522fd919a8974247c57be0dee4d262d0e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 47.746,
+      "started_at": "2026-08-23T08:13:16.974Z",
+      "commit": "2d4b1fe786d804cce0156a1cae2513d94658fba8",
+      "workspace_fingerprint": "ff5eec1fe538ae4689e7fade082589b522fd919a8974247c57be0dee4d262d0e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.666,
+      "started_at": "2026-08-23T08:14:08.647Z",
+      "commit": "2d4b1fe786d804cce0156a1cae2513d94658fba8",
+      "workspace_fingerprint": "ff5eec1fe538ae4689e7fade082589b522fd919a8974247c57be0dee4d262d0e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 330.791,
+      "started_at": "2026-08-23T08:14:20.486Z",
+      "commit": "2d4b1fe786d804cce0156a1cae2513d94658fba8",
+      "workspace_fingerprint": "ff5eec1fe538ae4689e7fade082589b522fd919a8974247c57be0dee4d262d0e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

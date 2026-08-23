@@ -268,6 +268,8 @@ function constantBits(value) {
 function executionProfile(fn) {
   const profile = {
     arithmeticOperations: 0,
+    integerGrowthOperations: 0,
+    integerBufferLoads: 0,
     uint64BitwiseOperations: 0,
     nativeCalls: 0,
     rangeLoops: 0,
@@ -288,6 +290,19 @@ function executionProfile(fn) {
         operation.kind === "integer.round_sqrt"
       ) {
         profile.arithmeticOperations += 1;
+      }
+      if (
+        (operation.kind === "integer.binary" &&
+          ["mul", "floordiv", "mod"].includes(operation.operation)) ||
+        operation.kind === "integer.pow_uint" ||
+        operation.kind === "integer.divmod" ||
+        operation.kind === "integer.mod_uint64" ||
+        operation.kind === "integer.round_sqrt"
+      ) {
+        profile.integerGrowthOperations += 1;
+      }
+      if (operation.kind === "integer.buffer.get") {
+        profile.integerBufferLoads += 1;
       }
       if (
         operation.kind === "uint64.binary" &&
@@ -624,6 +639,18 @@ function backendPolicy(fn, profile, recursive) {
     return {
       kind: "tagged",
       reason: "bounded uint64 operations execute in the isolated native core",
+    };
+  }
+  if (
+    profile.integerBufferLoads > 0 &&
+    profile.rangeLoops + profile.whileLoops > 0 &&
+    ((profile.nativeCalls > 0 && profile.dependencyDepth >= 2) ||
+      profile.integerGrowthOperations >= 16)
+  ) {
+    return {
+      kind: "gmp",
+      reason:
+        "an amortizable exact loop consumes packed arbitrary-precision values",
     };
   }
   if (
