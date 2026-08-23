@@ -40,6 +40,7 @@ from sagejs.hyperelliptic_curves.group_structure import (
     group_element_key,
 )
 from sagejs.hyperelliptic_curves.jacobian import Jacobian, MumfordDivisor
+from sagejs.native import is_compiled, kernel_uint64_buffer, kernel_uint64_zeros
 
 Candidate = tuple[int, int, int]
 OrderCertificateProvider = Callable[
@@ -49,6 +50,7 @@ ExactFallback = Callable[[Any, int], Iterable[int]]
 StageObserver = Callable[[str, Mapping[str, Any]], None]
 
 _AUTO_RFOREST_MAX_INTERVAL_STOP = 100_000
+_PACKED_MUMFORD_SCHEMA = "packed-mumford-v1"
 
 
 def _observe(
@@ -1149,23 +1151,27 @@ def _quadratic_twist(curve: Any, prime: int) -> Any:
     return model.HyperellipticCurve_generic(nonsquare * completed_square)
 
 
-def _rational_completed_square_data(curve: Any) -> tuple[tuple[Any, ...], str]:
+def _rational_completed_square_data(
+    curve: Any,
+) -> tuple[tuple[Any, ...], str, int]:
     """Prepare the rational completed-square model once for a prime stream."""
     f_value, h_value = curve.hyperelliptic_polynomials()
     completed_square = h_value * h_value + 4 * f_value
+    discriminant = sage.QQ(completed_square.discriminant())
     return (
         tuple(completed_square.list()),
         str(completed_square.parent().variable_name()),
+        int(discriminant.numerator()),
     )
 
 
 def _rational_completed_square_reduction(
     curve: Any,
     prime: int,
-    data: tuple[tuple[Any, ...], str] | None = None,
+    data: tuple[tuple[Any, ...], str, int] | None = None,
 ) -> Any:
     """Reduce `h^2+4f` directly, without publishing an intermediate curve."""
-    coefficients, variable_name = (
+    coefficients, variable_name, _discriminant_numerator = (
         _rational_completed_square_data(curve) if data is None else data
     )
     finite_fields = __import__(
@@ -1192,6 +1198,506 @@ def _rational_completed_square_reduction(
         return model.HyperellipticCurve_generic(reduced)
     except ValueError as error:
         raise ArithmeticError("the curve has bad reduction at " + str(prime)) from error
+
+
+def _packed_completed_square_model(
+    data: tuple[tuple[Any, ...], str, int],
+    prime: int,
+    twist: int = 1,
+) -> tuple[int, ...]:
+    """Return the canonical no-parent finite model for one good prime.
+
+    The packed Cantor ABI is `(f0,...,f7,h0,...,h3)`.  Certification uses the
+    completed-square model `y^2=h^2+4*f`, so the four packed `h` words are
+    zero.  Rational reduction is exact and rejects precisely the denominator
+    and discriminant primes before publishing the model.
+    """
+    coefficients, _variable_name, discriminant_numerator = data
+    if discriminant_numerator % prime == 0:
+        raise ArithmeticError("the curve has bad reduction at " + str(prime))
+    if len(coefficients) > 8:
+        raise NotImplementedError("packed certification requires an odd genus-3 model")
+    multiplier = int(twist) % prime
+    reduced: list[int] = []
+    for coefficient in coefficients:
+        rational = sage.QQ(coefficient)
+        numerator = int(rational.numerator())
+        denominator = int(rational.denominator())
+        residue = denominator % prime
+        if residue == 0:
+            raise ArithmeticError(
+                "the hyperelliptic model is nonintegral at p=" + str(prime)
+            )
+        reduced.append(
+            multiplier * (numerator % prime) * pow(residue, prime - 2, prime) % prime
+        )
+    reduced.extend(0 for _index in range(8 - len(reduced)))
+    reduced.extend(0 for _index in range(4))
+    return tuple(reduced)
+
+
+def _least_modular_square_root(value: int, prime: int) -> int | None:
+    """Return the least root modulo an odd prime, or `None` for a nonsquare."""
+    residue = value % prime
+    if residue == 0:
+        return 0
+    if pow(residue, (prime - 1) // 2, prime) != 1:
+        return None
+    if prime % 4 == 3:
+        root = pow(residue, (prime + 1) // 4, prime)
+        return min(root, prime - root)
+    odd_part = prime - 1
+    exponent = 0
+    while odd_part % 2 == 0:
+        exponent += 1
+        odd_part //= 2
+    nonsquare = 2
+    while pow(nonsquare, (prime - 1) // 2, prime) != prime - 1:
+        nonsquare += 1
+    root = pow(residue, (odd_part + 1) // 2, prime)
+    residue_power = pow(residue, odd_part, prime)
+    correction = pow(nonsquare, odd_part, prime)
+    level = exponent
+    while residue_power != 1:
+        index = 1
+        power = residue_power * residue_power % prime
+        while index < level and power != 1:
+            power = power * power % prime
+            index += 1
+        if index == level:
+            raise ArithmeticError("modular square-root iteration failed")
+        factor = pow(correction, 1 << (level - index - 1), prime)
+        root = root * factor % prime
+        correction = factor * factor % prime
+        residue_power = residue_power * correction % prime
+        level = index
+    return min(root, prime - root)
+
+
+def _least_nonsquare(prime: int) -> int:
+    """Return the first integer at least two that is nonsquare modulo `prime`."""
+    value = 2
+    while value < prime:
+        if pow(value, (prime - 1) // 2, prime) == prime - 1:
+            return value
+        value += 1
+    raise ArithmeticError("failed to find a prime-field nonsquare")
+
+
+def _evaluate_packed_polynomial(
+    coefficients: tuple[int, ...], value: int, prime: int
+) -> int:
+    answer = 0
+    index = len(coefficients) - 1
+    while index >= 0:
+        answer = (answer * value + coefficients[index]) % prime
+        index -= 1
+    return answer
+
+
+def _deterministic_packed_divisor(
+    model: tuple[int, ...], prime: int, max_x_values: int
+) -> tuple[int, ...] | None:
+    """Choose the same least-lift degree-one class without finite parents."""
+    f_coefficients = model[:8]
+    for x_value in range(min(prime, max_x_values)):
+        square = _evaluate_packed_polynomial(f_coefficients, x_value, prime)
+        y_value = _least_modular_square_root(square, prime)
+        if y_value is None:
+            continue
+        return (1, (-x_value) % prime, 1, 0, 0, y_value, 0, 0)
+    return None
+
+
+def _packed_cantor_kernels() -> tuple[Any, Any, Any] | None:
+    """Return the compiled source kernels needed by no-parent certificates."""
+    module = __import__(
+        "sagejs.hyperelliptic_curves.jacobian_kernels",
+        fromlist=[
+            "packed_cantor_search_progression",
+            "packed_cantor_search_progressions",
+            "packed_cantor_scalar_batch",
+        ],
+    )
+    search = getattr(module, "packed_cantor_search_progression", None)
+    scalar = getattr(module, "packed_cantor_scalar_batch", None)
+    if search is None or scalar is None:
+        return None
+    if not is_compiled(search) or not is_compiled(scalar):
+        return None
+    multi_search = getattr(module, "packed_cantor_search_progressions", None)
+    if multi_search is not None and not is_compiled(multi_search):
+        multi_search = None
+    return search, scalar, multi_search
+
+
+def _packed_scalar_rows(
+    kernel: Any,
+    model: tuple[int, ...],
+    divisor: tuple[int, ...],
+    scalars: tuple[int, ...],
+    prime: int,
+) -> tuple[tuple[int, ...], ...]:
+    """Run one exact packed scalar batch and return canonical rows."""
+    maximum_bits = max((value.bit_length() for value in scalars), default=0)
+    words_per_scalar = max(1, (maximum_bits + 63) // 64)
+    words: list[int] = []
+    for scalar in scalars:
+        magnitude = scalar
+        for _word_index in range(words_per_scalar):
+            words.append(magnitude % (1 << 64))
+            magnitude //= 1 << 64
+    elements = tuple(word for _scalar in scalars for word in divisor)
+    output = kernel_uint64_zeros(kernel, len(scalars) * 8)
+    statuses = kernel_uint64_zeros(kernel, len(scalars))
+    accepted = kernel(
+        output,
+        statuses,
+        kernel_uint64_buffer(kernel, model),
+        kernel_uint64_buffer(kernel, elements),
+        kernel_uint64_buffer(kernel, words),
+        kernel_uint64_buffer(kernel, tuple(0 for _scalar in scalars)),
+        len(scalars),
+        words_per_scalar,
+        3,
+        prime,
+    )
+    if not accepted:
+        raise ArithmeticError("the packed Cantor scalar kernel failed closed")
+    rows = []
+    for item in range(len(scalars)):
+        if int(statuses[item]) == 0:
+            raise ArithmeticError("the packed Cantor scalar kernel rejected its input")
+        rows.append(tuple(int(output[item * 8 + index]) for index in range(8)))
+    return tuple(rows)
+
+
+def _packed_scalar_words(value: int, words_per_scalar: int) -> tuple[int, ...]:
+    """Encode one nonnegative scalar as little-endian uint64 words."""
+    answer = []
+    magnitude = value
+    for _word_index in range(words_per_scalar):
+        answer.append(magnitude % (1 << 64))
+        magnitude //= 1 << 64
+    return tuple(answer)
+
+
+def _is_packed_identity(row: tuple[int, ...]) -> bool:
+    return row == (0, 1, 0, 0, 0, 0, 0, 0)
+
+
+def _packed_factor_strip_certificate(
+    scalar_kernel: Any,
+    model: tuple[int, ...],
+    divisor: tuple[int, ...],
+    prime: int,
+    annihilating_multiple: int,
+    budgets: Mapping[str, int],
+    prior_operations: int,
+    diagnostics: dict[str, Any],
+) -> dict[str, Any]:
+    """Strip and independently replay one exact packed element order."""
+    factors = factor_integer_bounded(
+        annihilating_multiple, budgets["max_trial_divisions"]
+    )
+    strip_scalars = [annihilating_multiple]
+    strip_slices = []
+    for prime_value, exponent in factors:
+        start = len(strip_scalars)
+        divisor_value = 1
+        for _index in range(int(exponent)):
+            divisor_value *= int(prime_value)
+            strip_scalars.append(annihilating_multiple // divisor_value)
+        strip_slices.append((int(prime_value), start, len(strip_scalars)))
+    strip_operations = 0
+    strip_bits = 0
+    for scalar in strip_scalars:
+        operations, bits = _scalar_group_operations(scalar)
+        strip_operations += operations
+        strip_bits += bits
+    if prior_operations + strip_operations > budgets["max_group_operations"]:
+        raise JacobianResourceLimitError(
+            "the packed factor strip exceeded its group-operation budget"
+        )
+    strip_rows = _packed_scalar_rows(
+        scalar_kernel, model, divisor, tuple(strip_scalars), prime
+    )
+    if not _is_packed_identity(strip_rows[0]):
+        raise ArithmeticError("the packed search returned a non-annihilator")
+    element_order = annihilating_multiple
+    for factor_prime, start, stop in strip_slices:
+        for index in range(start, stop):
+            if not _is_packed_identity(strip_rows[index]):
+                break
+            element_order //= factor_prime
+    exact_factors = _factorization_of_divisor(element_order, factors)
+    replay_scalars = [element_order]
+    replay_scalars.extend(
+        element_order // factor for factor, _exponent in exact_factors
+    )
+    replay_operations = 0
+    replay_bits = 0
+    for scalar in replay_scalars:
+        operations, bits = _scalar_group_operations(scalar)
+        replay_operations += operations
+        replay_bits += bits
+    total_operations = prior_operations + strip_operations + replay_operations
+    if total_operations > budgets["max_group_operations"]:
+        raise JacobianResourceLimitError(
+            "the packed certificate replay exceeded its group-operation budget"
+        )
+    replay_rows = _packed_scalar_rows(
+        scalar_kernel, model, divisor, tuple(replay_scalars), prime
+    )
+    if not _is_packed_identity(replay_rows[0]):
+        raise ArithmeticError(
+            "the packed element order does not annihilate its witness"
+        )
+    if any(_is_packed_identity(row) for row in replay_rows[1:]):
+        raise ArithmeticError("the packed element order is not exact")
+    diagnostics["groupOperations"] = total_operations
+    diagnostics["scalarBits"] += strip_bits + replay_bits
+    diagnostics["packedFactorStripBatches"] = 2
+    packed_divisor = (
+        _PACKED_MUMFORD_SCHEMA,
+        int(prime),
+        tuple(int(value) for value in model),
+        tuple(int(value) for value in divisor),
+    )
+    return {
+        "status": "found",
+        "certificate": {
+            "packed_divisor": packed_divisor,
+            "witness_representation": _PACKED_MUMFORD_SCHEMA,
+            "element_order": element_order,
+            "prime_factors": exact_factors,
+            "verification": "native_exact_factor_and_strip",
+        },
+        "annihilating_multiple": annihilating_multiple,
+        "diagnostics": diagnostics,
+    }
+
+
+def _packed_progression_certificate(
+    model: tuple[int, ...],
+    divisor: tuple[int, ...],
+    prime: int,
+    progressions: tuple[dict[str, int], ...],
+    budgets: Mapping[str, int],
+) -> dict[str, Any] | None:
+    """Search same-stride progressions directly from canonical packed data."""
+    kernels = _packed_cantor_kernels()
+    if kernels is None:
+        return None
+    search_kernel, scalar_kernel, multi_search_kernel = kernels
+    total_operations = 0
+    total_bits = 0
+    total_babies = 0
+    total_giants = 0
+    total_collisions = 0
+    searches = 0
+    if multi_search_kernel is not None and progressions:
+        shared_stride = int(progressions[0]["stride"])
+        if all(
+            int(progression["stride"]) == shared_stride
+            and int(progression["count"]) > 0
+            for progression in progressions
+        ):
+            maximum_count = max(
+                int(progression["count"]) for progression in progressions
+            )
+            baby_count = _ceil_sqrt(maximum_count)
+            if baby_count > budgets["max_baby_steps"]:
+                raise JacobianResourceLimitError(
+                    "the shared packed table exceeded its baby-step budget"
+                )
+            maximum_bits = max(
+                shared_stride.bit_length(),
+                max(
+                    int(progression["base"]).bit_length()
+                    for progression in progressions
+                ),
+            )
+            words_per_scalar = max(1, (maximum_bits + 63) // 64)
+            flat_bases = tuple(
+                word
+                for progression in progressions
+                for word in _packed_scalar_words(
+                    int(progression["base"]), words_per_scalar
+                )
+            )
+            counts = tuple(int(progression["count"]) for progression in progressions)
+            output = kernel_uint64_zeros(multi_search_kernel, 2)
+            statuses = kernel_uint64_zeros(multi_search_kernel, 1)
+            record = kernel_uint64_zeros(multi_search_kernel, 7)
+            accepted = multi_search_kernel(
+                output,
+                statuses,
+                record,
+                kernel_uint64_buffer(multi_search_kernel, model),
+                kernel_uint64_buffer(multi_search_kernel, divisor),
+                kernel_uint64_buffer(multi_search_kernel, flat_bases),
+                kernel_uint64_buffer(
+                    multi_search_kernel,
+                    _packed_scalar_words(shared_stride, words_per_scalar),
+                ),
+                kernel_uint64_buffer(multi_search_kernel, counts),
+                len(progressions),
+                words_per_scalar,
+                baby_count,
+                budgets["max_group_operations"],
+                3,
+                prime,
+            )
+            if not accepted:
+                raise ArithmeticError(
+                    "the shared packed progression kernel failed closed"
+                )
+            status = int(statuses[0])
+            total_operations = int(record[0])
+            if total_operations > budgets["max_group_operations"]:
+                raise ArithmeticError("the shared packed search exceeded its budget")
+            diagnostics = {
+                "groupOperations": total_operations,
+                "scalarBits": int(record[1]),
+                "babySteps": int(record[2]),
+                "giantSteps": int(record[3]),
+                "hashCollisions": int(record[4]),
+                "progressionsScanned": int(record[5]),
+                "retainedTableBytes": int(record[6]),
+                "packedDirectSearches": 1,
+                "sharedProgressionTable": True,
+            }
+            if status == 1:
+                progression_index = int(output[0])
+                represented_index = int(output[1])
+                if progression_index < 0 or progression_index >= len(progressions):
+                    raise ArithmeticError(
+                        "the shared packed search returned a bad progression"
+                    )
+                progression = progressions[progression_index]
+                count = int(progression["count"])
+                if represented_index < 0 or represented_index >= count:
+                    raise ArithmeticError(
+                        "the shared packed search returned a bad index"
+                    )
+                annihilator = int(progression["base"]) + represented_index * int(
+                    progression["stride"]
+                )
+                return _packed_factor_strip_certificate(
+                    scalar_kernel,
+                    model,
+                    divisor,
+                    prime,
+                    annihilator,
+                    budgets,
+                    total_operations,
+                    diagnostics,
+                )
+            if status == 2:
+                return {"status": "not_found", "diagnostics": diagnostics}
+            if status == 3:
+                raise JacobianResourceLimitError(
+                    "the shared packed progression search exceeded its budget"
+                )
+            if status == 4:
+                raise ArithmeticError(
+                    "the shared packed progression kernel rejected its input"
+                )
+            raise ArithmeticError("the shared packed search returned bad status")
+    for progression in progressions:
+        base = int(progression["base"])
+        stride = int(progression["stride"])
+        count = int(progression["count"])
+        baby_count = _ceil_sqrt(count)
+        if baby_count > budgets["max_baby_steps"]:
+            raise JacobianResourceLimitError(
+                "the packed progression table exceeded its baby-step budget"
+            )
+        maximum_bits = max(base.bit_length(), stride.bit_length())
+        words_per_scalar = max(1, (maximum_bits + 63) // 64)
+
+        remaining_operations = budgets["max_group_operations"] - total_operations
+        if remaining_operations < 0:
+            raise JacobianResourceLimitError(
+                "the packed progression search exceeded its operation budget"
+            )
+        output = kernel_uint64_zeros(search_kernel, 1)
+        statuses = kernel_uint64_zeros(search_kernel, 1)
+        record = kernel_uint64_zeros(search_kernel, 5)
+        accepted = search_kernel(
+            output,
+            statuses,
+            record,
+            kernel_uint64_buffer(search_kernel, model),
+            kernel_uint64_buffer(search_kernel, divisor),
+            kernel_uint64_buffer(
+                search_kernel, _packed_scalar_words(base, words_per_scalar)
+            ),
+            kernel_uint64_buffer(
+                search_kernel, _packed_scalar_words(stride, words_per_scalar)
+            ),
+            words_per_scalar,
+            count,
+            baby_count,
+            remaining_operations,
+            3,
+            prime,
+        )
+        if not accepted:
+            raise ArithmeticError("the packed progression kernel failed closed")
+        status = int(statuses[0])
+        used_operations = int(record[0])
+        if used_operations > remaining_operations:
+            raise ArithmeticError("the packed progression kernel exceeded its budget")
+        total_operations += used_operations
+        total_bits += int(record[1])
+        total_babies += int(record[2])
+        total_giants += int(record[3])
+        total_collisions += int(record[4])
+        searches += 1
+        if status == 2:
+            continue
+        if status == 3:
+            raise JacobianResourceLimitError(
+                "the packed progression search exceeded its resource budget"
+            )
+        if status == 4:
+            raise ArithmeticError("the packed progression kernel rejected its input")
+        if status != 1:
+            raise ArithmeticError("the packed progression kernel returned bad status")
+        index = int(output[0])
+        if index < 0 or index >= count:
+            raise ArithmeticError("the packed progression index is outside its range")
+        diagnostics = {
+            "groupOperations": total_operations,
+            "scalarBits": total_bits,
+            "babySteps": total_babies,
+            "giantSteps": total_giants,
+            "hashCollisions": total_collisions,
+            "packedDirectSearches": searches,
+        }
+        return _packed_factor_strip_certificate(
+            scalar_kernel,
+            model,
+            divisor,
+            prime,
+            base + index * stride,
+            budgets,
+            total_operations,
+            diagnostics,
+        )
+    return {
+        "status": "not_found",
+        "diagnostics": {
+            "groupOperations": total_operations,
+            "scalarBits": total_bits,
+            "babySteps": total_babies,
+            "giantSteps": total_giants,
+            "hashCollisions": total_collisions,
+            "packedDirectSearches": searches,
+        },
+    }
 
 
 def _unique_orders(values: Iterable[int]) -> tuple[int, ...]:
@@ -1688,6 +2194,215 @@ def _certify_candidate_summary(
     return remaining, diagnostics
 
 
+def _checked_packed_certificate(
+    raw: Mapping[str, Any],
+    prime: int,
+    model: tuple[int, ...],
+    divisor: tuple[int, ...],
+) -> dict[str, Any]:
+    """Detach and independently validate one packed native certificate."""
+    element_order = _positive_integer(raw.get("element_order"), "element_order")
+    raw_factors = raw.get("prime_factors")
+    if raw_factors is None:
+        raise ArithmeticError("a packed order certificate omitted its factorization")
+    factors = _checked_prime_factorization(element_order, raw_factors)
+    expected_payload = (
+        _PACKED_MUMFORD_SCHEMA,
+        int(prime),
+        tuple(int(value) for value in model),
+        tuple(int(value) for value in divisor),
+    )
+    if raw.get("packed_divisor") != expected_payload:
+        raise ArithmeticError("a packed order certificate changed its witness")
+    if raw.get("witness_representation") != _PACKED_MUMFORD_SCHEMA:
+        raise ArithmeticError("a packed order certificate omitted its representation")
+    if raw.get("verification") != "native_exact_factor_and_strip":
+        raise ArithmeticError("a packed order certificate was not exactly replayed")
+    return {
+        "packed_divisor": expected_payload,
+        "witness_representation": _PACKED_MUMFORD_SCHEMA,
+        "element_order": element_order,
+        "prime_factors": factors,
+        "verification": "native_exact_factor_and_strip",
+    }
+
+
+def _certify_candidate_summary_packed(
+    prime: int,
+    residues: tuple[int, int, int],
+    summary: Mapping[str, Any],
+    completed_square_data: tuple[tuple[Any, ...], str, int],
+    *,
+    max_candidates: int,
+    max_combinations: int,
+    max_x_values: int,
+    max_elements: int,
+    max_trial_divisions: int,
+    max_baby_steps: int,
+    max_group_operations: int,
+    stage_observer: StageObserver | None,
+) -> tuple[tuple[Candidate, ...], dict[str, Any]] | None:
+    """Certify the common compact row without constructing finite parents.
+
+    `None` is a capability or rare-disambiguation fallback signal.  Exact
+    rejection and resource failures remain exceptions, just as in the public
+    Jacobian path.
+    """
+    if _packed_cantor_kernels() is None or prime > 4_294_967_295:
+        return None
+    model = _packed_completed_square_model(completed_square_data, prime)
+    divisor = _deterministic_packed_divisor(model, prime, max_x_values)
+    if divisor is None:
+        return None
+    budgets = {
+        "max_trial_divisions": max_trial_divisions,
+        "max_baby_steps": max_baby_steps,
+        "max_group_operations": max_group_operations,
+    }
+    diagnostics: dict[str, Any] = {}
+    input_order_count = int(summary["order_count"])
+    progressions = tuple(summary["progressions"])
+    _observe(
+        stage_observer,
+        "primary_start",
+        {"prime": prime, "orders": input_order_count, "elements": 1},
+    )
+    primary = _packed_progression_certificate(
+        model, divisor, prime, progressions, budgets
+    )
+    if primary is None:
+        return None
+    if primary["status"] != "found":
+        raise ArithmeticError(
+            "no candidate-order progression annihilates a packed divisor"
+        )
+    raw_primary_certificate: Any = primary.get("certificate")
+    if raw_primary_certificate is None or not hasattr(raw_primary_certificate, "get"):
+        raise ArithmeticError("the packed order search omitted its certificate")
+    primary_certificate = _checked_packed_certificate(
+        raw_primary_certificate, prime, model, divisor
+    )
+    primary_witness = int(primary_certificate["element_order"])
+    surviving_order_count = progression_order_count(
+        progressions, prime, (primary_witness,)
+    )
+    filtered = summarize_genus3_candidate_progressions(
+        prime,
+        residues,
+        primary_witnesses=(primary_witness,),
+        order_kind="twist",
+        max_candidates=max_candidates,
+        max_combinations=max_combinations,
+        materialize_orders=False,
+    )
+    if filtered is None or filtered["status"] != "ok":
+        raise JacobianResourceLimitError(
+            "the packed candidate filter exceeded its resource budget"
+        )
+    remaining_count = int(filtered["survivor_count"])
+    if remaining_count == 0:
+        raise ArithmeticError(
+            "packed Jacobian witnesses reject every rforest Weil candidate"
+        )
+    primary_diagnostics = {
+        "backend": "packed_source_kernel",
+        "certificate_count": 1,
+        "scalar_multiplications": 0,
+        "derivation_scalar_multiplications": 0,
+        "recheck_scalar_multiplications": 0,
+        "kernel_diagnostics": (primary.get("diagnostics"),),
+        "progression_count": len(progressions),
+        "elements": 1,
+        "input_orders": input_order_count,
+        "surviving_orders": surviving_order_count,
+        "surviving_candidates": remaining_count,
+        "progressions": progressions,
+        "certificates": (primary_certificate,),
+        "candidate_filter": filtered["diagnostics"],
+    }
+    diagnostics["jacobian"] = primary_diagnostics
+    _observe(
+        stage_observer,
+        "primary_end",
+        {"prime": prime, **primary_diagnostics},
+    )
+    if surviving_order_count > 1 and max_elements > 1:
+        return None
+    if remaining_count == 1:
+        return (filtered["candidate"],), diagnostics
+
+    twist_model = _packed_completed_square_model(
+        completed_square_data, prime, _least_nonsquare(prime)
+    )
+    twist_divisor = _deterministic_packed_divisor(twist_model, prime, max_x_values)
+    if twist_divisor is None:
+        return None
+    twist_input_order_count = int(filtered["order_count"])
+    twist_progressions = tuple(filtered["progressions"])
+    _observe(
+        stage_observer,
+        "twist_start",
+        {"prime": prime, "orders": twist_input_order_count, "elements": 1},
+    )
+    twist = _packed_progression_certificate(
+        twist_model, twist_divisor, prime, twist_progressions, budgets
+    )
+    if twist is None:
+        return None
+    if twist["status"] != "found":
+        raise ArithmeticError("no twist-order progression annihilates a packed divisor")
+    raw_twist_certificate: Any = twist.get("certificate")
+    if raw_twist_certificate is None or not hasattr(raw_twist_certificate, "get"):
+        raise ArithmeticError("the packed twist search omitted its certificate")
+    twist_certificate = _checked_packed_certificate(
+        raw_twist_certificate, prime, twist_model, twist_divisor
+    )
+    twist_witness = int(twist_certificate["element_order"])
+    twist_surviving_order_count = progression_order_count(
+        twist_progressions, prime, (twist_witness,)
+    )
+    final = summarize_genus3_candidate_progressions(
+        prime,
+        residues,
+        primary_witnesses=(primary_witness,),
+        twist_witnesses=(twist_witness,),
+        order_kind="jacobian",
+        max_candidates=max_candidates,
+        max_combinations=max_combinations,
+        materialize_orders=False,
+    )
+    if final is None or final["status"] != "ok":
+        raise JacobianResourceLimitError(
+            "the packed twist candidate filter exceeded its resource budget"
+        )
+    final_count = int(final["survivor_count"])
+    if final_count == 0:
+        raise ArithmeticError("packed twist witnesses reject every Weil candidate")
+    twist_diagnostics = {
+        "backend": "packed_source_kernel",
+        "certificate_count": 1,
+        "scalar_multiplications": 0,
+        "derivation_scalar_multiplications": 0,
+        "recheck_scalar_multiplications": 0,
+        "kernel_diagnostics": (twist.get("diagnostics"),),
+        "progression_count": len(twist_progressions),
+        "elements": 1,
+        "input_orders": twist_input_order_count,
+        "surviving_orders": twist_surviving_order_count,
+        "surviving_candidates": final_count,
+        "progressions": twist_progressions,
+        "certificates": (twist_certificate,),
+        "candidate_filter": final["diagnostics"],
+    }
+    diagnostics["twist"] = twist_diagnostics
+    _observe(stage_observer, "twist_end", {"prime": prime, **twist_diagnostics})
+    if twist_surviving_order_count > 1 and max_elements > 1:
+        return None
+    if final_count == 1:
+        return (final["candidate"],), diagnostics
+    return None
+
+
 def complete_genus3_residues_with_jacobian(
     curve: Any,
     prime: Any,
@@ -1704,7 +2419,7 @@ def complete_genus3_residues_with_jacobian(
     max_group_operations: int = 10_000_000,
     stage_observer: StageObserver | None = None,
     _candidate_enumeration: Mapping[str, Any] | None = None,
-    _completed_square_data: tuple[tuple[Any, ...], str] | None = None,
+    _completed_square_data: tuple[tuple[Any, ...], str, int] | None = None,
 ) -> dict[str, Any]:
     """Certify one genus-3 factor or use an exact fallback.
 
@@ -1796,28 +2511,18 @@ def complete_genus3_residues_with_jacobian(
         raise ArithmeticError("the rforest residues have no genus-3 Weil lift")
 
     try:
-        reduced_curve = _rational_completed_square_reduction(
-            curve, prime, _completed_square_data
+        completed_square_data = (
+            _rational_completed_square_data(curve)
+            if _completed_square_data is None
+            else _completed_square_data
         )
-        if candidate_summary is None:
-            remaining, certificate_diagnostics = _certify_candidates(
-                reduced_curve,
-                prime,
-                candidates,
-                max_x_values=max_x_values,
-                max_elements=max_elements,
-                max_trial_divisions=max_trial_divisions,
-                max_baby_steps=max_baby_steps,
-                max_group_operations=max_group_operations,
-                certificate_provider=kernel,
-                stage_observer=stage_observer,
-            )
-        else:
-            remaining, certificate_diagnostics = _certify_candidate_summary(
-                reduced_curve,
+        packed_result = None
+        if candidate_summary is not None and order_certificate_provider is None:
+            packed_result = _certify_candidate_summary_packed(
                 prime,
                 normalized,
                 candidate_summary,
+                completed_square_data,
                 max_candidates=max_candidates,
                 max_combinations=max_combinations,
                 max_x_values=max_x_values,
@@ -1825,9 +2530,43 @@ def complete_genus3_residues_with_jacobian(
                 max_trial_divisions=max_trial_divisions,
                 max_baby_steps=max_baby_steps,
                 max_group_operations=max_group_operations,
-                certificate_provider=kernel,
                 stage_observer=stage_observer,
             )
+        if packed_result is None:
+            reduced_curve = _rational_completed_square_reduction(
+                curve, prime, completed_square_data
+            )
+            if candidate_summary is None:
+                remaining, certificate_diagnostics = _certify_candidates(
+                    reduced_curve,
+                    prime,
+                    candidates,
+                    max_x_values=max_x_values,
+                    max_elements=max_elements,
+                    max_trial_divisions=max_trial_divisions,
+                    max_baby_steps=max_baby_steps,
+                    max_group_operations=max_group_operations,
+                    certificate_provider=kernel,
+                    stage_observer=stage_observer,
+                )
+            else:
+                remaining, certificate_diagnostics = _certify_candidate_summary(
+                    reduced_curve,
+                    prime,
+                    normalized,
+                    candidate_summary,
+                    max_candidates=max_candidates,
+                    max_combinations=max_combinations,
+                    max_x_values=max_x_values,
+                    max_elements=max_elements,
+                    max_trial_divisions=max_trial_divisions,
+                    max_baby_steps=max_baby_steps,
+                    max_group_operations=max_group_operations,
+                    certificate_provider=kernel,
+                    stage_observer=stage_observer,
+                )
+        else:
+            remaining, certificate_diagnostics = packed_result
     except NotImplementedError as error:
         return _fallback_result(
             curve,
