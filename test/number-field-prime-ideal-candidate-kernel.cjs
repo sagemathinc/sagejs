@@ -251,6 +251,75 @@ print(hashlib.sha256(encoded).hexdigest())
   );
 });
 
+test("maximal-order tables reuse the packed exact BL kernel", () => {
+  const output = run(sagejs, ["--python", "-"], String.raw`
+from sagejs.number_fields import maximal_order
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+polynomials = [
+    x**2 - 5,
+    x**3 - x**2 - 6*x - 12,
+    x**3 + QQ(1, 2) * x + 1,
+    x**4 + x + 1,
+    x**5 + x**3 - x**2 + 4*x + 1,
+]
+discriminants = []
+for index, polynomial in enumerate(polynomials):
+    order = NumberField(polynomial, "t" + str(index)).maximal_order()
+    readable = maximal_order._nf_order_multiplication_table_reference(order)
+    packed = maximal_order._nf_order_multiplication_table_packed(order)
+    assert [
+        [[int(value) for value in product] for product in left]
+        for left in readable
+    ] == packed
+    discriminants.append(int(order.discriminant()))
+
+# The public identity-keyed cache stores an immutable snapshot, calls the
+# packed producer only once, and returns a fresh nested list to each consumer.
+order = NumberField(polynomials[1], "cached").maximal_order()
+maximal_order._order_multiplication_table_cache[:] = [
+    pair for pair in maximal_order._order_multiplication_table_cache
+    if pair[0] is not order
+]
+calls = []
+original = maximal_order._nf_order_multiplication_table_packed
+def counted(current):
+    calls.append(current)
+    return original(current)
+maximal_order._nf_order_multiplication_table_packed = counted
+try:
+    first = maximal_order._nf_order_multiplication_table(order)
+    second = maximal_order._nf_order_multiplication_table(order)
+finally:
+    maximal_order._nf_order_multiplication_table_packed = original
+assert calls == [order]
+assert first == second and first is not second
+first[0][0][0] += 1
+assert maximal_order._nf_order_multiplication_table(order) == second
+
+# A rejected or unavailable packed boundary keeps the original exact field-
+# arithmetic implementation as a capability fallback.
+fallback_order = NumberField(polynomials[1], "fallback_table").maximal_order()
+maximal_order._order_multiplication_table_cache[:] = [
+    pair for pair in maximal_order._order_multiplication_table_cache
+    if pair[0] is not fallback_order
+]
+def unavailable(_order):
+    raise OverflowError("forced packed fallback")
+maximal_order._nf_order_multiplication_table_packed = unavailable
+try:
+    fallback = maximal_order._nf_order_multiplication_table(fallback_order)
+finally:
+    maximal_order._nf_order_multiplication_table_packed = original
+assert fallback == maximal_order._nf_order_multiplication_table_reference(
+    fallback_order
+)
+print(discriminants)
+`);
+  assert.equal(output, "[5, -1083, -440, 229, 380452]");
+});
+
 test("production inventory names the isolated candidate kernel", () => {
   const manifest = require("../architecture/native-kernels.json");
   const record = manifest.kernels.find((entry) =>

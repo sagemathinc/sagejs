@@ -254,6 +254,7 @@
     "bench:number-field-buchmann-lenstra-fast": "node bench/number-field-buchmann-lenstra-fast.cjs",
     "bench:number-field-class-number-lmfdb": "node bench/class-unit-groups/compare-lmfdb-class-numbers.cjs",
     "bench:number-field-prime-ideal-candidate-kernel": "node bench/number-field-prime-ideal-candidate-kernel.cjs",
+    "bench:number-field-order-table": "node bench/number-field-order-table.cjs",
     "bench:number-field-ideal-product-kernel": "node bench/number-field-ideal-product-kernel.cjs",
     "bench:number-field-lll-transform": "node bench/number-field-lll-transform.cjs",
     "bench:number-field-element-valuations": "node bench/number-field-element-valuations.cjs",

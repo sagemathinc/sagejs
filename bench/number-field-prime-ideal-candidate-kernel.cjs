@@ -44,10 +44,10 @@ for index in range(${samples}):
     assert current == digest
     native.append(elapsed)
 
-saved = prime_ideals._candidate_kernel.packed_prime_ideal_candidate_hnf_in_place
+saved = prime_ideals._packed_candidate_rows
 def rejected(*args):
-    return False
-prime_ideals._candidate_kernel.packed_prime_ideal_candidate_hnf_in_place = rejected
+    return None
+prime_ideals._packed_candidate_rows = rejected
 readable = []
 try:
     for index in range(${samples}):
@@ -55,7 +55,7 @@ try:
         assert current == digest
         readable.append(elapsed)
 finally:
-    prime_ideals._candidate_kernel.packed_prime_ideal_candidate_hnf_in_place = saved
+    prime_ideals._packed_candidate_rows = saved
 
 native.sort()
 readable.sort()
