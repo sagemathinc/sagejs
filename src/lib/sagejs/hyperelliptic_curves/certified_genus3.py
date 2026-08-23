@@ -216,7 +216,7 @@ def _prepared_order_certificates(
     }
 
 
-def _native_order_certificates(
+def _legacy_native_order_certificates(
     jacobian: Any,
     divisor: Any,
     base: int,
@@ -235,16 +235,6 @@ def _native_order_certificates(
     diagnostics, but never decide mathematical correctness.
     """
     del kind
-    prepared = _prepared_order_certificates(
-        jacobian,
-        divisor,
-        base,
-        stride,
-        count,
-        budgets,
-    )
-    if prepared is not None:
-        return prepared
     backend = runtime.flint_backend()
     capability_function = runtime.reflect.get(backend, "genus3JacobianCapabilities")
     search_function = runtime.reflect.get(backend, "genus3JacobianSearchProgression")
@@ -355,6 +345,24 @@ def _native_order_certificates(
         "annihilating_multiple": annihilating_multiple,
         "diagnostics": diagnostics,
     }
+
+
+def _native_order_certificates(
+    jacobian: Any,
+    divisor: Any,
+    base: int,
+    stride: int,
+    count: int,
+    kind: str,
+    budgets: Mapping[str, int],
+) -> Any:
+    """Use one-boundary FLINT BSGS, then the portable prepared fallback."""
+    legacy = _legacy_native_order_certificates(
+        jacobian, divisor, base, stride, count, kind, budgets
+    )
+    if legacy is not None:
+        return legacy
+    return _prepared_order_certificates(jacobian, divisor, base, stride, count, budgets)
 
 
 def _exact_integer(value: Any, name: str) -> int:

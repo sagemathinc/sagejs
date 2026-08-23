@@ -172,6 +172,7 @@ test("prepared genus-three BSGS uses packed progressions and exact factor strip"
       String.raw`
 from sagejs.hyperelliptic_curves.certified_genus3 import (
     _deterministic_elements,
+    _native_order_certificates,
     _prepared_order_certificates,
 )
 from sagejs.hyperelliptic_curves.group_structure import group_element_key
@@ -179,6 +180,16 @@ R = PolynomialRing(GF(5), "x")
 x = R.gen()
 J = HyperellipticCurve(x**7 + x + 1).jacobian()
 D = _deterministic_elements(J, 5, max_x_values=5, max_elements=1)[0]
+budgets = {
+    "max_trial_divisions": 1000,
+    "max_baby_steps": 1000,
+    "max_group_operations": 1000,
+}
+legacy = _native_order_certificates(J, D, 41, 7, 5, "jacobian", budgets)
+assert legacy["status"] == "found"
+assert legacy["annihilating_multiple"] == 55
+assert legacy["certificate"]["element_order"] == 55
+assert legacy["diagnostics"].get("preparedProgressions") is None
 
 class InstrumentedPrepared:
     def __init__(self):
@@ -217,11 +228,7 @@ answer = _prepared_order_certificates(
     41,
     7,
     5,
-    {
-        "max_trial_divisions": 1000,
-        "max_baby_steps": 1000,
-        "max_group_operations": 1000,
-    },
+    budgets,
 )
 assert answer["status"] == "found"
 assert answer["annihilating_multiple"] == 55
