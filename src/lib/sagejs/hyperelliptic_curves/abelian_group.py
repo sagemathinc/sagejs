@@ -8,6 +8,7 @@ import sagejs as sage
 import sagejs.runtime as runtime
 from sagejs.hyperelliptic_curves.group_structure import (
     GroupOperationBudget,
+    JacobianResourceLimitError,
     _cartesian_ranges,
     _linear_combinations,
     _prepared_context,
@@ -309,9 +310,40 @@ class JacobianAbelianMap:
             )
             if any(not product.is_zero() for product in products):
                 return False
-        for divisor, coordinates in self._inverse_coordinates.values():
-            if self(self._domain(coordinates)) != divisor:
+        exhaustive_table_verified = False
+        if len(self._inverse_coordinates) == int(self._domain.order()):
+            expected_coordinates = tuple(
+                _cartesian_ranges(
+                    [range(int(value)) for value in self._domain.invariants()]
+                )
+            )
+            rows = tuple(
+                tuple(int(value) for value in coordinates)
+                for _divisor, coordinates in self._inverse_coordinates.values()
+            )
+            if tuple(sorted(rows)) != tuple(sorted(expected_coordinates)):
                 return False
+            divisors = tuple(
+                divisor for divisor, _coordinates in self._inverse_coordinates.values()
+            )
+            if self._generators:
+                budget = GroupOperationBudget(
+                    self._max_group_operations,
+                    self._max_baby_steps,
+                    self._max_memory_bytes,
+                    "auto",
+                )
+                budget.reserve_table(len(rows))
+                rebuilt = _linear_combinations(rows, self._generators, budget)
+            else:
+                rebuilt = tuple(self._codomain.zero() for _row in rows)
+            if rebuilt != divisors:
+                return False
+            exhaustive_table_verified = True
+        else:
+            for divisor, coordinates in self._inverse_coordinates.values():
+                if self(self._domain(coordinates)) != divisor:
+                    return False
         if self._certificate is not None:
             if not self._codomain.verify_group_structure_certificate(
                 self._certificate,
@@ -320,7 +352,7 @@ class JacobianAbelianMap:
                 max_memory_bytes=self._max_memory_bytes,
             ):
                 return False
-        else:
+        elif not exhaustive_table_verified:
             budget = GroupOperationBudget(
                 self._max_group_operations,
                 self._max_baby_steps,
@@ -339,6 +371,97 @@ class JacobianAbelianMap:
             if product != self._domain.order():
                 return False
         return True
+
+
+def _tiny_exhaustive_basis_table(
+    jacobian: Any,
+    invariant_values: tuple[Any, ...],
+    known_order: int,
+    *,
+    max_elements: int,
+    max_candidates: int,
+    max_generator_tests: int,
+    budget: GroupOperationBudget,
+) -> tuple[tuple[Any, ...], list[tuple[Any, tuple[Any, ...]]]]:
+    """Derive a basis and every coordinate from a complete tiny group."""
+    elements = tuple(jacobian.points(max_elements, max_candidates))
+    if len(elements) != known_order:
+        raise ArithmeticError("the tiny exhaustive Jacobian has the wrong order")
+    if not invariant_values:
+        if known_order != 1:
+            raise ArithmeticError("a nontrivial group needs invariant generators")
+        return (), [(jacobian.zero(), ())]
+
+    reversed_invariants = tuple(reversed(tuple(int(v) for v in invariant_values)))
+    tests = 0
+
+    def extend(
+        position: int,
+        generators: tuple[Any, ...],
+        table: list[tuple[Any, tuple[Any, ...]]],
+    ) -> tuple[tuple[Any, ...], list[tuple[Any, tuple[Any, ...]]]] | None:
+        nonlocal tests
+        if position == len(reversed_invariants):
+            return generators, table
+        order = reversed_invariants[position]
+        table_keys = {budget.element_key(divisor) for divisor, _coordinates in table}
+        for candidate in elements:
+            if budget.element_key(candidate) in table_keys:
+                continue
+            tests += 1
+            if tests > max_generator_tests:
+                raise JacobianResourceLimitError(
+                    "tiny exhaustive basis exceeds max_generator_tests="
+                    + str(max_generator_tests),
+                    diagnostics=budget.diagnostics(),
+                )
+            seen: dict[Any, Any] = {}
+            extended = [(divisor, prefix + (sage.ZZ(0),)) for divisor, prefix in table]
+            independent = True
+            for divisor, _coordinates in table:
+                seen[budget.element_key(divisor)] = divisor
+            layer = tuple(divisor for divisor, _coordinates in table)
+            for scalar in range(1, order):
+                layer = budget.add_batch(layer, tuple(candidate for _divisor in table))
+                for divisor, (_old_divisor, prefix) in zip(layer, table, strict=True):
+                    key = budget.element_key(divisor)
+                    previous = seen.get(key)
+                    if previous is not None:
+                        if previous != divisor:
+                            raise ArithmeticError("canonical divisor keys collided")
+                        independent = False
+                        break
+                    seen[key] = divisor
+                    extended.append((divisor, prefix + (sage.ZZ(scalar),)))
+                if not independent:
+                    break
+            if independent:
+                closing = budget.add(layer[0], candidate)
+                if not closing.is_zero():
+                    independent = False
+            if not independent or len(extended) != len(table) * order:
+                continue
+            answer = extend(
+                position + 1,
+                generators + (candidate,),
+                extended,
+            )
+            if answer is not None:
+                return answer
+        return None
+
+    answer = extend(0, (), [(jacobian.zero(), ())])
+    if answer is None:
+        raise ArithmeticError("the exhaustive group has no basis of the claimed type")
+    reversed_generators, reversed_table = answer
+    if len(reversed_table) != known_order:
+        raise ArithmeticError("the tiny exhaustive coordinate table has wrong size")
+    generators = tuple(reversed(reversed_generators))
+    coordinate_table = [
+        (divisor, tuple(reversed(coordinates)))
+        for divisor, coordinates in reversed_table
+    ]
+    return generators, coordinate_table
 
 
 def certified_abelian_group(
@@ -367,30 +490,19 @@ def certified_abelian_group(
         if factorization is None
         else validate_factorization(known_order, factorization)
     )
-    result = jacobian._generic_group_basis(
-        factors,
-        max_random_elements=max_random_elements,
-        max_group_operations=max_group_operations,
-        max_baby_steps=max_baby_steps,
-        max_memory_bytes=max_memory_bytes,
-        seed=seed,
-        scalar_algorithm="auto",
-    )
-    if tuple(result["invariants"]) != invariant_values:
-        raise ArithmeticError("the certified basis disagrees with the structure")
-    generators = tuple(result["generators"])
-    certificate = jacobian._group_certificate_from_basis(result)
     coordinate_table: list[tuple[Any, tuple[Any, ...]]] = [
         (
             jacobian.zero(),
             tuple(sage.ZZ(0) for _value in invariant_values),
         )
     ]
+    certificate = None
+    exhaustive_table_proved = False
     # For genuinely tiny groups, evaluate every certified basis coordinate in
     # one prepared batch. Re-solving the same vector DLP independently for
     # every enumerated divisor dominates explicit-map construction even for
     # the 32-element rank-three fixture.
-    if known_order <= min(max_elements, 512):
+    if known_order <= min(max_elements, 64):
         budget = GroupOperationBudget(
             max_group_operations,
             max_baby_steps,
@@ -398,24 +510,30 @@ def certified_abelian_group(
             "auto",
         )
         budget.reserve_table(known_order)
-        coordinate_rows = tuple(
-            _cartesian_ranges([range(int(value)) for value in invariant_values])
+        generators, coordinate_table = _tiny_exhaustive_basis_table(
+            jacobian,
+            invariant_values,
+            known_order,
+            max_elements=max_elements,
+            max_candidates=max_candidates,
+            max_generator_tests=max_generator_tests,
+            budget=budget,
         )
-        divisors = _linear_combinations(coordinate_rows, generators, budget)
-        seen: dict[Any, Any] = {}
-        coordinate_table = []
-        for divisor, coordinates in zip(divisors, coordinate_rows, strict=True):
-            key = budget.element_key(divisor)
-            if key in seen:
-                if seen[key] != divisor:
-                    raise ArithmeticError("canonical divisor keys collided")
-                raise ArithmeticError("the certified basis coordinates are dependent")
-            seen[key] = divisor
-            coordinate_table.append(
-                (divisor, tuple(sage.ZZ(value) for value in coordinates))
-            )
-        if len(coordinate_table) != known_order:
-            raise ArithmeticError("the tiny-group coordinate table has wrong size")
+        exhaustive_table_proved = True
+    else:
+        result = jacobian._generic_group_basis(
+            factors,
+            max_random_elements=max_random_elements,
+            max_group_operations=max_group_operations,
+            max_baby_steps=max_baby_steps,
+            max_memory_bytes=max_memory_bytes,
+            seed=seed,
+            scalar_algorithm="auto",
+        )
+        if tuple(result["invariants"]) != invariant_values:
+            raise ArithmeticError("the certified basis disagrees with the structure")
+        generators = tuple(result["generators"])
+        certificate = jacobian._group_certificate_from_basis(result)
     homomorphism = JacobianAbelianMap(
         group,
         jacobian,
@@ -427,6 +545,11 @@ def certified_abelian_group(
         max_baby_steps=max_baby_steps,
         max_memory_bytes=max_memory_bytes,
     )
-    if not homomorphism.verify():
+    # The tiny helper has already built every coordinate by exact group
+    # addition, checked that all canonical divisor keys are distinct, proved
+    # each generator's exact claimed order, and reached the known group order.
+    # Keep `homomorphism.verify()` available as an independent replay, but do
+    # not repeat that full replay during construction.
+    if not exhaustive_table_proved and not homomorphism.verify():
         raise ArithmeticError("the certified abelian-group map failed verification")
     return group, homomorphism
