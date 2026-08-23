@@ -26,7 +26,7 @@ jobs:
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       SAGEJS_NATIVE_SOURCE_MIRROR_DIR: /tmp/sagejs-native-source-mirror
-      SAGEJS_PARALLEL_NATIVE_CACHE: ${{ runner.temp }}/sagejs-native-oracle-cache
+      SAGEJS_PARALLEL_NATIVE_CACHE: /tmp/sagejs-native-oracle-cache
     steps:
       - uses: actions/checkout@v7
         with:

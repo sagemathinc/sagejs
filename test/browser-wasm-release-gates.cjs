@@ -106,6 +106,7 @@ test("release CI shards performance and reuses only authenticated native cache e
   );
   assert.match(workflow, /node scripts\/native-oracle-cache-key\.cjs/);
   assert.match(workflow, /SAGEJS_PARALLEL_NATIVE_CACHE/);
+  assert.doesNotMatch(workflow, /\$\{\{ runner\.temp \}\}/);
   assert.match(workflow, /pnpm parallel:cache -- prepare/);
   assert.doesNotMatch(workflow, /pnpm bootstrap/);
   assert.match(workflow, /browser-parity:/);
