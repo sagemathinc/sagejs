@@ -1,0 +1,1468 @@
+{
+  "schema": "sagejs.hyperelliptic-cross-platform-acceptance.v1",
+  "generated_at_utc": "2026-08-23T15:52:25.326Z",
+  "host": {
+    "hostname": "cocalc-vm-e1d2fb8e3de341f781653364",
+    "os_type": "Windows_NT",
+    "platform": "win32",
+    "os_release": "10.0.20348",
+    "architecture": "x64",
+    "cpu_models": [
+      "AMD EPYC 7B13"
+    ],
+    "logical_cpus": 4,
+    "total_memory_bytes": 34355912704,
+    "free_memory_bytes_before": 30959214592,
+    "node": "v26.5.1",
+    "preflight": {
+      "uptime": {
+        "command": [
+          "powershell",
+          "-NoProfile",
+          "-Command",
+          "(Get-Date)-(gcim Win32_OperatingSystem).LastBootUpTime"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "Days              : 0\r\nHours             : 8\r\nMinutes           : 5\r\nSeconds           : 26\r\nMilliseconds      : 92\r\nTicks             : 291260923561\r\nTotalDays         : 0.337107550417824\r\nTotalHours        : 8.09058121002778\r\nTotalMinutes      : 485.434872601667\r\nTotalSeconds      : 29126.0923561\r\nTotalMilliseconds : 29126092.3561",
+        "stderr": ""
+      },
+      "git_status": {
+        "command": [
+          "git",
+          "status",
+          "--short",
+          "--branch"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "## HEAD (no branch)",
+        "stderr": ""
+      },
+      "git_commit": {
+        "command": [
+          "git",
+          "rev-parse",
+          "HEAD"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "168f850407f3f685545932b1b770f40b42c74ad6",
+        "stderr": ""
+      },
+      "compiler": {
+        "command": [
+          "where",
+          "cl.exe"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "C:\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe",
+        "stderr": ""
+      },
+      "system": {
+        "command": [
+          "powershell",
+          "-NoProfile",
+          "-Command",
+          "Get-CimInstance Win32_OperatingSystem | Format-List *; Get-CimInstance Win32_Processor | Format-List *"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "Status                                    : OK\r\nName                                      : Microsoft Windows Server 2022 \r\n                                            Datacenter|C:\\Windows|\\Device\\Harddisk0\\Partition3\r\nFreePhysicalMemory                        : 30201636\r\nFreeSpaceInPagingFiles                    : 1048576\r\nFreeVirtualMemory                         : 31610940\r\nCaption                                   : Microsoft Windows Server 2022 Datacenter\r\nDescription                               : \r\nInstallDate                               : 8/14/2026 7:52:35 AM\r\nCreationClassName                         : Win32_OperatingSystem\r\nCSCreationClassName                       : Win32_ComputerSystem\r\nCSName                                    : COCALC-VM-E1D2F\r\nCurrentTimeZone                           : 0\r\nDistributed                               : False\r\nLastBootUpTime                            : 8/23/2026 7:46:59 AM\r\nLocalDateTime                             : 8/23/2026 3:52:26 PM\r\nMaxNumberOfProcesses                      : 4294967295\r\nMaxProcessMemorySize                      : 137438953344\r\nNumberOfLicensedUsers                     : 0\r\nNumberOfProcesses                         : 95\r\nNumberOfUsers                             : 0\r\nOSType                                    : 18\r\nOtherTypeDescription                      : \r\nSizeStoredInPagingFiles                   : 1048576\r\nTotalSwapSpaceSize                        : \r\nTotalVirtualMemorySize                    : 34599272\r\nTotalVisibleMemorySize                    : 33550696\r\nVersion                                   : 10.0.20348\r\nBootDevice                                : \\Device\\HarddiskVolume2\r\nBuildNumber                               : 20348\r\nBuildType                                 : Multiprocessor Free\r\nCodeSet                                   : 1252\r\nCountryCode                               : 1\r\nCSDVersion                                : \r\nDataExecutionPrevention_32BitApplications : True\r\nDataExecutionPrevention_Available         : True\r\nDataExecutionPrevention_Drivers           : True\r\nDataExecutionPrevention_SupportPolicy     : 3\r\nDebug                                     : False\r\nEncryptionLevel                           : 256\r\nForegroundApplicationBoost                : 2\r\nLargeSystemCache                          : \r\nLocale                                    : 0409\r\nManufacturer                              : Microsoft Corporation\r\nMUILanguages                              : {en-US}\r\nOperatingSystemSKU                        : 8\r\nOrganization                              : \r\nOSArchitecture                            : 64-bit\r\nOSLanguage                                : 1033\r\nOSProductSuite                            : 400\r\nPAEEnabled                                : \r\nPlusProductID                             : \r\nPlusVersionNumber                         : \r\nPortableOperatingSystem                   : False\r\nPrimary                                   : True\r\nProductType                               : 3\r\nRegisteredUser                            : \r\nSerialNumber                              : 00454-60000-00001-AA732\r\nServicePackMajorVersion                   : 0\r\nServicePackMinorVersion                   : 0\r\nSuiteMask                                 : 400\r\nSystemDevice                              : \\Device\\HarddiskVolume3\r\nSystemDirectory                           : C:\\Windows\\system32\r\nSystemDrive                               : C:\r\nWindowsDirectory                          : C:\\Windows\r\nPSComputerName                            : \r\nCimClass                                  : root/cimv2:Win32_OperatingSystem\r\nCimInstanceProperties                     : {Caption, Description, InstallDate, Name...}\r\nCimSystemProperties                       : Microsoft.Management.Infrastructure.CimSystemProperties\r\n\r\n\r\n\r\n\r\n\r\nAvailability                            : 3\r\nCpuStatus                               : 1\r\nCurrentVoltage                          : \r\nDeviceID                                : CPU0\r\nErrorCleared                            : \r\nErrorDescription                        : \r\nLastErrorCode                           : \r\nLoadPercentage                          : 8\r\nStatus                                  : OK\r\nStatusInfo                              : 3\r\nAddressWidth                            : 64\r\nDataWidth                               : 64\r\nExtClock                                : \r\nL2CacheSize                             : \r\nL2CacheSpeed                            : \r\nMaxClockSpeed                           : 2450\r\nPowerManagementSupported                : False\r\nProcessorType                           : 3\r\nRevision                                : 256\r\nSocketDesignation                       : CPU 1\r\nVersion                                 : Model 1, Stepping 0\r\nVoltageCaps                             : 0\r\nCaption                                 : AMD64 Family 25 Model 1 Stepping 0\r\nDescription                             : AMD64 Family 25 Model 1 Stepping 0\r\nInstallDate                             : \r\nName                                    : AMD EPYC 7B13\r\nConfigManagerErrorCode                  : \r\nConfigManagerUserConfig                 : \r\nCreationClassName                       : Win32_Processor\r\nPNPDeviceID                             : \r\nPowerManagementCapabilities             : \r\nSystemCreationClassName                 : Win32_ComputerSystem\r\nSystemName                              : COCALC-VM-E1D2F\r\nCurrentClockSpeed                       : 2450\r\nFamily                                  : 1\r\nOtherFamilyDescription                  : \r\nRole                                    : CPU\r\nStepping                                : 0\r\nUniqueId                                : \r\nUpgradeMethod                           : 1\r\nArchitecture                            : 9\r\nAssetTag                                : \r\nCharacteristics                         : \r\nL3CacheSize                             : 0\r\nL3CacheSpeed                            : 0\r\nLevel                                   : 25\r\nManufacturer                            : AuthenticAMD\r\nNumberOfCores                           : 2\r\nNumberOfEnabledCore                     : \r\nNumberOfLogicalProcessors               : 4\r\nPartNumber                              : \r\nProcessorId                             : 178BFBFF00A00F10\r\nSecondLevelAddressTranslationExtensions : False\r\nSerialNumber                            : \r\nThreadCount                             : \r\nVirtualizationFirmwareEnabled           : True\r\nVMMonitorModeExtensions                 : False\r\nPSComputerName                          : \r\nCimClass                                : root/cimv2:Win32_Processor\r\nCimInstanceProperties                   : {Caption, Description, InstallDate, Name...}\r\nCimSystemProperties                     : Microsoft.Management.Infrastructure.CimSystemProperties",
+        "stderr": ""
+      },
+      "processes": {
+        "command": [
+          "powershell",
+          "-NoProfile",
+          "-Command",
+          "Get-Process | Sort-Object CPU -Descending | Select-Object -First 25 Id,CPU,WorkingSet,ProcessName | Format-Table -AutoSize"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "Id         CPU WorkingSet ProcessName            \r\n  --         --- ---------- -----------            \r\n3096 1052.765625  414801920 MsMpEng                \r\n   4    40.03125     131072 System                 \r\n 732    17.59375   22056960 lsass                  \r\n 960   14.671875   11644928 svchost                \r\n5276   13.640625   27594752 CorePlugin             \r\n 956    10.28125   75124736 GCEWindowsAgentManager \r\n 508     9.09375    6787072 csrss                  \r\n1052     6.90625   39354368 google_osconfig_agent  \r\n 744    6.890625   69771264 GCEWindowsCompatManager\r\n1232    5.515625    9265152 svchost                \r\n1176         5.5   19673088 svchost                \r\n 712    4.421875    9719808 services               \r\n5172      3.1875    8421376 sshd                   \r\n 688     2.59375   17211392 svchost                \r\n4796     1.96875  198770688 node                   \r\n2812      1.8125   15790080 svchost                \r\n1408    1.765625    8310784 svchost                \r\n 116    1.578125   88633344 Registry               \r\n2820    1.484375   33611776 svchost                \r\n3084     1.40625   19304448 svchost                \r\n2080    1.390625    8904704 svchost                \r\n2092     1.34375    8036352 svchost                \r\n1516     0.90625   12578816 svchost                \r\n1768    0.703125   16523264 svchost                \r\n2116     0.53125   18837504 svchost",
+        "stderr": ""
+      }
+    }
+  },
+  "repository": {
+    "root": "C:\\Users\\user\\sagejs-hyp-cross-168f8504",
+    "commit": "168f850407f3f685545932b1b770f40b42c74ad6",
+    "status": "",
+    "harness_sha256": "b81a08b591d94191c23fedb6ea93c576251f46620b16732cab1087ca06c47669",
+    "build_receipt_sha256": "6e634793223c29eea3e32e802f77432f427c6a890072fafc2b8ed752804ca685",
+    "source_sha256": {
+      "src/lib/sagejs/hyperelliptic_curves/frobenius.py": "375b310fd1c93a5d0d239503238a7914160ab3b83899c35ed418754c674f0aeb",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py": "17b3c2e6ec43937dc3a6a64add924734d1ba9079d645f10a1727653f8fdf3e8c",
+      "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_formulas.py": "762394ae727216b4625b7c539ef43799e5abfa8ec7d7f9869c1d6d140b45f0cc",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian.py": "25ca4a5e913a807f672d77e3ebd58871a8f4cd6063c4d86dae4713890626ebc9",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py": "14422cc2596704865aa37f8a568b05fee5e6cb9d154ac7e2b5c5d3d2bb634055",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py": "f9daf47fc8c37b353becb648aff151e96e3ee8cba489ef2fcb127bb6c4e502db",
+      "packages/flint/src/hyperelliptic/smalljac.c": "a1033120ed51d346771b3abec6b67c70b3ec96e757451b5a642e7aef2fae7058",
+      "packages/flint/src/addon.h": "214cc046b5f664be73917f2c5dee55eadb78a8b285e49667d37370e08cf4dd1e"
+    }
+  },
+  "configuration": {
+    "limits": [
+      10000,
+      100000
+    ],
+    "kummer_batch": 4096,
+    "cantor_add_batch": 1000,
+    "cantor_scalar_batch": 64,
+    "cantor_scalar_bits": 256,
+    "cantor_progression_batch": 1000,
+    "cantor_scalar_repeat": 1,
+    "repeat": 5,
+    "cache_root": "C:\\Users\\user\\AppData\\Local\\Temp\\sagejs-hyp-cross-windows-168f8504",
+    "algorithm_environment": {
+      "SAGEJS_NATIVE_MODE": null,
+      "SAGEJS_NATIVE_DISABLE": null,
+      "SAGEJS_NATIVE_REQUIRED": null,
+      "SAGEJS_NATIVE_AUTOLOAD": null,
+      "SAGEJS_NATIVE_CACHE_DIR": null,
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1"
+    }
+  },
+  "native_compilation": {
+    "wall_ms": 8295.7807,
+    "kummer": {
+      "cache_key": "58627c16c22159102a3264ea437f7acaf8068d5a6747218cff784082fc9c3f6f",
+      "cached": false,
+      "source_hash": "17b3c2e6ec43937dc3a6a64add924734d1ba9079d645f10a1727653f8fdf3e8c",
+      "native_abi": 22,
+      "host_isolation": {
+        "isolated": true,
+        "boundary": "packed-c-abi",
+        "hostAbiVersion": 2,
+        "hostCallbacks": 0,
+        "forbiddenApis": [
+          "Node-API",
+          "Node header",
+          "CPython API",
+          "JavaScript engine API"
+        ],
+        "nativeDependencies": [
+          "libc",
+          "libm",
+          "FLINT"
+        ],
+        "functions": [
+          "genus2_kummer_project_batch",
+          "genus2_kummer_double_batch",
+          "genus2_kummer_degenerate_pseudo_add_batch"
+        ],
+        "kernelKinds": [
+          "prime-field-source"
+        ]
+      },
+      "source_bounds_checked": true,
+      "module_path": "C:\\Users\\user\\AppData\\Local\\Temp\\sagejs-hyp-cross-windows-168f8504\\58627c16c22159102a3264ea437f7acaf8068d5a6747218cff784082fc9c3f6f\\index.cjs",
+      "manifest_sha256": "6c24bb1ea79b19c8d3c12d8d6d39b280bc930cafe8088ae5d843cec1cf806295",
+      "core_source_sha256": "b7c4e78a8be496cd9d4083274eeb44b49d445f8b1ac90d407f974b8b8ebbc24b"
+    },
+    "cantor": {
+      "cache_key": "6ae1228be8a94dce56cc4e84f5836695455e87ca23ab9b40b96ea9eb97b85496",
+      "cached": false,
+      "source_hash": "f9daf47fc8c37b353becb648aff151e96e3ee8cba489ef2fcb127bb6c4e502db",
+      "native_abi": 22,
+      "host_isolation": {
+        "isolated": true,
+        "boundary": "packed-c-abi",
+        "hostAbiVersion": 2,
+        "hostCallbacks": 0,
+        "forbiddenApis": [
+          "Node-API",
+          "Node header",
+          "CPython API",
+          "JavaScript engine API"
+        ],
+        "nativeDependencies": [
+          "libc",
+          "libm",
+          "GMP",
+          "FLINT"
+        ],
+        "functions": [
+          "packed_cantor_copy_batch",
+          "packed_cantor_add_batch",
+          "packed_cantor_progression_batch",
+          "packed_cantor_scalar_batch",
+          "packed_cantor_search_progression",
+          "packed_cantor_search_progressions",
+          "packed_cantor_scalar_many_primes",
+          "_cantor_add_one",
+          "_cantor_scalar_one",
+          "_cantor_negate_one",
+          "_row_copy",
+          "_row_equal",
+          "_row_hash",
+          "_scalar_bit_length",
+          "_scalar_operation_count",
+          "_search_record",
+          "_multi_search_record",
+          "_divexact",
+          "_pack_row",
+          "_poly_add",
+          "_poly_copy",
+          "_poly_divrem",
+          "_poly_is_one",
+          "_poly_mul",
+          "_poly_sub",
+          "_poly_xgcd",
+          "_reduce",
+          "_unpack_row",
+          "_poly_clear",
+          "_poly_scale"
+        ],
+        "kernelKinds": [
+          "prime-field-source",
+          "integer"
+        ]
+      },
+      "source_bounds_checked": true,
+      "module_path": "C:\\Users\\user\\AppData\\Local\\Temp\\sagejs-hyp-cross-windows-168f8504\\6ae1228be8a94dce56cc4e84f5836695455e87ca23ab9b40b96ea9eb97b85496\\index.cjs",
+      "manifest_sha256": "06c2b1389e4804e78d58a40703409773c2fdf130e715f929873403cbf6debf50",
+      "core_source_sha256": "cf2f2e801dbfe8020670c6c6d619a5129d605b477d2e6a69473f02dc3255d998"
+    }
+  },
+  "modes": {
+    "dynamic": {
+      "mode": "dynamic",
+      "runtime_native_mode": "dynamic",
+      "session_ready_ms": 268.3359,
+      "process_start_rss_bytes": 133570560,
+      "local_factors": [
+        {
+          "curve": "y^2=x^5+x+1",
+          "start": 3,
+          "stop": 10000,
+          "packed_backend": "smalljac-native-addon",
+          "packed_rows": 1228,
+          "packed_exact_sha256": "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d",
+          "packed": {
+            "wall_ms": {
+              "count": 5,
+              "min": 45.06740000000002,
+              "median": 45.188499999999976,
+              "max": 45.813499999999976,
+              "mad": 0.07749999999998636
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 31,
+              "median": 47,
+              "max": 47,
+              "mad": 0
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 0,
+              "median": 0,
+              "max": 0,
+              "mad": 0
+            },
+            "peak_rss_bytes": 207642624
+          },
+          "coefficient_rows_exact_sha256": "f25885d7ff7194130ef32d7528a389211e490c49763c27f9af411761b585fea6",
+          "coefficient_exact_checksum": "(1225, 5736361, 1070, 5746424)",
+          "coefficients": {
+            "wall_ms": {
+              "count": 5,
+              "min": 204.51179999999977,
+              "median": 213.12800000000016,
+              "max": 237.64369999999985,
+              "mad": 8.61620000000039
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 203,
+              "median": 265,
+              "max": 313,
+              "mad": 46
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 0,
+              "median": 0,
+              "max": 0,
+              "mad": 0
+            },
+            "peak_rss_bytes": 241713152,
+            "arithmetic_ms": {
+              "count": 5,
+              "min": 170.15910148620605,
+              "median": 171.4916229248047,
+              "max": 197.32379913330078,
+              "mad": 1.3325214385986328
+            }
+          }
+        },
+        {
+          "curve": "y^2=x^5+x+1",
+          "start": 3,
+          "stop": 100000,
+          "packed_backend": "smalljac-native-addon",
+          "packed_rows": 9591,
+          "packed_exact_sha256": "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894",
+          "packed": {
+            "wall_ms": {
+              "count": 5,
+              "min": 1674.1554999999998,
+              "median": 1700.1884,
+              "max": 1791.5378999999994,
+              "mad": 26.032900000000154
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 1656,
+              "median": 1704,
+              "max": 1781,
+              "mad": 30
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 0,
+              "median": 0,
+              "max": 16,
+              "mad": 0
+            },
+            "peak_rss_bytes": 243863552
+          },
+          "coefficient_rows_exact_sha256": "a501f7d70e91e32338122f08f89281d301d844b3b143c3af159d74d7d987cb9f",
+          "coefficient_exact_checksum": "(9588, 454396502, 31923, 459539912)",
+          "coefficients": {
+            "wall_ms": {
+              "count": 5,
+              "min": 2659.1504000000023,
+              "median": 2694.8007,
+              "max": 2871.8017,
+              "mad": 31.624299999999494
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 2719,
+              "median": 2734,
+              "max": 2922,
+              "mad": 15
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 0,
+              "median": 0,
+              "max": 16,
+              "mad": 0
+            },
+            "peak_rss_bytes": 292855808,
+            "arithmetic_ms": {
+              "count": 5,
+              "min": 2598.0241298675537,
+              "median": 2653.0067920684814,
+              "max": 2836.0347747802734,
+              "mad": 22.908449172973633
+            }
+          }
+        }
+      ],
+      "kummer": {
+        "curve": "y^2+h*y=f; f=[1,2,3,4,5,1], h=[2,0,3]",
+        "prime": 4294967291,
+        "batch_size": 4096,
+        "capability": "(False, 'dynamic', 4096, ('genus2-kummer-prime.v1', 4294967291, (1, 2, 3, 4, 5, 1, 0, 0), (2, 0, 3, 0)))",
+        "object_cold": {
+          "wall_ms": 194.71150000000125,
+          "cpu_user_ms": 219,
+          "cpu_system_ms": 16,
+          "rss_bytes": 296357888
+        },
+        "exact_result_sha256": "b87da12953daa2d1170a8e3f6ea6da10f9c42e90163756e3dd0c2a07504d329c",
+        "exact_checksum": "(4096, 0, 26137496198570)",
+        "doubling": {
+          "wall_ms": {
+            "count": 5,
+            "min": 2529.4052999999985,
+            "median": 2541.330399999999,
+            "max": 2703.875200000002,
+            "mad": 11.925100000000384
+          },
+          "cpu_user_ms": {
+            "count": 5,
+            "min": 2531,
+            "median": 2578,
+            "max": 2703,
+            "mad": 47
+          },
+          "cpu_system_ms": {
+            "count": 5,
+            "min": 0,
+            "median": 0,
+            "max": 16,
+            "mad": 0
+          },
+          "peak_rss_bytes": 292900864,
+          "arithmetic_ms": {
+            "count": 5,
+            "min": 2490.9920692443848,
+            "median": 2503.3047199249268,
+            "max": 2668.437719345093,
+            "mad": 12.312650680541992
+          }
+        }
+      },
+      "cantor": {
+        "schema": "sagejs.hyperelliptic.packed-mumford.odd.v1",
+        "capability": "(False, 24, PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 2, 'prime': 3, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9dd3a52eecccdd8eaf0528913862dcf6650ecc0a1ae0143b3ef72ffd4ec56716', 'search_available': False, 'multi_search_available': False}), [(2, PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 2, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234', 'search_available': False, 'multi_search_available': False})), (3, PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 3, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279', 'search_available': False, 'multi_search_available': False}))])",
+        "object_cold": {
+          "wall_ms": 1656.6152000000002,
+          "cpu_user_ms": 1859,
+          "cpu_system_ms": 46,
+          "rss_bytes": 298815488
+        },
+        "tiny_prime": 3,
+        "tiny_exact_sha256": "cdaf7bf823e523d62172609e5aa8f8b2a8f0c53fa0dc30d2d261edab9c567913",
+        "cases": [
+          {
+            "genus": 2,
+            "prime": 1009,
+            "capability": "PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 2, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234', 'search_available': False, 'multi_search_available': False})",
+            "add_batch_items": 1000,
+            "add_exact_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+            "add_exact_checksum": "(1000, '52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176')",
+            "add_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 10395.313500000004,
+                "median": 10784.530800000008,
+                "max": 11089.440699999992,
+                "mad": 227.20720000000438
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 10407,
+                "median": 10844,
+                "max": 11234,
+                "mad": 219
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 16,
+                "max": 31,
+                "mad": 15
+              },
+              "peak_rss_bytes": 330960896,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 5315.782070159912,
+                "median": 5458.932638168335,
+                "max": 5514.345645904541,
+                "mad": 55.413007736206055
+              }
+            },
+            "add_materialized_exact_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+            "add_materialized_exact_checksum": "(1000, '52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176')",
+            "add_materialized_batch": null,
+            "scalar_batch_items": 64,
+            "scalar_bits": 256,
+            "scalar_exact_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+            "scalar_exact_checksum": "(64, 'ec3863f93ddb2df46f326eb061c662086d076db67f5d7d80d47e89b67533d0ee')",
+            "scalar_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 89425.51849999998,
+                "median": 89425.51849999998,
+                "max": 89425.51849999998,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 90031,
+                "median": 90031,
+                "max": 90031,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 78,
+                "median": 78,
+                "max": 78,
+                "mad": 0
+              },
+              "peak_rss_bytes": 329777152,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 89070.61314582825,
+                "median": 89070.61314582825,
+                "max": 89070.61314582825,
+                "mad": 0
+              }
+            },
+            "scalar_materialized_exact_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+            "scalar_materialized_exact_checksum": "(64, 'ec3863f93ddb2df46f326eb061c662086d076db67f5d7d80d47e89b67533d0ee')",
+            "scalar_materialized_batch": null,
+            "progression_items": 1000,
+            "progression_packed": true,
+            "progression_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 5832.11050000001,
+                "median": 5853.428400000004,
+                "max": 6119.4856,
+                "mad": 21.31789999999455
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 5843,
+                "median": 6015,
+                "max": 6250,
+                "mad": 17
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0,
+                "max": 32,
+                "mad": 0
+              },
+              "peak_rss_bytes": 320446464,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 5803.9045333862305,
+                "median": 5813.903093338013,
+                "max": 6070.027828216553,
+                "mad": 9.998559951782227
+              }
+            },
+            "progression_retained_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_retained_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_retained_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 4916.189599999998,
+                "median": 4977.078300000008,
+                "max": 5263.517099999997,
+                "mad": 60.88870000001043
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 4922,
+                "median": 5141,
+                "max": 5219,
+                "mad": 77
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0,
+                "max": 15,
+                "mad": 0
+              },
+              "peak_rss_bytes": 320454656,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 4893.943786621094,
+                "median": 4922.362327575684,
+                "max": 5208.865165710449,
+                "mad": 28.418540954589844
+              }
+            },
+            "progression_materialized_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_materialized_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_materialized_batch": null,
+            "materialization_comparison": "not-applicable-reference-is-already-materialized",
+            "representation_state": "(1000, 1000, 64, 1, 1000, 1000)"
+          },
+          {
+            "genus": 3,
+            "prime": 1009,
+            "capability": "PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 3, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279', 'search_available': False, 'multi_search_available': False})",
+            "add_batch_items": 1000,
+            "add_exact_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+            "add_exact_checksum": "(1000, '815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323')",
+            "add_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 12858.776400000032,
+                "median": 12944.807100000035,
+                "max": 13073.831900000048,
+                "mad": 86.03070000000298
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 12906,
+                "median": 12984,
+                "max": 13110,
+                "mad": 63
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0,
+                "max": 47,
+                "mad": 0
+              },
+              "peak_rss_bytes": 445186048,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 5223.531007766724,
+                "median": 5353.0871868133545,
+                "max": 5550.755500793457,
+                "mad": 111.07063293457031
+              }
+            },
+            "add_materialized_exact_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+            "add_materialized_exact_checksum": "(1000, '815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323')",
+            "add_materialized_batch": null,
+            "scalar_batch_items": 64,
+            "scalar_bits": 256,
+            "scalar_exact_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+            "scalar_exact_checksum": "(64, '2ee1c3546b80765c8b81a9f305397f9d2d86bd63057890ea0969d5a98e48002a')",
+            "scalar_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 130038.74330000003,
+                "median": 130038.74330000003,
+                "max": 130038.74330000003,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 130735,
+                "median": 130735,
+                "max": 130735,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 16,
+                "median": 16,
+                "max": 16,
+                "mad": 0
+              },
+              "peak_rss_bytes": 327086080,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 129529.67119216919,
+                "median": 129529.67119216919,
+                "max": 129529.67119216919,
+                "mad": 0
+              }
+            },
+            "scalar_materialized_exact_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+            "scalar_materialized_exact_checksum": "(64, '2ee1c3546b80765c8b81a9f305397f9d2d86bd63057890ea0969d5a98e48002a')",
+            "scalar_materialized_batch": null,
+            "progression_items": 1000,
+            "progression_packed": true,
+            "progression_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 6136.07090000005,
+                "median": 6205.728499999968,
+                "max": 6286.96649999998,
+                "mad": 18.154299999936484
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 6156,
+                "median": 6219,
+                "max": 6375,
+                "mad": 46
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 16,
+                "max": 31,
+                "mad": 15
+              },
+              "peak_rss_bytes": 467066880,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 6117.043018341064,
+                "median": 6187.109708786011,
+                "max": 6246.612787246704,
+                "mad": 47.40142822265625
+              }
+            },
+            "progression_retained_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_retained_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_retained_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 5117.401000000013,
+                "median": 5210.88400000002,
+                "max": 5560.125,
+                "mad": 88.69949999998789
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 5125,
+                "median": 5219,
+                "max": 5547,
+                "mad": 94
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0,
+                "max": 15,
+                "mad": 0
+              },
+              "peak_rss_bytes": 468234240,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 5098.141431808472,
+                "median": 5190.881252288818,
+                "max": 5534.604072570801,
+                "mad": 54.976463317871094
+              }
+            },
+            "progression_materialized_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_materialized_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_materialized_batch": null,
+            "materialization_comparison": "not-applicable-reference-is-already-materialized",
+            "representation_state": "(1000, 1000, 64, 1, 1000, 1000)"
+          }
+        ]
+      },
+      "curve_object_cold": {
+        "wall_ms": 170.79199999999997,
+        "cpu_user_ms": 172,
+        "cpu_system_ms": 0,
+        "rss_bytes": 166002688
+      },
+      "process_cold_first_answer_ms": 496.1861,
+      "process_end_rss_bytes": 262500352,
+      "worker_total_ms": 542631.3128000001,
+      "stderr": ""
+    },
+    "native": {
+      "mode": "native",
+      "runtime_native_mode": "auto",
+      "session_ready_ms": 277.3743,
+      "process_start_rss_bytes": 139239424,
+      "local_factors": [
+        {
+          "curve": "y^2=x^5+x+1",
+          "start": 3,
+          "stop": 10000,
+          "packed_backend": "smalljac-native-addon",
+          "packed_rows": 1228,
+          "packed_exact_sha256": "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d",
+          "packed": {
+            "wall_ms": {
+              "count": 5,
+              "min": 46.96429999999998,
+              "median": 47.01360000000011,
+              "max": 47.36670000000004,
+              "mad": 0.04930000000013024
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 47,
+              "median": 47,
+              "max": 47,
+              "mad": 0
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 0,
+              "median": 0,
+              "max": 0,
+              "mad": 0
+            },
+            "peak_rss_bytes": 212910080
+          },
+          "coefficient_rows_exact_sha256": "f25885d7ff7194130ef32d7528a389211e490c49763c27f9af411761b585fea6",
+          "coefficient_exact_checksum": "(1225, 5736361, 1070, 5746424)",
+          "coefficients": {
+            "wall_ms": {
+              "count": 5,
+              "min": 210.4976999999999,
+              "median": 218.0405999999998,
+              "max": 240.78449999999998,
+              "mad": 5.470899999999801
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 219,
+              "median": 234,
+              "max": 312,
+              "mad": 15
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 0,
+              "median": 0,
+              "max": 16,
+              "mad": 0
+            },
+            "peak_rss_bytes": 247902208,
+            "arithmetic_ms": {
+              "count": 5,
+              "min": 175.17828941345215,
+              "median": 182.63721466064453,
+              "max": 198.06909561157227,
+              "mad": 4.353523254394531
+            }
+          }
+        },
+        {
+          "curve": "y^2=x^5+x+1",
+          "start": 3,
+          "stop": 100000,
+          "packed_backend": "smalljac-native-addon",
+          "packed_rows": 9591,
+          "packed_exact_sha256": "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894",
+          "packed": {
+            "wall_ms": {
+              "count": 5,
+              "min": 1674.9166999999998,
+              "median": 1689.0132000000003,
+              "max": 1753.5915999999997,
+              "mad": 14.09650000000056
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 1672,
+              "median": 1688,
+              "max": 1750,
+              "mad": 16
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 0,
+              "median": 0,
+              "max": 0,
+              "mad": 0
+            },
+            "peak_rss_bytes": 249954304
+          },
+          "coefficient_rows_exact_sha256": "a501f7d70e91e32338122f08f89281d301d844b3b143c3af159d74d7d987cb9f",
+          "coefficient_exact_checksum": "(9588, 454396502, 31923, 459539912)",
+          "coefficients": {
+            "wall_ms": {
+              "count": 5,
+              "min": 2645.957299999998,
+              "median": 2690.2438,
+              "max": 2752.0783999999985,
+              "mad": 33.84260000000177
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 2687,
+              "median": 2734,
+              "max": 2828,
+              "mad": 47
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 0,
+              "median": 0,
+              "max": 16,
+              "mad": 0
+            },
+            "peak_rss_bytes": 275218432,
+            "arithmetic_ms": {
+              "count": 5,
+              "min": 2587.8100395202637,
+              "median": 2638.465404510498,
+              "max": 2695.1096057891846,
+              "mad": 19.404172897338867
+            }
+          }
+        }
+      ],
+      "kummer": {
+        "curve": "y^2+h*y=f; f=[1,2,3,4,5,1], h=[2,0,3]",
+        "prime": 4294967291,
+        "batch_size": 4096,
+        "capability": "(True, 'native-capable', 4096, ('genus2-kummer-prime.v1', 4294967291, (1, 2, 3, 4, 5, 1, 0, 0), (2, 0, 3, 0)))",
+        "object_cold": {
+          "wall_ms": 226.02409999999873,
+          "cpu_user_ms": 188,
+          "cpu_system_ms": 31,
+          "rss_bytes": 270069760
+        },
+        "exact_result_sha256": "b87da12953daa2d1170a8e3f6ea6da10f9c42e90163756e3dd0c2a07504d329c",
+        "exact_checksum": "(4096, 0, 26137496198570)",
+        "doubling": {
+          "wall_ms": {
+            "count": 5,
+            "min": 127.55850000000282,
+            "median": 131.58740000000034,
+            "max": 142.53329999999914,
+            "mad": 4.02889999999752
+          },
+          "cpu_user_ms": {
+            "count": 5,
+            "min": 140,
+            "median": 141,
+            "max": 219,
+            "mad": 1
+          },
+          "cpu_system_ms": {
+            "count": 5,
+            "min": 0,
+            "median": 0,
+            "max": 16,
+            "mad": 0
+          },
+          "peak_rss_bytes": 277819392,
+          "arithmetic_ms": {
+            "count": 5,
+            "min": 92.20623970031738,
+            "median": 98.7706184387207,
+            "max": 104.25519943237305,
+            "mad": 5.260229110717773
+          }
+        }
+      },
+      "cantor": {
+        "schema": "sagejs.hyperelliptic.packed-mumford.odd.v1",
+        "capability": "(True, 24, PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'supported-source-transparent-kernel', 'genus': 2, 'prime': 3, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9dd3a52eecccdd8eaf0528913862dcf6650ecc0a1ae0143b3ef72ffd4ec56716', 'search_available': True, 'multi_search_available': True}), [(2, PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'supported-source-transparent-kernel', 'genus': 2, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234', 'search_available': True, 'multi_search_available': True})), (3, PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'supported-source-transparent-kernel', 'genus': 3, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279', 'search_available': True, 'multi_search_available': True}))])",
+        "object_cold": {
+          "wall_ms": 1005.3515000000007,
+          "cpu_user_ms": 1281,
+          "cpu_system_ms": 31,
+          "rss_bytes": 301322240
+        },
+        "tiny_prime": 3,
+        "tiny_exact_sha256": "cdaf7bf823e523d62172609e5aa8f8b2a8f0c53fa0dc30d2d261edab9c567913",
+        "cases": [
+          {
+            "genus": 2,
+            "prime": 1009,
+            "capability": "PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'supported-source-transparent-kernel', 'genus': 2, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234', 'search_available': True, 'multi_search_available': True})",
+            "add_batch_items": 1000,
+            "add_exact_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+            "add_exact_checksum": "(1000, '52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176')",
+            "add_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 156.87660000000324,
+                "median": 162.0298999999941,
+                "max": 178.59950000000026,
+                "mad": 5.15329999999085
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 156,
+                "median": 172,
+                "max": 219,
+                "mad": 16
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0,
+                "max": 16,
+                "mad": 0
+              },
+              "peak_rss_bytes": 344743936,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 9.105443954467773,
+                "median": 9.451866149902344,
+                "max": 9.723186492919922,
+                "mad": 0.12803077697753906
+              }
+            },
+            "add_materialized_exact_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+            "add_materialized_exact_checksum": "(1000, '52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176')",
+            "add_materialized_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 1220.6203000000023,
+                "median": 1245.7424000000028,
+                "max": 1281.4979000000021,
+                "mad": 8.758799999995972
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 1235,
+                "median": 1281,
+                "max": 1391,
+                "mad": 32
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0,
+                "max": 16,
+                "mad": 0
+              },
+              "peak_rss_bytes": 353968128,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 219.54011917114258,
+                "median": 225.47173500061035,
+                "max": 232.8343391418457,
+                "mad": 4.397869110107422
+              }
+            },
+            "scalar_batch_items": 64,
+            "scalar_bits": 256,
+            "scalar_exact_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+            "scalar_exact_checksum": "(64, 'ec3863f93ddb2df46f326eb061c662086d076db67f5d7d80d47e89b67533d0ee')",
+            "scalar_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 90.27219999999943,
+                "median": 90.27219999999943,
+                "max": 90.27219999999943,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 94,
+                "median": 94,
+                "max": 94,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 0,
+                "median": 0,
+                "max": 0,
+                "mad": 0
+              },
+              "peak_rss_bytes": 357142528,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 58.27188491821289,
+                "median": 58.27188491821289,
+                "max": 58.27188491821289,
+                "mad": 0
+              }
+            },
+            "scalar_materialized_exact_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+            "scalar_materialized_exact_checksum": "(64, 'ec3863f93ddb2df46f326eb061c662086d076db67f5d7d80d47e89b67533d0ee')",
+            "scalar_materialized_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 167.04069999999774,
+                "median": 167.04069999999774,
+                "max": 167.04069999999774,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 156,
+                "median": 156,
+                "max": 156,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 0,
+                "median": 0,
+                "max": 0,
+                "mad": 0
+              },
+              "peak_rss_bytes": 359272448,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 75.85287094116211,
+                "median": 75.85287094116211,
+                "max": 75.85287094116211,
+                "mad": 0
+              }
+            },
+            "progression_items": 1000,
+            "progression_packed": true,
+            "progression_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 63.72790000000532,
+                "median": 70.87279999999737,
+                "max": 73.48639999999796,
+                "mad": 1.409299999999348
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 62,
+                "median": 62,
+                "max": 78,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0,
+                "max": 0,
+                "mad": 0
+              },
+              "peak_rss_bytes": 354803712,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 47.42693901062012,
+                "median": 53.27796936035156,
+                "max": 55.22489547729492,
+                "mad": 1.9469261169433594
+              }
+            },
+            "progression_retained_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_retained_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_retained_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 39.52200000000448,
+                "median": 41.112700000001496,
+                "max": 42.01230000000214,
+                "mad": 0.3338999999941734
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 31,
+                "median": 47,
+                "max": 47,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0,
+                "max": 0,
+                "mad": 0
+              },
+              "peak_rss_bytes": 355270656,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 3.7293434143066406,
+                "median": 3.904104232788086,
+                "max": 3.9377212524414062,
+                "mad": 0.01239776611328125
+              }
+            },
+            "progression_materialized_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_materialized_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_materialized_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 237.48839999999473,
+                "median": 239.08140000000276,
+                "max": 249.1287999999986,
+                "mad": 1.5930000000080327
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 234,
+                "median": 250,
+                "max": 296,
+                "mad": 15
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0,
+                "max": 0,
+                "mad": 0
+              },
+              "peak_rss_bytes": 357138432,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 217.53168106079102,
+                "median": 220.42465209960938,
+                "max": 229.86578941345215,
+                "mad": 1.8687248229980469
+              }
+            },
+            "materialization_comparison": "retained-packed-versus-forced-polynomials",
+            "representation_state": "(0, 1000, 0, 64, 0, 1000)"
+          },
+          {
+            "genus": 3,
+            "prime": 1009,
+            "capability": "PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'supported-source-transparent-kernel', 'genus': 3, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279', 'search_available': True, 'multi_search_available': True})",
+            "add_batch_items": 1000,
+            "add_exact_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+            "add_exact_checksum": "(1000, '815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323')",
+            "add_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 156.7911000000022,
+                "median": 161.37219999999797,
+                "max": 168.59010000000126,
+                "mad": 4.581099999995786
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 156,
+                "median": 172,
+                "max": 219,
+                "mad": 16
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0,
+                "max": 16,
+                "mad": 0
+              },
+              "peak_rss_bytes": 409513984,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 8.87608528137207,
+                "median": 9.09423828125,
+                "max": 9.229183197021484,
+                "mad": 0.12946128845214844
+              }
+            },
+            "add_materialized_exact_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+            "add_materialized_exact_checksum": "(1000, '815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323')",
+            "add_materialized_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 1274.3503999999957,
+                "median": 1321.0358999999953,
+                "max": 1336.0039000000033,
+                "mad": 14.968000000008033
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 1282,
+                "median": 1344,
+                "max": 1406,
+                "mad": 47
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0,
+                "max": 16,
+                "mad": 0
+              },
+              "peak_rss_bytes": 419696640,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 225.7399559020996,
+                "median": 232.37133026123047,
+                "max": 252.24852561950684,
+                "mad": 6.631374359130859
+              }
+            },
+            "scalar_batch_items": 64,
+            "scalar_bits": 256,
+            "scalar_exact_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+            "scalar_exact_checksum": "(64, '2ee1c3546b80765c8b81a9f305397f9d2d86bd63057890ea0969d5a98e48002a')",
+            "scalar_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 112.59500000000116,
+                "median": 112.59500000000116,
+                "max": 112.59500000000116,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 125,
+                "median": 125,
+                "max": 125,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 0,
+                "median": 0,
+                "max": 0,
+                "mad": 0
+              },
+              "peak_rss_bytes": 383025152,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 83.64462852478027,
+                "median": 83.64462852478027,
+                "max": 83.64462852478027,
+                "mad": 0
+              }
+            },
+            "scalar_materialized_exact_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+            "scalar_materialized_exact_checksum": "(64, '2ee1c3546b80765c8b81a9f305397f9d2d86bd63057890ea0969d5a98e48002a')",
+            "scalar_materialized_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 187.8770000000004,
+                "median": 187.8770000000004,
+                "max": 187.8770000000004,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 188,
+                "median": 188,
+                "max": 188,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 0,
+                "median": 0,
+                "max": 0,
+                "mad": 0
+              },
+              "peak_rss_bytes": 383033344,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 100.95453262329102,
+                "median": 100.95453262329102,
+                "max": 100.95453262329102,
+                "mad": 0
+              }
+            },
+            "progression_items": 1000,
+            "progression_packed": true,
+            "progression_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 68.69440000000031,
+                "median": 71.51600000000326,
+                "max": 125.26250000000437,
+                "mad": 2.8216000000029453
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 62,
+                "median": 78,
+                "max": 281,
+                "mad": 16
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0,
+                "max": 31,
+                "mad": 0
+              },
+              "peak_rss_bytes": 404566016,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 51.03254318237305,
+                "median": 52.881479263305664,
+                "max": 69.89049911499023,
+                "mad": 1.8489360809326172
+              }
+            },
+            "progression_retained_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_retained_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_retained_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 38.6024000000034,
+                "median": 40.36049999999523,
+                "max": 43.92199999999866,
+                "mad": 1.5798000000067987
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 31,
+                "median": 47,
+                "max": 109,
+                "mad": 16
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0,
+                "max": 0,
+                "mad": 0
+              },
+              "peak_rss_bytes": 405127168,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 4.185199737548828,
+                "median": 4.5623779296875,
+                "max": 4.6482086181640625,
+                "mad": 0.04410743713378906
+              }
+            },
+            "progression_materialized_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_materialized_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_materialized_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 237.05250000000524,
+                "median": 248.6718999999939,
+                "max": 272.22320000000036,
+                "mad": 4.653099999988626
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 234,
+                "median": 250,
+                "max": 297,
+                "mad": 16
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0,
+                "max": 0,
+                "mad": 0
+              },
+              "peak_rss_bytes": 405561344,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 218.8880443572998,
+                "median": 230.16643524169922,
+                "max": 250.9922981262207,
+                "mad": 4.865169525146484
+              }
+            },
+            "materialization_comparison": "retained-packed-versus-forced-polynomials",
+            "representation_state": "(0, 1000, 0, 64, 0, 1000)"
+          }
+        ]
+      },
+      "curve_object_cold": {
+        "wall_ms": 175.55129999999997,
+        "cpu_user_ms": 203,
+        "cpu_system_ms": 47,
+        "rss_bytes": 171786240
+      },
+      "process_cold_first_answer_ms": 507.7418,
+      "process_end_rss_bytes": 315150336,
+      "worker_total_ms": 56548.65599999996,
+      "stderr": ""
+    }
+  },
+  "cross_mode_exact": {
+    "local_factor_packed_sha256": [
+      "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d",
+      "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894"
+    ],
+    "local_factor_coefficients_sha256": [
+      "f25885d7ff7194130ef32d7528a389211e490c49763c27f9af411761b585fea6",
+      "a501f7d70e91e32338122f08f89281d301d844b3b143c3af159d74d7d987cb9f"
+    ],
+    "kummer_sha256": "b87da12953daa2d1170a8e3f6ea6da10f9c42e90163756e3dd0c2a07504d329c",
+    "cantor_tiny_sha256": "cdaf7bf823e523d62172609e5aa8f8b2a8f0c53fa0dc30d2d261edab9c567913",
+    "cantor_cases": [
+      {
+        "genus": 2,
+        "add_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+        "scalar_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+        "progression_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807"
+      },
+      {
+        "genus": 3,
+        "add_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+        "scalar_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+        "progression_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf"
+      }
+    ]
+  }
+}
