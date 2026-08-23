@@ -19,14 +19,23 @@ def prepare(case):
     model = case["model"]
     base = QQ if model.get("base") == "QQ" else GF(int(model["prime"]))
     ring = PolynomialRing(base, "x")
-    curve = HyperellipticCurve(polynomial(ring, model["f"]), polynomial(ring, model["h"]))
+    curve = HyperellipticCurve(
+        polynomial(ring, model["f"]), polynomial(ring, model["h"])
+    )
     kind = case["kind"]
     if kind.startswith("jacobian_"):
         jacobian = curve.jacobian()
-        left = jacobian([polynomial(ring, case["left"]["u"]), polynomial(ring, case["left"]["v"])])
+        left = jacobian(
+            [polynomial(ring, case["left"]["u"]), polynomial(ring, case["left"]["v"])]
+        )
         right = None
         if "right" in case:
-            right = jacobian([polynomial(ring, case["right"]["u"]), polynomial(ring, case["right"]["v"])])
+            right = jacobian(
+                [
+                    polynomial(ring, case["right"]["u"]),
+                    polynomial(ring, case["right"]["v"]),
+                ]
+            )
         return curve, ring, jacobian, left, right
     if kind == "group_structure":
         return curve, ring, curve.jacobian()
@@ -55,7 +64,10 @@ def encode(case, value):
     if kind.startswith("jacobian_"):
         u_value, v_value = value.uv()
         if case["model"].get("base") == "QQ":
-            return {"u": [str(item) for item in u_value.list()], "v": [str(item) for item in v_value.list()]}
+            return {
+                "u": [str(item) for item in u_value.list()],
+                "v": [str(item) for item in v_value.list()],
+            }
         prime = int(case["model"]["prime"])
         return {
             "u": [str(int(item) % prime) for item in u_value.list()],
@@ -73,14 +85,33 @@ def encode(case, value):
 
 def run_case(case, defaults, overrides):
     if case["kind"].startswith("unsupported_"):
-        return {"id": case["id"], "status": "unsupported", "reason": "capability-only Sage.js regression cell"}
-    supported = {"jacobian_add", "jacobian_double", "jacobian_scalar", "jacobian_validate", "group_structure", "local_factor"}
+        return {
+            "id": case["id"],
+            "status": "unsupported",
+            "reason": "capability-only Sage.js regression cell",
+        }
+    supported = {
+        "jacobian_add",
+        "jacobian_double",
+        "jacobian_scalar",
+        "jacobian_validate",
+        "group_structure",
+        "local_factor",
+    }
     if case["kind"] not in supported:
-        return {"id": case["id"], "status": "unsupported", "reason": f"SageMath runner has no comparable {case['kind']} contract"}
+        return {
+            "id": case["id"],
+            "status": "unsupported",
+            "reason": f"SageMath runner has no comparable {case['kind']} contract",
+        }
     timing = case.get("timing", {})
-    repetitions = int(overrides.get("repetitions", timing.get("repetitions", defaults["repetitions"])))
+    repetitions = int(
+        overrides.get("repetitions", timing.get("repetitions", defaults["repetitions"]))
+    )
     warmups = int(overrides.get("warmups", timing.get("warmups", defaults["warmups"])))
-    repeated_size = int(overrides.get("batch_size", timing.get("batch_size", defaults["batch_size"])))
+    repeated_size = int(
+        overrides.get("batch_size", timing.get("batch_size", defaults["batch_size"]))
+    )
     cold = []
     cold_cpu = []
     first = None
@@ -120,9 +151,14 @@ def run_case(case, defaults, overrides):
         loops.append(1000 * (time.perf_counter() - wall))
         assert result == first
     return {
-        "id": case["id"], "status": "ok", "result": first, "result_mode": "exact",
-        "object_cold_samples_ms": cold, "object_cold_cpu_samples_ms": cold_cpu,
-        "warm_samples_ms": warm, "warm_cpu_samples_ms": warm_cpu,
+        "id": case["id"],
+        "status": "ok",
+        "result": first,
+        "result_mode": "exact",
+        "object_cold_samples_ms": cold,
+        "object_cold_cpu_samples_ms": cold_cpu,
+        "warm_samples_ms": warm,
+        "warm_cpu_samples_ms": warm_cpu,
         "repeated_warm_loop_samples_ms": loops,
         "repeated_warm_loop_cpu_samples_ms": loops_cpu,
         "repeated_warm_loop_size": repeated_size,
@@ -142,12 +178,16 @@ def handle(request):
         try:
             rows.append(run_case(case, defaults, overrides))
         except NotImplementedError as error:
-            rows.append({"id": case["id"], "status": "unsupported", "reason": str(error)})
+            rows.append(
+                {"id": case["id"], "status": "unsupported", "reason": str(error)}
+            )
     return {
         "schema": "sagejs.hyperelliptic-competitive-backend.v1",
         "backend": {
-            "id": "sagemath", "version": SAGE_VERSION,
-            "python": sys.version.split()[0], "max_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+            "id": "sagemath",
+            "version": SAGE_VERSION,
+            "python": sys.version.split()[0],
+            "max_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
         },
         "rows": rows,
     }
@@ -158,4 +198,12 @@ for line in sys.stdin:
         try:
             print(json.dumps(handle(json.loads(line)), sort_keys=True), flush=True)
         except Exception as error:
-            print(json.dumps({"schema": "sagejs.hyperelliptic-competitive-error.v1", "error": repr(error)}), flush=True)
+            print(
+                json.dumps(
+                    {
+                        "schema": "sagejs.hyperelliptic-competitive-error.v1",
+                        "error": repr(error),
+                    }
+                ),
+                flush=True,
+            )
