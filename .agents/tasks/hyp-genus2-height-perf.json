@@ -10,17 +10,24 @@
   "base_commit": "76b863adb13c683b265ddc0c987b727fd7291990",
   "claims": [
     "src/lib/sagejs/hyperelliptic_curves/genus2_kummer.py",
+    "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_height_kernel.py",
     "src/lib/sagejs/hyperelliptic_curves/genus2_heights.py",
     "test/hyperelliptic-genus2-height-performance.cjs",
+    "test/hyperelliptic-genus2-heights.cjs",
     "bench/hyperelliptic/benchmark-genus2-height-competitive.cjs"
   ],
   "dependencies": [],
   "references": [],
   "architecture": {
-    "strategy": "dynamic-python",
+    "strategy": "source-transparent-native",
     "fallback": "same-source",
     "oracles": [
-      "sage"
+      "cpython",
+      "javascript",
+      "exact small-step Kummer recurrence",
+      "same-source dynamic IntegerBuffer recurrence",
+      "180-decimal mpmath Flynn recurrence",
+      "Magma 2.18-5 stable 96-bit prefix"
     ],
     "exceptions": []
   },
@@ -35,10 +42,42 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/hyperelliptic-genus2-height-performance.cjs test/hyperelliptic-genus2-heights.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.645,
+      "started_at": "2026-08-23T03:53:24.589Z",
+      "commit": "3bbca3c412650c2c0be67f63e56d1feadb4f0b2d",
+      "workspace_fingerprint": "276cceb76b6c571b35093abc1a9773958c94df1515538268f63af72b8f0ec8bc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-genus2-height-performance.cjs test/hyperelliptic-genus2-heights.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.813,
+      "started_at": "2026-08-23T04:35:22.805Z",
+      "commit": "193ef5354c807b2f1279e5ecaed8025ccaf849ed",
+      "workspace_fingerprint": "e8cd74b6ba138ef9025394c095c859d6fd0a07218b65bc1eff3b502e25135dd8",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added a certified bounded-state modular/dyadic genus-2 canonical-height path with a source-transparent arbitrary-Integer native recurrence, identical dynamic fallback, exact-small-step oracle, reusable model and point contexts, finite and archimedean tail certificates, and propagated height/pairing/regulator accuracy. Corrected the non-monic binary-sextic discriminant factor, bound all proof artifacts to the exact model, and added adversarial regressions plus an accuracy-matched resident Magma benchmark at 64, 128, and 256 target bits.",
+    "risks": [
+      "The production local path currently covers primitive integral classical odd-degree quintics with h=0; generalized, rational-coefficient, and other models retain the guarded exact path.",
+      "Legacy Magma 2.18-5 prints a stable arbitrary-looking tail but agrees with the exact Kummer recurrence only through about 100 bits. The benchmark conservatively treats only its 96-bit prefix as an independent oracle; wider Sage.js certificates are theorem-backed and checked against the exact recurrence.",
+      "The new neutral kernel leaves hyperelliptic-curves-bsd 6,988 bytes over its current lazy budget in this lane. The integration lane owns the required production-kernel registry and package routing/budget adjustment; all later architecture checks otherwise reach this expected package gate.",
+      "Focused cross-platform runtime receipts remain to be collected on Windows x64, Linux arm64, and macOS arm64; the implementation is ordinary Python and introduces no native dependency.",
+      "The certified outward dyadic archimedean quartic recurrence is source-transparently compiled over caller-owned arbitrary-precision IntegerBuffers, with the identical typed Python body retained as its differential fallback. The remaining cold-time envelope requires quiet bench-1 acceptance measurements after integration registers the production kernel."
+    ],
+    "next_steps": [
+      "Move immutable Flynn duplication tables and their generic evaluator into a neutral genus2_kummer_formulas module so both public prime-field Kummer arithmetic and the height layer depend downward without duplication.",
+      "When integrating automatic selection changes, preserve legacy resource-guard coverage by making the corresponding test request algorithm='exact' explicitly.",
+      "Collect focused runtime receipts on windows, bench-arm, and m1, then optimize only measured architecture-specific regressions.",
+      "Register the production kernel and package routing through the integration lane, then collect quiet accuracy-matched 64/128/256-bit Magma and Sage.js acceptance rows on bench-1."
+    ]
   }
 }
