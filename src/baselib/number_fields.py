@@ -1451,6 +1451,7 @@ class NumberFieldIdeal:
         # collection.  The canonical lattice never changes, so its inverse
         # coordinate matrix is safe to compute lazily once per ideal.
         self._membership_inverse_cache = runtime.undefined
+        self._relative_basis_matrix_cache = runtime.undefined
         self._is_integral_cache = runtime.undefined
         self._norm_cache = runtime.undefined
         # Packed exact kernels consume the same immutable canonical HNF rows.
@@ -1502,6 +1503,18 @@ class NumberFieldIdeal:
     def basis_matrix(self) -> Any:
         return _nf_global("matrix")(sage.QQ, self._basis_rows)
 
+    def _relative_basis_matrix(self) -> Any:
+        """Return this immutable lattice in its order's integral basis."""
+        try:
+            cached = self._relative_basis_matrix_cache
+        except AttributeError:
+            # A source checkout may temporarily reuse an older runtime object.
+            cached = runtime.undefined
+        if cached is runtime.undefined:
+            cached = self.basis_matrix() * self._order._basis_inverse_matrix()
+            self._relative_basis_matrix_cache = cached
+        return cached
+
     def __contains__(self, value: object) -> bool:
         return _nf_ideal_arithmetic_module().ideal_contains_element(self, value)
 
@@ -1516,7 +1529,7 @@ class NumberFieldIdeal:
 
     def is_integral(self) -> bool:
         if self._is_integral_cache is runtime.undefined:
-            relative = self.basis_matrix() * self._order._basis_inverse_matrix()
+            relative = self._relative_basis_matrix()
             integral = True
             for row in relative.rows():
                 if not all(value._denominator == 1 for value in row):
@@ -1535,7 +1548,7 @@ class NumberFieldIdeal:
             # this immutable cache slot was introduced.
             cached = runtime.undefined
         if cached is runtime.undefined:
-            relative = self.basis_matrix() * self._order._basis_inverse_matrix()
+            relative = self._relative_basis_matrix()
             cached = relative.determinant()
             if cached < 0:
                 cached = -cached
@@ -1762,6 +1775,7 @@ class NumberFieldOrder(sage.Parent):
         self._maximal_order_local_evidence = runtime.undefined
         self._maximal_order_trace = runtime.undefined
         self._discriminant_cache = runtime.undefined
+        self._cubic_norm_form_coefficients_cache = runtime.undefined
         self._kind = "NumberFieldOrder"
         self._construction = runtime.undefined
 

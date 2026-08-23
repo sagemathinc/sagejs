@@ -214,6 +214,18 @@ cubic._cubic_norm_form_kernel_override = saved
 assert readable.complete and readable.order() == 3 and readable.certificate.verify()
 packed_obstruction = packed.certificate.obstructions[0]
 readable_obstruction = readable.certificate.obstructions[0]
+stored_obstruction_ideal = order.ideal_from_dict(
+    packed_obstruction["integral_ideal"]
+)
+relative_basis_method = getattr(
+    stored_obstruction_ideal, "_relative_basis_matrix", None
+)
+if callable(relative_basis_method):
+    relative_basis = relative_basis_method()
+    assert relative_basis_method() is relative_basis
+assert cubic._cubic_norm_form_coefficients_from_order(
+    stored_obstruction_ideal
+) == cubic._cubic_norm_form_coefficients(stored_obstruction_ideal)
 for name in (
     "prime",
     "line",

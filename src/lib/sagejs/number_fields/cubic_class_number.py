@@ -55,6 +55,18 @@ _CUBIC_RELATION_SIEVE_BOUND = 2
 _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND = 4
 _CUBIC_RELATION_SIEVE_MAX_CANDIDATES = 128
 _CUBIC_RELATION_SIEVE_MAX_PRIME_POWERS = 256
+_CUBIC_NORM_FORM_INTERPOLATION_POINTS = (
+    (1, 0, 0),
+    (0, 1, 0),
+    (0, 0, 1),
+    (1, 1, 0),
+    (1, -1, 0),
+    (1, 0, 1),
+    (1, 0, -1),
+    (0, 1, 1),
+    (0, 1, -1),
+    (1, 1, 1),
+)
 _cubic_norm_form_kernel_override: Any = None
 _cubic_relation_sieve_kernel_override: Any = None
 
@@ -87,6 +99,36 @@ def _integer_rational(value: Any, name: str) -> int:
     return int(rational._numerator)
 
 
+def _interpolate_cubic_norm_form(values: tuple[int, ...]) -> tuple[int, ...]:
+    """Recover ternary-cubic coefficients from the canonical ten values."""
+    if len(values) != 10:
+        raise ValueError("a cubic norm-form interpolation needs ten values")
+    c300, c030, c003 = values[:3]
+    plus01 = values[3] - c300 - c030
+    minus01 = values[4] - c300 + c030
+    plus02 = values[5] - c300 - c003
+    minus02 = values[6] - c300 + c003
+    plus12 = values[7] - c030 - c003
+    minus12 = values[8] - c030 + c003
+    if any(
+        value % 2
+        for value in (
+            plus01 + minus01,
+            plus01 - minus01,
+            plus02 + minus02,
+            plus02 - minus02,
+            plus12 + minus12,
+            plus12 - minus12,
+        )
+    ):
+        raise ArithmeticError("a cubic norm form did not interpolate integrally")
+    c210, c120 = (plus01 - minus01) // 2, (plus01 + minus01) // 2
+    c201, c102 = (plus02 - minus02) // 2, (plus02 + minus02) // 2
+    c021, c012 = (plus12 - minus12) // 2, (plus12 + minus12) // 2
+    c111 = values[9] - (c300 + c030 + c003 + c210 + c201 + c120 + c021 + c102 + c012)
+    return (c300, c030, c003, c210, c201, c120, c021, c102, c012, c111)
+
+
 def _cubic_norm_form_coefficients(ideal: Any) -> tuple[int, ...]:
     """Return the ten integral coefficients of an ideal's ternary norm form."""
     if not ideal.is_integral() or ideal.is_zero():
@@ -99,22 +141,20 @@ def _cubic_norm_form_coefficients(ideal: Any) -> tuple[int, ...]:
         return _integer_rational(element.norm(), "an integral element norm")
 
     b0, b1, b2 = basis
-    c300, c030, c003 = norm(b0), norm(b1), norm(b2)
-
-    def pair(left: Any, right: Any, left_cube: int, right_cube: int) -> tuple[int, int]:
-        plus = norm(left + right) - left_cube - right_cube
-        minus = norm(left - right) - left_cube + right_cube
-        if (plus + minus) % 2 or (plus - minus) % 2:
-            raise ArithmeticError("a cubic norm form did not interpolate integrally")
-        return (plus - minus) // 2, (plus + minus) // 2
-
-    c210, c120 = pair(b0, b1, c300, c030)
-    c201, c102 = pair(b0, b2, c300, c003)
-    c021, c012 = pair(b1, b2, c030, c003)
-    c111 = norm(b0 + b1 + b2) - (
-        c300 + c030 + c003 + c210 + c201 + c120 + c021 + c102 + c012
+    return _interpolate_cubic_norm_form(
+        (
+            norm(b0),
+            norm(b1),
+            norm(b2),
+            norm(b0 + b1),
+            norm(b0 - b1),
+            norm(b0 + b2),
+            norm(b0 - b2),
+            norm(b1 + b2),
+            norm(b1 - b2),
+            norm(b0 + b1 + b2),
+        )
     )
-    return (c300, c030, c003, c210, c201, c120, c021, c102, c012, c111)
 
 
 def _cubic_norm_form_value(
@@ -133,6 +173,87 @@ def _cubic_norm_form_value(
         + c012 * y * z * z
         + c111 * x * y * z
     )
+
+
+def _order_cubic_norm_form_coefficients(order: Any) -> tuple[int, ...]:
+    """Return one immutable exact cubic norm form for an order basis."""
+    try:
+        cached = order._cubic_norm_form_coefficients_cache
+    except AttributeError:
+        cached = runtime.undefined
+    if isinstance(cached, tuple) and len(cached) == 10:
+        return tuple(int(value) for value in cached)
+
+    coefficients: tuple[int, ...] | None = None
+    try:
+        kernel_module = __import__(
+            "sagejs.number_fields.bl_composite_kernel",
+            fromlist=["bl_composite_kernel"],
+        )
+        coefficient_kernel = getattr(
+            kernel_module, "packed_cubic_order_norm_form_coefficients_in_place", None
+        )
+        if callable(coefficient_kernel):
+            maximal_module = __import__(
+                "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
+            )
+            native_module = __import__("sagejs.native", fromlist=["native"])
+            table = maximal_module._nf_order_multiplication_table(order)
+            packed_table = tuple(
+                _integer_rational(
+                    table[left][right][coordinate],
+                    "an order multiplication-table entry",
+                )
+                for left in range(3)
+                for right in range(3)
+                for coordinate in range(3)
+            )
+            output = native_module.kernel_integer_zeros(coefficient_kernel, 10, 16)
+            if coefficient_kernel(
+                output,
+                native_module.kernel_integer_buffer(coefficient_kernel, packed_table),
+            ):
+                values = tuple(
+                    int(value) for value in native_module.integer_buffer_values(output)
+                )
+                if len(values) == 10:
+                    coefficients = values
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        coefficients = None
+    if coefficients is None:
+        coefficients = _cubic_norm_form_coefficients(order.ideal(1))
+    order._cubic_norm_form_coefficients_cache = tuple(coefficients)
+    return tuple(coefficients)
+
+
+def _cubic_norm_form_coefficients_from_order(ideal: Any) -> tuple[int, ...] | None:
+    """Transform the cached order norm form to one integral ideal basis."""
+    if ideal.is_zero() or not ideal.is_integral() or ideal.ring().degree() != 3:
+        return None
+    order = ideal.ring()
+    relative_basis_method = getattr(ideal, "_relative_basis_matrix", None)
+    relative_basis: Any = (
+        relative_basis_method()
+        if callable(relative_basis_method)
+        else ideal.basis_matrix() * order._basis_inverse_matrix()
+    )
+    rows = relative_basis.rows()
+    if len(rows) != 3 or any(
+        len(row) != 3 or any(value._denominator != 1 for value in row) for row in rows
+    ):
+        return None
+    coordinates = tuple(tuple(int(value._numerator) for value in row) for row in rows)
+    order_coefficients = _order_cubic_norm_form_coefficients(order)
+    values: list[int] = []
+    for x, y, z in _CUBIC_NORM_FORM_INTERPOLATION_POINTS:
+        transformed = tuple(
+            x * coordinates[0][index]
+            + y * coordinates[1][index]
+            + z * coordinates[2][index]
+            for index in range(3)
+        )
+        values.append(_cubic_norm_form_value(order_coefficients, *transformed))
+    return _interpolate_cubic_norm_form(tuple(values))
 
 
 def _packed_cubic_relation_candidates(
@@ -182,42 +303,7 @@ def _packed_cubic_relation_candidates(
     rational_primes = sorted(
         {int(prime_ideal.rational_prime()) for prime_ideal in factor_base}
     )
-    coefficients: tuple[int, ...] | None = None
-    coefficient_kernel = getattr(
-        kernel_module, "packed_cubic_order_norm_form_coefficients_in_place", None
-    )
-    if callable(coefficient_kernel):
-        try:
-            maximal_module = __import__(
-                "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
-            )
-            table = maximal_module._nf_order_multiplication_table(order)
-            packed_table = tuple(
-                _integer_rational(
-                    table[left][right][coordinate],
-                    "an order multiplication-table entry",
-                )
-                for left in range(3)
-                for right in range(3)
-                for coordinate in range(3)
-            )
-            coefficient_output = native_module.kernel_integer_zeros(
-                coefficient_kernel, 10, 16
-            )
-            if coefficient_kernel(
-                coefficient_output,
-                native_module.kernel_integer_buffer(coefficient_kernel, packed_table),
-            ):
-                values = tuple(
-                    int(value)
-                    for value in native_module.integer_buffer_values(coefficient_output)
-                )
-                if len(values) == 10:
-                    coefficients = values
-        except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
-            coefficients = None
-    if coefficients is None:
-        coefficients = _cubic_norm_form_coefficients(order.ideal(1))
+    coefficients = _order_cubic_norm_form_coefficients(order)
     try:
         metadata = native_module.kernel_integer_zeros(candidate_kernel, 4, 1)
         coefficient_output = native_module.kernel_integer_zeros(
@@ -636,7 +722,9 @@ def _find_cubic_norm_obstruction(
 ) -> tuple[dict[str, Any] | None, int]:
     integral = ideal.numerator()
     norm = _integer_rational(integral.norm(), "an integral ideal norm")
-    coefficients = _cubic_norm_form_coefficients(integral)
+    coefficients = _cubic_norm_form_coefficients_from_order(integral)
+    if coefficients is None:
+        coefficients = _cubic_norm_form_coefficients(integral)
     used = 0
     for modulus in range(2, max_modulus + 1):
         if not sage.is_prime(modulus):
