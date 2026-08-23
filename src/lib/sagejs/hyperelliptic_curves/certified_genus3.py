@@ -26,7 +26,9 @@ from sagejs.hyperelliptic_curves.genus3_completion import (
     enumerate_genus3_weil_candidates,
     enumerate_genus3_weil_candidates_batch,
     genus3_candidate_kernel_available,
+    genus3_candidate_progression_kernel_available,
     jacobian_order_from_coefficients,
+    summarize_genus3_candidate_progressions,
     twist_order_from_coefficients,
 )
 from sagejs.hyperelliptic_curves.group_structure import (
@@ -1148,6 +1150,213 @@ def _certify_candidates(
     return remaining, diagnostics
 
 
+def _certify_candidate_summary(
+    reduced_curve: Any,
+    prime: int,
+    residues: tuple[int, int, int],
+    summary: Mapping[str, Any],
+    *,
+    max_candidates: int,
+    max_combinations: int,
+    max_x_values: int,
+    max_elements: int,
+    max_trial_divisions: int,
+    max_baby_steps: int,
+    max_group_operations: int,
+    certificate_provider: OrderCertificateProvider,
+    stage_observer: StageObserver | None,
+) -> tuple[tuple[Candidate, ...], dict[str, Any]]:
+    """Certify a compact native candidate stream without publishing triples."""
+    diagnostics: dict[str, Any] = {}
+    jacobian = Jacobian(reduced_curve)
+    elements = _deterministic_elements(
+        jacobian,
+        prime,
+        max_x_values=max_x_values,
+        max_elements=1,
+    )
+    orders = _unique_orders(summary["orders"])
+    progressions = tuple(summary["progressions"])
+    _observe(
+        stage_observer,
+        "primary_start",
+        {"prime": prime, "orders": len(orders), "elements": len(elements)},
+    )
+    survivors, primary_certificates, primary_diagnostics = _certified_order_witnesses(
+        jacobian,
+        orders,
+        progressions,
+        elements,
+        "jacobian",
+        certificate_provider,
+        max_trial_divisions,
+        max_baby_steps,
+        max_group_operations,
+    )
+    if len(survivors) > 1 and max_elements > 1:
+        elements = _deterministic_elements(
+            jacobian,
+            prime,
+            max_x_values=max_x_values,
+            max_elements=max_elements,
+        )
+        survivors, primary_certificates, primary_diagnostics = (
+            _certified_order_witnesses(
+                jacobian,
+                orders,
+                progressions,
+                elements,
+                "jacobian",
+                certificate_provider,
+                max_trial_divisions,
+                max_baby_steps,
+                max_group_operations,
+            )
+        )
+    primary_witnesses = tuple(
+        int(certificate["element_order"]) for certificate in primary_certificates
+    )
+    filtered = summarize_genus3_candidate_progressions(
+        prime,
+        residues,
+        primary_witnesses=primary_witnesses,
+        order_kind="twist",
+        max_candidates=max_candidates,
+        max_combinations=max_combinations,
+    )
+    if filtered is None or filtered["status"] != "ok":
+        raise JacobianResourceLimitError(
+            "the packed candidate filter exceeded its resource budget"
+        )
+    remaining_count = int(filtered["survivor_count"])
+    if remaining_count == 0:
+        raise ArithmeticError(
+            "Jacobian order witnesses reject every rforest Weil candidate"
+        )
+    diagnostics["jacobian"] = {
+        **primary_diagnostics,
+        "elements": len(elements),
+        "input_orders": len(orders),
+        "surviving_orders": len(survivors),
+        "surviving_candidates": remaining_count,
+        "progressions": progressions,
+        "certificates": primary_certificates,
+        "candidate_filter": filtered["diagnostics"],
+    }
+    _observe(stage_observer, "primary_end", {"prime": prime, **diagnostics["jacobian"]})
+    if remaining_count == 1:
+        return (filtered["candidate"],), diagnostics
+
+    twist = _quadratic_twist(reduced_curve, prime)
+    twist_jacobian = Jacobian(twist)
+    twist_elements = _deterministic_elements(
+        twist_jacobian,
+        prime,
+        max_x_values=max_x_values,
+        max_elements=1,
+    )
+    twist_orders = _unique_orders(filtered["orders"])
+    twist_progressions = tuple(filtered["progressions"])
+    _observe(
+        stage_observer,
+        "twist_start",
+        {"prime": prime, "orders": len(twist_orders), "elements": len(twist_elements)},
+    )
+    twist_survivors, twist_certificates, twist_diagnostics = _certified_order_witnesses(
+        twist_jacobian,
+        twist_orders,
+        twist_progressions,
+        twist_elements,
+        "twist",
+        certificate_provider,
+        max_trial_divisions,
+        max_baby_steps,
+        max_group_operations,
+    )
+    if len(twist_survivors) > 1 and max_elements > 1:
+        twist_elements = _deterministic_elements(
+            twist_jacobian,
+            prime,
+            max_x_values=max_x_values,
+            max_elements=max_elements,
+        )
+        twist_survivors, twist_certificates, twist_diagnostics = (
+            _certified_order_witnesses(
+                twist_jacobian,
+                twist_orders,
+                twist_progressions,
+                twist_elements,
+                "twist",
+                certificate_provider,
+                max_trial_divisions,
+                max_baby_steps,
+                max_group_operations,
+            )
+        )
+    twist_witnesses = tuple(
+        int(certificate["element_order"]) for certificate in twist_certificates
+    )
+    final = summarize_genus3_candidate_progressions(
+        prime,
+        residues,
+        primary_witnesses=primary_witnesses,
+        twist_witnesses=twist_witnesses,
+        order_kind="jacobian",
+        max_candidates=max_candidates,
+        max_combinations=max_combinations,
+    )
+    if final is None or final["status"] != "ok":
+        raise JacobianResourceLimitError(
+            "the packed twist candidate filter exceeded its resource budget"
+        )
+    final_count = int(final["survivor_count"])
+    if final_count == 0:
+        raise ArithmeticError(
+            "twist order witnesses reject every rforest Weil candidate"
+        )
+    diagnostics["twist"] = {
+        **twist_diagnostics,
+        "elements": len(twist_elements),
+        "input_orders": len(twist_orders),
+        "surviving_orders": len(twist_survivors),
+        "surviving_candidates": final_count,
+        "progressions": twist_progressions,
+        "certificates": twist_certificates,
+        "candidate_filter": final["diagnostics"],
+    }
+    _observe(stage_observer, "twist_end", {"prime": prime, **diagnostics["twist"]})
+    if final_count == 1:
+        return (final["candidate"],), diagnostics
+
+    # An indeterminate result is rare. Materialize only on this fallback path
+    # so the public diagnostic can retain its exact list of remaining triples.
+    enumeration = enumerate_genus3_weil_candidates(
+        prime,
+        residues,
+        max_candidates=max_candidates,
+        max_combinations=max_combinations,
+    )
+    if enumeration["status"] != "ok":
+        raise JacobianResourceLimitError(
+            "indeterminate candidate materialization exceeded its resource budget"
+        )
+    remaining = tuple(
+        candidate
+        for candidate in enumeration["candidates"]
+        if all(
+            jacobian_order_from_coefficients(candidate, prime) % witness == 0
+            for witness in primary_witnesses
+        )
+        and all(
+            twist_order_from_coefficients(candidate, prime) % witness == 0
+            for witness in twist_witnesses
+        )
+    )
+    if len(remaining) != final_count:
+        raise ArithmeticError("packed candidate filtering disagrees with exact replay")
+    return remaining, diagnostics
+
+
 def complete_genus3_residues_with_jacobian(
     curve: Any,
     prime: Any,
@@ -1199,13 +1408,23 @@ def complete_genus3_residues_with_jacobian(
 
     _observe(stage_observer, "candidate_start", {"prime": prime})
     if _candidate_enumeration is None:
-        enumeration = enumerate_genus3_weil_candidates(
+        candidate_summary = summarize_genus3_candidate_progressions(
             prime,
             normalized,
             max_candidates=max_candidates,
             max_combinations=max_combinations,
         )
+        if candidate_summary is None:
+            enumeration = enumerate_genus3_weil_candidates(
+                prime,
+                normalized,
+                max_candidates=max_candidates,
+                max_combinations=max_combinations,
+            )
+        else:
+            enumeration = candidate_summary
     else:
+        candidate_summary = None
         enumeration = dict(_candidate_enumeration)
         if (
             int(enumeration.get("prime", -1)) != prime
@@ -1234,26 +1453,48 @@ def complete_genus3_residues_with_jacobian(
             {"enumeration": enumeration},
             stage_observer,
         )
-    candidates = tuple(enumeration["candidates"])
-    if not candidates:
+    if candidate_summary is None:
+        candidates = tuple(enumeration["candidates"])
+        candidate_count = len(candidates)
+    else:
+        candidates = ()
+        candidate_count = int(candidate_summary["survivor_count"])
+    if not candidate_count:
         raise ArithmeticError("the rforest residues have no genus-3 Weil lift")
 
     try:
         reduced_curve = _completed_square_curve(
             _reduce_rational_curve(curve, prime), prime
         )
-        remaining, certificate_diagnostics = _certify_candidates(
-            reduced_curve,
-            prime,
-            candidates,
-            max_x_values=max_x_values,
-            max_elements=max_elements,
-            max_trial_divisions=max_trial_divisions,
-            max_baby_steps=max_baby_steps,
-            max_group_operations=max_group_operations,
-            certificate_provider=kernel,
-            stage_observer=stage_observer,
-        )
+        if candidate_summary is None:
+            remaining, certificate_diagnostics = _certify_candidates(
+                reduced_curve,
+                prime,
+                candidates,
+                max_x_values=max_x_values,
+                max_elements=max_elements,
+                max_trial_divisions=max_trial_divisions,
+                max_baby_steps=max_baby_steps,
+                max_group_operations=max_group_operations,
+                certificate_provider=kernel,
+                stage_observer=stage_observer,
+            )
+        else:
+            remaining, certificate_diagnostics = _certify_candidate_summary(
+                reduced_curve,
+                prime,
+                normalized,
+                candidate_summary,
+                max_candidates=max_candidates,
+                max_combinations=max_combinations,
+                max_x_values=max_x_values,
+                max_elements=max_elements,
+                max_trial_divisions=max_trial_divisions,
+                max_baby_steps=max_baby_steps,
+                max_group_operations=max_group_operations,
+                certificate_provider=kernel,
+                stage_observer=stage_observer,
+            )
     except NotImplementedError as error:
         return _fallback_result(
             curve,
@@ -1304,7 +1545,7 @@ def complete_genus3_residues_with_jacobian(
         "coefficients": coefficients,
         "certificate": {
             "candidate": candidate,
-            "initial_candidate_count": len(candidates),
+            "initial_candidate_count": int(enumeration["candidate_count"]),
             **certificate_diagnostics,
         },
         "diagnostics": {"enumeration": enumeration},
@@ -1465,11 +1706,14 @@ def rforest_genus3_local_factors(
     for window_start in range(0, len(rows), candidate_window):
         window = rows[window_start : window_start + candidate_window]
         available = [row for row in window if row["available"]]
-        enumerations = enumerate_genus3_weil_candidates_batch(
-            [(int(row["prime"]), row["residues"]) for row in available],
-            max_candidates=max_candidates,
-            max_combinations=max_combinations,
-        )
+        if genus3_candidate_progression_kernel_available():
+            enumerations: tuple[Mapping[str, Any], ...] | None = None
+        else:
+            enumerations = enumerate_genus3_weil_candidates_batch(
+                [(int(row["prime"]), row["residues"]) for row in available],
+                max_candidates=max_candidates,
+                max_combinations=max_combinations,
+            )
         enumeration_index = 0
         for row in window:
             prime = int(row["prime"])
@@ -1489,7 +1733,9 @@ def rforest_genus3_local_factors(
                         stage_observer,
                     )
             else:
-                enumeration = enumerations[enumeration_index]
+                enumeration = (
+                    None if enumerations is None else enumerations[enumeration_index]
+                )
                 enumeration_index += 1
                 result = complete_genus3_residues_with_jacobian(
                     curve,
