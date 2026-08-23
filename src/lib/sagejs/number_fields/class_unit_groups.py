@@ -38,6 +38,8 @@ MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 
 _AUTHENTICATED_CLASS_UNIT_SATURATION_TOKEN = object()
 _AUTHENTICATED_ENGINE_CLASS_GROUP_TOKEN = object()
+_AUTHENTICATED_ENGINE_CLASS_GROUP_PRESENTATION_TOKEN = object()
+_VERIFIED_ENGINE_PRESENTATION_TOKEN = object()
 _CUBIC_RELATION_SEED_UNREAD = object()
 
 
@@ -963,7 +965,10 @@ class _EngineClassGroup:
         detached calls to `verify()` continue to exercise the generic ideal
         maps above.
         """
-        if token is not _AUTHENTICATED_ENGINE_CLASS_GROUP_TOKEN:
+        if token not in (
+            _AUTHENTICATED_ENGINE_CLASS_GROUP_TOKEN,
+            _AUTHENTICATED_ENGINE_CLASS_GROUP_PRESENTATION_TOKEN,
+        ):
             return False
         try:
             collector = self._relation_reconstructor
@@ -988,7 +993,10 @@ class _EngineClassGroup:
                 )
             ):
                 return False
-            if not self._presentation.verify():
+            if (
+                token is not _AUTHENTICATED_ENGINE_CLASS_GROUP_PRESENTATION_TOKEN
+                and not self._presentation.verify()
+            ):
                 return False
             presentation_rows = tuple(
                 tuple(int(value) for value in row.dense())
@@ -999,12 +1007,28 @@ class _EngineClassGroup:
             )
             if relation_rows != presentation_rows:
                 return False
-            verify_admission = getattr(collector, "verify_admission_receipt", None)
-            if not callable(verify_admission) or not all(
-                verify_admission(self._order, self._factor_base, record)
-                for record in self._relations
-            ):
-                return False
+            if token is _AUTHENTICATED_ENGINE_CLASS_GROUP_PRESENTATION_TOKEN:
+                relation_module = _optional_module(
+                    "sagejs.number_fields.class_group_relations"
+                )
+                verify_prefix = getattr(
+                    collector, "_all_records_live_authenticated", None
+                )
+                if (
+                    relation_module is None
+                    or not callable(verify_prefix)
+                    or not verify_prefix(
+                        relation_module._LIVE_VERIFIED_RELATION_PREFIX_TOKEN
+                    )
+                ):
+                    return False
+            else:
+                verify_admission = getattr(collector, "verify_admission_receipt", None)
+                if not callable(verify_admission) or not all(
+                    verify_admission(self._order, self._factor_base, record)
+                    for record in self._relations
+                ):
+                    return False
 
             positions = tuple(self._presentation.invariant_positions)
             expected_rows = tuple(
@@ -1244,6 +1268,7 @@ class ClassUnitGroupEngine:
         if not isinstance(self.limits, ClassUnitEngineLimits):
             raise TypeError("limits must be ClassUnitEngineLimits")
         self.seed = _integer(seed, "deterministic seed")
+        self._cancelled_callback_supplied = cancelled is not None
         self.cancelled = (lambda: False) if cancelled is None else cancelled
         if not callable(self.cancelled):
             raise TypeError("cancelled must be callable")
@@ -1376,6 +1401,7 @@ class ClassUnitGroupEngine:
             "relation_witness_logarithm_cache_hits": 0,
             "dependency_unit_materializations": 0,
             "dependency_unit_eager_candidates": 0,
+            "unit_live_relation_authority_hits": 0,
             "unit_principal_authority_requests": 0,
             "unit_principal_authority_hits": 0,
             "unit_principal_authority_fallbacks": 0,
@@ -3067,21 +3093,45 @@ class ClassUnitGroupEngine:
         return self.components.relations.FactoredPrincipalWitness(self.field, factors)
 
     def _independent_units(
-        self, collector: Any, presentation: Any, unit_rank: int
+        self,
+        collector: Any,
+        presentation: Any,
+        unit_rank: int,
+        *,
+        _verified_presentation_token: Any = None,
     ) -> tuple[Any, ...]:
         started = self._phase_start()
         if unit_rank == 0:
             self._phase_finish("unit-recovery", started)
             self._stage("unit-recovery", "complete", rank=0, candidates=0)
             return ()
-        if not presentation.verify():
+        # The engine-only token is passed only when no progress, cancellation,
+        # or checkpoint callback can interpose after the verified matrix
+        # extractor. External/direct callers retain the full replay.
+        if (
+            _verified_presentation_token is not _VERIFIED_ENGINE_PRESENTATION_TOKEN
+            and not presentation.verify()
+        ):
             raise ArithmeticError("the relation presentation failed exact replay")
         records = tuple(collector.records)
         admission_verifier = getattr(collector, "verify_admission_receipt", None)
-        live_relations_authenticated = callable(admission_verifier) and all(
-            admission_verifier(self.order, collector.factor_base, record)
-            for record in records
+        live_prefix_verifier = getattr(
+            collector, "_all_records_live_authenticated", None
         )
+        live_relations_authenticated = bool(
+            _verified_presentation_token is _VERIFIED_ENGINE_PRESENTATION_TOKEN
+            and callable(live_prefix_verifier)
+            and live_prefix_verifier(
+                self.components.relations._LIVE_VERIFIED_RELATION_PREFIX_TOKEN
+            )
+        )
+        if live_relations_authenticated:
+            self._resource_usage["unit_live_relation_authority_hits"] += 1
+        else:
+            live_relations_authenticated = callable(admission_verifier) and all(
+                admission_verifier(self.order, collector.factor_base, record)
+                for record in records
+            )
         dependencies = tuple(presentation.dependency_transforms)
         for dependency in presentation.dependency_transforms:
             if len(dependency) != len(records):
@@ -3780,7 +3830,16 @@ class ClassUnitGroupEngine:
                 if admitted == 0:
                     continue
                 relation_units = self._independent_units(
-                    collector, presentation, unit_rank
+                    collector,
+                    presentation,
+                    unit_rank,
+                    _verified_presentation_token=(
+                        _VERIFIED_ENGINE_PRESENTATION_TOKEN
+                        if self.progress is None
+                        and not self._cancelled_callback_supplied
+                        and self.checkpoint_controller is None
+                        else None
+                    ),
                 )
                 combined = self._select_unit_basis(
                     tuple(units) + tuple(relation_units), unit_rank
@@ -3936,7 +3995,13 @@ class ClassUnitGroupEngine:
         )
         self._resource_usage["class_group_live_authentication_requests"] += 1
         live_verified = group._verify_live_construction(
-            _AUTHENTICATED_ENGINE_CLASS_GROUP_TOKEN
+            (
+                _AUTHENTICATED_ENGINE_CLASS_GROUP_PRESENTATION_TOKEN
+                if self.progress is None
+                and not self._cancelled_callback_supplied
+                and self.checkpoint_controller is None
+                else _AUTHENTICATED_ENGINE_CLASS_GROUP_TOKEN
+            )
         )
         if live_verified:
             self._resource_usage["class_group_live_authentication_hits"] += 1
@@ -4117,7 +4182,18 @@ class ClassUnitGroupEngine:
                         "unit_rank_target": unit_rank,
                     },
                 )
-            units = self._independent_units(collector, presentation, unit_rank)
+            units = self._independent_units(
+                collector,
+                presentation,
+                unit_rank,
+                _verified_presentation_token=(
+                    _VERIFIED_ENGINE_PRESENTATION_TOKEN
+                    if self.progress is None
+                    and not self._cancelled_callback_supplied
+                    and self.checkpoint_controller is None
+                    else None
+                ),
+            )
             torsion, regulator, index = self._analytic_index(
                 presentation, units, unit_rank
             )

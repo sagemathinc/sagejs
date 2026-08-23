@@ -48,6 +48,7 @@ DEFAULT_RECONSTRUCTION_ROW_CACHE_SIZE = 512
 DEFAULT_FACTOR_POWER_CACHE_SIZE = 512
 DEFAULT_ADMISSION_RECEIPT_CACHE_SIZE = 64
 _VALIDATED_FACTOR_BASE_TOKEN = object()
+_LIVE_VERIFIED_RELATION_PREFIX_TOKEN = object()
 _U64_MASK = (1 << 64) - 1
 _IDEAL_REDUCTION_STATE_KEYS = {
     "schema",
@@ -1122,6 +1123,18 @@ class ExactRelationCollector:
             "entries": len(self._admission_receipts),
             "max_entries": self.max_admission_receipts,
         }
+
+    def _all_records_live_authenticated(self, token: Any) -> bool:
+        """Recognize the synchronous producer-owned relation prefix."""
+        if token is not _LIVE_VERIFIED_RELATION_PREFIX_TOKEN:
+            return False
+        return bool(
+            len(self.records) == len(self.admissions) == len(self._keys)
+            and all(
+                admission.record is record
+                for admission, record in zip(self.admissions, self.records, strict=True)
+            )
+        )
 
     def reconstruct_factor_base_ideal(self, row: Iterable[int]) -> Any:
         """Reconstruct one row through this collector's bounded exact cache."""

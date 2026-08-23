@@ -358,6 +358,11 @@ group._generator_rows = ((retained_generator_rows[0][0] + 1,) + retained_generat
 assert not group.verify()
 group._generator_rows = retained_generator_rows
 assert group.verify()
+retained_group_order = group._presentation.order
+group._presentation.order = retained_group_order + 1
+assert not group.verify()
+group._presentation.order = retained_group_order
+assert group.verify()
 record = result.saturation_record
 assert "_live_authentication" not in record.__dict__
 assert not class_unit_module._authenticated_live_saturation_record_matches(
@@ -513,6 +518,7 @@ assert resources["relation_candidates"] == 0
 assert resources["relation_witness_logarithm_requests"] == 0
 assert resources["dependency_unit_eager_candidates"] == 3
 assert resources["dependency_unit_materializations"] == 3
+assert resources["unit_live_relation_authority_hits"] == 1
 assert resources["relation_witness_decode_requests"] <= 3 * resources["relations"]
 assert result.saturation_record.attempts == ()
 
