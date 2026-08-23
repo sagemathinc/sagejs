@@ -29,11 +29,15 @@ _nf_lcm = _nf._nf_lcm
 
 SERIALIZATION_SCHEMA = "sagejs.number-fields.ideal.v1"
 MAX_PACKED_IDEAL_PRODUCT_DEGREE = 16
+MAX_PACKED_IDEAL_POWER_CHAIN = 256
+MAX_PACKED_IDEAL_POWER_CHAIN_INTEGER_BITS = 16_384
+MAX_PACKED_IDEAL_POWER_CHAIN_BUFFER_WORDS = 1_000_000
 MAX_PACKED_ELEMENT_VALUATION_LATTICES = 4096
 MAX_MULTIPLICATION_TENSOR_CACHE_ENTRIES = 32
 
 _multiplication_tensor_cache: list[tuple[Any, tuple[int, ...], int]] = []
 _ideal_product_kernel_override: Any = None
+_ideal_power_chain_kernel_override: Any = None
 _element_membership_kernel_override: Any = None
 _element_membership_batch_kernel_override: Any = None
 _element_valuations_kernel_override: Any = None
@@ -345,11 +349,7 @@ def _packed_integral_element_valuations(
     try:
         packed_bases: list[tuple[tuple[int, ...], int]] = []
         for prime_ideal, maximum in zip(primes, maxima, strict=True):
-            powers = prime_ideal._valuation_power_cache
-            while len(powers) < maximum:
-                powers.append(powers[-1] * prime_ideal)
-            for index in range(maximum):
-                packed_bases.append(_packed_ideal_basis(powers[index]))
+            packed_bases.extend(packed_valuation_power_bases(prime_ideal, maximum))
         vector, vector_denominator = _packed_element_coordinates(element, degree)
         numerators = [value for basis, _denominator in packed_bases for value in basis]
         denominators = [denominator for _basis, denominator in packed_bases]
@@ -448,6 +448,134 @@ def _packed_ideal_product(left: Any, right: Any) -> Any:
         return NumberFieldIdeal._from_canonical_basis_rows(left.ring(), rows)
     except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
         return None
+
+
+def _compute_packed_ideal_power_bases(
+    ideal: Any, maximum: int
+) -> tuple[tuple[tuple[int, ...], int], ...] | None:
+    """Return packed HNF bases for `I, I^2, ..., I^maximum`."""
+    degree = int(ideal.number_field().degree())
+    if (
+        degree < 1
+        or degree > MAX_PACKED_IDEAL_PRODUCT_DEGREE
+        or maximum < 1
+        or maximum > MAX_PACKED_IDEAL_POWER_CHAIN
+        or ideal.is_zero()
+    ):
+        return None
+    if _ideal_power_chain_kernel_override is False:
+        return None
+    kernel_module = __import__(
+        "sagejs.number_fields.bl_composite_kernel", fromlist=["bl_composite_kernel"]
+    )
+    kernel = (
+        _ideal_power_chain_kernel_override
+        if callable(_ideal_power_chain_kernel_override)
+        else getattr(kernel_module, "packed_ideal_power_chain_hnf_in_place", None)
+    )
+    if not callable(kernel):
+        return None
+    try:
+        basis, basis_denominator = _packed_ideal_basis(ideal)
+        tensor, tensor_denominator = _field_multiplication_tensor(ideal.number_field())
+        maximum_bits = max(
+            [1]
+            + [abs(value).bit_length() for value in basis]
+            + [abs(value).bit_length() for value in tensor]
+        )
+        if maximum_bits > MAX_PACKED_IDEAL_POWER_CHAIN_INTEGER_BITS:
+            return None
+        growth_bits = maximum * (3 * maximum_bits + (degree * degree).bit_length())
+        word_capacity = max(16, (growth_bits + 63) // 64 + 8 * degree)
+        square = degree * degree
+        product_entries = square * degree
+        buffer_entries = maximum * square + 2 * product_entries + 2 * degree
+        if word_capacity > MAX_PACKED_IDEAL_POWER_CHAIN_BUFFER_WORDS // buffer_entries:
+            return None
+        powers = kernel_integer_zeros(kernel, maximum * square, word_capacity)
+        if not kernel(
+            powers,
+            kernel_integer_zeros(kernel, product_entries, word_capacity),
+            kernel_integer_zeros(kernel, product_entries, word_capacity),
+            kernel_integer_zeros(kernel, 2 * degree, word_capacity),
+            kernel_integer_buffer(kernel, basis),
+            kernel_integer_buffer(kernel, tensor),
+            degree,
+            maximum,
+        ):
+            return None
+        values = tuple(int(value) for value in integer_buffer_values(powers))
+        if len(values) != maximum * square:
+            return None
+        answer: list[tuple[tuple[int, ...], int]] = []
+        denominator = runtime.bigint(basis_denominator)
+        denominator_step = runtime.bigint(basis_denominator) * runtime.bigint(
+            tensor_denominator
+        )
+        for exponent in range(maximum):
+            offset = exponent * square
+            answer.append((values[offset : offset + square], int(denominator)))
+            denominator *= denominator_step
+        return tuple(answer)
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+
+
+def packed_valuation_power_bases(
+    prime_ideal: Any, maximum: int
+) -> tuple[tuple[tuple[int, ...], int], ...]:
+    """Return cached packed HNF bases for the first valuation powers."""
+    count = int(maximum)
+    if count < 0 or count > MAX_PACKED_IDEAL_POWER_CHAIN:
+        raise ValueError("the requested valuation-power count is out of range")
+    try:
+        cache = prime_ideal._packed_valuation_power_basis_cache
+    except AttributeError:
+        cache = []
+        prime_ideal._packed_valuation_power_basis_cache = cache
+    if len(cache) >= count:
+        return tuple(cache[:count])
+    if count:
+        packed = _compute_packed_ideal_power_bases(prime_ideal, count)
+        if packed is not None:
+            cache.clear()
+            cache.extend(packed)
+            return tuple(cache)
+    powers = prime_ideal._valuation_power_cache
+    while len(powers) < count:
+        powers.append(powers[-1] * prime_ideal)
+    while len(cache) < count:
+        cache.append(_packed_ideal_basis(powers[len(cache)]))
+    return tuple(cache)
+
+
+def ensure_valuation_powers(prime_ideal: Any, maximum: int) -> tuple[Any, ...]:
+    """Populate an immutable prime's bounded valuation-power cache exactly."""
+    count = int(maximum)
+    if count < 0 or count > MAX_PACKED_IDEAL_POWER_CHAIN:
+        raise ValueError("the requested valuation-power count is out of range")
+    powers = prime_ideal._valuation_power_cache
+    if len(powers) >= count:
+        return tuple(powers[:count])
+    if len(powers) == 1:
+        packed = packed_valuation_power_bases(prime_ideal, count)
+        degree = int(prime_ideal.number_field().degree())
+        while len(powers) < count:
+            numerators, denominator = packed[len(powers)]
+            rows = [
+                [
+                    sage.QQ(numerators[row * degree + column]) / sage.QQ(denominator)
+                    for column in range(degree)
+                ]
+                for row in range(degree)
+            ]
+            powers.append(
+                NumberFieldIdeal._from_canonical_basis_rows(prime_ideal.ring(), rows)
+            )
+        return tuple(powers[:count])
+    while len(powers) < count:
+        powers.append(powers[-1] * prime_ideal)
+    return tuple(powers[:count])
 
 
 def ideal_product(left: Any, right: Any) -> Any:
@@ -675,9 +803,7 @@ def _element_valuations_impl(
         answer: list[int] = []
         for prime_ideal, maximum in zip(primes, maxima, strict=True):
             valuation = 0
-            powers = prime_ideal._valuation_power_cache
-            while len(powers) < maximum:
-                powers.append(powers[-1] * prime_ideal)
+            powers = ensure_valuation_powers(prime_ideal, maximum)
             while valuation < maximum and element in powers[valuation]:
                 valuation += 1
             answer.append(valuation)
@@ -793,6 +919,7 @@ __all__ = [
     "colon_ideal",
     "element_valuation",
     "element_valuations",
+    "ensure_valuation_powers",
     "factor_integral_ideal",
     "ideal_contains",
     "ideal_contains_element",
@@ -806,6 +933,7 @@ __all__ = [
     "ideal_valuation",
     "integrality_denominator",
     "numerator_ideal",
+    "packed_valuation_power_bases",
     "scalar_translate",
     "serialize_ideal",
 ]

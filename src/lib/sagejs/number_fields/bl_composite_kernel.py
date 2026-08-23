@@ -1481,6 +1481,92 @@ def packed_ideal_product_hnf_in_place(
 
 
 @native
+def packed_ideal_power_chain_hnf_in_place(
+    powers: IntegerBuffer,
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    workspace: IntegerBuffer,
+    basis: IntegerBuffer,
+    multiplication_tensor: IntegerBuffer,
+    degree: uint64,
+    power_count: uint64,
+) -> bool:
+    """Compute canonical numerator HNFs for `I, I^2, ..., I^n`.
+
+    All powers use the caller-owned common denominator convention.  The first
+    `degree^2` entries of `output` retain the previous HNF between iterations;
+    `powers` receives the canonical `degree` rows for every exponent.
+    """
+    maximum_degree: uint64 = 16
+    maximum_power_count: uint64 = 256
+    square = degree * degree
+    product_entries = square * degree
+    valid = (
+        degree > 0
+        and degree <= maximum_degree
+        and power_count > 0
+        and power_count <= maximum_power_count
+        and len(powers) == power_count * square
+        and len(output) == product_entries
+        and len(source) == product_entries
+        and len(workspace) == 2 * degree
+        and len(basis) == square
+        and len(multiplication_tensor) == product_entries
+    )
+    if not valid:
+        return False
+
+    index = 0
+    while index < square:
+        output[index] = basis[index]
+        powers[index] = basis[index]
+        index += 1
+
+    exponent = 1
+    while exponent < power_count:
+        left_row = 0
+        while left_row < degree:
+            right_row = 0
+            while right_row < degree:
+                product_row = left_row * degree + right_row
+                coordinate = 0
+                while coordinate < degree:
+                    value = 0
+                    left_coordinate = 0
+                    while left_coordinate < degree:
+                        right_coordinate = 0
+                        while right_coordinate < degree:
+                            tensor_index = (
+                                left_coordinate * degree + right_coordinate
+                            ) * degree + coordinate
+                            value += (
+                                output[left_row * degree + left_coordinate]
+                                * basis[right_row * degree + right_coordinate]
+                                * multiplication_tensor[tensor_index]
+                            )
+                            right_coordinate += 1
+                        left_coordinate += 1
+                    source[product_row * degree + coordinate] = value
+                    coordinate += 1
+                right_row += 1
+            left_row += 1
+        if not _packed_row_hnf_in_place(
+            output,
+            source,
+            workspace,
+            square,
+            degree,
+        ):
+            return False
+        index = 0
+        while index < square:
+            powers[exponent * square + index] = output[index]
+            index += 1
+        exponent += 1
+    return True
+
+
+@native
 def packed_prime_ideal_candidate_hnf_in_place(
     output: IntegerBuffer,
     source: IntegerBuffer,
@@ -1642,6 +1728,7 @@ __all__ = [
     "packed_lattice_memberships_in_place",
     "packed_known_overorder_contains_vectors_in_place",
     "packed_ideal_product_hnf_in_place",
+    "packed_ideal_power_chain_hnf_in_place",
     "packed_order_contains_vector_in_place",
     "packed_order_contains_vectors_in_place",
     "packed_order_table_in_place",

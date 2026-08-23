@@ -1414,13 +1414,10 @@ class ExactRelationCollector:
         prime_power_numerators: list[int] = []
         prime_power_denominators: list[int] = []
         for prime_ideal, maximum in zip(self.factor_base, maxima, strict=True):
-            powers = prime_ideal._valuation_power_cache
-            while len(powers) < maximum:
-                powers.append(powers[-1] * prime_ideal)
-            for index in range(maximum):
-                packed_basis, denominator = ideal_module._packed_ideal_basis(
-                    powers[index]
-                )
+            packed_powers = ideal_module.packed_valuation_power_bases(
+                prime_ideal, maximum
+            )
+            for packed_basis, denominator in packed_powers:
                 prime_power_numerators.extend(packed_basis)
                 prime_power_denominators.append(int(denominator))
             offsets.append(len(prime_power_denominators))
@@ -1556,12 +1553,14 @@ class ExactRelationCollector:
             )
         reconstructed = None
         if self.order.is_maximal():
+            ideal_module = __import__(
+                "sagejs.number_fields.ideal_arithmetic",
+                fromlist=["ideal_arithmetic"],
+            )
             for prime_ideal, exponent in zip(self.factor_base, row, strict=True):
                 if exponent == 0:
                     continue
-                powers = prime_ideal._valuation_power_cache
-                while len(powers) < exponent:
-                    powers.append(powers[-1] * prime_ideal)
+                powers = ideal_module.ensure_valuation_powers(prime_ideal, exponent)
                 if element not in powers[exponent - 1]:
                     raise RelationNotSmoothError(
                         "the sieved relation row has a false prime valuation",

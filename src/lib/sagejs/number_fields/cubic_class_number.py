@@ -279,13 +279,10 @@ def _packed_cubic_relation_candidates(
         prime_power_numerators: list[int] = []
         prime_power_denominators: list[int] = []
         for prime_ideal, maximum in zip(factor_base, maxima, strict=True):
-            powers = prime_ideal._valuation_power_cache
-            while len(powers) < maximum:
-                powers.append(powers[-1] * prime_ideal)
-            for index in range(maximum):
-                packed_basis, denominator = ideal_module._packed_ideal_basis(
-                    powers[index]
-                )
+            packed_powers = ideal_module.packed_valuation_power_bases(
+                prime_ideal, maximum
+            )
+            for packed_basis, denominator in packed_powers:
                 prime_power_numerators.extend(packed_basis)
                 prime_power_denominators.append(int(denominator))
             offsets.append(len(prime_power_denominators))

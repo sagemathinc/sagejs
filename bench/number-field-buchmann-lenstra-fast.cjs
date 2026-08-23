@@ -60,10 +60,84 @@ import time
 
 sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})
 import sagejs.number_fields.buchmann_lenstra as bl
-from sagejs.native import execution_mode
+import sagejs.number_fields.bl_composite_kernel as kernels
+from sagejs.native import (
+    execution_mode,
+    integer_buffer_values,
+    kernel_integer_buffer,
+    kernel_integer_zeros,
+)
 from sagejs.number_fields.maximal_order_contracts import DiscriminantComponent
 
 cases = json.loads(${JSON.stringify(JSON.stringify(cases))})
+
+power_case = json.loads(${JSON.stringify(JSON.stringify({
+  degree: 3,
+  tensor: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 12, 6, 1, 0, 0, 1, 12, 6, 1, 12, 18, 7],
+  bases: [
+    [2, 0, 2, 0, 1, 1, 0, 0, 4],
+    [2, 0, 4, 0, 1, 5, 0, 0, 6],
+    [6, 0, 0, 0, 1, 1, 0, 0, 2],
+    [2, 0, 0, 0, 1, 0, 0, 0, 1],
+    [2, 0, 2, 0, 1, 7, 0, 0, 10],
+  ],
+  maxima: [8, 3, 3, 4, 2],
+}))})
+
+def measure_power_chain():
+    degree = int(power_case["degree"])
+    square = degree * degree
+    product_entries = square * degree
+    tensor = [int(value) for value in power_case["tensor"]]
+    product = kernels.packed_ideal_product_hnf_in_place
+    chain = kernels.packed_ideal_power_chain_hnf_in_place
+    started = time.perf_counter_ns()
+    readable = []
+    for basis, maximum in zip(power_case["bases"], power_case["maxima"]):
+        current = [int(value) for value in basis]
+        result = [tuple(current)]
+        for _exponent in range(1, maximum):
+            output = kernel_integer_zeros(product, product_entries, 32)
+            assert product(
+                output,
+                kernel_integer_zeros(product, product_entries, 32),
+                kernel_integer_zeros(product, 2 * degree, 32),
+                kernel_integer_buffer(product, current),
+                kernel_integer_buffer(product, basis),
+                kernel_integer_buffer(product, tensor),
+                degree,
+            )
+            current = [
+                int(value)
+                for value in integer_buffer_values(output)[:square]
+            ]
+            result.append(tuple(current))
+        readable.append(tuple(result))
+    readable_ns = time.perf_counter_ns() - started
+    started = time.perf_counter_ns()
+    packed = []
+    for basis, maximum in zip(power_case["bases"], power_case["maxima"]):
+        output = kernel_integer_zeros(chain, maximum * square, 32)
+        assert chain(
+            output,
+            kernel_integer_zeros(chain, product_entries, 32),
+            kernel_integer_zeros(chain, product_entries, 32),
+            kernel_integer_zeros(chain, 2 * degree, 32),
+            kernel_integer_buffer(chain, basis),
+            kernel_integer_buffer(chain, tensor),
+            degree,
+            maximum,
+        )
+        values = [int(value) for value in integer_buffer_values(output)]
+        packed.append(
+            tuple(
+                tuple(values[offset : offset + square])
+                for offset in range(0, maximum * square, square)
+            )
+        )
+    packed_ns = time.perf_counter_ns() - started
+    assert tuple(packed) == tuple(readable)
+    return [readable_ns, packed_ns]
 
 def measure(case):
     coefficients = [int(value) for value in case["coefficients"]]
@@ -126,6 +200,8 @@ def measure(case):
 for case in cases:
     for _index in range(${warmups}):
         measure(case)
+for _index in range(${warmups}):
+    measure_power_chain()
 
 results = []
 for case in cases:
@@ -139,11 +215,17 @@ for case in cases:
         "measurements_ns": measurements,
     })
 
+power_measurements = [measure_power_chain() for _index in range(${samples})]
+
 print(json.dumps({
     "execution_mode": execution_mode(bl.packed_row_hnf_in_place),
     "fused_execution_mode": execution_mode(
         bl.packed_composite_dedekind_basis_in_place
     ),
+    "ideal_power_chain_execution_mode": execution_mode(
+        kernels.packed_ideal_power_chain_hnf_in_place
+    ),
+    "ideal_power_chain_measurements_ns": power_measurements,
     "results": results,
 }, sort_keys=True))
 `;
@@ -179,6 +261,16 @@ function runRuntime(name, command, args, environment = {}) {
       }),
     );
   }
+  const readablePowerTimes = report.ideal_power_chain_measurements_ns
+    .map((row) => row[0])
+    .sort((left, right) => left - right);
+  const packedPowerTimes = report.ideal_power_chain_measurements_ns
+    .map((row) => row[1])
+    .sort((left, right) => left - right);
+  report.ideal_power_chain_median_ns = {
+    repeated_product: readablePowerTimes[Math.floor(readablePowerTimes.length / 2)],
+    packed: packedPowerTimes[Math.floor(packedPowerTimes.length / 2)],
+  };
   return { name, ...report };
 }
 
@@ -201,6 +293,7 @@ const compiled = spawnSync(
       "packed_row_hnf_in_place",
       "packed_composite_dedekind_basis_in_place",
       "packed_order_table_in_place",
+      "packed_ideal_power_chain_hnf_in_place",
     ].join(","),
   ],
   { cwd: root, encoding: "utf8", timeout: 120_000 },
@@ -212,7 +305,7 @@ if (compiled.status !== 0) {
 console.log(
   JSON.stringify(
     {
-      schema: "sagejs.number-fields/buchmann-lenstra-fast-benchmark-v2",
+      schema: "sagejs.number-fields/buchmann-lenstra-fast-benchmark-v3",
       warmups,
       samples,
       controls: controlIds,
