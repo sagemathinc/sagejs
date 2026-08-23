@@ -42,8 +42,10 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
   );
   assert.match(workflow, /node --test website\/live\/test\/\*\.test\.mjs/);
   assert.match(workflow, /node --test test\/wasm-deployment-workflow\.cjs/);
+  assert.match(workflow, /build\/cloudflare-deploy\/package\.json/);
+  assert.match(workflow, /workingDirectory: build\/cloudflare-deploy/);
   assert.match(workflow, /packageManager: npm/);
-  assert.match(workflow, /deploy --config build\/cloudflare-deploy\/wrangler\.json/);
+  assert.match(workflow, /deploy --config wrangler\.json/);
   assert.doesNotMatch(workflow, /pages deploy/);
   assert.match(workflow, /website\/live\/dist\n\s+if-no-files-found: error/);
   assert.match(workflow, /build\/cloudflare-deploy\/deployment\.json/);

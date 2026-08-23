@@ -237,15 +237,26 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+      - name: Isolate the Wrangler installation from the pnpm workspace
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFile } from "node:fs/promises";
+          await writeFile(
+            "build/cloudflare-deploy/package.json",
+            `${JSON.stringify({ private: true })}\n`,
+          );
+          NODE
+
       - name: Atomically activate the uploaded release with a Cloudflare Worker
         id: deploy
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: build/cloudflare-deploy
           packageManager: npm
           wranglerVersion: "4.125.0"
-          command: deploy --config build/cloudflare-deploy/wrangler.json
+          command: deploy --config wrangler.json
 
       - name: Validate the deployed preview origin
         if: inputs.target == 'preview'
