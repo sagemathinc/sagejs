@@ -1,0 +1,29 @@
+{
+  "$schema": "./hyperelliptic-auto-receipt-policy.schema.json",
+  "schema": "sagejs.hyperelliptic-auto-receipt-policy/v1",
+  "enabled": false,
+  "required_platforms": [
+    "linux-x64",
+    "linux-arm64",
+    "darwin-arm64",
+    "win32-x64"
+  ],
+  "source_bundle_contract": {
+    "algorithm": "sagejs.source-bundle-sha256/v1",
+    "paths": [
+      "packages/flint/src/addon.h",
+      "packages/flint/src/hyperelliptic/smalljac.c",
+      "src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
+      "src/lib/sagejs/hyperelliptic_curves/frobenius.py",
+      "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_formulas.py",
+      "src/lib/sagejs/hyperelliptic_curves/group_structure.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py",
+      "src/lib/sagejs/hyperelliptic_curves/rforest.py"
+    ]
+  },
+  "source_bundle": null,
+  "entries": []
+}
