@@ -676,6 +676,7 @@ class PreparedJacobianArithmetic:
         pack_ns = time.perf_counter_ns() - started
         validation_ns = 0
         materialization_ns = 0
+        answer: Any
         if selected == "reference":
             started = time.perf_counter_ns()
             values = []

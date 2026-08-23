@@ -330,11 +330,13 @@ class MumfordDivisor(sage.Element):
     def degree(self) -> int:
         if self._packed_row is not None:
             return self._packed_row[0]
+        assert self._u is not None
         return self._u.degree()
 
     def is_zero(self) -> bool:
         if self._packed_row is not None:
             return self._packed_row[0] == 0
+        assert self._u is not None and self._v is not None
         return self._u.is_one() and self._v.is_zero()
 
     def __bool__(self) -> bool:
