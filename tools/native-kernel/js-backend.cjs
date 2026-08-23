@@ -669,6 +669,14 @@ function backendDecision(fn) {
       ? "  return \"bigint\";"
       : `  return (${conditions.join(" || ")}) ? "tagged" : "bigint";`;
   }
+  if (policy.kind === "integer-buffer-values") {
+    const conditions = policy.parameters.map((name) =>
+      `integerBufferFitsSignedInt64(sagejs_native_${name})`
+    );
+    return conditions.length === 0
+      ? '  return "tagged";'
+      : `  return (${conditions.join(" && ")}) ? "tagged" : "gmp";`;
+  }
   throw new Error(`unsupported exact backend policy ${policy.kind}`);
 }
 
@@ -1301,6 +1309,33 @@ function integerBufferView(value, argument = "buffer") {
   return {
     [integerBufferViewTag]: true, data: value, offset: 0, length,
   };
+}
+
+function integerBufferFitsSignedInt64(buffer) {
+  const view = integerBufferView(buffer);
+  const minimum = -(1n << 63n);
+  const maximum = (1n << 63n) - 1n;
+  if (view.packed === undefined) {
+    for (let index = 0; index < view.length; index += 1) {
+      const value = BigInt(Reflect.get(view.data, String(view.offset + index)));
+      if (value < minimum || value > maximum) return false;
+    }
+    return true;
+  }
+  const packed = view.packed;
+  for (let index = 0; index < view.length; index += 1) {
+    const position = view.offset + index;
+    const signedSize = packed.sizes[position];
+    if (signedSize > 1 || signedSize < -1) return false;
+    if (signedSize === 0) continue;
+    const magnitude = packed.limbs[position * packed.wordCapacity];
+    if (signedSize > 0) {
+      if (magnitude > 0x7fffffffffffffffn) return false;
+    } else if (magnitude > 0x8000000000000000n) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function integerBufferGet(buffer, index) {
