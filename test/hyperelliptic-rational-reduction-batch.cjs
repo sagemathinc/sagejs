@@ -157,6 +157,17 @@ except RationalTorsionCapabilityError as error:
 else:
     raise AssertionError("the packed pair bound was ignored")
 
+memory_probe = PreparedRationalReductionBatch(J, (P,))
+memory_limited = PreparedRationalReductionBatch(
+    J, (P,), max_memory_bytes=memory_probe.estimated_bytes + 200
+)
+try:
+    memory_limited.reduce_many((5, 11), algorithm="native", packed=True)
+except RationalTorsionCapabilityError as error:
+    assert error.diagnostics["estimated_materialized_bytes"] == 128
+else:
+    raise AssertionError("lazy packed-row materialization escaped its memory bound")
+
 cancelled = PreparedRationalReductionBatch(J, (P,), cancel=lambda: True)
 try:
     cancelled.reduce_many((5, 11), algorithm="native")
@@ -164,6 +175,18 @@ except RationalReductionCancelledError:
     pass
 else:
     raise AssertionError("many-prime cancellation was ignored")
+
+cancel_state = [False]
+lazy_cancelled = PreparedRationalReductionBatch(
+    J, (P,), cancel=lambda: cancel_state[0]
+).reduce_many((5, 11), algorithm="native", packed=True)
+cancel_state[0] = True
+try:
+    tuple(lazy_cancelled[0]["divisors"])
+except RationalReductionCancelledError:
+    pass
+else:
+    raise AssertionError("lazy packed-row materialization ignored cancellation")
 
 # Native filtering may discard candidates during construction, but replay is
 # forced through the exact reference reduction path and reproduces every

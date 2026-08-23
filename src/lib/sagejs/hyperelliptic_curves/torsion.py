@@ -925,12 +925,14 @@ class _PackedFiniteMumfordRows:
         output_cache: Any,
         start: int,
         count: int,
+        cancel: Any,
     ) -> None:
         self._output = output
         self._statuses = statuses
         self._output_cache = output_cache
         self._start = start
         self._count = count
+        self._cancel = cancel
 
     def __len__(self) -> int:
         return self._count
@@ -941,6 +943,8 @@ class _PackedFiniteMumfordRows:
             index += self._count
         if index < 0 or index >= self._count:
             raise IndexError("packed finite Mumford row index out of range")
+        if index % 256 == 0:
+            _check_cancel(self._cancel, "packed finite row materialization")
         pair_index = self._start + index
         if int(self._statuses[pair_index]) != 1:
             return None
@@ -961,11 +965,11 @@ class _PackedFiniteMumfordRows:
 class PreparedRationalReductionBatch:
     """Prepared, bounded reduction of one rational Mumford basis.
 
-    The rational coefficients are validated and packed once.  A reduced curve
-    and polynomial ring are constructed once per requested prime, then the
-    whole basis is reduced through that prepared context.  Rows are yielded in
-    deterministic chunks; the object does not retain finite Jacobians, so its
-    memory is bounded independently of the number of primes.
+    The rational coefficients are validated and packed once. One native call
+    fills canonical rows for every divisor/prime pair, and one reduced curve
+    context is retained per requested prime. Pair and peak-memory limits make
+    that retention explicit; `iter_chunks` bounds it independently of a long
+    prime stream.
     """
 
     def __init__(
@@ -1057,6 +1061,11 @@ class PreparedRationalReductionBatch:
         # Eight uint64 words and one status word for every prime/divisor pair.
         return int(prime_count) * len(self.divisors) * 9 * 8
 
+    def _materialized_batch_bytes(self, prime_count: int) -> int:
+        # Lazy row consumption may additionally materialize the eight output
+        # words as exact host integers.  Charge that peak before the kernel.
+        return int(prime_count) * len(self.divisors) * 8 * 8
+
     def reduce_many(
         self,
         primes: Any,
@@ -1093,13 +1102,18 @@ class PreparedRationalReductionBatch:
                 },
             )
         batch_bytes = self._reduction_batch_bytes(len(values))
-        if self.estimated_bytes + batch_bytes > self.max_memory_bytes:
+        materialized_bytes = self._materialized_batch_bytes(len(values))
+        if (
+            self.estimated_bytes + batch_bytes + materialized_bytes
+            > self.max_memory_bytes
+        ):
             raise RationalTorsionCapabilityError(
                 "packed rational reduction output exceeds max_memory_bytes="
                 + str(self.max_memory_bytes),
                 {
                     "estimated_input_bytes": self.estimated_bytes,
                     "estimated_output_bytes": batch_bytes,
+                    "estimated_materialized_bytes": materialized_bytes,
                     "prime_count": len(values),
                     "divisor_count": len(self.divisors),
                 },
@@ -1221,6 +1235,7 @@ class PreparedRationalReductionBatch:
                     output_cache,
                     prime_index * len(self.divisors),
                     len(self.divisors),
+                    self.cancel,
                 )
                 rows.append(
                     {
@@ -1267,6 +1282,7 @@ class PreparedRationalReductionBatch:
             "divisor_count": len(self.divisors),
             "kernel_crossings": 1,
             "packed_output_bytes": batch_bytes,
+            "max_retained_and_materialized_bytes": batch_bytes + materialized_bytes,
             "packed_results": packed,
         }
         return (answer, record) if diagnostics else answer
