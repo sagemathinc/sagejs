@@ -134,11 +134,17 @@ export async function handleRequest(request, env, context = {}) {
     const cached = await edgeCache.match(cacheKey);
     if (cached) {
       if (request.headers.get("If-None-Match") === cached.headers.get("ETag")) {
-        return new Response(null, { status: 304, headers: cached.headers });
+        return new Response(null, {
+          status: 304,
+          headers: cached.headers,
+          encodeBody: "manual",
+        });
       }
-      return request.method === "HEAD"
-        ? new Response(null, { status: cached.status, headers: cached.headers })
-        : cached;
+      return new Response(request.method === "HEAD" ? null : cached.body, {
+        status: cached.status,
+        headers: cached.headers,
+        encodeBody: "manual",
+      });
     }
   }
 
@@ -152,11 +158,12 @@ export async function handleRequest(request, env, context = {}) {
 
   const headers = responseHeaders(object, logicalPath, env.RELEASE_ID, encoding);
   if (request.headers.get("If-None-Match") === object.httpEtag) {
-    return new Response(null, { status: 304, headers });
+    return new Response(null, { status: 304, headers, encodeBody: "manual" });
   }
   const response = new Response(request.method === "HEAD" ? null : object.body, {
     status: 200,
     headers,
+    encodeBody: "manual",
   });
   if (immutable && edgeCache && request.method === "GET") {
     context.waitUntil?.(edgeCache.put(cacheKey, response.clone()));
