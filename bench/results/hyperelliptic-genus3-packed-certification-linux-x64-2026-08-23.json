@@ -160,6 +160,127 @@
       "benchmark_host_is_pinned_bench_1": false
     }
   },
+  "phase4_freeze_168f8504": {
+    "immutable": true,
+    "purpose": "exact frozen-source Phase 4 acceptance and causal diagnosis before prime-tail handling",
+    "host": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux-x64",
+    "commit": "168f850407f3f685545932b1b770f40b42c74ad6",
+    "source_status": "clean",
+    "certification": {
+      "command": "/usr/bin/time -v node bench/rforest/benchmark-genus3-certified.cjs --limits 100000 --stages certification",
+      "result": "fail",
+      "wall_seconds": 103.73,
+      "cpu_user_seconds": 109.56,
+      "cpu_system_seconds": 0.91,
+      "peak_rss_kib": 592232,
+      "error": "ValueError: the exhaustive reference field is too large (order 259113409)",
+      "exact_stream_digest": null,
+      "digest_note": "the stream aborted at p=16097 before emitting a final digest"
+    },
+    "p16097_diagnostic": {
+      "prime": 16097,
+      "row_status": "forest",
+      "residues": [35, 10440, 15599],
+      "candidate_count": 867,
+      "survivor_count": 867,
+      "progressions": [
+        {"base": 4179922680442, "stride": 16097, "count": 329},
+        {"base": 4180183387454, "stride": 16097, "count": 358},
+        {"base": 4180444319824, "stride": 16097, "count": 157},
+        {"base": 4180704720993, "stride": 16097, "count": 23}
+      ],
+      "model_coefficients": [4, 4, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0],
+      "witness_row": [1, 0, 1, 0, 0, 2, 0, 0],
+      "annihilating_multiple": 4179926624207,
+      "packed_failure": "JacobianResourceLimitError: integer factorization exceeded max_trial_divisions=1000000",
+      "fallback_reason": "certification_resource_limit",
+      "finite_parent_cache_entries": 1,
+      "diagnostic_peak_rss_kib": 343860,
+      "root_cause": "the remaining annihilator is prime, but bounded trial division exhausted immediately before its square-root bound"
+    },
+    "rank_three_order_32": {
+      "structure": [2, 2, 8],
+      "query": [1, 1, 7],
+      "verified": true,
+      "point_enumerations_per_map": 1,
+      "process_cold_seconds": {
+        "order": 0.0415869,
+        "structure": 0.1923995,
+        "explicit_map": 1.226186,
+        "query": 0.0115905,
+        "verify": 0.0541604
+      },
+      "object_cold_seconds": {
+        "order": 0.0024533,
+        "structure": 0.0960155,
+        "explicit_map": 0.4250324,
+        "query": 0.007323,
+        "verify": 0.0503235
+      },
+      "warm_seconds": {
+        "structure": [0.0873039, 0.0833688, 0.0681658, 0.0656822],
+        "explicit_map": [0.4275219, 0.2003949, 0.1764786, 0.1886737],
+        "verify": [0.0481839, 0.0459435, 0.044714, 0.0460114]
+      },
+      "peak_rss_kib": 366244
+    },
+    "acceptance": {
+      "p100000_completed": "fail",
+      "peak_rss_below_512_mib": "fail",
+      "rank_three_structure_10x_process_cold": "pass",
+      "rank_three_map_10x_process_cold": "fail",
+      "rank_three_structure_10x_object_cold": "pass",
+      "rank_three_map_10x_object_cold": "pass",
+      "rank_three_structure_10x_warm": "pass",
+      "rank_three_map_10x_warm": "pass",
+      "overall": "fail"
+    }
+  },
+  "prime_tail_followup_4669e7d9": {
+    "purpose": "local exact replay after accepting a proof-certified prime tail at trial-budget exhaustion",
+    "host": "project-cd40b605-e49e-4074-9c13-b9caa02cb60d",
+    "platform": "linux-x64",
+    "commit": "4669e7d99a131272f5b397bdce48fe03626d1ba2",
+    "p16097": {
+      "status": "unique",
+      "coefficients": [1, 35, -5657, 176569, -91060729, 9068969315, 4170948544673],
+      "backend": "kernel",
+      "progression_count": 4,
+      "element_order": 4179926624207,
+      "prime_factors": [[4179926624207, 1]],
+      "verification": "native_exact_factor_and_strip"
+    },
+    "p10007": {
+      "command": "node bench/rforest/benchmark-genus3-certified.cjs --limits 10007 --stages certification",
+      "wall_seconds": 38.091701368,
+      "cpu_user_seconds": 40.716649,
+      "cpu_system_seconds": 0.471853,
+      "rss_start_kib": 223816,
+      "rss_end_kib": 453444,
+      "peak_rss_kib": 543160,
+      "rows": 1230,
+      "unique": 1225,
+      "fallback": 1,
+      "omitted": 4,
+      "primary_samples": 1226,
+      "exact_stream_digest": "33987747261072766155784650560995234330",
+      "digest_matches_fc335f10": true,
+      "stages_seconds": {
+        "residue": 0.604285002,
+        "candidate": 0.147201061,
+        "primary": 7.797929525,
+        "twist": 0.028612375,
+        "fallback": 0.172574043
+      }
+    },
+    "validation": {
+      "full_build": "pass 7/7",
+      "focused_consumer_tests": "pass 8/8",
+      "strict_python": "pass 0 errors",
+      "architecture": "blocked by pre-existing cross-lane lazy-package budget 765638 > 610000"
+    }
+  },
   "notes": [
     "The command completed successfully and exact outputs agree, but the performance acceptance thresholds failed.",
     "The materialized control's candidate stage excludes batched tuple publication, which occurs before the per-row observer; its uninstrumented remainder is therefore much larger.",
