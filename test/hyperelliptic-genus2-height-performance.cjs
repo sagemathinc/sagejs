@@ -12,7 +12,18 @@ from sagejs.hyperelliptic_curves.genus2_heights import (
     height_pairing,
     regulator,
 )
+from sagejs.hyperelliptic_curves.genus2_kummer_height_kernel import (
+    dyadic_kummer_height_recurrence,
+)
+from sagejs.native import (
+    integer_buffer_values,
+    is_compiled,
+    kernel_integer_buffer,
+    kernel_integer_zeros,
+    kernel_uint64_buffer,
+)
 from sagejs.number_fields.class_unit_analytic import RealBall
+import sagejs.runtime as runtime
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -21,6 +32,82 @@ J = C.jacobian()
 P = J([x, 1])
 Q = J([x - 1, 1])
 `;
+
+test("native dyadic recurrence is identical to its ordinary interval fallback", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      `${setup}
+context = HeightContext(J)
+precision = 96
+steps = 8
+scale = 2**precision
+integer_coordinates = context.kummer(P).coordinates()
+initial_scale = max(abs(value) for value in integer_coordinates)
+state = []
+for value in integer_coordinates:
+    state.extend(((value*scale)//initial_scale, -((-value*scale)//initial_scale)))
+terms = []
+counts = []
+for table in context._classical_duplication_terms:
+    counts.append(len(table))
+    for term in table:
+        terms.extend(term)
+fallback_state = list(state)
+fallback_output = [0 for _ in range(10*steps)]
+fallback_scratch = [0 for _ in range(48)]
+fallback = getattr(
+    dyadic_kummer_height_recurrence,
+    "__wrapped__",
+    dyadic_kummer_height_recurrence,
+)
+fallback_status = fallback(
+    fallback_output,
+    fallback_state,
+    terms,
+    counts,
+    fallback_scratch,
+    scale,
+    steps,
+)
+assert fallback_status == steps
+native_match = True
+if is_compiled(dyadic_kummer_height_recurrence):
+    packed_state = kernel_integer_buffer(dyadic_kummer_height_recurrence, state)
+    packed_terms = kernel_integer_buffer(dyadic_kummer_height_recurrence, terms)
+    packed_counts = kernel_uint64_buffer(dyadic_kummer_height_recurrence, counts)
+    packed_scratch = kernel_integer_zeros(
+        dyadic_kummer_height_recurrence, runtime.number(48), runtime.number(8)
+    )
+    packed_output = kernel_integer_zeros(
+        dyadic_kummer_height_recurrence,
+        runtime.number(10*steps),
+        runtime.number(8),
+    )
+    native_status = dyadic_kummer_height_recurrence(
+        packed_output,
+        packed_state,
+        packed_terms,
+        packed_counts,
+        packed_scratch,
+        scale,
+        steps,
+    )
+    native_match = (
+        native_status == fallback_status
+        and integer_buffer_values(packed_output) == fallback_output
+        and integer_buffer_values(packed_state) == fallback_state
+    )
+assert native_match
+[is_compiled(dyadic_kummer_height_recurrence), native_match]
+`,
+      { timeout: 120_000 },
+    );
+    assert.match(result.repr, /^\[(?:True|False), True\]$/);
+  } finally {
+    await session.close();
+  }
+});
 
 test("modular/local height agrees with the exact oracle without large exact state", async () => {
   const session = await createSage();
@@ -119,7 +206,7 @@ oracle96 = RealBall(
     oracle.upper + radius.upper,
     precision_bits=192,
 )
-height.ball.intersection(oracle96)
+assert height.ball.intersection(oracle96)
 arch = height.diagnostics["archimedean_correction"]["diagnostics"]
 assert height.diagnostics["achieved_enclosure_width_bits"] >= 128
 assert arch["specialized_quartic_term_counts"] == (12, 15, 16, 14)

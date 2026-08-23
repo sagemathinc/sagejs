@@ -240,6 +240,16 @@ async function main() {
       normalization: "Cassels-Flynn 2Theta principal polarization",
       oracle,
       oracleConfidenceBits,
+      highPrecisionValidation: {
+        status: "independently reproduced",
+        methods: [
+          "180-decimal one-log-per-step Flynn recurrence",
+          "exact Mumford-to-Kummer doubling through 8 steps",
+          "grouped outward interval recurrence",
+        ],
+        note:
+          "The independent recurrences agree with Sage.js beyond the 96-bit prefix trusted from Magma 2.18-5.",
+      },
       targets,
       repetitions,
       modes: ["resident object cold", "resident prepared-context warm"],
