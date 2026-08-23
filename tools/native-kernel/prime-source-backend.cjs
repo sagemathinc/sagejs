@@ -556,7 +556,7 @@ function comparison(operation) {
   }[operation];
 }
 
-function emitStatementBody(operation, indent) {
+function emitStatementBody(operation, indent, context = {}) {
   const target = operation.target === undefined ? null : cName(operation.target);
   if (operation.kind === "source.uint64.constant") {
     return `${indent}${target} = UINT64_C(${operation.value});`;
@@ -681,6 +681,20 @@ function emitStatementBody(operation, indent) {
     const argumentsList = operation.arguments.map((argument) =>
       cName(argument.name)
     );
+    const wordCallee = context.wordFunctions?.get(operation.function);
+    const directlyWordCallable = wordCallee !== undefined &&
+      context.wordMayPromote?.get(operation.function) === false &&
+      [wordCallee.returnType, ...wordCallee.params.map(({ type }) => type)]
+        .every((type) => ["bool", "uint64", "UInt64Buffer"].includes(type));
+    if (directlyWordCallable) {
+      return [
+        `${indent}if (word_${operation.function}(`,
+        `${indent}        status, &${target}` +
+          `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}) ` +
+          "!= SAGEJS_WORD_OK)",
+        `${indent}    goto fail;`,
+      ].join("\n");
+    }
     return [
       `${indent}if (!sagejs_kernel_${operation.function}(`,
       `${indent}        status, &${target}` +
@@ -742,7 +756,7 @@ function emitStatementBody(operation, indent) {
       `${indent}if (${test})`,
       `${indent}{`,
       ...operation.right.operations.map((item) =>
-        emitStatement(item, `${indent}    `)
+        emitStatement(item, `${indent}    `, context)
       ),
       `${indent}    ${target} = ${cName(operation.right.value)};`,
       `${indent}}`,
@@ -796,17 +810,23 @@ function emitStatementBody(operation, indent) {
   }
   if (operation.kind === "source.if") {
     const lines = [
-      ...operation.condition.operations.map((item) => emitStatement(item, indent)),
+      ...operation.condition.operations.map((item) =>
+        emitStatement(item, indent, context)
+      ),
       `${indent}if (${cName(operation.condition.value)})`,
       `${indent}{`,
-      ...operation.body.map((item) => emitStatement(item, `${indent}    `)),
+      ...operation.body.map((item) =>
+        emitStatement(item, `${indent}    `, context)
+      ),
       `${indent}}`,
     ];
     if (operation.alternative.length > 0) {
       lines.push(
         `${indent}else`,
         `${indent}{`,
-        ...operation.alternative.map((item) => emitStatement(item, `${indent}    `)),
+        ...operation.alternative.map((item) =>
+          emitStatement(item, `${indent}    `, context)
+        ),
         `${indent}}`,
       );
     }
@@ -816,9 +836,13 @@ function emitStatementBody(operation, indent) {
     return [
       `${indent}for (;;)`,
       `${indent}{`,
-      ...operation.condition.operations.map((item) => emitStatement(item, `${indent}    `)),
+      ...operation.condition.operations.map((item) =>
+        emitStatement(item, `${indent}    `, context)
+      ),
       `${indent}    if (!${cName(operation.condition.value)}) break;`,
-      ...operation.body.map((item) => emitStatement(item, `${indent}    `)),
+      ...operation.body.map((item) =>
+        emitStatement(item, `${indent}    `, context)
+      ),
       `${indent}}`,
     ].join("\n");
   }
@@ -828,7 +852,9 @@ function emitStatementBody(operation, indent) {
       `${indent}     ${cName(operation.index)} < ${cName(operation.stop)};`,
       `${indent}     ${cName(operation.index)}++)`,
       `${indent}{`,
-      ...operation.body.map((item) => emitStatement(item, `${indent}    `)),
+      ...operation.body.map((item) =>
+        emitStatement(item, `${indent}    `, context)
+      ),
       `${indent}}`,
     ].join("\n");
   }
@@ -856,8 +882,8 @@ function emitStatementBody(operation, indent) {
   throw new Error(`unsupported source-transparent C operation ${operation.kind}`);
 }
 
-function emitStatement(operation, indent) {
-  const body = emitStatementBody(operation, indent);
+function emitStatement(operation, indent, context) {
+  const body = emitStatementBody(operation, indent, context);
   const comment = cOperationComment(operation, indent);
   const directive = cSourceDirective(operation);
   return [comment, directive, body].filter(Boolean).join("\n");
@@ -888,7 +914,7 @@ function primeSourceCoreSignature(fn, prototype = false) {
   ].join(", ") + `)${prototype ? ";" : ""}`;
 }
 
-function emitPrimeSourceCoreFunction(fn) {
+function emitPrimeSourceCoreFunction(fn, context = {}) {
   const buffers = fn.locals.filter((local) =>
     local.type === "UInt64Buffer" && local.ownership !== "borrowed"
   );
@@ -948,7 +974,7 @@ ${fn.locals.map((local) => declaration(local, fn)).join("\n")}
 ${modulusInitialization}
 ${recordModulusValidation}
 
-${fn.body.map((item) => emitStatement(item, "    ")).join("\n")}
+${fn.body.map((item) => emitStatement(item, "    ", context)).join("\n")}
     sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
         "source-transparent kernel did not return");
     goto fail;

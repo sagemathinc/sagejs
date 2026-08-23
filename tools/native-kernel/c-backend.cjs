@@ -13,6 +13,7 @@ const {
   fitsInt64,
   generateWordFunctions,
   int64Constant,
+  wordPromotionCapabilities,
 } = require("./word-backend.cjs");
 const {
   emitPrimeFieldCoreFunction,
@@ -2843,11 +2844,14 @@ function generateHostCore(ir, options = {}) {
   );
   const functionMap = new Map(exact.map((fn) => [fn.name, fn]));
   const tagged = generateTaggedFunctions(exact);
-  const word = generateWordFunctions(exact.filter((fn) =>
+  const wordFunctions = exact.filter((fn) =>
     ![fn.returnType, ...fn.params.map((param) => param.type)].some((type) =>
       resourceForFunctionType(fn, type) !== undefined
     )
-  ));
+  );
+  const word = generateWordFunctions(wordFunctions);
+  const wordFunctionMap = new Map(wordFunctions.map((fn) => [fn.name, fn]));
+  const wordMayPromote = wordPromotionCapabilities(wordFunctions);
   const usesInt64Buffers = exact.some((fn) =>
     fn.params.some((param) => isInt64BufferType(param.type)) ||
     fn.locals.some((local) => isInt64BufferType(local.type))
@@ -2875,7 +2879,10 @@ function generateHostCore(ir, options = {}) {
     ...floats.map(emitFloat64CoreFunction),
     ...fields.map(emitFieldCoreFunction),
     primeSources.length > 0 ? generatePrimeSourceSupport() : "",
-    ...primeSources.map(emitPrimeSourceCoreFunction),
+    ...primeSources.map((fn) => emitPrimeSourceCoreFunction(fn, {
+      wordFunctions: wordFunctionMap,
+      wordMayPromote,
+    })),
     primeFields.length > 0 ? generatePrimeFieldSupport() : "",
     ...primeFields.map(emitPrimeFieldCoreFunction),
   ].filter(Boolean);

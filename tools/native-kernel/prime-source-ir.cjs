@@ -13,6 +13,7 @@ const {
   hasUint64Bitwise,
   uint64BitwiseOperation,
 } = require("./uint64-operations.cjs");
+const { canonicalType } = require("./integer-ir.cjs");
 
 /*
  * Source-transparent lowering for the prime-field compiler experiment.
@@ -514,6 +515,45 @@ function lowerBufferAssignment(item, rightNode, operator, context) {
 
 function lowerAssignment(statement, context) {
   const assign = statement.body;
+  if (nodeType(assign) === "AST_AnnotatedAssignment") {
+    expect(
+      context,
+      assign.target,
+      nodeType(assign.target) === "AST_SymbolRef",
+      "native local annotations require a local-name target",
+    );
+    expect(
+      context,
+      assign,
+      assign.value !== null && assign.value !== undefined,
+      "native local annotations require an initializer",
+    );
+    const declaredType = canonicalType(assign.annotation);
+    expect(
+      context,
+      assign.annotation,
+      ["bool", "uint64"].includes(declaredType),
+      "native prime-source local annotation must be uint64 or bool",
+    );
+    const operations = [];
+    const value = lowerExpression(assign.value, context, operations);
+    expectType(
+      context,
+      assign.value,
+      value,
+      declaredType,
+      `local ${assign.target.name}`,
+    );
+    ensureVariable(context, assign.target, assign.target.name, declaredType);
+    operations.push(copyOperation(
+      declaredType,
+      assign.target.name,
+      value.name,
+      false,
+    ));
+    context.initialized.add(assign.target.name);
+    return operations;
+  }
   if (nodeType(assign) === "AST_ItemAccess" && assign.assignment !== undefined) {
     return lowerBufferAssignment(
       assign,
