@@ -17,6 +17,9 @@ for (const caseData of corpus.cases) {
   assert.ok(Object.hasOwn(caseData, "expected"), `${caseData.id} lacks an expected result`);
   assert.ok([2, 3].includes(caseData.model.genus));
   assert.ok(Array.isArray(caseData.model.f) && Array.isArray(caseData.model.h));
+  if (caseData.kind === "jacobian_scalar") {
+    assert.equal(caseData.timing?.batch_size, 1, `${caseData.id} must use bounded scalar timing`);
+  }
 }
 for (const required of [
   "g2-p13-general-h-shared-factor", "g2-p13-conjugate-cancellation",
@@ -29,4 +32,7 @@ for (const required of [
 ]) assert.ok(ids.includes(required), `missing required coverage case ${required}`);
 const source = ["sagejs-resident.cjs", "magma-resident.cjs", "pari-resident.cjs", "sagemath-resident.py", "run.cjs", "render-report.cjs", "local-streams.cjs"];
 for (const name of source) assert.ok(readFileSync(join(directory, name)).length > 200, `${name} is unexpectedly empty`);
+const pariSource = readFileSync(join(directory, "pari-resident.cjs"), "utf8");
+assert.match(pariSource, /default\(realbitprecision,/);
+assert.doesNotMatch(pariSource, /default\(realprecision,/);
 process.stdout.write(`validated ${corpus.cases.length} competitive hyperelliptic cases\n`);

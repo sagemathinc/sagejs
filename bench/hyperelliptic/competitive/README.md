@@ -25,6 +25,17 @@ and certified height cases.  `--tier all` is intentionally expensive.  A quick
 development check may override repetition counts and serial-loop length, but
 such output is not an acceptance receipt.
 
+### Discarded 2026-08-23 dry runs
+
+No timing from either preliminary `f8d29afd` run is an accepted baseline.  The
+first was stopped after concurrent builds contaminated the host.  The second
+was stopped after a diagnostic receipt exposed an unbounded contract: the
+3.39-second 1024-bit reference scalar had inherited a 7-by-1,000 call loop,
+implying roughly 6.6 hours for that row alone.  The scalar timing contract below
+is the resulting correction.  A one-repetition correctness smoke from the same
+revision was used only to validate answers and estimate bounded workloads; it
+is not a performance receipt.
+
 The runners consume one JSON request per input line and keep each mathematical
 runtime resident for the full requested suite.  The timing modes are:
 
@@ -35,7 +46,12 @@ runtime resident for the full requested suite.  The timing modes are:
 - repeated warm loop: repeated public calls in one resident process.
 
 The last mode is **not** called a packed batch.  It establishes the present
-public baseline until the prepared batch APIs in later phases exist.
+public baseline until the prepared batch APIs in later phases exist.  Cheap
+addition, doubling, validation, and local-factor rows retain a 1,000-call loop
+to expose steady-state throughput.  Scalar multiplication is a macro-operation
+whose cost scales with the scalar and implementation, so every scalar row uses
+a one-call repeated sample.  This bounded contract prevents a slow reference
+scalar from accidentally turning an acceptance run into thousands of seconds.
 
 ## Exact normalization
 
@@ -74,6 +90,10 @@ public baseline until the prepared batch APIs in later phases exist.
   prefix, and was not host-tuned because PARI's single-core tuner did not
   complete in ten minutes.  The receipt therefore records
   `host_tuned=false` rather than implying tuned acceptance numbers.
+  The resident runner sets GP's `realbitprecision` independently for each
+  period or analytic case and records both requested and effective bit
+  precision in the row.  Decimal `realprecision` is not used as a proxy for
+  bits.
 - SageMath is resolved from `SAGE` or `sage`.  If it is unavailable, every
   cell remains in the receipt with an explicit unavailable status.
 

@@ -8,6 +8,14 @@ function display(value) { return value === null || value === undefined ? "—" :
 function displayStats(value) {
   return value ? `${display(value.median_ms)} ± ${display(value.mad_ms)}` : "—";
 }
+function notes(row) {
+  const values = [];
+  if (row.reason) values.push(row.reason);
+  if (row.effective_pari_bit_precision !== undefined) {
+    values.push(`PARI bits ${row.requested_precision_bits ?? "n/a"}→${row.effective_pari_bit_precision}`);
+  }
+  return (values.join("; ") || "—").replaceAll("|", "\\|").replaceAll("\n", " ");
+}
 function main() {
   const input = resolve(process.argv[2]); const output = process.argv[3] ? resolve(process.argv[3]) : null;
   const receipt = JSON.parse(readFileSync(input, "utf8"));
@@ -18,11 +26,11 @@ function main() {
     "> This is the before-performance baseline. It is not the final acceptance receipt; rerun the identical harness at the final integrated performance SHA for the after comparison.", "",
     `Host: ${receipt.host.hostname}, ${receipt.host.architecture} ${receipt.host.platform}, ${receipt.host.cpu}, Node ${receipt.host.node}.`, "",
     "> Times are median ± MAD in milliseconds. “Loop/item” is a serial repeated warm loop, not a packed batch. A cache hit is never labeled warm arithmetic. Unsupported and unavailable cells are retained.", "",
-    "| Case | Backend | Status | Object cold wall | Object cold CPU | Warm wall | Warm CPU | Warm mode | Loop/item wall | Loop/item CPU | Exact digest |", "|---|---|---:|---:|---:|---:|---:|---|---:|---:|---|",
+    "| Case | Backend | Status | Object cold wall | Object cold CPU | Warm wall | Warm CPU | Warm mode | Loop/item wall | Loop/item CPU | Exact digest | Notes |", "|---|---|---:|---:|---:|---:|---:|---|---:|---:|---|---|",
   ];
   for (const backend of receipt.backends) {
     for (const row of backend.rows ?? []) {
-      lines.push(`| ${row.id} | ${backend.backend.id} | ${row.status} | ${displayStats(row.statistics?.object_cold)} | ${displayStats(row.statistics?.object_cold_cpu)} | ${displayStats(row.statistics?.warm)} | ${displayStats(row.statistics?.warm_cpu)} | ${row.warm_mode ?? "—"} | ${displayStats(row.statistics?.repeated_warm_per_item)} | ${displayStats(row.statistics?.repeated_warm_cpu_per_item)} | ${row.exact_result_sha256 ? `\`${row.exact_result_sha256.slice(0, 12)}…\`` : "—"} |`);
+      lines.push(`| ${row.id} | ${backend.backend.id} | ${row.status} | ${displayStats(row.statistics?.object_cold)} | ${displayStats(row.statistics?.object_cold_cpu)} | ${displayStats(row.statistics?.warm)} | ${displayStats(row.statistics?.warm_cpu)} | ${row.warm_mode ?? "—"} | ${displayStats(row.statistics?.repeated_warm_per_item)} | ${displayStats(row.statistics?.repeated_warm_cpu_per_item)} | ${row.exact_result_sha256 ? `\`${row.exact_result_sha256.slice(0, 12)}…\`` : "—"} | ${notes(row)} |`);
     }
   }
   lines.push("", "## Resident resource envelope", "", "| Backend | Process-cold wall ms | Outer CPU user/system ms | Resident peak RSS KiB | Mathematical user/system s |", "|---|---:|---:|---:|---:|");

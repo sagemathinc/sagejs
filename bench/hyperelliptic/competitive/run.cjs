@@ -60,6 +60,16 @@ function normalizeResult(caseData, row) {
 function validate(caseData, row) {
   if (row.status === "unsupported") return { passed: true, comparison: "explicit-unsupported", reason: row.reason };
   if (row.status !== "ok") return { passed: false, reason: row.reason ?? row.status };
+  if (
+    caseData.precision !== undefined
+    && row.effective_pari_bit_precision !== undefined
+    && row.effective_pari_bit_precision < caseData.precision
+  ) {
+    return {
+      passed: false,
+      reason: `effective PARI precision ${row.effective_pari_bit_precision} < requested ${caseData.precision}`,
+    };
+  }
   const expected = caseData.expected;
   const actual = row.result;
   if (caseData.kind === "real_period") {

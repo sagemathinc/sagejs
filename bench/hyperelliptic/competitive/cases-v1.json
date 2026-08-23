@@ -43,6 +43,7 @@
       "left": {"u": ["1", "0", "1"], "v": ["6", "10"]},
       "scalar": "115792089237316195423570985008687907853269984665640564039457584007913129639937",
       "expected": {"u": ["6", "10", "1"], "v": ["10", "12"]},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "warm-arithmetic"},
       "tags": ["genus-2", "odd-degree", "256-bit-scalar"]
     },
     {
@@ -128,6 +129,7 @@
       "left": {"u": ["0", "1"], "v": ["1"]},
       "scalar": "179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137217",
       "expected": {"u": ["2", "3", "1", "1"], "v": ["4", "1", "2"]},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "warm-arithmetic"},
       "tags": ["genus-3", "odd-degree", "bounded-native-fallback", "1024-bit-scalar"]
     },
     {
@@ -140,6 +142,7 @@
       "scalar": "18446744073709551557",
       "options": {"algorithm": "native"},
       "expected": {"u": ["0", "2", "1", "1"], "v": ["1", "1", "4"]},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "warm-arithmetic"},
       "tags": ["genus-3", "odd-degree", "64-bit-scalar", "explicit-native"]
     },
     {
@@ -152,6 +155,7 @@
       "scalar": "18446744073709551557",
       "options": {"algorithm": "reference"},
       "expected": {"u": ["0", "2", "1", "1"], "v": ["1", "1", "4"]},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "warm-arithmetic"},
       "tags": ["genus-3", "odd-degree", "64-bit-scalar", "explicit-reference"]
     },
     {
@@ -302,6 +306,7 @@
       "left": {"u": ["0", "1", "1"], "v": ["0", "1"]},
       "scalar": "3",
       "expected": {"u": ["6685/28561", "-21701/28561", "1"], "v": ["207760/4826809", "-4658620/4826809"]},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "warm-arithmetic"},
       "tags": ["genus-2", "rational", "scalar", "coefficient-growth"]
     },
     {
@@ -324,7 +329,7 @@
       "precision": 32,
       "maximum_order": 4,
       "expected": {"analytic_rank": 0, "value": "0.2858010009469617", "absolute_tolerance": "0.0000001"},
-      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "cache-hit"},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "prepared-curve-init"},
       "tags": ["genus-2", "prepared-central-jet", "probable"]
     },
     {
