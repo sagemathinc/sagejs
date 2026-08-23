@@ -524,11 +524,13 @@ def factor_integer_bounded(
     value: Any,
     max_trial_divisions: int = 1_000_000,
 ) -> list[tuple[Any, int]]:
-    """Factor a positive integer by trial division within an explicit budget.
+    """Factor a positive integer by bounded trial division and primality proof.
 
     This is intended for small fallback workloads. Production-sized orders
     should be factored by Sage.js's integer-factorization service and passed to
-    the group algorithms explicitly.
+    the group algorithms explicitly. If trial division exhausts its budget,
+    an exact primality proof may finish the remaining cofactor; an unproved
+    composite tail still raises `JacobianResourceLimitError`.
     """
     value = _checked_integer(value, "the integer to factor")
     max_trial_divisions = _checked_integer(max_trial_divisions, "max_trial_divisions")
@@ -543,6 +545,9 @@ def factor_integer_bounded(
     answer: list[tuple[Any, int]] = []
     while divisor * divisor <= remaining:
         if trials >= max_trial_divisions:
+            if sage.is_prime(remaining):
+                answer.append((remaining, 1))
+                return answer
             raise JacobianResourceLimitError(
                 "integer factorization exceeded max_trial_divisions="
                 + str(max_trial_divisions)
