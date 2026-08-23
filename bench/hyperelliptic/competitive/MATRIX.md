@@ -12,7 +12,7 @@ performance win.
 | Even-degree public group law | Explicit unsupported row; the current odd-degree ABI cannot encode the infinity branch | Magma representation survey only |
 | Group structure | Cyclic 2160/6490, rank two, order-32 rank three, and order-512 rank three exact rows | Magma and SageMath |
 | Local factors | Odd/even genus-2/3 exact rows | PARI, Magma, and SageMath |
-| Packed local stream through `10^4`/`10^5` | Separate exact-digest CPU/wall/RSS receipt from `local-streams.cjs` | Standalone smalljac receipt |
+| Packed local stream through `10^4`/`10^5` | Checked exact-digest CPU/wall/RSS receipt and report from `local-streams.cjs`; `10^5` median 1.809 s, peak RSS 97.5 MB | Standalone smalljac receipt |
 | General standalone Cantor/analytic core | Explicit unavailable backend; no such production artifact exists at Phase 0 | Not applicable |
 | General production Wasm artifact | Explicit unavailable backend | Not applicable |
 | Rational Cantor arithmetic | Exact generalized-model addition plus growing rational doubling/scalar slow rows | Magma and SageMath |
