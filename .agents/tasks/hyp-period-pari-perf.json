@@ -1,0 +1,57 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-period-pari-perf",
+  "title": "Hyperelliptic period parity with PARI",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Replace high-precision per-node mpmath period quadrature with a bounded packed FLINT Arb/Acb batch while preserving independent refinement evidence and measure exact genus-2/3 PARI corpus performance",
+  "base_commit": "0a2f78699bd18693aa7967d711a0215b67480df2",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/periods.py",
+    "test/hyperelliptic-analytic-performance.cjs",
+    "test/hyperelliptic-period-arb-performance.cjs",
+    "bench/hyperelliptic/benchmark-period-pari-competitive.cjs",
+    "packages/flint/src/hyperelliptic/period_quadrature.c",
+    "packages/flint/src/hyperelliptic/period_quadrature.h",
+    "packages/flint/src/addon.c",
+    "packages/flint/src/addon.h",
+    "packages/flint/binding.gyp"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/hyperelliptic-magma-pari-performance-plan.md",
+    "test/hyperelliptic-bsd-oracles/corpus.json"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "same-source mpmath quadrature",
+      "PARI/GP 2.18.1-alpha hyperellperiods corpus"
+    ],
+    "exceptions": [
+      "The canonical compiler cannot yet lower variable-precision Arb/Acb values or cached Gauss--Legendre nodes. The narrow bounded bridge mirrors the ordinary Python panel formula, has no host callbacks after entry, retains exact source/differential/PARI oracles, and should become a declared Arb resource or compiler capability when that representation is supported."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
