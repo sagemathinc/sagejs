@@ -1,0 +1,147 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyperelliptic-bsd-quotient",
+  "title": "Supplied-data BSD arithmetic quotient",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement exact provenance-rich BSD arithmetic schemas and supplied-data generic/Jacobian analytic quotient assembly with deterministic serialization",
+  "base_commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/bsd.py",
+    "src/lib/sagejs/hyperelliptic_curves/_test_bsd.py"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/hyperelliptic-bsd-arithmetic-plan.md",
+    "https://wstein.org/papers/nonsquaresha/"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Exact hand-computed rank 0-3 quotient fixtures and basis-change identities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/bsd.py src/lib/sagejs/hyperelliptic_curves/_test_bsd.py",
+    "python3 -c import json, hashlib, dataclasses, typing, sys; sys.path.append(\"src/lib\"); from sagejs.hyperelliptic_curves._test_bsd import run; print(run())",
+    "./bin/sagejs src/lib/sagejs/hyperelliptic_curves/_test_bsd.py"
+  ],
+  "runs": [
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/bsd.py src/lib/sagejs/hyperelliptic_curves/_test_bsd.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.646,
+      "started_at": "2026-08-22T06:07:45.440Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "f8d11438ccd674bb6cf970b440da8dc196a4e6d80203a99470d50b5bff222078",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -c import sys; sys.path.append(\"src/lib\"); import runpy; runpy.run_path(\"src/lib/sagejs/hyperelliptic_curves/_test_bsd.py\", run_name=\"__main__\")",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.063,
+      "started_at": "2026-08-22T06:07:47.695Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "f8d11438ccd674bb6cf970b440da8dc196a4e6d80203a99470d50b5bff222078",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "./bin/sagejs src/lib/sagejs/hyperelliptic_curves/_test_bsd.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.395,
+      "started_at": "2026-08-22T06:07:48.374Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "f8d11438ccd674bb6cf970b440da8dc196a4e6d80203a99470d50b5bff222078",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/bsd.py src/lib/sagejs/hyperelliptic_curves/_test_bsd.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.753,
+      "started_at": "2026-08-22T06:37:37.379Z",
+      "commit": "6e6cbc9937a490f51022569d6f4fee4114b5e7d7",
+      "workspace_fingerprint": "066ace4409a996abf403bb7a1929a86aa961200054ee30cf18992b6b3024a231",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -c import json, hashlib, dataclasses, typing, sys; sys.path.append(\"src/lib\"); from sagejs.hyperelliptic_curves._test_bsd import run; print(run())",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.087,
+      "started_at": "2026-08-22T06:37:39.757Z",
+      "commit": "6e6cbc9937a490f51022569d6f4fee4114b5e7d7",
+      "workspace_fingerprint": "066ace4409a996abf403bb7a1929a86aa961200054ee30cf18992b6b3024a231",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "./bin/sagejs src/lib/sagejs/hyperelliptic_curves/_test_bsd.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.778,
+      "started_at": "2026-08-22T06:37:40.584Z",
+      "commit": "6e6cbc9937a490f51022569d6f4fee4114b5e7d7",
+      "workspace_fingerprint": "066ace4409a996abf403bb7a1929a86aa961200054ee30cf18992b6b3024a231",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/bsd.py src/lib/sagejs/hyperelliptic_curves/_test_bsd.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.757,
+      "started_at": "2026-08-22T07:03:48.328Z",
+      "commit": "52f401c8eb3f361cf81570665c2116f1ce50d764",
+      "workspace_fingerprint": "67f914231dffe0cf1f7f226c24d8c4e954bf8b1da9498ad57f9b64ed296aa8e0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -c import json, hashlib, dataclasses, typing, sys; sys.path.append(\"src/lib\"); from sagejs.hyperelliptic_curves._test_bsd import run; print(run())",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.08,
+      "started_at": "2026-08-22T07:03:50.734Z",
+      "commit": "52f401c8eb3f361cf81570665c2116f1ce50d764",
+      "workspace_fingerprint": "67f914231dffe0cf1f7f226c24d8c4e954bf8b1da9498ad57f9b64ed296aa8e0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "./bin/sagejs src/lib/sagejs/hyperelliptic_curves/_test_bsd.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.339,
+      "started_at": "2026-08-22T07:03:51.437Z",
+      "commit": "52f401c8eb3f361cf81570665c2116f1ce50d764",
+      "workspace_fingerprint": "67f914231dffe0cf1f7f226c24d8c4e954bf8b1da9498ad57f9b64ed296aa8e0",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented a portable dual-aware BSD arithmetic schema and atomic supplied-data quotient for generic abelian varieties and principally polarized hyperelliptic Jacobians. The module preserves exact rational factors, explicit provenance and rank/period/regulator/Tamagawa/torsion/subgroup states, L^(r)(1)/r! normalization, total-Omega and Neron-basis metadata, recomputed determinant and positivity checks, complete bad-prime coverage, a diagnostics-derived LFunctionInit adapter, deterministic tamper-checked JSON, and flat SQLite records with reproducible object digests. Generic finite-index ambiguity is excluded by requiring separate full A/Adual bases. Subgroup-index records distinguish authenticated external claims from replayed mathematical proofs: method, verifier, evidence, object, basis, regulator, and claimed index are authenticated, while external bindings cannot enable analytic_sha. Rank-zero index one is deduced only from proved algebraic rank zero; analytic rank alone remains finite-index/unknown. Focused CPython and Sage.js fixtures cover ranks 0--3, basis changes, generic A/Adual torsion, incomplete or extraneous Tamagawa data, certificate transplantation and metadata tampering, absurd index claims, strict schema decoding, object identity, rigor propagation, and serialization.",
+    "risks": [
+      "Decimal and interval transport is exact at input but rounded arithmetic is deliberately non-rigorous because it does not implement directed outward rounding.",
+      "The LFunctionInit public surface does not expose independent coarse/refined leading derivatives, so its adapter records refinement_status=not_supplied even though LFunctionInit itself rejected an unstable jet.",
+      "Repository-wide native and platform validation is deferred to the integration lane as coordinated; this lane ran focused CPython, Sage.js, Ruff, and direct Pyright checks."
+    ],
+    "next_steps": [
+      "Expose the module through the lazy hyperelliptic public API and add bsd.py to the strict Pyright registry.",
+      "Have the model-layer adapter populate exact curve/reduction/backend provenance and convert native ball output to ArithmeticScalar interval records.",
+      "Run the lane-required architecture, strict baselib, native, WebAssembly, and cross-platform gates after shared package-budget integration."
+    ]
+  }
+}

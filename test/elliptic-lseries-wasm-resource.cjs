@@ -1,9 +1,24 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { existsSync } = require("node:fs");
+const { join } = require("node:path");
 const test = require("node:test");
 
-test("repeated 64 by 64 elliptic complex plots do not retain numeric resources", async () => {
+const releaseArtifactAvailable = [
+  "wasi-runtime.mjs",
+  "production-manifest.json",
+  "build-receipt.json",
+].every((name) =>
+  existsSync(join(__dirname, "../packages/flint-wasm/dist", name))
+);
+const releaseArtifactSkip = releaseArtifactAvailable
+  ? false
+  : "build the FLINT Wasm release artifact first";
+
+test("repeated 64 by 64 elliptic complex plots do not retain numeric resources", {
+  skip: releaseArtifactSkip,
+}, async () => {
   const { chromium } = await import("playwright-core");
   const {
     createBrowserWasmServer,

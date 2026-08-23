@@ -1,0 +1,65 @@
+{
+  "schema": "sagejs.hyperelliptic.tamagawa-oracles.v1",
+  "description": "Tiny exact monodromy lattices with directly enumerable Frobenius-fixed discriminant groups.",
+  "oracle_scope": {
+    "method": "exhaustive enumeration of coker(M) and its Frobenius-fixed classes",
+    "external_magma_or_van_bommel_rows": [],
+    "note": "These are implementation-independent finite lattice oracles, not curve-level Magma fixtures."
+  },
+  "cases": [
+    {
+      "id": "rank-zero-good",
+      "pairing_matrix": [],
+      "frobenius_matrix": [],
+      "geometric_invariants": [],
+      "geometric_order": 1,
+      "rational_invariants": [],
+      "rational_order": 1
+    },
+    {
+      "id": "split-cycle-length-five",
+      "pairing_matrix": [[5]],
+      "frobenius_matrix": [[1]],
+      "geometric_invariants": [5],
+      "geometric_order": 5,
+      "rational_invariants": [5],
+      "rational_order": 5
+    },
+    {
+      "id": "nonsplit-odd-cycle",
+      "pairing_matrix": [[5]],
+      "frobenius_matrix": [[-1]],
+      "geometric_invariants": [5],
+      "geometric_order": 5,
+      "rational_invariants": [],
+      "rational_order": 1
+    },
+    {
+      "id": "nonsplit-even-cycle",
+      "pairing_matrix": [[6]],
+      "frobenius_matrix": [[-1]],
+      "geometric_invariants": [6],
+      "geometric_order": 6,
+      "rational_invariants": [2],
+      "rational_order": 2
+    },
+    {
+      "id": "triangle-reflection",
+      "pairing_matrix": [[2, -1], [-1, 2]],
+      "frobenius_matrix": [[0, 1], [1, 0]],
+      "geometric_invariants": [3],
+      "geometric_order": 3,
+      "rational_invariants": [],
+      "rational_order": 1
+    },
+    {
+      "id": "mixed-split-nonsplit",
+      "pairing_matrix": [[4, 0], [0, 6]],
+      "frobenius_matrix": [[-1, 0], [0, 1]],
+      "geometric_invariants": [2, 12],
+      "geometric_order": 24,
+      "rational_invariants": [2, 6],
+      "rational_order": 12
+    }
+  ]
+}

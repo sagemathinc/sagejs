@@ -446,6 +446,9 @@
     "hyperelliptic-smalljac-local-factors": [
       "specialist:smalljac"
     ],
+    "hyperelliptic-bsd-sagepack-roundtrip": [
+      "specialist:sagepack"
+    ],
     "number-field-maximal-order-prime-zeta": [
       "ffi:flint:fmpz_matrix_hnf",
       "ffi:flint:number_field_order_maximal_at_primes",

@@ -2,11 +2,18 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
+const { existsSync } = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
 const cli = path.join(root, "packages/flint-wasm/node-cli.mjs");
+const releaseArtifactAvailable = [
+  "production-manifest.json",
+  "build-receipt.json",
+].every((name) =>
+  existsSync(path.join(root, "packages/flint-wasm/dist", name))
+);
 const source = [
   "R=PolynomialRing(ZZ,names=('x','y','z'))",
   "x,y,z=R.gens()",
@@ -15,7 +22,11 @@ const source = [
   "print(left.resultant(right,x).number_of_terms())",
 ].join(";");
 
-test("the production Node-Wasm CLI uses the fixed multivariate route", () => {
+test("the production Node-Wasm CLI uses the fixed multivariate route", {
+  skip: releaseArtifactAvailable
+    ? false
+    : "build the FLINT Wasm release artifact first",
+}, () => {
   const result = spawnSync(process.execPath, [cli, "--diagnostics", "-c", source], {
     cwd: root,
     encoding: "utf8",

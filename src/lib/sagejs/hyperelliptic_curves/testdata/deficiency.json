@@ -1,0 +1,59 @@
+{
+  "schema": "sagejs.hyperelliptic-deficiency-oracles/v1",
+  "references": [
+    "Poonen--Stoll (1999), Proposition 26",
+    "Poonen--Stoll (1999), Proposition 27 and Remark 1",
+    "Poonen--Stoll (1999), Proposition 28"
+  ],
+  "curves": [
+    {
+      "id": "poonen-stoll-proposition-26-t1",
+      "f_coefficients_ascending": [-1, -1, 0, 0, 0, 0, -1],
+      "h_coefficients_ascending": [0],
+      "expectations": [
+        {"place": "infinity", "deficient": true},
+        {"place": 2, "deficient": false},
+        {"place": 3, "deficient": false},
+        {"place": 5, "deficient": false}
+      ]
+    },
+    {
+      "id": "poonen-stoll-proposition-26-t0",
+      "f_coefficients_ascending": [0, -1, 0, 0, 0, 0, -1],
+      "h_coefficients_ascending": [0],
+      "expectations": [
+        {"place": "infinity", "deficient": false}
+      ]
+    },
+    {
+      "id": "poonen-stoll-proposition-27",
+      "f_coefficients_ascending": [-3, 0, 99, 0, 99, 0, -3],
+      "h_coefficients_ascending": [0],
+      "expectations": [
+        {"place": "infinity", "deficient": false},
+        {"place": 2, "deficient": false},
+        {"place": 3, "deficient": true},
+        {"place": 5, "deficient": false}
+      ]
+    },
+    {
+      "id": "poonen-stoll-proposition-28",
+      "f_coefficients_ascending": [-5920, 0, 32893, 0, 32893, 0, -5920],
+      "h_coefficients_ascending": [0],
+      "expectations": [
+        {"place": "infinity", "deficient": false},
+        {"place": 37, "deficient": false}
+      ]
+    },
+    {
+      "id": "odd-genus-hyperelliptic-fibre",
+      "f_coefficients_ascending": [1, -1, 0, 0, 0, 0, 0, 1],
+      "h_coefficients_ascending": [0],
+      "expectations": [
+        {"place": "infinity", "deficient": false},
+        {"place": 2, "deficient": false},
+        {"place": 31, "deficient": false}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "bsd-saturation",
+  "title": "Bsd Saturation",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement honest genus-2/3 Mordell-Weil subgroup saturation and index certificates",
+  "base_commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/saturation.py",
+    "test/hyperelliptic-bsd-saturation.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/hyperelliptic-bsd-arithmetic-plan.md Phase 6",
+    "Nils Bruin and Michael Stoll, The Mordell-Weil sieve: proving non-existence of rational points on curves",
+    "Samir Siksek, Infinite descent on elliptic curves"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "existing certified finite-field Jacobian invariant-factor maps",
+      "exact toy lattices with independently known saturation and index",
+      "Magma/Sage saturation corpora at integration"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm exec ruff format --check src/lib/sagejs/hyperelliptic_curves/saturation.py",
+    "pnpm exec ruff check src/lib/sagejs/hyperelliptic_curves/saturation.py",
+    "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/saturation.py",
+    "node --test test/hyperelliptic-bsd-saturation.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm exec ruff format --check src/lib/sagejs/hyperelliptic_curves/saturation.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.488,
+      "started_at": "2026-08-22T06:12:50.337Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "9593570c1c02a114525c19b4fd1014e55439984aab9ca54f8055c4ad69c2c9a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check src/lib/sagejs/hyperelliptic_curves/saturation.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.498,
+      "started_at": "2026-08-22T06:12:51.490Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "9593570c1c02a114525c19b4fd1014e55439984aab9ca54f8055c4ad69c2c9a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/saturation.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.462,
+      "started_at": "2026-08-22T06:12:52.645Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "9593570c1c02a114525c19b4fd1014e55439984aab9ca54f8055c4ad69c2c9a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-bsd-saturation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.817,
+      "started_at": "2026-08-22T06:12:54.778Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "9593570c1c02a114525c19b4fd1014e55439984aab9ca54f8055c4ad69c2c9a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff format --check src/lib/sagejs/hyperelliptic_curves/saturation.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.486,
+      "started_at": "2026-08-22T07:06:48.248Z",
+      "commit": "d9fcbc603b13da84a66f8c9aa2e7d85ecaf858a7",
+      "workspace_fingerprint": "2c1c99cfa80b035e451cc901adb058c047aaae4cba9c5dad8e138b7902792b93",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check src/lib/sagejs/hyperelliptic_curves/saturation.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.487,
+      "started_at": "2026-08-22T07:06:49.337Z",
+      "commit": "d9fcbc603b13da84a66f8c9aa2e7d85ecaf858a7",
+      "workspace_fingerprint": "2c1c99cfa80b035e451cc901adb058c047aaae4cba9c5dad8e138b7902792b93",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/saturation.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.68,
+      "started_at": "2026-08-22T07:06:50.424Z",
+      "commit": "d9fcbc603b13da84a66f8c9aa2e7d85ecaf858a7",
+      "workspace_fingerprint": "2c1c99cfa80b035e451cc901adb058c047aaae4cba9c5dad8e138b7902792b93",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-bsd-saturation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 31.014,
+      "started_at": "2026-08-22T07:06:52.722Z",
+      "commit": "d9fcbc603b13da84a66f8c9aa2e7d85ecaf858a7",
+      "workspace_fingerprint": "2c1c99cfa80b035e451cc901adb058c047aaae4cba9c5dad8e138b7902792b93",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff format --check src/lib/sagejs/hyperelliptic_curves/saturation.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.489,
+      "started_at": "2026-08-22T07:24:15.461Z",
+      "commit": "6d598e41edc281b6afea77d54742e439e31ca1da",
+      "workspace_fingerprint": "b204742968a074a459dcfd9438a1f546c5f50fea606e0dffb7d4b0936a4b5248",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check src/lib/sagejs/hyperelliptic_curves/saturation.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.528,
+      "started_at": "2026-08-22T07:24:16.570Z",
+      "commit": "6d598e41edc281b6afea77d54742e439e31ca1da",
+      "workspace_fingerprint": "b204742968a074a459dcfd9438a1f546c5f50fea606e0dffb7d4b0936a4b5248",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/saturation.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.824,
+      "started_at": "2026-08-22T07:24:17.748Z",
+      "commit": "6d598e41edc281b6afea77d54742e439e31ca1da",
+      "workspace_fingerprint": "b204742968a074a459dcfd9438a1f546c5f50fea606e0dffb7d4b0936a4b5248",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-bsd-saturation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.197,
+      "started_at": "2026-08-22T07:24:20.195Z",
+      "commit": "6d598e41edc281b6afea77d54742e439e31ca1da",
+      "workspace_fingerprint": "b204742968a074a459dcfd9438a1f546c5f50fea606e0dffb7d4b0936a4b5248",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds an ordinary-Python, Wasm-safe saturation engine with internally replayed finite-reduction constraints, a classical bounded rational Mumford division search, exact basis/index chains, typed rank/index/torsion provenance, and structured unsupported/resource outcomes. Immutable result records replay all raw evidence and reject forged ranks, kernels, statuses, global claims, or full-Mordell-Weil flags. The result separately labels independence, full rank, ell-division obstruction, torsion-controlled free-quotient saturation, global index, torsion completion, and full Mordell-Weil determination.",
+    "risks": [
+      "A failed bounded division search is intentionally unresolved unless a registered verifier accepts a typed theorem binding the replayed coefficient box to a global height/search bound.",
+      "The registered assumption-verifier mapping is an explicit caller-provided trust root; the engine binds accepted claims to the curve, ordered basis, kind, and value but does not authenticate verifier authority.",
+      "The deterministic exhaustive finite-group-map fallback is deliberately capped at group order 512; larger residue groups use the existing certified sampled abelian-group implementation and its explicit operation/memory budgets.",
+      "Public Jacobian methods, strict-module registry entries, and forthcoming height/torsion adapters are integration-owned and intentionally not edited in this narrow lane."
+    ],
+    "next_steps": [
+      "Wire HyperellipticJacobian.saturate lazily to saturate_subgroup and add saturation.py to pyrightconfig.json.",
+      "Connect certified genus-2/3 height lower bounds, exact torsion records, and rank/Selmer verifiers through the typed assumption registry.",
+      "Extend the bounded classical division envelope only when proved height-to-Mumford-coefficient bounds justify larger boxes."
+    ]
+  }
+}

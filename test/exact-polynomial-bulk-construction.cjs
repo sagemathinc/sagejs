@@ -164,6 +164,8 @@ test("public exact construction source tries checked whole-list packing first", 
 const portableConstruction = String.raw`
 import sagejs._baselib.polynomial as polynomial_module
 polynomial_module._generated_flint_resources_available_cache = False
+polynomial_module._generated_fmpz_polynomial_resources_available_cache = False
+polynomial_module._generated_fmpq_polynomial_resources_available_cache = False
 R = PolynomialRing(ZZ, 'x')
 S = PolynomialRing(QQ, 'y')
 huge = 2**65537 + 17

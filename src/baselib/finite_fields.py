@@ -1145,8 +1145,16 @@ def _make_extension_field(
     backend = runtime.flint_backend()
     context = runtime.undefined
     missing_conway = False
+    # Keep the scalar, polynomial, and matrix representation coherent.  The
+    # mature Node/dynamic backend still owns the complete `fq_mat` surface,
+    # whose contexts and elements cannot be mixed with generated FFI owners.
+    # Browser/Wasm hosts without that legacy matrix API use the generated
+    # context, scalar, and polynomial resources.  Once `fq_matrix` itself is a
+    # generated resource this capability split can disappear atomically.
+    legacy_fq_matrix = runtime.reflect.get(backend, "fqMatrix")
     generated_resource_backend = (
-        _generated_extension_resources_available()
+        runtime.jstype(legacy_fq_matrix) != "function"
+        and _generated_extension_resources_available()
         and prime <= runtime.bigint(0xFFFFFFFFFFFFFFFF)
     )
     if coefficients is None and generated_resource_backend:

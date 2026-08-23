@@ -315,7 +315,8 @@ assert U5.complete and U5.unit_rank == 1
 assert U5.verify_completion()
 assert U5.certificates[0].verify(K)
 R5 = K.regulator(prec=80)
-assert 0.48 < R5.value < 0.49
+assert R5.rigorous and R5.lower < R5.upper
+assert 0.48 < float(R5.lower) <= float(R5.upper) < 0.49
 [U5.generators, R5, K.roots_of_unity()]
 ```
 

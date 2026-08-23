@@ -1,0 +1,199 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "bsd-tamagawa",
+  "title": "Certified rational Tamagawa component groups",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compute certified rational Tamagawa numbers for good, genus-2 almost-good, and supported semistable genus-2/3 reduction certificates using exact component lattices and Frobenius fixed classes",
+  "base_commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
+    "test/hyperelliptic-tamagawa.cjs",
+    "test/data/hyperelliptic/tamagawa-v1.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/hyperelliptic-bsd-arithmetic-plan.md",
+    "D. Dokchitser, V. Dokchitser, C. Maistret, A. Morgan, Arithmetic of hyperelliptic curves over local fields"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Direct finite component-group enumeration with Frobenius on tiny weighted graphs",
+      "Existing certified hyperelliptic bad-reduction corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/hyperelliptic-tamagawa.cjs",
+    "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
+    "pnpm format:python:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/hyperelliptic-tamagawa.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.693,
+      "started_at": "2026-08-22T06:03:44.259Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "996c27dbb024194c3ec82ff2c5e8c13b2bcebebb03d9b855e7d86651fdfcefc6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.343,
+      "started_at": "2026-08-22T06:03:53.467Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "996c27dbb024194c3ec82ff2c5e8c13b2bcebebb03d9b855e7d86651fdfcefc6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm format:python:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.098,
+      "started_at": "2026-08-22T06:04:00.060Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "996c27dbb024194c3ec82ff2c5e8c13b2bcebebb03d9b855e7d86651fdfcefc6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-tamagawa.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.788,
+      "started_at": "2026-08-22T06:04:56.734Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "996c27dbb024194c3ec82ff2c5e8c13b2bcebebb03d9b855e7d86651fdfcefc6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.815,
+      "started_at": "2026-08-22T06:05:04.914Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "996c27dbb024194c3ec82ff2c5e8c13b2bcebebb03d9b855e7d86651fdfcefc6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm format:python:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.59,
+      "started_at": "2026-08-22T06:05:11.090Z",
+      "commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+      "workspace_fingerprint": "996c27dbb024194c3ec82ff2c5e8c13b2bcebebb03d9b855e7d86651fdfcefc6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-tamagawa.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.395,
+      "started_at": "2026-08-22T06:30:49.579Z",
+      "commit": "f295c475a430dcaa307e63e31d45e1d4ae103616",
+      "workspace_fingerprint": "3b5fa3eed52de6345599c3090f8ba8b638d552ba7ef7c78e536b19fc39cfdfd4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.493,
+      "started_at": "2026-08-22T06:30:55.588Z",
+      "commit": "f295c475a430dcaa307e63e31d45e1d4ae103616",
+      "workspace_fingerprint": "3b5fa3eed52de6345599c3090f8ba8b638d552ba7ef7c78e536b19fc39cfdfd4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff format --check src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.491,
+      "started_at": "2026-08-22T06:30:57.692Z",
+      "commit": "f295c475a430dcaa307e63e31d45e1d4ae103616",
+      "workspace_fingerprint": "3b5fa3eed52de6345599c3090f8ba8b638d552ba7ef7c78e536b19fc39cfdfd4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.071,
+      "started_at": "2026-08-22T06:30:58.792Z",
+      "commit": "f295c475a430dcaa307e63e31d45e1d4ae103616",
+      "workspace_fingerprint": "3b5fa3eed52de6345599c3090f8ba8b638d552ba7ef7c78e536b19fc39cfdfd4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-tamagawa.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.814,
+      "started_at": "2026-08-22T07:03:30.645Z",
+      "commit": "614d95d533372019cb886d8355627cea953339a7",
+      "workspace_fingerprint": "23eda9d2f3190bbf2bdb74ff07c9def142cb73bf62c1e90e48c254b468b91e8f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.616,
+      "started_at": "2026-08-22T07:03:38.095Z",
+      "commit": "614d95d533372019cb886d8355627cea953339a7",
+      "workspace_fingerprint": "23eda9d2f3190bbf2bdb74ff07c9def142cb73bf62c1e90e48c254b468b91e8f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff format --check src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.512,
+      "started_at": "2026-08-22T07:03:40.355Z",
+      "commit": "614d95d533372019cb886d8355627cea953339a7",
+      "workspace_fingerprint": "23eda9d2f3190bbf2bdb74ff07c9def142cb73bf62c1e90e48c254b468b91e8f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.072,
+      "started_at": "2026-08-22T07:03:41.473Z",
+      "commit": "614d95d533372019cb886d8355627cea953339a7",
+      "workspace_fingerprint": "23eda9d2f3190bbf2bdb74ff07c9def142cb73bf62c1e90e48c254b468b91e8f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a host-independent exact component-lattice engine, conversion of existing split rational cluster certificates in genus 2 and 3 via the DDMM Theorem D.18 length pairing, separate geometric and Frobenius-fixed rational invariant factors, recheckable certificates, atomic local/product APIs, and explicit unsupported statuses. Curve-level certification now requires a recognized internal local record bound to the exact integral model and an odd machine prime. Serialized good records replay branch degree and squarefreeness; almost-good records rerun Maistret-Sutherland normalization, type recognition, and refinements; split-cluster records replay root valuations, the branch polynomial, the complete cluster tree, every principal-cluster nu parity, normalization-component assertions, theta signs, and the model binding. Supplied lattices retain exact conditional computations but are explicitly not curve-certified. Tiny lattices are checked by direct exhaustive class enumeration; current almost-good and split-cluster reduction records are exercised end to end, including coherent forgery attempts and cases where rational and geometric orders differ.",
+    "risks": [
+      "No curve-level Magma or Van Bommel Tamagawa fixture was available in this lane; every tamagawa-v1.json row is an independent finite-lattice enumeration oracle, and none should be represented as an external CAS oracle.",
+      "Existing ordinary-nodal local certificates omit node thicknesses, so they remain insufficient unless an explicit component pairing/Frobenius matrix is supplied; auto mode retries the richer split-cluster certificate when rational roots permit it.",
+      "The prime 2, wild/nonsemistable reduction, nonsplit cluster permutations not encoded by the current reduction record, and uncertified nonminimal models remain explicit unsupported states."
+    ],
+    "next_steps": [
+      "Integrate HyperellipticCurve.tamagawa_number, local_tamagawa_data, and tamagawa_product through the shared model/public API lane.",
+      "Enrich ordinary-nodal and nonsplit cluster reduction certificates with exact metric thicknesses and Frobenius matrices, then feed those records to component_group_from_lattice.",
+      "Add versioned curve-level Magma and Van Bommel component-group fixtures when an oracle environment or corpus is available."
+    ]
+  }
+}

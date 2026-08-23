@@ -17,7 +17,7 @@ const {
   inventoryProductionKernels,
 } = require("../tools/native-kernel/wasm-production-pack.cjs");
 const {
-  resolveToolchain,
+  inspectToolchain,
 } = require("../packages/flint-wasm/scripts/wasm-toolchain.cjs");
 
 const root = resolve(__dirname, "..");
@@ -125,7 +125,7 @@ uint64_t sagejs_test_resource_live_count(void)
 }
 
 function toolchain() {
-  const status = resolveToolchain({ root });
+  const status = inspectToolchain({ root });
   if (!status.ready) return null;
   return {
     clang: status.paths.clang,
@@ -187,7 +187,7 @@ test("production resource closure compiles every registered function", async () 
       .map((fn) => [kernel.id, fn.name, fn.reason, fn.resources])
   );
   assert.equal(inventory.inventory.flatMap((kernel) => kernel.functions)
-    .filter((fn) => fn.status === "compiled-source").length, 229);
+    .filter((fn) => fn.status === "compiled-source").length, 241);
   assert.deepEqual(unsupported, []);
 });
 
