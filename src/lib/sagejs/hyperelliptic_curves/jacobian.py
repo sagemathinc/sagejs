@@ -757,6 +757,9 @@ class HyperellipticJacobian(sage.Parent):
             raise ValueError("max_batch_items must be an exact integer")
         key = (algorithm, maximum)
         context = self._prepared_arithmetic_cache.get(key)
+        if context is not None and bool(getattr(context, "closed", False)):
+            del self._prepared_arithmetic_cache[key]
+            context = None
         if context is None:
             context = None
             if algorithm != "reference" and str(self.base_ring()) == "Rational Field":

@@ -56,6 +56,12 @@ def check_curve(curve):
     public_context = J.prepared_arithmetic()
     assert public_context is J.prepared_arithmetic()
     assert public_context.native_available == compiled
+    public_context.close()
+    replacement_context = J.prepared_arithmetic()
+    assert replacement_context is not public_context
+    assert not replacement_context.closed
+    assert replacement_context is J.prepared_arithmetic()
+    public_context = replacement_context
     assert context.capability().schema == "sagejs.hyperelliptic.rational-mumford.v1"
     assert context.capability().model_kind == "odd-degree-one-infinity"
     assert context.unpack(context.pack(P)) == P
