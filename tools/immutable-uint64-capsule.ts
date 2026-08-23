@@ -22,6 +22,7 @@ interface CapsuleState extends CapsuleBinding {
 
 const capsules = new WeakMap<CapsuleObject, CapsuleState>();
 const leases = new WeakMap<CapsuleObject, CapsuleState>();
+const ownerCapsules = new WeakMap<object, CapsuleObject>();
 
 function opaqueObject(): CapsuleObject {
   return Object.freeze(Object.create(null));
@@ -112,6 +113,11 @@ function stateFor(
   if (state === undefined) {
     throw new TypeError("value is not an immutable uint64 capsule");
   }
+  if (ownerCapsules.get(state.owner) !== capsule) {
+    throw new TypeError(
+      "immutable uint64 capsule is not registered to its owner",
+    );
+  }
   const expected = checkedBinding(owner, model, format, count);
   if (
     state.owner !== expected.owner ||
@@ -132,9 +138,22 @@ export function createImmutableUInt64Capsule(
   count: unknown,
 ): CapsuleObject {
   const binding = checkedBinding(owner, model, format, count);
+  if (ownerCapsules.has(binding.owner)) {
+    throw new RangeError("immutable uint64 capsule owner is already registered");
+  }
   const capsule = opaqueObject();
-  capsules.set(capsule, { ...binding, values: ownedValues(source) });
-  return capsule;
+  // Reserve the owner before inspecting an arbitrary source sequence. This
+  // makes creation write-once even if a source getter reenters this boundary.
+  ownerCapsules.set(binding.owner, capsule);
+  try {
+    capsules.set(capsule, { ...binding, values: ownedValues(source) });
+    return capsule;
+  } catch (error) {
+    if (ownerCapsules.get(binding.owner) === capsule) {
+      ownerCapsules.delete(binding.owner);
+    }
+    throw error;
+  }
 }
 
 export function authorizeImmutableUInt64Capsule(

@@ -116,6 +116,132 @@ test("immutable uint64 capsules hide owned storage and enforce exact binding", (
   );
 });
 
+test("capsule owners are write-once and reject forgeries or transplants", () => {
+  const first = boundCapsule();
+  assert.throws(
+    () => capsuleRuntime.createImmutableUInt64Capsule(
+      [29n, 31n, 37n],
+      first.owner,
+      "neutral-model/v1",
+      "uint64-row/v1",
+      3,
+    ),
+    /owner is already registered/,
+  );
+  assert.deepEqual(
+    [...capsuleRuntime.copyImmutableUInt64Capsule(
+      first.capsule,
+      first.owner,
+      "neutral-model/v1",
+      "uint64-row/v1",
+      3,
+    )],
+    [11n, 17n, 23n],
+  );
+
+  const secondOwner = Object.freeze({ identity: "second-owner" });
+  const secondCapsule = capsuleRuntime.createImmutableUInt64Capsule(
+    [29n, 31n, 37n],
+    secondOwner,
+    "second-model/v1",
+    "second-row/v1",
+    3,
+  );
+  assert.throws(
+    () => capsuleRuntime.authorizeImmutableUInt64Capsule(
+      secondCapsule,
+      first.owner,
+      "neutral-model/v1",
+      "uint64-row/v1",
+      3,
+    ),
+    /binding mismatch/,
+  );
+  assert.throws(
+    () => capsuleRuntime.copyImmutableUInt64Capsule(
+      first.capsule,
+      secondOwner,
+      "second-model/v1",
+      "second-row/v1",
+      3,
+    ),
+    /binding mismatch/,
+  );
+  assert.throws(
+    () => capsuleRuntime.copyImmutableUInt64Capsule(
+      Object.freeze(Object.create(null)),
+      first.owner,
+      "neutral-model/v1",
+      "uint64-row/v1",
+      3,
+    ),
+    /not an immutable uint64 capsule/,
+  );
+
+  const recoverableOwner = Object.freeze({ identity: "recoverable-owner" });
+  assert.throws(
+    () => capsuleRuntime.createImmutableUInt64Capsule(
+      [-1n],
+      recoverableOwner,
+      "recoverable-model/v1",
+      "recoverable-row/v1",
+      1,
+    ),
+    /outside unsigned 64-bit/,
+  );
+  const recovered = capsuleRuntime.createImmutableUInt64Capsule(
+    [41n],
+    recoverableOwner,
+    "recoverable-model/v1",
+    "recoverable-row/v1",
+    1,
+  );
+  assert.deepEqual(
+    [...capsuleRuntime.copyImmutableUInt64Capsule(
+      recovered,
+      recoverableOwner,
+      "recoverable-model/v1",
+      "recoverable-row/v1",
+      1,
+    )],
+    [41n],
+  );
+
+  const reentrantOwner = Object.freeze({ identity: "reentrant-owner" });
+  let reentrantAttempts = 0;
+  const reentrantSource = Object.create(null);
+  Object.defineProperty(reentrantSource, "length", {
+    get() {
+      reentrantAttempts += 1;
+      return capsuleRuntime.createImmutableUInt64Capsule(
+        [43n],
+        reentrantOwner,
+        "reentrant-model/v1",
+        "reentrant-row/v1",
+        1,
+      );
+    },
+  });
+  assert.throws(
+    () => capsuleRuntime.createImmutableUInt64Capsule(
+      reentrantSource,
+      reentrantOwner,
+      "reentrant-model/v1",
+      "reentrant-row/v1",
+      1,
+    ),
+    /owner is already registered/,
+  );
+  assert.equal(reentrantAttempts, 1);
+  assert.doesNotThrow(() => capsuleRuntime.createImmutableUInt64Capsule(
+    [43n],
+    reentrantOwner,
+    "reentrant-model/v1",
+    "reentrant-row/v1",
+    1,
+  ));
+});
+
 test("authorized leases borrow read-only storage in native kernels", async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-immutable-u64-"));
   try {
@@ -214,7 +340,7 @@ function allocate() {
     [1n, 2n, 3n], owner, "gc-model/v1", "gc-row/v1", 1);
   const lease = runtime.authorizeImmutableUInt64Capsule(
     capsule, owner, "gc-model/v1", "gc-row/v1", 1);
-  return [new WeakRef(capsule), new WeakRef(lease)];
+  return [new WeakRef(owner), new WeakRef(capsule), new WeakRef(lease)];
 }
 
 (async () => {
