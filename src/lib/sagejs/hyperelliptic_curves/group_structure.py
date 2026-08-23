@@ -115,11 +115,21 @@ def _prepared_context(
         return None
     try:
         if max_batch_items is None:
-            return parent.prepared_arithmetic(algorithm=algorithm)
-        return parent.prepared_arithmetic(
-            algorithm=algorithm,
-            max_batch_items=max_batch_items,
-        )
+            context = parent.prepared_arithmetic(algorithm=algorithm)
+        else:
+            context = parent.prepared_arithmetic(
+                algorithm=algorithm,
+                max_batch_items=max_batch_items,
+            )
+        # `auto` contexts deliberately retain an exact reference fallback.
+        # Eager DLP table materialization pays off only for a native batch.
+        if (
+            algorithm == "auto"
+            and hasattr(context, "native_available")
+            and not context.native_available
+        ):
+            return None
+        return context
     except NotImplementedError:
         if algorithm == "native":
             raise

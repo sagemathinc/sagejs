@@ -24,6 +24,7 @@ D = next(value for value in points if not value.is_zero())
 
 class InstrumentedPrepared:
     def __init__(self):
+        self.native_available = True
         self.scalar_batches = 0
         self.add_batches = 0
         self.sums = 0
@@ -67,6 +68,12 @@ pair = add_pairs_batched((D, 2*D), (3*D, 4*D), algorithm="auto")
 assert pair == (4*D, 6*D)
 assert prepared.add_batches == 1
 assert group_element_key(D) == group_element_key(J(D))
+
+prepared.native_available = False
+fallback_budget = GroupOperationBudget(100000, 1000, 1024*1024, "auto")
+assert fallback_budget.linear_combination((3, 5), (D, 2*D)) == 13*D
+assert prepared.scalar_batches == 2
+assert prepared.sums == 1
 True`,
       { timeout: 120_000 },
     );
