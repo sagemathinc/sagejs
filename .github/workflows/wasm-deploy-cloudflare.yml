@@ -73,8 +73,7 @@ jobs:
             "Native Node oracle for the public browser corpus" \
             "Clean reproducibility build a" \
             "Clean reproducibility build b" \
-            "reproducibility" \
-            "Browser release gates"
+            "reproducibility"
           do
             conclusion="$(jq -r --arg name "$required" \
               '[.jobs[] | select(.name == $name) | .conclusion] | first // "missing"' \
@@ -84,6 +83,30 @@ jobs:
               exit 1
             }
           done
+
+          release_gate="$(jq -r \
+            '[.jobs[] | select(.name == "Browser release gates") | .conclusion] | first // "missing"' \
+            <<<"$jobs")"
+          if [[ "$release_gate" == "missing" ]]; then
+            # Releases produced before the sharded-gate aggregation migration
+            # remain deployable only when every legacy engine parity gate passed.
+            for required in \
+              "Public parity (chromium)" \
+              "Public parity (firefox)" \
+              "Public parity (webkit)"
+            do
+              conclusion="$(jq -r --arg name "$required" \
+                '[.jobs[] | select(.name == $name) | .conclusion] | first // "missing"' \
+                <<<"$jobs")"
+              [[ "$conclusion" == "success" ]] || {
+                echo "Required legacy release job '$required' concluded '$conclusion'" >&2
+                exit 1
+              }
+            done
+          elif [[ "$release_gate" != "success" ]]; then
+            echo "Required release job 'Browser release gates' concluded '$release_gate'" >&2
+            exit 1
+          fi
 
           if [[ "$TARGET" == "production" ]]; then
             deploy_branch="main"

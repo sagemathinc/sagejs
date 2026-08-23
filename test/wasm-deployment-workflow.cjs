@@ -25,7 +25,13 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
     "Clean reproducibility build b",
     "reproducibility",
     "Browser release gates",
+    "Public parity (chromium)",
+    "Public parity (firefox)",
+    "Public parity (webkit)",
   ]) assert.match(workflow, new RegExp(gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+
+  assert.match(workflow, /if \[\[ "\$release_gate" == "missing" \]\]/);
+  assert.match(workflow, /elif \[\[ "\$release_gate" != "success" \]\]/);
 
   assert.match(workflow, /ref: \$\{\{ steps\.source\.outputs\.sha \}\}/);
   assert.match(workflow, /ref: \$\{\{ github\.sha \}\}/);
