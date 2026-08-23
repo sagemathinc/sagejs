@@ -40,6 +40,7 @@ from sagejs.hyperelliptic_curves.genus2_kummer_height_kernel import (
     dyadic_kummer_height_recurrence,
     modular_kummer_height_recurrence,
 )
+from sagejs.hyperelliptic_curves.genus2_kummer import Genus2KummerCapabilityError
 from sagejs.native import (
     integer_buffer_values,
     is_compiled,
@@ -262,10 +263,94 @@ test("target-bit planning, warm caches, pairings, and regulators remain certifie
 context = HeightContext(J)
 height = canonical_height(P, precision=80, target_bits=16, context=context)
 height_again = canonical_height(P, precision=80, target_bits=16, context=context)
+equal_P = J([x, 1])
+height_equal_point = canonical_height(
+    equal_P, precision=80, target_bits=16, context=context
+)
 assert height.rigorous
 assert height.ball.lower == height_again.ball.lower
 assert height.ball.upper == height_again.ball.upper
+assert height.ball.lower == height_equal_point.ball.lower
+assert height.ball.upper == height_equal_point.ball.upper
 assert height.diagnostics["achieved_enclosure_width_bits"] >= 16
+height_cache_diagnostics = context.diagnostics()
+assert height_cache_diagnostics["canonical_height_cache_hits"] == 2
+assert height_cache_diagnostics["canonical_height_cache_entries"] == 1
+height_key = (P, 6, 80, 16, "auto")
+height_entry = context._canonical_heights[height_key]
+other_height = canonical_height(Q, precision=80, target_bits=16, context=context)
+other_height_key = (Q, 6, 80, 16, "auto")
+context._canonical_heights[height_key] = context._canonical_heights[other_height_key]
+height_cross_point_rejected = False
+try:
+    canonical_height(P, precision=80, target_bits=16, context=context)
+except Genus2HeightCapabilityError:
+    height_cross_point_rejected = True
+assert height_cross_point_rejected
+context._canonical_heights[height_key] = other_height
+height_bare_result_rejected = False
+try:
+    canonical_height(P, precision=80, target_bits=16, context=context)
+except Genus2HeightCapabilityError:
+    height_bare_result_rejected = True
+assert height_bare_result_rejected
+context._canonical_heights[height_key] = height_entry
+parameter_height = canonical_height(P, precision=80, target_bits=32, context=context)
+parameter_height_key = (P, 6, 80, 32, "auto")
+context._canonical_heights[height_key] = context._canonical_heights[
+    parameter_height_key
+]
+height_parameter_transplant_rejected = False
+try:
+    canonical_height(P, precision=80, target_bits=16, context=context)
+except Genus2HeightCapabilityError:
+    height_parameter_transplant_rejected = True
+assert height_parameter_transplant_rejected
+context._canonical_heights[height_key] = height_entry
+C_height_other = HyperellipticCurve(x**5 + x + 1)
+J_height_other = C_height_other.jacobian()
+P_height_other = J_height_other([x, 1])
+height_context_other = HeightContext(J_height_other)
+canonical_height(
+    P_height_other,
+    precision=80,
+    target_bits=16,
+    context=height_context_other,
+)
+other_model_height_key = (P_height_other, 6, 80, 16, "auto")
+context._canonical_heights[height_key] = height_context_other._canonical_heights[
+    other_model_height_key
+]
+height_cross_model_rejected = False
+try:
+    canonical_height(P, precision=80, target_bits=16, context=context)
+except Genus2HeightCapabilityError:
+    height_cross_model_rejected = True
+assert height_cross_model_rejected
+context._canonical_heights[height_key] = height_entry
+original_height_f = J._f
+J._f = original_height_f + x**6
+height_model_alias_rejected = False
+try:
+    canonical_height(P, precision=80, target_bits=16, context=context)
+except (Genus2HeightCapabilityError, Genus2KummerCapabilityError):
+    height_model_alias_rejected = True
+finally:
+    J._f = original_height_f
+assert height_model_alias_rejected
+original_height_v = P._v
+P._v = R(0)
+mutated_height_key = (P, 6, 80, 16, "auto")
+context._canonical_heights[mutated_height_key] = height_entry
+height_point_alias_rejected = False
+try:
+    canonical_height(P, precision=80, target_bits=16, context=context)
+except Genus2HeightCapabilityError:
+    height_point_alias_rejected = True
+finally:
+    P._v = original_height_v
+assert height_point_alias_rejected
+context._canonical_heights[height_key] = height_entry
 pairing = height_pairing(
     [P, Q], steps=6, precision=80, target_bits=32, algorithm="local", context=context
 )
@@ -275,8 +360,7 @@ reg = regulator(
 assert pairing.rigorous
 assert reg.rigorous and reg.status == "certified-positive"
 diagnostics = context.diagnostics()
-assert diagnostics["finite_correction_cache_hits"] > 0
-assert diagnostics["archimedean_correction_cache_hits"] > 0
+assert diagnostics["canonical_height_cache_hits"] == 2
 assert diagnostics["height_pairing_cache_hits"] == 1
 target_key = (tuple([P, Q]), 6, 80, 32, "local")
 target_entry = context._height_pairings[target_key]
@@ -440,8 +524,15 @@ assert pairing_cache_tamper_rejected
     height.diagnostics["achieved_enclosure_width_bits"] >= 16,
     pairing.rigorous,
     reg.status,
-    diagnostics["finite_correction_cache_hits"] > 0,
+    diagnostics["canonical_height_cache_entries"] > 0,
     diagnostics["height_pairing_cache_hits"],
+    diagnostics["canonical_height_cache_hits"],
+    height_cross_point_rejected,
+    height_bare_result_rejected,
+    height_parameter_transplant_rejected,
+    height_cross_model_rejected,
+    height_model_alias_rejected,
+    height_point_alias_rejected,
     cross_basis_transplant_rejected,
     bare_result_transplant_rejected,
     cross_model_transplant_rejected,
@@ -456,7 +547,7 @@ assert pairing_cache_tamper_rejected
     );
     assert.match(
       result.repr,
-      /^\[\d+, True, True, 'certified-positive', True, 1, True, True, True, True, True, True, True, True\]$/,
+      /^\[\d+, True, True, 'certified-positive', True, 1, 2, True, True, True, True, True, True, True, True, True, True, True, True, True, True\]$/,
     );
   } finally {
     await session.close();

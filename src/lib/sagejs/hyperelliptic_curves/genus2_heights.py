@@ -455,6 +455,7 @@ def _flatten_specialized_terms(
 
 
 _AUTOMATIC_HEIGHT_BOUND_PROOF = object()
+_CANONICAL_HEIGHT_CACHE_PROOF = object()
 _HEIGHT_PAIRING_CACHE_PROOF = object()
 
 
@@ -521,6 +522,49 @@ class _HeightPairingCacheEntry(_SealedRecord):
 
     @property
     def result(self) -> HeightPairingResult:
+        return self._result
+
+
+class _CanonicalHeightCacheEntry(_SealedRecord):
+    """A canonical height proof-bound to its exact divisor and request."""
+
+    def __init__(
+        self,
+        jacobian: Any,
+        divisor: Any,
+        model_binding: tuple[Any, ...],
+        point_binding: Any,
+        parameters: tuple[int, int, int | None, str],
+        result: CanonicalHeightResult,
+        *,
+        _proof_token: Any,
+    ) -> None:
+        self._proof_token = _proof_token
+        self._jacobian = jacobian
+        self._divisor = divisor
+        self._model_binding = _freeze_data(model_binding)
+        self._point_binding = _freeze_data(point_binding)
+        self._parameters = _freeze_data(parameters)
+        self._result = result
+        self._seal()
+
+    def _certified_for(
+        self,
+        jacobian: Any,
+        divisor: Any,
+        parameters: tuple[int, int, int | None, str],
+    ) -> bool:
+        return (
+            self._proof_token is _CANONICAL_HEIGHT_CACHE_PROOF
+            and self._jacobian is jacobian
+            and self._divisor == divisor
+            and self._model_binding == _freeze_data(_height_model_binding(jacobian))
+            and self._point_binding == _freeze_data(_height_point_binding(divisor))
+            and self._parameters == _freeze_data(parameters)
+        )
+
+    @property
+    def result(self) -> CanonicalHeightResult:
         return self._result
 
 
@@ -1463,6 +1507,7 @@ class HeightContext:
         self._local_corrections: dict[Any, dict[str, Any]] = {}
         self._finite_corrections: dict[Any, FiniteHeightCorrectionResult] = {}
         self._archimedean_corrections: dict[Any, ArchimedeanHeightCorrectionResult] = {}
+        self._canonical_heights: dict[Any, _CanonicalHeightCacheEntry] = {}
         self._height_pairings: dict[Any, _HeightPairingCacheEntry] = {}
         self._chain_hits = 0
         self._chain_misses = 0
@@ -1475,6 +1520,8 @@ class HeightContext:
         self._finite_correction_misses = 0
         self._archimedean_correction_hits = 0
         self._archimedean_correction_misses = 0
+        self._canonical_height_hits = 0
+        self._canonical_height_misses = 0
         self._height_pairing_hits = 0
         self._height_pairing_misses = 0
 
@@ -1694,6 +1741,9 @@ class HeightContext:
             "archimedean_correction_cache_misses": (
                 self._archimedean_correction_misses
             ),
+            "canonical_height_cache_entries": len(self._canonical_heights),
+            "canonical_height_cache_hits": self._canonical_height_hits,
+            "canonical_height_cache_misses": self._canonical_height_misses,
             "height_pairing_cache_entries": len(self._height_pairings),
             "height_pairing_cache_hits": self._height_pairing_hits,
             "height_pairing_cache_misses": self._height_pairing_misses,
@@ -2043,6 +2093,40 @@ def canonical_height(
     elif context.jacobian is not divisor.parent():
         raise ValueError("the height context belongs to a different Jacobian")
 
+    canonical_cache_key = None
+    canonical_cache_parameters = (steps, precision, target_bits, algorithm)
+    if (
+        height_difference_bound is None
+        and torsion_order is None
+        and (algorithm == "local" or target_bits is not None or steps >= 9)
+    ):
+        canonical_cache_key = (divisor,) + canonical_cache_parameters
+        cached_height = context._canonical_heights.get(canonical_cache_key)
+        if cached_height is not None:
+            if (
+                context._classical_duplication_terms
+                is not context._trusted_classical_duplication_terms
+            ):
+                raise Genus2HeightCapabilityError(
+                    "cached Flynn tables do not match the exact Jacobian model",
+                    {"specialized_quartics": "rejected-mutated-height-context"},
+                )
+            if not isinstance(
+                cached_height, _CanonicalHeightCacheEntry
+            ) or not cached_height._certified_for(
+                divisor.parent(), divisor, canonical_cache_parameters
+            ):
+                raise Genus2HeightCapabilityError(
+                    "cached canonical height proof does not match the exact request",
+                    {
+                        "canonical_height_cache": "rejected-proof-binding-mismatch",
+                        "parameters": canonical_cache_parameters,
+                    },
+                )
+            context._canonical_height_hits += 1
+            return cached_height.result
+        context._canonical_height_misses += 1
+
     if torsion_order is not None:
         if isinstance(torsion_order, bool):
             raise TypeError("torsion_order must be a positive exact integer")
@@ -2265,7 +2349,7 @@ def canonical_height(
                     },
                 )
             oracle_seen.add(oracle_coordinates)
-        return CanonicalHeightResult(
+        answer = CanonicalHeightResult(
             ball,
             status="certified-enclosure",
             steps=selected_steps,
@@ -2308,6 +2392,19 @@ def canonical_height(
                 "context": context.diagnostics(),
             },
         )
+        if canonical_cache_key is not None:
+            context._canonical_heights[canonical_cache_key] = (
+                _CanonicalHeightCacheEntry(
+                    divisor.parent(),
+                    divisor,
+                    _height_model_binding(divisor.parent()),
+                    _height_point_binding(divisor),
+                    canonical_cache_parameters,
+                    answer,
+                    _proof_token=_CANONICAL_HEIGHT_CACHE_PROOF,
+                )
+            )
+        return answer
 
     chain = context.chain(divisor, steps)
     if _find_kummer_repeat(chain):

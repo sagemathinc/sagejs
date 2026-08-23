@@ -82,7 +82,8 @@ async function sageRows() {
           `for height_bench_index in range(${repetitions}):`,
           `    height_bench_warm = canonical_height(height_bench_P, precision=${target}, target_bits=${target}, algorithm='local', context=height_bench_context)`,
           `height_bench_warm_ms = 1000*(time.perf_counter()-height_bench_started)/${repetitions}`,
-          `str(${target})+'|'+str(height_bench_height.steps)+'|'+str(height_bench_height.diagnostics['working_precision_bits'])+'|'+str(height_bench_height.diagnostics['achieved_enclosure_width_bits'])+'|'+str(height_bench_cold)+'|'+str(height_bench_warm_ms)+'|'+str(height_bench_height.ball.lower)+'|'+str(height_bench_height.ball.upper)+'|'+str(height_bench_context.diagnostics()['finite_correction_cache_hits'])+'|'+str(height_bench_context.diagnostics()['archimedean_correction_cache_hits'])+'|'+str(height_bench_height.diagnostics['archimedean_correction']['diagnostics']['minimum_state_width_bits'])+'|'+str(height_bench_oracle_compatible)+'|'+str(height_bench_height.diagnostics['finite_correction']['diagnostics']['recurrence_backend'])+'|'+str(height_bench_height.diagnostics['archimedean_correction']['diagnostics']['recurrence_backend'])`,
+          `assert height_bench_context.diagnostics()['canonical_height_cache_hits'] == ${repetitions}`,
+          `str(${target})+'|'+str(height_bench_height.steps)+'|'+str(height_bench_height.diagnostics['working_precision_bits'])+'|'+str(height_bench_height.diagnostics['achieved_enclosure_width_bits'])+'|'+str(height_bench_cold)+'|'+str(height_bench_warm_ms)+'|'+str(height_bench_height.ball.lower)+'|'+str(height_bench_height.ball.upper)+'|'+str(height_bench_context.diagnostics()['finite_correction_cache_hits'])+'|'+str(height_bench_context.diagnostics()['archimedean_correction_cache_hits'])+'|'+str(height_bench_height.diagnostics['archimedean_correction']['diagnostics']['minimum_state_width_bits'])+'|'+str(height_bench_oracle_compatible)+'|'+str(height_bench_height.diagnostics['finite_correction']['diagnostics']['recurrence_backend'])+'|'+str(height_bench_height.diagnostics['archimedean_correction']['diagnostics']['recurrence_backend'])+'|'+str(height_bench_context.diagnostics()['canonical_height_cache_hits'])`,
         ].join("\n"),
         { timeout: 900_000 },
       );
@@ -127,6 +128,7 @@ async function sageRows() {
         magmaOracleCompatibleAtConfidenceBits: fields[11] === "True",
         finiteRecurrenceBackend: fields[12],
         archimedeanRecurrenceBackend: fields[13],
+        canonicalHeightCacheHits: Number(fields[14]),
         stageMilliseconds: {
           contextAndSpecializedQuartics: Number(profileFields[0]),
           initialAutomaticBounds: Number(profileFields[1]),
