@@ -1001,6 +1001,17 @@ function generateJavaScript(ir, options = {}) {
         `throw new RangeError("math domain error");\n` +
         `${indent}${operation.target} = Math.sqrt(${operation.source});`;
     }
+    if (operation.kind === "float64.negate") {
+      return `${indent}${operation.target} = -${operation.source};`;
+    }
+    if (operation.kind === "float64.compare" ||
+        operation.kind === "uint64.compare") {
+      const operator = {
+        eq: "===", ne: "!==", lt: "<", le: "<=", gt: ">", ge: ">=",
+      }[operation.operation];
+      return `${indent}${operation.target} = ${operation.left} ${operator} ` +
+        `${operation.right};`;
+    }
     if (operation.kind === "uint64.binary") {
       const helper = uint64BigInt ? "uint64Binary" : "uint64NumberBinary";
       return `${indent}${operation.target} = ${helper}(` +
@@ -1053,6 +1064,22 @@ function generateJavaScript(ir, options = {}) {
           emitFloat64Statement(item, `${indent}  `, uint64BigInt)
         ),
         `${indent}}`,
+      ].join("\n");
+    }
+    if (operation.kind === "if") {
+      return [
+        ...operation.condition.operations.map((item) =>
+          emitFloat64Statement(item, indent, uint64BigInt)
+        ),
+        `${indent}if (${operation.condition.value}) {`,
+        ...operation.body.map((item) =>
+          emitFloat64Statement(item, `${indent}  `, uint64BigInt)
+        ),
+        `${indent}}${operation.alternative.length > 0 ? " else {" : ""}`,
+        ...operation.alternative.map((item) =>
+          emitFloat64Statement(item, `${indent}  `, uint64BigInt)
+        ),
+        ...(operation.alternative.length > 0 ? [`${indent}}`] : []),
       ].join("\n");
     }
     if (operation.kind === "return") {
