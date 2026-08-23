@@ -276,6 +276,36 @@ assert [record.to_dict() for record in packed_factor_records] == (
     packed.certificate.factor_base
 )
 
+# Positive powers of one packed factor stay in the HNF representation during
+# the optional lower-bound search.  These corpus fields do not have a local
+# obstruction under the configured modulus cap, but they must not fall back
+# to an ordinary ideal merely because their projective-line representative is
+# P^2 or P^4.
+saved_ordinary_obstruction = cubic._find_cubic_norm_obstruction
+saved_packed_obstruction = cubic._find_packed_cubic_norm_obstruction
+observed_powers = []
+def forbidden_ordinary_obstruction(*args, **kwargs):
+    raise AssertionError("a positive packed prime power materialized an ideal")
+def observed_packed_obstruction(factor_base, line, **kwargs):
+    observed_powers.append(tuple(
+        value for value in line["ambient_row"] if value
+    ))
+    return saved_packed_obstruction(factor_base, line, **kwargs)
+cubic._find_cubic_norm_obstruction = forbidden_ordinary_obstruction
+cubic._find_packed_cubic_norm_obstruction = observed_packed_obstruction
+try:
+    for polynomial, expected_power in (
+        (x**3 - x**2 + 3*x + 6, 2),
+        (x**3 - x**2 - 14*x + 30, 4),
+    ):
+        power_field = NumberField(polynomial, "u")
+        power_result = cubic.bounded_cubic_minkowski_class_number(power_field)
+        assert not power_result.complete
+        assert (expected_power,) in observed_powers
+finally:
+    cubic._find_cubic_norm_obstruction = saved_ordinary_obstruction
+    cubic._find_packed_cubic_norm_obstruction = saved_packed_obstruction
+
 from sagejs.number_fields.class_group_relations import ExactRelationCollector, RelationNotSmoothError
 from sagejs.number_fields.ideal_arithmetic import packed_valuation_power_bases
 order = packed_field.maximal_order()

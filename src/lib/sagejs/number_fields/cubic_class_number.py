@@ -619,6 +619,29 @@ def _packed_cubic_integral_ideal_payload(
     }
 
 
+def _packed_cubic_factor_power_rows(
+    factor: PackedCubicFactorRecord, exponent: int
+) -> tuple[tuple[Any, ...], ...] | None:
+    """Decode one exact packed prime-power HNF into rational basis rows."""
+    power = int(exponent)
+    if power < 1:
+        return None
+    packed_powers = factor.packed_power_bases(power)
+    if len(packed_powers) != power:
+        return None
+    numerators, denominator = packed_powers[power - 1]
+    degree = int(factor.order.degree())
+    if degree != 3 or len(numerators) != degree * degree or denominator <= 0:
+        return None
+    return tuple(
+        tuple(
+            sage.QQ(numerators[row * degree + column]) / sage.QQ(denominator)
+            for column in range(degree)
+        )
+        for row in range(degree)
+    )
+
+
 def _find_packed_cubic_norm_obstruction(
     factor_base: tuple[Any, ...],
     line: dict[str, Any],
@@ -627,24 +650,31 @@ def _find_packed_cubic_norm_obstruction(
     remaining_states: int,
     cancelled: Callable[[], bool] | None,
 ) -> tuple[dict[str, Any] | None, int] | None:
-    """Prove one p-line directly from a single packed integral prime HNF.
+    """Prove one p-line directly from a packed integral prime-power HNF.
 
-    The common small-cubic case lifts a class generator to one factor-base
-    prime.  More general signed products deliberately return `None` and take
-    the unchanged ordinary-ideal path until the packed product/inverse layer
-    is wired into this producer.
+    The common small-cubic cases lift a class generator to a positive power of
+    one factor-base prime.  Signed products deliberately return `None` and
+    take the unchanged ordinary-ideal path until the packed product/inverse
+    layer is wired into this producer.
     """
     row = tuple(int(value) for value in line["ambient_row"])
     nonzero = tuple(index for index, exponent in enumerate(row) if exponent)
     if (
         len(row) != len(factor_base)
         or len(nonzero) != 1
-        or row[nonzero[0]] != 1
+        or row[nonzero[0]] < 1
         or not isinstance(factor_base[nonzero[0]], PackedCubicFactorRecord)
     ):
         return None
     factor = factor_base[nonzero[0]]
-    rows = factor.rows
+    exponent = row[nonzero[0]]
+    rows = (
+        factor.rows
+        if exponent == 1
+        else _packed_cubic_factor_power_rows(factor, exponent)
+    )
+    if rows is None:
+        return None
     coordinates = _cubic_relative_basis_rows(factor.order, rows)
     coefficients = _cubic_norm_form_coefficients_from_rows(factor.order, rows)
     if coordinates is None or coefficients is None:
@@ -656,8 +686,9 @@ def _find_packed_cubic_norm_obstruction(
         sage.ZZ, [list(row) for row in coordinates]
     ).determinant()
     norm = abs(int(determinant))
-    if norm != factor.norm_value:
-        raise ArithmeticError("a packed factor-base HNF has the wrong exact norm")
+    expected_norm = factor.norm_value**exponent
+    if norm != expected_norm:
+        raise ArithmeticError("a packed factor-base power has the wrong exact norm")
     used = 0
     for modulus in range(2, max_modulus + 1):
         if not sage.is_prime(modulus):
