@@ -386,9 +386,16 @@ try:
         )
         assert packed_basis is not None
         packed_rows, packed_norm = packed_basis
-        ordinary_records, ordinary_factors = (
-            cubic._materialize_packed_cubic_factor_records(power_factors)
-        )
+        saved_factor_rational_prime = prime_ideals.factor_rational_prime
+        def forbidden_factor_rational_prime(*args, **kwargs):
+            raise AssertionError("packed materialization refactored a rational prime")
+        prime_ideals.factor_rational_prime = forbidden_factor_rational_prime
+        try:
+            ordinary_records, ordinary_factors = (
+                cubic._materialize_packed_cubic_factor_records(power_factors)
+            )
+        finally:
+            prime_ideals.factor_rational_prime = saved_factor_rational_prime
         assert len(ordinary_records) == len(power_factors)
         ordinary = reconstruct_factor_base_ideal(
             power_field.maximal_order(),

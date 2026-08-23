@@ -370,33 +370,25 @@ def _materialize_packed_cubic_factor_records(
         "sagejs.number_fields.class_group_factor_base",
         fromlist=["class_group_factor_base"],
     )
-    decompositions: dict[int, tuple[Any, ...]] = {}
     restored: list[Any] = []
     for packed in factor_records:
         if not isinstance(packed, PackedCubicFactorRecord):
             raise TypeError("a packed factor base mixed record representations")
-        candidates = decompositions.get(packed.prime)
-        if candidates is None:
-            decomposition = prime_module.factor_rational_prime(
-                packed.order, packed.prime
-            )
-            candidates = tuple(decomposition.prime_ideals())
-            decompositions[packed.prime] = candidates
-        expected_basis = packed.to_dict()["hnf_fingerprint"]
-        prime_ideal = next(
-            (
-                candidate
-                for candidate in candidates
-                if [
-                    [[int(value._numerator), int(value._denominator)] for value in row]
-                    for row in candidate._basis_rows
-                ]
-                == expected_basis
-            ),
-            None,
+        # These rows and the residue presentation were produced together from
+        # the exact modular factor/subspace and have already been used as the
+        # immutable relation lattice.  Materializing the public ideal should
+        # therefore cross only the representation boundary: the ordinary
+        # constructor independently canonicalizes the rows and checks closure
+        # under the maximal order.  Refactoring the same rational prime and
+        # rediscovering this HNF used to dominate every coupled cubic fallback.
+        prime_ideal = prime_module.NumberFieldPrimeIdeal(
+            packed.order,
+            [list(row) for row in packed.rows],
+            packed.prime,
+            packed.ramification,
+            packed.residue_degree,
+            dict(packed.presentation),
         )
-        if prime_ideal is None:
-            raise ArithmeticError("packed factor is absent from exact decomposition")
         record = factor_module.FactorBasePrimeRecord(
             packed.index,
             prime_ideal,
