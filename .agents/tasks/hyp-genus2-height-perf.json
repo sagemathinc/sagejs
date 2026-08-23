@@ -14,7 +14,8 @@
     "src/lib/sagejs/hyperelliptic_curves/genus2_heights.py",
     "test/hyperelliptic-genus2-height-performance.cjs",
     "test/hyperelliptic-genus2-heights.cjs",
-    "bench/hyperelliptic/benchmark-genus2-height-competitive.cjs"
+    "bench/hyperelliptic/benchmark-genus2-height-competitive.cjs",
+    "bench/results/hyperelliptic-genus2-height-e350a0f2-linux-x64.json"
   ],
   "dependencies": [],
   "references": [],

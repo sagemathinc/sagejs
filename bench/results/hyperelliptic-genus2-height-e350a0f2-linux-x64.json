@@ -1,0 +1,176 @@
+{
+  "schema": "sagejs.hyperelliptic/genus2-height-competitive-benchmark-v1",
+  "commit": "e350a0f2e93e4bb6fd7700e5c8348dbede29f5e5",
+  "host": {
+    "hostname": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.5.1",
+    "cpus": 8,
+    "loadAverage": [
+      0.77,
+      0.96,
+      0.97
+    ]
+  },
+  "contract": {
+    "curve": "y^2=x^5-x+1",
+    "pointP": "[x,1]",
+    "pointQ": "[x-1,1]",
+    "normalization": "Cassels-Flynn 2Theta principal polarization",
+    "oracle": "0.55175981952139493925311708933354526634108654109670",
+    "oracleConfidenceBits": 96,
+    "highPrecisionValidation": {
+      "status": "independently reproduced",
+      "methods": [
+        "180-decimal one-log-per-step Flynn recurrence",
+        "exact Mumford-to-Kummer doubling through 8 steps",
+        "grouped outward interval recurrence"
+      ],
+      "note": "The independent recurrences agree with Sage.js beyond the 96-bit prefix trusted from Magma 2.18-5."
+    },
+    "targets": [
+      64,
+      128,
+      256
+    ],
+    "repetitions": 5,
+    "modes": [
+      "resident object cold",
+      "resident prepared-context warm"
+    ]
+  },
+  "sagejs": {
+    "rows": [
+      {
+        "targetBits": 64,
+        "steps": 37,
+        "workingPrecisionBits": 260,
+        "achievedEnclosureWidthBits": 67,
+        "objectColdMilliseconds": 847.5534915924072,
+        "warmMilliseconds": 37.46333122253418,
+        "enclosure": {
+          "lower": "511115378076694730929095947187847075241605143809695671427359498361820516812411/926336713898529563388567880069503262826159877325124512315660672063305037119488",
+          "upper": "1022230756153389461865461937792843060988284539878242561240757103554638218480431/1852673427797059126777135760139006525652319754650249024631321344126610074238976",
+          "rigorous": true
+        },
+        "finiteCacheHits": 5,
+        "archimedeanCacheHits": 5,
+        "minimumStateWidthBits": 120,
+        "magmaOracleCompatibleAtConfidenceBits": true,
+        "finiteRecurrenceBackend": "native-integer-buffer",
+        "archimedeanRecurrenceBackend": "native-integer-buffer",
+        "stageMilliseconds": {
+          "contextAndSpecializedQuartics": 11.332035064697266,
+          "initialAutomaticBounds": 20.138025283813477,
+          "guardedAutomaticBounds": 0,
+          "finiteCorrection": 22.52650260925293,
+          "archimedeanCorrection": 95.77536582946777,
+          "cachedAssemblyAndExactOracle": 40.2681827545166
+        }
+      },
+      {
+        "targetBits": 128,
+        "steps": 69,
+        "workingPrecisionBits": 452,
+        "achievedEnclosureWidthBits": 131,
+        "objectColdMilliseconds": 333.73188972473145,
+        "warmMilliseconds": 43.88546943664551,
+        "enclosure": {
+          "lower": "6416646453416079886809100636595690867537622796904310719554187323600578300427108430444657695100577140461327939968901600267419959988052361/11629419588729710248789180926208072549658261770997088964503843186890228609814366773219056811420217048972200345700258846936553626057834496",
+          "upper": "6416646453416079886809100636595690867540096664485916138409077384162001960146812081178922211602631573130989998943368671501944726705166065/11629419588729710248789180926208072549658261770997088964503843186890228609814366773219056811420217048972200345700258846936553626057834496",
+          "rigorous": true
+        },
+        "finiteCacheHits": 5,
+        "archimedeanCacheHits": 5,
+        "minimumStateWidthBits": 182,
+        "magmaOracleCompatibleAtConfidenceBits": true,
+        "finiteRecurrenceBackend": "native-integer-buffer",
+        "archimedeanRecurrenceBackend": "native-integer-buffer",
+        "stageMilliseconds": {
+          "contextAndSpecializedQuartics": 10.246038436889648,
+          "initialAutomaticBounds": 21.015405654907227,
+          "guardedAutomaticBounds": 0,
+          "finiteCorrection": 28.15699577331543,
+          "archimedeanCorrection": 186.86246871948242,
+          "cachedAssemblyAndExactOracle": 47.945499420166016
+        }
+      },
+      {
+        "targetBits": 256,
+        "steps": 133,
+        "workingPrecisionBits": 836,
+        "achievedEnclosureWidthBits": 259,
+        "objectColdMilliseconds": 720.9413051605225,
+        "warmMilliseconds": 65.76690673828125,
+        "enclosure": {
+          "lower": "126414371658786519352249916761577923204755767419889829860475711787819063434611754748525608008425407744374907296339786581322637292242347106442846109911690399837733107920994844371771819509884598688860243118692171791655876940863932127234014268346667039177/229111231347799689635350271469398707925773913377365220235531597618488512042823233274762274126597027003434876073751997760595174886056587013603560208332516636964102994463833696818134410091831830209960320065853961979807444428853900668922870296851794362368",
+          "upper": "252828743317573038704499833523155846409511534839779659720951423575638126869223795951346986575116191505249903785247592964294216778593072108083542629584957397329250618778299443970933279904268099826794046080609140243017092389285052613397655392419201284205/458222462695599379270700542938797415851547826754730440471063195236977024085646466549524548253194054006869752147503995521190349772113174027207120416665033273928205988927667393636268820183663660419920640131707923959614888857707801337845740593703588724736",
+          "rigorous": true
+        },
+        "finiteCacheHits": 5,
+        "archimedeanCacheHits": 5,
+        "minimumStateWidthBits": 309,
+        "magmaOracleCompatibleAtConfidenceBits": true,
+        "finiteRecurrenceBackend": "native-integer-buffer",
+        "archimedeanRecurrenceBackend": "native-integer-buffer",
+        "stageMilliseconds": {
+          "contextAndSpecializedQuartics": 9.917020797729492,
+          "initialAutomaticBounds": 23.195266723632812,
+          "guardedAutomaticBounds": 0,
+          "finiteCorrection": 64.83936309814453,
+          "archimedeanCorrection": 483.07037353515625,
+          "cachedAssemblyAndExactOracle": 71.55346870422363
+        }
+      }
+    ],
+    "rank2": {
+      "targetBits": 64,
+      "pairingObjectColdMilliseconds": 656.4476490020752,
+      "pairingWarmMilliseconds": 1.6866207122802734,
+      "regulatorWarmMilliseconds": 7.318735122680664,
+      "regulatorEnclosure": {
+        "lower": "1647920104494733827/18446744073709551616",
+        "upper": "1647920104494733829/18446744073709551616",
+        "rigorous": true
+      }
+    }
+  },
+  "magma": {
+    "executable": "/home/user/bin/magma",
+    "version": "2.18-5",
+    "rows": [
+      {
+        "targetBits": 64,
+        "accuracyMatchedToTarget": true,
+        "demonstratedAccuracyBits": 96,
+        "objectColdMilliseconds": 200,
+        "warmMilliseconds": 8,
+        "value": "0.5517598195213949392531170893335037073943742052886718733265\\"
+      },
+      {
+        "targetBits": 128,
+        "accuracyMatchedToTarget": false,
+        "demonstratedAccuracyBits": 96,
+        "objectColdMilliseconds": 10,
+        "warmMilliseconds": 14,
+        "value": "0.551759819521394939253117089333545266341086541096685351896\\"
+      },
+      {
+        "targetBits": 256,
+        "accuracyMatchedToTarget": false,
+        "demonstratedAccuracyBits": 96,
+        "objectColdMilliseconds": 20,
+        "warmMilliseconds": 24,
+        "value": "0.551759819521394939253117089333545266341086541096701489325\\"
+      }
+    ],
+    "rank2": {
+      "targetBits": 64,
+      "pairingObjectColdMilliseconds": 50,
+      "pairingWarmMilliseconds": 42,
+      "regulatorWarmMilliseconds": 50,
+      "regulator": "0.089333927868786494835785498947016199800262023229845\\"
+    }
+  }
+}
