@@ -205,4 +205,55 @@ test("genus-2/3 central weights return packed completed and raw jets", () => {
   assert.equal(result.rigorous, false);
   assert.match(result.analyticErrorStatus, /central_weight_contour/);
   assert.ok(result.coefficientTerms > 0);
+  assert.equal(result.sharedCoefficientLogarithms, 1);
+  assert.equal(result.coarsePhaseUpdates, result.coarseContourPoints + 1);
+  assert.equal(result.finePhaseUpdates, result.contourPoints + 1);
+  assert.ok(result.coefficientTraversalCpuSeconds >= 0);
+  assert.ok(result.coarseCompletionCpuSeconds >= 0);
+  assert.ok(result.fineCompletionCpuSeconds >= 0);
+});
+
+test("paired central grids retain the independent-grid numerical oracle", () => {
+  const probe = flint.hyperellipticCentralWeights(
+    713n, 1, 2, new Int32Array([0, 1]), 64, 4,
+  );
+  const coefficients = new Int32Array(probe.requiredCutoff + 1);
+  coefficients[1] = 1;
+  for (let index = 2; index < coefficients.length; index += 1) {
+    coefficients[index] = ((index * 17 + 5) % 23) - 11;
+  }
+  const result = flint.hyperellipticCentralWeights(
+    713n, 1, 2, coefficients, 64, 4,
+  );
+  assert.equal(result.status, "ok");
+  const nonzero = coefficients.reduce(
+    (count, coefficient) => count + Number(coefficient !== 0),
+    0,
+  );
+  assert.equal(result.sharedCoefficientLogarithms, nonzero);
+  assert.equal(
+    result.coarsePhaseUpdates,
+    nonzero * (result.coarseContourPoints + 1),
+  );
+  assert.equal(
+    result.finePhaseUpdates,
+    nonzero * (result.contourPoints + 1),
+  );
+  assert.equal(
+    result.rawDerivatives[0].realMidpoint,
+    "0.75376413529298505392564115787040",
+  );
+  assert.equal(
+    result.rawDerivatives[4].realMidpoint,
+    "4.2928121643628384998414410420705",
+  );
+  assert.equal(
+    result.completedDerivatives[2].realMidpoint,
+    "0.31292051296699307030470448036596",
+  );
+  assert.equal(
+    result.completedDerivatives[4].realMidpoint,
+    "0.63750381200009793494268854314495",
+  );
+  assert.ok(result.refinementStable);
 });

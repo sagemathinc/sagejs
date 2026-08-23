@@ -53,7 +53,7 @@ function ratio(numerator, denominator) {
 }
 
 function performanceGates(sageRows, pariRows, precisionBits) {
-  const initStage = `lfunction_init_order4_${precisionBits}bit_prepared_curve_100`;
+  const initStage = `lfunction_init_order4_${precisionBits}bit_fresh_plan_coefficients_warm_100`;
   const sageInitBatch = rowMedian(sageRows, initStage);
   const pariInitBatch = rowMedian(pariRows, initStage);
   const sageInit = sageInitBatch === null ? null : sageInitBatch / 100;
@@ -110,6 +110,8 @@ function performanceGates(sageRows, pariRows, precisionBits) {
       sagejs_over_pari: initializationRatio,
       target_maximum_ratio: 2,
       passed: initializationRatio !== null && initializationRatio <= 2,
+      contract:
+        "each item constructs a new coefficient-prefix plan state and a new LFunctionInit; only exact coefficients are warm",
     },
     prepared_central_value_over_fresh_plan: {
       fresh_plan_median_ms: fresh,
@@ -191,8 +193,8 @@ ${
     : 'for(sample=1,samples,t=getwalltime();v=hyperellperiods(x^5-x+1,2);print("ROW|period_genus2_model_cold|",getwalltime()-t,"|",v));\nfor(sample=1,samples,t=getwalltime();v=hyperellperiods([x^7-x+1,x^2],2);print("ROW|period_genus3_generalized_cold|",getwalltime()-t,"|",v));'
 }
 L=lfungenus2([x,x^3-x+1]);
-for(sample=1,samples,t=getwalltime();LI=lfuninit(L,[1,0,0],4);v=lfun(LI,1);print("ROW|lfunction_init_order4_${precisionBits}bit_prepared_curve|",getwalltime()-t,"|",v));
-for(sample=1,samples,t=getwalltime();for(repetition=1,100,LI=lfuninit(L,[1,0,0],4);v=lfun(LI,1));print("ROW|lfunction_init_order4_${precisionBits}bit_prepared_curve_100|",getwalltime()-t,"|",v));
+for(sample=1,samples,t=getwalltime();LI=lfuninit(L,[1,0,0],4);v=lfun(LI,1);print("ROW|lfunction_init_order4_${precisionBits}bit_fresh_plan_coefficients_warm|",getwalltime()-t,"|",v));
+for(sample=1,samples,t=getwalltime();for(repetition=1,100,LI=lfuninit(L,[1,0,0],4);v=lfun(LI,1));print("ROW|lfunction_init_order4_${precisionBits}bit_fresh_plan_coefficients_warm_100|",getwalltime()-t,"|",v));
 LI=lfuninit(L,[1,0,0],4);
 for(sample=1,samples,t=getwalltime();for(repetition=1,100,v=lfun(LI,1));print("ROW|prepared_central_value_100|",getwalltime()-t,"|",v));
 for(order=0,4,for(sample=1,samples,t=getwalltime();for(repetition=1,100,v=lfun(LI,1,order));print("ROW|prepared_central_derivative_order",order,"_100|",getwalltime()-t,"|",v)));
@@ -267,6 +269,8 @@ async function main() {
             pari: "one resident GP process; getwalltime around each public operation",
             pari_realbitprecision: precisionBits,
             pari_lfuninit: "central domain [1,0,0], derivative order 4",
+            initialization_gate:
+              "fresh analytic plan/result per item; exact coefficients alone are warm",
             cache_hits_are_separate: true,
             rigorous_claim: false,
           },
@@ -380,11 +384,20 @@ async function main() {
       "prepared_prefix=GlobalCoefficientPrefix(C); prepared_prefix.through(5000)",
       { timeout: 300_000 },
     );
+    await session.evaluate(
+      [
+        "def isolated_prefix2():",
+        "    snapshot = GlobalCoefficientPrefix(C)",
+        "    snapshot._seed_exact_values(list(prepared_prefix.values), prepared_prefix.backend_counts)",
+        "    return snapshot",
+        "True",
+      ].join("\n"),
+    );
     rows.push(
       await sageMeasurement(
         session,
         `central_plan_order4_${precisionBits}bit_coefficients_warm`,
-        `tuple(HyperellipticLSeries(C,prepared_prefix).init(prec=${precisionBits},max_order=4,algorithm='native').central_value() for _repeat in range(3))[-1]`,
+        `tuple(HyperellipticLSeries(C,isolated_prefix2()).init(prec=${precisionBits},max_order=4,algorithm='native').central_value() for _repeat in range(3))[-1]`,
         samples,
         0,
         3,
@@ -397,8 +410,8 @@ async function main() {
     rows.push(
       await sageMeasurement(
         session,
-        `lfunction_init_order4_${precisionBits}bit_prepared_curve`,
-        `reuse_I=warm_L.init(prec=${precisionBits},max_order=4,algorithm='native'); reuse_I.central_value()`,
+        `lfunction_init_order4_${precisionBits}bit_fresh_plan_coefficients_warm`,
+        `miss_L=HyperellipticLSeries(C,isolated_prefix2()); miss_I=miss_L.init(prec=${precisionBits},max_order=4,algorithm='native'); miss_I.central_value()`,
         samples,
         1,
       ),
@@ -406,8 +419,26 @@ async function main() {
     rows.push(
       await sageMeasurement(
         session,
-        `lfunction_init_order4_${precisionBits}bit_prepared_curve_100`,
-        `tuple(warm_L.init(prec=${precisionBits},max_order=4,algorithm='native') for _index in range(100))[-1].central_value()`,
+        `lfunction_init_order4_${precisionBits}bit_fresh_plan_coefficients_warm_100`,
+        `tuple(HyperellipticLSeries(C,isolated_prefix2()).init(prec=${precisionBits},max_order=4,algorithm='native').central_value() for _index in range(100))[-1]`,
+        samples,
+        1,
+      ),
+    );
+    rows.push(
+      await sageMeasurement(
+        session,
+        `lfunction_init_order4_${precisionBits}bit_coefficient_prefix_cache_hit_100`,
+        `tuple(HyperellipticLSeries(C,prepared_prefix).init(prec=${precisionBits},max_order=4,algorithm='native').central_value() for _index in range(100))[-1]`,
+        samples,
+        1,
+      ),
+    );
+    rows.push(
+      await sageMeasurement(
+        session,
+        `lfunction_init_order4_${precisionBits}bit_same_lseries_cache_hit_100`,
+        `tuple(warm_L.init(prec=${precisionBits},max_order=4,algorithm='native').central_value() for _index in range(100))[-1]`,
         samples,
         1,
       ),
@@ -444,7 +475,7 @@ async function main() {
         await sageMeasurement(
           session,
           `central_derivative_order${order}_native_coefficients_warm`,
-          `tuple(HyperellipticLSeries(C,prepared_prefix).central_jet(${order},prec=${precisionBits},algorithm='native')[${order}] for _repeat in range(3))[-1]`,
+          `tuple(HyperellipticLSeries(C,isolated_prefix2()).central_jet(${order},prec=${precisionBits},algorithm='native')[${order}] for _repeat in range(3))[-1]`,
           samples,
           0,
           3,
@@ -454,7 +485,7 @@ async function main() {
         await sageMeasurement(
           session,
           `central_derivative_order${order}_inverse_mellin_coefficients_warm`,
-          `tuple(HyperellipticLSeries(C,prepared_prefix).central_jet(${order},prec=${precisionBits},algorithm='inverse_mellin')[${order}] for _repeat in range(3))[-1]`,
+          `tuple(HyperellipticLSeries(C,isolated_prefix2()).central_jet(${order},prec=${precisionBits},algorithm='inverse_mellin')[${order}] for _repeat in range(3))[-1]`,
           samples,
           0,
           3,
@@ -468,12 +499,21 @@ async function main() {
       `prepared_L3=HyperellipticLSeries(C3); prepared_L3.init(prec=16,max_order=4,algorithm='native'); prepared_prefix3=prepared_L3._coefficient_prefix`,
       { timeout: 300_000 },
     );
+    await session.evaluate(
+      [
+        "def isolated_prefix3():",
+        "    snapshot = GlobalCoefficientPrefix(C3)",
+        "    snapshot._seed_exact_values(list(prepared_prefix3.values), prepared_prefix3.backend_counts)",
+        "    return snapshot",
+        "True",
+      ].join("\n"),
+    );
     for (let order = 0; order <= 4; order += 1) {
       rows.push(
         await sageMeasurement(
           session,
           `genus3_central_derivative_order${order}_native_coefficients_warm`,
-          `tuple(HyperellipticLSeries(C3,prepared_prefix3).central_jet(${order},prec=16,algorithm='native')[${order}] for _repeat in range(3))[-1]`,
+          `tuple(HyperellipticLSeries(C3,isolated_prefix3()).central_jet(${order},prec=16,algorithm='native')[${order}] for _repeat in range(3))[-1]`,
           samples,
           0,
           3,
@@ -483,7 +523,7 @@ async function main() {
         await sageMeasurement(
           session,
           `genus3_central_derivative_order${order}_inverse_mellin_coefficients_warm`,
-          `tuple(HyperellipticLSeries(C3,prepared_prefix3).central_jet(${order},prec=16,algorithm='inverse_mellin')[${order}] for _repeat in range(3))[-1]`,
+          `tuple(HyperellipticLSeries(C3,isolated_prefix3()).central_jet(${order},prec=16,algorithm='inverse_mellin')[${order}] for _repeat in range(3))[-1]`,
           samples,
           0,
           3,
@@ -538,6 +578,8 @@ async function main() {
       pari: "one resident GP process; getwalltime around each public operation",
       matched_precision_bits: precisionBits,
       pari_lfuninit: "central domain [1,0,0], derivative order 4",
+      initialization_gate:
+        "fresh isolated coefficient-prefix state, L-series wrapper, analytic plan, and result per item; exact coefficients alone are warm",
       process_cold_ms: Number(processColdMs.toFixed(3)),
       cache_hits_are_separate: true,
       rigorous_claim: false,

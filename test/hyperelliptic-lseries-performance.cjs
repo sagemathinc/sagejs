@@ -1,12 +1,40 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const { join } = require("node:path");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
 
+test("the competitive initialization gate measures analytic cache misses", () => {
+  const source = readFileSync(
+    join(
+      __dirname,
+      "..",
+      "bench",
+      "hyperelliptic",
+      "benchmark-analytic-competitive.cjs",
+    ),
+    "utf8",
+  );
+  assert.match(
+    source,
+    /const initStage = `lfunction_init_order4_\$\{precisionBits\}bit_fresh_plan_coefficients_warm_100`;/u,
+  );
+  assert.match(
+    source,
+    /tuple\(HyperellipticLSeries\(C,isolated_prefix2\(\)\)\.init\(prec=\$\{precisionBits\},max_order=4,algorithm='native'\)\.central_value\(\) for _index in range\(100\)\)/u,
+  );
+  assert.match(
+    source,
+    /bit_coefficient_prefix_cache_hit_100/u,
+  );
+  assert.match(source, /bit_same_lseries_cache_hit_100/u);
+});
+
 test(
-  "prepared LFunctionInit snapshots are independent and reuse the central plan",
+  "prepared LFunctionInit snapshots are independent and reuse cached central results",
   { timeout: 180_000 },
   async () => {
     const session = await createSage();
@@ -16,6 +44,7 @@ R = PolynomialRing(QQ, "x")
 x = R.gen()
 C = HyperellipticCurve(x, x**3-x+1)
 L = C.lseries()
+from sagejs.hyperelliptic_curves.lseries import HyperellipticLSeries
 first = L.init(prec=32, max_order=4, algorithm="native")
 expected = tuple(first.central_jet(4))
 diagnostics = first.diagnostics()
@@ -24,7 +53,17 @@ second = L.init(prec=32, max_order=4, algorithm="native")
 assert tuple(second.central_jet(4)) == expected
 assert tuple(first.central_jet(4)) == expected
 assert second.diagnostics()["central"]["cache_hit"]
+assert second.diagnostics()["central"]["cache_scope"] == "lseries"
 assert L.cache_diagnostics()["evaluation_hits"] >= 1
+shared_L = HyperellipticLSeries(C, L._coefficient_prefix)
+shared = shared_L.init(prec=32, max_order=4, algorithm="native")
+assert tuple(shared.central_jet(4)) == expected
+assert shared.diagnostics()["central"]["cache_scope"] == "coefficient-prefix"
+assert shared_L.cache_diagnostics()["coefficient_prefix"]["prepared_evaluation_hits"] >= 1
+shared_diagnostics = shared.diagnostics()
+shared_diagnostics["central"]["values"][0]["raw_derivatives"] = (("777", "0"),)
+third = HyperellipticLSeries(C, L._coefficient_prefix).init(prec=32, max_order=4, algorithm="native")
+assert tuple(third.central_jet(4)) == expected
 first.close()
 assert tuple(second.central_jet(4)) == expected
 True
