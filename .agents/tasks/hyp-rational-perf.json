@@ -45,11 +45,62 @@
       "commit": "76b863adb13c683b265ddc0c987b727fd7291990",
       "workspace_fingerprint": "e8da3d5f1d8fa43601ad357af812a45f4aea01ba38e0cd824dbfb1081802f16a",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 912.781,
+      "started_at": "2026-08-23T03:12:11.377Z",
+      "commit": "9817ceab54b10066d12a65daae3ed2bf13befc2a",
+      "workspace_fingerprint": "151709b852a763345ade0a39b7781ba48e12a5a467e0a1d16c4ae349addf2fe7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.477,
+      "started_at": "2026-08-23T03:28:09.942Z",
+      "commit": "9817ceab54b10066d12a65daae3ed2bf13befc2a",
+      "workspace_fingerprint": "151709b852a763345ade0a39b7781ba48e12a5a467e0a1d16c4ae349addf2fe7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 38.828,
+      "started_at": "2026-08-23T03:28:24.392Z",
+      "commit": "9817ceab54b10066d12a65daae3ed2bf13befc2a",
+      "workspace_fingerprint": "151709b852a763345ade0a39b7781ba48e12a5a467e0a1d16c4ae349addf2fe7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 34.137,
+      "started_at": "2026-08-23T03:34:44.632Z",
+      "commit": "9817ceab54b10066d12a65daae3ed2bf13befc2a",
+      "workspace_fingerprint": "151709b852a763345ade0a39b7781ba48e12a5a467e0a1d16c4ae349addf2fe7",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added bounded prepared reduction of rational genus-2/3 Mumford bases at many good primes, canonical exact fingerprints, shared reduction caches for torsion and saturation, batched finite-field factor stripping, exact auxiliary-prime division filters, cancellation checks, and replayable version-2 saturation certificates. The exact basis-reduction benchmark improves from 0.499-0.540 seconds to 0.178-0.184 seconds (2.77x-3.02x), and saturation reuses two residue-prime reductions across three saturation primes instead of making six provider calls. Focused genus-2/3 tests pass, including exact certificate replay and resource bounds.",
+    "risks": [
+      "This lane accelerates reduction orchestration but does not yet provide the Phase-6 FLINT-backed rational Cantor composition/reduction boundary; Magma remains substantially faster on its comparable finite-Jacobian batch workload.",
+      "Auxiliary-prime division filters reduce expensive exact QQ scalar tests, but candidate enumeration dominates larger boxes and can erase the wall-clock gain.",
+      "The focused test file is intentionally within this lane, but registering it in the shared node-test manifest is an integration-lane change outside the contract claims.",
+      "Prepared finite-field scalar batching activates by feature detection once the Cantor-core lane is integrated; this isolated branch exercises the exact reference fallback.",
+      "Validation was performed on linux-x64; required cross-platform validation remains an integration responsibility."
+    ],
+    "next_steps": [
+      "Create a narrow follow-on lane for a prepared FLINT-backed QQ Cantor boundary and benchmark 256-bit scalar multiplication against Magma; do not treat this finite-reduction batching lane as completion of Phase 6.",
+      "Integrate the Cantor-core prepared finite-field context so torsion and saturation automatically use scalar_batch instead of the reference fallback.",
+      "Register test/hyperelliptic-rational-performance.cjs in the shared node-test manifest from the integration lane.",
+      "Profile division-box enumeration and add mathematically exact congruence generation if it can beat post-generation filtering."
+    ]
   }
 }

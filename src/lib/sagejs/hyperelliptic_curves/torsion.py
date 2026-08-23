@@ -1225,33 +1225,6 @@ def _exact_order_without_reductions(
     return order, tuple(order_factors)
 
 
-def _order_certificate(
-    jacobian: Any,
-    divisor: Any,
-    upper_bound: int,
-    factors: Any,
-    reduction_rows: Any,
-) -> dict[str, Any]:
-    order, order_factors = _exact_order_without_reductions(
-        jacobian, divisor, upper_bound, factors
-    )
-
-    reduction_witnesses = tuple(
-        _reduction_order_witness(jacobian, divisor, order, order_factors, row)
-        for row in reduction_rows
-    )
-    return {
-        "schema": QQ_ORDER_SCHEMA,
-        "theorem": TORSION_ORDER_THEOREM,
-        "proof_algorithm": TORSION_ORDER_ALGORITHM,
-        "divisor": rational_mumford_data(jacobian, divisor),
-        "annihilating_upper_bound": str(upper_bound),
-        "order": str(order),
-        "order_factorization": _factorization_data(order_factors),
-        "reduction_witnesses": reduction_witnesses,
-    }
-
-
 def _order_certificates_batch(
     jacobian: Any,
     divisors: Any,
