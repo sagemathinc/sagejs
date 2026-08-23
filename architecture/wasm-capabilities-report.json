@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "d7215c7fc6890f0239fca652e2860b0127ffe07111fd8232ccdcf2005377df0b",
+  "source_sha256": "12356fe8a5b2c750fa32697496d0663137c061459e89be582cefe482dbd29ea6",
   "counts": {
     "total": 988,
     "by_kind": {
@@ -6122,7 +6122,7 @@
         "hyperelliptic-group-structure",
         "hyperelliptic-torsion-and-saturation"
       ],
-      "explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 7 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:hyperelliptic-kummer-production",
