@@ -1,0 +1,18 @@
+benchmark_postflight
+2026-08-23T17:09:08Z
+ 17:09:08 up 1 day,  7:05,  1 user,  load average: 0.78, 0.95, 0.98
+    PID %CPU %MEM     ELAPSED COMMAND         COMMAND
+ 926842 18.1  0.0       00:00 systemd         /usr/lib/systemd/systemd --user
+ 926838  1.4  0.0       00:00 sshd            sshd: user [priv]
+ 765567  0.0  0.0       41:54 kworker/u32:5-e [kworker/u32:5-events_power_efficient]
+      1  0.0  0.0  1-07:05:44 systemd         /sbin/init
+     15  0.0  0.0  1-07:05:44 rcu_sched       [rcu_sched]
+    708  0.0  0.1  1-07:05:25 google_osconfig /usr/bin/google_osconfig_agent
+    177  0.0  0.2  1-07:05:41 systemd-journal /usr/lib/systemd/systemd-journald
+    977  0.0  0.0  1-07:05:14 google_guest_ag /usr/bin/google_guest_agent
+    241  0.0  0.0  1-07:05:41 multipathd      /sbin/multipathd -d -s
+     97  0.0  0.0  1-07:05:43 hwrng           [hwrng]
+ 876322  0.0  0.0       36:43 kworker/u32:4-i [kworker/u32:4-iou_exit]
+ce048d403a2efa1ed3482c06d62ad2bb5d734a9e
+9b1b037aff2ec53f0aa142211f3afc1925fa4b1395b206ef48f99801bedc93a9  /tmp/finite-jacobian-magma-receipt-linux-x64.json
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /tmp/finite-jacobian-magma-contract.log

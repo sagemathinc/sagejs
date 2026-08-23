@@ -1,0 +1,66 @@
+benchmark_preflight_start
+2026-08-23T16:52:10Z
+ce048d403a2efa1ed3482c06d62ad2bb5d734a9e
+ 16:52:10 up 1 day,  6:48,  1 user,  load average: 0.07, 0.65, 0.98
+Linux cocalc-vm-51c5044ca6d3406d983e0f10 6.17.0-1022-gcp #25-Ubuntu SMP Sat Jul 25 01:12:40 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+Architecture:                            x86_64
+CPU op-mode(s):                          32-bit, 64-bit
+Address sizes:                           48 bits physical, 48 bits virtual
+Byte Order:                              Little Endian
+CPU(s):                                  8
+On-line CPU(s) list:                     0-7
+Vendor ID:                               AuthenticAMD
+Model name:                              AMD EPYC 7B13
+CPU family:                              25
+Model:                                   1
+Thread(s) per core:                      1
+Core(s) per socket:                      8
+Socket(s):                               1
+Stepping:                                0
+BogoMIPS:                                4899.99
+Flags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext ssbd ibrs ibpb stibp vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 clzero xsaveerptr arat umip vaes vpclmulqdq rdpid fsrm
+Hypervisor vendor:                       KVM
+Virtualization type:                     full
+L1d cache:                               256 KiB (8 instances)
+L1i cache:                               256 KiB (8 instances)
+L2 cache:                                4 MiB (8 instances)
+L3 cache:                                32 MiB (1 instance)
+NUMA node(s):                            1
+NUMA node0 CPU(s):                       0-7
+Vulnerability Gather data sampling:      Not affected
+Vulnerability Ghostwrite:                Not affected
+Vulnerability Indirect target selection: Not affected
+Vulnerability Itlb multihit:             Not affected
+Vulnerability L1tf:                      Not affected
+Vulnerability Mds:                       Not affected
+Vulnerability Meltdown:                  Not affected
+Vulnerability Mmio stale data:           Not affected
+Vulnerability Old microcode:             Not affected
+Vulnerability Reg file data sampling:    Not affected
+Vulnerability Retbleed:                  Not affected
+Vulnerability Spec rstack overflow:      Mitigation; Safe RET
+Vulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl
+Vulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+Vulnerability Spectre v2:                Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected
+Vulnerability Srbds:                     Not affected
+Vulnerability Tsa:                       Mitigation; Clear CPU buffers
+Vulnerability Tsx async abort:           Not affected
+Vulnerability Vmscape:                   Not affected
+               total        used        free      shared  buff/cache   available
+Mem:     33649016832  1154883584  2943557632     1105920 30035488768 32494133248
+Swap:              0           0           0
+    PID %CPU %MEM     ELAPSED COMMAND         COMMAND
+ 925958 19.2  0.0       00:00 systemd         /usr/lib/systemd/systemd --user
+ 925954  1.4  0.0       00:00 sshd            sshd: user [priv]
+ 765567  0.0  0.0       24:57 kworker/u32:5-k [kworker/u32:5-kvfree_rcu_reclaim]
+      1  0.0  0.0  1-06:48:47 systemd         /sbin/init
+     15  0.0  0.0  1-06:48:46 rcu_sched       [rcu_sched]
+    708  0.0  0.1  1-06:48:28 google_osconfig /usr/bin/google_osconfig_agent
+    177  0.0  0.2  1-06:48:44 systemd-journal /usr/lib/systemd/systemd-journald
+    977  0.0  0.0  1-06:48:16 google_guest_ag /usr/bin/google_guest_agent
+ 876322  0.0  0.0       19:46 kworker/u32:4-k [kworker/u32:4-kvfree_rcu_reclaim]
+    241  0.0  0.0  1-06:48:44 multipathd      /sbin/multipathd -d -s
+     97  0.0  0.0  1-06:48:46 hwrng           [hwrng]
+v22.22.2
+c09f4b2e8ebc8bada4e393a3eefd88c1cb651fea90372fb420fee807a8b933d1  bench/hyperelliptic/competitive/finite-jacobian-magma-contract.cjs
+finite-jacobian-magma-contract 765096 2026-08-23T16:26:09Z
