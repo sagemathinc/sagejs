@@ -123,6 +123,13 @@ for genus, curve in [
         scalars[:scalar_throughput_items],
         algorithm="native",
     )
+    search_count = 10000
+    native_search = lambda: context.search_progression(
+        basis[0], 1, 1, search_count, algorithm="native", diagnostics=True
+    )
+    reference_search = lambda: context.search_progression(
+        basis[0], 1, 1, search_count, algorithm="reference", diagnostics=True
+    )
 
     native_add()
     native_scalar()
@@ -151,6 +158,8 @@ for genus, curve in [
     native_scalar_throughput_ns, native_scalar_throughput_result = timed(
         native_scalar_throughput, 1
     )
+    native_search_ns, native_search_result = timed(native_search, 3)
+    reference_search_ns, reference_search_result = timed(reference_search, 1)
     assert native_add_result == reference_add_result
     assert native_add_materialized_result == reference_add_result
     assert all(not value.is_materialized() for value in native_add_result)
@@ -158,6 +167,7 @@ for genus, curve in [
     assert native_scalar_result == reference_scalar_result
     assert native_scalar_materialized_result == reference_scalar_result
     assert native_scalar_throughput_result[:scalar_comparison_items] == reference_scalar_result
+    assert native_search_result[0] == reference_search_result[0]
     digest = context.fingerprint(context.sum(native_add_result, algorithm="native"))
     rows.append({
         "genus": genus,
@@ -183,6 +193,13 @@ for genus, curve in [
         "materialized_scalar_speedup": (
             reference_scalar_ns / native_scalar_materialized_ns
         ),
+        "search_count": search_count,
+        "native_search_median_ns": native_search_ns,
+        "reference_search_median_ns": reference_search_ns,
+        "search_speedup": reference_search_ns / native_search_ns,
+        "search_status": native_search_result[1].status,
+        "search_group_operations": native_search_result[1].group_operations,
+        "search_hash_collisions": native_search_result[1].hash_collisions,
         "result_digest": digest,
     })
 

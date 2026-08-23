@@ -72,12 +72,14 @@ from sagejs.native import is_compiled
 from sagejs.hyperelliptic_curves.jacobian_kernels import (
     packed_cantor_add_batch,
     packed_cantor_progression_batch,
+    packed_cantor_search_progression,
     packed_cantor_scalar_batch,
 )
 
 compiled = is_compiled(packed_cantor_add_batch)
 assert compiled == is_compiled(packed_cantor_scalar_batch)
 assert compiled == is_compiled(packed_cantor_progression_batch)
+assert compiled == is_compiled(packed_cantor_search_progression)
 selected = "native" if compiled else "reference"
 
 
@@ -100,6 +102,7 @@ def check_curve(curve, exhaustive):
     assert capability.schema == "sagejs.hyperelliptic.packed-mumford.odd.v1"
     assert capability.model_kind == "odd-degree-one-infinity"
     assert capability.selected == selected
+    assert capability.search_available == compiled
     points = J.points(max_elements=10000, max_candidates=100000)
 
     for point in points:
@@ -263,6 +266,89 @@ def check_curve(curve, exhaustive):
         assert source_products == reference_products
         assert tuple(raw_status) == operation_statuses
 
+    search_point = sample[1]
+    search_order = search_point.order(multiple=J.order(), algorithm="reference")
+    found, search_diagnostics = context.search_progression(
+        search_point,
+        1,
+        1,
+        search_order,
+        algorithm=selected,
+        diagnostics=True,
+    )
+    assert found == search_order - 1
+    assert search_diagnostics.status == "found"
+    assert search_diagnostics.selected == selected
+    duplicate = context.search_progression(
+        search_point, search_order, search_order, 17, algorithm=selected
+    )
+    assert duplicate == 0
+    missing, missing_diagnostics = context.search_progression(
+        search_point,
+        1,
+        search_order,
+        17,
+        algorithm=selected,
+        diagnostics=True,
+    )
+    assert missing is None
+    assert missing_diagnostics.status == "not_found"
+    try:
+        context.search_progression(
+            search_point,
+            1,
+            1,
+            search_order,
+            algorithm=selected,
+            max_group_operations=0,
+        )
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("search operation resource limit was ignored")
+    if not compiled:
+        baby_count = 1
+        while baby_count * baby_count < search_order:
+            baby_count += 1
+        raw_output = [0]
+        raw_status = [0]
+        raw_diagnostics = [0] * 5
+        assert packed_cantor_search_progression(
+            raw_output,
+            raw_status,
+            raw_diagnostics,
+            list(context.model_coefficients),
+            list(context.pack(search_point)),
+            [1],
+            [1],
+            1,
+            search_order,
+            baby_count,
+            10000,
+            context.genus,
+            context.prime,
+        )
+        assert raw_status == [1]
+        assert raw_output == [search_order - 1]
+
+    # Exhaust every small-field divisor against a literal represented interval.
+    # This covers identity keys, repeated baby rows, found/not-found outcomes,
+    # and both genera without assuming a cyclic Jacobian.
+    search_domain = points if exhaustive and len(points) <= 64 else points[:8]
+    for point in search_domain:
+        for base, stride, count in ((1, 1, 9), (2, 3, 11)):
+            expected_index = None
+            for index in range(count):
+                if context._reference_scalar(point, base + index * stride).is_zero():
+                    expected_index = index
+                    break
+            assert context.search_progression(
+                point, base, stride, count, algorithm=selected
+            ) == expected_index
+            assert context.search_progression(
+                point, base, stride, count, algorithm="reference"
+            ) == expected_index
+
     assert context.sum(sample, algorithm=selected) == context.sum(
         sample, algorithm="reference"
     )
@@ -308,6 +394,53 @@ except ValueError:
 else:
     raise AssertionError("cross-model divisor accepted")
 assert J0.prepared_arithmetic().model_fingerprint != J1.prepared_arithmetic().model_fingerprint
+assert not hasattr(J0, "_packed_element")
+try:
+    type(J0.zero())(
+        J0,
+        None,
+        None,
+        False,
+        packed_row=(0, 1, 0, 0, 0, 0, 0, 0),
+    )
+except TypeError:
+    pass
+else:
+    raise AssertionError("the public divisor constructor accepted a packed bypass")
+try:
+    J0.prepared_arithmetic().unpack((1, 0, 1, 0, 0, 0, 0, 0))
+except ValueError as error:
+    assert "does not divide" in str(error)
+else:
+    raise AssertionError("public unpack accepted a row outside the curve relation")
+attack_points = J0.points(max_elements=10000, max_candidates=100000)
+P = attack_points[1]
+Q = attack_points[2]
+attack_context = J0.prepared_arithmetic()
+P_hash = hash(P)
+P_repr = repr(P)
+Q_row = attack_context.pack(Q)
+try:
+    object.__setattr__(P, "_packed_row", Q_row)
+except (AttributeError, TypeError):
+    pass
+else:
+    raise AssertionError("object.__setattr__ replaced an opaque packed binding")
+binding_name = "_MumfordDivisor__packed_row_binding"
+P_binding = getattr(P, binding_name)
+Q_binding = getattr(Q, binding_name)
+object.__setattr__(P, binding_name, Q_binding)
+try:
+    attack_context.pack(P)
+except ArithmeticError as error:
+    assert "binding was corrupted" in str(error)
+else:
+    raise AssertionError("a transplanted hidden binding did not fail closed")
+object.__setattr__(P, binding_name, P_binding)
+assert P != Q
+assert hash(P) == P_hash
+assert repr(P) == P_repr
+assert attack_context.add_batch((P,), (J0.zero(),))[0] == P
 
 try:
     HyperellipticCurve(x**6 + x + 1).jacobian()
@@ -365,6 +498,22 @@ test("prepared packed Cantor arithmetic is exact in dynamic and native modes", (
       const body = cFunction(core, signature);
       assert.doesNotMatch(body, /native__|mpz_|SAGEJS_WORD_PROMOTE/);
     }
+    const searchBody = cFunction(
+      core,
+      "int sagejs_kernel_packed_cantor_search_progression(",
+    );
+    for (const helper of [
+      "word__row_hash",
+      "word__row_copy",
+      "word__row_equal",
+      "word__search_record",
+    ]) {
+      assert.match(searchBody, new RegExp(helper));
+    }
+    assert.doesNotMatch(
+      searchBody,
+      /native__row_|native__search_record|mpz_|SAGEJS_WORD_PROMOTE/,
+    );
     const native = run(process.execPath, [sagejs, program], {
       env: {
         SAGEJS_NATIVE_CACHE_DIR: cache,
@@ -389,7 +538,7 @@ test("packed Cantor kernels retain an ordinary CPython fallback", () => {
   const program = [
     "import sys",
     `sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})`,
-    "from sagejs.hyperelliptic_curves.jacobian_kernels import packed_cantor_add_batch, packed_cantor_progression_batch, packed_cantor_scalar_batch",
+    "from sagejs.hyperelliptic_curves.jacobian_kernels import packed_cantor_add_batch, packed_cantor_progression_batch, packed_cantor_search_progression, packed_cantor_scalar_batch",
     "model = [1,1,0,0,0,1,0,0] + [0]*4",
     "identity = [0,1,0,0,0,0,0,0]",
     "out = [99]*16; status = [0,0]",
@@ -401,6 +550,9 @@ test("packed Cantor kernels retain an ordinary CPython fallback", () => {
     "scalar_out = [99]*8; scalar_status = [0]",
     "assert packed_cantor_scalar_batch(scalar_out,scalar_status,model,identity,[0],[0],1,1,2,3)",
     "assert scalar_out == identity",
+    "search_out = [99]; search_status = [0]; search_diagnostics = [0]*5",
+    "assert packed_cantor_search_progression(search_out,search_status,search_diagnostics,model,identity,[1],[1],1,4,2,10,2,3)",
+    "assert search_out == [0] and search_status == [1]",
     "print('cpython-ok')",
   ].join("\n");
   const python = process.env.PYTHON ||

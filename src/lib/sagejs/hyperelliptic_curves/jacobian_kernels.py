@@ -1056,6 +1056,148 @@ def packed_cantor_progression_batch(
     return True
 
 
+def _scalar_bit_length(
+    scalar_words: UInt64Buffer,
+    scalar_offset: uint64,
+    words_per_scalar: uint64,
+) -> uint64:
+    used_words = words_per_scalar
+    while used_words > 0 and scalar_words[scalar_offset + used_words - 1] == 0:
+        used_words -= 1
+    if used_words == 0:
+        return 0
+    bits: uint64 = (used_words - 1) * 64
+    word = scalar_words[scalar_offset + used_words - 1]
+    while word > 0:
+        bits += 1
+        word //= 2
+    return bits
+
+
+def _scalar_operation_count(
+    scalar_words: UInt64Buffer,
+    scalar_offset: uint64,
+    words_per_scalar: uint64,
+) -> uint64:
+    bits = _scalar_bit_length(scalar_words, scalar_offset, words_per_scalar)
+    if bits == 0:
+        return 0
+    additions: uint64 = 0
+    word_index: uint64 = 0
+    while word_index < words_per_scalar:
+        word = scalar_words[scalar_offset + word_index]
+        while word > 0:
+            additions += word % 2
+            word //= 2
+        word_index += 1
+    return additions + bits - 1
+
+
+def _cantor_scalar_one(
+    output: UInt64Buffer,
+    output_offset: uint64,
+    element: UInt64Buffer,
+    element_offset: uint64,
+    scalar_words: UInt64Buffer,
+    scalar_offset: uint64,
+    words_per_scalar: uint64,
+    negative: uint64,
+    model: UInt64Buffer,
+    genus: uint64,
+    modulus: PrimeFieldModulus,
+    store: UInt64Buffer,
+    accumulator: UInt64Buffer,
+    addend: UInt64Buffer,
+    temporary: UInt64Buffer,
+) -> uint64:
+    index: uint64 = 0
+    while index < 8:
+        accumulator[index] = 0
+        addend[index] = element[element_offset + index]
+        index += 1
+    accumulator[0] = 0
+    accumulator[1] = 1
+    operations: uint64 = 0
+    used_words = words_per_scalar
+    while used_words > 0 and scalar_words[scalar_offset + used_words - 1] == 0:
+        used_words -= 1
+    word_index: uint64 = 0
+    while word_index < used_words:
+        word = scalar_words[scalar_offset + word_index]
+        bit_count: uint64 = 64
+        if word_index + 1 == used_words:
+            bit_count = 0
+            remaining = word
+            while remaining > 0:
+                bit_count += 1
+                remaining //= 2
+        bit: uint64 = 0
+        while bit < bit_count:
+            if word % 2 == 1:
+                status = _cantor_add_one(
+                    temporary,
+                    0,
+                    accumulator,
+                    0,
+                    addend,
+                    0,
+                    model,
+                    genus,
+                    modulus,
+                    store,
+                )
+                if status == 0:
+                    return 0
+                index = 0
+                while index < 8:
+                    accumulator[index] = temporary[index]
+                    index += 1
+                operations += 1
+            word //= 2
+            if bit + 1 < bit_count or word_index + 1 < used_words:
+                status = _cantor_add_one(
+                    temporary,
+                    0,
+                    addend,
+                    0,
+                    addend,
+                    0,
+                    model,
+                    genus,
+                    modulus,
+                    store,
+                )
+                if status == 0:
+                    return 0
+                index = 0
+                while index < 8:
+                    addend[index] = temporary[index]
+                    index += 1
+                operations += 1
+            bit += 1
+        word_index += 1
+    index = 0
+    while index < 8:
+        output[output_offset + index] = accumulator[index]
+        index += 1
+    if negative != 0 and output[output_offset] != 0:
+        if (
+            _cantor_negate_one(
+                output,
+                output_offset,
+                output,
+                output_offset,
+                model,
+                genus,
+                modulus,
+                store,
+            )
+            == 0
+        ):
+            return 0
+    return operations + 1
+
+
 @native
 def packed_cantor_scalar_batch(
     output: UInt64Buffer,
@@ -1089,92 +1231,508 @@ def packed_cantor_scalar_batch(
     addend = prime_zeros(8)
     temporary = prime_zeros(8)
     while item < count:
-        index = 0
-        while index < 8:
-            accumulator[index] = 0
-            addend[index] = elements[item * 8 + index]
-            index += 1
-        accumulator[0] = 0
-        accumulator[1] = 1
-        operations = 0
-        used_words = words_per_scalar
-        while (
-            used_words > 0
-            and scalar_words[item * words_per_scalar + used_words - 1] == 0
-        ):
-            used_words -= 1
-        word_index = 0
-        while word_index < used_words:
-            word = scalar_words[item * words_per_scalar + word_index]
-            bit_count = 64
-            if word_index + 1 == used_words:
-                bit_count = 0
-                remaining = word
-                while remaining > 0:
-                    bit_count += 1
-                    remaining //= 2
-            bit = 0
-            while bit < bit_count:
-                if word % 2 == 1:
-                    status = _cantor_add_one(
-                        temporary,
-                        0,
-                        accumulator,
-                        0,
-                        addend,
-                        0,
-                        model,
-                        genus,
-                        modulus,
-                        store,
-                    )
-                    if status == 0:
-                        return False
-                    index = 0
-                    while index < 8:
-                        accumulator[index] = temporary[index]
-                        index += 1
-                    operations += 1
-                word //= 2
-                if bit + 1 < bit_count or word_index + 1 < used_words:
-                    status = _cantor_add_one(
-                        temporary, 0, addend, 0, addend, 0, model, genus, modulus, store
-                    )
-                    if status == 0:
-                        return False
-                    index = 0
-                    while index < 8:
-                        addend[index] = temporary[index]
-                        index += 1
-                    operations += 1
-                bit += 1
-            word_index += 1
-        index = 0
-        while index < 8:
-            output[item * 8 + index] = accumulator[index]
-            index += 1
-        if scalar_signs[item] != 0 and output[item * 8] != 0:
-            if (
-                _cantor_negate_one(
-                    output,
-                    item * 8,
-                    output,
-                    item * 8,
-                    model,
-                    genus,
-                    modulus,
-                    store,
-                )
-                == 0
-            ):
-                return False
-        statuses[item] = operations + 1
+        statuses[item] = _cantor_scalar_one(
+            output,
+            item * 8,
+            elements,
+            item * 8,
+            scalar_words,
+            item * words_per_scalar,
+            words_per_scalar,
+            scalar_signs[item],
+            model,
+            genus,
+            modulus,
+            store,
+            accumulator,
+            addend,
+            temporary,
+        )
+        if statuses[item] == 0:
+            return False
         item += 1
     return True
+
+
+def _row_copy(
+    target: UInt64Buffer,
+    target_offset: uint64,
+    source: UInt64Buffer,
+    source_offset: uint64,
+) -> uint64:
+    index: uint64 = 0
+    while index < 8:
+        target[target_offset + index] = source[source_offset + index]
+        index += 1
+    return 0
+
+
+def _row_equal(
+    left: UInt64Buffer,
+    left_offset: uint64,
+    right: UInt64Buffer,
+    right_offset: uint64,
+) -> bool:
+    index: uint64 = 0
+    equal = True
+    while index < 8:
+        if left[left_offset + index] != right[right_offset + index]:
+            equal = False
+        index += 1
+    return equal
+
+
+def _row_hash(
+    rows: UInt64Buffer,
+    offset: uint64,
+    capacity: uint64,
+) -> uint64:
+    value: uint64 = 1469598103934665603
+    index: uint64 = 0
+    while index < 8:
+        value = value * 1099511628211 + rows[offset + index]
+        index += 1
+    return value % capacity
+
+
+def _search_record(
+    statuses: UInt64Buffer,
+    diagnostics: UInt64Buffer,
+    status: uint64,
+    group_operations: uint64,
+    scalar_bits: uint64,
+    baby_steps: uint64,
+    giant_steps: uint64,
+    hash_collisions: uint64,
+) -> bool:
+    statuses[0] = status
+    diagnostics[0] = group_operations
+    diagnostics[1] = scalar_bits
+    diagnostics[2] = baby_steps
+    diagnostics[3] = giant_steps
+    diagnostics[4] = hash_collisions
+    return True
+
+
+@native
+def packed_cantor_search_progression(
+    output: UInt64Buffer,
+    statuses: UInt64Buffer,
+    diagnostics: UInt64Buffer,
+    model: UInt64Buffer,
+    divisor: UInt64Buffer,
+    base_words: UInt64Buffer,
+    stride_words: UInt64Buffer,
+    words_per_scalar: uint64,
+    count: uint64,
+    baby_count: uint64,
+    max_group_operations: uint64,
+    genus: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Search `(base + i*stride)*D == 0` in one native boundary.
+
+    Status 1 means found, 2 means not found, 3 means the exact operation or
+    table resource bound was reached, and 4 means a mathematically invalid
+    input.  The boolean return reports whether the fixed buffer ABI itself was
+    accepted; it is deliberately independent of mathematical success.
+    """
+    checked_modulus = modulus + 0
+    shape_valid = (
+        len(output) == 1
+        and len(statuses) == 1
+        and len(diagnostics) == 5
+        and len(model) == 12
+        and len(divisor) == 8
+        and words_per_scalar > 0
+        and len(base_words) == words_per_scalar
+        and len(stride_words) == words_per_scalar
+    )
+    if not shape_valid:
+        return False
+    statuses[0] = 4
+    diagnostic_index: uint64 = 0
+    while diagnostic_index < 5:
+        diagnostics[diagnostic_index] = 0
+        diagnostic_index += 1
+    mathematical_input_valid = (
+        (genus == 2 or genus == 3)
+        and checked_modulus > 2
+        and count > 0
+        and baby_count > 0
+        and base_words[words_per_scalar - 1] != 0
+        and stride_words[words_per_scalar - 1] != 0
+    )
+    if not mathematical_input_valid:
+        return True
+    if baby_count > 1000000:
+        return _search_record(statuses, diagnostics, 3, 0, 0, 0, 0, 0)
+    # The explicit million-row cap makes these square checks and all table
+    # capacity arithmetic safely fixed-width while bounding native allocation.
+    if count > baby_count * baby_count:
+        return True
+    if baby_count > 1 and count <= (baby_count - 1) * (baby_count - 1):
+        return True
+
+    target_capacity = baby_count * 2 + 1
+    capacity: uint64 = 1
+    while capacity < target_capacity:
+        capacity *= 2
+
+    store = prime_zeros(16 * 52)
+    scalar_accumulator = prime_zeros(8)
+    scalar_addend = prime_zeros(8)
+    scalar_temporary = prime_zeros(8)
+    base_multiple = prime_zeros(8)
+    stride_multiple = prime_zeros(8)
+    giant_stride = prime_zeros(8)
+    negative_base = prime_zeros(8)
+    negative_giant_stride = prime_zeros(8)
+    current = prime_zeros(8)
+    temporary = prime_zeros(8)
+    one_word = prime_zeros(1)
+    occupied = prime_zeros(capacity)
+    hashes = prime_zeros(capacity)
+    indices = prime_zeros(capacity)
+    table_rows = prime_zeros(capacity * 8)
+
+    group_operations: uint64 = 0
+    scalar_bits: uint64 = 0
+    baby_steps: uint64 = 0
+    giant_steps: uint64 = 0
+    hash_collisions: uint64 = 0
+
+    needed = _scalar_operation_count(base_words, 0, words_per_scalar)
+    if group_operations + needed > max_group_operations:
+        return _search_record(
+            statuses,
+            diagnostics,
+            3,
+            group_operations,
+            scalar_bits,
+            baby_steps,
+            giant_steps,
+            hash_collisions,
+        )
+    scalar_status = _cantor_scalar_one(
+        base_multiple,
+        0,
+        divisor,
+        0,
+        base_words,
+        0,
+        words_per_scalar,
+        0,
+        model,
+        genus,
+        modulus,
+        store,
+        scalar_accumulator,
+        scalar_addend,
+        scalar_temporary,
+    )
+    if scalar_status == 0:
+        return _search_record(
+            statuses,
+            diagnostics,
+            4,
+            group_operations,
+            scalar_bits,
+            baby_steps,
+            giant_steps,
+            hash_collisions,
+        )
+    group_operations += needed
+    scalar_bits += _scalar_bit_length(base_words, 0, words_per_scalar)
+
+    needed = _scalar_operation_count(stride_words, 0, words_per_scalar)
+    if group_operations + needed > max_group_operations:
+        return _search_record(
+            statuses,
+            diagnostics,
+            3,
+            group_operations,
+            scalar_bits,
+            baby_steps,
+            giant_steps,
+            hash_collisions,
+        )
+    scalar_status = _cantor_scalar_one(
+        stride_multiple,
+        0,
+        divisor,
+        0,
+        stride_words,
+        0,
+        words_per_scalar,
+        0,
+        model,
+        genus,
+        modulus,
+        store,
+        scalar_accumulator,
+        scalar_addend,
+        scalar_temporary,
+    )
+    if scalar_status == 0:
+        return _search_record(
+            statuses,
+            diagnostics,
+            4,
+            group_operations,
+            scalar_bits,
+            baby_steps,
+            giant_steps,
+            hash_collisions,
+        )
+    group_operations += needed
+    scalar_bits += _scalar_bit_length(stride_words, 0, words_per_scalar)
+
+    one_word[0] = baby_count
+    needed = _scalar_operation_count(one_word, 0, 1)
+    if group_operations + needed > max_group_operations:
+        return _search_record(
+            statuses,
+            diagnostics,
+            3,
+            group_operations,
+            scalar_bits,
+            baby_steps,
+            giant_steps,
+            hash_collisions,
+        )
+    scalar_status = _cantor_scalar_one(
+        giant_stride,
+        0,
+        stride_multiple,
+        0,
+        one_word,
+        0,
+        1,
+        0,
+        model,
+        genus,
+        modulus,
+        store,
+        scalar_accumulator,
+        scalar_addend,
+        scalar_temporary,
+    )
+    if scalar_status == 0:
+        return _search_record(
+            statuses,
+            diagnostics,
+            4,
+            group_operations,
+            scalar_bits,
+            baby_steps,
+            giant_steps,
+            hash_collisions,
+        )
+    group_operations += needed
+    scalar_bits += _scalar_bit_length(one_word, 0, 1)
+
+    if (
+        _cantor_negate_one(
+            negative_base,
+            0,
+            base_multiple,
+            0,
+            model,
+            genus,
+            modulus,
+            store,
+        )
+        == 0
+    ):
+        return _search_record(
+            statuses,
+            diagnostics,
+            4,
+            group_operations,
+            scalar_bits,
+            baby_steps,
+            giant_steps,
+            hash_collisions,
+        )
+    if (
+        _cantor_negate_one(
+            negative_giant_stride,
+            0,
+            giant_stride,
+            0,
+            model,
+            genus,
+            modulus,
+            store,
+        )
+        == 0
+    ):
+        return _search_record(
+            statuses,
+            diagnostics,
+            4,
+            group_operations,
+            scalar_bits,
+            baby_steps,
+            giant_steps,
+            hash_collisions,
+        )
+
+    # Insert j*S in increasing j, retaining the first (smallest) j for a
+    # duplicate row.  Identity is an ordinary canonical key, never a sentinel.
+    current[0] = 0
+    current[1] = 1
+    baby: uint64 = 0
+    while baby < baby_count:
+        code = _row_hash(current, 0, capacity)
+        slot = code
+        probing = True
+        while probing:
+            if occupied[slot] == 0:
+                occupied[slot] = 1
+                hashes[slot] = code
+                indices[slot] = baby
+                copied = _row_copy(table_rows, slot * 8, current, 0)
+                probing = False
+            else:
+                hash_collisions += 1
+                if hashes[slot] == code and _row_equal(
+                    table_rows, slot * 8, current, 0
+                ):
+                    probing = False
+                else:
+                    slot += 1
+                    if slot == capacity:
+                        slot = 0
+        baby_steps += 1
+        if baby + 1 < baby_count:
+            if group_operations == max_group_operations:
+                return _search_record(
+                    statuses,
+                    diagnostics,
+                    3,
+                    group_operations,
+                    scalar_bits,
+                    baby_steps,
+                    giant_steps,
+                    hash_collisions,
+                )
+            add_status = _cantor_add_one(
+                temporary,
+                0,
+                current,
+                0,
+                stride_multiple,
+                0,
+                model,
+                genus,
+                modulus,
+                store,
+            )
+            if add_status == 0:
+                return _search_record(
+                    statuses,
+                    diagnostics,
+                    4,
+                    group_operations,
+                    scalar_bits,
+                    baby_steps,
+                    giant_steps,
+                    hash_collisions,
+                )
+            copied = _row_copy(current, 0, temporary, 0)
+            group_operations += 1
+        baby += 1
+
+    copied = _row_copy(current, 0, negative_base, 0)
+    giant_count = (count + baby_count - 1) // baby_count
+    giant: uint64 = 0
+    while giant < giant_count:
+        giant_steps += 1
+        code = _row_hash(current, 0, capacity)
+        slot = code
+        probing = True
+        matched = False
+        matched_index: uint64 = 0
+        while probing:
+            if occupied[slot] == 0:
+                probing = False
+            elif hashes[slot] == code and _row_equal(table_rows, slot * 8, current, 0):
+                matched_index = giant * baby_count + indices[slot]
+                if matched_index < count:
+                    matched = True
+                probing = False
+            else:
+                hash_collisions += 1
+                slot += 1
+                if slot == capacity:
+                    slot = 0
+        if matched:
+            output[0] = matched_index
+            return _search_record(
+                statuses,
+                diagnostics,
+                1,
+                group_operations,
+                scalar_bits,
+                baby_steps,
+                giant_steps,
+                hash_collisions,
+            )
+        if giant + 1 < giant_count:
+            if group_operations == max_group_operations:
+                return _search_record(
+                    statuses,
+                    diagnostics,
+                    3,
+                    group_operations,
+                    scalar_bits,
+                    baby_steps,
+                    giant_steps,
+                    hash_collisions,
+                )
+            add_status = _cantor_add_one(
+                temporary,
+                0,
+                current,
+                0,
+                negative_giant_stride,
+                0,
+                model,
+                genus,
+                modulus,
+                store,
+            )
+            if add_status == 0:
+                return _search_record(
+                    statuses,
+                    diagnostics,
+                    4,
+                    group_operations,
+                    scalar_bits,
+                    baby_steps,
+                    giant_steps,
+                    hash_collisions,
+                )
+            copied = _row_copy(current, 0, temporary, 0)
+            group_operations += 1
+        giant += 1
+    return _search_record(
+        statuses,
+        diagnostics,
+        2,
+        group_operations,
+        scalar_bits,
+        baby_steps,
+        giant_steps,
+        hash_collisions,
+    )
 
 
 __all__ = [
     "packed_cantor_add_batch",
     "packed_cantor_progression_batch",
+    "packed_cantor_search_progression",
     "packed_cantor_scalar_batch",
 ]

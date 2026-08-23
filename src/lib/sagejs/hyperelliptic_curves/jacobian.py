@@ -256,30 +256,11 @@ def _product_integers(values: Any) -> int:
 class MumfordDivisor(sage.Element):
     """A canonical reduced divisor class on an odd-degree Jacobian."""
 
-    def __init__(
-        self,
-        parent: Any,
-        u: Any,
-        v: Any,
-        check: bool = True,
-        *,
-        packed_row: tuple[int, ...] | None = None,
-        packed_token: Any = None,
-    ) -> None:
+    __slots__ = ("__packed_row_binding",)
+
+    def __init__(self, parent: Any, u: Any, v: Any, check: bool = True) -> None:
         self._parent = parent
         self._packed_hash: int | None = None
-        if packed_row is not None:
-            if packed_token is not parent._packed_construction_token:
-                raise ValueError("packed Jacobian rows require context validation")
-            # Packed rows are created only by the context-bound internal
-            # publisher after it has checked the canonical v1 shape.  Keeping
-            # the exact row here avoids constructing coefficient and
-            # polynomial objects for results that immediately feed another
-            # packed group operation.
-            self._u = None
-            self._v = None
-            self._packed_row = packed_row
-            return
         ring = parent.polynomial_ring()
         u = ring(u)
         v = ring(v)
@@ -299,7 +280,17 @@ class MumfordDivisor(sage.Element):
             parent._validate_reduced(u, v)
         self._u = u
         self._v = v
-        self._packed_row: tuple[int, ...] | None = None
+        self.__packed_row_binding: tuple[Any, tuple[int, ...]] | None = None
+
+    @property
+    def _packed_row(self) -> tuple[int, ...] | None:
+        """Return the write-once internal canonical-row binding."""
+        binding = self.__packed_row_binding
+        if binding is None:
+            return None
+        if len(binding) != 2 or binding[0] is not self:
+            raise ArithmeticError("a Jacobian divisor packed binding was corrupted")
+        return binding[1]
 
     def _materialize(self) -> None:
         if self._u is not None:
@@ -679,7 +670,6 @@ class HyperellipticJacobian(sage.Parent):
         self._group_basis_cache: dict[str, Any] | None = None
         self._group_structure_diagnostics_cache: dict[str, Any] | None = None
         self._prepared_arithmetic_cache: dict[tuple[str, int], Any] = {}
-        self._packed_construction_token = object()
 
     def curve(self) -> Any:
         return self._curve
@@ -869,17 +859,6 @@ class HyperellipticJacobian(sage.Parent):
 
     def _element(self, u: Any, v: Any, check: bool) -> MumfordDivisor:
         return MumfordDivisor(self, u, v, check)
-
-    def _packed_element(self, row: tuple[int, ...]) -> MumfordDivisor:
-        """Publish one internally validated canonical packed divisor lazily."""
-        return MumfordDivisor(
-            self,
-            None,
-            None,
-            False,
-            packed_row=row,
-            packed_token=self._packed_construction_token,
-        )
 
     def __call__(self, *args: Any, check: bool = True) -> MumfordDivisor:
         if len(args) == 0 or (len(args) == 1 and args[0] == 0):
