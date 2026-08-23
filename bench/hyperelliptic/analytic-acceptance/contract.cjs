@@ -80,6 +80,14 @@ function ratio(numerator, denominator) {
   return Number((Number(numerator) / Number(denominator)).toFixed(6));
 }
 
+function amortizationCount(construction, direct, warm) {
+  if (!finitePositive(construction) || !finitePositive(direct) || !finitePositive(warm)) {
+    return null;
+  }
+  if (Number(direct) <= Number(warm)) return null;
+  return Math.ceil(Number(construction) / (Number(direct) - Number(warm)));
+}
+
 function bracketedPariRows(receipts) {
   const grouped = new Map();
   for (const receipt of receipts) {
@@ -110,6 +118,28 @@ function acceptanceGates(competitive, bracketedRows, evidence, precisionBits) {
     evidence.direct_arb_differentials.length === 2 &&
     evidence.direct_arb_differentials.every((value) => value.passed === true);
   const family = evidence?.family_scan ?? {};
+  const cold = evidence?.cold_table_timing ?? {};
+  const coldAmortization = {
+    observations: cold.observations ?? null,
+    cold_table_construction_ms: cold.cold_table_construction_ms ?? null,
+    cold_table_cache_miss_call_ms: cold.cold_table_cache_miss_call_ms ?? null,
+    warm_universal_evaluation_ms: cold.warm_table_cache_hit_call_ms ?? null,
+    direct_one_worker_ms: cold.direct_one_worker_call_ms ?? null,
+    direct_bounded4_ms: cold.direct_bounded4_call_ms ?? null,
+    calls_to_amortize_against_one_worker: amortizationCount(
+      cold.cold_table_construction_ms,
+      cold.direct_one_worker_call_ms,
+      cold.warm_table_cache_hit_call_ms,
+    ),
+    calls_to_amortize_against_bounded4: amortizationCount(
+      cold.cold_table_construction_ms,
+      cold.direct_bounded4_call_ms,
+      cold.warm_table_cache_hit_call_ms,
+    ),
+    exact_coefficients_prewarmed: true,
+    single_observation_not_a_median: true,
+    pass_fail_gate: false,
+  };
   return {
     small_conductor_initialization: {
       sagejs_median_ms_per_item: sagePerItem,
@@ -128,8 +158,7 @@ function acceptanceGates(competitive, bracketedRows, evidence, precisionBits) {
       inherited.genus2_native_derivatives_over_inverse_mellin ?? null,
     genus3_native_derivatives_over_inverse_mellin:
       inherited.genus3_native_derivatives_over_inverse_mellin ?? null,
-    universal_table_cold_amortization:
-      inherited.universal_table_cold_amortization ?? null,
+    universal_table_cold_amortization: coldAmortization,
     direct_arb_differential: {
       models: evidence?.direct_arb_differentials?.length ?? 0,
       passed: directPassed,
@@ -139,13 +168,17 @@ function acceptanceGates(competitive, bracketedRows, evidence, precisionBits) {
       exact_signs: family.exact_signs === true,
       sequential_parallel_equal: family.sequential_parallel_equal === true,
       candidates: family.candidate_count ?? null,
-      all_candidates_cpu_refined: family.all_candidates_cpu_refined === true,
+      numerical_candidates: family.numerical_candidate_count ?? null,
+      all_candidates_cpu_refined:
+        family.all_numerical_candidates_cpu_refined === true,
       passed:
         family.exact_coefficients === true &&
         family.exact_signs === true &&
         family.sequential_parallel_equal === true &&
+        family.all_status_ok === true &&
         family.candidate_count > 0 &&
-        family.all_candidates_cpu_refined === true,
+        family.numerical_candidate_count > 0 &&
+        family.all_numerical_candidates_cpu_refined === true,
     },
   };
 }
@@ -193,11 +226,15 @@ function validateReceipt(receipt, { currentSources = null } = {}) {
     requireValue(receipt?.gates?.[name]?.passed === true, `${name} did not pass`);
   }
   const cold = receipt?.gates?.universal_table_cold_amortization;
-  requireValue(finitePositive(cold?.cold_construction_median_ms),
+  requireValue(cold?.observations === 1 && cold?.single_observation_not_a_median === true,
+    "cold universal-table timing is not an explicit single cold observation");
+  requireValue(finitePositive(cold?.cold_table_construction_ms),
     "cold universal-table construction is not separately timed");
-  requireValue(finitePositive(cold?.warm_universal_evaluation_median_ms),
+  requireValue(finitePositive(cold?.cold_table_cache_miss_call_ms),
+    "the full cold universal-table call is not separately timed");
+  requireValue(finitePositive(cold?.warm_universal_evaluation_ms),
     "warm universal-table evaluation is not separately timed");
-  requireValue(finitePositive(cold?.direct_one_worker_median_ms),
+  requireValue(finitePositive(cold?.direct_one_worker_ms),
     "the direct one-worker Arb fallback is not separately timed");
   requireValue(
     cold?.calls_to_amortize_against_one_worker === null ||
@@ -217,14 +254,65 @@ function validateReceipt(receipt, { currentSources = null } = {}) {
     requireValue(Array.isArray(differential.direct_raw_derivatives) &&
       differential.direct_raw_derivatives.length === 5,
     `genus-${differential.genus} direct decimal oracle is incomplete`);
+    requireValue(
+      differential.universal_algorithm ===
+        "native-arb-universal-central-taylor-weights",
+      `genus-${differential.genus} universal algorithm label is wrong`,
+    );
+    requireValue(
+      differential.direct_algorithm === "native-arb-central-mellin-weights",
+      `genus-${differential.genus} direct algorithm label is wrong`,
+    );
+    if (
+      Array.isArray(differential.universal_raw_derivatives) &&
+      Array.isArray(differential.direct_raw_derivatives) &&
+      differential.universal_raw_derivatives.length ===
+        differential.direct_raw_derivatives.length
+    ) {
+      let maximum = 0;
+      for (let index = 0; index < differential.universal_raw_derivatives.length; index += 1) {
+        const left = differential.universal_raw_derivatives[index].map(Number);
+        const right = differential.direct_raw_derivatives[index].map(Number);
+        const difference = Math.hypot(left[0] - right[0], left[1] - right[1]);
+        const scale = Math.max(1, Math.hypot(right[0], right[1]));
+        maximum = Math.max(maximum, difference / scale);
+      }
+      requireValue(maximum <= Number(differential.tolerance),
+        `genus-${differential.genus} stored decimal oracles exceed tolerance`);
+    }
   }
   const family = receipt?.evidence?.family_scan;
   requireValue(family?.records > 0, "family evidence contains no records");
   requireValue(Array.isArray(family?.rows) && family.rows.length === family.records,
     "family exact rows are incomplete");
+  requireValue(family?.all_status_ok === true, "family scan contains a non-ok row");
+  requireValue(
+    family?.numerical_candidate_count > 0 &&
+      family?.all_numerical_candidates_cpu_refined === true,
+    "family scan did not CPU-refine every numerical candidate",
+  );
+  requireValue(
+    family?.rows?.every(
+      (value) =>
+        value.status === "ok" &&
+        value.conductor === value.expected_conductor &&
+        value.root_number === value.expected_root_number &&
+        value.candidate === true &&
+        value.screening_backend === "cpu" &&
+        value.refinement_stable === true &&
+        value.arithmetic_balls_rigorous === true,
+    ) === true,
+    "family exact/sign/refinement row evidence is inconsistent",
+  );
   requireValue(typeof family?.coefficient_digest_sha256 === "string" &&
     /^[0-9a-f]{64}$/u.test(family.coefficient_digest_sha256),
   "family coefficient digest is missing");
+  requireValue(
+    Array.isArray(family?.coefficient_rows) &&
+      family.coefficient_rows.length === family.records &&
+      family.coefficient_rows.every((value) => /^[0-9a-f]{64}$/u.test(value.sha256)),
+    "per-discriminant exact coefficient digests are incomplete",
+  );
   if (receipt?.mode === "acceptance") {
     requireValue(receipt?.configuration?.samples >= 5,
       "an acceptance receipt requires at least five Sage.js samples");

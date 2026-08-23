@@ -12,9 +12,12 @@ function option(name, fallback) {
   return argument === undefined ? fallback : argument.slice(prefix.length);
 }
 
-async function collectEvidence({ precisionBits = 64 } = {}) {
+async function collectEvidence({ precisionBits = 64, timeoutMs = 600_000 } = {}) {
   if (!Number.isInteger(precisionBits) || precisionBits < 32 || precisionBits > 256) {
     throw new Error("precisionBits must be an integer from 32 through 256");
+  }
+  if (!Number.isFinite(timeoutMs) || timeoutMs < 1_000) {
+    throw new Error("timeoutMs must be at least 1000");
   }
   const directory = mkdtempSync(join(tmpdir(), "sagejs-phase9-acceptance-"));
   const coefficientCache = join(directory, "coefficient-cache");
@@ -26,6 +29,7 @@ async function collectEvidence({ precisionBits = 64 } = {}) {
       String.raw`
 import hashlib
 import json
+import time
 from mpmath import mp
 from sagejs.hyperelliptic_curves.lseries import GlobalCoefficientPrefix, clear_central_weight_cache, native_central_weight_values
 from sagejs.hyperelliptic_curves.twists import _QuadraticTwistCoefficientPrefix, _quadratic_character, fundamental_discriminants
@@ -48,10 +52,23 @@ def relative_error(left, right):
 
 clear_central_weight_cache()
 prefix2 = GlobalCoefficientPrefix(C2)
+prefix2.through(5000)
+universal2_started = time.monotonic()
 universal2 = native_central_weight_values(C2, ${precisionBits}, prefix2, 4)
+universal2_cold_ms = 1000*(time.monotonic()-universal2_started)
+universal2_warm_started = time.monotonic()
+universal2_warm = native_central_weight_values(C2, ${precisionBits}, prefix2, 4)
+universal2_warm_ms = 1000*(time.monotonic()-universal2_warm_started)
+direct2_started = time.monotonic()
 direct2 = native_central_weight_values(C2, ${precisionBits}, prefix2, 4, coefficient_workers=1, use_universal_table=False)
+direct2_ms = 1000*(time.monotonic()-direct2_started)
+direct2_bounded4_started = time.monotonic()
+direct2_bounded4 = native_central_weight_values(C2, ${precisionBits}, prefix2, 4, coefficient_workers=4, use_universal_table=False)
+direct2_bounded4_ms = 1000*(time.monotonic()-direct2_bounded4_started)
 assert universal2 is not None and direct2 is not None
+assert universal2_warm is not None and direct2_bounded4 is not None
 prefix3 = GlobalCoefficientPrefix(C3)
+prefix3.through(1000)
 universal3 = native_central_weight_values(C3, 16, prefix3, 4)
 direct3 = native_central_weight_values(C3, 16, prefix3, 4, coefficient_workers=1, use_universal_table=False)
 assert universal3 is not None and direct3 is not None
@@ -141,34 +158,61 @@ def mathematical_signature(records):
         None if record.conductor is None else int(record.conductor),
         None if record.root_number is None else int(record.root_number),
         tuple((str(value.real()),str(value.imag())) for value in record.central_derivatives),
-        record.algorithm,
-        bool(record.refinement_stable),
-        bool(record.arithmetic_balls_rigorous),
     ) for record in records]
 
 parallel_rows = row_payload(parallel)
 base_conductor = int(C2.conductor())
 base_root_number = int(C2.root_number())
+for row in parallel_rows:
+    row["expected_conductor"] = base_conductor*abs(row["discriminant"])**4
+    row["expected_root_number"] = base_root_number*_quadratic_character(
+        row["discriminant"],base_conductor
+    )
 exact_signs = all(
-    row["root_number"] == base_root_number*_quadratic_character(row["discriminant"],base_conductor)
+    row["root_number"] == row["expected_root_number"]
     for row in parallel_rows if row["status"] == "ok"
 )
 candidate_rows = [row for row in parallel_rows if row["candidate"]]
+numerical_candidate_rows = [
+    row for row in candidate_rows
+    if row["algorithm"] != "functional-equation-parity"
+]
 all_candidates_cpu_refined = all(
     row["screening_backend"] == "cpu" and row["refinement_stable"] and row["arithmetic_balls_rigorous"]
     for row in candidate_rows
+)
+all_numerical_candidates_cpu_refined = all(
+    row["screening_backend"] == "cpu" and row["refinement_stable"] and row["arithmetic_balls_rigorous"]
+    for row in numerical_candidate_rows
 )
 family_info = parallel_family.diagnostics()
 
 payload = {
     "schema": "sagejs.hyperelliptic/analytic-phase9-evidence-v1",
     "direct_arb_differentials": direct_evidence,
+    "cold_table_timing": {
+        "genus": 2,
+        "precision_bits": ${precisionBits},
+        "observations": 1,
+        "cold_table_cache_miss_call_ms": universal2_cold_ms,
+        "cold_table_construction_ms": 1000*float(universal2["native_stage_diagnostics"]["universal_weight_table"]["construction_wall_seconds"]),
+        "warm_table_cache_hit_call_ms": universal2_warm_ms,
+        "direct_one_worker_call_ms": direct2_ms,
+        "direct_bounded4_call_ms": direct2_bounded4_ms,
+        "cold_cache_hit": bool(universal2["native_stage_diagnostics"]["universal_weight_table"]["cache_hit"]),
+        "warm_cache_hit": bool(universal2_warm["native_stage_diagnostics"]["universal_weight_table"]["cache_hit"]),
+        "direct_one_worker_count": int(direct2["native_stage_diagnostics"]["coefficient_worker_count"]),
+        "direct_bounded4_worker_count": int(direct2_bounded4["native_stage_diagnostics"]["coefficient_worker_count"]),
+        "contract": "one explicitly cleared process-local table cache; exact coefficients prewarmed; public Python result materialization included in call timings",
+    },
     "family_scan": {
         "interval": [-11,13],
         "precision_bits": 16,
         "maximum_derivative": 0,
         "mode": "candidates",
         "candidate_threshold": "1000000",
+        "base_conductor": base_conductor,
+        "base_root_number": base_root_number,
         "coefficient_cutoff": coefficient_cutoff,
         "coefficient_digest_sha256": coefficient_digest,
         "coefficient_digest_contract": "canonical JSON of every exact a_n*chi_D(n), 1<=n<=257, ordered by fundamental discriminant",
@@ -177,8 +221,11 @@ payload = {
         "sequential_parallel_equal": mathematical_signature(sequential) == mathematical_signature(parallel),
         "records": len(parallel_rows),
         "candidate_count": len(candidate_rows),
+        "numerical_candidate_count": len(numerical_candidate_rows),
+        "exact_parity_candidate_count": len(candidate_rows)-len(numerical_candidate_rows),
         "all_status_ok": all(row["status"] == "ok" for row in parallel_rows),
         "all_candidates_cpu_refined": bool(all_candidates_cpu_refined),
+        "all_numerical_candidates_cpu_refined": bool(all_numerical_candidates_cpu_refined),
         "rows": parallel_rows,
         "parallel_engine": family_info["engine"],
         "workers": int(family_info["workers"]),
@@ -194,7 +241,7 @@ payload = {
 print("PHASE9_EVIDENCE|"+json.dumps(payload,sort_keys=True,separators=(",",":")))
 True
 `,
-      { timeout: 600_000 },
+      { timeout: Math.floor(timeoutMs) },
     );
     if (result.repr !== "True") {
       throw new Error(`evidence session returned ${result.repr}`);

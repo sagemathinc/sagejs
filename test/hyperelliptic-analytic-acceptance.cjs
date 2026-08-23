@@ -17,6 +17,9 @@ function differential(genus) {
   return {
     genus,
     passed: true,
+    universal_algorithm: "native-arb-universal-central-taylor-weights",
+    direct_algorithm: "native-arb-central-mellin-weights",
+    tolerance: "0.000001",
     arithmetic_balls_rigorous: true,
     universal_refinement_stable: true,
     direct_refinement_stable: true,
@@ -36,15 +39,6 @@ function inheritedGates() {
       passed: true,
       minimum_speedup: 6,
     },
-    universal_table_cold_amortization: {
-      cold_construction_median_ms: 2000,
-      warm_universal_evaluation_median_ms: 10,
-      direct_one_worker_median_ms: 80,
-      direct_bounded4_median_ms: 30,
-      calls_to_amortize_against_one_worker: 29,
-      calls_to_amortize_against_bounded4: 100,
-      pass_fail_gate: false,
-    },
   };
 }
 
@@ -63,15 +57,42 @@ function fixture() {
   const bracketed = bracketedPariRows([before, competitive]);
   const evidence = {
     direct_arb_differentials: [differential(2), differential(3)],
+    cold_table_timing: {
+      observations: 1,
+      cold_table_construction_ms: 2000,
+      cold_table_cache_miss_call_ms: 2010,
+      warm_table_cache_hit_call_ms: 10,
+      direct_one_worker_call_ms: 80,
+      direct_bounded4_call_ms: 30,
+    },
     family_scan: {
       exact_coefficients: true,
       exact_signs: true,
       sequential_parallel_equal: true,
       candidate_count: 3,
+      numerical_candidate_count: 3,
       all_candidates_cpu_refined: true,
+      all_numerical_candidates_cpu_refined: true,
+      all_status_ok: true,
       records: 3,
       coefficient_digest_sha256: "a".repeat(64),
-      rows: [{}, {}, {}],
+      coefficient_rows: [
+        { discriminant: -3, sha256: "b".repeat(64) },
+        { discriminant: 1, sha256: "c".repeat(64) },
+        { discriminant: 5, sha256: "d".repeat(64) },
+      ],
+      rows: [-3, 1, 5].map((discriminant) => ({
+        status: "ok",
+        discriminant,
+        conductor: 7 * Math.abs(discriminant) ** 4,
+        expected_conductor: 7 * Math.abs(discriminant) ** 4,
+        root_number: 1,
+        expected_root_number: 1,
+        candidate: true,
+        screening_backend: "cpu",
+        refinement_stable: true,
+        arithmetic_balls_rigorous: true,
+      })),
     },
   };
   const gates = acceptanceGates(competitive, bracketed, evidence, 64);
