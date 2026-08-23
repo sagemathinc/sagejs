@@ -80,37 +80,6 @@ def _copy_data(value: Any) -> Any:
     return value
 
 
-def _copy_ball(value: RealBall) -> RealBall:
-    return RealBall(
-        value.lower,
-        value.upper,
-        precision_bits=value.precision_bits,
-        rigorous=value.rigorous,
-        source=value.source,
-    )
-
-
-def _ball_data(value: RealBall) -> tuple[Any, Any, int, bool, Any]:
-    """Store a ball as immutable exact endpoints and proof metadata."""
-    return (
-        (int(value.lower.numerator), int(value.lower.denominator)),
-        (int(value.upper.numerator), int(value.upper.denominator)),
-        int(value.precision_bits),
-        bool(value.rigorous),
-        _encode_data(value.source),
-    )
-
-
-def _ball_from_data(data: tuple[Any, Any, int, bool, Any]) -> RealBall:
-    return RealBall(
-        str(data[0][0]) + "/" + str(data[0][1]),
-        str(data[1][0]) + "/" + str(data[1][1]),
-        precision_bits=data[2],
-        rigorous=data[3],
-        source=_decode_data(data[4]),
-    )
-
-
 def _same_ball(left: RealBall, right: RealBall) -> bool:
     return (
         left.lower == right.lower
@@ -207,32 +176,100 @@ class _EncodedFrozenDict(_SealedRecord):
         return tuple((key, _decode_data(value)) for key, value in self._encoded_items)
 
 
-def _encode_data(value: Any) -> Any:
+def _encode_data(
+    value: Any,
+    _encoded_type: Any = _EncodedFrozenDict,
+    _frozen_type: Any = _FrozenDict,
+) -> Any:
     """Detach JSON-like data into recursively immutable primitive tuples."""
-    if isinstance(value, _EncodedFrozenDict):
-        return ("dict", value._encoded_items)
-    if isinstance(value, _FrozenDict):
-        return (
-            "dict",
-            tuple((key, _encode_data(entry)) for key, entry in value.items()),
-        )
-    if isinstance(value, dict):
-        return (
-            "dict",
-            tuple((key, _encode_data(entry)) for key, entry in value.items()),
-        )
-    if isinstance(value, (tuple, list)):
-        return ("tuple", tuple(_encode_data(entry) for entry in value))
-    return ("scalar", value)
+
+    def encode(entry: Any) -> Any:
+        if isinstance(entry, _encoded_type):
+            return ("dict", entry._encoded_items)
+        if isinstance(entry, _frozen_type):
+            return (
+                "dict",
+                tuple((key, encode(item)) for key, item in entry.items()),
+            )
+        if isinstance(entry, dict):
+            return (
+                "dict",
+                tuple((key, encode(item)) for key, item in entry.items()),
+            )
+        if isinstance(entry, (tuple, list)):
+            return ("tuple", tuple(encode(item) for item in entry))
+        return ("scalar", entry)
+
+    return encode(value)
 
 
 def _decode_data(value: Any) -> Any:
-    kind, payload = value
-    if kind == "dict":
-        return {key: _decode_data(entry) for key, entry in payload}
-    if kind == "tuple":
-        return tuple(_decode_data(entry) for entry in payload)
-    return payload
+    def decode(entry: Any) -> Any:
+        kind, payload = entry
+        if kind == "dict":
+            return {key: decode(item) for key, item in payload}
+        if kind == "tuple":
+            return tuple(decode(item) for item in payload)
+        return payload
+
+    return decode(value)
+
+
+def _ball_data(
+    value: RealBall, _data_encoder: Any = _encode_data
+) -> tuple[Any, Any, int, bool, Any]:
+    """Store a ball as immutable exact endpoints and proof metadata."""
+    return (
+        (int(value.lower.numerator), int(value.lower.denominator)),
+        (int(value.upper.numerator), int(value.upper.denominator)),
+        int(value.precision_bits),
+        bool(value.rigorous),
+        _data_encoder(value.source),
+    )
+
+
+def _ball_from_data(
+    data: tuple[Any, Any, int, bool, Any],
+    _ball_type: Any = RealBall,
+    _data_decoder: Any = _decode_data,
+) -> RealBall:
+    return _ball_type(
+        str(data[0][0]) + "/" + str(data[0][1]),
+        str(data[1][0]) + "/" + str(data[1][1]),
+        precision_bits=data[2],
+        rigorous=data[3],
+        source=_data_decoder(data[4]),
+    )
+
+
+def _closed_ball_property(data_attribute: str) -> Any:
+    """Return a property whose decoder cannot be replaced through globals."""
+    ball_decoder = _ball_from_data
+
+    def decode_ball(value: Any) -> RealBall:
+        return ball_decoder(getattr(value, data_attribute))
+
+    return property(decode_ball)
+
+
+def _closed_ball_matrix_property() -> Any:
+    ball_decoder = _ball_from_data
+
+    def decode_matrix(value: Any) -> tuple[tuple[RealBall, ...], ...]:
+        return tuple(
+            tuple(ball_decoder(entry) for entry in row) for row in value._matrix_data
+        )
+
+    return property(decode_matrix)
+
+
+def _closed_ball_matrix_getitem() -> Any:
+    ball_decoder = _ball_from_data
+
+    def decode_row(value: Any, index: int) -> tuple[RealBall, ...]:
+        return tuple(ball_decoder(entry) for entry in value._matrix_data[index])
+
+    return decode_row
 
 
 def _freeze_data(value: Any) -> Any:
@@ -546,13 +583,8 @@ class AutomaticHeightBounds(_SealedRecord):
         self._diagnostics = _freeze_data(diagnostics)
         self._seal()
 
-    @property
-    def correction_lower(self) -> RealBall:
-        return _ball_from_data(self._correction_lower_data)
-
-    @property
-    def correction_upper(self) -> RealBall:
-        return _ball_from_data(self._correction_upper_data)
+    correction_lower = _closed_ball_property("_correction_lower_data")
+    correction_upper = _closed_ball_property("_correction_upper_data")
 
     @property
     def _correction_lower(self) -> RealBall:
@@ -570,7 +602,7 @@ class AutomaticHeightBounds(_SealedRecord):
         # A copy carries theorem data, not an authentication token.  The
         # closed proof-state wrapper below replays that data against the exact
         # live model before it can support a rigorous calculation.
-        return AutomaticHeightBounds(
+        return type(self)(
             self.correction_lower,
             self.correction_upper,
             self.diagnostics,
@@ -614,17 +646,9 @@ class FiniteHeightCorrectionResult(_SealedRecord):
         self._rigorous = True
         self._seal()
 
-    @property
-    def ball(self) -> RealBall:
-        return _ball_from_data(self._ball_data)
-
-    @property
-    def partial_sum(self) -> RealBall:
-        return _ball_from_data(self._partial_sum_data)
-
-    @property
-    def tail_bound(self) -> RealBall:
-        return _ball_from_data(self._tail_bound_data)
+    ball = _closed_ball_property("_ball_data")
+    partial_sum = _closed_ball_property("_partial_sum_data")
+    tail_bound = _closed_ball_property("_tail_bound_data")
 
     @property
     def _ball(self) -> RealBall:
@@ -690,17 +714,9 @@ class ArchimedeanHeightCorrectionResult(_SealedRecord):
         self._diagnostics = _freeze_data(diagnostics)
         self._seal()
 
-    @property
-    def ball(self) -> RealBall:
-        return _ball_from_data(self._ball_data)
-
-    @property
-    def partial_sum(self) -> RealBall:
-        return _ball_from_data(self._partial_sum_data)
-
-    @property
-    def tail_bound(self) -> RealBall:
-        return _ball_from_data(self._tail_bound_data)
+    ball = _closed_ball_property("_ball_data")
+    partial_sum = _closed_ball_property("_partial_sum_data")
+    tail_bound = _closed_ball_property("_tail_bound_data")
 
     @property
     def steps(self) -> int:
@@ -1684,9 +1700,7 @@ class CanonicalHeightResult(_SealedRecord):
         self._rigorous = bool(ball.rigorous)
         self._seal()
 
-    @property
-    def ball(self) -> RealBall:
-        return _ball_from_data(self._ball_data)
+    ball = _closed_ball_property("_ball_data")
 
     @property
     def _ball(self) -> RealBall:
@@ -2384,11 +2398,7 @@ class HeightPairingResult(_SealedRecord):
         self._rigorous = all(entry.rigorous for row in self._matrix for entry in row)
         self._seal()
 
-    @property
-    def matrix(self) -> tuple[tuple[RealBall, ...], ...]:
-        return tuple(
-            tuple(_ball_from_data(entry) for entry in row) for row in self._matrix_data
-        )
+    matrix = _closed_ball_matrix_property()
 
     @property
     def _matrix(self) -> tuple[tuple[RealBall, ...], ...]:
@@ -2523,8 +2533,7 @@ class HeightPairingResult(_SealedRecord):
             "diagnostics": self.diagnostics,
         }
 
-    def __getitem__(self, index: int) -> tuple[RealBall, ...]:
-        return tuple(_copy_ball(entry) for entry in self._matrix[index])
+    __getitem__ = _closed_ball_matrix_getitem()
 
     def __len__(self) -> int:
         return len(self._matrix)
@@ -3187,9 +3196,7 @@ class RegulatorResult(_SealedRecord):
         self._rigorous = bool(ball.rigorous)
         self._seal()
 
-    @property
-    def ball(self) -> RealBall:
-        return _ball_from_data(self._ball_data)
+    ball = _closed_ball_property("_ball_data")
 
     @property
     def _ball(self) -> RealBall:
