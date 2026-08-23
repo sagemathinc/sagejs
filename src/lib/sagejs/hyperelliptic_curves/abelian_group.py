@@ -384,7 +384,15 @@ def _tiny_exhaustive_basis_table(
     budget: GroupOperationBudget,
 ) -> tuple[tuple[Any, ...], list[tuple[Any, tuple[Any, ...]]]]:
     """Derive a basis and every coordinate from a complete tiny group."""
-    elements = tuple(jacobian.points(max_elements, max_candidates))
+    cached = getattr(jacobian, "_tiny_exhaustive_group_elements", None)
+    if isinstance(cached, tuple) and len(cached) == 2 and int(cached[0]) == known_order:
+        elements = tuple(cached[1])
+        if len(elements) != known_order or any(
+            element.parent() is not jacobian for element in elements
+        ):
+            raise ArithmeticError("the cached tiny exhaustive group is misbound")
+    else:
+        elements = tuple(jacobian.points(max_elements, max_candidates))
     if len(elements) != known_order:
         raise ArithmeticError("the tiny exhaustive Jacobian has the wrong order")
     if not invariant_values:
