@@ -222,6 +222,7 @@ test("Cloudflare release preparation produces authenticated Brotli and identity 
     const wrangler = JSON.parse(await readFile(path.join(output, "wrangler.json"), "utf8"));
     assert.equal(wrangler.name, "sagejs-app");
     assert.equal(wrangler.workers_dev, false);
+    assert.deepEqual(wrangler.compatibility_flags, ["brotli_content_encoding"]);
     assert.deepEqual(wrangler.routes, [{ pattern: "app.sagejs.org", custom_domain: true }]);
     assert.deepEqual(wrangler.r2_buckets, [{ binding: "ASSETS", bucket_name: "sagejs" }]);
     assert.equal(wrangler.vars.RELEASE_ID, release);

@@ -114,6 +114,7 @@ jobs:
           sparse-checkout: |
             .github/workflows/wasm-deploy-cloudflare.yml
             docs/webassembly-cloudflare-deployment.md
+            packages/flint-wasm/scripts/browser-wasm-deployment.cjs
             test/wasm-deployment-workflow.cjs
             website/live/cloudflare
             website/live/test/cloudflare-deployment.test.mjs
@@ -208,7 +209,7 @@ jobs:
           SAGEJS_PUBLIC_ORIGIN: ${{ vars.SAGEJS_PUBLIC_ORIGIN }}
         run: |
           set -euo pipefail
-          node website/live/cloudflare/prepare-release.mjs \
+          node build/deployment-control/website/live/cloudflare/prepare-release.mjs \
             --site website/live/dist \
             --output build/cloudflare-deploy \
             --target "$TARGET" \
@@ -216,12 +217,9 @@ jobs:
             --worker-name "$CLOUDFLARE_WORKER_NAME" \
             --bucket "$R2_BUCKET_NAME" \
             --public-origin "$SAGEJS_PUBLIC_ORIGIN"
-          node website/live/cloudflare/upload-r2.mjs \
+          node build/deployment-control/website/live/cloudflare/upload-r2.mjs \
             --deployment build/cloudflare-deploy/deployment.json \
             --verify-only
-          install -m 0644 \
-            build/deployment-control/website/live/cloudflare/worker.mjs \
-            build/cloudflare-deploy/worker.mjs
           printf '%s\n' "$GITHUB_SHA" > build/cloudflare-deploy/deployment-control.sha
           echo "release=$(jq -r .release build/cloudflare-deploy/deployment.json)" >>"$GITHUB_OUTPUT"
           echo "worker=$(jq -r .name build/cloudflare-deploy/wrangler.json)" >>"$GITHUB_OUTPUT"
@@ -234,7 +232,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
-          node website/live/cloudflare/upload-r2.mjs \
+          node build/deployment-control/website/live/cloudflare/upload-r2.mjs \
             --deployment build/cloudflare-deploy/deployment.json
 
       - name: Preserve the exact staged site as a deployment receipt
@@ -288,9 +286,10 @@ jobs:
             echo "Cloudflare returned an unexpected preview URL" >&2
             exit 1
           }
-          node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
+          node build/deployment-control/packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
             --headers website/live/_headers \
-            --origin "$DEPLOYMENT_URL"
+            --origin "$DEPLOYMENT_URL" \
+            --expected-runtime website/live/dist/runtime-version.json
 
       - name: Validate app.sagejs.org after production deployment
         if: inputs.target == 'production'
@@ -299,9 +298,10 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 12); do
-            if node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
+            if node build/deployment-control/packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
               --headers website/live/_headers \
-              --origin "$SAGEJS_PUBLIC_ORIGIN"
+              --origin "$SAGEJS_PUBLIC_ORIGIN" \
+              --expected-runtime website/live/dist/runtime-version.json
             then
               exit 0
             fi

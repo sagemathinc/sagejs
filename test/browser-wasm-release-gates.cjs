@@ -2,10 +2,13 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { once } = require("node:events");
 const fs = require("node:fs");
+const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
+const { brotliCompressSync } = require("node:zlib");
 const {
   compareArtifacts,
   enforceBudget,
@@ -14,6 +17,7 @@ const {
 } = require("../packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs");
 const {
   parseHeadersFile,
+  validateDeployedOrigin,
   validateHeadersRules,
 } = require("../packages/flint-wasm/scripts/browser-wasm-deployment.cjs");
 
@@ -183,6 +187,76 @@ test("Cloudflare-compatible header policy is parsed and security checked", () =>
   assert.deepEqual(validateHeadersRules(rules), []);
   rules[0].headers.delete("cross-origin-opener-policy");
   assert.match(validateHeadersRules(rules).join("\n"), /cross-origin-opener-policy/);
+});
+
+async function withDeploymentOrigin({ doubleBrotli = false } = {}, callback) {
+  const release = "a".repeat(64);
+  const runtime = Buffer.from(`${JSON.stringify({
+    schema: "org.sagejs.web/runtime-v1",
+    revision: "fixture-revision",
+    artifactIdentity: `sha256:${"b".repeat(64)}`,
+  })}\n`);
+  const manifest = Buffer.from(`${JSON.stringify({
+    schema: "org.sagejs.web/assets-v2",
+    release,
+    artifactIdentity: `sha256:${"b".repeat(64)}`,
+    assets: [],
+  })}\n`);
+  const server = http.createServer((request, response) => {
+    response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+    response.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+    response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.setHeader("Referrer-Policy", "no-referrer");
+    response.setHeader("X-SageJS-Release", release);
+    if (request.url === "/") {
+      response.setHeader("Content-Type", "text/html; charset=utf-8");
+      response.end("<!doctype html><title>Sage.js</title>");
+      return;
+    }
+    if (request.url === "/asset-manifest.json") {
+      response.setHeader("Content-Type", "application/json; charset=utf-8");
+      response.end(manifest);
+      return;
+    }
+    if (request.url === "/runtime-version.json") {
+      response.setHeader("Content-Type", "application/json; charset=utf-8");
+      if ((request.headers["accept-encoding"] ?? "").includes("br")) {
+        response.setHeader("Content-Encoding", "br");
+        const compressed = brotliCompressSync(runtime);
+        response.end(doubleBrotli ? brotliCompressSync(compressed) : compressed);
+      } else {
+        response.end(runtime);
+      }
+      return;
+    }
+    response.statusCode = 404;
+    response.end("missing");
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  try {
+    const address = server.address();
+    return await callback(`http://127.0.0.1:${address.port}/`, {
+      revision: "fixture-revision",
+      artifactIdentity: `sha256:${"b".repeat(64)}`,
+    });
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+}
+
+test("deployed origin validation rejects double-compressed Brotli", async () => {
+  await withDeploymentOrigin({}, async (origin, expectedRuntime) => {
+    assert.deepEqual(await validateDeployedOrigin(origin, { expectedRuntime }), []);
+  });
+  await withDeploymentOrigin({ doubleBrotli: true }, async (origin, expectedRuntime) => {
+    assert.match(
+      (await validateDeployedOrigin(origin, { expectedRuntime })).join("\n"),
+      /decode to different bytes/,
+    );
+  });
 });
 
 test("release performance profile has reviewed heavyweight baselines", async () => {

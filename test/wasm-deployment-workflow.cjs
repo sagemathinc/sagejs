@@ -44,7 +44,10 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
   );
   assert.match(workflow, /node --test website\/live\/test\/\*\.test\.mjs/);
   assert.match(workflow, /node --test test\/wasm-deployment-workflow\.cjs/);
-  assert.match(workflow, /build\/deployment-control\/website\/live\/cloudflare\/worker\.mjs/);
+  assert.match(workflow, /website\/live\/cloudflare\n/);
+  assert.match(workflow, /build\/deployment-control\/website\/live\/cloudflare\/prepare-release\.mjs/);
+  assert.match(workflow, /build\/deployment-control\/website\/live\/cloudflare\/upload-r2\.mjs/);
+  assert.match(workflow, /build\/deployment-control\/packages\/flint-wasm\/scripts\/browser-wasm-deployment\.cjs/);
   assert.match(workflow, /build\/cloudflare-deploy\/deployment-control\.sha/);
   assert.match(workflow, /build\/cloudflare-deploy\/package\.json/);
   assert.match(workflow, /workingDirectory: build\/cloudflare-deploy/);
@@ -72,6 +75,7 @@ test("Cloudflare deployment fails closed and checks both remote origins", async 
   assert.match(workflow, /environment:\n\s+name: sagejs-app-\$\{\{ inputs\.target \}\}/);
   assert.match(workflow, /browser-wasm-deployment\.cjs[\s\S]+\$DEPLOYMENT_URL/);
   assert.match(workflow, /--origin "\$SAGEJS_PUBLIC_ORIGIN"/);
+  assert.match(workflow, /--expected-runtime website\/live\/dist\/runtime-version\.json/);
   assert.match(workflow, /for attempt in \$\(seq 1 12\)/);
   assert.match(workflow, /retrying in 10 seconds/);
   assert.match(workflow, /\.workers\\\.dev/);
