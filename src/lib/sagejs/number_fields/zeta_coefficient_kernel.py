@@ -506,6 +506,173 @@ def assemble_bf_dyadic_finite_term(
 
 
 @native
+def assemble_bf_prime_power_plan_in_place(
+    metadata: IntegerBuffer,
+    output: IntegerBuffer,
+    workspace: IntegerBuffer,
+    primes: UInt64Buffer,
+    factor_counts: UInt64Buffer,
+    factor_exponents: UInt64Buffer,
+    factor_degrees: UInt64Buffer,
+    degree: uint64,
+    threshold: uint64,
+    emit: uint64,
+) -> bool:
+    """Build the exact aggregated Belabas--Friedman term plan.
+
+    The first pass (`emit=0`) writes `(term_count, raw_term_count)` to
+    `metadata`.  The second pass writes canonical
+    `(multiplicity, scale_index, norm, exponent)` rows to `output`.  One
+    threshold-sized caller workspace stores the coefficient of each prime
+    norm, so the kernel never allocates dynamic mathematical objects.
+    """
+    maximum_threshold: uint64 = 1000000
+    maximum_degree: uint64 = 64
+    if (
+        len(metadata) != 2
+        or threshold < 9
+        or threshold > maximum_threshold
+        or degree < 1
+        or degree > maximum_degree
+        or emit > 1
+        or len(factor_counts) != len(primes)
+        or len(factor_exponents) != len(primes) * degree
+        or len(factor_degrees) != len(factor_exponents)
+        or len(workspace) != threshold
+    ):
+        return False
+
+    for index in range(len(workspace)):
+        workspace[index] = 0
+
+    previous_prime: uint64 = 0
+    for row in range(len(primes)):
+        prime = primes[row]
+        count = factor_counts[row]
+        if (
+            prime < 2
+            or prime >= threshold
+            or prime <= previous_prime
+            or count < 1
+            or count > degree
+        ):
+            return False
+        previous_prime = prime
+        workspace[prime] -= 1
+        local_degree = 0
+        for factor_index in range(degree):
+            offset = row * degree + factor_index
+            ramification = factor_exponents[offset]
+            residue_degree = factor_degrees[offset]
+            if factor_index >= count:
+                if ramification != 0 or residue_degree != 0:
+                    return False
+            else:
+                if (
+                    ramification < 1
+                    or ramification > degree
+                    or residue_degree < 1
+                    or residue_degree > degree
+                ):
+                    return False
+                local_degree += ramification * residue_degree
+                norm: uint64 = 1
+                for _power_index in range(residue_degree):
+                    if norm < threshold:
+                        if norm > (threshold - 1) // prime:
+                            norm = threshold
+                        else:
+                            norm = norm * prime
+                if norm < threshold:
+                    workspace[norm] += 1
+        if local_degree != degree:
+            return False
+
+    term_count = 0
+    raw_term_count = 0
+    nine: uint64 = 9
+    ninth: uint64 = threshold // nine
+    for scale_index in range(2):
+        cutoff: uint64 = threshold
+        if scale_index == 1:
+            cutoff = ninth
+        for row in range(len(primes)):
+            prime = primes[row]
+            if prime < cutoff:
+                power = prime
+                while power < cutoff:
+                    raw_term_count += 1
+                    if power > (cutoff - 1) // prime:
+                        power = cutoff
+                    else:
+                        power = power * prime
+                count = factor_counts[row]
+                for factor_index in range(count):
+                    offset = row * degree + factor_index
+                    residue_degree = factor_degrees[offset]
+                    norm: uint64 = 1
+                    for _norm_index in range(residue_degree):
+                        if norm < cutoff:
+                            if norm > (cutoff - 1) // prime:
+                                norm = cutoff
+                            else:
+                                norm = norm * prime
+                    if norm < cutoff:
+                        power = norm
+                        while power < cutoff:
+                            raw_term_count += 1
+                            if power > (cutoff - 1) // norm:
+                                power = cutoff
+                            else:
+                                power = power * norm
+        for norm_index in range(2, cutoff):
+            multiplicity = workspace[norm_index]
+            if scale_index == 1:
+                multiplicity = -multiplicity
+            if multiplicity != 0:
+                power = norm_index
+                while power < cutoff:
+                    term_count += 1
+                    if power > (cutoff - 1) // norm_index:
+                        power = cutoff
+                    else:
+                        power = power * norm_index
+
+    metadata[0] = term_count
+    metadata[1] = raw_term_count
+    if emit == 0:
+        return True
+    if len(output) != 4 * term_count:
+        return False
+
+    output_row = 0
+    for scale_index in range(2):
+        cutoff: uint64 = threshold
+        if scale_index == 1:
+            cutoff = ninth
+        for norm_index in range(2, cutoff):
+            multiplicity = workspace[norm_index]
+            if scale_index == 1:
+                multiplicity = -multiplicity
+            if multiplicity != 0:
+                exponent = 1
+                power = norm_index
+                while power < cutoff:
+                    offset = 4 * output_row
+                    output[offset] = multiplicity
+                    output[offset + 1] = scale_index
+                    output[offset + 2] = norm_index
+                    output[offset + 3] = exponent
+                    output_row += 1
+                    exponent += 1
+                    if power > (cutoff - 1) // norm_index:
+                        power = cutoff
+                    else:
+                        power = power * norm_index
+    return output_row == term_count
+
+
+@native
 def assemble_zeta_coefficients_from_factors(
     output: IntegerBuffer,
     local: IntegerBuffer,
@@ -580,5 +747,6 @@ __all__ = [
     "assemble_bf_dyadic_finite_term",
     "assemble_bf_integer_transcendental_endpoints",
     "assemble_bf_integer_transcendental_endpoints_flint",
+    "assemble_bf_prime_power_plan_in_place",
     "assemble_zeta_coefficients_from_factors",
 ]

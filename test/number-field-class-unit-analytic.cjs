@@ -841,6 +841,7 @@ print("analytic-index-ok")
 test("declared FLINT integer balls agree with independent rigorous endpoints", () => {
   const output = runSagejs(String.raw`
 import sagejs.native as native_module
+import sagejs.number_fields.class_unit_analytic as analytic_module
 import sagejs.number_fields.zeta_coefficient_kernel as kernel_module
 from sagejs.number_fields.class_unit_analytic import (
     IntervalBallField,
@@ -849,6 +850,29 @@ from sagejs.number_fields.class_unit_analytic import (
 )
 
 assert _primes_below(30) == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
+
+splitting = {
+    2: ((1, 1), (1, 2)),
+    3: ((3, 1),),
+    5: ((1, 3),),
+    7: ((1, 1), (1, 1), (1, 1)),
+}
+readable_plan = analytic_module._build_bf_plan_readable(99, splitting)
+packed_plan = analytic_module._build_bf_plan_kernel(99, splitting)
+assert packed_plan is not None
+assert packed_plan.terms == readable_plan.terms
+assert packed_plan.raw_terms == readable_plan.raw_terms
+plan_kernel = kernel_module.assemble_bf_prime_power_plan_in_place
+assert native_module.is_compiled(plan_kernel)
+
+saved_plan_override = analytic_module._bf_prime_power_plan_kernel_override
+analytic_module._bf_prime_power_plan_kernel_override = False
+try:
+    fallback_plan = analytic_module._build_bf_plan(99, splitting)
+finally:
+    analytic_module._bf_prime_power_plan_kernel_override = saved_plan_override
+assert fallback_plan.terms == readable_plan.terms
+assert fallback_plan.raw_terms == readable_plan.raw_terms
 
 flint_kernel = kernel_module.assemble_bf_integer_transcendental_endpoints_flint
 source_kernel = kernel_module.assemble_bf_integer_transcendental_endpoints

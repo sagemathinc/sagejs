@@ -43,6 +43,8 @@ _MAXIMUM_SATURATION_REPLAY_STRING = 1_000_000
 _SHARED_ZETA_WORKSPACE_CACHE_LIMIT = 16
 _SHARED_ZETA_WORKSPACE_SNAPSHOT_TOKEN = object()
 _shared_zeta_workspace_snapshots: dict[str, Any] = {}
+_bf_prime_power_plan_kernel_override: Any = None
+_MAXIMUM_PACKED_BF_PLAN_TERMS = 1_000_000
 
 
 def _canonical_json(value: Any) -> str:
@@ -3316,7 +3318,7 @@ class _SharedZetaWorkspaceSnapshot:
         self.__dict__[name] = value
 
 
-def _build_bf_plan(
+def _build_bf_plan_readable(
     threshold: int,
     splitting: dict[int, tuple[tuple[int, int], ...]],
 ) -> _BFPrimePowerPlan:
@@ -3361,6 +3363,161 @@ def _build_bf_plan(
                 if multiplicity:
                     terms.append((multiplicity, scale, norm, exponent))
     return _BFPrimePowerPlan(threshold, terms, raw_terms)
+
+
+def _build_bf_plan_kernel(
+    threshold: int,
+    splitting: dict[int, tuple[tuple[int, int], ...]],
+) -> _BFPrimePowerPlan | None:
+    """Build one exact plan through the compiled packed source, or decline."""
+    try:
+        kernel_module = __import__(
+            "sagejs.number_fields.zeta_coefficient_kernel",
+            fromlist=["assemble_bf_prime_power_plan_in_place"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        kernel = _bf_prime_power_plan_kernel_override
+        if kernel is False:
+            return None
+        if kernel is None:
+            kernel = getattr(
+                kernel_module, "assemble_bf_prime_power_plan_in_place", None
+            )
+            is_compiled = getattr(native_module, "is_compiled", None)
+            if (
+                not callable(kernel)
+                or not callable(is_compiled)
+                or not is_compiled(kernel)
+            ):
+                return None
+        elif not callable(kernel):
+            return None
+
+        primes = tuple(sorted(int(prime) for prime in splitting))
+        if not primes:
+            return _BFPrimePowerPlan(threshold, (), 0)
+        first_factors = splitting[primes[0]]
+        degree = sum(int(e) * int(f) for e, f in first_factors)
+        if degree < 1 or degree > 64:
+            return None
+        counts: list[int] = []
+        exponents: list[int] = []
+        degrees: list[int] = []
+        for prime in primes:
+            factors = splitting[prime]
+            if len(factors) < 1 or len(factors) > degree:
+                return None
+            if sum(int(e) * int(f) for e, f in factors) != degree:
+                return None
+            counts.append(len(factors))
+            for e, f in factors:
+                exponents.append(int(e))
+                degrees.append(int(f))
+            for _padding in range(degree - len(factors)):
+                exponents.append(0)
+                degrees.append(0)
+
+        packed_primes = native_module.kernel_uint64_buffer(kernel, primes)
+        packed_counts = native_module.kernel_uint64_buffer(kernel, counts)
+        packed_exponents = native_module.kernel_uint64_buffer(kernel, exponents)
+        packed_degrees = native_module.kernel_uint64_buffer(kernel, degrees)
+        metadata = native_module.kernel_integer_zeros(kernel, 2, 1)
+        workspace = native_module.kernel_integer_zeros(kernel, threshold, 1)
+        scratch = native_module.kernel_integer_zeros(kernel, 1, 1)
+        if not bool(
+            kernel(
+                metadata,
+                scratch,
+                workspace,
+                packed_primes,
+                packed_counts,
+                packed_exponents,
+                packed_degrees,
+                degree,
+                threshold,
+                0,
+            )
+        ):
+            return None
+        metadata_values = native_module.integer_buffer_values(metadata)
+        if len(metadata_values) != 2:
+            return None
+        runtime_module = __import__("sagejs.runtime", fromlist=["runtime"])
+        term_count = runtime_module.number(metadata_values[0])
+        raw_terms = runtime_module.number(metadata_values[1])
+        if (
+            term_count < 0
+            or term_count > _MAXIMUM_PACKED_BF_PLAN_TERMS
+            or raw_terms < term_count
+        ):
+            return None
+        output = native_module.kernel_integer_zeros(kernel, 4 * term_count, 1)
+        if not bool(
+            kernel(
+                metadata,
+                output,
+                workspace,
+                packed_primes,
+                packed_counts,
+                packed_exponents,
+                packed_degrees,
+                degree,
+                threshold,
+                1,
+            )
+        ):
+            return None
+        repeated_metadata = native_module.integer_buffer_values(metadata)
+        if (
+            len(repeated_metadata) != 2
+            or runtime_module.number(repeated_metadata[0]) != term_count
+            or runtime_module.number(repeated_metadata[1]) != raw_terms
+        ):
+            return None
+        flat = native_module.integer_buffer_values(output)
+        if len(flat) != 4 * term_count:
+            return None
+        terms: list[tuple[int, int, int, int]] = []
+        previous_key: tuple[int, int, int] | None = None
+        for index in range(term_count):
+            offset = 4 * index
+            multiplicity = int(flat[offset])
+            scale = int(flat[offset + 1])
+            norm = int(flat[offset + 2])
+            exponent = int(flat[offset + 3])
+            cutoff = threshold if scale == 0 else threshold // 9
+            key = (scale, norm, exponent)
+            if (
+                multiplicity == 0
+                or scale not in (0, 1)
+                or norm < 2
+                or exponent < 1
+                or norm**exponent >= cutoff
+                or (previous_key is not None and key <= previous_key)
+            ):
+                return None
+            previous_key = key
+            terms.append((multiplicity, scale, norm, exponent))
+        return _BFPrimePowerPlan(threshold, terms, raw_terms)
+    except (
+        AttributeError,
+        ImportError,
+        OverflowError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ):
+        return None
+
+
+def _build_bf_plan(
+    threshold: int,
+    splitting: dict[int, tuple[tuple[int, int], ...]],
+) -> _BFPrimePowerPlan:
+    packed = _build_bf_plan_kernel(threshold, splitting)
+    return (
+        packed if packed is not None else _build_bf_plan_readable(threshold, splitting)
+    )
 
 
 class ZetaLogResidueWorkspace:

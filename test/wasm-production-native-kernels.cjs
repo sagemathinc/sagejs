@@ -37,7 +37,7 @@ test("the Wasm source-kernel inventory accounts for all registered kernels", asy
   assert.equal(inventory.nonProduction.length, 7);
   assert.equal(coverage.totals.registered_kernels, 41);
   assert.equal(coverage.totals.production_kernels, 34);
-  assert.equal(coverage.totals.compiled_functions, 242);
+  assert.equal(coverage.totals.compiled_functions, 243);
   assert.equal(coverage.totals.unsupported_production_functions, 0);
   const coverageById = new Map(coverage.kernels.map((item) => [item.id, item]));
   for (const omitted of inventory.nonProduction) {
@@ -112,7 +112,7 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
     assert.equal(manifest.registeredKernels, 41);
     assert.equal(manifest.productionKernels, 34);
     assert.equal(manifest.compiledKernelCores, 34);
-    assert.equal(manifest.compiledFunctions, 242);
+    assert.equal(manifest.compiledFunctions, 243);
     assert.equal(manifest.unsupportedFunctions, 0);
     assert.equal(manifest.nonProductionKernels.length, 7);
     assert.deepEqual(manifest.packs.map((pack) => pack.domain), ["flint", "gmp"]);
@@ -120,7 +120,7 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
       kernel.id === "number-field-zeta-coefficients-production"
     );
     assert.ok(zeta.runtime);
-    assert.equal(zeta.functions.length, 5);
+    assert.equal(zeta.functions.length, 6);
     assert.ok(zeta.functions.every((fn) =>
       /^sagejs_wasm_call_m_[a-f0-9]{16}_/.test(fn.bridge.export)
     ));

@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "4df520ac3c3d0d534e2453a790e736ef2da72350567d64cc50422dc97b7956ce",
+  "source_sha256": "15f7ca280c4c1290697a0ad4f5ebb237403dcabc112d745e6ea913d86ba9f6de",
   "counts": {
     "total": 964,
     "by_kind": {
@@ -5949,7 +5949,7 @@
       "public_consumers": [
         "number-field-zeta-coefficients"
       ],
-      "explanation": "All 5 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:p1-heilbronn-production",
