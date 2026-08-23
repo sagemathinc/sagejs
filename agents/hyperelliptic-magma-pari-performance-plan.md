@@ -337,8 +337,29 @@ fallback.
 The existing handwritten genus-3 kernel remains an oracle during migration.
 It should not force the new public genus-2/3 design to duplicate handwritten
 formulas.  If profiling proves that the compiler cannot express a necessary
-fixed-degree primitive, record a narrow architecture exception rather than
-moving the whole group law into a host adapter.
+fixed-degree primitive, treat that first as an opportunity to improve the
+compiler.  Small fixed arrays, checked modular arithmetic, polynomial
+division/remainder, value-record returns, and bounded-loop lowering are useful
+beyond hyperelliptic curves and belong in the source-transparent toolchain
+when they can be given general semantics.
+
+For each apparent compiler gap:
+
+1. reduce it to a small typed-Python reproducer independent of Cantor's law;
+2. decide whether it is a reusable language/IR capability, a mature declared
+   foreign-library operation, or a genuinely domain-specific primitive;
+3. for a reusable capability, extend the compiler and add a representative
+   native-kernel witness with dynamic/native/Wasm differential tests,
+   inspectable IR, and emitted-core checks;
+4. for a mature library operation, add a strict FFI declaration rather than a
+   function-name special case;
+5. use a narrow recorded architecture exception only when neither route is
+   appropriate and the measured benefit justifies it.
+
+Never teach the compiler to recognize a Cantor-function name or move the whole
+group law into a host adapter merely to pass a benchmark.  A compiler
+improvement and the mathematical kernel should be reviewable as separate
+coherent changes.
 
 ### Genus-2 Kummer core
 
@@ -421,12 +442,15 @@ no-op native traversal for batches of at least 1,000 divisors.
 
 1. Express complete odd-characteristic generalized Cantor composition and
    reduction in ordinary typed Python.
-2. Compile fixed-degree genus-2 and genus-3 kernels.
-3. Cover every collision/generalized-`h` branch exhaustively on small fields.
-4. Add one-call `add_batch`, `double_batch`, `sum`, and mixed operation plans.
-5. Make public `+`, `-`, and doubling select the native path inside the proven
+2. Compile fixed-degree genus-2 and genus-3 kernels, reducing and classifying
+   every compiler failure before considering an exception.
+3. Land reusable compiler/IR/FFI improvements with independent witnesses and
+   provenance tests.
+4. Cover every collision/generalized-`h` branch exhaustively on small fields.
+5. Add one-call `add_batch`, `double_batch`, `sum`, and mixed operation plans.
+6. Make public `+`, `-`, and doubling select the native path inside the proven
    domain while retaining `algorithm="reference"` for differential work.
-6. Record generated IR/core source and all-platform exact digests.
+7. Record generated IR/core source and all-platform exact digests.
 
 Exit criteria:
 
@@ -434,7 +458,9 @@ Exit criteria:
   batch on the pinned Linux x64 host;
 - packed boundary within 15% of the standalone core;
 - within 2x of Magma warm medians on the main finite-field corpus;
-- no accepted fixture slower by more than 3x without a named stage.
+- no accepted fixture slower by more than 3x without a named stage;
+- every compiler feature introduced by the project has a non-hyperelliptic
+  witness proving that it is a general source-transparent capability.
 
 ### Phase 3 — scalar multiplication and genus-2 Kummer arithmetic
 
@@ -672,7 +698,25 @@ versions, retain both receipts instead of rewriting history.
 
 ### Noise control
 
-- use a named otherwise-idle benchmark host;
+- use the `bench-1` Linux x64 VM as the primary performance-acceptance host,
+  connecting with `ssh bench-1`;
+- immediately before a run, record at least `uptime`, `uname -a`, `lscpu`, free
+  memory, CPU governor/thread settings, and the processes consuming CPU or
+  memory; the normal idle preflight begins with:
+
+  ```sh
+  ssh bench-1 uptime
+  # 02:10:06 up 16:06,  1 user,  load average: 0.00, 0.00, 0.00
+  ```
+
+- do not accept a primary receipt when `bench-1` has an unexplained competing
+  load; store the measured load and preflight metadata in the JSON receipt;
+- treat timings from the development host or another shared machine as
+  diagnostic unless the plan explicitly names a separate platform acceptance
+  host;
+- fingerprint `bench-1` hardware and operating-system images on every run so a
+  recreated or resized VM starts a new comparable series rather than silently
+  replacing the old baseline;
 - pin CPU governor and thread counts where possible;
 - report rather than hide shared-host status;
 - alternate system order to reduce thermal bias;
@@ -719,6 +763,16 @@ explicit in the benchmark matrix and capability report.
 Cantor collision paths are easy to omit.  Begin from the complete generalized
 law, exhaust every small-field pair, and add specialized coprime/doubling
 formulas only as proven dispatches with the general path as oracle.
+
+### Compiler work expanding without a reusable contract
+
+A real compiler limitation is valuable to fix, but this project must not grow
+one-off Cantor intrinsics or indefinitely delay the mathematical milestone.
+Require a minimal reproducer, general typed semantics, an independent witness,
+and a separately reviewable compiler change.  When the missing operation is
+already mature in FLINT, prefer a declared FFI capability; when it is truly
+domain-specific, use a narrow audited exception with the ordinary source as
+the oracle.
 
 ### Kummer sign loss
 
