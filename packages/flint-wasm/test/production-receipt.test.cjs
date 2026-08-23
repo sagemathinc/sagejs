@@ -103,6 +103,7 @@ test("the production artifact manifest is deterministic and uses dist-relative f
         "compiled-gmp",
         "conway-data",
         "plotly",
+        "numpy",
       ],
     );
     assert.ok(first.topology.groups.every(({ identity }) => /^sha256:[0-9a-f]{64}$/.test(identity)));

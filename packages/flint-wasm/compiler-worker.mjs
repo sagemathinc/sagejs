@@ -82,10 +82,16 @@ function compile(source, filename) {
       }
     }
   }
-  const dynamicImports = Object.values(toplevel.imports ?? {})
+  const imports = Object.values(toplevel.imports ?? {});
+  const moduleImports = [...new Set(
+    imports
+      .map((module) => module?.module_id)
+      .filter((moduleId) => typeof moduleId === "string"),
+  )].sort();
+  const dynamicImports = imports
     .filter((module) => module?.dynamic === true)
     .map((module) => module.module_id);
-  return { javascript, dynamicImports };
+  return { javascript, dynamicImports, moduleImports };
 }
 
 function sendResponse(data, response) {
@@ -165,12 +171,17 @@ self.onmessage = async ({ data }) => {
         import_dirs: ["__stdlib__"],
         precompiled_module_cache_dir: "__module_cache__",
       });
-      result = outputJavaScript(
+      const bootstrap = outputJavaScript(
         nextCompiler,
         initialization,
         baselibSource,
         true,
       );
+      // The baselib bootstrap deliberately publishes Sage's public names on
+      // the worker global.  Keep the generated strict directive out of the
+      // directive prologue for this one initialization program; ordinary
+      // compiled user programs below remain strict.
+      result = `void 0;\n${bootstrap}`;
       compiler = nextCompiler;
       baselib = baselibSource;
       frontend = nextFrontend;

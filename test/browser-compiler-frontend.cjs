@@ -87,4 +87,5 @@ test("the browser worker uses the authoritative Tree-sitter frontend", async () 
   );
   assert.doesNotMatch(workerSource, /compiler\.parse\s*\(/);
   assert.match(workerSource, /frontend\.parse\s*\(/);
+  assert.match(workerSource, /result = `void 0;\\n\$\{bootstrap\}`/);
 });

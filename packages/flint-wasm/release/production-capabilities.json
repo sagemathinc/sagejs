@@ -426,6 +426,13 @@
         "kernel:packed-rational-polynomial-production",
         "kernel:prime-ideal-candidate-materializer-production"
       ]
+    },
+    "numpy": {
+      "artifact": "numpy-ts.mjs",
+      "capabilities": [],
+      "additionalCapabilities": [
+        "specialist:numpy-ts"
+      ]
     }
   }
 }

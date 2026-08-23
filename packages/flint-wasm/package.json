@@ -58,6 +58,7 @@
     "dist/m4ri-resource-adapter.c",
     "dist/m4ri-resource-backend.mjs",
     "dist/m4ri-resource-manifest.json",
+    "dist/numpy-ts.mjs",
     "dist/compiler.js",
     "dist/compiler-frontend.mjs",
     "dist/web-tree-sitter.wasm",
