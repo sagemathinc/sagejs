@@ -53,6 +53,7 @@ from sagejs.native import (
 )
 from sagejs.number_fields.class_unit_analytic import IntervalBallField, RealBall
 import sagejs.hyperelliptic_curves.genus2_heights as height_module
+import sagejs.hyperelliptic_curves.genus2_kummer as kummer_module
 import sagejs.runtime as runtime
 
 R = PolynomialRing(QQ, "x")
@@ -1415,6 +1416,54 @@ finally:
     height_module._integer_coefficients = saved_bound_integer_coefficients
     height_module.IntervalBallField = saved_bound_field_class
 assert theorem_rebindings_rejected == [True, True, True]
+
+flynn_names = (
+    "_CLASSICAL_DELTA_1",
+    "_CLASSICAL_DELTA_2",
+    "_CLASSICAL_DELTA_3",
+    "_CLASSICAL_DELTA_4",
+)
+saved_flynn_tables = tuple(getattr(kummer_module, name) for name in flynn_names)
+fake_flynn_tables = (
+    ((1,4,0,0,0,0,0,0,0,0,0),),
+    ((1,0,4,0,0,0,0,0,0,0,0),),
+    ((1,0,0,4,0,0,0,0,0,0,0),),
+    ((1,0,0,0,4,0,0,0,0,0,0),),
+)
+for name, table in zip(flynn_names, fake_flynn_tables):
+    setattr(kummer_module, name, table)
+flynn_rebindings_rejected = []
+try:
+    for rebound_context, rebound_kind in (
+        (HeightContext(J), "canonical-fresh"),
+        (HeightContext(J), "pairing-fresh"),
+        (HeightContext(J), "regulator-fresh"),
+        (poison_context, "canonical-cached"),
+        (poison_context, "pairing-cached"),
+        (poison_context, "regulator-cached"),
+    ):
+        try:
+            if rebound_kind.startswith("canonical"):
+                canonical_height(
+                    P, precision=64, target_bits=32,
+                    algorithm="local", context=rebound_context,
+                )
+            elif rebound_kind.startswith("pairing"):
+                height_pairing(
+                    [P,Q], precision=64, target_bits=32,
+                    algorithm="local", context=rebound_context,
+                )
+            else:
+                regulator(
+                    [P,Q], precision=64, target_bits=32,
+                    algorithm="local", context=rebound_context,
+                )
+        except Genus2HeightCapabilityError as error:
+            flynn_rebindings_rejected.append("Flynn" in str(error))
+finally:
+    for name, table in zip(flynn_names, saved_flynn_tables):
+        setattr(kummer_module, name, table)
+assert flynn_rebindings_rejected == [True, True, True, True, True, True]
 
 restored_context = HeightContext(J)
 restored_height = canonical_height(

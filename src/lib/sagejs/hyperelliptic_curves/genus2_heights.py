@@ -1857,6 +1857,7 @@ def _canonical_heights_uncached_local_batch(
     context: HeightContext,
     cancel: Any = None,
     _proof_bounds: AutomaticHeightBounds | None = None,
+    _proof_terms: tuple[tuple[tuple[int, int, int, int, int], ...], ...] | None = None,
     _closed_dependencies: tuple[Any, ...] = (
         perf_counter,
         ArchimedeanHeightCorrectionResult,
@@ -1880,7 +1881,6 @@ def _canonical_heights_uncached_local_batch(
         _mueller_stoll_discriminant_bound,
         _scaled_tail_steps,
         _zero_ball,
-        classical_duplication_specialized_terms,
         divisor_provenance,
         dyadic_kummer_height_recurrence_batch,
         dyadic_log_interval_batch,
@@ -1926,7 +1926,6 @@ def _canonical_heights_uncached_local_batch(
         _mueller_stoll_discriminant_bound,
         _scaled_tail_steps,
         _zero_ball,
-        classical_duplication_specialized_terms,
         divisor_provenance,
         dyadic_kummer_height_recurrence_batch,
         dyadic_log_interval_batch,
@@ -1974,10 +1973,12 @@ def _canonical_heights_uncached_local_batch(
         exact_divisor_capability(divisor).require()
 
     _check_height_batch_cancel(cancel, "model-specialization")
-    specialized_terms = cast(
-        tuple[tuple[tuple[int, int, int, int, int], ...], ...],
-        classical_duplication_specialized_terms(jacobian),
-    )
+    if _proof_terms is None:
+        raise Genus2HeightCapabilityError(
+            "the batched local height engine requires closure-frozen Flynn tables",
+            {"specialized_quartics": "missing-frozen-proof-tables"},
+        )
+    specialized_terms = _proof_terms
     f_value = jacobian.f()
     if (
         not jacobian.h().is_zero()
@@ -3421,6 +3422,17 @@ def _install_height_proof_state(
     rational_pair_function = _rational_pair
     specialized_terms_function = classical_duplication_specialized_terms
     ball_from_data_function = _ball_from_data
+    kummer_dependency_globals = specialized_terms_function.__globals__
+    flynn_table_names = (
+        "_CLASSICAL_DELTA_1",
+        "_CLASSICAL_DELTA_2",
+        "_CLASSICAL_DELTA_3",
+        "_CLASSICAL_DELTA_4",
+    )
+    frozen_flynn_tables = tuple(
+        tuple(tuple(int(value) for value in term) for term in table)
+        for table in (kummer_dependency_globals[name] for name in flynn_table_names)
+    )
     automatic_dependency_globals = automatic_bounds_function.__globals__
     automatic_dependency_names = (
         "AutomaticHeightBounds",
@@ -3449,6 +3461,73 @@ def _install_height_proof_state(
                         "dependency": name,
                     },
                 )
+        for name, expected in zip(flynn_table_names, frozen_flynn_tables, strict=True):
+            live = kummer_dependency_globals.get(name)
+            try:
+                if live is None:
+                    raise TypeError("missing Flynn table")
+                normalized_live = tuple(
+                    tuple(int(value) for value in term) for term in live
+                )
+            except Exception as error:
+                raise Genus2HeightCapabilityError(
+                    "the canonical Flynn duplication tables were replaced",
+                    {
+                        "specialized_quartics": "rejected-flynn-table-rebinding",
+                        "dependency": name,
+                    },
+                ) from error
+            if normalized_live != expected:
+                raise Genus2HeightCapabilityError(
+                    "the canonical Flynn duplication tables were replaced",
+                    {
+                        "specialized_quartics": "rejected-flynn-table-rebinding",
+                        "dependency": name,
+                    },
+                )
+
+    def frozen_specialized_terms(jacobian: Any) -> Any:
+        """Specialize an installer-frozen copy of Flynn's exact quartics."""
+        validate_automatic_dependencies()
+        f_value = jacobian.f()
+        h_value = jacobian.h()
+        if not h_value.is_zero() or int(f_value.degree()) != 5:
+            raise Genus2HeightCapabilityError(
+                "frozen Flynn specialization requires a classical quintic",
+                {"specialized_quartics": "unsupported-model"},
+            )
+        coefficients: list[int] = []
+        zero = f_value.parent().base_ring()(0)
+        for index in range(6):
+            value = f_value[index] if index <= f_value.degree() else zero
+            numerator, denominator = rational_pair_function(value)
+            if denominator != 1:
+                raise Genus2HeightCapabilityError(
+                    "frozen Flynn specialization requires integral coefficients",
+                    {"specialized_quartics": "unsupported-nonintegral-model"},
+                )
+            coefficients.append(numerator)
+        specialized: list[tuple[tuple[int, int, int, int, int], ...]] = []
+        for table in frozen_flynn_tables:
+            output: list[tuple[int, int, int, int, int]] = []
+            for term in table:
+                coefficient = int(term[0])
+                for index in range(6):
+                    exponent = int(term[index + 5])
+                    if exponent:
+                        coefficient *= coefficients[index] ** exponent
+                if coefficient:
+                    output.append(
+                        (
+                            coefficient,
+                            int(term[1]),
+                            int(term[2]),
+                            int(term[3]),
+                            int(term[4]),
+                        )
+                    )
+            specialized.append(tuple(output))
+        return tuple(specialized)
 
     def encode_primitive(value: Any) -> Any:
         """Encode diagnostics without retaining caller-reachable containers."""
@@ -3522,7 +3601,7 @@ def _install_height_proof_state(
         )
 
     def validated_context_terms(context: Any) -> Any:
-        expected = specialized_terms_function(context.__dict__["_jacobian"])
+        expected = frozen_specialized_terms(context.__dict__["_jacobian"])
         if context.__dict__["_classical_duplication_terms"] != expected:
             raise Genus2HeightCapabilityError(
                 "cached Flynn tables do not match the exact Jacobian model",
@@ -3634,9 +3713,8 @@ def _install_height_proof_state(
     def wrapped_automatic_bounds(
         jacobian: Any, *, precision: int = 100
     ) -> AutomaticHeightBounds:
-        answer = automatic_bounds_function(jacobian, precision=precision)
-        register_source(answer, jacobian, int(precision))
-        return answer
+        payload = theorem_source(jacobian, int(precision))
+        return restore_bound(payload, jacobian)
 
     def wrapped_normalized_archimedean_correction(
         divisor: Any,
@@ -3941,6 +4019,7 @@ def _install_height_proof_state(
                 algorithm=normalized_algorithm,
                 context=cache_context,
                 _proof_bounds=candidate_bounds,
+                _proof_terms=frozen_specialized_terms(divisor.parent()),
             )[0]
         else:
             proof_context = context
@@ -4139,6 +4218,7 @@ def _install_height_proof_state(
                         context=cache_context,
                         cancel=transaction_cancel,
                         _proof_bounds=proof_bounds,
+                        _proof_terms=frozen_specialized_terms(jacobian),
                     )
                     batch_misses = len(missing)
                     for value, batch_answer in zip(missing, batch_answers, strict=True):
