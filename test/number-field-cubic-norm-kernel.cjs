@@ -213,6 +213,21 @@ finally:
 assert result.complete and result.order() == 3
 assert calls == 0
 
+# A one-prime cubic base also stays packed.  The former ordinary-record
+# special case became slower than the fused cubic materializer and rebuilt the
+# same ideal fingerprint before relation collection.
+small = NumberField(x**3 + 2*x + 1, "s")
+saved_build = factor_bases.build_factor_base
+def forbidden_build(_plan):
+    raise AssertionError("a one-prime cubic base left the packed producer")
+factor_bases.build_factor_base = forbidden_build
+try:
+    small_result = cubic.bounded_cubic_minkowski_class_number(small)
+finally:
+    factor_bases.build_factor_base = saved_build
+assert small_result.complete and small_result.order() == 1
+assert len(small_result._packed_factor_records) == 1
+
 # The private authority still checks retained object identities.  It cannot
 # transfer packed records to another maximal order, while detached replay
 # remains on the ordinary full validation path.

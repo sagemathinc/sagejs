@@ -2257,13 +2257,12 @@ def bounded_cubic_minkowski_class_number(
                 result.diagnostics["factor_base_materialized"] = False
                 result.diagnostics["relation_seed_size_policy_exceeded"] = True
                 return result
-        # A one-prime Minkowski base already has an extremely small ordinary
-        # producer, while the finite-algebra descriptor setup has fixed cost.
-        # Keep that measured h=1 route unchanged; packed records win once the
-        # factor base contains the several primes needed by nontrivial cubics.
-        packed_factor_records = (
-            None if int(plan.bound) <= 2 else packed_cubic_factor_records(plan)
-        )
+        # Keep cubic factors in the packed producer representation even for a
+        # one-prime Minkowski base.  The fused factorization/materialization
+        # path is now cheaper than constructing and fingerprinting the generic
+        # ideal record, and the collector can retain the authenticated snapshot
+        # without changing the detached certificate boundary.
+        packed_factor_records = packed_cubic_factor_records(plan)
         factor_records = (
             factor_base_module.build_factor_base(plan)
             if packed_factor_records is None
