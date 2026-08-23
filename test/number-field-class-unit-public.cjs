@@ -474,6 +474,7 @@ test("cubic fallback retains a packed duplicate pair before unit saturation", ()
   const output = runPublic(String.raw`
 import sagejs.number_fields.class_unit_analytic as analytic_module
 import sagejs.number_fields.class_group_factor_base as factor_base_module
+import sagejs.number_fields.class_unit_groups as class_unit_module
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -527,6 +528,25 @@ assert resources["dependency_unit_materializations"] == 3
 assert resources["unit_live_relation_authority_hits"] == 1
 assert resources["relation_witness_decode_requests"] <= 3 * resources["relations"]
 assert result.saturation_record.attempts == ()
+
+# Progress callbacks remain an interposition boundary.  They retain both the
+# issuance and consumption snapshots instead of using the synchronous token.
+snapshot_calls = [0]
+original_snapshot = class_unit_module._saturation_record_live_snapshot
+def counted_snapshot(record):
+    snapshot_calls[0] += 1
+    return original_snapshot(record)
+class_unit_module._saturation_record_live_snapshot = counted_snapshot
+try:
+    events = []
+    callback_result = class_unit_module.compute_class_unit_group(
+        K, proof=False, progress=events.append
+    )
+finally:
+    class_unit_module._saturation_record_live_snapshot = original_snapshot
+assert callback_result.complete
+assert snapshot_calls[0] >= 2
+assert events
 
 # The completed unconditional computation also satisfies proof=True without a
 # second relation or analytic pass.
