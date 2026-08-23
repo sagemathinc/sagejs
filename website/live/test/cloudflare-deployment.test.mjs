@@ -169,6 +169,38 @@ test("Cloudflare Worker falls back to identity and fails closed", async () => {
   })).status, 503);
 });
 
+test("Cloudflare Worker never puts precompressed Brotli responses in Cache API", async () => {
+  const assetPath = `assets/sha256-${"b".repeat(64)}/runtime.wasm`;
+  const previousCaches = globalThis.caches;
+  const calls = [];
+  globalThis.caches = {
+    default: {
+      async match() { calls.push("match"); throw new Error("Brotli cache lookup is unsafe"); },
+      async put() { calls.push("put"); throw new Error("Brotli cache storage is unsafe"); },
+    },
+  };
+  try {
+    const response = await handleRequest(
+      cloudflareRequest(`https://app.sagejs.org/${assetPath}`, "gzip, br"),
+      {
+        ASSETS: {
+          async get(key) {
+            calls.push(key);
+            return object("precompressed bytes", "application/wasm");
+          },
+        },
+        RELEASE_ID: release,
+      },
+    );
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("Content-Encoding"), "br");
+    assert.deepEqual(calls, [`public/br/${assetPath}`]);
+  } finally {
+    if (previousCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = previousCaches;
+  }
+});
+
 async function stagedFixture(root) {
   const site = path.join(root, "site");
   const artifact = `sha256:${"c".repeat(64)}`;

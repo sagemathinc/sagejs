@@ -133,9 +133,14 @@ export async function handleRequest(request, env, context = {}) {
   const preferredEncoding = acceptsBrotli(request) ? "br" : "identity";
   const immutable = IMMUTABLE_ASSET_PATTERN.test(logicalPath);
   const edgeCache = globalThis.caches?.default;
+  // Cloudflare Cache API may encode an already precompressed response while
+  // storing it, yielding two Brotli layers on the next hit. Serve Brotli
+  // objects directly from R2; the authenticated service worker provides the
+  // durable client cache. Identity objects remain safe to cache at the edge.
+  const edgeCacheable = immutable && edgeCache && preferredEncoding === "identity";
   const cacheKey = cacheRequest(request, logicalPath, env.RELEASE_ID, preferredEncoding);
 
-  if (immutable && edgeCache) {
+  if (edgeCacheable) {
     const cached = await edgeCache.match(cacheKey);
     if (cached) {
       if (request.headers.get("If-None-Match") === cached.headers.get("ETag")) {
@@ -170,7 +175,7 @@ export async function handleRequest(request, env, context = {}) {
     headers,
     encodeBody: "manual",
   });
-  if (immutable && edgeCache && request.method === "GET") {
+  if (edgeCacheable && request.method === "GET") {
     context.waitUntil?.(edgeCache.put(cacheKey, response.clone()));
   }
   return response;

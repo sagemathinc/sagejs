@@ -122,6 +122,7 @@ async function validateDeployedOrigin(origin, { expectedRuntime } = {}) {
     const pathname = new URL(immutableSample.path, url).pathname;
     const immutableIdentity = await fetchDeployedAsset(url, pathname, "identity");
     const immutableBrotli = await fetchDeployedAsset(url, pathname, "br");
+    const immutableBrotliRepeat = await fetchDeployedAsset(url, pathname, "br");
     if (immutableIdentity.response.headers.has("content-encoding")) {
       failures.push("identity immutable response must not be content-encoded");
     }
@@ -130,6 +131,9 @@ async function validateDeployedOrigin(origin, { expectedRuntime } = {}) {
     }
     if (!immutableIdentity.body.equals(immutableBrotli.body)) {
       failures.push("identity and Brotli immutable responses decode to different bytes");
+    }
+    if (!immutableIdentity.body.equals(immutableBrotliRepeat.body)) {
+      failures.push("repeated Brotli immutable response decodes to different bytes");
     }
     if (
       immutableIdentity.body.length !== immutableSample.bytes
