@@ -494,15 +494,14 @@ def _encoded_vector(encoded: int, degree: int, prime: int) -> list[int]:
     return vector
 
 
-def _primitive_presentation(
+def _primitive_presentation_from_quotient(
     degree: int,
     prime: int,
     table: list[list[list[int]]],
     one: list[int],
-    kernel: list[list[int]],
+    coordinate_matrix: list[list[int]],
     max_candidates: int,
 ) -> dict[str, Any]:
-    coordinate_matrix, _lifts = _quotient_map(kernel, degree, prime)
     quotient_degree = len(coordinate_matrix[0]) if coordinate_matrix else 0
     if quotient_degree < 1:
         raise ArithmeticError("the requested quotient is the zero algebra")
@@ -533,6 +532,69 @@ def _primitive_presentation(
     raise NotImplementedError(
         "finite-algebra decomposition exceeded the bounded primitive-element search"
     )
+
+
+def _primitive_presentation_reference(
+    degree: int,
+    prime: int,
+    table: list[list[list[int]]],
+    one: list[int],
+    kernel: list[list[int]],
+    max_candidates: int,
+    *,
+    coordinate_matrix: list[list[int]] | None = None,
+) -> dict[str, Any]:
+    """Return the canonical presentation through the generic exact search."""
+    if coordinate_matrix is None:
+        coordinate_matrix, _lifts = _quotient_map(kernel, degree, prime)
+    return _primitive_presentation_from_quotient(
+        degree,
+        prime,
+        table,
+        one,
+        coordinate_matrix,
+        max_candidates,
+    )
+
+
+def _primitive_presentation(
+    degree: int,
+    prime: int,
+    table: list[list[list[int]]],
+    one: list[int],
+    kernel: list[list[int]],
+    max_candidates: int,
+) -> dict[str, Any]:
+    coordinate_matrix, _lifts = _quotient_map(kernel, degree, prime)
+    quotient_degree = len(coordinate_matrix[0]) if coordinate_matrix else 0
+    if quotient_degree != 1:
+        return _primitive_presentation_reference(
+            degree,
+            prime,
+            table,
+            one,
+            kernel,
+            max_candidates,
+            coordinate_matrix=coordinate_matrix,
+        )
+
+    # The generic canonical search starts with encoded vector 1.  In a
+    # one-dimensional quotient, the singleton power basis `[1]` is already
+    # full rank for every candidate.  Compute exactly the same first result
+    # without a modular product, rank reduction, or generic matrix inverse.
+    one_image = _row_times_matrix(one, coordinate_matrix, prime)
+    if len(one_image) != 1 or one_image[0] == 0:
+        raise ArithmeticError("the quotient killed the identity")
+    candidate = _encoded_vector(1, degree, prime)
+    candidate_image = _row_times_matrix(candidate, coordinate_matrix, prime)
+    inverse = _mod_inverse(one_image[0], prime)
+    coefficient = -(candidate_image[0] * inverse) % prime
+    return {
+        "primitive": tuple(candidate),
+        "quotient_matrix": tuple(tuple(row) for row in coordinate_matrix),
+        "power_inverse": ((inverse,),),
+        "modulus": (coefficient, 1),
+    }
 
 
 def _minimal_polynomial(
@@ -1157,6 +1219,19 @@ def _presentation_modulus_is_irreducible(
         # Avoid entering the generic modular factorization engine for the
         # overwhelmingly common residue-degree-one prime ideals.
         return len(modulus) == 2 and modulus[1] != 0
+    if residue_degree == 2:
+        if len(modulus) != 3 or modulus[2] == 0:
+            return False
+        # Normalize the quadratic before applying its exact discriminant
+        # criterion.  In characteristic two, the two possible roots are
+        # cheaper and clearer to test directly.
+        leading_inverse = _mod_inverse(modulus[2], prime)
+        constant = modulus[0] * leading_inverse % prime
+        linear = modulus[1] * leading_inverse % prime
+        if prime == 2:
+            return constant != 0 and (1 + linear + constant) % 2 != 0
+        discriminant = (linear * linear - 4 * constant) % prime
+        return pow(discriminant, (prime - 1) // 2, prime) == prime - 1
     modular_factors = _om.factor_mod_prime(modulus, prime)
     return bool(
         len(modular_factors) == 1

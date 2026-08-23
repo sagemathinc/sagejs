@@ -130,6 +130,53 @@ p2 = [record.prime_ideal for record in records if record.rational_prime == 2]
 assert all(getattr(ideal, "_packed_candidate_pending_replay", None) is False for ideal in p2)
 assert all(getattr(ideal, "_verified_modular_algebra", None) is not None for ideal in p2)
 
+# Canonical one-dimensional residue presentations use their closed-form path,
+# while the quadratic presentation remains on the generic search.  Both must
+# agree exactly with the retained generic oracle for every factor-base prime.
+for record in records:
+    ideal = record.prime_ideal
+    prime = int(record.rational_prime)
+    table = prime_ideals._modular_table(order, prime)
+    one = [value % prime for value in prime_ideals._order_one_coordinates(order)]
+    subspace = prime_ideals._ideal_mod_p_subspace(ideal, prime)
+    accelerated = prime_ideals._primitive_presentation(
+        order.degree(),
+        prime,
+        table,
+        one,
+        subspace,
+        prime_ideals.DEFAULT_MAX_PRIMITIVE_CANDIDATES,
+    )
+    reference = prime_ideals._primitive_presentation_reference(
+        order.degree(),
+        prime,
+        table,
+        one,
+        subspace,
+        prime_ideals.DEFAULT_MAX_PRIMITIVE_CANDIDATES,
+    )
+    assert accelerated == reference
+
+# The direct degree-two irreducibility criterion is exhaustive over all monic
+# quadratics for several small prime fields and agrees with the generic exact
+# modular factorization oracle.
+for prime in (2, 3, 5, 7):
+    for constant in range(prime):
+        for linear in range(prime):
+            presentation = {"modulus": (constant, linear, 1)}
+            accelerated = prime_ideals._presentation_modulus_is_irreducible(
+                presentation, prime, 2
+            )
+            factors = prime_ideals._om.factor_mod_prime(
+                presentation["modulus"], prime
+            )
+            reference = bool(
+                len(factors) == 1
+                and int(factors[0].multiplicity) == 1
+                and len(factors[0].polynomial) == 3
+            )
+            assert accelerated == reference
+
 # Prime modular-coordinate consumers share the maximal order's immutable exact
 # basis inverse.  Once prepared, none may reconstruct and invert a fresh basis
 # matrix for the same order.

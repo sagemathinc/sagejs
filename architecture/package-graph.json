@@ -197,7 +197,7 @@
       "id": "number-field-prime-arithmetic",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 102000,
+      "max_source_bytes": 106000,
       "depends_on": [
         "core-runtime",
         "native-integration",
