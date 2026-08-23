@@ -124,7 +124,7 @@ async function sageRows() {
         finiteCacheHits: Number(fields[8]),
         archimedeanCacheHits: Number(fields[9]),
         minimumStateWidthBits: Number(fields[10]),
-        fixedOracleCompatibleAtDeclaredAccuracy: fields[11] === "True",
+        magmaOracleCompatibleAtConfidenceBits: fields[11] === "True",
         finiteRecurrenceBackend: fields[12],
         archimedeanRecurrenceBackend: fields[13],
         stageMilliseconds: {
@@ -209,6 +209,8 @@ function magmaRows() {
     if (fields[0] === "H") {
       rows.push({
         targetBits: Number(fields[1]),
+        accuracyMatchedToTarget: Number(fields[1]) <= oracleConfidenceBits,
+        demonstratedAccuracyBits: oracleConfidenceBits,
         objectColdMilliseconds: Number(fields[2]),
         warmMilliseconds: Number(fields[3]),
         value: fields[4],
