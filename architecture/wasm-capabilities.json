@@ -20761,6 +20761,26 @@
       "public_explanation": "The authoritative Tree-sitter frontend is already bundled as browser Wasm and tested through public evaluation."
     },
     {
+      "id": "ffi-resource:flint:fmpq_polynomial_pair",
+      "kind": "declared-ffi-resource",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This opaque owned FLINT fmpq-polynomial pair accelerates retained desktop results; browsers reconstruct the exact canonical row and use the ordinary rational Cantor law.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through canonical coefficient rows and the ordinary Cantor implementation; the retained FLINT pair is desktop-only."
+    },
+    {
       "id": "ffi-resource:flint:fmpq_polynomial_workspace",
       "kind": "declared-ffi-resource",
       "family": "flint",
@@ -20901,6 +20921,26 @@
       "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
     },
     {
+      "id": "ffi:flint:fmpq_polynomial_workspace_copy_pair_out",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This atomic copy creates the opaque desktop-only retained pair; browsers retain the exact canonical row and ordinary rational Cantor fallback.",
+      "wasm_declared": false,
+      "public_explanation": "Browser arithmetic reconstructs from exact canonical rows; atomic FLINT pair publication is only a desktop acceleration."
+    },
+    {
       "id": "ffi:flint:fmpq_polynomial_workspace_divexact",
       "kind": "declared-ffi-function",
       "family": "flint",
@@ -21019,6 +21059,26 @@
       "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
       "wasm_declared": false,
       "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_load_pair",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This atomic load borrows an authenticated retained pair into a desktop workspace; browsers reconstruct from the exact canonical row instead.",
+      "wasm_declared": false,
+      "public_explanation": "Browser arithmetic reconstructs from exact canonical rows; atomic retained-pair loading is only a desktop acceleration."
     },
     {
       "id": "ffi:flint:fmpq_polynomial_workspace_monic",
