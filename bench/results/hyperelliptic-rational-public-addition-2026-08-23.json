@@ -1,0 +1,118 @@
+{
+  "schema": "sagejs.hyperelliptic-rational-public-addition-acceptance.v1",
+  "captured_at_utc": "2026-08-23T15:56:33Z",
+  "source": {
+    "commit": "68ab3bc4e5d076defae0bc0f4160696b58b42c0c",
+    "implementation_commit": "fac5f43fc9f546e00064b0e4e8c75f246f5b96ea",
+    "benchmark_reference": "bench/hyperelliptic/benchmark-rational-cantor.cjs",
+    "benchmark_reference_sha256": "1f1d6eec1c8288e0c75fc7698ef693fa95a236015517ccac23c1ee77aee8f7f4",
+    "sage_program_sha256": "78f3f00b0d5d248d71f9faebf9e8615b7e62b941020cf30c215b0b1bad9ef049",
+    "magma_program_sha256": "2d03678448a463f83c06dc5ec4cadae8d13ae399f35dc6608cd1c00160669768"
+  },
+  "host": {
+    "id": "bench-1",
+    "platform": "linux",
+    "kernel": "6.17.0-1022-gcp",
+    "architecture": "x86_64",
+    "cpu_model": "AMD EPYC 7B13",
+    "sagejs_start_load_average": [0.15, 0.29, 0.26],
+    "magma_start_load_average": [0.77, 0.53, 0.36]
+  },
+  "backends": {
+    "sagejs": {
+      "node": "26.5.1",
+      "pnpm": "11.9.0",
+      "timer": "time.perf_counter_ns",
+      "observed_timer_resolution_ns": 2048,
+      "compiled_native_functions": 15,
+      "wall_seconds": 113.58,
+      "max_rss_kb": 931244
+    },
+    "magma": {
+      "version": "2.18-5",
+      "executable": "/home/user/bin/magma",
+      "executable_sha256": "ea6aac1bcb8633a40a958a46e0e1cfd0faa4aac0bbacc7c9bae399a0167dfc1f",
+      "timer": "Cputime",
+      "observed_timer_resolution_seconds": 0.01,
+      "wall_seconds": 18.12,
+      "max_rss_kb": 19872
+    }
+  },
+  "contract": {
+    "curve": "y^2=x^5+x+1 over QQ",
+    "base_divisor": "P=(x,1)",
+    "small_distinct_operation": "P+(2*P)=3*P",
+    "larger_coefficient_operation": "(3*P)+(6*P)=9*P",
+    "ordinary_iterations": 100000,
+    "magma_trials": 5,
+    "forced_uv_and_hash_iterations": 10000,
+    "forced_tuple_pickle_iterations": 5000,
+    "per_iteration_assertions": false,
+    "post_timing_reference_assertions": true,
+    "sagejs_reference_certificates_replayed": true,
+    "certificate_time_included": false,
+    "magma_timer_quantized": false,
+    "magma_timer_note": "The 0.62-2.95 second resident totals are 62-295 timer ticks, so the 10 ms clock does not determine the comparison."
+  },
+  "exact_results": {
+    "small": {
+      "canonical_row": "3;1/8,-1/64,1/1;2;-65/64,-255/512",
+      "sha256": "050fb4ce21b5fdae319edb4c797c25ba549d3cb049dab5c87508421a7702960d",
+      "sagejs_magma_match": true
+    },
+    "large": {
+      "canonical_row": "3;71543843079520471/7320106654753968,-21807582940671820801/351365119428190464,1/1;2;329846405616255376750107095/4339070754175101686029056,-101705767799569020417670249985/208275396200404880929394688",
+      "sha256": "5a2492e2b0a0538bacfeaa54e9606a84467360afb320f0546b93508b9540486f",
+      "sagejs_magma_match": true
+    }
+  },
+  "sagejs": {
+    "context_setup_ns": 5536000,
+    "direct_composite": {
+      "small_total_ns": 1991997952,
+      "small_ns_per_operation": 19919.97952,
+      "large_total_ns": 2498214400,
+      "large_ns_per_operation": 24982.144
+    },
+    "ordinary_public": {
+      "small_total_ns": 4922495232,
+      "small_ns_per_operation": 49224.95232,
+      "large_total_ns": 5774020608,
+      "large_ns_per_operation": 57740.20608
+    },
+    "prepared_add_batch": {
+      "small_total_ns": 8041454080,
+      "small_ns_per_operation": 80414.5408,
+      "large_total_ns": 8824522240,
+      "large_ns_per_operation": 88245.2224
+    },
+    "forced_semantic_observation": {
+      "uv_small_ns_per_operation": 1626772.5056,
+      "uv_large_ns_per_operation": 1790552.96,
+      "hash_small_ns_per_operation": 1270354.3808,
+      "hash_large_ns_per_operation": 1374611.456,
+      "tuple_pickle_small_ns_per_operation": 1579315.2512,
+      "tuple_pickle_large_ns_per_operation": 1790026.8032
+    }
+  },
+  "magma": {
+    "ordinary_public": {
+      "small_trial_seconds": [0.63, 0.63, 0.62, 0.64, 0.62],
+      "small_median_seconds": 0.63,
+      "small_median_ns_per_operation": 6300,
+      "large_trial_seconds": [2.75, 2.95, 2.94, 2.93, 2.9],
+      "large_median_seconds": 2.93,
+      "large_median_ns_per_operation": 29300
+    }
+  },
+  "comparison": {
+    "small_public_sagejs_over_magma": 7.813484495238096,
+    "small_public_gate_at_most_2x": "fail",
+    "large_public_sagejs_over_magma": 1.9706554976109214,
+    "large_public_gate_at_most_2x": "pass",
+    "direct_small_sagejs_over_magma_public": 3.161901511111111,
+    "direct_large_sagejs_over_magma_public": 0.8526329010238908,
+    "overall_phase6_public_addition_gate": "open",
+    "conclusion": "Retained Sage.js public addition is competitive on the larger-coefficient row, but the small-divisor main corpus remains 7.81x Magma and keeps the Phase-6 gate open."
+  }
+}
