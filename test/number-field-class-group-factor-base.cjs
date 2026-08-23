@@ -39,6 +39,58 @@ function run(source) {
   }
 }
 
+test("packed BDF interval assembly matches exact scalar endpoints", () => {
+  const output = run(String.raw`
+import sagejs.number_fields.bl_composite_kernel as kernels
+import sagejs.number_fields.class_group_factor_base as factor_bases
+from sagejs.native import is_compiled
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+saved = factor_bases._bdf_interval_kernel_override
+packed_kernel = kernels.packed_bdf_interval_in_place
+dynamic_kernel = getattr(packed_kernel, "__sagejs_native_source__", packed_kernel)
+
+for candidate in (2, 4, 8, 16, 12, 10, 11):
+    scalar_field = NumberField(x**3 - x**2 + 7*x + 8, "s" + str(candidate))
+    scalar_order = scalar_field.maximal_order()
+    factor_bases._bdf_interval_kernel_override = False
+    scalar = factor_bases._BDFEvaluator(scalar_order, 100).inequality(
+        candidate, 3, 1, 4027, 64
+    )
+    for index, kernel in enumerate((dynamic_kernel, packed_kernel)):
+        packed_field = NumberField(
+            x**3 - x**2 + 7*x + 8,
+            "p" + str(candidate) + str(index),
+        )
+        factor_bases._bdf_interval_kernel_override = kernel
+        packed = factor_bases._BDFEvaluator(
+            packed_field.maximal_order(), 100
+        ).inequality(candidate, 3, 1, 4027, 64)
+        assert packed[0] == scalar[0]
+        assert packed[1].to_dict() == scalar[1].to_dict()
+        assert packed[2].to_dict() == scalar[2].to_dict()
+
+factor_bases._bdf_interval_kernel_override = False
+scalar_field = NumberField(x**3 - x**2 + 7*x + 8, "scalar")
+scalar_bound = factor_bases.bdf_bound(scalar_field.maximal_order())
+factor_bases._bdf_interval_kernel_override = packed_kernel
+packed_field = NumberField(x**3 - x**2 + 7*x + 8, "packed")
+packed_bound = factor_bases.bdf_bound(packed_field.maximal_order())
+factor_bases._bdf_interval_kernel_override = saved
+assert packed_bound.to_dict() == scalar_bound.to_dict()
+assert packed_bound.bound == 11
+assert packed_bound.interval.to_dyadic_dict(64) == {
+    "scale_bits": 64,
+    "lower_numerator": 4305529790576860134,
+    "upper_numerator": 4305529790576860135,
+}
+assert is_compiled(packed_kernel)
+print("packed-bdf-exact")
+`);
+  assert.equal(output, "packed-bdf-exact");
+});
+
 test("exact factor-base bounds and norm streams match Sage/PARI/Magma fixtures", () => {
   assert.equal(fixture.systems.sage_pari.status, "executed");
   assert.match(fixture.systems.magma.command, /ClassGroup\(O\)/);

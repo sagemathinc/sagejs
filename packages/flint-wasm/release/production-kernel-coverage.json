@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 41,
-    "production_kernels": 34,
-    "compiled_functions": 244,
+    "registered_kernels": 42,
+    "production_kernels": 35,
+    "compiled_functions": 245,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -160,6 +160,15 @@
       "compiled_functions": 2,
       "fallback_functions": 0,
       "total_functions": 2,
+      "fallback_reasons": []
+    },
+    {
+      "id": "number-field-bdf-interval-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
       "fallback_reasons": []
     },
     {

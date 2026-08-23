@@ -411,6 +411,7 @@
         "kernel:dense-rational-production",
         "kernel:field-analysis-fixed-point-checker-production",
         "kernel:genus3-weil-candidate-production",
+        "kernel:number-field-bdf-interval-production",
         "kernel:number-field-composite-analysis-production",
         "kernel:number-field-cubic-norm-obstruction-production",
         "kernel:number-field-cubic-relation-sieve-production",

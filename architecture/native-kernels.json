@@ -502,6 +502,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "number-field-bdf-interval-production",
+      "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+      "functions": ["packed_bdf_interval_in_place"],
+      "semantic_domain": "exact rational assembly of the Belabas--Diaz y Diaz--Friedman factor-base inequality from rigorous dyadic primitive intervals",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "readable-exact-controls"],
+      "benchmark": "bench:number-field-class-number-lmfdb",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "number-field-cubic-norm-obstruction-production",
       "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
       "functions": [

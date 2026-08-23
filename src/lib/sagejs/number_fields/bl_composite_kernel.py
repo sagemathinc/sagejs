@@ -295,6 +295,219 @@ def packed_cubic_norm_form_first_obstruction_in_place(
     return True
 
 
+def _packed_integer_gcd(left: int, right: int) -> int:
+    a = left
+    if a < 0:
+        a = -a
+    b = right
+    if b < 0:
+        b = -b
+    while b != 0:
+        remainder = a % b
+        a = b
+        b = remainder
+    return a
+
+
+def _packed_rational_normalize(numerator: int, denominator: int) -> tuple[int, int]:
+    if denominator == 0:
+        return (0, 0)
+    if denominator < 0:
+        numerator = -numerator
+        denominator = -denominator
+    common = _packed_integer_gcd(numerator, denominator)
+    if common == 0:
+        return (0, 1)
+    return (numerator // common, denominator // common)
+
+
+def _packed_rational_add(
+    left_numerator: int,
+    left_denominator: int,
+    right_numerator: int,
+    right_denominator: int,
+) -> tuple[int, int]:
+    common = _packed_integer_gcd(left_denominator, right_denominator)
+    if common == 0:
+        return (0, 0)
+    left_scale = right_denominator // common
+    right_scale = left_denominator // common
+    return _packed_rational_normalize(
+        left_numerator * left_scale + right_numerator * right_scale,
+        left_denominator * left_scale,
+    )
+
+
+def _packed_rational_subtract(
+    left_numerator: int,
+    left_denominator: int,
+    right_numerator: int,
+    right_denominator: int,
+) -> tuple[int, int]:
+    return _packed_rational_add(
+        left_numerator,
+        left_denominator,
+        -right_numerator,
+        right_denominator,
+    )
+
+
+@native
+def packed_bdf_interval_in_place(
+    output: IntegerBuffer,
+    terms: IntegerBuffer,
+    constants: IntegerBuffer,
+    scale: int,
+    degree: uint64,
+    real_places: uint64,
+    term_count: uint64,
+) -> bool:
+    """Assemble the exact BDF inequality from dyadic primitive intervals.
+
+    `terms` packs `(log(N)_lower, log(N)_upper, sqrt(q)_lower,
+    sqrt(q)_upper, exponent)` at one common dyadic scale.  `constants` packs
+    lower/upper endpoints for `log(x)`, pi, Catalan, Euler gamma, `log(8)`,
+    `log(pi)`, and `log(|D|)`.  The eight outputs are exact numerator and
+    denominator pairs for the right and left interval endpoints.
+    """
+    maximum_terms: uint64 = 1000000
+    maximum_degree: uint64 = 256
+    valid = (
+        len(output) == 8
+        and len(constants) == 14
+        and term_count <= maximum_terms
+        and len(terms) == 5 * term_count
+        and scale > 0
+        and degree > 0
+        and degree <= maximum_degree
+        and real_places <= degree
+    )
+    if not valid:
+        return False
+    index = 0
+    while index < 14:
+        if constants[index] <= 0 or constants[index] > constants[index + 1]:
+            return False
+        index += 2
+    log_x_lower = constants[0]
+    log_x_upper = constants[1]
+    total_lower_numerator = 0
+    total_lower_denominator = 1
+    total_upper_numerator = 0
+    total_upper_denominator = 1
+    for term in range(term_count):
+        offset = 5 * term
+        log_lower = terms[offset]
+        log_upper = terms[offset + 1]
+        sqrt_lower = terms[offset + 2]
+        sqrt_upper = terms[offset + 3]
+        exponent = terms[offset + 4]
+        if (
+            log_lower <= 0
+            or log_lower > log_upper
+            or sqrt_lower <= 0
+            or sqrt_lower > sqrt_upper
+            or exponent <= 0
+        ):
+            return False
+        taper_lower = log_x_lower - exponent * log_upper
+        taper_upper = log_x_upper - exponent * log_lower
+        if taper_lower <= 0 or taper_upper <= 0:
+            return False
+        lower_numerator = log_lower * taper_lower
+        lower_denominator = sqrt_upper * log_x_lower
+        upper_numerator = log_upper * taper_upper
+        upper_denominator = sqrt_lower * log_x_upper
+        lower_numerator, lower_denominator = _packed_rational_normalize(
+            lower_numerator, lower_denominator
+        )
+        upper_numerator, upper_denominator = _packed_rational_normalize(
+            upper_numerator, upper_denominator
+        )
+        total_lower_numerator, total_lower_denominator = _packed_rational_add(
+            total_lower_numerator,
+            total_lower_denominator,
+            lower_numerator,
+            lower_denominator,
+        )
+        total_upper_numerator, total_upper_denominator = _packed_rational_add(
+            total_upper_numerator,
+            total_upper_denominator,
+            upper_numerator,
+            upper_denominator,
+        )
+
+    pi_lower = constants[2]
+    pi_upper = constants[3]
+    catalan_lower = constants[4]
+    catalan_upper = constants[5]
+    archimedean_lower_numerator = (
+        degree * pi_lower * pi_lower + 8 * real_places * catalan_lower * scale
+    )
+    archimedean_upper_numerator = (
+        degree * pi_upper * pi_upper + 8 * real_places * catalan_upper * scale
+    )
+    archimedean_lower_denominator = 2 * scale * log_x_upper
+    archimedean_upper_denominator = 2 * scale * log_x_lower
+    archimedean_lower_numerator, archimedean_lower_denominator = (
+        _packed_rational_normalize(
+            archimedean_lower_numerator, archimedean_lower_denominator
+        )
+    )
+    archimedean_upper_numerator, archimedean_upper_denominator = (
+        _packed_rational_normalize(
+            archimedean_upper_numerator, archimedean_upper_denominator
+        )
+    )
+    right_lower_numerator, right_lower_denominator = _packed_rational_subtract(
+        2 * total_lower_numerator,
+        total_lower_denominator,
+        archimedean_upper_numerator,
+        archimedean_upper_denominator,
+    )
+    right_upper_numerator, right_upper_denominator = _packed_rational_subtract(
+        2 * total_upper_numerator,
+        total_upper_denominator,
+        archimedean_lower_numerator,
+        archimedean_lower_denominator,
+    )
+
+    gamma_lower = constants[6]
+    gamma_upper = constants[7]
+    log_eight_lower = constants[8]
+    log_eight_upper = constants[9]
+    log_pi_lower = constants[10]
+    log_pi_upper = constants[11]
+    log_discriminant_lower = constants[12]
+    log_discriminant_upper = constants[13]
+    left_lower_numerator = (
+        2 * log_discriminant_lower
+        - 2 * degree * (gamma_upper + log_eight_upper + log_pi_upper)
+        - real_places * pi_upper
+    )
+    left_upper_numerator = (
+        2 * log_discriminant_upper
+        - 2 * degree * (gamma_lower + log_eight_lower + log_pi_lower)
+        - real_places * pi_lower
+    )
+    left_denominator = 2 * scale
+    left_lower_numerator, left_lower_denominator = _packed_rational_normalize(
+        left_lower_numerator, left_denominator
+    )
+    left_upper_numerator, left_upper_denominator = _packed_rational_normalize(
+        left_upper_numerator, left_denominator
+    )
+    output[0] = right_lower_numerator
+    output[1] = right_lower_denominator
+    output[2] = right_upper_numerator
+    output[3] = right_upper_denominator
+    output[4] = left_lower_numerator
+    output[5] = left_lower_denominator
+    output[6] = left_upper_numerator
+    output[7] = left_upper_denominator
+    return True
+
+
 @native
 def packed_cubic_norm_smooth_candidates_in_place(
     metadata: IntegerBuffer,
@@ -1811,6 +2024,7 @@ def packed_composite_dedekind_basis_in_place(
 __all__ = [
     "packed_composite_dedekind_basis_in_place",
     "packed_composite_dedekind_enlargement_in_place",
+    "packed_bdf_interval_in_place",
     "packed_cubic_norm_form_first_obstruction_in_place",
     "packed_cubic_norm_form_target_slice",
     "packed_cubic_order_norm_form_coefficients_in_place",

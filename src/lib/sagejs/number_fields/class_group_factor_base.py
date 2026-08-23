@@ -45,6 +45,7 @@ _gamma_cache: dict[int, _Interval] = {}
 _catalan_cache: dict[int, _Interval] = {}
 _scalar_log_two_cache: dict[int, _Interval] = {}
 _bound_cache: list[tuple[Any, str, Any]] = []
+_bdf_interval_kernel_override: Any = None
 
 
 def _gcd(left: int, right: int) -> int:
@@ -752,6 +753,107 @@ def bach_bound(value: Any) -> FactorBaseBound:
     return result
 
 
+def _dyadic_interval_mantissas(value: _Interval, scale: int) -> tuple[int, int] | None:
+    """Return exact mantissas when both endpoints divide one dyadic scale."""
+    if scale <= 0 or scale % value.lower.denominator or scale % value.upper.denominator:
+        return None
+    return (
+        value.lower.numerator * (scale // value.lower.denominator),
+        value.upper.numerator * (scale // value.upper.denominator),
+    )
+
+
+def _packed_bdf_interval(
+    terms: list[tuple[_Interval, _Interval, int]],
+    *,
+    log_x: _Interval,
+    pi: _Interval,
+    catalan: _Interval,
+    gamma: _Interval,
+    log_eight: _Interval,
+    log_pi: _Interval,
+    log_discriminant: _Interval,
+    degree: int,
+    real_places: int,
+    primitive_bits: int,
+) -> tuple[_Interval, _Interval] | None:
+    """Run the exact packed BDF assembly, retaining the scalar fallback."""
+    if _bdf_interval_kernel_override is False or len(terms) > 4096:
+        return None
+    try:
+        kernel_module = __import__(
+            "sagejs.number_fields.bl_composite_kernel",
+            fromlist=["bl_composite_kernel"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        kernel = (
+            _bdf_interval_kernel_override
+            if callable(_bdf_interval_kernel_override)
+            else getattr(kernel_module, "packed_bdf_interval_in_place", None)
+        )
+        if not callable(kernel):
+            return None
+        scale = 1 << primitive_bits
+        constant_intervals = (
+            log_x,
+            pi,
+            catalan,
+            gamma,
+            log_eight,
+            log_pi,
+            log_discriminant,
+        )
+        constants: list[int] = []
+        for interval in constant_intervals:
+            endpoints = _dyadic_interval_mantissas(interval, scale)
+            if endpoints is None:
+                return None
+            constants.extend(endpoints)
+        packed_terms: list[int] = []
+        for logarithm, root, exponent in terms:
+            logarithm_endpoints = _dyadic_interval_mantissas(logarithm, scale)
+            root_endpoints = _dyadic_interval_mantissas(root, scale)
+            if logarithm_endpoints is None or root_endpoints is None:
+                return None
+            packed_terms.extend(logarithm_endpoints)
+            packed_terms.extend(root_endpoints)
+            packed_terms.append(int(exponent))
+        word_capacity = max(64, 4 * len(terms) + 64)
+        output = native_module.kernel_integer_zeros(kernel, 8, word_capacity)
+        if not kernel(
+            output,
+            native_module.kernel_integer_buffer(kernel, packed_terms),
+            native_module.kernel_integer_buffer(kernel, constants),
+            scale,
+            degree,
+            real_places,
+            len(terms),
+        ):
+            return None
+        values = tuple(
+            int(value) for value in native_module.integer_buffer_values(output)
+        )
+        if len(values) != 8 or any(values[index] <= 0 for index in (1, 3, 5, 7)):
+            return None
+        right = _Interval(
+            _Rational(values[0], values[1]), _Rational(values[2], values[3])
+        )
+        left = _Interval(
+            _Rational(values[4], values[5]), _Rational(values[6], values[7])
+        )
+        return right, left
+    except (
+        AttributeError,
+        ArithmeticError,
+        ImportError,
+        OverflowError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ):
+        return None
+
+
 class _BDFEvaluator:
     """Cached compact local data for the exact BDF inequality."""
 
@@ -789,7 +891,7 @@ class _BDFEvaluator:
             raise ValueError("the BDF parameter must be at least 2")
         self.scan_to(x_value)
         log_x = _log_rational_interval(_Rational(x_value), bits + 12)
-        total = _Interval.exact(ZERO)
+        terms: list[tuple[_Interval, _Interval, int]] = []
         term_count = 0
         for prime in sorted(self.records):
             if prime >= x_value:
@@ -802,26 +904,44 @@ class _BDFEvaluator:
                 power = norm
                 exponent = 1
                 while power < x_value:
-                    decay = _sqrt_rational_interval(
-                        _Rational(power), bits + 12
-                    ).reciprocal()
-                    taper = _Interval.exact(ONE) - (log_norm.scale(exponent) / log_x)
-                    total = total + log_norm * decay * taper
+                    root = _sqrt_rational_interval(_Rational(power), bits + 12)
+                    terms.append((log_norm, root, exponent))
                     term_count += 1
                     exponent += 1
                     power *= norm
         pi = _pi_interval(bits + 12)
         catalan = _catalan_interval(bits + 12)
+        gamma = _euler_gamma_interval(bits + 12)
+        log_eight = _log_rational_interval(_Rational(8), bits + 12)
+        log_pi = _log_interval(pi, bits + 12)
+        log_discriminant = _log_rational_interval(_Rational(discriminant), bits + 12)
+        accelerated = _packed_bdf_interval(
+            terms,
+            log_x=log_x,
+            pi=pi,
+            catalan=catalan,
+            gamma=gamma,
+            log_eight=log_eight,
+            log_pi=log_pi,
+            log_discriminant=log_discriminant,
+            degree=degree,
+            real_places=r1,
+            primitive_bits=bits + 12 + DYADIC_GUARD_BITS,
+        )
+        if accelerated is not None:
+            return term_count, accelerated[0], accelerated[1]
+        total = _Interval.exact(ZERO)
+        for log_norm, root, exponent in terms:
+            decay = root.reciprocal()
+            taper = _Interval.exact(ONE) - (log_norm.scale(exponent) / log_x)
+            total = total + log_norm * decay * taper
         archimedean = (
             pi.power(2).scale(degree) / _Interval.exact(TWO) + catalan.scale(4 * r1)
         ) / log_x
         right_side = total.scale(2) - archimedean
-        gamma = _euler_gamma_interval(bits + 12)
-        log_eight_pi = _log_rational_interval(_Rational(8), bits + 12) + _log_interval(
-            pi, bits + 12
-        )
+        log_eight_pi = log_eight + log_pi
         left_side = (
-            _log_rational_interval(_Rational(discriminant), bits + 12)
+            log_discriminant
             - (gamma + log_eight_pi).scale(degree)
             - pi.scale(r1) / _Interval.exact(TWO)
         )
