@@ -1177,10 +1177,96 @@ for cancel_context in late_cancel_contexts:
     )
     assert replay.rigorous
     assert cache_state(cancel_context) == (3, 0, 3, 1, 0, 1)
+
+# User cancellation code may do unrelated work on another context, but must
+# never reenter proof state on the active context.  Otherwise a nested commit
+# could survive the outer rollback behind restored zero counters.
+for nested_kind in ("pairing", "regulator", "canonical"):
+    reentrant_context = HeightContext(J)
+    before_reentrant = cache_state(reentrant_context)
+    reentrant_calls = [0]
+    nested_rejected = [False]
+    def reentrant_cancel():
+        reentrant_calls[0] += 1
+        if reentrant_calls[0] == 2:
+            try:
+                if nested_kind == "pairing":
+                    height_pairing(
+                        [P,Q], precision=64, target_bits=64,
+                        algorithm="local", context=reentrant_context,
+                    )
+                elif nested_kind == "regulator":
+                    regulator(
+                        [P,Q], precision=64, target_bits=64,
+                        algorithm="local", context=reentrant_context,
+                    )
+                else:
+                    canonical_height(
+                        P, precision=64, target_bits=64,
+                        algorithm="local", context=reentrant_context,
+                    )
+            except Genus2HeightCapabilityError as error:
+                nested_rejected[0] = "reenter" in str(error)
+        return reentrant_calls[0] >= 2
+    reentrant_cancelled = False
+    try:
+        height_pairing(
+            [P,Q], precision=64, target_bits=64,
+            algorithm="local", context=reentrant_context,
+            cancel=reentrant_cancel,
+        )
+    except Exception as error:
+        reentrant_cancelled = "cancelled" in str(error)
+    assert nested_rejected[0] and reentrant_cancelled
+    assert cache_state(reentrant_context) == before_reentrant
+
+different_outer = HeightContext(J)
+different_inner = HeightContext(J)
+different_calls = [0]
+def different_context_cancel():
+    different_calls[0] += 1
+    if different_calls[0] == 2:
+        nested_different = height_pairing(
+            [P,Q], precision=64, target_bits=64,
+            algorithm="local", context=different_inner,
+        )
+        assert nested_different.rigorous
+    return different_calls[0] >= 2
+different_cancelled = False
+try:
+    height_pairing(
+        [P,Q], precision=64, target_bits=64,
+        algorithm="local", context=different_outer,
+        cancel=different_context_cancel,
+    )
+except Exception as error:
+    different_cancelled = "cancelled" in str(error)
+assert different_cancelled
+assert cache_state(different_outer) == (0, 0, 0, 0, 0, 0)
+assert cache_state(different_inner) == (3, 0, 3, 1, 0, 1)
+
+exception_context = HeightContext(J)
+exception_calls = [0]
+def exceptional_cancel():
+    exception_calls[0] += 1
+    if exception_calls[0] == 2:
+        raise RuntimeError("deliberate cancellation callback failure")
+    return False
+callback_exception = False
+try:
+    height_pairing(
+        [P,Q], precision=64, target_bits=64,
+        algorithm="local", context=exception_context,
+        cancel=exceptional_cancel,
+    )
+except RuntimeError as error:
+    callback_exception = "deliberate" in str(error)
+assert callback_exception
+assert cache_state(exception_context) == (0, 0, 0, 0, 0, 0)
 [
     batch_data["point_count"],
     partial_pairing.height_results[1].diagnostics["batch"]["point_count"],
-    cancelled,
+    cancelled and different_cancelled and callback_exception,
 ]
 `,
       { timeout: 180_000 },

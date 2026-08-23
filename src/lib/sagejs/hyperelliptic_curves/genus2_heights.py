@@ -3387,6 +3387,7 @@ def _install_height_proof_state(
     canonical_records: list[tuple[Any, Any, Any, Any, Any, Any, Any]] = []
     staged_canonical_records: list[tuple[Any, Any, Any, Any, Any, Any, Any]] = []
     active_pairing_contexts: list[Any] = []
+    cancellation_callback_contexts: list[Any] = []
     pairing_records: list[tuple[Any, Any, Any, Any, Any, Any, Any]] = []
     maximum_records = 512
 
@@ -3759,6 +3760,15 @@ def _install_height_proof_state(
             normalized_target,
             normalized_algorithm,
         )
+        if context is not None and any(
+            callback_context is context
+            for callback_context in cancellation_callback_contexts
+        ):
+            raise Genus2HeightCapabilityError(
+                "a cancellation callback cannot reenter canonical-height proof state "
+                "on the active context",
+                {"height_proof_transaction": "rejected-same-context-reentrancy"},
+            )
         eligible = (
             context is not None
             and height_difference_bound is None
@@ -3884,6 +3894,13 @@ def _install_height_proof_state(
                 or parameters[0] >= 9
             )
         )
+        if context is not None and any(
+            active_context is context for active_context in active_pairing_contexts
+        ):
+            raise Genus2HeightCapabilityError(
+                "a height pairing cannot reenter proof state on its active context",
+                {"height_proof_transaction": "rejected-same-context-reentrancy"},
+            )
         if not eligible:
             return height_pairing_function(
                 values,
@@ -3938,6 +3955,17 @@ def _install_height_proof_state(
         )
         stage_start = len(staged_canonical_records)
         active_pairing_contexts.append(cache_context)
+        transaction_cancel = cancel
+        if cancel is not None:
+
+            def guarded_transaction_cancel() -> bool:
+                cancellation_callback_contexts.append(cache_context)
+                try:
+                    return bool(cancel())
+                finally:
+                    cancellation_callback_contexts.pop()
+
+            transaction_cancel = guarded_transaction_cancel
         batch_misses = 0
         committed = False
         try:
@@ -3966,7 +3994,7 @@ def _install_height_proof_state(
                         target_bits=parameters[2],
                         algorithm=parameters[3],
                         context=cache_context,
-                        cancel=cancel,
+                        cancel=transaction_cancel,
                     )
                     batch_misses = len(missing)
                     for value, batch_answer in zip(missing, batch_answers, strict=True):
@@ -3991,7 +4019,7 @@ def _install_height_proof_state(
                 algorithm=algorithm,
                 height_difference_bound=height_difference_bound,
                 context=context,
-                cancel=cancel,
+                cancel=transaction_cancel,
             )
             if not answer.rigorous:
                 return answer
@@ -4005,7 +4033,7 @@ def _install_height_proof_state(
                 expected_terms,
                 pairing_payload(answer),
             )
-            _check_height_batch_cancel(cancel, "pairing-proof-commit")
+            _check_height_batch_cancel(transaction_cancel, "pairing-proof-commit")
             commit_pairing_transaction(
                 tuple(staged_canonical_records[stage_start:]),
                 pairing_record,
