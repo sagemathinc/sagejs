@@ -198,7 +198,7 @@ for trial in [1..5] do
     F := GF(p); Fx<z> := PolynomialRing(F);
     C := HyperellipticCurve(z^5-z); J := Jacobian(C);
     us := [Fx|1,z,z-1,z^2-z,z+1,z^2+z,z^2-1,z^2+1];
-    base := [ elt<J | [u,Fx!0], Degree(u)> : u in us ];
+    base := [J!0] cat [ elt<J | [u,Fx!0], Degree(u)> : u in us[2..8] ];
     values := [ base[(index mod 8)+1] : index in [0..divisor_count-1] ];
     Append(~rows, <J, values>);
   end for;
