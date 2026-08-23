@@ -4996,7 +4996,7 @@ class UnitSaturationIndexCertificate:
             "exact-relations-conditional-grh",
         ):
             raise ValueError("a global index certificate needs an exact proof status")
-        body = {
+        body: dict[str, Any] = {
             "schema": "sagejs.number-fields.unit-saturation-index-certificate.v1",
             "field_order_identity": field_order_identity,
             "initial_units": list(initial_units),
@@ -5006,13 +5006,14 @@ class UnitSaturationIndexCertificate:
             "generation_evidence": generation_evidence,
             "proof_status": selected_proof_status,
         }
-        # One canonical snapshot provides both mutation isolation and the
-        # authenticated byte sequence.  Structural copying is materially
-        # cheaper than sending this large exact-integer tree through the
-        # runtime JSON parser, while the canonical serialization above still
-        # validates and authenticates the complete payload.
+        # Retain the assembled body instead of walking this large exact-integer
+        # tree a second time.  The canonical byte snapshot below is immutable,
+        # and `_authenticated_body_matches()` detects changes to any retained
+        # input before live or detached verification consumes it.  Public
+        # accessors and `to_dict()` still return structural copies, so callers
+        # cannot mutate a valid certificate through the supported API.
         self._body_json = _canonical_json(body)
-        snapshot = _json_clone(body)
+        snapshot = body
         self._body_snapshot = snapshot
         self._field_order_identity = snapshot["field_order_identity"]
         self._initial_units = snapshot["initial_units"]
@@ -5026,6 +5027,34 @@ class UnitSaturationIndexCertificate:
         ).hexdigest()
         self._generation_verifier = generation_verifier
         self._workspace = workspace
+
+    def _authenticated_body_matches(self) -> bool:
+        """Fail closed if any retained input changed after construction."""
+        try:
+            encoded = _canonical_json(self._body_snapshot)
+            return bool(
+                encoded == self._body_json
+                and hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+                == self._content_sha256
+            )
+        except (TypeError, ValueError, ArithmeticError):
+            return False
+
+    def _trusted_parent_payload_view(self) -> dict[str, Any]:
+        """Return a non-escaping view for one authenticated parent record.
+
+        This private boundary deliberately avoids a second eager traversal of
+        the certificate tree.  The parent must copy before exposing it; any
+        accidental mutation of the shared nested values invalidates both
+        authenticated bodies and therefore fails closed.
+        """
+        if not self._authenticated_body_matches():
+            raise AnalyticCertificationError(
+                "global unit-index certificate body changed after construction"
+            )
+        payload = dict(self._body_snapshot)
+        payload["content_sha256"] = self._content_sha256
+        return payload
 
     @property
     def field_order_identity(self) -> dict[str, Any]:
@@ -5121,6 +5150,8 @@ class UnitSaturationIndexCertificate:
     ) -> bool:
         replay_started = time.perf_counter_ns()
         try:
+            if not self._authenticated_body_matches():
+                return False
             hr_payload = self._analytic_proof["hr_index"]
             lower_index = _payload_integer(
                 hr_payload["lower_index"], "authenticated hR lower index"

@@ -430,15 +430,17 @@ assert fallback.to_dict() == scalar_finite.to_dict()
 assert fallback_field.diagnostics()["bf_dyadic_kernel_calls"] == 0
 assert fallback_field.diagnostics()["bf_dyadic_kernel_fallbacks"] == 1
 
+owned_generation = {"generation": "focused-provenance-test"}
 certificate = UnitSaturationIndexCertificate(
     {"field": "focused-provenance-test"},
     [],
     {},
     1,
     {"finite_term": new_finite.to_dict()},
-    {"generation": "focused-provenance-test"},
+    owned_generation,
     "exact-relations-conditional-grh",
 )
+assert certificate._authenticated_body_matches()
 original_certificate_payload = certificate.to_dict()
 mutated = certificate.to_dict()
 mutated["analytic_proof"]["finite_term"]["source"] = "forged-provenance"
@@ -447,6 +449,10 @@ assert certificate.to_dict() == original_certificate_payload
 exposed_generation = certificate.generation_evidence
 exposed_generation["generation"] = "another-forgery"
 assert certificate.to_dict() == original_certificate_payload
+owned_generation["generation"] = "mutated-after-construction"
+assert not certificate._authenticated_body_matches()
+owned_generation["generation"] = "focused-provenance-test"
+assert certificate._authenticated_body_matches()
 try:
     UnitSaturationIndexCertificate.from_dict(mutated)
     raise AssertionError("a finite-term provenance mutation retained authority")

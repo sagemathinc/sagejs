@@ -338,7 +338,14 @@ class ClassUnitSaturationRecord:
             standard_certificate_type is not None
             and type(analytic_certificate) is standard_certificate_type
         ):
-            self._analytic_certificate_payload = analytic_certificate.to_dict()
+            trusted_payload = getattr(
+                analytic_certificate, "_trusted_parent_payload_view", None
+            )
+            if not callable(trusted_payload):
+                raise TypeError(
+                    "the standard analytic certificate has no parent payload view"
+                )
+            self._analytic_certificate_payload = trusted_payload()
         else:
             self._analytic_certificate_payload = _component_payload(
                 analytic_certificate
@@ -399,7 +406,7 @@ class ClassUnitSaturationRecord:
     def to_dict(self) -> dict[str, Any]:
         payload = self._body_dict()
         payload["content_sha256"] = self.content_sha256
-        return payload
+        return _component_payload(payload)
 
     def verify(
         self,
@@ -489,6 +496,9 @@ def _saturation_record_live_snapshot(record: Any) -> tuple[Any, ...]:
     if type(record) is not ClassUnitSaturationRecord:
         raise TypeError("a live saturation record must have the exact record type")
     certificate = record._analytic_certificate
+    authenticated_body_matches = getattr(
+        certificate, "_authenticated_body_matches", None
+    )
     analytic_proof = certificate._analytic_proof
     hr_index = analytic_proof["hr_index"]
     return (
@@ -506,6 +516,7 @@ def _saturation_record_live_snapshot(record: Any) -> tuple[Any, ...]:
         record.saturated,
         record.reason,
         id(certificate),
+        bool(callable(authenticated_body_matches) and authenticated_body_matches()),
         certificate._body_json,
         certificate._content_sha256,
         id(certificate._body_snapshot),
@@ -3087,10 +3098,10 @@ class ClassUnitGroupEngine:
             "relations": [_component_payload(record) for record in collector.records],
             "presentation": _component_payload(presentation),
         }
-        canonical = _component_payload(evidence)
+        evidence_sha256 = _canonical_payload_hash(evidence)
         cache_key = _canonical_payload_hash(
             {
-                "evidence": canonical,
+                "evidence_sha256": evidence_sha256,
                 "class_number": int(presentation.order),
                 "proof_status": proof_status,
             }
@@ -3132,7 +3143,8 @@ class ClassUnitGroupEngine:
                         "generation_verification_live_authentication_hits"
                     ] += 1
                     return True
-                if _component_payload(supplied_evidence) != canonical:
+                supplied_payload = _component_payload(supplied_evidence)
+                if _canonical_payload_hash(supplied_payload) != evidence_sha256:
                     return False
                 if (
                     self._generation_verification_cache_active

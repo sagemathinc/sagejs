@@ -368,6 +368,14 @@ assert record.verify(K, K.maximal_order())
 assert analytic_replays == 1
 analytic_module._compute_unit_index_proof = original_compute_unit_index_proof
 
+# Serialized record payloads remain isolated even though the live producer
+# avoids an eager second copy of the nested analytic certificate.
+serialized_record = record.to_dict()
+serialized_record["reason"] += " (payload mutation)"
+serialized_record["analytic_certificate"]["generation_evidence"]["bound"] += 1
+assert serialized_record != record.to_dict()
+assert record.reason == "rigorous hR index-one validation after bounded saturation"
+
 # The authority is only a live optimization hint.  Any mutation invalidates
 # it, and the public verifier still fails closed against the content hash.
 record.reason += " (mutated)"
