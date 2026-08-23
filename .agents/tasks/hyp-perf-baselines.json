@@ -4,7 +4,7 @@
   "id": "hyp-perf-baselines",
   "title": "Hyp Perf Baselines",
   "lane": "hyperelliptic-curves",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Build exact resident-process Sage.js/Magma/PARI/Sage performance baselines on bench-1 and the versioned competitive benchmark corpus.",
   "base_commit": "76b863adb13c683b265ddc0c987b727fd7291990",
@@ -30,7 +30,9 @@
   "validation": [
     "pnpm architecture:check",
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "node --check bench/hyperelliptic/competitive/local-streams.cjs",
+    "node bench/hyperelliptic/competitive/validate.cjs"
   ],
   "runs": [
     {
@@ -82,11 +84,73 @@
       "commit": "7a80e98da36e2d05895719707c2eee64bc63e725",
       "workspace_fingerprint": "4dcedb63321e0f947dd096b6e158c84dacfa44013311e67e3f788ee29576c5da",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/hyperelliptic/competitive/local-streams.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.028,
+      "started_at": "2026-08-23T06:54:33.427Z",
+      "commit": "70ed9cdb0ffe8d10c94fb1ef05c3992ebd7e8a5e",
+      "workspace_fingerprint": "c8cf4be791536388bc922eaa80e3c47e681dfed81ea245736c95b82d5625827b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/hyperelliptic/competitive/validate.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.034,
+      "started_at": "2026-08-23T06:54:34.069Z",
+      "commit": "70ed9cdb0ffe8d10c94fb1ef05c3992ebd7e8a5e",
+      "workspace_fingerprint": "c8cf4be791536388bc922eaa80e3c47e681dfed81ea245736c95b82d5625827b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.666,
+      "started_at": "2026-08-23T06:54:34.728Z",
+      "commit": "70ed9cdb0ffe8d10c94fb1ef05c3992ebd7e8a5e",
+      "workspace_fingerprint": "c8cf4be791536388bc922eaa80e3c47e681dfed81ea245736c95b82d5625827b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.975,
+      "started_at": "2026-08-23T06:54:42.012Z",
+      "commit": "70ed9cdb0ffe8d10c94fb1ef05c3992ebd7e8a5e",
+      "workspace_fingerprint": "c8cf4be791536388bc922eaa80e3c47e681dfed81ea245736c95b82d5625827b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 866.207,
+      "started_at": "2026-08-23T06:55:21.281Z",
+      "commit": "70ed9cdb0ffe8d10c94fb1ef05c3992ebd7e8a5e",
+      "workspace_fingerprint": "c8cf4be791536388bc922eaa80e3c47e681dfed81ea245736c95b82d5625827b",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Built and pushed a 35-case versioned competitive corpus with resident Sage.js, Magma, PARI/GP, and optional SageMath runners; exact canonical result validation; cold/object-cold/warm/repeated-loop wall and CPU timing; MAD and RSS reporting; pinned tool provenance; and explicit unsupported cells. The clean pre-performance Linux x64 acceptance receipt at a66abc56 validates 28 rows with no exact disagreement: Sage.js 28/28, Magma 19 plus 9 explicit unsupported cells, PARI 8 plus 20 explicit unsupported cells, and explicit unavailability for standalone, Wasm, and SageMath. A separate clean current packed-local-stream acceptance receipt at 70ed9cdb records deterministic 10^4 and 10^5 digests over seven repetitions; the 10^5 median is 1.809 seconds with 97.5 MB peak RSS. Human-readable reports preserve both source SHAs and label them as pre-performance baselines, not final integrated-source acceptance.",
+    "risks": [
+      "The checked receipts predate integration of the performance-lane implementations. The identical corpus, normalization, timing contract, and packed-stream digest must be rerun at the final integrated higher-genus commit before claiming after-performance acceptance.",
+      "SageMath was not installed on bench-1, so every SageMath cell is retained as explicitly unavailable rather than timed. Local SageMath API probes informed the corpus but are not acceptance-host measurements.",
+      "Magma 2.18-5 exposes only a 10 ms timing quantum in this resident interface; zero-valued internal timings are reported as below resolution and are never used to form finite performance ratios. PARI 2.18.1-alpha is pinned but not host-tuned.",
+      "Generic even-degree Magma divisor points require an independent infinity weight and g+2 v coefficients. Sage.js public Jacobian arithmetic is currently odd-degree only, so even-degree group-law cells remain explicit unsupported while local-factor, period, and analytic rows remain comparable.",
+      "The slow tier is a bounded feasibility corpus rather than an accepted quiet-host receipt. Torsion, saturation, pairing/regulator timing, the optional 10^6 stream, public lazy/materialized stream stages, and production standalone/Wasm hyperelliptic backends remain explicit follow-up gaps.",
+      "The final pnpm test:changed attempt reached unit batch 5 before the unrelated Chromium group-pack test failed to load dist/wasi-runtime.mjs with HTTP 404. Fresh current-workspace syntax, exact-corpus, architecture, strict-baselib, and full native validation receipts all pass."
+    ],
+    "next_steps": [
+      "After all implementation commits are integrated, rerun the 28-case acceptance suite and packed 10^4/10^5 local stream on a clean, quiet bench-1 checkout, preserving before and after receipts and exact digests.",
+      "Run the bounded slow-tier fixtures as diagnostic feasibility checks, then promote only demonstrated short rows into the quiet acceptance tier.",
+      "Install a pinned SageMath on bench-1 only if its acceptance-host comparison is still desired; do not substitute numbers from a different host.",
+      "Add true prepared operand batches and public lazy/materialized local-stream stages as those APIs land; retain repeated_warm_loop and cache-hit labels for the historical baseline."
+    ]
   }
 }

@@ -111,7 +111,12 @@ resource construction is part of their contract.
 ```sh
 node bench/hyperelliptic/competitive/local-streams.cjs \
   --limits 10000,100000 --repeat 7 \
-  --output bench/hyperelliptic/competitive/local-streams-linux-x64.json
+  --output bench/hyperelliptic/competitive/baseline-local-streams-linux-x64.json
 ```
+
+The checked Phase-0 result is summarized in
+`BASELINE-LOCAL-STREAMS-linux-x64.md`.  It is explicitly a pre-performance
+baseline; rerun the same command and require the same exact digests at the
+final integrated implementation commit.
 
 Run `node bench/hyperelliptic/competitive/validate.cjs` before any measurement.
