@@ -524,7 +524,7 @@ function exactValidation(param) {
     return `  int64BufferView(${param.name}, ${jsString(param.name)});`;
   }
   if (param.type === "UInt64Buffer") {
-    return `  uint64BufferView(${param.name}, ${jsString(param.name)});`;
+    return `  uint64ValidatedArgument(${param.name}, ${jsString(param.name)});`;
   }
   if (param.type === "IntegerBuffer") {
     return `  integerBufferView(${param.name}, ${jsString(param.name)});`;
@@ -554,7 +554,7 @@ function normalizedArgument(param) {
     return `int64BufferView(${param.name}, ${jsString(param.name)})`;
   }
   if (param.type === "UInt64Buffer") {
-    return `uint64BufferView(${param.name}, ${jsString(param.name)})`;
+    return `uint64ValidatedArgument(${param.name}, ${jsString(param.name)})`;
   }
   if (param.type === "IntegerBuffer") {
     return `integerBufferView(${param.name}, ${jsString(param.name)})`;
@@ -612,7 +612,10 @@ function exactNativeExpression(fn, backend) {
       `${param.type === "IntegerBuffer"
         ? "integerNativeBuffer" : param.type === "UInt64Buffer"
           ? "uint64NativeBuffer" : "int64NativeBuffer"}(` +
-      `sagejs_native_${param.name}, ${jsString(param.name)});`
+      `sagejs_native_${param.name}, ${jsString(param.name)}` +
+      `${param.type === "UInt64Buffer"
+        ? `, ${fn.analysis.effects.externalWrites.includes(param.name)}`
+        : ""});`
   );
   const args = fn.params.map((param) =>
     param.type === "Int64Buffer" || param.type === "Int64Record"
@@ -688,7 +691,10 @@ function emitExactPublicFunction(fn) {
   );
   const args = fn.params.map((param) => `sagejs_native_${param.name}`).join(", ");
   const fallbackArgs = fn.params.map((param) =>
-    `sagejs_native_${param.name}`
+    param.type === "UInt64Buffer"
+      ? `uint64DynamicBufferView(sagejs_native_${param.name}, ` +
+        `${jsString(param.name)})`
+      : `sagejs_native_${param.name}`
   ).join(", ");
   const fallbackExpression = exactResourceResult(
     fn,
@@ -872,7 +878,8 @@ function emitPrimeSourcePublicFunction(fn) {
     }
     if (param.type === "UInt64Buffer") {
       return `  const sagejs_${param.name} = uint64NativeBuffer(` +
-        `${param.name}, ${jsString(param.name)});`;
+        `${param.name}, ${jsString(param.name)}, ` +
+        `${fn.analysis.effects.externalWrites.includes(param.name)});`;
     }
     if (param.type === "uint64") return uint64Validation(param.name);
     if (param.type === "PrimeModulusValue") {
@@ -902,7 +909,8 @@ function emitPrimeSourcePublicFunction(fn) {
         const access = `Reflect.get(${param.name}, ${jsString(field.name)})`;
         if (field.type === "UInt64Buffer") {
           lines.push(`  const ${local} = uint64NativeBuffer(${access}, ` +
-            `${jsString(param.name + "." + field.name)});`);
+            `${jsString(param.name + "." + field.name)}, ` +
+            `${fn.analysis.effects.externalWrites.includes(param.name)});`);
           nativeFields.push(`${field.name}: ${local}.typed`);
         } else {
           lines.push(`  const ${local} = uint64RecordField(${access}, ` +
@@ -1219,11 +1227,25 @@ if (!["auto", "bigint", "tagged", "gmp"].includes(integerBackendOverride)) {
     "SAGEJS_NATIVE_INTEGER_BACKEND must be auto, bigint, tagged, or gmp");
 }
 
+let immutableUInt64LeaseBorrow = null;
+function configureImmutableUInt64Capsules(borrow) {
+  if (typeof borrow !== "function") {
+    throw new TypeError("immutable uint64 capsule borrow must be callable");
+  }
+  if (immutableUInt64LeaseBorrow !== null &&
+      immutableUInt64LeaseBorrow !== borrow) {
+    throw new Error("immutable uint64 capsule runtime is already configured");
+  }
+  immutableUInt64LeaseBorrow = borrow;
+}
+
 ${javascriptRuntime(ir)}
 
 const float64BufferViewTag = Symbol("sagejs.native.Float64BufferView");
 const int64BufferViewTag = Symbol("sagejs.native.Int64BufferView");
 const integerBufferViewTag = Symbol("sagejs.native.IntegerBufferView");
+const immutableUInt64LeaseViewTag =
+  Symbol("sagejs.native.ImmutableUInt64LeaseView");
 
 function uint64Binary(operation, left, right) {
   const a = BigInt(left);
@@ -1462,7 +1484,40 @@ function asUInt64Buffer(source) {
     ? source : createUInt64Buffer(source);
 }
 
+function immutableUInt64Borrow(value) {
+  if (immutableUInt64LeaseBorrow === null) return null;
+  const typed = immutableUInt64LeaseBorrow(value);
+  if (typed === null) return null;
+  if (!isTypedArrayKind(typed, "BigUint64Array")) {
+    throw new TypeError(
+      "immutable uint64 capsule runtime returned an invalid buffer");
+  }
+  return typed;
+}
+
+function uint64ValidatedArgument(value, argument = "buffer") {
+  return immutableUInt64Borrow(value) === null
+    ? uint64BufferView(value, argument) : value;
+}
+
+function uint64DynamicBufferView(value, argument = "buffer") {
+  if (immutableUInt64Borrow(value) !== null) {
+    throw new TypeError(
+      "immutable UInt64Buffer leases require a native read-only kernel; " +
+      "dynamic fallback requires an owned copy");
+  }
+  return uint64BufferView(value, argument);
+}
+
 function uint64BufferView(value, argument = "buffer") {
+  const immutable = immutableUInt64Borrow(value);
+  if (immutable !== null) {
+    return Object.freeze({
+      [immutableUInt64LeaseViewTag]: true,
+      typed: immutable,
+      length: immutable.length,
+    });
+  }
   if (value === null || (typeof value !== "object" &&
       typeof value !== "function")) {
     throw new TypeError(argument + " must be a UInt64Buffer");
@@ -1492,11 +1547,15 @@ function uint64BufferGet(buffer, index) {
     throw new RangeError("UInt64Buffer index out of range");
   }
   const position = exact < 0n ? BigInt(view.length) + exact : exact;
-  return BigInt(Reflect.get(view, String(Number(position))));
+  const data = view[immutableUInt64LeaseViewTag] === true ? view.typed : view;
+  return BigInt(Reflect.get(data, String(Number(position))));
 }
 
 function uint64BufferSet(buffer, index, value) {
   const view = uint64BufferView(buffer);
+  if (view[immutableUInt64LeaseViewTag] === true) {
+    throw new TypeError("immutable UInt64Buffer lease is read-only");
+  }
   const exactIndex = typeof index === "bigint" ? index : BigInt(index);
   if (exactIndex < -BigInt(view.length) ||
       exactIndex >= BigInt(view.length)) {
@@ -1513,7 +1572,14 @@ function uint64BufferSet(buffer, index, value) {
   }
 }
 
-function uint64NativeBuffer(value, argument) {
+function uint64NativeBuffer(value, argument, writable = false) {
+  const immutable = immutableUInt64Borrow(value);
+  if (immutable !== null) {
+    if (writable) {
+      throw new TypeError("immutable UInt64Buffer lease is read-only");
+    }
+    return { typed: immutable, copyBack() {} };
+  }
   const view = uint64BufferView(value, argument);
   if (isTypedArrayKind(view, "BigUint64Array")) {
     return { typed: view, copyBack() {} };
@@ -1987,6 +2053,8 @@ if (typeof nativeRegister === "function") {
 
 module.exports = {
   ...nativeFunctions,
+  __sagejsConfigureImmutableUInt64Capsules:
+    configureImmutableUInt64Capsules,
   createIntegerBuffer,
   createFloat64Buffer,
   createUInt64Buffer,

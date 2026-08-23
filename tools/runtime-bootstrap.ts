@@ -32,6 +32,7 @@ import {
   standardLibraryCacheDirectory,
 } from "./resources";
 import { loadSagejsCapabilityApi } from "./capability-api";
+import { installImmutableUInt64CapsuleRuntime } from "./immutable-uint64-capsule";
 import { getImportDirs, importPath, libraryPath, sha1sum } from "./utils";
 import {
   beginInitializationTiming,
@@ -178,6 +179,7 @@ export function runRuntimeBootstrap(
   additionalImportDirs: string[] = [],
   requestedModuleCacheDirectory?: string | false,
 ): void {
+  installImmutableUInt64CapsuleRuntime();
   if (Reflect.get(globalThis, "__sagejs_capability_api__") === undefined) {
     Reflect.set(globalThis, "__sagejs_capability_api__", loadSagejsCapabilityApi());
   }
