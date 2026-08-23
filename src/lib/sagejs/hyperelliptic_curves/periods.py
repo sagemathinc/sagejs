@@ -89,6 +89,8 @@ _CACHE_STATS = {
     "computations": 0,
     "float64_quadratures": 0,
     "float64_fallbacks": 0,
+    "arb_quadratures": 0,
+    "arb_fallbacks": 0,
     "float64_sign_selections": 0,
     "sign_selection_fallbacks": 0,
 }
@@ -750,6 +752,77 @@ def _edge_integrals(
     return _canonical_edge_sign(values)
 
 
+def _edge_integrals_arb(
+    roots: list[Any],
+    leading: Any,
+    genus: int,
+    panels: int,
+    quadrature_order: int,
+    bits: int,
+) -> tuple[list[list[Any]], dict[str, Any]] | None:
+    """Evaluate one arbitrary-precision edge batch with FLINT Arb/Acb.
+
+    The native boundary evaluates exactly the same panelled Gauss--Legendre
+    formula as `_edge_integrals`, including square-root continuation and all
+    model differentials in one pass.  Root centres are still unenclosed
+    numerical approximations, so the returned Arb radii measure arithmetic
+    roundoff only.  Independent outer precision/panel refinement therefore
+    remains mandatory and the public result remains non-rigorous.
+    """
+    backend = runtime.flint_backend()
+    function = runtime.reflect.get(backend, "hyperellipticPeriodEdgeBatchArb")
+    if function is runtime.undefined:
+        return None
+    digits = _decimal_digits(bits + 32)
+    root_pairs = [
+        [_real_text(mp.re(root), bits + 32), _real_text(mp.im(root), bits + 32)]
+        for root in roots
+    ]
+    native = runtime.reflect.apply(
+        function,
+        backend,
+        [
+            root_pairs,
+            _real_text(leading, bits + 32),
+            genus,
+            panels,
+            quadrature_order,
+            bits,
+        ],
+    )
+    if str(runtime.reflect.get(native, "status")) != "ok":
+        raise ArithmeticError("the bounded Arb period quadrature did not converge")
+    raw_values = runtime.reflect.get(native, "values")
+    expected = 2 * genus * genus
+    if len(raw_values) != expected:
+        raise ArithmeticError("the Arb period quadrature returned the wrong shape")
+    accuracy_bits = bits
+    answer = []
+    for edge in range(2 * genus):
+        values = []
+        for differential in range(genus):
+            item = raw_values[edge * genus + differential]
+            real_value = str(runtime.reflect.get(item, "realMidpoint"))
+            imaginary_value = str(runtime.reflect.get(item, "imagMidpoint"))
+            accuracy_bits = min(
+                accuracy_bits,
+                int(runtime.reflect.get(item, "accuracyBits")),
+            )
+            values.append(mp.mpc(mp.mpf(real_value), mp.mpf(imaginary_value)))
+        answer.append(_canonical_edge_sign(values))
+    if accuracy_bits < max(24, bits // 2):
+        raise ArithmeticError(
+            "the Arb period quadrature did not retain enough arithmetic accuracy"
+        )
+    diagnostics = {
+        "arithmetic_accuracy_bits": int(accuracy_bits),
+        "work_precision_bits": int(runtime.reflect.get(native, "workPrecisionBits")),
+        "sample_evaluations": int(runtime.reflect.get(native, "sampleEvaluations")),
+        "decimal_digits": digits,
+    }
+    return (answer, diagnostics)
+
+
 def _matrix_maximum(values: Any) -> Any:
     answer = mp.mpf(0)
     for row in range(values.rows):
@@ -1259,11 +1332,14 @@ def _run_period_computation(
         periods = None
         internal_tolerance = mp.mpf(0)
         use_float64 = bool(allow_float64)
+        use_arb = True
         quadrature_engine = "mpmath"
+        quadrature_evidence_bits = bits
         for _attempt in range(6):
             quadrature_engine = "mpmath"
             fallback_reason = None
             edges: list[list[Any]] | None = None
+            arb_diagnostics: dict[str, Any] | None = None
             if use_float64:
                 try:
                     edges = _edge_integrals_float64(
@@ -1291,6 +1367,8 @@ def _run_period_computation(
                 except (
                     ArithmeticError,
                     OverflowError,
+                    RuntimeError,
+                    TypeError,
                     ValueError,
                     ZeroDivisionError,
                 ) as caught:
@@ -1302,7 +1380,37 @@ def _run_period_computation(
                         + ":"
                         + str(caught)
                     )
-            if not use_float64:
+            if not use_float64 and use_arb:
+                try:
+                    arb_result = _edge_integrals_arb(
+                        roots,
+                        leading,
+                        genus,
+                        effective_panels,
+                        effective_order,
+                        bits,
+                    )
+                    if arb_result is None:
+                        use_arb = False
+                    else:
+                        edges, arb_diagnostics = arb_result
+                        quadrature_engine = "arb-acb-gauss-legendre"
+                        quadrature_evidence_bits = int(
+                            arb_diagnostics["arithmetic_accuracy_bits"]
+                        )
+                        _CACHE_STATS["arb_quadratures"] += 1
+                except (
+                    ArithmeticError,
+                    OverflowError,
+                    ValueError,
+                    ZeroDivisionError,
+                ) as caught:
+                    use_arb = False
+                    _CACHE_STATS["arb_fallbacks"] += 1
+                    fallback_reason = (
+                        "arb_acb_exception:" + type(caught).__name__ + ":" + str(caught)
+                    )
+            if not use_float64 and edges is None:
                 edges = [
                     _edge_integrals(
                         roots,
@@ -1314,6 +1422,7 @@ def _run_period_computation(
                     )
                     for edge in range(2 * genus)
                 ]
+                quadrature_evidence_bits = bits
             if edges is None:
                 raise AssertionError("period quadrature did not produce edge integrals")
             periods = _periods_from_edges(edges, genus)
@@ -1333,7 +1442,11 @@ def _run_period_computation(
                     "panels": effective_panels,
                     "engine": quadrature_engine,
                     "representation_bits": (
-                        53 if quadrature_engine.startswith("packed-float64-") else bits
+                        53
+                        if quadrature_engine.startswith("packed-float64-")
+                        else int(arb_diagnostics["work_precision_bits"])
+                        if arb_diagnostics is not None
+                        else bits
                     ),
                     "riemann_target_bits": validation_bits,
                     "riemann_achieved_bits": _stable_bits(
@@ -1345,6 +1458,16 @@ def _run_period_computation(
                         ),
                     ),
                     "fallback_reason": fallback_reason,
+                    "arithmetic_accuracy_bits": (
+                        None
+                        if arb_diagnostics is None
+                        else int(arb_diagnostics["arithmetic_accuracy_bits"])
+                    ),
+                    "sample_evaluations": (
+                        2 * genus * effective_panels * effective_order
+                        if arb_diagnostics is None
+                        else int(arb_diagnostics["sample_evaluations"])
+                    ),
                     "riemann_relative_defect": str(periods["symmetry_relative_defect"]),
                     "tolerance": str(internal_tolerance),
                 }
@@ -1359,6 +1482,16 @@ def _run_period_computation(
                 _CACHE_STATS["float64_fallbacks"] += 1
                 quadrature_attempts[-1]["fallback_reason"] = (
                     "riemann_defect_exceeded_binary64_gate"
+                )
+                continue
+            if quadrature_engine == "arb-acb-gauss-legendre":
+                # Preserve the ordinary implementation as a capability and
+                # branch-chart fallback.  A native result that misses the
+                # Riemann gate is never repaired or silently published.
+                use_arb = False
+                _CACHE_STATS["arb_fallbacks"] += 1
+                quadrature_attempts[-1]["fallback_reason"] = (
+                    "riemann_defect_exceeded_arb_gate"
                 )
                 continue
             effective_panels *= 2
@@ -1390,7 +1523,9 @@ def _run_period_computation(
             "relative_branch_clearance": relative_clearance,
             "quadrature_attempts": quadrature_attempts,
             "quadrature_evidence_bits": (
-                44 if quadrature_engine.startswith("packed-float64-") else bits
+                44
+                if quadrature_engine.startswith("packed-float64-")
+                else int(quadrature_evidence_bits)
             ),
             "conjugation_action_reused": preferred_conjugation is not None,
             "geometry": geometry,
@@ -1569,7 +1704,7 @@ def _model_period_data(
             work_bits,
             panels,
             quadrature_order,
-            refinement == 0 or requested_bits <= 44,
+            requested_bits <= 44,
             None if previous is None else previous["action"]["matrix"],
         )
         order = tuple(run["geometry"]["order"])
@@ -2686,6 +2821,8 @@ def period_cache_info() -> dict[str, int]:
         "computations": int(_CACHE_STATS["computations"]),
         "float64_quadratures": int(_CACHE_STATS["float64_quadratures"]),
         "float64_fallbacks": int(_CACHE_STATS["float64_fallbacks"]),
+        "arb_quadratures": int(_CACHE_STATS["arb_quadratures"]),
+        "arb_fallbacks": int(_CACHE_STATS["arb_fallbacks"]),
         "float64_sign_selections": int(_CACHE_STATS["float64_sign_selections"]),
         "sign_selection_fallbacks": int(_CACHE_STATS["sign_selection_fallbacks"]),
     }

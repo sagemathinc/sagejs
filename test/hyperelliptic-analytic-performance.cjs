@@ -21,36 +21,39 @@ period = real_period(C, prec=64, use_cache=False)
 info = period_cache_info()
 runs = period.diagnostics()["refinement_runs"]
 assert period.verify()["verified"]
-assert len(runs) >= 3
+assert len(runs) >= 2
 assert info["topology_entries"] == 1
 assert info["topology_hits"] >= 1
 assert info["topology_replans"] == 0
 assert info["angular_path_hits"] == 1
 assert info["exhaustive_path_fallbacks"] == 0
-assert info["float64_quadratures"] >= 1
 assert all(
-    attempt["engine"].startswith("packed-float64-")
-    for attempt in runs[0]["quadrature_attempts"]
-)
-assert runs[0]["quadrature_evidence_bits"] == 44
-assert runs[-1]["quadrature_evidence_bits"] > 44
-assert all(
-    attempt["representation_bits"] == 53
-    and attempt["riemann_target_bits"] == 44
-    and attempt["fallback_reason"] is None
-    for attempt in runs[0]["quadrature_attempts"]
-)
-assert all(
-    attempt["engine"] == "mpmath"
+    attempt["engine"] == "arb-acb-gauss-legendre"
     and attempt["representation_bits"] > 53
-    for run in runs[1:]
+    and attempt["arithmetic_accuracy_bits"] >= 64
+    and attempt["sample_evaluations"] <= 6 * 64 * 64
+    for run in runs
     for attempt in run["quadrature_attempts"]
 )
+assert all(run["quadrature_evidence_bits"] >= 64 for run in runs)
 assert not runs[0]["conjugation_action_reused"]
 assert runs[-1]["conjugation_action_reused"]
 assert period.achieved_stability_bits > 44
 assert not runs[0]["topology_cache_hit"]
 assert all(run["topology_cache_hit"] for run in runs[1:])
+
+clear_period_cache()
+binary_period = real_period(C, prec=40, use_cache=False)
+binary_runs = binary_period.diagnostics()["refinement_runs"]
+assert all(
+    attempt["engine"].startswith("packed-float64-")
+    and attempt["representation_bits"] == 53
+    and 0 < attempt["riemann_target_bits"] <= 44
+    and attempt["fallback_reason"] is None
+    for run in binary_runs
+    for attempt in run["quadrature_attempts"]
+)
+assert all(run["quadrature_evidence_bits"] == 44 for run in binary_runs)
 True
 `);
       assert.equal(result.repr, "True");
