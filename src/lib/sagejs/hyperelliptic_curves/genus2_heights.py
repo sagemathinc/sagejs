@@ -29,6 +29,7 @@ small-step differential oracle.
 
 from __future__ import annotations
 
+from time import perf_counter
 from typing import Any, cast
 
 from sagejs.hyperelliptic_curves.genus2_kummer import (
@@ -42,7 +43,11 @@ from sagejs.hyperelliptic_curves.genus2_kummer import (
 )
 from sagejs.hyperelliptic_curves.genus2_kummer_height_kernel import (
     dyadic_kummer_height_recurrence,
+    dyadic_kummer_height_recurrence_batch,
+    dyadic_log_interval_batch,
+    exact_kummer_small_step_batch,
     modular_kummer_height_recurrence,
+    modular_kummer_height_recurrence_batch,
 )
 from sagejs.native import (
     integer_buffer_values,
@@ -1833,6 +1838,735 @@ def _find_kummer_repeat(chain: tuple[KummerCoordinates, ...]) -> bool:
     return False
 
 
+def _check_height_batch_cancel(cancel: Any, stage: str) -> None:
+    """Stop a proof batch only at an atomic stage boundary."""
+    if cancel is not None and bool(cancel()):
+        raise Genus2HeightResolutionError(
+            "the certified height batch was cancelled",
+            {"cancelled": True, "stage": str(stage)},
+        )
+
+
+def _canonical_heights_uncached_local_batch(
+    divisors: tuple[Any, ...],
+    *,
+    steps: int,
+    precision: int,
+    target_bits: int | None,
+    algorithm: str,
+    context: HeightContext,
+    cancel: Any = None,
+    _closed_dependencies: tuple[Any, ...] = (
+        perf_counter,
+        ArchimedeanHeightCorrectionResult,
+        CanonicalHeightResult,
+        FiniteHeightCorrectionResult,
+        Genus2HeightCapabilityError,
+        Genus2HeightResolutionError,
+        Genus2HeightResourceLimitError,
+        RealBall,
+        _ceil_div,
+        _check_height_batch_cancel,
+        _dyadic_multiply,
+        _dyadic_power,
+        _enclosure_width_bits,
+        _finite_correction_steps,
+        _flatten_specialized_terms,
+        _host_buffer_length,
+        _integer_coefficients,
+        _mueller_stoll_discriminant_bound,
+        _scaled_tail_steps,
+        _validated_context_specialized_terms,
+        _zero_ball,
+        divisor_provenance,
+        dyadic_kummer_height_recurrence_batch,
+        dyadic_log_interval_batch,
+        exact_divisor_capability,
+        exact_kummer_small_step_batch,
+        integer_buffer_values,
+        is_compiled,
+        kernel_integer_buffer,
+        kernel_integer_zeros,
+        kernel_uint64_buffer,
+        kummer_coordinates,
+        modular_kummer_height_recurrence_batch,
+    ),
+) -> tuple[CanonicalHeightResult, ...]:
+    """Compute one proof-atomic batch of previously uncached local heights.
+
+    This private engine shares the exact model specialization, modular plan,
+    dyadic plan, and exact logarithm plan across at most 64 points.  It does
+    not publish cache entries: the closure-owned proof wrapper below validates
+    every returned theorem payload and publishes the complete batch only
+    after this function succeeds.
+    """
+    (
+        perf_counter,
+        ArchimedeanHeightCorrectionResult,
+        CanonicalHeightResult,
+        FiniteHeightCorrectionResult,
+        Genus2HeightCapabilityError,
+        Genus2HeightResolutionError,
+        Genus2HeightResourceLimitError,
+        RealBall,
+        _ceil_div,
+        _check_height_batch_cancel,
+        _dyadic_multiply,
+        _dyadic_power,
+        _enclosure_width_bits,
+        _finite_correction_steps,
+        _flatten_specialized_terms,
+        _host_buffer_length,
+        _integer_coefficients,
+        _mueller_stoll_discriminant_bound,
+        _scaled_tail_steps,
+        _validated_context_specialized_terms,
+        _zero_ball,
+        divisor_provenance,
+        dyadic_kummer_height_recurrence_batch,
+        dyadic_log_interval_batch,
+        exact_divisor_capability,
+        exact_kummer_small_step_batch,
+        integer_buffer_values,
+        is_compiled,
+        kernel_integer_buffer,
+        kernel_integer_zeros,
+        kernel_uint64_buffer,
+        kummer_coordinates,
+        modular_kummer_height_recurrence_batch,
+    ) = _closed_dependencies
+    started = perf_counter()
+    values = tuple(divisors)
+    point_count = len(values)
+    if point_count == 0:
+        return ()
+    if point_count > 64:
+        raise Genus2HeightResourceLimitError(
+            "a certified local-height batch supports at most 64 points",
+            {"point_count": point_count, "maximum_point_count": 64},
+        )
+    normalized_steps = int(steps)
+    normalized_precision = int(precision)
+    normalized_target = None if target_bits is None else int(target_bits)
+    normalized_algorithm = str(algorithm)
+    if normalized_algorithm not in ("auto", "local"):
+        raise Genus2HeightCapabilityError(
+            "the batched engine only supports automatic or local heights",
+            {"requested_algorithm": normalized_algorithm},
+        )
+    if normalized_steps < 0:
+        raise ValueError("height doubling steps must be nonnegative")
+    if normalized_precision < 16:
+        raise ValueError("height precision must be at least 16 bits")
+    if normalized_target is not None and normalized_target < 1:
+        raise ValueError("target_bits must be positive")
+    jacobian = values[0].parent()
+    if context.jacobian is not jacobian:
+        raise ValueError("the height context belongs to a different Jacobian")
+    for divisor in values:
+        if divisor.parent() is not jacobian:
+            raise ValueError("all batched height points must lie on one Jacobian")
+        exact_divisor_capability(divisor).require()
+
+    _check_height_batch_cancel(cancel, "model-specialization")
+    specialized_terms = cast(
+        tuple[tuple[tuple[int, int, int, int, int], ...], ...],
+        _validated_context_specialized_terms(context),
+    )
+    f_value = jacobian.f()
+    if (
+        not jacobian.h().is_zero()
+        or int(f_value.degree()) != 5
+        or _integer_coefficients(f_value, 6) is None
+    ):
+        raise Genus2HeightCapabilityError(
+            "the batched local height engine requires an integral classical quintic",
+            {"local_height_batch": "unsupported-model"},
+        )
+    discriminant_bound = _mueller_stoll_discriminant_bound(f_value)
+    working_precision = max(
+        normalized_precision,
+        (
+            normalized_target + 32
+            if normalized_target is not None
+            else normalized_precision
+        ),
+    )
+    field = context.field(working_precision)
+    bounds = context.automatic_bounds(working_precision)
+    if bounds is None or bounds.diagnostics.get("automatic_bound") != "certified":
+        raise Genus2HeightCapabilityError(
+            "the batched local height engine requires certified automatic bounds",
+            {} if bounds is None else bounds.diagnostics,
+        )
+    finite_global = field.log_integer(discriminant_bound) / RealBall(
+        3, precision_bits=working_precision
+    )
+    archimedean_global = RealBall(
+        (bounds.correction_lower - finite_global).lower,
+        bounds.correction_upper.upper,
+        precision_bits=working_precision,
+        rigorous=True,
+        source="Stoll/Flynn global real-place correction bound",
+    )
+    selected_steps = normalized_steps
+    if normalized_target is not None:
+        selected_steps = max(
+            selected_steps,
+            _finite_correction_steps(discriminant_bound, normalized_target + 2),
+            _scaled_tail_steps(archimedean_global, normalized_target + 2),
+        )
+        guarded_precision = normalized_target + 4 * selected_steps + 48
+        if working_precision < guarded_precision:
+            working_precision = guarded_precision
+            field = context.field(working_precision)
+    if selected_steps > 1024 or point_count * selected_steps > 16384:
+        raise Genus2HeightResourceLimitError(
+            "the certified local-height batch exceeds its bounded recurrence plan",
+            {
+                "point_count": point_count,
+                "selected_steps": selected_steps,
+                "maximum_steps": 1024,
+                "maximum_point_steps": 16384,
+            },
+        )
+    prepared_at = perf_counter()
+
+    # The context cache is an optimization, not a proof source.  Recompute the
+    # exact Mumford-to-Kummer map from each live divisor so a caller-mutated
+    # `_kummer` dictionary cannot steer a rigorous batch.
+    initial_points = tuple(kummer_coordinates(divisor) for divisor in values)
+    initial_coordinates = tuple(point.coordinates() for point in initial_points)
+    initial_height_integers = tuple(
+        point.naive_height_integer() for point in initial_points
+    )
+    coefficients, exponents, term_counts, coefficient_bits = _flatten_specialized_terms(
+        specialized_terms
+    )
+
+    _check_height_batch_cancel(cancel, "modular-recurrence")
+    modulus = discriminant_bound ** (selected_steps + 2)
+    modular_output = kernel_integer_zeros(
+        modular_kummer_height_recurrence_batch,
+        _host_buffer_length(point_count * selected_steps),
+        _host_buffer_length(max(2, (discriminant_bound.bit_length() + 63) // 64)),
+    )
+    modular_states = kernel_integer_buffer(
+        modular_kummer_height_recurrence_batch,
+        [coordinate for point in initial_coordinates for coordinate in point],
+    )
+    modular_coefficients = kernel_integer_buffer(
+        modular_kummer_height_recurrence_batch, coefficients
+    )
+    modular_exponents = kernel_uint64_buffer(
+        modular_kummer_height_recurrence_batch, exponents
+    )
+    modular_counts = kernel_uint64_buffer(
+        modular_kummer_height_recurrence_batch, term_counts
+    )
+    modular_statuses = kernel_uint64_buffer(
+        modular_kummer_height_recurrence_batch, [0] * point_count
+    )
+    modular_status = modular_kummer_height_recurrence_batch(
+        modular_output,
+        modular_states,
+        modular_coefficients,
+        modular_exponents,
+        modular_counts,
+        modular_statuses,
+        discriminant_bound,
+        modulus,
+        point_count,
+        selected_steps,
+    )
+    if modular_status == -1:
+        raise RuntimeError("invalid packed modular Kummer batch plan")
+    if modular_status == -2:
+        raise ArithmeticError("a modular Kummer batch point lost all precision")
+    if modular_status != point_count:
+        raise RuntimeError("incomplete packed modular Kummer batch recurrence")
+    modular_values = tuple(
+        int(value) for value in integer_buffer_values(modular_output)
+    )
+    modular_rows = tuple(
+        modular_values[index * selected_steps : (index + 1) * selected_steps]
+        for index in range(point_count)
+    )
+    modular_at = perf_counter()
+
+    _check_height_batch_cancel(cancel, "dyadic-recurrence")
+    dyadic_scale = 2**working_precision
+    dyadic_initial: list[int] = []
+    for coordinates, initial_scale in zip(
+        initial_coordinates, initial_height_integers, strict=True
+    ):
+        for coordinate in coordinates:
+            dyadic_initial.append((coordinate * dyadic_scale) // initial_scale)
+            dyadic_initial.append(_ceil_div(coordinate * dyadic_scale, initial_scale))
+    dyadic_state = kernel_integer_buffer(
+        dyadic_kummer_height_recurrence_batch, dyadic_initial
+    )
+    dyadic_coefficients = kernel_integer_buffer(
+        dyadic_kummer_height_recurrence_batch, coefficients
+    )
+    dyadic_exponents = kernel_uint64_buffer(
+        dyadic_kummer_height_recurrence_batch, exponents
+    )
+    dyadic_counts = kernel_uint64_buffer(
+        dyadic_kummer_height_recurrence_batch, term_counts
+    )
+    dyadic_statuses = kernel_uint64_buffer(
+        dyadic_kummer_height_recurrence_batch, [0] * point_count
+    )
+    word_capacity = max(8, (working_precision + coefficient_bits + 191) // 64)
+    dyadic_scratch = kernel_integer_zeros(
+        dyadic_kummer_height_recurrence_batch,
+        _host_buffer_length(48 * point_count),
+        _host_buffer_length(word_capacity),
+    )
+    dyadic_output = kernel_integer_zeros(
+        dyadic_kummer_height_recurrence_batch,
+        _host_buffer_length(10 * point_count * selected_steps),
+        _host_buffer_length(word_capacity),
+    )
+    dyadic_status = dyadic_kummer_height_recurrence_batch(
+        dyadic_output,
+        dyadic_state,
+        dyadic_coefficients,
+        dyadic_exponents,
+        dyadic_counts,
+        dyadic_scratch,
+        dyadic_statuses,
+        dyadic_scale,
+        point_count,
+        selected_steps,
+    )
+    if dyadic_status == -1:
+        raise RuntimeError("invalid packed dyadic Kummer batch plan")
+    if dyadic_status == -2:
+        raise Genus2HeightResolutionError(
+            "a real Kummer batch point could not separate its projective image from zero; increase precision",
+            {
+                "precision_bits": working_precision,
+                "recurrence_backend": "native-integer-buffer-batch",
+            },
+        )
+    if dyadic_status != point_count:
+        raise RuntimeError("incomplete packed dyadic Kummer batch recurrence")
+    dyadic_values = tuple(int(value) for value in integer_buffer_values(dyadic_output))
+    dyadic_at = perf_counter()
+
+    logarithm_block_size = 4
+    # The orbit itself needs dependency-growth guards, whereas its logarithms
+    # are divided by at least 4^4 before entering the height.  Compute their
+    # exact outward endpoints at twelve bits beyond the requested result,
+    # rather than needlessly carrying the much larger orbit precision through
+    # every atanh-series term.  The final enclosure-width check remains the
+    # independent fail-closed proof that this budget reached `target_bits`.
+    logarithm_precision = max(
+        16,
+        (normalized_target if normalized_target is not None else normalized_precision)
+        + 12,
+    )
+    per_point_scales: list[list[tuple[int, int]]] = []
+    per_point_scale_metadata: list[list[dict[str, str]]] = []
+    per_point_minimum_width: list[int] = []
+    logarithm_endpoints: list[int] = []
+    logarithm_owners: list[tuple[int, int]] = []
+    for point_index in range(point_count):
+        scales: list[tuple[int, int]] = []
+        metadata: list[dict[str, str]] = []
+        minimum_width = working_precision
+        for step_index in range(selected_steps):
+            offset = (point_index * selected_steps + step_index) * 10
+            scale_interval = (dyadic_values[offset], dyadic_values[offset + 1])
+            scales.append(scale_interval)
+            coordinate_intervals = tuple(
+                (
+                    dyadic_values[offset + 2 + 2 * coordinate],
+                    dyadic_values[offset + 3 + 2 * coordinate],
+                )
+                for coordinate in range(4)
+            )
+            minimum_width = min(
+                minimum_width,
+                min(
+                    working_precision - max(0, (upper - lower).bit_length())
+                    for lower, upper in coordinate_intervals
+                ),
+            )
+            metadata.append(
+                {
+                    "step": str(step_index),
+                    "lower_dyadic_numerator": str(scale_interval[0]),
+                    "upper_dyadic_numerator": str(scale_interval[1]),
+                    "dyadic_exponent": str(-working_precision),
+                }
+            )
+        per_point_scales.append(scales)
+        per_point_scale_metadata.append(metadata)
+        per_point_minimum_width.append(minimum_width)
+        for block_start in range(0, selected_steps, logarithm_block_size):
+            block_end = min(selected_steps, block_start + logarithm_block_size)
+            combined = (dyadic_scale, dyadic_scale)
+            for step_index in range(block_start, block_end):
+                exponent = 4 ** (block_end - step_index - 1)
+                combined = _dyadic_multiply(
+                    combined,
+                    _dyadic_power(scales[step_index], exponent, dyadic_scale),
+                    dyadic_scale,
+                )
+            logarithm_endpoints.extend(combined)
+            logarithm_owners.append((point_index, block_end))
+
+    _check_height_batch_cancel(cancel, "exact-outward-logarithms")
+    logarithm_input = kernel_integer_buffer(
+        dyadic_log_interval_batch, logarithm_endpoints
+    )
+    logarithm_output = kernel_integer_zeros(
+        dyadic_log_interval_batch,
+        _host_buffer_length(len(logarithm_endpoints)),
+        _host_buffer_length(max(8, (logarithm_precision + 191) // 64)),
+    )
+    if not dyadic_log_interval_batch(
+        logarithm_output,
+        logarithm_input,
+        working_precision,
+        logarithm_precision,
+    ):
+        raise Genus2HeightResolutionError(
+            "the exact outward dyadic logarithm batch did not converge within its bounded series",
+            {
+                "precision_bits": working_precision,
+                "logarithm_precision_bits": logarithm_precision,
+                "interval_count": len(logarithm_owners),
+            },
+        )
+    logarithm_values = tuple(
+        int(value) for value in integer_buffer_values(logarithm_output)
+    )
+    archimedean_partials = [
+        _zero_ball(working_precision, "empty-archimedean-correction-sum")
+        for _point in values
+    ]
+    for logarithm_index, (point_index, block_end) in enumerate(logarithm_owners):
+        log_ball = RealBall.dyadic_endpoints(
+            logarithm_values[2 * logarithm_index],
+            -logarithm_precision,
+            logarithm_values[2 * logarithm_index + 1],
+            -logarithm_precision,
+            precision_bits=working_precision,
+            source="exact atanh-series outward dyadic logarithm",
+        )
+        archimedean_partials[point_index] = archimedean_partials[
+            point_index
+        ] - log_ball / RealBall(4**block_end, precision_bits=working_precision)
+    logarithm_at = perf_counter()
+
+    _check_height_batch_cancel(cancel, "exact-small-step-oracle")
+    oracle_steps = min(2, selected_steps)
+    oracle_states = kernel_integer_buffer(
+        exact_kummer_small_step_batch,
+        [coordinate for point in initial_coordinates for coordinate in point],
+    )
+    oracle_coefficients = kernel_integer_buffer(
+        exact_kummer_small_step_batch, coefficients
+    )
+    oracle_exponents = kernel_uint64_buffer(exact_kummer_small_step_batch, exponents)
+    oracle_counts = kernel_uint64_buffer(exact_kummer_small_step_batch, term_counts)
+    oracle_statuses = kernel_uint64_buffer(
+        exact_kummer_small_step_batch, [0] * point_count
+    )
+    maximum_coordinate_bits = max(
+        1,
+        max(
+            abs(coordinate).bit_length()
+            for point in initial_coordinates
+            for coordinate in point
+        ),
+    )
+    oracle_capacity = max(
+        16,
+        (16 * maximum_coordinate_bits + 8 * coefficient_bits + 511) // 64,
+    )
+    oracle_output = kernel_integer_zeros(
+        exact_kummer_small_step_batch,
+        _host_buffer_length(7 * point_count * oracle_steps),
+        _host_buffer_length(oracle_capacity),
+    )
+    oracle_status = exact_kummer_small_step_batch(
+        oracle_output,
+        oracle_states,
+        oracle_coefficients,
+        oracle_exponents,
+        oracle_counts,
+        oracle_statuses,
+        point_count,
+        oracle_steps,
+    )
+    if oracle_status != point_count:
+        raise Genus2HeightResolutionError(
+            "the exact small-step Kummer batch oracle failed",
+            {"status": oracle_status, "oracle_steps": oracle_steps},
+        )
+    oracle_values = tuple(int(value) for value in integer_buffer_values(oracle_output))
+    oracle_at = perf_counter()
+
+    _check_height_batch_cancel(cancel, "proof-assembly")
+    context._finite_correction_misses += point_count
+    context._archimedean_correction_misses += point_count
+    finite_tail = field.log_integer(discriminant_bound) / RealBall(
+        3 * 4**selected_steps, precision_bits=working_precision
+    )
+    finite_tail_ball = RealBall(
+        0,
+        finite_tail.upper,
+        precision_bits=working_precision,
+        rigorous=True,
+        source="Mueller--Stoll finite correction tail",
+    )
+    archimedean_tail = archimedean_global / RealBall(
+        4**selected_steps, precision_bits=working_precision
+    )
+    stage_milliseconds = {
+        "shared_preparation": str((prepared_at - started) * 1000),
+        "modular_recurrence": str((modular_at - prepared_at) * 1000),
+        "dyadic_recurrence": str((dyadic_at - modular_at) * 1000),
+        "exact_outward_logarithms": str((logarithm_at - dyadic_at) * 1000),
+        "exact_small_step_oracle": str((oracle_at - logarithm_at) * 1000),
+    }
+    recurrence_backend = (
+        "native-integer-buffer-batch"
+        if all(
+            is_compiled(function)
+            for function in (
+                modular_kummer_height_recurrence_batch,
+                dyadic_kummer_height_recurrence_batch,
+                exact_kummer_small_step_batch,
+                dyadic_log_interval_batch,
+            )
+        )
+        else "dynamic-python-batch"
+    )
+    answers: list[CanonicalHeightResult] = []
+    for point_index, divisor in enumerate(values):
+        finite_partial = _zero_ball(working_precision, "empty-finite-correction-sum")
+        for step_index, common in enumerate(modular_rows[point_index]):
+            if common > 1:
+                finite_partial = finite_partial + field.log_integer(common) / RealBall(
+                    4 ** (step_index + 1), precision_bits=working_precision
+                )
+        finite_ball = RealBall(
+            finite_partial.lower,
+            (finite_partial + finite_tail).upper,
+            precision_bits=working_precision,
+            rigorous=True,
+            source="Mueller--Stoll batched factorization-free finite correction",
+        )
+        finite = FiniteHeightCorrectionResult(
+            finite_ball,
+            finite_partial,
+            finite_tail_ball,
+            selected_steps,
+            {
+                "finite_correction": "certified",
+                "discriminant_bound_D": str(discriminant_bound),
+                "modulus_exponent": selected_steps + 2,
+                "raw_duplication_gcds": tuple(
+                    str(value) for value in modular_rows[point_index]
+                ),
+                "recurrence_backend": recurrence_backend,
+                "batch_point_count": point_count,
+                "factorization_used": False,
+                "specialized_quartic_term_counts": tuple(
+                    len(table) for table in specialized_terms
+                ),
+                "tail_formula": "log(D)/(3*4^steps)",
+            },
+        )
+        archimedean_partial = archimedean_partials[point_index]
+        archimedean = ArchimedeanHeightCorrectionResult(
+            archimedean_partial + archimedean_tail,
+            archimedean_partial,
+            archimedean_tail,
+            selected_steps,
+            {
+                "archimedean_correction": "certified",
+                "bounded_projective_state": True,
+                "coordinate_storage": "four outward-rounded dyadic intervals",
+                "recurrence_backend": recurrence_backend,
+                "batch_point_count": point_count,
+                "specialized_quartic_term_counts": tuple(
+                    len(table) for table in specialized_terms
+                ),
+                "scale_logarithm_block_size": logarithm_block_size,
+                "scale_logarithm_evaluations": (
+                    selected_steps + logarithm_block_size - 1
+                )
+                // logarithm_block_size,
+                "scale_logarithm_engine": "exact-outward-atanh-integer-batch",
+                "scale_logarithm_precision_bits": logarithm_precision,
+                "working_precision_bits": working_precision,
+                "target_bits": normalized_target,
+                "minimum_state_width_bits": per_point_minimum_width[point_index],
+                "scale_enclosures": tuple(per_point_scale_metadata[point_index]),
+                "tail_formula": "global_real_correction_bound/4^steps",
+                "factorization_used": False,
+            },
+        )
+        oracle_scales: list[str] = []
+        oracle_gcds: list[str] = []
+        seen = {initial_coordinates[point_index]}
+        torsion_step: int | None = None
+        for step_index in range(oracle_steps):
+            offset = (point_index * oracle_steps + step_index) * 7
+            content = oracle_values[offset]
+            source_height = oracle_values[offset + 1]
+            raw_height = oracle_values[offset + 2]
+            normalized = cast(
+                tuple[int, int, int, int],
+                tuple(
+                    oracle_values[offset + 3 + coordinate] for coordinate in range(4)
+                ),
+            )
+            exact_scale = str(raw_height) + "/" + str(source_height**4)
+            scale_metadata = per_point_scale_metadata[point_index][step_index]
+            scale_interval = RealBall.dyadic_endpoints(
+                int(scale_metadata["lower_dyadic_numerator"]),
+                int(scale_metadata["dyadic_exponent"]),
+                int(scale_metadata["upper_dyadic_numerator"]),
+                int(scale_metadata["dyadic_exponent"]),
+                precision_bits=working_precision,
+                source="exact small-step dyadic-scale oracle",
+            )
+            if not scale_interval.contains(exact_scale):
+                raise Genus2HeightResolutionError(
+                    "batched normalized real iteration failed its exact small-step oracle",
+                    {
+                        "point": point_index,
+                        "step": step_index,
+                        "exact_scale": exact_scale,
+                    },
+                )
+            if content != modular_rows[point_index][step_index]:
+                raise Genus2HeightResolutionError(
+                    "batched modular finite correction failed its exact small-step oracle",
+                    {
+                        "point": point_index,
+                        "step": step_index,
+                        "exact_primitive_content": str(content),
+                        "modular_content": str(modular_rows[point_index][step_index]),
+                    },
+                )
+            oracle_scales.append(exact_scale)
+            oracle_gcds.append(str(content))
+            if normalized in seen:
+                torsion_step = step_index + 1
+                break
+            seen.add(normalized)
+        if torsion_step is not None:
+            answers.append(
+                CanonicalHeightResult(
+                    _zero_ball(working_precision, "exact-kummer-cycle-torsion-height"),
+                    status="exact-torsion-zero",
+                    steps=torsion_step,
+                    provenance=divisor_provenance(divisor),
+                    bounds=None,
+                    diagnostics={
+                        "torsion_certificate": "repeated-exact-kummer-coordinate",
+                        "requested_algorithm": normalized_algorithm,
+                        "selected_algorithm": "exact-small-step-torsion-oracle",
+                        "requested_precision_bits": normalized_precision,
+                        "target_bits": normalized_target,
+                        "batch_point_count": point_count,
+                        "context": context.diagnostics(),
+                    },
+                )
+            )
+            continue
+        initial_naive_height = field.log_integer(initial_height_integers[point_index])
+        raw_ball = initial_naive_height - finite.ball - archimedean.ball
+        local_approximation = (
+            initial_naive_height - finite.partial_sum - archimedean.partial_sum
+        )
+        zero = _zero_ball(working_precision)
+        ball = RealBall(
+            zero.lower if raw_ball.lower < zero.lower else raw_ball.lower,
+            raw_ball.upper,
+            precision_bits=working_precision,
+            rigorous=True,
+            source="batched Mueller--Stoll certified local Kummer correction",
+        )
+        achieved_width_bits = _enclosure_width_bits(ball)
+        if normalized_target is not None and achieved_width_bits < normalized_target:
+            raise Genus2HeightResolutionError(
+                "the certified batched local height did not reach target_bits",
+                {
+                    "point": point_index,
+                    "target_bits": normalized_target,
+                    "achieved_enclosure_width_bits": achieved_width_bits,
+                    "working_precision_bits": working_precision,
+                    "selected_steps": selected_steps,
+                },
+            )
+        answers.append(
+            CanonicalHeightResult(
+                ball,
+                status="certified-enclosure",
+                steps=selected_steps,
+                provenance=divisor_provenance(divisor),
+                bounds=bounds,
+                diagnostics={
+                    "algorithm": "mueller-stoll-modular-local-kummer-batch",
+                    "requested_algorithm": normalized_algorithm,
+                    "selected_algorithm": "local",
+                    "requested_precision_bits": normalized_precision,
+                    "working_precision_bits": working_precision,
+                    "target_bits": normalized_target,
+                    "achieved_enclosure_width_bits": achieved_width_bits,
+                    "enclosure_width_bits": achieved_width_bits,
+                    "initial_naive_height_integer": str(
+                        initial_height_integers[point_index]
+                    ),
+                    "terminal_limit_approximation": local_approximation.to_dict(),
+                    "finite_correction": finite.to_dict(),
+                    "archimedean_correction": archimedean.to_dict(),
+                    "local_corrections": {
+                        "status": "certified-partial-sums-and-tails",
+                        "finite_partial": finite.partial_sum.to_dict(),
+                        "finite_tail_interval": finite.tail_bound.to_dict(),
+                        "archimedean_partial": archimedean.partial_sum.to_dict(),
+                        "archimedean_tail_interval": archimedean.tail_bound.to_dict(),
+                        "raw_duplication_gcds": finite.diagnostics[
+                            "raw_duplication_gcds"
+                        ],
+                        "factorization_used": False,
+                        "telescoping_identity": (
+                            "h_K(P)-hhat(P)=mu_finite(P)+mu_infinity(P)"
+                        ),
+                    },
+                    "exact_small_step_oracle": {
+                        "steps": oracle_steps,
+                        "scale_ratios": tuple(oracle_scales),
+                        "finite_gcds": tuple(oracle_gcds),
+                        "status": "passed",
+                    },
+                    "batch": {
+                        "point_count": point_count,
+                        "shared_model_specialization": True,
+                        "atomic_publication": True,
+                        "stage_milliseconds": stage_milliseconds,
+                    },
+                    "asymptotic_state": (
+                        "point-major polynomial-size modular state and bounded dyadic balls"
+                    ),
+                    "context": context.diagnostics(),
+                },
+            )
+        )
+    return tuple(answers)
+
+
 def _local_correction_breakdown(
     context: HeightContext,
     chain: tuple[KummerCoordinates, ...],
@@ -2556,8 +3290,10 @@ def height_pairing(
     algorithm: str = "auto",
     height_difference_bound: Any = None,
     context: HeightContext | None = None,
+    cancel: Any = None,
 ) -> HeightPairingResult:
     """Return the symmetric canonical pairing on rational genus-2 divisors."""
+    _check_height_batch_cancel(cancel, "pairing-entry")
     values = tuple(points)
     if not values:
         return HeightPairingResult((), (), {"algorithm": "empty-pairing"})
@@ -2581,6 +3317,7 @@ def height_pairing(
         )
         for value in values
     )
+    _check_height_batch_cancel(cancel, "pairing-diagonal")
     two = RealBall(2, precision_bits=int(precision))
     matrix: list[list[RealBall]] = [
         [_zero_ball(int(precision)) for _right in values] for _left in values
@@ -2589,6 +3326,7 @@ def height_pairing(
     for left, _left_value in enumerate(values):
         matrix[left][left] = diagonal[left].ball
         for right in range(left + 1, len(values)):
+            _check_height_batch_cancel(cancel, "pairing-off-diagonal")
             sum_height = canonical_height(
                 values[left] + values[right],
                 steps=steps,
@@ -2629,6 +3367,7 @@ def _install_height_proof_state(
     normalized_archimedean_function: Any,
     canonical_height_function: Any,
     height_pairing_function: Any,
+    canonical_height_batch_function: Any,
 ) -> tuple[Any, Any, Any, Any]:
     """Install non-exported proof registries and detached result caches.
 
@@ -2883,6 +3622,80 @@ def _install_height_proof_state(
             _encoded_diagnostics=encoded_diagnostics,
         )
 
+    def cached_canonical(
+        cache_context: HeightContext,
+        divisor: Any,
+        parameters: tuple[Any, ...],
+        *,
+        count_hit: bool,
+    ) -> CanonicalHeightResult | None:
+        expected_terms = validated_context_terms(cache_context)
+        exact_model_binding = model_binding(divisor.parent())
+        exact_point_binding = point_binding(divisor)
+        for record in reversed(canonical_records):
+            if (
+                record[0] is cache_context
+                and record[2] == parameters
+                and (record[1] is divisor or record[1] == divisor)
+            ):
+                if (
+                    record[3] != exact_model_binding
+                    or record[4] != exact_point_binding
+                    or record[5] != expected_terms
+                ):
+                    raise Genus2HeightCapabilityError(
+                        "cached canonical height derivation does not match the exact request",
+                        {
+                            "canonical_height_cache": "rejected-proof-binding-mismatch",
+                            "parameters": parameters,
+                        },
+                    )
+                if count_hit:
+                    cache_context._canonical_height_hits += 1
+                return restore_canonical(record[6], divisor.parent(), cache_context)
+        return None
+
+    def canonical_record(
+        cache_context: HeightContext,
+        divisor: Any,
+        parameters: tuple[Any, ...],
+        answer: CanonicalHeightResult,
+    ) -> tuple[Any, ...] | None:
+        if not (
+            answer.rigorous
+            and answer.status == "certified-enclosure"
+            and answer.diagnostics.get("selected_algorithm") == "local"
+        ):
+            return None
+        expected_terms = validated_context_terms(cache_context)
+        if answer._bounds is None or not bound_is_certified(
+            answer._bounds, divisor.parent()
+        ):
+            raise Genus2HeightCapabilityError(
+                "a rigorous local height result lost its automatic-bound proof",
+                {"canonical_height_cache": "rejected-unproved-result-bound"},
+            )
+        return (
+            cache_context,
+            divisor,
+            parameters,
+            model_binding(divisor.parent()),
+            point_binding(divisor),
+            expected_terms,
+            canonical_payload(answer),
+        )
+
+    def publish_canonical_records(records: tuple[Any, ...]) -> None:
+        """Atomically publish already authenticated detached payloads."""
+        canonical_records.extend(records)
+        for record in records:
+            record[0]._canonical_height_entries += 1
+        while len(canonical_records) > maximum_records:
+            removed = canonical_records.pop(0)
+            removed[0]._canonical_height_entries = max(
+                0, removed[0]._canonical_height_entries - 1
+            )
+
     def wrapped_canonical_height(
         divisor: Any,
         *,
@@ -2918,29 +3731,11 @@ def _install_height_proof_state(
             cache_context = cast(HeightContext, context)
             if cache_context.jacobian is not divisor.parent():
                 raise ValueError("the height context belongs to a different Jacobian")
-            expected_terms = validated_context_terms(cache_context)
-            exact_model_binding = model_binding(divisor.parent())
-            exact_point_binding = point_binding(divisor)
-            for record in reversed(canonical_records):
-                if (
-                    record[0] is cache_context
-                    and record[2] == parameters
-                    and (record[1] is divisor or record[1] == divisor)
-                ):
-                    if (
-                        record[3] != exact_model_binding
-                        or record[4] != exact_point_binding
-                        or record[5] != expected_terms
-                    ):
-                        raise Genus2HeightCapabilityError(
-                            "cached canonical height derivation does not match the exact request",
-                            {
-                                "canonical_height_cache": "rejected-proof-binding-mismatch",
-                                "parameters": parameters,
-                            },
-                        )
-                    cache_context._canonical_height_hits += 1
-                    return restore_canonical(record[6], divisor.parent(), cache_context)
+            cached = cached_canonical(
+                cache_context, divisor, parameters, count_hit=True
+            )
+            if cached is not None:
+                return cached
             cache_context._canonical_height_misses += 1
         if (
             context is not None
@@ -2979,38 +3774,11 @@ def _install_height_proof_state(
             torsion_order=torsion_order,
             context=context,
         )
-        if (
-            eligible
-            and answer.rigorous
-            and answer.status == "certified-enclosure"
-            and answer.diagnostics.get("selected_algorithm") == "local"
-        ):
+        if eligible:
             cache_context = cast(HeightContext, context)
-            expected_terms = validated_context_terms(cache_context)
-            if answer._bounds is None or not bound_is_certified(
-                answer._bounds, divisor.parent()
-            ):
-                raise Genus2HeightCapabilityError(
-                    "a rigorous local height result lost its automatic-bound proof",
-                    {"canonical_height_cache": "rejected-unproved-result-bound"},
-                )
-            canonical_records.append(
-                (
-                    cache_context,
-                    divisor,
-                    parameters,
-                    model_binding(divisor.parent()),
-                    point_binding(divisor),
-                    expected_terms,
-                    canonical_payload(answer),
-                )
-            )
-            cache_context._canonical_height_entries += 1
-            if len(canonical_records) > maximum_records:
-                removed = canonical_records.pop(0)
-                removed[0]._canonical_height_entries = max(
-                    0, removed[0]._canonical_height_entries - 1
-                )
+            record = canonical_record(cache_context, divisor, parameters, answer)
+            if record is not None:
+                publish_canonical_records((record,))
         return answer
 
     def pairing_payload(result: HeightPairingResult) -> tuple[Any, ...]:
@@ -3048,7 +3816,9 @@ def _install_height_proof_state(
         algorithm: str = "auto",
         height_difference_bound: Any = None,
         context: HeightContext | None = None,
+        cancel: Any = None,
     ) -> HeightPairingResult:
+        _check_height_batch_cancel(cancel, "pairing-proof-entry")
         values = tuple(points)
         parameters = (
             int(steps),
@@ -3099,6 +3869,49 @@ def _install_height_proof_state(
                     cache_context._height_pairing_hits += 1
                     return restore_pairing(record[6], jacobian, cache_context)
             cache_context._height_pairing_misses += 1
+            if parameters[3] != "exact":
+                requested_heights: list[Any] = list(values)
+                for left in range(len(values)):
+                    for right in range(left + 1, len(values)):
+                        requested_heights.append(values[left] + values[right])
+                unique_heights: list[Any] = []
+                for value in requested_heights:
+                    if not any(value == stored for stored in unique_heights):
+                        unique_heights.append(value)
+                missing = tuple(
+                    value
+                    for value in unique_heights
+                    if cached_canonical(
+                        cache_context, value, parameters, count_hit=False
+                    )
+                    is None
+                )
+                if missing:
+                    batch_answers = canonical_height_batch_function(
+                        missing,
+                        steps=parameters[0],
+                        precision=parameters[1],
+                        target_bits=parameters[2],
+                        algorithm=parameters[3],
+                        context=cache_context,
+                        cancel=cancel,
+                    )
+                    pending_records: list[Any] = []
+                    for value, batch_answer in zip(missing, batch_answers, strict=True):
+                        record = canonical_record(
+                            cache_context, value, parameters, batch_answer
+                        )
+                        if record is not None:
+                            pending_records.append(record)
+                        elif batch_answer.status != "exact-torsion-zero":
+                            raise Genus2HeightCapabilityError(
+                                "a batched local height did not produce an authenticated proof payload",
+                                {
+                                    "status": batch_answer.status,
+                                    "point": point_binding(value),
+                                },
+                            )
+                    publish_canonical_records(tuple(pending_records))
         answer = height_pairing_function(
             values,
             steps=steps,
@@ -3107,6 +3920,7 @@ def _install_height_proof_state(
             algorithm=algorithm,
             height_difference_bound=height_difference_bound,
             context=context,
+            cancel=cancel,
         )
         if eligible and answer.rigorous:
             cache_context = cast(HeightContext, context)
@@ -3149,7 +3963,12 @@ def _install_height_proof_state(
     normalized_archimedean_correction,
     canonical_height,
     height_pairing,
+    _canonical_heights_uncached_local_batch,
 )
+# The proof-grade batch function and its closed dependency tuple are retained
+# only by `_install_height_proof_state`; module-private naming alone is not an
+# authentication boundary in Sage/Python code.
+del _canonical_heights_uncached_local_batch
 
 
 def _interval_determinant(matrix: tuple[tuple[RealBall, ...], ...]) -> RealBall:
@@ -3315,6 +4134,7 @@ def regulator(
     algorithm: str = "auto",
     height_difference_bound: Any = None,
     context: HeightContext | None = None,
+    cancel: Any = None,
 ) -> RegulatorResult:
     """Return the canonical regulator, rejecting certified degeneracy."""
     pairing = height_pairing(
@@ -3325,7 +4145,9 @@ def regulator(
         algorithm=algorithm,
         height_difference_bound=height_difference_bound,
         context=context,
+        cancel=cancel,
     )
+    _check_height_batch_cancel(cancel, "regulator-determinant")
     determinant = _interval_determinant(pairing.matrix)
     if pairing.rigorous and determinant.contains_zero():
         raise Genus2HeightResolutionError(
