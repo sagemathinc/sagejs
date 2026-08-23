@@ -74,9 +74,7 @@ jobs:
             "Clean reproducibility build a" \
             "Clean reproducibility build b" \
             "reproducibility" \
-            "Public parity (chromium)" \
-            "Public parity (firefox)" \
-            "Public parity (webkit)"
+            "Browser release gates"
           do
             conclusion="$(jq -r --arg name "$required" \
               '[.jobs[] | select(.name == $name) | .conclusion] | first // "missing"' \

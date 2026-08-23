@@ -6,6 +6,7 @@ const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
 const workflowFile = path.join(root, ".github/workflows/wasm-deploy-cloudflare.yml");
+const candidateWorkflowFile = path.join(root, ".github/workflows/wasm-candidate.yml");
 const documentationFile = path.join(root, "docs/webassembly-cloudflare-deployment.md");
 
 test("Cloudflare deployment consumes only a fully validated release artifact", async () => {
@@ -23,9 +24,7 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
     "Clean reproducibility build a",
     "Clean reproducibility build b",
     "reproducibility",
-    "Public parity (chromium)",
-    "Public parity (firefox)",
-    "Public parity (webkit)",
+    "Browser release gates",
   ]) assert.match(workflow, new RegExp(gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
   assert.match(workflow, /ref: \$\{\{ steps\.source\.outputs\.sha \}\}/);
@@ -56,6 +55,21 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
   assert.doesNotMatch(workflow, /pages deploy/);
   assert.match(workflow, /website\/live\/dist\n\s+if-no-files-found: error/);
   assert.match(workflow, /build\/cloudflare-deploy\/deployment\.json/);
+});
+
+test("fast candidate artifacts are structurally non-deployable", async () => {
+  const [deployment, candidate] = await Promise.all([
+    readFile(workflowFile, "utf8"),
+    readFile(candidateWorkflowFile, "utf8"),
+  ]);
+  assert.match(candidate, /fast, non-deployable signal/);
+  assert.match(candidate, /name: wasm-candidate-build/);
+  assert.match(candidate, /--samples 1/);
+  assert.match(candidate, /--safety-ceilings-only/);
+  assert.doesNotMatch(candidate, /cloudflare\/wrangler-action/);
+  assert.match(deployment, /\.github\/workflows\/wasm-release\.yml/);
+  assert.doesNotMatch(deployment, /wasm-candidate\.yml/);
+  assert.doesNotMatch(deployment, /wasm-candidate-build/);
 });
 
 test("Cloudflare deployment fails closed and checks both remote origins", async () => {
