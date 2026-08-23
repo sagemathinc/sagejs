@@ -2,7 +2,12 @@
 
 "use strict";
 
-const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const {
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -537,8 +542,6 @@ const temporary = mkdtempSync(join(tmpdir(), "sagejs-jacobian-bench-"));
 try {
   const cache = join(temporary, "cache");
   const witness = join(temporary, "benchmark.py");
-  const core = join(temporary, "kernel_core.c");
-  const header = join(temporary, "kernel_core.h");
   const harness = join(temporary, "standalone.c");
   const standalone = join(temporary, "standalone-cantor");
   writeFileSync(witness, program);
@@ -556,32 +559,22 @@ try {
       SAGEJS_NATIVE_CACHE_DIR: cache,
     },
   });
-  run(process.execPath, [
-    sagejs,
-    "native",
-    "emit-core-c",
-    source,
-    "--function",
-    "packed_cantor_add_batch",
-    "--output",
-    core,
-  ]);
-  run(process.execPath, [
-    sagejs,
-    "native",
-    "emit-header",
-    source,
-    "--function",
-    "packed_cantor_add_batch",
-    "--output",
-    header,
-  ]);
+  const cacheIndex = JSON.parse(readFileSync(join(cache, "index.json")));
+  const cacheEntry = cacheIndex.sources[source];
+  if (cacheEntry === undefined) {
+    throw new Error("compiled Cantor cache is missing its source entry");
+  }
+  const artifact = join(cache, cacheEntry.cacheKey);
+  const core = join(artifact, "kernel_core.c");
   const flintPrefix = join(root, "packages", "flint", ".native", "prefix");
   run("cc", [
     "-O3",
+    "-fPIC",
+    "-ffunction-sections",
+    "-fdata-sections",
     "-std=c11",
     "-I",
-    temporary,
+    artifact,
     "-I",
     join(flintPrefix, "include"),
     core,
@@ -593,14 +586,16 @@ try {
     "-lm",
     "-lpthread",
     "-ldl",
+    "-Wl,--gc-sections",
+    "-Wl,--exclude-libs,ALL",
     "-o",
     standalone,
   ]);
   const standaloneResult = JSON.parse(run(standalone, []));
   const benchmark = JSON.parse(output);
   benchmark.standalone = {
-    compiler: "cc -O3",
-    contract: "same emitted source-transparent core; 1000 repeated fixed degree-one pairs",
+    compiler: "cc -O3 -fPIC with the native artifact section/link flags",
+    contract: "same full compiled source-transparent core; 1000 repeated fixed degree-one pairs",
     rows: standaloneResult.rows,
   };
   for (const row of benchmark.rows) {
