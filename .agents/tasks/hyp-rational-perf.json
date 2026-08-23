@@ -1,0 +1,55 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-rational-perf",
+  "title": "Hyp Rational Perf",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Accelerate rational torsion and saturation through batched reductions and exact checks, retaining replayable certificate boundaries.",
+  "base_commit": "76b863adb13c683b265ddc0c987b727fd7291990",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/torsion.py",
+    "src/lib/sagejs/hyperelliptic_curves/saturation.py",
+    "test/hyperelliptic-rational-performance.cjs",
+    "bench/hyperelliptic/benchmark-rational-performance.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.287,
+      "started_at": "2026-08-23T03:04:21.350Z",
+      "commit": "76b863adb13c683b265ddc0c987b727fd7291990",
+      "workspace_fingerprint": "e8da3d5f1d8fa43601ad357af812a45f4aea01ba38e0cd824dbfb1081802f16a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
