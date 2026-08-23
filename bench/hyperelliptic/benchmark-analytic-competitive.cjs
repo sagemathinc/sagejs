@@ -74,14 +74,14 @@ function pariMeasurements(gp, samples) {
     };
   }
   const script = String.raw`
-default(realprecision, 20);
+default(realbitprecision, 64);
 x='x;
 samples=${samples};
 for(sample=1,samples,t=getwalltime();v=hyperellperiods(x^5-x+1,2);print("ROW|period_genus2_model_cold|",getwalltime()-t,"|",v));
 for(sample=1,samples,t=getwalltime();v=hyperellperiods([x^7-x+1,x^2],2);print("ROW|period_genus3_generalized_cold|",getwalltime()-t,"|",v));
 L=lfungenus2([x,x^3-x+1]);
-for(sample=1,samples,t=getwalltime();LI=lfuninit(L,[1,0,4],4);print("ROW|lfunction_init_order4_64bit|",getwalltime()-t,"|",lfun(LI,1)));
-LI=lfuninit(L,[1,0,4],4);
+for(sample=1,samples,t=getwalltime();LI=lfuninit(L,[1,0,0],4);print("ROW|lfunction_init_order4_64bit|",getwalltime()-t,"|",lfun(LI,1)));
+LI=lfuninit(L,[1,0,0],4);
 for(sample=1,samples,t=getwalltime();for(repetition=1,100,v=lfun(LI,1));print("ROW|prepared_central_value_100|",getwalltime()-t,"|",v));
 quit();
 `;
@@ -147,6 +147,8 @@ async function main() {
           timing_contract: {
             unit: "milliseconds",
             pari: "one resident GP process; getwalltime around each public operation",
+            pari_realbitprecision: 64,
+            pari_lfuninit: "central domain [1,0,0], derivative order 4",
             cache_hits_are_separate: true,
             rigorous_claim: false,
           },
@@ -331,6 +333,8 @@ async function main() {
       unit: "milliseconds",
       sagejs: "resident process; public result materialization included",
       pari: "one resident GP process; getwalltime around each public operation",
+      matched_precision_bits: 64,
+      pari_lfuninit: "central domain [1,0,0], derivative order 4",
       process_cold_ms: Number(processColdMs.toFixed(3)),
       cache_hits_are_separate: true,
       rigorous_claim: false,
