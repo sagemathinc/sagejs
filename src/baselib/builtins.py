@@ -1565,6 +1565,110 @@ def ρσ_operator_idiv_python_exact(left: Any, right: Any) -> Any:
     return _builtins_inplace(left, right, "__itruediv__", ρσ_operator_truediv)
 
 
+_BUILTINS_EXACT_DOUBLE_LIMIT = 9007199254740992
+
+
+def _builtins_fits_exact_double(value: Any) -> bool:
+    """Return whether an exact integer converts to a double without rounding."""
+    return runtime.native_lt(value, _BUILTINS_EXACT_DOUBLE_LIMIT) and runtime.native_lt(
+        -_BUILTINS_EXACT_DOUBLE_LIMIT, value
+    )
+
+
+def _builtins_bigint_bit_length(value: Any) -> _Int:
+    """Return the number of bits in a positive big integer."""
+    word = runtime.bigint(32)
+    limit = runtime.bigint(_BUILTINS_EXACT_DOUBLE_LIMIT)
+    probe = value
+    bits = 0
+    # Shift whole words while the value is too large to measure as a double,
+    # then finish on an ordinary number so the tail costs no allocations.
+    while not runtime.native_lt(probe, limit):
+        probe = runtime.native_rshift(probe, word)
+        bits += 32
+    tail = runtime.number(probe)
+    while tail > 0:
+        bits += 1
+        tail = runtime.math.floor(tail / 2)
+    return bits
+
+
+def _builtins_exact_quotient_float(numerator: Any, denominator: Any) -> _Float:
+    """
+    Return the correctly rounded double nearest to `numerator / denominator`.
+
+    Converting each operand to a double first, as ordinary division would,
+    rounds the operands before the division sees them, so a quotient above
+    2**53 can land an ulp away from the true value.  Divide the exact integers
+    instead, keeping one round bit and a sticky bit, and round once, half to
+    even, the way CPython's `long_true_divide` does.
+    """
+    # Operands that convert to a double exactly divide correctly already, and
+    # that is nearly every division, so keep it off the exact path entirely.
+    if _builtins_fits_exact_double(numerator) and _builtins_fits_exact_double(
+        denominator
+    ):
+        return runtime.number(numerator) / runtime.number(denominator)
+    zero = runtime.bigint(0)
+    one = runtime.bigint(1)
+    two = runtime.bigint(2)
+    top = runtime.bigint(numerator)
+    bottom = runtime.bigint(denominator)
+    # When the truncated quotient already carries more than 53 bits, the
+    # fraction that is thrown away can only matter at a tie.  Recording it in
+    # the lowest bit lets the ordinary bigint-to-double conversion, which
+    # rounds to nearest, produce the right answer without any scaling.
+    truncated = runtime.native_div(top, bottom)
+    if not _builtins_fits_exact_double(truncated):
+        residue = runtime.native_sub(top, runtime.native_mul(truncated, bottom))
+        if residue != zero:
+            truncated = runtime.native_bitor(truncated, one)
+        return runtime.number(truncated)
+    negative = False
+    if runtime.native_lt(top, zero):
+        top = runtime.native_neg(top)
+        negative = not negative
+    if runtime.native_lt(bottom, zero):
+        bottom = runtime.native_neg(bottom)
+        negative = not negative
+    if top == zero:
+        return -0.0 if negative else 0.0
+
+    # Scale so the truncated quotient carries the 53 significant bits plus one
+    # more to round on.  The remainder is the sticky bit.
+    shift = 54 - (
+        _builtins_bigint_bit_length(top) - _builtins_bigint_bit_length(bottom)
+    )
+    if shift >= 0:
+        scaled = runtime.native_lshift(top, runtime.bigint(shift))
+        divisor = bottom
+    else:
+        scaled = top
+        divisor = runtime.native_lshift(bottom, runtime.bigint(-shift))
+    quotient = runtime.native_div(scaled, divisor)
+    remainder = runtime.native_sub(scaled, runtime.native_mul(quotient, divisor))
+    sticky = remainder != zero
+
+    # One bit of slack in the estimate above; normalize to exactly 54 bits.
+    if _builtins_bigint_bit_length(quotient) > 54:
+        if runtime.native_bitand(quotient, one) != zero:
+            sticky = True
+        quotient = runtime.native_rshift(quotient, one)
+        shift -= 1
+
+    round_bit = runtime.native_bitand(quotient, one) != zero
+    quotient = runtime.native_rshift(quotient, one)
+    shift -= 1
+    if round_bit and (sticky or runtime.native_bitand(quotient, one) != zero):
+        quotient = runtime.native_add(quotient, one)
+        if _builtins_bigint_bit_length(quotient) > 53:
+            quotient = runtime.native_div(quotient, two)
+            shift -= 1
+
+    answer = runtime.number(quotient) * runtime.math.pow(2.0, -shift)
+    return -answer if negative else answer
+
+
 def ρσ_operator_truediv(left: Any, right: Any) -> Any:
     if _builtins_member_is_function(left, "_sage_scalar_truediv_"):
         result = _builtins_call_member(left, "_sage_scalar_truediv_", [right])
@@ -1585,6 +1689,10 @@ def ρσ_operator_truediv(left: Any, right: Any) -> Any:
     if runtime.strict_equal(ρσ_python_jstype(left), "bigint") or runtime.strict_equal(
         ρσ_python_jstype(right), "bigint"
     ):
+        if _builtins_exact_integer_primitive(
+            left
+        ) and _builtins_exact_integer_primitive(right):
+            return ρσ_float_result(_builtins_exact_quotient_float(left, right))
         return ρσ_float_result(
             runtime.native_div(runtime.number(left), runtime.number(right))
         )

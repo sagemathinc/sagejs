@@ -296,6 +296,7 @@ const integration = [
   "test/prime-polynomial-divrem.cjs",
   "test/polynomial-prime-evaluate.cjs",
   "test/large-prime-polynomial.cjs",
+  "test/integer-true-division.cjs",
   "test/padics.cjs",
   "test/groups.cjs",
   "test/graphs.cjs",
