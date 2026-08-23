@@ -271,19 +271,50 @@ def packed_cubic_factor_records(
     )
     if len(rational_primes) > int(plan.max_rational_primes):
         raise ValueError("exact factor-base rational primes exceed the plan cap")
+    equation_polynomial = prime_module._maximal.integral_equation_polynomial(
+        order.number_field()
+    )
+    equation_coefficients = tuple(int(value) for value in equation_polynomial.list())
+    one_coordinates = prime_module._order_one_coordinates(order)
     for prime in rational_primes:
         requested = {
             residue_degree
             for residue_degree in range(1, 4)
             if prime**residue_degree <= int(plan.bound)
         }
-        local = prime_module.packed_dedekind_kummer_candidates(order, prime, requested)
+        modular_factors = prime_module._om.factor_cubic_mod_prime(
+            equation_coefficients, prime
+        )
+        p_maximal = prime_module._equation_order_is_p_maximal_from_factors(
+            equation_coefficients, prime, modular_factors
+        )
+        if p_maximal and not any(
+            len(factor.polynomial) - 1 in requested for factor in modular_factors
+        ):
+            continue
+        modular_table = prime_module._modular_table(order, prime)
+        modular_one = [value % prime for value in one_coordinates]
+        local = (
+            prime_module.packed_dedekind_kummer_candidates(
+                order,
+                prime,
+                requested,
+                modular_factors=modular_factors,
+                p_maximal=True,
+                modular_table=modular_table,
+                one_coordinates=modular_one,
+            )
+            if p_maximal
+            else None
+        )
         if local is None:
             local = prime_module.packed_finite_algebra_candidates(
                 order,
                 prime,
                 prime_module.DEFAULT_MAX_PRIMITIVE_CANDIDATES,
                 requested,
+                modular_table=modular_table,
+                one_coordinates=modular_one,
             )
         if local is None:
             return None

@@ -57,6 +57,43 @@ _identity_tokens: list[Any] = []
 _PACKED_CANDIDATE_TOKEN = object()
 
 
+def _equation_order_is_p_maximal_from_factors(
+    coefficients: tuple[int, ...], prime: int, factors: tuple[Any, ...]
+) -> bool:
+    """Replay Dedekind's criterion from one exact modular factorization."""
+    modulus = int(prime)
+    radical: tuple[int, ...] = (1,)
+    quotient: tuple[int, ...] = (1,)
+    for factor in factors:
+        polynomial = _om._mod_polynomial(factor.polynomial, modulus)
+        multiplicity = int(factor.multiplicity)
+        if multiplicity < 1:
+            raise ArithmeticError("a modular factor has invalid multiplicity")
+        radical = _om._mod_polynomial(
+            _om.polynomial_multiply(radical, polynomial), modulus
+        )
+        for _index in range(multiplicity - 1):
+            quotient = _om._mod_polynomial(
+                _om.polynomial_multiply(quotient, polynomial), modulus
+            )
+    lifted_product = _om.polynomial_multiply(radical, quotient)
+    width = max(len(coefficients), len(lifted_product))
+    correction: list[int] = []
+    for index in range(width):
+        source = int(coefficients[index]) if index < len(coefficients) else 0
+        lifted = int(lifted_product[index]) if index < len(lifted_product) else 0
+        difference = source - lifted
+        if difference % modulus:
+            raise ArithmeticError("modular factors do not reconstruct the polynomial")
+        correction.append(difference // modulus)
+    obstruction = _om._modular_gcd(
+        _om._modular_gcd(radical, quotient, modulus),
+        _om._mod_polynomial(tuple(correction), modulus),
+        modulus,
+    )
+    return _om.polynomial_degree(obstruction) == 0
+
+
 def _native_factor_degree_data(
     polynomial: Any,
     primes: list[int],
@@ -1404,6 +1441,11 @@ def packed_dedekind_kummer_candidates(
     order: Any,
     prime: int,
     residue_degrees: set[int] | None = None,
+    *,
+    modular_factors: tuple[Any, ...] | None = None,
+    p_maximal: bool | None = None,
+    modular_table: list[list[list[int]]] | None = None,
+    one_coordinates: list[int] | None = None,
 ) -> list[dict[str, Any]] | None:
     """Return exact Dedekind--Kummer data without constructing ideal objects.
 
@@ -1415,16 +1457,34 @@ def packed_dedekind_kummer_candidates(
     integer buffers and avoid that object boundary entirely.
     """
     field = order.number_field()
-    if not _maximal.equation_order_is_p_maximal(field, prime):
-        return None
     polynomial = _maximal.integral_equation_polynomial(field)
     coefficients = tuple(int(value) for value in polynomial.list())
-    factors = _om.factor_mod_prime(coefficients, prime)
+    factors = (
+        _om.factor_mod_prime(coefficients, prime)
+        if modular_factors is None
+        else modular_factors
+    )
+    if p_maximal is None:
+        maximal = (
+            _maximal.equation_order_is_p_maximal(field, prime)
+            if modular_factors is None
+            else _equation_order_is_p_maximal_from_factors(
+                coefficients, prime, tuple(factors)
+            )
+        )
+    else:
+        maximal = bool(p_maximal)
+    if not maximal:
+        return None
     scale = runtime.integer_bigint(field._integral_equation_scale_cache)
     beta = field.gen() * scale
     degree = order.degree()
-    table = _modular_table(order, prime)
-    one = [value % prime for value in _order_one_coordinates(order)]
+    table = _modular_table(order, prime) if modular_table is None else modular_table
+    one = (
+        [value % prime for value in _order_one_coordinates(order)]
+        if one_coordinates is None
+        else [int(value) % prime for value in one_coordinates]
+    )
     if (
         sum(
             int(factor.multiplicity) * (len(factor.polynomial) - 1)
@@ -1492,11 +1552,18 @@ def packed_finite_algebra_candidates(
     prime: int,
     max_candidates: int,
     residue_degrees: set[int] | None = None,
+    *,
+    modular_table: list[list[list[int]]] | None = None,
+    one_coordinates: list[int] | None = None,
 ) -> list[dict[str, Any]] | None:
     """Return exact finite-algebra prime data without ordinary ideal objects."""
     degree = order.degree()
-    table = _modular_table(order, prime)
-    one = [value % prime for value in _order_one_coordinates(order)]
+    table = _modular_table(order, prime) if modular_table is None else modular_table
+    one = (
+        [value % prime for value in _order_one_coordinates(order)]
+        if one_coordinates is None
+        else [int(value) % prime for value in one_coordinates]
+    )
     radical = _nilradical(degree, prime, one, table)
     quotient_cache: dict[Any, Any] = {}
     field_kernels = _monogenic_reduced_field_kernels(

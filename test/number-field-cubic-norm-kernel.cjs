@@ -129,6 +129,23 @@ for function in (row_dynamic, row_packed):
     assert tuple(integer_buffer_values(smooth)) == (1, 1)
 `;
 
+const cubicFactorDifferential = String.raw`
+from sagejs.number_fields import prime_ideals
+
+samples = (
+    (-12, -6, -1, 1),
+    (1, 2, 0, 1),
+    (-1, -1, 0, 1),
+    (-2, 0, 0, 1),
+    (1, -3, 0, 1),
+)
+for coefficients in samples:
+    for prime in (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31):
+        assert prime_ideals._om.factor_cubic_mod_prime(
+            coefficients, prime
+        ) == prime_ideals._om.factor_mod_prime(coefficients, prime)
+`;
+
 test("packed cubic norm obstruction matches ordinary Python", () => {
   run(
     pythonExecutable(),
@@ -163,16 +180,85 @@ test("packed cubic integral relation sieve matches ordinary Python", () => {
   assert.equal(output, "True True True");
 });
 
+test("bounded cubic factorization matches the generic modular oracle", () => {
+  run(sagejs, ["--python", "-"], cubicFactorDifferential);
+});
+
 test("cubic class-number obstruction agrees with the readable search", () => {
   const output = run(
     sagejs,
     ["--python", "-"],
     String.raw`
 import sagejs.number_fields.cubic_class_number as cubic
+from sagejs.number_fields import class_group_factor_base as factor_bases
+from sagejs.number_fields import maximal_order
+from sagejs.number_fields import prime_ideals
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 packed_field = NumberField(x**3 - x**2 - 6*x - 12, "a")
+
+# The bounded cubic producer factors each equation polynomial only once per
+# rational prime and replays Dedekind's criterion from those exact factors.
+# The small root factorizer must remain byte-for-byte equal to the generic
+# modular oracle, including repeated factors at the index prime 2.
+equation = maximal_order.integral_equation_polynomial(packed_field)
+coefficients = tuple(int(value) for value in equation.list())
+for prime in (2, 3, 5, 7, 11, 13, 17, 19):
+    fast_factors = prime_ideals._om.factor_cubic_mod_prime(coefficients, prime)
+    generic_factors = prime_ideals._om.factor_mod_prime(coefficients, prime)
+    assert fast_factors == generic_factors
+    assert prime_ideals._equation_order_is_p_maximal_from_factors(
+        coefficients, prime, fast_factors
+    ) == maximal_order.equation_order_is_p_maximal(packed_field, prime)
+
+generic_factor_calls = 0
+legacy_p_maximal_calls = 0
+modular_table_calls = 0
+one_coordinate_calls = 0
+saved_generic_factor = prime_ideals._om.factor_mod_prime
+saved_p_maximal = maximal_order.equation_order_is_p_maximal
+saved_modular_table = prime_ideals._modular_table
+saved_one_coordinates = prime_ideals._order_one_coordinates
+def counted_generic_factor(*args, **kwargs):
+    global generic_factor_calls
+    generic_factor_calls += 1
+    return saved_generic_factor(*args, **kwargs)
+def counted_p_maximal(*args, **kwargs):
+    global legacy_p_maximal_calls
+    legacy_p_maximal_calls += 1
+    return saved_p_maximal(*args, **kwargs)
+def counted_modular_table(*args, **kwargs):
+    global modular_table_calls
+    modular_table_calls += 1
+    return saved_modular_table(*args, **kwargs)
+def counted_one_coordinates(*args, **kwargs):
+    global one_coordinate_calls
+    one_coordinate_calls += 1
+    return saved_one_coordinates(*args, **kwargs)
+prime_ideals._om.factor_mod_prime = counted_generic_factor
+maximal_order.equation_order_is_p_maximal = counted_p_maximal
+prime_ideals._modular_table = counted_modular_table
+prime_ideals._order_one_coordinates = counted_one_coordinates
+try:
+    packed_plan = factor_bases.factor_base_plan(
+        packed_field.maximal_order(), proof=True, theorem="minkowski"
+    )
+    direct_packed_factors = cubic.packed_cubic_factor_records(packed_plan)
+finally:
+    prime_ideals._om.factor_mod_prime = saved_generic_factor
+    maximal_order.equation_order_is_p_maximal = saved_p_maximal
+    prime_ideals._modular_table = saved_modular_table
+    prime_ideals._order_one_coordinates = saved_one_coordinates
+assert direct_packed_factors is not None and len(direct_packed_factors) == 5
+# The sole generic factorization is inside the p=2 finite-algebra fallback.
+# The irreducible p=7 cubic is rejected from its requested degree set before
+# constructing a multiplication table or residue presentation.
+assert generic_factor_calls == 1
+assert legacy_p_maximal_calls == 0
+assert modular_table_calls == 3
+assert one_coordinate_calls == 1
+
 packed = cubic.bounded_cubic_minkowski_class_number(packed_field)
 assert packed.complete and packed.order() == 3 and packed.certificate.verify()
 assert packed.diagnostics["relation_search"]["integral_sieve_candidates"] == 21
