@@ -1,3 +1,4 @@
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -206,6 +207,7 @@ test("changed-file checks rebuild native code before testing it", () => {
   assert.deepEqual(
     validationCommandsForFiles(["packages/flint/src/p1.c"]),
     [
+      ["pnpm", "merge:check"],
       ["pnpm", "architecture:check"],
       [
         "pnpm",
@@ -219,17 +221,23 @@ test("changed-file checks rebuild native code before testing it", () => {
     ],
   );
   assert.deepEqual(validationCommandsForFiles(["DOCUMENTATION.md"]), [
+    ["pnpm", "merge:check"],
     ["pnpm", "docs:check"],
   ]);
   assert.deepEqual(validationCommandsForFiles([".agents/lanes.json"]), [
+    ["pnpm", "merge:check"],
     ["pnpm", "architecture:check"],
     ["pnpm", "test:unit"],
   ]);
   assert.deepEqual(
     validationCommandsForFiles(["test/parallel-development.cjs"]),
-    [["pnpm", "test:unit"]],
+    [
+      ["pnpm", "merge:check"],
+      ["pnpm", "test:unit"],
+    ],
   );
   assert.deepEqual(validationCommandsForFiles(["test/graphics.cjs"]), [
+    ["pnpm", "merge:check"],
     ["pnpm", "test:integration"],
   ]);
   assert.deepEqual(
@@ -238,6 +246,7 @@ test("changed-file checks rebuild native code before testing it", () => {
       "src/lib/sagejs/number_fields/local_parallel_worker.py",
     ]),
     [
+      ["pnpm", "merge:check"],
       ["pnpm", "build"],
       ["pnpm", "python:precompile:run"],
     ],
@@ -249,6 +258,7 @@ test("changed-file checks rebuild native code before testing it", () => {
       "test/hyperelliptic-bsd-public.cjs",
     ]),
     [
+      ["pnpm", "merge:check"],
       ["pnpm", "build"],
       ["pnpm", "docs:check"],
       ["pnpm", "python:precompile:run"],
@@ -264,6 +274,7 @@ test("changed-file checks rebuild native code before testing it", () => {
       "src/lib/sagejs/number_fields/om_auto_selector.py",
     ]),
     [
+      ["pnpm", "merge:check"],
       ["pnpm", "build"],
       ["pnpm", "architecture:check"],
       ["pnpm", "test:unit"],

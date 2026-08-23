@@ -1,3 +1,4 @@
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -30,15 +31,34 @@ test("the Wasm source-kernel inventory accounts for all registered kernels", asy
     root,
     "packages/flint-wasm/release/production-kernel-coverage.json",
   ), "utf8"));
-  assert.equal(manifest.kernels.length, 41);
-  assert.equal(inventory.registered.length, manifest.kernels.length);
-  assert.equal(inventory.production.length, 34);
+  assert.deepEqual(
+    inventory.registered.map((kernel) => kernel.id),
+    manifest.kernels.map((kernel) => kernel.id),
+  );
   assert.equal(inventory.modules.length, inventory.production.length);
-  assert.equal(inventory.nonProduction.length, 7);
-  assert.equal(coverage.totals.registered_kernels, 41);
-  assert.equal(coverage.totals.production_kernels, 34);
-  assert.equal(coverage.totals.compiled_functions, 241);
-  assert.equal(coverage.totals.unsupported_production_functions, 0);
+  assert.deepEqual(
+    [...inventory.production, ...inventory.nonProduction]
+      .map((kernel) => kernel.id).sort(),
+    inventory.registered.map((kernel) => kernel.id).sort(),
+  );
+  const productionFunctions = inventory.inventory.flatMap(
+    (kernel) => kernel.functions,
+  );
+  const nonProductionFunctions = inventory.nonProduction.flatMap(
+    (kernel) => kernel.functions,
+  );
+  assert.deepEqual(coverage.totals, {
+    registered_kernels: inventory.registered.length,
+    production_kernels: inventory.production.length,
+    compiled_functions: productionFunctions.filter(
+      (fn) => fn.status === "compiled-source"
+    ).length,
+    unsupported_production_functions: productionFunctions.filter(
+      (fn) => fn.status === "unsupported"
+    ).length,
+    non_production_functions: nonProductionFunctions.length,
+    same_source_fallback_functions: nonProductionFunctions.length,
+  });
   const coverageById = new Map(coverage.kernels.map((item) => [item.id, item]));
   for (const omitted of inventory.nonProduction) {
     assert.match(omitted.reason, /\S/);
@@ -46,7 +66,7 @@ test("the Wasm source-kernel inventory accounts for all registered kernels", asy
     assert.ok(omitted.oracles.length > 0);
     assert.ok(omitted.tests.length > 0);
   }
-  const functions = inventory.inventory.flatMap((kernel) => kernel.functions);
+  const functions = productionFunctions;
   assert.ok(functions.filter((fn) => fn.status === "compiled-source").length > 150);
   for (const fn of functions.filter((item) => item.status === "unsupported")) {
     assert.match(fn.reason, /\S/);
@@ -102,6 +122,10 @@ test("portable identities are deterministic and independent of Node cache keys",
 test("generated runtime manifests expose bridges and exact unsupported reasons", async () => {
   const outputRoot = mkdtempSync(join(tmpdir(), "sagejs-wasm-kernel-emit-"));
   try {
+    const inventory = await inventoryProductionKernels({
+      root,
+      manifestPath: join(root, "architecture", "native-kernels.json"),
+    });
     const manifest = await buildWasmProductionPacks({
       root,
       manifestPath: join(root, "architecture", "native-kernels.json"),
@@ -109,18 +133,29 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
       emitOnly: true,
     });
     assert.equal(manifest.completeInventory, true);
-    assert.equal(manifest.registeredKernels, 41);
-    assert.equal(manifest.productionKernels, 34);
-    assert.equal(manifest.compiledKernelCores, 34);
-    assert.equal(manifest.compiledFunctions, 241);
-    assert.equal(manifest.unsupportedFunctions, 0);
-    assert.equal(manifest.nonProductionKernels.length, 7);
+    assert.equal(manifest.registeredKernels, inventory.registered.length);
+    assert.equal(manifest.productionKernels, inventory.production.length);
+    assert.equal(manifest.compiledKernelCores, inventory.modules.length);
+    assert.equal(
+      manifest.compiledFunctions,
+      inventory.inventory.flatMap((kernel) => kernel.functions)
+        .filter((fn) => fn.status === "compiled-source").length,
+    );
+    assert.equal(
+      manifest.unsupportedFunctions,
+      inventory.inventory.flatMap((kernel) => kernel.functions)
+        .filter((fn) => fn.status === "unsupported").length,
+    );
+    assert.equal(manifest.nonProductionKernels.length, inventory.nonProduction.length);
     assert.deepEqual(manifest.packs.map((pack) => pack.domain), ["flint", "gmp"]);
     const zeta = manifest.kernels.find((kernel) =>
       kernel.id === "number-field-zeta-coefficients-production"
     );
     assert.ok(zeta.runtime);
-    assert.equal(zeta.functions.length, 5);
+    assert.equal(
+      zeta.functions.length,
+      inventory.registered.find((kernel) => kernel.id === zeta.id).functions.length,
+    );
     assert.ok(zeta.functions.every((fn) =>
       /^sagejs_wasm_call_m_[a-f0-9]{16}_/.test(fn.bridge.export)
     ));

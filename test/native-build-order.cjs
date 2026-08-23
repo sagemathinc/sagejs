@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");

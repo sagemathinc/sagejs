@@ -1,3 +1,4 @@
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -186,8 +187,9 @@ test("production resource closure compiles every registered function", async () 
     kernel.functions.filter((fn) => fn.status === "unsupported")
       .map((fn) => [kernel.id, fn.name, fn.reason, fn.resources])
   );
-  assert.equal(inventory.inventory.flatMap((kernel) => kernel.functions)
-    .filter((fn) => fn.status === "compiled-source").length, 241);
+  const functions = inventory.inventory.flatMap((kernel) => kernel.functions);
+  assert.ok(functions.length > 0);
+  assert.ok(functions.every((fn) => fn.status === "compiled-source"));
   assert.deepEqual(unsupported, []);
 });
 

@@ -1,3 +1,4 @@
+// sagejs-test-tier: unit
 const assert = require("node:assert/strict");
 const { readFile } = require("node:fs/promises");
 const path = require("node:path");

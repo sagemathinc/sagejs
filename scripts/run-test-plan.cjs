@@ -12,9 +12,9 @@ const root = resolve(__dirname, "..");
 
 function foundation(buildScript = "build") {
   return [
-    ["Package architecture checks", "architecture:packages", 2],
-    ["Native architecture checks", "architecture:native", 3],
+    ["Fail-fast merge invariants", "merge:check", 8],
     ["Build readiness", buildScript, 300],
+    ["Generated documentation integrity", "merge:check:postbuild", 10],
     ["Generated FFI boundary checks", "ffi:check", 5],
     ["Startup regression budget", "test:startup:run", 15],
     ["Strict Python formatting and typing", "test:baselib:strict", 25],

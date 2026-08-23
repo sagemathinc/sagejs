@@ -37,12 +37,26 @@ function repositoryPath(value, label) {
   return value;
 }
 
-function nativeFiles(root = ROOT, extensions = [".c", ".cc", ".cpp", ".cu", ".h"]) {
+function trackedNativeExtensions(root = ROOT) {
+  const manifest = readJson(join(root, "architecture", "native-code.json"));
+  const extensions = manifest.policy?.tracked_extensions;
+  if (
+    !Array.isArray(extensions) || extensions.length === 0 ||
+    extensions.some((extension) =>
+      typeof extension !== "string" || !/^\.[a-z0-9]+$/.test(extension)
+    ) || new Set(extensions).size !== extensions.length
+  ) {
+    throw new Error("native-code tracked_extensions must be unique file extensions");
+  }
+  return [...extensions];
+}
+
+function nativeFiles(root = ROOT, extensions = undefined) {
   const tracked = execFileSync("git", ["ls-files", "-z"], {
     cwd: root,
     encoding: "utf8",
   }).split("\0").filter(Boolean);
-  const allowed = new Set(extensions);
+  const allowed = new Set(extensions ?? trackedNativeExtensions(root));
   return tracked.filter((filename) => allowed.has(extname(filename))).sort();
 }
 
@@ -376,6 +390,7 @@ if (require.main === module) {
 
 module.exports = {
   nativeFiles,
+  trackedNativeExtensions,
   validateNativeAudit,
   validateKernelRegistry,
   validateNativeCode,

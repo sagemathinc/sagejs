@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// sagejs-test-tier: integration
 
 /** Structural and high-precision identity checks for the offline L-value corpus. */
 

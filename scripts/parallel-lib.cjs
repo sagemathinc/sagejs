@@ -370,6 +370,8 @@ function validationCommandsForFiles(files) {
   const has = (prefix) => files.some((filename) => filename.startsWith(prefix));
   const matches = (pattern) => files.some((filename) => pattern.test(filename));
 
+  if (files.length > 0) add("pnpm", "merge:check");
+
   if (has("src/") || has("tools/") || has("scripts/")) add("pnpm", "build");
   if (
     has("src/lib/sagejs/number_fields/") ||
@@ -469,7 +471,7 @@ function validationCommandsForFiles(files) {
     );
     commands.splice(finalPrecompileIndex + 1, 0, integration);
   }
-  if (files.length > 0 && commands.length === 0) add("pnpm", "test:portable");
+  if (files.length > 0 && commands.length === 1) add("pnpm", "test:portable");
   return commands;
 }
 

@@ -1,42 +1,58 @@
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const { join, resolve } = require("node:path");
 const test = require("node:test");
-const { readdirSync } = require("node:fs");
-const { join, relative } = require("node:path");
 
 const manifest = require("./node-test-manifest.cjs");
+const {
+  discoverTestFiles,
+  discoverTestManifest,
+  parseTestMetadata,
+} = require("../scripts/test-metadata.cjs");
 
-test("every host test belongs to a runner tier", () => {
-  const classified = [...manifest.unit, ...manifest.integration];
-  assert.equal(
-    new Set(classified).size,
-    classified.length,
-    "a host test occurs in more than one tier",
+const root = resolve(__dirname, "..");
+
+test("every host test owns its runner tier beside its source", () => {
+  const discovered = discoverTestFiles(root);
+  assert.deepEqual(
+    manifest.records.map((item) => item.filename),
+    discovered,
   );
+  assert.equal(new Set(manifest.all).size, manifest.all.length);
+  assert.deepEqual(
+    [...manifest.all, ...manifest.specialized].sort(),
+    discovered,
+  );
+  assert.ok(manifest.portable.every((filename) => manifest.unit.includes(filename)));
+  assert.ok(manifest.platform.every((filename) => manifest.unit.includes(filename)));
+  assert.ok(manifest.smoke.every((filename) => manifest.all.includes(filename)));
+  assert.deepEqual(discoverTestManifest(root), manifest);
 
-  const specialized = new Set([
-    "compiler.test.cjs",
-    "exact-polynomial-resource-ffi.cjs",
-    "exact-polynomial-resource-equality.cjs",
-    "ffi-resource-accounting-codegen.cjs",
-    "ffi-resource-memory.cjs",
-    "fmpz-matrix-resource-ffi.cjs",
-    "fmpq-resource-ops-lifecycle.cjs",
-    "native-kernel-addon-child.cjs",
-    "native-kernel.cjs",
-    "sea-smoke.cjs",
-    "upstream-doctest-tools.cjs",
-    "node-test-manifest.cjs",
-  ]);
-  const nestedTests = readdirSync(__dirname, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name === "test.cjs")
-    .map((entry) => `test/${relative(__dirname, join(entry.parentPath, entry.name)).replaceAll("\\", "/")}`);
-  const expected = readdirSync(__dirname)
-    .filter((name) => name.endsWith(".cjs") && !specialized.has(name))
-    .map((name) => `test/${name}`)
-    .concat(nestedTests)
-    .sort();
+  const centralSource = readFileSync(join(root, "test/node-test-manifest.cjs"), "utf8");
+  assert.doesNotMatch(centralSource, /["']test\//);
+});
 
-  assert.deepEqual([...classified].sort(), expected);
+test("missing, duplicate, and invalid co-located metadata fail closed", () => {
+  assert.throws(() => parseTestMetadata('"use strict";\n', "test/new.cjs"), /needs a co-located/);
+  assert.throws(
+    () => parseTestMetadata(
+      "// sagejs-test-tier: unit\n// sagejs-test-tier: integration\n",
+      "test/repeated.cjs",
+    ),
+    /repeats sagejs-test-tier metadata/,
+  );
+  assert.throws(
+    () => parseTestMetadata("// sagejs-test-tier: overnight\n", "test/unknown.cjs"),
+    /unknown test tier overnight/,
+  );
+  assert.throws(
+    () => parseTestMetadata(
+      "// sagejs-test-tier: specialized\n// sagejs-test-smoke: true\n",
+      "test/specialized.cjs",
+    ),
+    /cannot put a specialized test/,
+  );
 });
