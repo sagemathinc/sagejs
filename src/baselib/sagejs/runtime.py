@@ -154,6 +154,26 @@ def uint64_buffer(source):
     })()"""
 
 
+def immutable_uint64_capsule(source, owner, model, format, count):
+    """Copy unsigned words into opaque immutable runtime-owned storage.
+
+    The capsule exposes neither its words nor its binding. `owner` is matched
+    by identity; `model`, `format`, and `count` are matched exactly whenever a
+    consumer requests either a native lease or a dynamic copy.
+    """
+    return r"%js globalThis.__sagejs_create_immutable_uint64_capsule__(source, owner, model, format, count)"
+
+
+def immutable_uint64_capsule_lease(capsule, owner, model, format, count):
+    """Authorize a short-lived read-only native lease for `capsule`."""
+    return r"%js globalThis.__sagejs_authorize_immutable_uint64_capsule__(capsule, owner, model, format, count)"
+
+
+def immutable_uint64_capsule_copy(capsule, owner, model, format, count):
+    """Return an owned mutable copy for source-transparent dynamic fallback."""
+    return r"%js globalThis.__sagejs_copy_immutable_uint64_capsule__(capsule, owner, model, format, count)"
+
+
 def integer_buffer(source, minimum_word_capacity=1):
     """Pack primitive exact integers into owned signed-limb storage."""
     return ρσ_integer_buffer(source, minimum_word_capacity)

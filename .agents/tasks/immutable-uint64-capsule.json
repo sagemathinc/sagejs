@@ -1,0 +1,93 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "immutable-uint64-capsule",
+  "title": "Immutable native buffer capsules",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "/root/native_compiler",
+  "objective": "Add a runtime-owned immutable UInt64 capsule with WeakMap storage, exact binding, copied fallback access, and zero-copy authorized native leases",
+  "base_commit": "ab31e4f3ff8095dcfcdbb34d4d29fb142dc3ae01",
+  "claims": [
+    ".agents/lanes.json",
+    "tools/immutable-uint64-capsule.ts",
+    "tools/resources.ts",
+    "tools/runtime-bootstrap.ts",
+    "tools/native-kernel/js-backend.cjs",
+    "src/baselib/sagejs/runtime.py",
+    "src/baselib/sagejs/runtime.pyi",
+    "test/immutable-uint64-capsule.cjs",
+    "tools/native-kernel/test/immutable_uint64_capsule_witness.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "native-primitive",
+    "fallback": "tested-capability",
+    "oracles": [
+      "non-hyperelliptic dynamic-copy/native-borrow differential",
+      "cross-owner, binding, forgery, mutation, and GC regressions"
+    ],
+    "exceptions": [
+      "Host WeakMap state is the representation primitive that makes an owned typed span opaque and read-only to mathematical Python while allowing a synchronous native borrow"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "node --test test/immutable-uint64-capsule.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/immutable-uint64-capsule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.46,
+      "started_at": "2026-08-23T09:34:14.637Z",
+      "commit": "971e4b07b6b87b0085ec1c5613ca0a4c216b7ed8",
+      "workspace_fingerprint": "d56d0fbaeb172fc07a40ce82a40ed9769fc70d712513390ccc19aaf9949568dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.605,
+      "started_at": "2026-08-23T09:34:27.656Z",
+      "commit": "971e4b07b6b87b0085ec1c5613ca0a4c216b7ed8",
+      "workspace_fingerprint": "d56d0fbaeb172fc07a40ce82a40ed9769fc70d712513390ccc19aaf9949568dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.742,
+      "started_at": "2026-08-23T09:35:08.134Z",
+      "commit": "971e4b07b6b87b0085ec1c5613ca0a4c216b7ed8",
+      "workspace_fingerprint": "d56d0fbaeb172fc07a40ce82a40ed9769fc70d712513390ccc19aaf9949568dd",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a generic immutable UInt64 capsule whose owned BigUint64Array and exact owner/model/format/count binding live in private WeakMaps. Frozen empty capsule and lease objects expose no indexed storage; authenticated generated wrappers receive a read-only zero-copy native borrow while source-transparent dynamic execution requires an explicit owned copy. Focused tests cover CPython/dynamic/native agreement, zero callbacks, storage opacity, cross-owner and binding rejection, forgery, write rejection, and garbage collection.",
+    "risks": [
+      "Cross-platform native borrow behavior remains for integration CI on Linux arm64, Windows x64, and macOS arm64.",
+      "The full compiler fixture command was attempted but four unrelated algebra fixtures could not load the absent optional packages/flint/build/Release/sagejs_flint.node; all eleven fixtures not requiring that addon passed."
+    ],
+    "next_steps": [
+      "Integration must register test/immutable-uint64-capsule.cjs in the shared Node test manifest.",
+      "Hyperelliptic consumers can replace Python tuple packing with one capsule per exact owner/model/format/count binding, request a lease only for native read-only calls, and request a copy for dynamic fallback.",
+      "Run the focused test on the required non-x64 platforms and rerun the complete compiler suite in a checkout with the optional FLINT addon prepared."
+    ]
+  }
+}
