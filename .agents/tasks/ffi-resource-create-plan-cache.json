@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "ffi-resource-create-plan-cache",
+  "title": "Authenticated FFI resource creation plan cache",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Cache authenticated immutable dynamic FFI owned-resource creation plans and prove fail-closed metadata identity with neutral resource tests and measured cross-resource speedups",
+  "base_commit": "56f62317fc78873ba2cd88831a795db1322ee3c5",
+  "claims": [
+    "architecture/package-graph.json",
+    "src/baselib/sagejs_bootstrap.py",
+    "test/ffi.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "current-uncached-resource-semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Adds a closure-private, immutable owned-resource creation plan cache keyed by authenticated declaration identity. Repeated calls reuse backend exports, exception/lifecycle policy, and parameter marshalling kinds; every supplied metadata field is compared exactly and drift fails closed before backend work. A neutral real-FLINT 5x50000 local comparison reduced median FmpzPolynomial create+close from 10.493us to 9.567us (8.8%) and FmpqMatrix from 9.252us to 8.422us (9.0%). Focused FFI tests, strict baselib, full build, and architecture checks pass.",
+    "risks": [
+      "The cache is process-global by declaration identity, so a malformed first internal declaration fails during plan construction and later metadata drift remains intentionally fail-closed.",
+      "The portable tier reached batch 5/6 but failed an unrelated Chromium group-Wasm test because dist/wasi-runtime.mjs returned 404; the focused runtime/FFI suite is green."
+    ],
+    "next_steps": [
+      "Integration should rerun test:portable after producing the expected browser wasi-runtime.mjs artifact.",
+      "This generic cache does not close the rational QQ public-add gate: the accepted direct owned-result floor remains above 2x Magma, and the ordinary 256-bit scalar-vs-Magma gate still lacks a durable equal-contract receipt."
+    ]
+  }
+}
