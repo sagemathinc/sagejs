@@ -140,6 +140,7 @@
     "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
     "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
     "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py",
+    "src/lib/sagejs/hyperelliptic_curves/jacobian_rational_native.py",
     "src/lib/sagejs/hyperelliptic_curves/local_data.py",
     "src/lib/sagejs/hyperelliptic_curves/lseries.py",
     "src/lib/sagejs/hyperelliptic_curves/model.py",

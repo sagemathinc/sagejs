@@ -15,6 +15,7 @@ from sagejs.ffi.flint import (
     FmpqMatrix,
     FmpqPolynomial,
     FmpqPolynomialDivisionResult,
+    FmpqPolynomialWorkspace,
     FmpqPolynomialXgcdResult,
     FmpqValue,
     FmpqVector,
@@ -71,6 +72,27 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_serialize as _ffi_fmpz_polynomial_serialize,
     fmpz_polynomial_format as _ffi_fmpz_polynomial_format,
     fmpz_polynomial_from_byte_region as _ffi_fmpz_polynomial_from_byte_region,
+    fmpq_polynomial_workspace as _ffi_fmpq_polynomial_workspace,
+    fmpq_polynomial_workspace_load as _ffi_fmpq_polynomial_workspace_load,
+    fmpq_polynomial_workspace_zero as _ffi_fmpq_polynomial_workspace_zero,
+    fmpq_polynomial_workspace_one as _ffi_fmpq_polynomial_workspace_one,
+    fmpq_polynomial_workspace_copy as _ffi_fmpq_polynomial_workspace_copy,
+    fmpq_polynomial_workspace_swap as _ffi_fmpq_polynomial_workspace_swap,
+    fmpq_polynomial_workspace_monic as _ffi_fmpq_polynomial_workspace_monic,
+    fmpq_polynomial_workspace_add as _ffi_fmpq_polynomial_workspace_add,
+    fmpq_polynomial_workspace_sub as _ffi_fmpq_polynomial_workspace_sub,
+    fmpq_polynomial_workspace_neg as _ffi_fmpq_polynomial_workspace_neg,
+    fmpq_polynomial_workspace_mul as _ffi_fmpq_polynomial_workspace_mul,
+    fmpq_polynomial_workspace_divexact as _ffi_fmpq_polynomial_workspace_divexact,
+    fmpq_polynomial_workspace_rem as _ffi_fmpq_polynomial_workspace_rem,
+    fmpq_polynomial_workspace_xgcd as _ffi_fmpq_polynomial_workspace_xgcd,
+    fmpq_polynomial_workspace_length as _ffi_fmpq_polynomial_workspace_length,
+    fmpq_polynomial_workspace_allocated_bytes as _ffi_fmpq_polynomial_workspace_allocated_bytes,
+    fmpq_polynomial_workspace_is_zero as _ffi_fmpq_polynomial_workspace_is_zero,
+    fmpq_polynomial_workspace_is_one as _ffi_fmpq_polynomial_workspace_is_one,
+    fmpq_polynomial_workspace_equal as _ffi_fmpq_polynomial_workspace_equal,
+    fmpq_polynomial_workspace_coefficient_numerator as _ffi_fmpq_polynomial_workspace_coefficient_numerator,
+    fmpq_polynomial_workspace_coefficient_denominator as _ffi_fmpq_polynomial_workspace_coefficient_denominator,
     fmpq_polynomial as _ffi_fmpq_polynomial,
     fmpq_polynomial_set_coefficient as _ffi_fmpq_polynomial_set_coefficient,
     fmpq_polynomial_seal as _ffi_fmpq_polynomial_seal,
@@ -785,6 +807,277 @@ def ffiFmpzPolynomialFromByteRegion(
         source,
         offset,
         length,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceCreate(
+    slot_count: uint64,
+) -> FmpqPolynomialWorkspace:
+    return _ffi_fmpq_polynomial_workspace(
+        slot_count,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceLoad(
+    workspace: FmpqPolynomialWorkspace,
+    output: uint64,
+    source: FmpqPolynomial,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_load(
+        workspace,
+        output,
+        source,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceZero(
+    workspace: FmpqPolynomialWorkspace,
+    output: uint64,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_zero(
+        workspace,
+        output,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceOne(
+    workspace: FmpqPolynomialWorkspace,
+    output: uint64,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_one(
+        workspace,
+        output,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceCopy(
+    workspace: FmpqPolynomialWorkspace,
+    output: uint64,
+    source: uint64,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_copy(
+        workspace,
+        output,
+        source,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceSwap(
+    workspace: FmpqPolynomialWorkspace,
+    left: uint64,
+    right: uint64,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_swap(
+        workspace,
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceMonic(
+    workspace: FmpqPolynomialWorkspace,
+    output: uint64,
+    source: uint64,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_monic(
+        workspace,
+        output,
+        source,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceAdd(
+    workspace: FmpqPolynomialWorkspace,
+    output: uint64,
+    left: uint64,
+    right: uint64,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_add(
+        workspace,
+        output,
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceSub(
+    workspace: FmpqPolynomialWorkspace,
+    output: uint64,
+    left: uint64,
+    right: uint64,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_sub(
+        workspace,
+        output,
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceNeg(
+    workspace: FmpqPolynomialWorkspace,
+    output: uint64,
+    source: uint64,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_neg(
+        workspace,
+        output,
+        source,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceMul(
+    workspace: FmpqPolynomialWorkspace,
+    output: uint64,
+    left: uint64,
+    right: uint64,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_mul(
+        workspace,
+        output,
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceDivExact(
+    workspace: FmpqPolynomialWorkspace,
+    output: uint64,
+    left: uint64,
+    right: uint64,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_divexact(
+        workspace,
+        output,
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceRemainder(
+    workspace: FmpqPolynomialWorkspace,
+    output: uint64,
+    left: uint64,
+    right: uint64,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_rem(
+        workspace,
+        output,
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceXgcd(
+    workspace: FmpqPolynomialWorkspace,
+    gcd: uint64,
+    left_coefficient: uint64,
+    right_coefficient: uint64,
+    left: uint64,
+    right: uint64,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_xgcd(
+        workspace,
+        gcd,
+        left_coefficient,
+        right_coefficient,
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceLength(
+    workspace: FmpqPolynomialWorkspace,
+    slot: uint64,
+) -> uint64:
+    return _ffi_fmpq_polynomial_workspace_length(
+        workspace,
+        slot,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceAllocatedBytes(
+    workspace: FmpqPolynomialWorkspace,
+) -> uint64:
+    return _ffi_fmpq_polynomial_workspace_allocated_bytes(
+        workspace,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceIsZero(
+    workspace: FmpqPolynomialWorkspace,
+    slot: uint64,
+) -> uint64:
+    return _ffi_fmpq_polynomial_workspace_is_zero(
+        workspace,
+        slot,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceIsOne(
+    workspace: FmpqPolynomialWorkspace,
+    slot: uint64,
+) -> uint64:
+    return _ffi_fmpq_polynomial_workspace_is_one(
+        workspace,
+        slot,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceEqual(
+    workspace: FmpqPolynomialWorkspace,
+    left: uint64,
+    right: uint64,
+) -> uint64:
+    return _ffi_fmpq_polynomial_workspace_equal(
+        workspace,
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceCoefficientNumerator(
+    workspace: FmpqPolynomialWorkspace,
+    slot: uint64,
+    index: uint64,
+) -> Integer:
+    return _ffi_fmpq_polynomial_workspace_coefficient_numerator(
+        workspace,
+        slot,
+        index,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceCoefficientDenominator(
+    workspace: FmpqPolynomialWorkspace,
+    slot: uint64,
+    index: uint64,
+) -> Integer:
+    return _ffi_fmpq_polynomial_workspace_coefficient_denominator(
+        workspace,
+        slot,
+        index,
     )
 
 

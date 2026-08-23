@@ -1,0 +1,130 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-qq-cantor",
+  "title": "Prepared rational Cantor arithmetic",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a prepared FLINT-backed QQ Cantor add, double, scalar and batch boundary for genus 2 and 3 with exact reference replay and Magma performance receipts.",
+  "base_commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "src/lib/sagejs/ffi/",
+    "src/baselib/sagejs/ffi/",
+    "packages/flint/generated/",
+    "packages/flint/include/sagejs/hyperelliptic/rational_jacobian_ffi.h",
+    "architecture/native-boundaries.json",
+    "architecture/native-code.json",
+    "architecture/native-exports.json",
+    "src/lib/sagejs/hyperelliptic_curves/jacobian_rational_native.py",
+    "test/ffi.cjs",
+    "test/hyperelliptic-rational-cantor.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/hyperelliptic/benchmark-rational-cantor.cjs",
+    "pyrightconfig.json",
+    "package.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "reference-cantor",
+      "magma-2.18-5"
+    ],
+    "exceptions": [
+      "Generated declarative in-place FLINT fmpq-polynomial resource primitives provide bounded scratch lifetime because the source-transparent compiler does not yet lower owned resource allocation inside loops; Cantor mathematics remains ordinary typed Python and reference replayed."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node test/hyperelliptic-rational-cantor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.543,
+      "started_at": "2026-08-23T05:32:11.888Z",
+      "commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+      "workspace_fingerprint": "437afbe8b1d89c5cb12ab108ae3a462ce6076f951e0aec2eabbb46341c7e0d0a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bin/sagejs ffi check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.73,
+      "started_at": "2026-08-23T05:32:24.926Z",
+      "commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+      "workspace_fingerprint": "437afbe8b1d89c5cb12ab108ae3a462ce6076f951e0aec2eabbb46341c7e0d0a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --project pyrightconfig.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.103,
+      "started_at": "2026-08-23T05:32:27.366Z",
+      "commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+      "workspace_fingerprint": "437afbe8b1d89c5cb12ab108ae3a462ce6076f951e0aec2eabbb46341c7e0d0a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:hyperelliptic-rational-cantor",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.031,
+      "started_at": "2026-08-23T05:33:01.883Z",
+      "commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+      "workspace_fingerprint": "437afbe8b1d89c5cb12ab108ae3a462ce6076f951e0aec2eabbb46341c7e0d0a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/hyperelliptic-rational-cantor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.44,
+      "started_at": "2026-08-23T05:49:39.391Z",
+      "commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+      "workspace_fingerprint": "5a99051a275ae5c46ec9e6985d693f3bd1a6c4dd6ca18d38b6ae64a46d97329b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:hyperelliptic-rational-cantor",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.963,
+      "started_at": "2026-08-23T05:49:48.496Z",
+      "commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+      "workspace_fingerprint": "5a99051a275ae5c46ec9e6985d693f3bd1a6c4dd6ca18d38b6ae64a46d97329b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bin/sagejs ffi check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.728,
+      "started_at": "2026-08-23T05:50:00.134Z",
+      "commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+      "workspace_fingerprint": "5a99051a275ae5c46ec9e6985d693f3bd1a6c4dd6ca18d38b6ae64a46d97329b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

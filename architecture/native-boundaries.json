@@ -13,9 +13,9 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 119,
-    "declared-ffi": 412,
-    "declared-ffi-resource": 29,
+    "classified-native-file": 120,
+    "declared-ffi": 433,
+    "declared-ffi-resource": 30,
     "napi-export": 318,
     "runtime-intrinsic": 137,
     "wasm-export": 72
@@ -110,6 +110,18 @@
       "close_export": "ffiFmpqPolynomialDivisionResultClose",
       "clear_symbol": "sagejs_fmpq_polynomial_division_result_clear",
       "size_symbol": "sagejs_fmpq_polynomial_division_result_allocated_bytes",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:flint:fmpq_polynomial_workspace",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "FmpqPolynomialWorkspace",
+      "abi_type": "sagejs_fmpq_polynomial_workspace_t",
+      "close_export": "ffiFmpqPolynomialWorkspaceClose",
+      "clear_symbol": "sagejs_fmpq_polynomial_workspace_clear",
+      "size_symbol": "sagejs_fmpq_polynomial_workspace_allocated_bytes",
       "disposition": "declared-owned-ffi-resource"
     },
     {
@@ -1635,6 +1647,237 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqPolynomialTruncate",
       "symbol": "sagejs_fmpq_polynomial_truncate",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceCreate",
+      "symbol": "sagejs_fmpq_polynomial_workspace_init",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_add",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_add",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceAdd",
+      "symbol": "sagejs_fmpq_polynomial_workspace_add",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_allocated_bytes",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_allocated_bytes",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceAllocatedBytes",
+      "symbol": "sagejs_fmpq_polynomial_workspace_allocated_bytes",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_coefficient_denominator",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_coefficient_denominator",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceCoefficientDenominator",
+      "symbol": "sagejs_fmpq_polynomial_workspace_coefficient_denominator",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_coefficient_numerator",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_coefficient_numerator",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceCoefficientNumerator",
+      "symbol": "sagejs_fmpq_polynomial_workspace_coefficient_numerator",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_copy",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_copy",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceCopy",
+      "symbol": "sagejs_fmpq_polynomial_workspace_copy",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_divexact",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_divexact",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceDivExact",
+      "symbol": "sagejs_fmpq_polynomial_workspace_divexact",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_equal",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_equal",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceEqual",
+      "symbol": "sagejs_fmpq_polynomial_workspace_equal",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_is_one",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_is_one",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceIsOne",
+      "symbol": "sagejs_fmpq_polynomial_workspace_is_one",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_is_zero",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_is_zero",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceIsZero",
+      "symbol": "sagejs_fmpq_polynomial_workspace_is_zero",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_length",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_length",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceLength",
+      "symbol": "sagejs_fmpq_polynomial_workspace_length",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_load",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_load",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceLoad",
+      "symbol": "sagejs_fmpq_polynomial_workspace_load",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_monic",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_monic",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceMonic",
+      "symbol": "sagejs_fmpq_polynomial_workspace_monic",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_mul",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_mul",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceMul",
+      "symbol": "sagejs_fmpq_polynomial_workspace_mul",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_neg",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_neg",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceNeg",
+      "symbol": "sagejs_fmpq_polynomial_workspace_neg",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_one",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_one",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceOne",
+      "symbol": "sagejs_fmpq_polynomial_workspace_one",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_rem",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_rem",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceRemainder",
+      "symbol": "sagejs_fmpq_polynomial_workspace_rem",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_sub",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_sub",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceSub",
+      "symbol": "sagejs_fmpq_polynomial_workspace_sub",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_swap",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_swap",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceSwap",
+      "symbol": "sagejs_fmpq_polynomial_workspace_swap",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_xgcd",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_xgcd",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceXgcd",
+      "symbol": "sagejs_fmpq_polynomial_workspace_xgcd",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_zero",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_zero",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceZero",
+      "symbol": "sagejs_fmpq_polynomial_workspace_zero",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -8415,6 +8658,14 @@
       "kind": "classified-native-file",
       "path": "packages/flint/include/sagejs/hyperelliptic/genus3_jacobian.h",
       "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/include/sagejs/hyperelliptic/rational_jacobian_ffi.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/include/sagejs/hyperelliptic/rational_jacobian_ffi.h",
+      "disposition": "representation-primitive",
       "review_status": "accepted",
       "lane": "hyperelliptic-curves"
     },

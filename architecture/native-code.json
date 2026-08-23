@@ -291,6 +291,13 @@
       "rationale": "Host-neutral fixed-width ABI for exact genus-3 Mumford arithmetic, bounded progression search, cancellation, and recheckable element-order certificates."
     },
     {
+      "path": "packages/flint/include/sagejs/hyperelliptic/rational_jacobian_ffi.h",
+      "category": "representation-primitive",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Host-neutral fixed-scratch FLINT fmpq-polynomial workspace for source-transparent rational Cantor kernels; it supplies representation and lifetime primitives while the mathematical group law remains ordinary typed Python."
+    },
+    {
       "path": "packages/flint/include/sagejs/hyperelliptic/smalljac.h",
       "category": "public-abi",
       "review_status": "accepted",
