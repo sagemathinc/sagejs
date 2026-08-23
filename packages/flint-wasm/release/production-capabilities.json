@@ -396,6 +396,7 @@
         "kernel:genus2-kummer-height-production",
         "kernel:genus3-weil-candidate-production",
         "kernel:hyperelliptic-period-edge-batch-production",
+        "kernel:hyperelliptic-rational-reduction-production",
         "kernel:number-field-composite-analysis-production",
         "kernel:number-field-discriminant-prefactor-production",
         "kernel:number-field-om-proof-production",

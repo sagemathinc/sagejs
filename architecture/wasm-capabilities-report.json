@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "cf07dd2d01927596dafebb616e0f24baca021735c9cae41955c6b38320de7b60",
+  "source_sha256": "38d3953d91df5bf05ece362b710cfe4b5d8d7ff734d12a63935980b9db9eefab",
   "counts": {
-    "total": 985,
+    "total": 986,
     "by_kind": {
       "declared-ffi-function": 433,
       "declared-ffi-resource": 30,
       "napi-export": 318,
-      "production-kernel": 42,
+      "production-kernel": 43,
       "runtime-intrinsic": 137,
       "specialist-capability": 25
     },
     "by_disposition": {
-      "compiled-source": 42,
+      "compiled-source": 43,
       "desktop-only": 36,
       "generated-wasm": 302,
       "portable-fallback": 561,
       "shared-core": 44
     },
     "by_status": {
-      "available": 520,
+      "available": 521,
       "desktop-only": 36,
       "fallback": 429
     }
@@ -6147,6 +6147,18 @@
         "hyperelliptic-periods"
       ],
       "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:hyperelliptic-rational-reduction-production",
+      "family": "hyperelliptic-rational-reduction",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "source-kernel-pack",
+      "public_consumers": [
+        "hyperelliptic-torsion-and-saturation"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:number-field-composite-analysis-production",

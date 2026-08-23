@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 42,
-    "production_kernels": 35,
-    "compiled_functions": 245,
+    "registered_kernels": 43,
+    "production_kernels": 36,
+    "compiled_functions": 246,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -196,6 +196,15 @@
       "compiled_functions": 3,
       "fallback_functions": 0,
       "total_functions": 3,
+      "fallback_reasons": []
+    },
+    {
+      "id": "hyperelliptic-rational-reduction-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
       "fallback_reasons": []
     },
     {

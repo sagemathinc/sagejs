@@ -173,6 +173,7 @@
     "bench:hyperelliptic-analytic-competitive": "node bench/hyperelliptic/benchmark-analytic-competitive.cjs",
     "bench:hyperelliptic-public-jacobian": "node bench/hyperelliptic/benchmark-public-jacobian.cjs",
     "bench:hyperelliptic-rational-cantor": "node bench/hyperelliptic/benchmark-rational-cantor.cjs",
+    "bench:hyperelliptic-rational-reduction": "node bench/hyperelliptic/benchmark-rational-reduction-batch.cjs",
     "bench:hyperelliptic-jacobian-structure": "node bench/hyperelliptic/benchmark-jacobian-group-structure.cjs",
     "bench:hyperelliptic-lseries": "node bench/hyperelliptic/benchmark-lseries.cjs",
     "bench:hyperelliptic-cpu-twists": "node bench/hyperelliptic/benchmark-cpu-twist-family.cjs",

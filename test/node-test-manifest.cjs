@@ -341,6 +341,7 @@ const integration = [
   "test/hyperelliptic-periods.cjs",
   "test/hyperelliptic-rational-performance.cjs",
   "test/hyperelliptic-rational-cantor.cjs",
+  "test/hyperelliptic-rational-reduction-batch.cjs",
   "test/hyperelliptic-reference.cjs",
   "test/hyperelliptic-research-tools.cjs",
   "test/hyperelliptic-rforest.cjs",

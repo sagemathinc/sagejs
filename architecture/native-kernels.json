@@ -562,6 +562,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "hyperelliptic-rational-reduction-production",
+      "source": "src/lib/sagejs/hyperelliptic_curves/rational_reduction_kernels.py",
+      "functions": ["reduce_rational_mumford_many_primes"],
+      "semantic_domain": "bounded exact reduction of packed genus-2/3 rational Mumford coefficients across caller-supplied good odd primes into retained finite-field rows",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "reference-reduction"],
+      "benchmark": "bench:hyperelliptic-rational-reduction",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "hyperelliptic-kummer-production",
       "source": "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
       "functions": [

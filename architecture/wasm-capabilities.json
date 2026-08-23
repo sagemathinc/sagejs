@@ -108,6 +108,12 @@
           "test/hyperelliptic-periods.cjs"
         ]
       },
+      "hyperelliptic-rational-reduction-batch": {
+        "differential": true,
+        "paths": [
+          "test/hyperelliptic-rational-reduction-batch.cjs"
+        ]
+      },
       "graph-components-wasm-differential": {
         "differential": true,
         "paths": [
@@ -11032,6 +11038,33 @@
         "compiled_functions": 3,
         "fallback_functions": 0,
         "total_functions": 3,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:hyperelliptic-rational-reduction-production",
+      "kind": "production-kernel",
+      "family": "hyperelliptic-rational-reduction",
+      "source": "src/lib/sagejs/hyperelliptic_curves/rational_reduction_kernels.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "source-kernel-pack",
+      "public_consumers": [
+        "hyperelliptic-torsion-and-saturation"
+      ],
+      "tests": [
+        "hyperelliptic-rational-reduction-batch",
+        "production-kernel-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
         "production_pack": true,
         "fallback_reasons": []
       }

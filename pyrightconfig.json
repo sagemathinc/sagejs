@@ -145,6 +145,7 @@
     "src/lib/sagejs/hyperelliptic_curves/lseries.py",
     "src/lib/sagejs/hyperelliptic_curves/model.py",
     "src/lib/sagejs/hyperelliptic_curves/periods.py",
+    "src/lib/sagejs/hyperelliptic_curves/rational_reduction_kernels.py",
     "src/lib/sagejs/hyperelliptic_curves/rforest.py",
     "src/lib/sagejs/hyperelliptic_curves/saturation.py",
     "src/lib/sagejs/hyperelliptic_curves/statistics.py",
