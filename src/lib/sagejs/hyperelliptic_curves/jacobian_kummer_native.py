@@ -421,6 +421,9 @@ class Genus2PrimeKummerContext:
         "_generalized",
         "_h",
         "_h_transform",
+        "_kernel_model_f",
+        "_kernel_model_h",
+        "_kernel_plan",
         "_max_batch_bytes",
         "_plan",
         "_prime",
@@ -468,6 +471,13 @@ class Genus2PrimeKummerContext:
         self._h_transform = h_transform
         self._max_batch_bytes = byte_limit
         self._plan = tuple(_specialized_quartic_plan(classical_f, characteristic))
+        self._kernel_model_f = kernel_uint64_buffer(
+            genus2_kummer_project_batch, self._f
+        )
+        self._kernel_model_h = kernel_uint64_buffer(
+            genus2_kummer_project_batch, self._h
+        )
+        self._kernel_plan = kernel_uint64_buffer(genus2_kummer_double_batch, self._plan)
 
     @property
     def prime(self) -> int:
@@ -495,8 +505,10 @@ class Genus2PrimeKummerContext:
             "sign_free_scalars": "powers-of-two",
         }
 
-    def _check_batch(self, count: int, bytes_per_row: int) -> None:
-        required = count * bytes_per_row
+    def _check_batch(
+        self, count: int, bytes_per_row: int, fixed_bytes: int = 0
+    ) -> None:
+        required = fixed_bytes + count * bytes_per_row
         if required > self._max_batch_bytes:
             raise MemoryError(
                 f"Kummer batch needs {required} bytes; "
@@ -508,14 +520,20 @@ class Genus2PrimeKummerContext:
     ) -> tuple[list[list[int]], list[int]]:
         flat = _rows(packed_divisors, _DIVISOR_WORDS, self._prime)
         count = len(flat) // _DIVISOR_WORDS
-        self._check_batch(count, 104)
+        self._check_batch(count, 104, 96)
         kernel = genus2_kummer_project_batch
         source = kernel_uint64_buffer(kernel, flat)
-        model_f = kernel_uint64_buffer(kernel, self._f)
-        model_h = kernel_uint64_buffer(kernel, self._h)
         output = kernel_uint64_zeros(kernel, count * _KUMMER_WORDS)
         statuses = kernel_uint64_zeros(kernel, count)
-        if not kernel(output, statuses, source, model_f, model_h, count, self._prime):
+        if not kernel(
+            output,
+            statuses,
+            source,
+            self._kernel_model_f,
+            self._kernel_model_h,
+            count,
+            self._prime,
+        ):
             raise RuntimeError("invalid internal Kummer projection buffer shape")
         values = _materialize(output)
         return (
@@ -531,10 +549,9 @@ class Genus2PrimeKummerContext:
     ) -> tuple[list[list[int]], list[int]]:
         flat = _rows(points, _KUMMER_WORDS, self._prime)
         count = len(flat) // _KUMMER_WORDS
-        self._check_batch(count, 72)
+        self._check_batch(count, 72, 1400)
         kernel = genus2_kummer_double_batch
         source = kernel_uint64_buffer(kernel, flat)
-        plan = kernel_uint64_buffer(kernel, self._plan)
         output = kernel_uint64_zeros(kernel, count * _KUMMER_WORDS)
         statuses = kernel_uint64_zeros(kernel, count)
         workspace = kernel_uint64_zeros(kernel, _QUARTIC_MONOMIALS)
@@ -542,7 +559,7 @@ class Genus2PrimeKummerContext:
             output,
             statuses,
             source,
-            plan,
+            self._kernel_plan,
             workspace,
             self._h_transform,
             count,
@@ -565,7 +582,9 @@ class Genus2PrimeKummerContext:
         steps = int(exponent)
         if steps < 0:
             raise ValueError("the power-of-two exponent must be nonnegative")
-        current = [list(row) for row in points]
+        flat = _rows(points, _KUMMER_WORDS, self._prime)
+        current = [flat[index : index + 4] for index in range(0, len(flat), 4)]
+        self._check_batch(len(current), 72, 1400)
         statuses = [KUMMER_OK for _row in current]
         for _step in range(steps):
             current, statuses = self.double_batch(current)
