@@ -155,10 +155,27 @@ for (const { path, value } of receipts) {
       );
       if (mode === "native") {
         assert.equal(
+          entry.materialization_comparison,
+          "retained-packed-versus-forced-polynomials",
+          `${path}: genus-${entry.genus} native materialization comparison`,
+        );
+        assert.notEqual(entry.add_materialized_batch, null);
+        assert.notEqual(entry.scalar_materialized_batch, null);
+        assert.notEqual(entry.progression_materialized_batch, null);
+        assert.equal(
           entry.representation_state,
           `(0, 1000, 0, ${entry.scalar_batch_items}, 0, 1000)`,
           `${path}: genus-${entry.genus} native representation retention`,
         );
+      } else {
+        assert.equal(
+          entry.materialization_comparison,
+          "not-applicable-reference-is-already-materialized",
+          `${path}: genus-${entry.genus} dynamic materialization capability`,
+        );
+        assert.equal(entry.add_materialized_batch, null);
+        assert.equal(entry.scalar_materialized_batch, null);
+        assert.equal(entry.progression_materialized_batch, null);
       }
     }
   }
@@ -195,7 +212,7 @@ const rows = receipts.map(({ path, value }) => ({
         dynamicCase.add_batch.arithmetic_ms.median /
         nativeCase.add_batch.arithmetic_ms.median,
       add_1000_materialized_dynamic_ms:
-        dynamicCase.add_materialized_batch.arithmetic_ms.median,
+        dynamicCase.add_materialized_batch?.arithmetic_ms.median ?? null,
       add_1000_materialized_native_ms:
         nativeCase.add_materialized_batch.arithmetic_ms.median,
       native_add_materialization_overhead:
@@ -208,7 +225,7 @@ const rows = receipts.map(({ path, value }) => ({
         dynamicCase.scalar_batch.arithmetic_ms.median /
         nativeCase.scalar_batch.arithmetic_ms.median,
       scalar_materialized_dynamic_ms:
-        dynamicCase.scalar_materialized_batch.arithmetic_ms.median,
+        dynamicCase.scalar_materialized_batch?.arithmetic_ms.median ?? null,
       scalar_materialized_native_ms:
         nativeCase.scalar_materialized_batch.arithmetic_ms.median,
       native_scalar_materialization_overhead:
@@ -226,7 +243,8 @@ const rows = receipts.map(({ path, value }) => ({
       progression_1000_retained_native_ms:
         nativeCase.progression_retained_batch.arithmetic_ms.median,
       progression_1000_materialized_dynamic_ms:
-        dynamicCase.progression_materialized_batch.arithmetic_ms.median,
+        dynamicCase.progression_materialized_batch?.arithmetic_ms.median ??
+        null,
       progression_1000_materialized_native_ms:
         nativeCase.progression_materialized_batch.arithmetic_ms.median,
       native_materialization_overhead:
