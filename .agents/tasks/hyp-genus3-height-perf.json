@@ -4,7 +4,7 @@
   "id": "hyp-genus3-height-perf",
   "title": "Hyp Genus3 Height Perf",
   "lane": "hyperelliptic-curves",
-  "status": "active",
+  "status": "blocked",
   "owner": "user",
   "objective": "Reduce the prepared genus-3 canonical-height theta path by at least fivefold while preserving exact finite replay and Magma agreement.",
   "base_commit": "76b863adb13c683b265ddc0c987b727fd7291990",
@@ -116,6 +116,46 @@
       "commit": "71e05e430744a5bb0f53fcd0dad74f38c5ad6c5b",
       "workspace_fingerprint": "df36b6fd93634134b87f6ca153fead8d5d76eb5bf178053bd85e73011df987b4",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.702,
+      "started_at": "2026-08-23T04:08:38.448Z",
+      "commit": "822206f896f33a0edaa952e1a3c5afe2f8dc0559",
+      "workspace_fingerprint": "8edc4d4554ea3f233bc0a093db982a8dcf2e8ae315f1978dc7f83f883e580c20",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.351,
+      "started_at": "2026-08-23T04:08:48.779Z",
+      "commit": "822206f896f33a0edaa952e1a3c5afe2f8dc0559",
+      "workspace_fingerprint": "8edc4d4554ea3f233bc0a093db982a8dcf2e8ae315f1978dc7f83f883e580c20",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 736.704,
+      "started_at": "2026-08-23T04:09:24.870Z",
+      "commit": "822206f896f33a0edaa952e1a3c5afe2f8dc0559",
+      "workspace_fingerprint": "8edc4d4554ea3f233bc0a093db982a8dcf2e8ae315f1978dc7f83f883e580c20",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpz-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.271,
+      "started_at": "2026-08-23T04:22:39.894Z",
+      "commit": "822206f896f33a0edaa952e1a3c5afe2f8dc0559",
+      "workspace_fingerprint": "8edc4d4554ea3f233bc0a093db982a8dcf2e8ae315f1978dc7f83f883e580c20",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -124,12 +164,14 @@
       "Theta truncation and rounding remain explicitly nonrigorous; the optimization preserves the existing radius-refinement witness rather than claiming an enclosure.",
       "The exact-process caches are deliberately bounded (12 theta plans, 12 coordinate maps, and 64 point lifts), so workloads cycling through many unrelated period matrices will see cold-plan costs.",
       "Matrices or Abel arguments whose real phase scale exceeds 2^24 intentionally use the slower direct fine-cube traversal so argument reduction cannot corrupt the recurrence path.",
-      "pnpm test:changed reached the unit tier but failed only because the new claimed test is not yet registered in the shared central test manifest, which this lane must not edit."
+      "pnpm test:changed reached the unit tier but failed only because the new claimed test is not yet registered in the shared central test manifest, which this lane must not edit.",
+      "The fresh full native gate on the final tree was stopped by an unrelated FFI timing outlier under host load 21.85 (generated fmpz multiply 10.53ms versus 0.17ms); its immediate isolated replay passed at 0.125ms versus 0.157ms. Two earlier complete native gates passed in this lane at 914.82s and 874.12s, before the final pure-Python cache-identity hardening."
     ],
     "next_steps": [
       "Integration should register test/hyperelliptic-genus3-height-performance.cjs in test/node-test-manifest.cjs and rerun pnpm test:changed.",
       "Integrate the independent periods.py branch-topology/radial-plan cache; it composes with this lane's exact-support Abel and normalized-coordinate caches.",
-      "Benchmark the prepared path on the pinned x86, ARM64, macOS ARM64, and Windows hosts after integration."
+      "Benchmark the prepared path on the pinned x86, ARM64, macOS ARM64, and Windows hosts after integration.",
+      "If a final-tree native receipt is required, rerun pnpm test:native on a quiet host; no genus-3 or native correctness test failed."
     ]
   }
 }
