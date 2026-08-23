@@ -22,7 +22,7 @@ execFileSync(
     "compile",
     kernelSource,
     "--functions",
-    "modular_kummer_height_recurrence,dyadic_kummer_height_recurrence",
+    "modular_kummer_height_recurrence,modular_kummer_height_recurrence_batch,dyadic_kummer_height_recurrence,dyadic_kummer_height_recurrence_batch,exact_kummer_small_step_batch,dyadic_log_interval_batch",
   ],
   { cwd: root, stdio: "ignore" },
 );
@@ -36,8 +36,12 @@ from sagejs.hyperelliptic_curves.genus2_heights import (
     regulator,
 )
 from sagejs.hyperelliptic_curves.genus2_kummer_height_kernel import (
+    dyadic_log_interval_batch,
     dyadic_kummer_height_recurrence,
+    dyadic_kummer_height_recurrence_batch,
+    exact_kummer_small_step_batch,
     modular_kummer_height_recurrence,
+    modular_kummer_height_recurrence_batch,
 )
 from sagejs.hyperelliptic_curves.genus2_kummer import Genus2KummerCapabilityError
 from sagejs.native import (
@@ -47,7 +51,7 @@ from sagejs.native import (
     kernel_integer_zeros,
     kernel_uint64_buffer,
 )
-from sagejs.number_fields.class_unit_analytic import RealBall
+from sagejs.number_fields.class_unit_analytic import IntervalBallField, RealBall
 import sagejs.runtime as runtime
 
 R = PolynomialRing(QQ, "x")
@@ -215,6 +219,297 @@ assert dyadic_kummer_height_recurrence is __import__(
   }
 });
 
+test("batched Kummer recurrences and exact outward logarithms match scalar proof oracles", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      `${setup}
+batch_context = HeightContext(J)
+batch_points = (P, Q, P+Q)
+batch_coordinates = tuple(batch_context.kummer(value).coordinates() for value in batch_points)
+batch_coefficients = []
+batch_exponents = []
+batch_counts = []
+for table in batch_context._classical_duplication_terms:
+    batch_counts.append(len(table))
+    for term in table:
+        batch_coefficients.append(term[0])
+        batch_exponents.extend(term[1:])
+batch_steps = 4
+batch_count = len(batch_points)
+batch_D = 16*abs(int(str(J.f().discriminant())))
+batch_modulus = batch_D**(batch_steps+2)
+
+modular_fallback = getattr(
+    modular_kummer_height_recurrence_batch,
+    "__wrapped__",
+    modular_kummer_height_recurrence_batch,
+)
+modular_dynamic_output = [0 for _ in range(batch_count*batch_steps)]
+modular_dynamic_statuses = [0 for _ in range(batch_count)]
+modular_dynamic_status = modular_fallback(
+    modular_dynamic_output,
+    [entry for row in batch_coordinates for entry in row],
+    batch_coefficients,
+    batch_exponents,
+    batch_counts,
+    modular_dynamic_statuses,
+    batch_D,
+    batch_modulus,
+    batch_count,
+    batch_steps,
+)
+modular_native_output = kernel_integer_zeros(
+    modular_kummer_height_recurrence_batch,
+    runtime.number(batch_count*batch_steps),
+    runtime.number(8),
+)
+modular_native_statuses = kernel_uint64_buffer(
+    modular_kummer_height_recurrence_batch, [0 for _ in range(batch_count)]
+)
+modular_native_status = modular_kummer_height_recurrence_batch(
+    modular_native_output,
+    kernel_integer_buffer(
+        modular_kummer_height_recurrence_batch,
+        [entry for row in batch_coordinates for entry in row],
+    ),
+    kernel_integer_buffer(modular_kummer_height_recurrence_batch, batch_coefficients),
+    kernel_uint64_buffer(modular_kummer_height_recurrence_batch, batch_exponents),
+    kernel_uint64_buffer(modular_kummer_height_recurrence_batch, batch_counts),
+    modular_native_statuses,
+    batch_D,
+    batch_modulus,
+    batch_count,
+    batch_steps,
+)
+assert modular_dynamic_status == modular_native_status == batch_count
+assert modular_dynamic_statuses == [1,1,1]
+assert integer_buffer_values(modular_native_output) == modular_dynamic_output
+
+batch_precision = 96
+batch_scale = 2**batch_precision
+dyadic_initial = []
+for row in batch_coordinates:
+    row_scale = max(abs(entry) for entry in row)
+    for entry in row:
+        dyadic_initial.extend(((entry*batch_scale)//row_scale, -((-entry*batch_scale)//row_scale)))
+dyadic_fallback = getattr(
+    dyadic_kummer_height_recurrence_batch,
+    "__wrapped__",
+    dyadic_kummer_height_recurrence_batch,
+)
+dyadic_dynamic_state = list(dyadic_initial)
+dyadic_dynamic_output = [0 for _ in range(10*batch_count*batch_steps)]
+dyadic_dynamic_statuses = [0 for _ in range(batch_count)]
+dyadic_dynamic_status = dyadic_fallback(
+    dyadic_dynamic_output,
+    dyadic_dynamic_state,
+    batch_coefficients,
+    batch_exponents,
+    batch_counts,
+    [0 for _ in range(48*batch_count)],
+    dyadic_dynamic_statuses,
+    batch_scale,
+    batch_count,
+    batch_steps,
+)
+dyadic_native_state = kernel_integer_buffer(
+    dyadic_kummer_height_recurrence_batch, dyadic_initial
+)
+dyadic_native_output = kernel_integer_zeros(
+    dyadic_kummer_height_recurrence_batch,
+    runtime.number(10*batch_count*batch_steps),
+    runtime.number(12),
+)
+dyadic_native_statuses = kernel_uint64_buffer(
+    dyadic_kummer_height_recurrence_batch, [0 for _ in range(batch_count)]
+)
+dyadic_native_status = dyadic_kummer_height_recurrence_batch(
+    dyadic_native_output,
+    dyadic_native_state,
+    kernel_integer_buffer(dyadic_kummer_height_recurrence_batch, batch_coefficients),
+    kernel_uint64_buffer(dyadic_kummer_height_recurrence_batch, batch_exponents),
+    kernel_uint64_buffer(dyadic_kummer_height_recurrence_batch, batch_counts),
+    kernel_integer_zeros(
+        dyadic_kummer_height_recurrence_batch,
+        runtime.number(48*batch_count),
+        runtime.number(12),
+    ),
+    dyadic_native_statuses,
+    batch_scale,
+    batch_count,
+    batch_steps,
+)
+assert dyadic_dynamic_status == dyadic_native_status == batch_count
+assert dyadic_dynamic_statuses == [1,1,1]
+assert integer_buffer_values(dyadic_native_output) == dyadic_dynamic_output
+assert integer_buffer_values(dyadic_native_state) == dyadic_dynamic_state
+
+exact_fallback = getattr(
+    exact_kummer_small_step_batch,
+    "__wrapped__",
+    exact_kummer_small_step_batch,
+)
+exact_dynamic_state = [entry for row in batch_coordinates for entry in row]
+exact_dynamic_output = [0 for _ in range(14*batch_count)]
+exact_dynamic_statuses = [0 for _ in range(batch_count)]
+exact_dynamic_status = exact_fallback(
+    exact_dynamic_output,
+    exact_dynamic_state,
+    batch_coefficients,
+    batch_exponents,
+    batch_counts,
+    exact_dynamic_statuses,
+    batch_count,
+    2,
+)
+exact_native_state = kernel_integer_buffer(
+    exact_kummer_small_step_batch,
+    [entry for row in batch_coordinates for entry in row],
+)
+exact_native_output = kernel_integer_zeros(
+    exact_kummer_small_step_batch,
+    runtime.number(14*batch_count),
+    runtime.number(32),
+)
+exact_native_statuses = kernel_uint64_buffer(
+    exact_kummer_small_step_batch, [0 for _ in range(batch_count)]
+)
+exact_native_status = exact_kummer_small_step_batch(
+    exact_native_output,
+    exact_native_state,
+    kernel_integer_buffer(exact_kummer_small_step_batch, batch_coefficients),
+    kernel_uint64_buffer(exact_kummer_small_step_batch, batch_exponents),
+    kernel_uint64_buffer(exact_kummer_small_step_batch, batch_counts),
+    exact_native_statuses,
+    batch_count,
+    2,
+)
+assert exact_dynamic_status == exact_native_status == batch_count
+assert exact_dynamic_statuses == [1,1,1]
+assert integer_buffer_values(exact_native_output) == exact_dynamic_output
+assert integer_buffer_values(exact_native_state) == exact_dynamic_state
+
+log_checks = []
+log_fallback = getattr(
+    dyadic_log_interval_batch,
+    "__wrapped__",
+    dyadic_log_interval_batch,
+)
+for output_precision in (64,128,256):
+    input_precision = output_precision + 320
+    input_scale = 2**input_precision
+    hostile_endpoints = [
+        input_scale, input_scale,
+        3*input_scale//2-1, 3*input_scale//2+1,
+        input_scale*2**257+123456789, input_scale*2**257+123456999,
+        input_scale//2**257-1, input_scale//2**257+1,
+    ]
+    log_dynamic_output = [0 for _ in hostile_endpoints]
+    assert log_fallback(
+        log_dynamic_output,
+        hostile_endpoints,
+        input_precision,
+        output_precision,
+    )
+    log_native_output = kernel_integer_zeros(
+        dyadic_log_interval_batch,
+        runtime.number(len(hostile_endpoints)),
+        runtime.number((output_precision+1023)//64),
+    )
+    assert dyadic_log_interval_batch(
+        log_native_output,
+        kernel_integer_buffer(dyadic_log_interval_batch, hostile_endpoints),
+        input_precision,
+        output_precision,
+    )
+    native_log_values = integer_buffer_values(log_native_output)
+    assert native_log_values == log_dynamic_output
+    reference_field = IntervalBallField(output_precision+96)
+    for interval_index in range(len(hostile_endpoints)//2):
+        input_ball = RealBall.dyadic_endpoints(
+            hostile_endpoints[2*interval_index],
+            -input_precision,
+            hostile_endpoints[2*interval_index+1],
+            -input_precision,
+            precision_bits=output_precision+96,
+        )
+        reference_log = reference_field.log(input_ball)
+        exact_log = RealBall.dyadic_endpoints(
+            native_log_values[2*interval_index],
+            -output_precision,
+            native_log_values[2*interval_index+1],
+            -output_precision,
+            precision_bits=output_precision+96,
+        )
+        assert exact_log.lower <= reference_log.lower
+        assert exact_log.upper >= reference_log.upper
+    log_checks.append(True)
+
+hostile_R = PolynomialRing(QQ, "z")
+z = hostile_R.gen()
+hostile_J = HyperellipticCurve(
+    z**5 + (2**80+17)*z**4 + 2*z + 1
+).jacobian()
+hostile_P = hostile_J([z,1])
+hostile_context = HeightContext(hostile_J)
+hostile_coordinates = hostile_context.kummer(hostile_P).coordinates()
+hostile_coefficients = []
+hostile_exponents = []
+hostile_counts = []
+for table in hostile_context._classical_duplication_terms:
+    hostile_counts.append(len(table))
+    for term in table:
+        hostile_coefficients.append(term[0])
+        hostile_exponents.extend(term[1:])
+hostile_dynamic_output = [0 for _ in range(7)]
+hostile_dynamic_state = list(hostile_coordinates)
+hostile_dynamic_statuses = [0]
+assert exact_fallback(
+    hostile_dynamic_output,
+    hostile_dynamic_state,
+    hostile_coefficients,
+    hostile_exponents,
+    hostile_counts,
+    hostile_dynamic_statuses,
+    1,
+    1,
+) == 1
+hostile_native_output = kernel_integer_zeros(
+    exact_kummer_small_step_batch, runtime.number(7), runtime.number(64)
+)
+hostile_native_state = kernel_integer_buffer(
+    exact_kummer_small_step_batch, hostile_coordinates
+)
+assert exact_kummer_small_step_batch(
+    hostile_native_output,
+    hostile_native_state,
+    kernel_integer_buffer(exact_kummer_small_step_batch, hostile_coefficients),
+    kernel_uint64_buffer(exact_kummer_small_step_batch, hostile_exponents),
+    kernel_uint64_buffer(exact_kummer_small_step_batch, hostile_counts),
+    kernel_uint64_buffer(exact_kummer_small_step_batch, [0]),
+    1,
+    1,
+) == 1
+assert integer_buffer_values(hostile_native_output) == hostile_dynamic_output
+assert integer_buffer_values(hostile_native_state) == hostile_dynamic_state
+
+assert all(is_compiled(function) for function in (
+    modular_kummer_height_recurrence_batch,
+    dyadic_kummer_height_recurrence_batch,
+    exact_kummer_small_step_batch,
+    dyadic_log_interval_batch,
+))
+[modular_native_status,dyadic_native_status,exact_native_status,log_checks,True]
+`,
+      { timeout: 180_000 },
+    );
+    assert.equal(result.repr, "[3, 3, 3, [True, True, True], True]");
+  } finally {
+    await session.close();
+  }
+});
+
 test("modular/local height agrees with the exact oracle without large exact state", async () => {
   const session = await createSage();
   try {
@@ -283,6 +578,7 @@ assert not hasattr(height_module, "_HEIGHT_PAIRING_CACHE_PROOF")
 assert not hasattr(height_module, "_AUTOMATIC_HEIGHT_BOUND_PROOF")
 assert not hasattr(height_module, "_automatic_height_bound_is_certified")
 assert not hasattr(height_module, "_copy_automatic_height_bound")
+assert not hasattr(height_module, "_canonical_heights_uncached_local_batch")
 height_lower = height.ball.lower
 height_upper = height.ball.upper
 fake_height = type(height)(
@@ -718,6 +1014,111 @@ assert pairing_cache_tamper_rejected
       result.repr,
       /^\[\d+, True, True, 'certified-positive', True, \d+, \d+, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True\]$/,
     );
+  } finally {
+    await session.close();
+  }
+});
+
+test("uncached pairings publish one atomic batch and cancellation publishes nothing", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      `${setup}
+scalar_P = canonical_height(
+    P, precision=64, target_bits=64, algorithm="local", context=HeightContext(J)
+)
+scalar_Q = canonical_height(
+    Q, precision=64, target_bits=64, algorithm="local", context=HeightContext(J)
+)
+scalar_sum = canonical_height(
+    P+Q, precision=64, target_bits=64, algorithm="local", context=HeightContext(J)
+)
+batch_context = HeightContext(J)
+batch_pairing = height_pairing(
+    [P,Q],
+    precision=64,
+    target_bits=64,
+    algorithm="local",
+    context=batch_context,
+)
+assert batch_pairing.rigorous
+assert batch_pairing.height_results[0].ball.intersection(scalar_P.ball) is not None
+assert batch_pairing.height_results[1].ball.intersection(scalar_Q.ball) is not None
+expected_entry = (
+    scalar_sum.ball - scalar_P.ball - scalar_Q.ball
+) / RealBall(2, precision_bits=64)
+assert batch_pairing.matrix[0][1].intersection(expected_entry) is not None
+batch_data = batch_pairing.height_results[0].diagnostics["batch"]
+assert batch_data["point_count"] == 3
+assert batch_data["shared_model_specialization"]
+assert batch_data["atomic_publication"]
+assert set(batch_data["stage_milliseconds"]) == {
+    "shared_preparation",
+    "modular_recurrence",
+    "dyadic_recurrence",
+    "exact_outward_logarithms",
+    "exact_small_step_oracle",
+}
+batch_diagnostics = batch_context.diagnostics()
+assert batch_diagnostics["canonical_height_cache_entries"] == 3
+assert batch_diagnostics["canonical_height_cache_hits"] == 3
+assert batch_diagnostics["height_pairing_cache_entries"] == 1
+pair_hits_before = batch_diagnostics["height_pairing_cache_hits"]
+warm_pairing = height_pairing(
+    [P,Q],
+    precision=64,
+    target_bits=64,
+    algorithm="local",
+    context=batch_context,
+)
+assert warm_pairing.matrix[0][1].lower == batch_pairing.matrix[0][1].lower
+assert batch_context.diagnostics()["height_pairing_cache_hits"] == pair_hits_before+1
+
+partial_context = HeightContext(J)
+partial_P = canonical_height(
+    P, precision=64, target_bits=64, algorithm="local", context=partial_context
+)
+partial_pairing = height_pairing(
+    [P,Q],
+    precision=64,
+    target_bits=64,
+    algorithm="local",
+    context=partial_context,
+)
+assert partial_pairing.rigorous and partial_P.rigorous
+assert partial_pairing.height_results[1].diagnostics["batch"]["point_count"] == 2
+assert partial_context.diagnostics()["canonical_height_cache_entries"] == 3
+
+cancel_context = HeightContext(J)
+cancel_calls = [0]
+def cancel_batch():
+    cancel_calls[0] += 1
+    return cancel_calls[0] >= 3
+cancelled = False
+try:
+    height_pairing(
+        [P,Q],
+        precision=64,
+        target_bits=64,
+        algorithm="local",
+        context=cancel_context,
+        cancel=cancel_batch,
+    )
+except Exception as error:
+    cancelled = "cancelled" in str(error)
+assert cancelled
+cancel_diagnostics = cancel_context.diagnostics()
+assert cancel_diagnostics["canonical_height_cache_entries"] == 0
+assert cancel_diagnostics["height_pairing_cache_entries"] == 0
+[
+    batch_data["point_count"],
+    partial_pairing.height_results[1].diagnostics["batch"]["point_count"],
+    cancelled,
+]
+`,
+      { timeout: 180_000 },
+    );
+    assert.equal(result.repr, "[3, 2, True]");
   } finally {
     await session.close();
   }
