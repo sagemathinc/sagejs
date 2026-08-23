@@ -48,7 +48,7 @@ function polynomial(coefficients) {
     .join("+");
 }
 
-function pariRows(gp, cases, samples) {
+function pariRows(gp, cases, samples, batchCalls) {
   if (gp === null) return { available: false, reason: "gp not found", rows: [] };
   const commands = ["default(realbitprecision,64);", "x='x;"];
   for (const row of cases) {
@@ -66,6 +66,15 @@ function pariRows(gp, cases, samples) {
       `for(i=1,${samples},t=getwalltime();v=hyperellperiods(${model},2);` +
         `print("ROW|${row.id}|",getwalltime()-t,"|",v));`,
     );
+    commands.push(`times=vector(${batchCalls});batch_t=getwalltime();`);
+    commands.push(
+      `for(i=1,${batchCalls},t=getwalltime();v=hyperellperiods(${model},2);` +
+        `times[i]=getwalltime()-t);batch_total=getwalltime()-batch_t;`,
+    );
+    commands.push(
+      `print("BATCH|${row.id}|",batch_total,"|",v);` +
+        `for(i=1,${batchCalls},print("BATCHCALL|${row.id}|",times[i]));`,
+    );
   }
   commands.push("quit();");
   const completed = spawnSync(gp, ["-fq"], {
@@ -82,27 +91,57 @@ function pariRows(gp, cases, samples) {
     };
   }
   const grouped = new Map();
+  const batches = new Map();
   for (const line of completed.stdout.split(/\r?\n/u)) {
-    if (!line.startsWith("ROW|")) continue;
-    const [, id, milliseconds, value] = line.split("|");
-    if (!grouped.has(id)) grouped.set(id, { times: [], value });
-    grouped.get(id).times.push(Number(milliseconds));
+    if (line.startsWith("ROW|")) {
+      const [, id, milliseconds, value] = line.split("|");
+      if (!grouped.has(id)) grouped.set(id, { times: [], value });
+      grouped.get(id).times.push(Number(milliseconds));
+    } else if (line.startsWith("BATCH|")) {
+      const [, id, milliseconds, value] = line.split("|");
+      batches.set(id, {
+        totalMs: Number(milliseconds),
+        value,
+        times: [],
+      });
+    } else if (line.startsWith("BATCHCALL|")) {
+      const [, id, milliseconds] = line.split("|");
+      batches.get(id)?.times.push(Number(milliseconds));
+    }
   }
   return {
     available: true,
     executable: gp,
-    rows: [...grouped].map(([id, row]) => ({
-      id,
-      ...summarize(row.times),
-      result: row.value,
-    })),
+    rows: [...grouped].map(([id, row]) => {
+      const batch = batches.get(id);
+      return {
+        id,
+        repeated_recompute: {
+          ...summarize(row.times),
+          result: row.value,
+        },
+        resident_batch_recompute: {
+          calls: batchCalls,
+          ...summarize(batch.times),
+          total_ms: batch.totalMs,
+          per_call_from_total_ms: Number(
+            (batch.totalMs / batchCalls).toFixed(6),
+          ),
+          result: batch.value,
+        },
+      };
+    }),
   };
 }
 
 async function main() {
   const samples = Number(option("samples", "3"));
+  const batchCalls = Number(option("batch-calls", "100"));
   if (!Number.isInteger(samples) || samples < 1 || samples > 20) {
     throw new Error("--samples must be an integer from 1 through 20");
+  }
+  if (!Number.isInteger(batchCalls) || batchCalls < 10 || batchCalls > 1000) {
+    throw new Error("--batch-calls must be an integer from 10 through 1000");
   }
   const corpus = JSON.parse(
     readFileSync(
@@ -126,16 +165,26 @@ async function main() {
         "    return QQ(int(p[0])) if len(p)==1 else QQ(int(p[0]))/QQ(int(p[1]))",
         `period_cases=${JSON.stringify(cases)}`,
         "curves=[HyperellipticCurve(R([qr(v) for v in row['model']['f']]),R([qr(v) for v in row['model']['h']])) for row in period_cases]",
+        "def period_batch(curve,count):",
+        "    elapsed=[]",
+        "    batch_started=time.perf_counter()",
+        "    for _index in range(count):",
+        "        period_started=time.perf_counter()",
+        "        value=real_period(curve,prec=64,use_cache=False)",
+        "        value.model_period()",
+        "        elapsed.append((time.perf_counter()-period_started)*1000)",
+        "    return [(time.perf_counter()-batch_started)*1000]+elapsed",
         "True",
       ].join("\n"),
       { timeout: 300_000 },
     );
     for (let caseIndex = 0; caseIndex < cases.length; caseIndex += 1) {
       const timings = [];
+      const objectColdTimings = [];
       const transportTimings = [];
       let representation = null;
       const validated = await session.evaluate(
-        `clear_period_cache(); p=real_period(curves[${caseIndex}],prec=64,use_cache=False); expected=RealField(64)(period_cases[${caseIndex}]['expected']); assert abs(p.model_period()-expected)/expected<RealField(64)('1e-15'); (str(p.model_period()),p.achieved_stability_bits,tuple(tuple(a['engine'] for a in r['quadrature_attempts']) for r in p.diagnostics()['refinement_runs']))`,
+        `clear_period_cache(); p=real_period(curves[${caseIndex}],prec=64,use_cache=False); expected=RealField(64)(period_cases[${caseIndex}]['expected']); assert abs(p.model_period()-expected)/expected<RealField(64)('1e-15'); diagnostics=p.diagnostics(); (str(p.model_period()),p.achieved_stability_bits,tuple(tuple(a['engine'] for a in r['quadrature_attempts']) for r in diagnostics['refinement_runs']),diagnostics['complete_arb_refinement_runs'],diagnostics['complete_arb_stage_timings_ms'])`,
         { timeout: 300_000 },
       );
       representation = validated.repr;
@@ -147,12 +196,35 @@ async function main() {
         );
         transportTimings.push(performance.now() - started);
         timings.push(Number(result.repr));
+        const objectCold = await session.evaluate(
+          `fresh=HyperellipticCurve(R([qr(v) for v in period_cases[${caseIndex}]['model']['f']]),R([qr(v) for v in period_cases[${caseIndex}]['model']['h']])); period_started=time.perf_counter(); p=real_period(fresh,prec=64,use_cache=False); p.model_period(); (time.perf_counter()-period_started)*1000`,
+          { timeout: 300_000 },
+        );
+        objectColdTimings.push(Number(objectCold.repr));
       }
+      const batchResult = await session.evaluate(
+        `period_batch(curves[${caseIndex}],${batchCalls})`,
+        { timeout: 300_000 },
+      );
+      const batchValues = JSON.parse(batchResult.repr);
+      const batchTotal = Number(batchValues[0]);
+      const batchTimings = batchValues.slice(1).map(Number);
       rows.push({
         id: cases[caseIndex].id,
-        ...summarize(timings),
-        transport: summarize(transportTimings),
-        result: representation,
+        object_cold: summarize(objectColdTimings),
+        repeated_recompute: {
+          ...summarize(timings),
+          transport: summarize(transportTimings),
+          result: representation,
+        },
+        resident_batch_recompute: {
+          calls: batchCalls,
+          ...summarize(batchTimings),
+          total_ms: Number(batchTotal.toFixed(3)),
+          per_call_from_total_ms: Number(
+            (batchTotal / batchCalls).toFixed(6),
+          ),
+        },
         expected: cases[caseIndex].expected,
       });
     }
@@ -176,18 +248,21 @@ async function main() {
         },
         contract: {
           precision_bits: 64,
+          initial_panels:
+            "adaptive default 3; the bounded genus-3 path raises its minimum to 4 before refinement",
           sagejs:
-            "resident process, cold exact topology and public result; cache disabled; wall time measured inside Sage.js",
+            "resident process; object-cold and repeated recompute are separate; public result cache disabled; wall time measured inside Sage.js",
           sagejs_transport:
             "Node/kernel request wall time is recorded separately and excluded from arithmetic comparison",
-          pari: "resident GP process, hyperellperiods(model,2)",
+          pari: "resident GP process, hyperellperiods(model,2); single-call and 100-call batch totals are separate",
           result_oracle: "pinned PARI 2.18.1-alpha decimal corpus",
           rigorous: false,
           bench_1_required_for_acceptance: true,
         },
         samples,
+        batch_calls: batchCalls,
         sagejs: { rows },
-        pari: pariRows(gp, cases, samples),
+        pari: pariRows(gp, cases, samples, batchCalls),
       },
       null,
       2,

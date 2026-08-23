@@ -91,6 +91,8 @@ _CACHE_STATS = {
     "float64_fallbacks": 0,
     "arb_quadratures": 0,
     "arb_fallbacks": 0,
+    "complete_arb_periods": 0,
+    "complete_arb_fallbacks": 0,
     "float64_sign_selections": 0,
     "sign_selection_fallbacks": 0,
 }
@@ -130,6 +132,82 @@ class _PreparedModelData:
         self.requested_precision_bits = int(data["requested_precision_bits"])
         self.achieved_stability_bits = int(data["achieved_stability_bits"])
         self.genus = int(data["genus"])
+
+
+class _LazyModelPeriodData:
+    """A validated scalar result whose detailed witness is materialized on demand.
+
+    The complete FLINT boundary already performs exact-root isolation, two
+    independent Arb refinements, Riemann positivity, integral conjugation,
+    and exact real-lattice checks.  The ordinary implementation remains the
+    inspectable detailed witness and is run when matrix or diagnostic data is
+    requested, then cross-checked against this scalar before publication.
+    """
+
+    def __init__(
+        self,
+        curve: Any,
+        summary: dict[str, Any],
+        requested_bits: int,
+        max_refinements: int,
+        quadrature_order: int,
+        initial_panels: int,
+    ) -> None:
+        self.curve = curve
+        self.summary = summary
+        self.requested_precision_bits = int(requested_bits)
+        self.achieved_stability_bits = int(summary["achieved_stability_bits"])
+        self.genus = int(curve.genus())
+        self.max_refinements = int(max_refinements)
+        self.quadrature_order = int(quadrature_order)
+        self.initial_panels = int(initial_panels)
+        self._materialized: dict[str, Any] | None = None
+
+    def model_period_text(self) -> str:
+        return str(self.summary["model_real_period"])
+
+    def materialize(self) -> dict[str, Any]:
+        if self._materialized is not None:
+            return self._materialized
+        _complete_real_period_arb_evidence(self.summary)
+        detailed, _cache_hit = _model_period_data(
+            self.curve,
+            self.requested_precision_bits,
+            self.max_refinements,
+            self.quadrature_order,
+            self.initial_panels,
+            False,
+            False,
+        )
+        if not isinstance(detailed, dict):
+            raise AssertionError("the ordinary period witness did not materialize")
+        fast_value = mp.mpf(self.summary["model_real_period"])
+        detailed_value = mp.mpf(detailed["model_real_period"])
+        tolerance = 4 * max(
+            mp.mpf(self.summary["refinement_tolerance"]),
+            mp.mpf(detailed["refinement_tolerance"]),
+        )
+        difference = abs(fast_value - detailed_value)
+        if difference > tolerance:
+            raise HyperellipticPeriodCapabilityError(
+                "complete_arb_crosscheck_failed",
+                "the complete Arb period disagreed with the ordinary witness",
+                {
+                    "difference": str(difference),
+                    "tolerance": str(tolerance),
+                },
+            )
+        detailed["complete_arb_refinement_runs"] = _clone_data(
+            self.summary["refinement_runs"]
+        )
+        detailed["complete_arb_stage_timings_ms"] = _clone_data(
+            self.summary["stage_timings_ms"]
+        )
+        detailed["complete_arb_crosscheck_difference"] = _real_text(
+            difference, self.requested_precision_bits
+        )
+        self._materialized = detailed
+        return detailed
 
 
 def _validated_provenance(value: Any, path: str = "provenance") -> Any:
@@ -248,6 +326,20 @@ def _completed_model(curve: Any) -> tuple[Any, list[Any]]:
     if completed.gcd(completed.derivative()).degree() != 0:
         raise ValueError("the completed branch polynomial is not squarefree")
     return completed, list(completed.list())
+
+
+def _model_coefficient_lists(curve: Any) -> tuple[list[Any], list[Any]]:
+    """Return exact model coefficients for the mature FLINT boundary."""
+    base = curve.base_ring()
+    if getattr(base, "_kind", None) != "QQ" and base is not sage.QQ:
+        raise TypeError("real periods require a hyperelliptic curve over QQ")
+    f_value, h_value = curve.hyperelliptic_polynomials()
+    f_coefficients = list(f_value.list())
+    h_coefficients = list(h_value.list())
+    return (
+        f_coefficients if f_coefficients else [0],
+        h_coefficients if h_coefficients else [0],
+    )
 
 
 def _compare_exact(left: Any, right: Any) -> int:
@@ -821,6 +913,165 @@ def _edge_integrals_arb(
         "decimal_digits": digits,
     }
     return (answer, diagnostics)
+
+
+def _complete_real_period_arb(
+    f_coefficients: list[Any],
+    h_coefficients: list[Any],
+    genus: int,
+    requested_bits: int,
+    max_refinements: int,
+    initial_panels: int,
+    quadrature_order: int,
+) -> dict[str, Any] | None:
+    """Run exact geometry, two refinements, and lattice assembly in FLINT.
+
+    This is a bounded scalar fast path.  The native operation uses exact
+    `fmpq_poly`/`qqbar` roots, Arb/Acb quadrature and matrix solves, and exact
+    FLINT integer kernels/SNF.  It returns only the refinement-stable scalar
+    and compact evidence; detailed public matrices are produced lazily by the
+    ordinary implementation and cross-checked against this value.
+    """
+    backend = runtime.flint_backend()
+    function = runtime.reflect.get(backend, "hyperellipticRealPeriodArb")
+    if function is runtime.undefined:
+        return None
+    native = runtime.reflect.apply(
+        function,
+        backend,
+        [
+            [_exact_text(value) for value in f_coefficients],
+            [_exact_text(value) for value in h_coefficients],
+            genus,
+            requested_bits,
+            max_refinements,
+            initial_panels,
+            quadrature_order,
+        ],
+    )
+    if str(runtime.reflect.get(native, "status")) != "ok":
+        return None
+    raw_runs = runtime.reflect.get(native, "refinementRuns")
+    if len(raw_runs) < 2:
+        raise ArithmeticError(
+            "the complete Arb period did not return two refinement witnesses"
+        )
+    model_period = str(runtime.reflect.get(native, "modelPeriod"))
+    if not mp.isfinite(mp.mpf(model_period)) or mp.mpf(model_period) <= 0:
+        raise ArithmeticError("the complete Arb period returned a nonpositive value")
+    achieved_bits = int(runtime.reflect.get(native, "achievedStabilityBits"))
+    accuracy_bits = int(runtime.reflect.get(native, "arithmeticAccuracyBits"))
+    if achieved_bits <= 44 or accuracy_bits <= 44:
+        raise ArithmeticError(
+            "the complete Arb period did not retain arbitrary-precision evidence"
+        )
+    return {
+        "_native_result": native,
+        "model_real_period": model_period,
+        "requested_precision_bits": requested_bits,
+        "achieved_stability_bits": achieved_bits,
+        "arithmetic_accuracy_bits": accuracy_bits,
+    }
+
+
+def _complete_real_period_arb_evidence(summary: dict[str, Any]) -> None:
+    """Validate and expand the compact native refinement record on demand."""
+    if "refinement_runs" in summary:
+        return
+    native = summary["_native_result"]
+    genus = int(runtime.reflect.get(native, "genus"))
+    raw_runs = runtime.reflect.get(native, "refinementRuns")
+    runs = []
+    previous_bits = 0
+    previous_panels = 0
+    for raw in raw_runs:
+        work_bits = int(runtime.reflect.get(raw, "workPrecisionBits"))
+        panels = int(runtime.reflect.get(raw, "quadraturePanels"))
+        order = int(runtime.reflect.get(raw, "quadratureOrder"))
+        samples = int(runtime.reflect.get(raw, "sampleEvaluations"))
+        engine = str(runtime.reflect.get(raw, "engine"))
+        raw_timings = runtime.reflect.get(raw, "stageTimingsMs")
+        if (
+            engine != "arb-acb-complete-period"
+            or work_bits <= previous_bits
+            or panels <= previous_panels
+            or order < 8
+            or order > 64
+            or samples != 2 * genus * panels * order
+        ):
+            raise ArithmeticError(
+                "the complete Arb period returned malformed refinement evidence"
+            )
+        runs.append(
+            {
+                "engine": engine,
+                "work_precision_bits": work_bits,
+                "quadrature_panels": panels,
+                "quadrature_order": order,
+                "sample_evaluations": samples,
+                "stage_timings_ms": {
+                    "root_conversion": float(
+                        runtime.reflect.get(raw_timings, "rootConversion")
+                    ),
+                    "quadrature": float(runtime.reflect.get(raw_timings, "quadrature")),
+                    "matrix_assembly": float(
+                        runtime.reflect.get(raw_timings, "matrixAssembly")
+                    ),
+                    "riemann_validation": float(
+                        runtime.reflect.get(raw_timings, "riemannValidation")
+                    ),
+                    "conjugation_validation": float(
+                        runtime.reflect.get(raw_timings, "conjugationValidation")
+                    ),
+                    "real_lattice": float(
+                        runtime.reflect.get(raw_timings, "realLattice")
+                    ),
+                },
+            }
+        )
+        previous_bits = work_bits
+        previous_panels = panels
+    raw_stage_timings = runtime.reflect.get(native, "stageTimingsMs")
+    summary.update(
+        {
+            "work_precision_bits": int(
+                runtime.reflect.get(native, "workPrecisionBits")
+            ),
+            "refinement_difference": str(
+                runtime.reflect.get(native, "refinementDifference")
+            ),
+            "refinement_tolerance": str(
+                runtime.reflect.get(native, "refinementTolerance")
+            ),
+            "branch_order": [
+                int(value) for value in runtime.reflect.get(native, "branchOrder")
+            ],
+            "branch_chain_clearance": str(
+                runtime.reflect.get(native, "branchChainClearance")
+            ),
+            "real_root_count": int(runtime.reflect.get(native, "realRootCount")),
+            "real_components": int(runtime.reflect.get(native, "realComponents")),
+            "sample_evaluations": int(runtime.reflect.get(native, "sampleEvaluations")),
+            "refinement_runs": runs,
+            "stage_timings_ms": {
+                "model_validation": float(
+                    runtime.reflect.get(raw_stage_timings, "modelValidation")
+                ),
+                "exact_root_isolation": float(
+                    runtime.reflect.get(raw_stage_timings, "exactRootIsolation")
+                ),
+                "branch_planning": float(
+                    runtime.reflect.get(raw_stage_timings, "branchPlanning")
+                ),
+                "refinement_assembly": float(
+                    runtime.reflect.get(raw_stage_timings, "refinementAssembly")
+                ),
+                "result_assembly": float(
+                    runtime.reflect.get(raw_stage_timings, "resultAssembly")
+                ),
+            },
+        }
+    )
 
 
 def _matrix_maximum(values: Any) -> Any:
@@ -1850,19 +2101,52 @@ def _model_period_data(
     quadrature_order: int,
     initial_panels: int,
     use_cache: bool,
+    allow_complete_arb: bool = True,
 ) -> tuple[Any, bool]:
-    completed, coefficients = _completed_model(curve)
-    cache_key = (
-        _model_key(curve),
-        requested_bits,
-        max_refinements,
-        quadrature_order,
-        initial_panels,
-    )
-    if use_cache and cache_key in _MODEL_PERIOD_CACHE:
+    cache_key = None
+    if use_cache:
+        cache_key = (
+            _model_key(curve),
+            requested_bits,
+            max_refinements,
+            quadrature_order,
+            initial_panels,
+        )
+    if cache_key is not None and cache_key in _MODEL_PERIOD_CACHE:
         _CACHE_STATS["model_hits"] += 1
         return (_MODEL_PERIOD_CACHE[cache_key], True)
     _CACHE_STATS["computations"] += 1
+    if allow_complete_arb and requested_bits > 44:
+        try:
+            f_coefficients, h_coefficients = _model_coefficient_lists(curve)
+            summary = _complete_real_period_arb(
+                f_coefficients,
+                h_coefficients,
+                int(curve.genus()),
+                requested_bits,
+                max_refinements,
+                initial_panels,
+                quadrature_order,
+            )
+        except (ArithmeticError, OverflowError, RuntimeError, TypeError, ValueError):
+            summary = None
+        if summary is not None:
+            _CACHE_STATS["complete_arb_periods"] += 1
+            lazy = _LazyModelPeriodData(
+                curve,
+                summary,
+                requested_bits,
+                max_refinements,
+                quadrature_order,
+                initial_panels,
+            )
+            if cache_key is not None:
+                if len(_MODEL_PERIOD_CACHE) >= _CACHE_LIMIT:
+                    del _MODEL_PERIOD_CACHE[next(iter(_MODEL_PERIOD_CACHE))]
+                _MODEL_PERIOD_CACHE[cache_key] = lazy
+            return (lazy, False)
+        _CACHE_STATS["complete_arb_fallbacks"] += 1
+    completed, coefficients = _completed_model(curve)
     target_tolerance = mp.power(2, -max(20, min(80, requested_bits // 2)))
     previous = None
     previous_order = None
@@ -1937,7 +2221,7 @@ def _model_period_data(
                     last_tolerance,
                     refinement_runs,
                 )
-                if use_cache:
+                if cache_key is not None:
                     if len(_MODEL_PERIOD_CACHE) >= _CACHE_LIMIT:
                         del _MODEL_PERIOD_CACHE[next(iter(_MODEL_PERIOD_CACHE))]
                     prepared = _PreparedModelData(result)
@@ -2502,7 +2786,14 @@ class HyperellipticPeriodResult:
         cache_hit: bool,
     ) -> None:
         self.__curve = curve
-        if isinstance(model_data, _PreparedModelData):
+        self.__lazy_model_data: _LazyModelPeriodData | None = None
+        self.__model_payload: str | None = None
+        if isinstance(model_data, _LazyModelPeriodData):
+            self.__lazy_model_data = model_data
+            requested_precision_bits = model_data.requested_precision_bits
+            achieved_stability_bits = model_data.achieved_stability_bits
+            genus = model_data.genus
+        elif isinstance(model_data, _PreparedModelData):
             self.__model_payload = model_data.payload
             requested_precision_bits = model_data.requested_precision_bits
             achieved_stability_bits = model_data.achieved_stability_bits
@@ -2512,7 +2803,8 @@ class HyperellipticPeriodResult:
             requested_precision_bits = int(model_data["requested_precision_bits"])
             achieved_stability_bits = int(model_data["achieved_stability_bits"])
             genus = int(model_data["genus"])
-        self.__normalization_payload = _sealed_payload(normalization_data)
+        self.__normalization_data = normalization_data
+        self.__normalization_payload: str | None = None
         self.__cache_hit = bool(cache_hit)
         self.__precision_bits = requested_precision_bits
         self.__achieved_stability_bits = achieved_stability_bits
@@ -2525,10 +2817,16 @@ class HyperellipticPeriodResult:
 
     @property
     def _model_data(self) -> dict[str, Any]:
+        if self.__model_payload is None:
+            if self.__lazy_model_data is None:
+                raise AssertionError("period result has no model payload")
+            self.__model_payload = _sealed_payload(self.__lazy_model_data.materialize())
         return _payload_data(self.__model_payload)
 
     @property
     def _normalization(self) -> dict[str, Any]:
+        if self.__normalization_payload is None:
+            self.__normalization_payload = _sealed_payload(self.__normalization_data)
         return _payload_data(self.__normalization_payload)
 
     @property
@@ -2571,9 +2869,11 @@ class HyperellipticPeriodResult:
 
     def model_period(self) -> Any:
         """Return the real period for the stated model differential basis."""
-        return _global("RealField")(self.precision_bits)(
-            self._model_data["model_real_period"]
-        )
+        if self.__lazy_model_data is not None and self.__model_payload is None:
+            value = self.__lazy_model_data.model_period_text()
+        else:
+            value = self._model_data["model_real_period"]
+        return _global("RealField")(self.precision_bits)(value)
 
     def neron_period(self) -> Any:
         """Return the Neron period, requiring an explicit exact normalization."""
@@ -2761,27 +3061,35 @@ class HyperellipticPeriodResult:
     verify = internal_consistency
 
     def diagnostics(self) -> dict[str, Any]:
+        model = self._model_data
         return _clone_data(
             {
-                "root_isolation_status": self._model_data["root_isolation_status"],
-                "branch_chain_clearance": self._model_data["branch_chain_clearance"],
-                "riemann_symmetry_relative_defect": self._model_data[
+                "root_isolation_status": model["root_isolation_status"],
+                "branch_chain_clearance": model["branch_chain_clearance"],
+                "riemann_symmetry_relative_defect": model[
                     "riemann_symmetry_relative_defect"
                 ],
-                "riemann_minimum_eigenvalue": self._model_data[
-                    "riemann_minimum_eigenvalue"
-                ],
-                "conjugation_integrality_defect": self._model_data[
+                "riemann_minimum_eigenvalue": model["riemann_minimum_eigenvalue"],
+                "conjugation_integrality_defect": model[
                     "conjugation_integrality_defect"
                 ],
-                "refinement_difference": self._model_data["refinement_difference"],
-                "refinement_tolerance": self._model_data["refinement_tolerance"],
-                "refinement_runs": list(self._model_data["refinement_runs"]),
-                "refinement_stable": bool(self._model_data["refinement_stable"]),
+                "refinement_difference": model["refinement_difference"],
+                "refinement_tolerance": model["refinement_tolerance"],
+                "refinement_runs": list(model["refinement_runs"]),
+                "complete_arb_refinement_runs": list(
+                    model.get("complete_arb_refinement_runs", [])
+                ),
+                "complete_arb_crosscheck_difference": model.get(
+                    "complete_arb_crosscheck_difference"
+                ),
+                "complete_arb_stage_timings_ms": model.get(
+                    "complete_arb_stage_timings_ms"
+                ),
+                "refinement_stable": bool(model["refinement_stable"]),
                 "requested_precision_bits": self.precision_bits,
-                "work_precision_bits": self._model_data["work_precision_bits"],
+                "work_precision_bits": model["work_precision_bits"],
                 "achieved_stability_bits": self.achieved_stability_bits,
-                "analytic_error_status": self._model_data["analytic_error_status"],
+                "analytic_error_status": model["analytic_error_status"],
                 "cache_hit": self.cache_hit,
                 "rigorous": False,
             }
@@ -2830,7 +3138,7 @@ def real_period(
     provenance: Any = None,
     max_refinements: int = 3,
     quadrature_order: int = 16,
-    initial_panels: int = 4,
+    initial_panels: int = 3,
     use_cache: bool = True,
 ) -> HyperellipticPeriodResult:
     """Compute a refinement-stable genus-2/3 real period.
@@ -2845,7 +3153,9 @@ def real_period(
     enclosures in the current implementation.  Precision/panel refinement,
     Riemann relations, positivity, integral conjugation, and real-lattice
     checks are all mandatory capability gates, but the result remains
-    `rigorous=False`.
+    `rigorous=False`.  The default begins genus-2 integration with three
+    panels; the bounded complete genus-3 path raises that minimum to four
+    before applying the requested refinement schedule.
     """
     requested_bits = int(prec)
     if requested_bits < 32 or requested_bits > 1024:
@@ -2998,6 +3308,8 @@ def period_cache_info() -> dict[str, int]:
         "float64_fallbacks": int(_CACHE_STATS["float64_fallbacks"]),
         "arb_quadratures": int(_CACHE_STATS["arb_quadratures"]),
         "arb_fallbacks": int(_CACHE_STATS["arb_fallbacks"]),
+        "complete_arb_periods": int(_CACHE_STATS["complete_arb_periods"]),
+        "complete_arb_fallbacks": int(_CACHE_STATS["complete_arb_fallbacks"]),
         "float64_sign_selections": int(_CACHE_STATS["float64_sign_selections"]),
         "sign_selection_fallbacks": int(_CACHE_STATS["sign_selection_fallbacks"]),
     }

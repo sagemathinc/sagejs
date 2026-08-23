@@ -188,6 +188,87 @@ print(summary)
 );
 
 test(
+  "complete FLINT periods match the pinned PARI corpus with bounded evidence",
+  { timeout: 180_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(String.raw`
+from mpmath import mp
+import sagejs.runtime as runtime
+backend = runtime.flint_backend()
+native_period = runtime.reflect.get(backend, "hyperellipticRealPeriodArb")
+cases = [
+    (
+        ["0", "1", "1"],
+        ["1", "0", "1", "1"],
+        2,
+        "32.667031090507096110005902370143563809",
+    ),
+    (
+        ["0", "1", "1", "0", "-2", "-1", "1", "1"],
+        ["1", "0", "1"],
+        3,
+        "69.081200998004027497103951240276008092",
+    ),
+]
+for f_coefficients, h_coefficients, genus, expected in cases:
+    native = runtime.reflect.apply(
+        native_period,
+        backend,
+        [f_coefficients, h_coefficients, genus, 64, 3, 4, 16],
+    )
+    assert str(runtime.reflect.get(native, "status")) == "ok"
+    value = mp.mpf(str(runtime.reflect.get(native, "modelPeriod")))
+    assert abs(value - mp.mpf(expected)) / mp.mpf(expected) < mp.power(2, -64)
+    assert int(runtime.reflect.get(native, "achievedStabilityBits")) > 44
+    assert int(runtime.reflect.get(native, "arithmeticAccuracyBits")) > 44
+    runs = runtime.reflect.get(native, "refinementRuns")
+    assert len(runs) >= 2
+    previous_bits = 0
+    previous_panels = 0
+    for run in runs:
+        work_bits = int(runtime.reflect.get(run, "workPrecisionBits"))
+        panels = int(runtime.reflect.get(run, "quadraturePanels"))
+        order = int(runtime.reflect.get(run, "quadratureOrder"))
+        samples = int(runtime.reflect.get(run, "sampleEvaluations"))
+        assert str(runtime.reflect.get(run, "engine")) == "arb-acb-complete-period"
+        assert work_bits > previous_bits and panels > previous_panels
+        assert samples == 2 * genus * panels * order
+        previous_bits = work_bits
+        previous_panels = panels
+
+precision_rejected = False
+try:
+    runtime.reflect.apply(
+        native_period,
+        backend,
+        [["0", "1", "1"], ["0"], 2, 1025, 3, 4, 16],
+    )
+except:
+    precision_rejected = True
+assert precision_rejected
+
+squarefree_rejected = False
+try:
+    runtime.reflect.apply(
+        native_period,
+        backend,
+        [["0", "0", "0", "0", "0", "1"], ["0"], 2, 64, 3, 4, 16],
+    )
+except:
+    squarefree_rejected = True
+assert squarefree_rejected
+True
+`);
+      assert.equal(result.repr, "True");
+    } finally {
+      await session.close();
+    }
+  },
+);
+
+test(
   "public 64-bit periods retain two arbitrary-precision refinement witnesses",
   { timeout: 180_000 },
   async () => {
@@ -195,6 +276,7 @@ test(
     try {
       const result = await session.evaluate(String.raw`
 from sagejs.hyperelliptic_curves.periods import clear_period_cache, real_period
+from mpmath import mp
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 for curve in (
@@ -203,7 +285,8 @@ for curve in (
 ):
     clear_period_cache()
     result = real_period(curve, prec=64, use_cache=False)
-    runs = result.diagnostics()["refinement_runs"]
+    diagnostics = result.diagnostics()
+    runs = diagnostics["refinement_runs"]
     arbitrary = [
         run
         for run in runs
@@ -214,6 +297,10 @@ for curve in (
     ]
     assert len(arbitrary) >= 2
     assert all(run["quadrature_evidence_bits"] >= 64 for run in arbitrary)
+    complete = diagnostics["complete_arb_refinement_runs"]
+    assert len(complete) >= 2
+    assert all(run["engine"] == "arb-acb-complete-period" for run in complete)
+    assert mp.mpf(diagnostics["complete_arb_crosscheck_difference"]) < mp.power(2, -44)
     checks = result.verify()
     assert checks["verified"] and not checks["rigorous"]
     assert result.achieved_stability_bits > 44
