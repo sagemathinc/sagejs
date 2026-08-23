@@ -13,6 +13,7 @@
     "test/hyperelliptic-analytic-performance.cjs",
     "test/hyperelliptic-period-arb-performance.cjs",
     "bench/hyperelliptic/benchmark-period-pari-competitive.cjs",
+    "bench/hyperelliptic/competitive/period-pari-receipt-linux-x64.json",
     "packages/flint/src/hyperelliptic/period_quadrature.c",
     "packages/flint/src/hyperelliptic/period_quadrature.h",
     "packages/flint/src/addon.c",
@@ -48,7 +49,38 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/hyperelliptic-period-arb-performance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.324,
+      "started_at": "2026-08-23T08:12:26.278Z",
+      "commit": "4b0e069b8e95e95a83e39981658b394a2e9cbaf2",
+      "workspace_fingerprint": "f207d86e26502ae63775793aad5d5e51b5f542266b19a7dada7e78fce50b60e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.278,
+      "started_at": "2026-08-23T08:12:47.297Z",
+      "commit": "4b0e069b8e95e95a83e39981658b394a2e9cbaf2",
+      "workspace_fingerprint": "f207d86e26502ae63775793aad5d5e51b5f542266b19a7dada7e78fce50b60e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-periods.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 114.586,
+      "started_at": "2026-08-23T08:13:26.683Z",
+      "commit": "4b0e069b8e95e95a83e39981658b394a2e9cbaf2",
+      "workspace_fingerprint": "f207d86e26502ae63775793aad5d5e51b5f542266b19a7dada7e78fce50b60e1",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],
