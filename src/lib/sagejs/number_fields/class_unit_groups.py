@@ -1400,6 +1400,7 @@ class ClassUnitGroupEngine:
             "cubic_relation_seed_relations": 0,
             "cubic_factor_base_seed_uses": 0,
             "cubic_packed_factor_base_uses": 0,
+            "cubic_verified_factor_base_collector_uses": 0,
             "cubic_integral_sieve_uses": 0,
             "cubic_integral_sieve_candidates": 0,
             "cubic_integral_sieve_relations": 0,
@@ -1441,6 +1442,7 @@ class ClassUnitGroupEngine:
         self._proof_dependency_hashes: dict[str, str] = {}
         self._generation_dependency_snapshot: tuple[Any, ...] | None = None
         self._saturation_record: Any = None
+        self._live_verified_factor_base: tuple[Any, ...] | None = None
         self._authenticated_cubic_relation_seed_cache: Any = _CUBIC_RELATION_SEED_UNREAD
 
     def _stage(self, name: str, state: str, **details: Any) -> None:
@@ -1660,6 +1662,7 @@ class ClassUnitGroupEngine:
         plan.require_feasible()
         records: Any = None
         primes: tuple[Any, ...] = ()
+        packed_factor_base_verified = False
         if (
             not proof
             and int(self.field.degree()) == 3
@@ -1688,6 +1691,7 @@ class ClassUnitGroupEngine:
                 if verified is not None:
                     verified_values: Any = verified
                     records, primes = verified_values
+                    packed_factor_base_verified = True
                     self._resource_usage["cubic_packed_factor_base_uses"] += 1
             except (
                 AttributeError,
@@ -1715,8 +1719,12 @@ class ClassUnitGroupEngine:
                         "the checkpoint factor base differs from the deterministic plan"
                     )
                 primes = restored
+                packed_factor_base_verified = False
             else:
                 self._checkpoint_capture({"factor_base": primes})
+        self._live_verified_factor_base = (
+            primes if packed_factor_base_verified else None
+        )
         if record_stage:
             self._phase_finish("factor-base", started)
         if record_stage:
@@ -2402,7 +2410,19 @@ class ClassUnitGroupEngine:
         )
         restored_state = self._relation_search_state
         if collector is None:
-            collector = relations.ExactRelationCollector(self.order, factor_base)
+            collector_options: dict[str, Any] = {}
+            if factor_base is self._live_verified_factor_base:
+                validated_token = getattr(
+                    relations, "_VALIDATED_FACTOR_BASE_TOKEN", None
+                )
+                if validated_token is not None:
+                    collector_options["_validated_token"] = validated_token
+                    self._resource_usage[
+                        "cubic_verified_factor_base_collector_uses"
+                    ] += 1
+            collector = relations.ExactRelationCollector(
+                self.order, factor_base, **collector_options
+            )
             restored_relations = ()
             restored_matrix = None
             if self.checkpoint_controller is not None:
