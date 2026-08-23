@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "c4970ad20b08aec633cdcdbe338aea313cc632f053b30691c22b89c06b2d9b29",
+  "source_sha256": "f3b39e90b18e660024070ec0c52cb171bee5c2c8491f4920e0dfd2f29375d2dc",
   "counts": {
     "total": 965,
     "by_kind": {
@@ -5721,7 +5721,7 @@
       "public_consumers": [
         "dense-integer-flint"
       ],
-      "explanation": "All 16 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 17 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-integer-production",

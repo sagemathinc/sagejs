@@ -40,6 +40,12 @@ PRESENTATION_POLICY_SCHEMA = (
 PRESENTATION_DECISION_SCHEMA = (
     "sagejs.number-fields/deferred-relation-presentation-decision-v1"
 )
+MAX_PACKED_PRESENTATION_DIMENSION = 256
+MAX_PACKED_PRESENTATION_VALUES = 65_536
+MAX_PACKED_PRESENTATION_ENTRY_BITS = 16_384
+MAX_PACKED_PRESENTATION_OUTPUT_WORDS = 1_000_000
+
+_presentation_replay_kernel_override: Any = None
 
 
 class RelationMatrixError(ValueError):
@@ -1016,6 +1022,128 @@ def _determinant_exact(rows: Sequence[Sequence[int]]) -> int:
         return _determinant(rows)
 
 
+def _readable_relation_presentation_replay(
+    source: list[list[int]],
+    hnf: list[list[int]],
+    hnf_left: list[list[int]],
+    smith: list[list[int]],
+    smith_left: list[list[int]],
+    smith_right: list[list[int]],
+    smith_inverse: list[list[int]],
+) -> bool:
+    """Replay the exact matrix identities through the readable oracle."""
+    if _matrix_multiply(hnf_left, source) != hnf:
+        return False
+    if _matrix_multiply(_matrix_multiply(smith_left, source), smith_right) != smith:
+        return False
+    identity = _identity(len(smith_right))
+    if _matrix_multiply(smith_inverse, smith_right) != identity:
+        return False
+    if _matrix_multiply(smith_right, smith_inverse) != identity:
+        return False
+    if abs(_determinant_exact(hnf_left)) != 1:
+        return False
+    if abs(_determinant_exact(smith_left)) != 1:
+        return False
+    return abs(_determinant_exact(smith_right)) == 1
+
+
+def _packed_relation_presentation_replay(
+    source: list[list[int]],
+    hnf: list[list[int]],
+    hnf_left: list[list[int]],
+    smith: list[list[int]],
+    smith_left: list[list[int]],
+    smith_right: list[list[int]],
+    smith_inverse: list[list[int]],
+) -> bool | None:
+    """Use one bounded isolated FLINT call, or decline to the exact oracle."""
+    rows = len(source)
+    columns = len(source[0]) if source else 0
+    if (
+        rows < 1
+        or columns < 1
+        or rows > MAX_PACKED_PRESENTATION_DIMENSION
+        or columns > MAX_PACKED_PRESENTATION_DIMENSION
+        or rows * columns > MAX_PACKED_PRESENTATION_VALUES
+        or rows * rows > MAX_PACKED_PRESENTATION_VALUES
+        or columns * columns > MAX_PACKED_PRESENTATION_VALUES
+        or _presentation_replay_kernel_override is False
+    ):
+        return None
+    matrices = (
+        source,
+        hnf,
+        hnf_left,
+        smith,
+        smith_left,
+        smith_right,
+        smith_inverse,
+    )
+    maximum_bits = 1
+    for matrix in matrices:
+        for row in matrix:
+            for value in row:
+                maximum_bits = max(maximum_bits, abs(value).bit_length())
+    if maximum_bits > MAX_PACKED_PRESENTATION_ENTRY_BITS:
+        return None
+    largest_dimension = max(rows, columns)
+    product_bits = 3 * maximum_bits + 2 * largest_dimension.bit_length() + 3
+    determinant_bits = largest_dimension * (
+        maximum_bits + largest_dimension.bit_length() + 2
+    )
+    product_words = max(8, (product_bits + 63) // 64 + 2)
+    determinant_words = max(8, (determinant_bits + 63) // 64 + 2)
+    output_words = (
+        2 * rows * columns + columns * columns
+    ) * product_words + determinant_words
+    if output_words > MAX_PACKED_PRESENTATION_OUTPUT_WORDS:
+        return None
+    try:
+        kernel_module = __import__(
+            "sagejs.kernels.matrix.dense_integer_flint",
+            fromlist=["dense_integer_flint"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        kernel = (
+            _presentation_replay_kernel_override
+            if callable(_presentation_replay_kernel_override)
+            else kernel_module.flint_relation_presentation_replay
+        )
+        packed = [
+            native_module.kernel_integer_buffer(
+                kernel, [value for row in matrix for value in row]
+            )
+            for matrix in matrices
+        ]
+        status = kernel(
+            native_module.kernel_integer_zeros(kernel, rows * columns, product_words),
+            native_module.kernel_integer_zeros(kernel, rows * columns, product_words),
+            native_module.kernel_integer_zeros(
+                kernel, columns * columns, product_words
+            ),
+            native_module.kernel_integer_zeros(kernel, 1, determinant_words),
+            *packed,
+            rows,
+            columns,
+            1,
+        )
+    except (
+        ImportError,
+        OverflowError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        ArithmeticError,
+    ):
+        return None
+    if status == 1:
+        return True
+    if status == 0:
+        return False
+    return None
+
+
 def _invert_unimodular(rows: Sequence[Sequence[int]]) -> list[list[int]]:
     size = len(rows)
     if any(len(row) != size for row in rows):
@@ -1419,20 +1547,26 @@ class RelationPresentation:
         smith_left = [list(row) for row in self.smith_left_transform]
         smith_right = [list(row) for row in self.smith_right_transform]
         smith_inverse = [list(row) for row in self.smith_right_inverse]
-        if _matrix_multiply(hnf_left, source) != hnf:
-            return False
-        if _matrix_multiply(_matrix_multiply(smith_left, source), smith_right) != smith:
-            return False
-        identity = _identity(self.column_count)
-        if _matrix_multiply(smith_inverse, smith_right) != identity:
-            return False
-        if _matrix_multiply(smith_right, smith_inverse) != identity:
-            return False
-        if abs(_determinant_exact(hnf_left)) != 1:
-            return False
-        if abs(_determinant_exact(smith_left)) != 1:
-            return False
-        if abs(_determinant_exact(smith_right)) != 1:
+        matrix_replay = _packed_relation_presentation_replay(
+            source,
+            hnf,
+            hnf_left,
+            smith,
+            smith_left,
+            smith_right,
+            smith_inverse,
+        )
+        if matrix_replay is None:
+            matrix_replay = _readable_relation_presentation_replay(
+                source,
+                hnf,
+                hnf_left,
+                smith,
+                smith_left,
+                smith_right,
+                smith_inverse,
+            )
+        if not matrix_replay:
             return False
         expected_diagonal = tuple(
             self.smith[index][index]

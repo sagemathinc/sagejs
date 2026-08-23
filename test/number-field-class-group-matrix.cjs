@@ -43,6 +43,7 @@ const behavior = String.raw`
 import copy
 import json
 import time
+import sagejs.number_fields.class_group_matrix as matrix_module
 
 from sagejs.number_fields.class_group_matrix import (
     DeferredPresentationPolicy,
@@ -114,6 +115,42 @@ for case in fixture['cases']:
         assert replayed.invariants == presentation.invariants
         assert replayed.generator_transforms == presentation.generator_transforms
         assert replayed.verify()
+
+        if case['name'] == 'cyclic-4-noncanonical' and presentation.backend == 'flint':
+            source = [row.dense() for row in presentation.relation_rows]
+            matrix_replay = matrix_module._packed_relation_presentation_replay(
+                source,
+                [list(row) for row in presentation.hnf],
+                [list(row) for row in presentation.hnf_left_transform],
+                [list(row) for row in presentation.smith],
+                [list(row) for row in presentation.smith_left_transform],
+                [list(row) for row in presentation.smith_right_transform],
+                [list(row) for row in presentation.smith_right_inverse],
+            )
+            assert matrix_replay is True
+            saved_replay_override = matrix_module._presentation_replay_kernel_override
+            matrix_module._presentation_replay_kernel_override = False
+            try:
+                assert presentation.verify()
+            finally:
+                matrix_module._presentation_replay_kernel_override = saved_replay_override
+
+            # Every packed matrix remains proof data.  Native and readable
+            # replay both reject mutations rather than trusting FLINT's output.
+            for matrix_key in (
+                'hnf', 'hnf_left', 'smith', 'smith_left',
+                'smith_right', 'smith_right_inverse',
+            ):
+                forged = copy.deepcopy(presentation.to_dict())
+                forged[matrix_key][0][0] += 1
+                try:
+                    RelationPresentation.from_dict(forged)
+                except (RelationMatrixError, ArithmeticError):
+                    pass
+                else:
+                    raise AssertionError(
+                        'packed presentation replay accepted changed ' + matrix_key
+                    )
 
         retained_order = presentation.order
         presentation.order = (
