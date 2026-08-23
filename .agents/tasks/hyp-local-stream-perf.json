@@ -4,7 +4,7 @@
   "id": "hyp-local-stream-perf",
   "title": "Hyp Local Stream Perf",
   "lane": "hyperelliptic-curves",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Eliminate public genus-2 local-factor materialization overhead using lazy packed records and bulk construction without changing exact stream semantics.",
   "base_commit": "76b863adb13c683b265ddc0c987b727fd7291990",
@@ -45,11 +45,58 @@
       "commit": "76b863adb13c683b265ddc0c987b727fd7291990",
       "workspace_fingerprint": "9d29a47f7ec91ce33003377e986083e0d9736761e118154483e68f5c53d3718d",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.407,
+      "started_at": "2026-08-23T03:14:47.663Z",
+      "commit": "592fffff9f9d5fe4e2e421de94949c8777d37e72",
+      "workspace_fingerprint": "7f1cba2920fae7160a8cae9dd56b0ddff40c19cbdfa77c293585a1530a8df066",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.047,
+      "started_at": "2026-08-23T03:14:55.706Z",
+      "commit": "592fffff9f9d5fe4e2e421de94949c8777d37e72",
+      "workspace_fingerprint": "7f1cba2920fae7160a8cae9dd56b0ddff40c19cbdfa77c293585a1530a8df066",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-local-data-performance.cjs test/hyperelliptic-local-data.cjs test/hyperelliptic-reference.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.579,
+      "started_at": "2026-08-23T03:16:26.748Z",
+      "commit": "592fffff9f9d5fe4e2e421de94949c8777d37e72",
+      "workspace_fingerprint": "7f1cba2920fae7160a8cae9dd56b0ddff40c19cbdfa77c293585a1530a8df066",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 920.511,
+      "started_at": "2026-08-23T03:16:40.083Z",
+      "commit": "592fffff9f9d5fe4e2e421de94949c8777d37e72",
+      "workspace_fingerprint": "7f1cba2920fae7160a8cae9dd56b0ddff40c19cbdfa77c293585a1530a8df066",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added bounded, exact rational_local_coefficient_chunks with immutable (prime, coefficients, backend) rows; adapted public polynomial chunks to standard PolynomialElement objects with lazy packed integer storage; made LocalDataRecord polynomial construction lazy; and capped the duplicate interval stream cache at 256 entries. On quiet bench-1 at limit 100000 (three repetitions), medians were 1.733s packed traversal, 2.695s coefficient chunks (1.555x packed), 3.052s public polynomial chunks (1.761x packed), 5.614s lazy-record coefficient traversal, and 6.275s record polynomial traversal, with a 444481536-byte maximum sequential-process RSS. Public polynomial materialization improved 33.97x from the recorded 103.678s baseline while preserving digest 2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894 and checksum (9588, 454396502, 31923, 459539912).",
+    "risks": [
+      "The 444481536-byte RSS is the maximum resident size of one sequential multi-mode benchmark process, so it includes retained runtime/native state and is not an isolated per-mode allocation delta.",
+      "Rich LocalDataRecord statistics remain inherently more expensive than coefficient-only traversal (5.614s versus 2.695s at 100000), although polynomial construction is deferred until requested.",
+      "The CoWasm/WASI toolchain was unavailable in this worktree, so browser runtime parity was not rerun locally; architecture:check, including the Wasm capability audit, passed, and the implementation uses the standard baselib packed polynomial representation with an ordinary-construction fallback."
+    ],
+    "next_steps": [
+      "Consume rational_local_coefficient_chunks in GlobalCoefficientPrefix.through() with the agreed ImportError/NotImplementedError fallback to the public local_data path.",
+      "Run the existing local_lpolynomials browser/Wasm parity case on a prepared CoWasm toolchain and retain platform-matrix receipts on linux-arm64, windows-x64, and macos-arm64."
+    ]
   }
 }
