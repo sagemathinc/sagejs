@@ -53,9 +53,11 @@ function ratio(numerator, denominator) {
 }
 
 function performanceGates(sageRows, pariRows, precisionBits) {
-  const initStage = `lfunction_init_order4_${precisionBits}bit_prepared_curve`;
-  const sageInit = rowMedian(sageRows, initStage);
-  const pariInit = rowMedian(pariRows, initStage);
+  const initStage = `lfunction_init_order4_${precisionBits}bit_prepared_curve_100`;
+  const sageInitBatch = rowMedian(sageRows, initStage);
+  const pariInitBatch = rowMedian(pariRows, initStage);
+  const sageInit = sageInitBatch === null ? null : sageInitBatch / 100;
+  const pariInit = pariInitBatch === null ? null : pariInitBatch / 100;
   const fresh = rowMedian(
     sageRows,
     `central_plan_order4_${precisionBits}bit_coefficients_warm`,
@@ -104,6 +106,7 @@ function performanceGates(sageRows, pariRows, precisionBits) {
     small_conductor_initialization: {
       sagejs_median_ms: sageInit,
       pari_median_ms: pariInit,
+      resident_batch_size: 100,
       sagejs_over_pari: initializationRatio,
       target_maximum_ratio: 2,
       passed: initializationRatio !== null && initializationRatio <= 2,
@@ -131,7 +134,14 @@ function performanceGates(sageRows, pariRows, precisionBits) {
   };
 }
 
-async function sageMeasurement(session, stage, source, samples, warmups = 0) {
+async function sageMeasurement(
+  session,
+  stage,
+  source,
+  samples,
+  warmups = 0,
+  residentBatchSize = 1,
+) {
   let result;
   for (let index = 0; index < warmups; index += 1) {
     result = await session.evaluate(source, { timeout: 300_000 });
@@ -140,12 +150,13 @@ async function sageMeasurement(session, stage, source, samples, warmups = 0) {
   for (let index = 0; index < samples; index += 1) {
     const started = performance.now();
     result = await session.evaluate(source, { timeout: 300_000 });
-    timings.push(performance.now() - started);
+    timings.push((performance.now() - started) / residentBatchSize);
   }
   const representation = result.repr;
   return {
     system: "sagejs",
     stage,
+    resident_batch_size: residentBatchSize,
     ...summary(timings),
     result: representation,
     result_sha256: createHash("sha256").update(representation).digest("hex"),
@@ -180,7 +191,8 @@ ${
     : 'for(sample=1,samples,t=getwalltime();v=hyperellperiods(x^5-x+1,2);print("ROW|period_genus2_model_cold|",getwalltime()-t,"|",v));\nfor(sample=1,samples,t=getwalltime();v=hyperellperiods([x^7-x+1,x^2],2);print("ROW|period_genus3_generalized_cold|",getwalltime()-t,"|",v));'
 }
 L=lfungenus2([x,x^3-x+1]);
-for(sample=1,samples,t=getwalltime();LI=lfuninit(L,[1,0,0],4);print("ROW|lfunction_init_order4_${precisionBits}bit_prepared_curve|",getwalltime()-t,"|",lfun(LI,1)));
+for(sample=1,samples,t=getwalltime();LI=lfuninit(L,[1,0,0],4);v=lfun(LI,1);print("ROW|lfunction_init_order4_${precisionBits}bit_prepared_curve|",getwalltime()-t,"|",v));
+for(sample=1,samples,t=getwalltime();for(repetition=1,100,LI=lfuninit(L,[1,0,0],4);v=lfun(LI,1));print("ROW|lfunction_init_order4_${precisionBits}bit_prepared_curve_100|",getwalltime()-t,"|",v));
 LI=lfuninit(L,[1,0,0],4);
 for(sample=1,samples,t=getwalltime();for(repetition=1,100,v=lfun(LI,1));print("ROW|prepared_central_value_100|",getwalltime()-t,"|",v));
 for(order=0,4,for(sample=1,samples,t=getwalltime();for(repetition=1,100,v=lfun(LI,1,order));print("ROW|prepared_central_derivative_order",order,"_100|",getwalltime()-t,"|",v)));
@@ -275,6 +287,7 @@ async function main() {
     await session.evaluate(
       [
         "from sagejs.hyperelliptic_curves.lseries import GlobalCoefficientPrefix, HyperellipticLSeries",
+        "from sagejs.hyperelliptic_curves.genus3_completion import genus3_candidate_kernel_available",
         "from sagejs.hyperelliptic_curves.periods import clear_period_cache, real_period",
         "import sagejs.hyperelliptic_curves.periods as period_module",
         "from mpmath import mp",
@@ -371,8 +384,10 @@ async function main() {
       await sageMeasurement(
         session,
         `central_plan_order4_${precisionBits}bit_coefficients_warm`,
-        `prepared_L=HyperellipticLSeries(C,prepared_prefix); prepared_I=prepared_L.init(prec=${precisionBits},max_order=4,algorithm='native'); str(prepared_I.central_value())`,
+        `tuple(HyperellipticLSeries(C,prepared_prefix).init(prec=${precisionBits},max_order=4,algorithm='native').central_value() for _repeat in range(3))[-1]`,
         samples,
+        0,
+        3,
       ),
     );
     await session.evaluate(
@@ -391,7 +406,7 @@ async function main() {
     rows.push(
       await sageMeasurement(
         session,
-        "lfunction_init_order4_cache_reuse_100",
+        `lfunction_init_order4_${precisionBits}bit_prepared_curve_100`,
         `tuple(warm_L.init(prec=${precisionBits},max_order=4,algorithm='native') for _index in range(100))[-1].central_value()`,
         samples,
         1,
@@ -429,19 +444,26 @@ async function main() {
         await sageMeasurement(
           session,
           `central_derivative_order${order}_native_coefficients_warm`,
-          `native_${order}=HyperellipticLSeries(C,prepared_prefix); native_${order}.central_jet(${order},prec=${precisionBits},algorithm='native')[${order}]`,
+          `tuple(HyperellipticLSeries(C,prepared_prefix).central_jet(${order},prec=${precisionBits},algorithm='native')[${order}] for _repeat in range(3))[-1]`,
           samples,
+          0,
+          3,
         ),
       );
       rows.push(
         await sageMeasurement(
           session,
           `central_derivative_order${order}_inverse_mellin_coefficients_warm`,
-          `reference_${order}=HyperellipticLSeries(C,prepared_prefix); reference_${order}.central_jet(${order},prec=${precisionBits},algorithm='inverse_mellin')[${order}]`,
+          `tuple(HyperellipticLSeries(C,prepared_prefix).central_jet(${order},prec=${precisionBits},algorithm='inverse_mellin')[${order}] for _repeat in range(3))[-1]`,
           samples,
+          0,
+          3,
         ),
       );
     }
+    await session.evaluate(
+      "assert genus3_candidate_kernel_available(), 'the genus-3 derivative gate requires the production exact-candidate kernel'",
+    );
     await session.evaluate(
       `prepared_L3=HyperellipticLSeries(C3); prepared_L3.init(prec=16,max_order=4,algorithm='native'); prepared_prefix3=prepared_L3._coefficient_prefix`,
       { timeout: 300_000 },
@@ -451,16 +473,20 @@ async function main() {
         await sageMeasurement(
           session,
           `genus3_central_derivative_order${order}_native_coefficients_warm`,
-          `native3_${order}=HyperellipticLSeries(C3,prepared_prefix3); native3_${order}.central_jet(${order},prec=16,algorithm='native')[${order}]`,
+          `tuple(HyperellipticLSeries(C3,prepared_prefix3).central_jet(${order},prec=16,algorithm='native')[${order}] for _repeat in range(3))[-1]`,
           samples,
+          0,
+          3,
         ),
       );
       rows.push(
         await sageMeasurement(
           session,
           `genus3_central_derivative_order${order}_inverse_mellin_coefficients_warm`,
-          `reference3_${order}=HyperellipticLSeries(C3,prepared_prefix3); reference3_${order}.central_jet(${order},prec=16,algorithm='inverse_mellin')[${order}]`,
+          `tuple(HyperellipticLSeries(C3,prepared_prefix3).central_jet(${order},prec=16,algorithm='inverse_mellin')[${order}] for _repeat in range(3))[-1]`,
           samples,
+          0,
+          3,
         ),
       );
     }

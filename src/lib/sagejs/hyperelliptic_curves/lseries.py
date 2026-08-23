@@ -343,14 +343,18 @@ def _ball_pair(value: Any) -> tuple[str, str]:
     return str(_property(value, "realMidpoint")), str(_property(value, "imagMidpoint"))
 
 
-def _ball_diagnostics(value: Any) -> dict[str, Any]:
-    return {
-        "real_midpoint": str(_property(value, "realMidpoint")),
-        "imaginary_midpoint": str(_property(value, "imagMidpoint")),
+def _ball_pair_and_diagnostics(value: Any) -> tuple[tuple[str, str], dict[str, Any]]:
+    """Materialize one native ball once for values and diagnostics."""
+    real_midpoint = str(_property(value, "realMidpoint"))
+    imaginary_midpoint = str(_property(value, "imagMidpoint"))
+    diagnostics = {
+        "real_midpoint": real_midpoint,
+        "imaginary_midpoint": imaginary_midpoint,
         "real_radius": str(_property(value, "realRadius")),
         "imaginary_radius": str(_property(value, "imagRadius")),
         "accuracy_bits": int(_property(value, "accuracyBits")),
     }
+    return (real_midpoint, imaginary_midpoint), diagnostics
 
 
 def _plan(
@@ -1058,10 +1062,15 @@ def native_lseries_values(
             completed = _property(row, "completedDerivatives")
             coarse_raw = _property(row, "coarseRawDerivatives")
             coarse_completed = _property(row, "coarseCompletedDerivatives")
-            raw_pairs = tuple(_ball_pair(raw[index]) for index in range(len(raw)))
-            completed_pairs = tuple(
-                _ball_pair(completed[index]) for index in range(len(completed))
+            raw_materialized = tuple(
+                _ball_pair_and_diagnostics(raw[index]) for index in range(len(raw))
             )
+            completed_materialized = tuple(
+                _ball_pair_and_diagnostics(completed[index])
+                for index in range(len(completed))
+            )
+            raw_pairs = tuple(value[0] for value in raw_materialized)
+            completed_pairs = tuple(value[0] for value in completed_materialized)
             coarse_raw_pairs = tuple(
                 _ball_pair(coarse_raw[index]) for index in range(len(coarse_raw))
             )
@@ -1081,13 +1090,8 @@ def native_lseries_values(
             )
             ball_rows.append(
                 {
-                    "raw": tuple(
-                        _ball_diagnostics(raw[index]) for index in range(len(raw))
-                    ),
-                    "completed": tuple(
-                        _ball_diagnostics(completed[index])
-                        for index in range(len(completed))
-                    ),
+                    "raw": tuple(value[1] for value in raw_materialized),
+                    "completed": tuple(value[1] for value in completed_materialized),
                 }
             )
         return {
@@ -1160,10 +1164,15 @@ def native_central_weight_values(
         completed = _property(native, "completedDerivatives")
         coarse_raw = _property(native, "coarseRawDerivatives")
         coarse_completed = _property(native, "coarseCompletedDerivatives")
-        raw_pairs = tuple(_ball_pair(raw[index]) for index in range(len(raw)))
-        completed_pairs = tuple(
-            _ball_pair(completed[index]) for index in range(len(completed))
+        raw_materialized = tuple(
+            _ball_pair_and_diagnostics(raw[index]) for index in range(len(raw))
         )
+        completed_materialized = tuple(
+            _ball_pair_and_diagnostics(completed[index])
+            for index in range(len(completed))
+        )
+        raw_pairs = tuple(value[0] for value in raw_materialized)
+        completed_pairs = tuple(value[0] for value in completed_materialized)
         coarse_raw_pairs = tuple(
             _ball_pair(coarse_raw[index]) for index in range(len(coarse_raw))
         )
@@ -1200,13 +1209,8 @@ def native_central_weight_values(
             ],
             "balls": (
                 {
-                    "raw": tuple(
-                        _ball_diagnostics(raw[index]) for index in range(len(raw))
-                    ),
-                    "completed": tuple(
-                        _ball_diagnostics(completed[index])
-                        for index in range(len(completed))
-                    ),
+                    "raw": tuple(value[1] for value in raw_materialized),
+                    "completed": tuple(value[1] for value in completed_materialized),
                 },
             ),
             "refinement_difference": "not-materialized",
@@ -1282,10 +1286,14 @@ class HyperellipticLSeries:
         cached = self._evaluation_cache.get(cache_key)
         if cached is not None:
             self._evaluation_cache_hits += 1
-            reused = _clone_public_data(cached)
+            # Cached result trees are private: public diagnostics and ball
+            # accessors clone before returning.  Only the top-level hit
+            # metadata differs, so preserve the private nested tree instead
+            # of copying every Arb diagnostic and derivative twice.
+            reused = dict(cached)
             reused["cache_hit"] = True
             reused["cache_reused_maximum_derivative"] = int(maximum_derivative)
-            self._last_diagnostics = _clone_public_data(reused)
+            self._last_diagnostics = reused
             return reused, bits
         for candidate_key, candidate in self._evaluation_cache.items():
             candidate_pairs, candidate_bits, candidate_order, candidate_algorithm = (
@@ -1299,11 +1307,11 @@ class HyperellipticLSeries:
             ):
                 self._evaluation_cache_hits += 1
                 self._evaluation_cache_subsumption_hits += 1
-                reused = _clone_public_data(candidate)
+                reused = dict(candidate)
                 reused["cache_hit"] = True
                 reused["cache_reused_maximum_derivative"] = int(candidate_order)
                 reused["requested_maximum_derivative"] = int(maximum_derivative)
-                self._last_diagnostics = _clone_public_data(reused)
+                self._last_diagnostics = reused
                 return reused, bits
         result = None
         if central and algorithm != "inverse_mellin":
@@ -1354,8 +1362,12 @@ class HyperellipticLSeries:
         if len(self._evaluation_cache) >= 32:
             first_key = next(iter(self._evaluation_cache))
             del self._evaluation_cache[first_key]
-        self._evaluation_cache[cache_key] = _clone_public_data(result)
-        self._last_diagnostics = _clone_public_data(result)
+        # Nothing below `_evaluate` publishes this result tree directly.
+        # Retain one private canonical snapshot; `last_diagnostics()`,
+        # `value_ball()`, and `LFunctionInit.diagnostics()` detach it before
+        # crossing the public boundary.
+        self._evaluation_cache[cache_key] = result
+        self._last_diagnostics = result
         return result, bits
 
     @staticmethod
