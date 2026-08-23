@@ -347,6 +347,42 @@ except Genus2HeightCapabilityError:
     cross_model_transplant_rejected = True
 assert cross_model_transplant_rejected
 context._height_pairings[target_key] = target_entry
+original_f = J._f
+J._f = x**5 + x**2 - 2*x + 1
+mutated_model_alias_rejected = False
+try:
+    height_pairing(
+        [P, Q],
+        steps=6,
+        precision=80,
+        target_bits=32,
+        algorithm="local",
+        context=context,
+    )
+except Genus2HeightCapabilityError:
+    mutated_model_alias_rejected = True
+finally:
+    J._f = original_f
+assert mutated_model_alias_rejected
+original_v = Q._v
+Q._v = R(0)
+mutated_point_key = (tuple([P, Q]), 6, 80, 32, "local")
+context._height_pairings[mutated_point_key] = target_entry
+mutated_point_alias_rejected = False
+try:
+    height_pairing(
+        [P, Q],
+        steps=6,
+        precision=80,
+        target_bits=32,
+        algorithm="local",
+        context=context,
+    )
+except Genus2HeightCapabilityError:
+    mutated_point_alias_rejected = True
+finally:
+    Q._v = original_v
+assert mutated_point_alias_rejected
 tampered_tables = [list(table) for table in context._classical_duplication_terms]
 term = tampered_tables[0][0]
 tampered_tables[0][0] = (term[0] + 1,) + term[1:]
@@ -376,6 +412,8 @@ assert pairing_cache_tamper_rejected
     cross_basis_transplant_rejected,
     bare_result_transplant_rejected,
     cross_model_transplant_rejected,
+    mutated_model_alias_rejected,
+    mutated_point_alias_rejected,
     pairing_cache_tamper_rejected,
 ]
 `,
@@ -383,7 +421,7 @@ assert pairing_cache_tamper_rejected
     );
     assert.match(
       result.repr,
-      /^\[\d+, True, True, 'certified-positive', True, 1, True, True, True, True\]$/,
+      /^\[\d+, True, True, 'certified-positive', True, 1, True, True, True, True, True, True\]$/,
     );
   } finally {
     await session.close();

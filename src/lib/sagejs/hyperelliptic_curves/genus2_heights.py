@@ -470,8 +470,12 @@ def _height_model_binding(jacobian: Any) -> tuple[Any, ...]:
 
 
 def _height_point_binding(divisor: Any) -> Any:
-    """Return immutable exact model/Mumford data for one pairing basis entry."""
-    return _freeze_data(divisor_provenance(divisor))
+    """Return compact exact Mumford coefficients for one pairing basis entry."""
+    u_value, v_value = divisor.uv()
+    return (
+        tuple(_rational_pair(value) for value in u_value.list()),
+        tuple(_rational_pair(value) for value in v_value.list()),
+    )
 
 
 class _HeightPairingCacheEntry(_SealedRecord):
@@ -507,6 +511,9 @@ class _HeightPairingCacheEntry(_SealedRecord):
             self._proof_token is _HEIGHT_PAIRING_CACHE_PROOF
             and self._jacobian is jacobian
             and self._points == points
+            and self._model_binding == _freeze_data(_height_model_binding(jacobian))
+            and self._point_bindings
+            == _freeze_data(tuple(_height_point_binding(point) for point in points))
             and self._parameters == _freeze_data(parameters)
         )
 
