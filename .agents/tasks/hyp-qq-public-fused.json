@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Reduce exact ordinary genus-2/3 QQ Mumford P+Q toward 0.020 ms by eliminating measured runtime crossings while preserving canonical-row authority, opaque ownership, reference certificates, and adversarial lifecycle guarantees",
-  "base_commit": "7f4528478cc80042981d8bcaee75d0c5a1c3b5a7",
+  "base_commit": "a7b68890af9d20fdcf91bec8c0761ac5fc30d0ed",
   "claims": [
     "src/lib/sagejs/hyperelliptic_curves/jacobian.py",
     "src/lib/sagejs/hyperelliptic_curves/jacobian_rational_native.py",
@@ -55,8 +55,16 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added the indivisible exact FmpqMumfordResult owner and atomic validated workspace move/load boundaries, while retaining every Cantor formula in ordinary typed Python. Closure-private WeakMap authentication lets same-parent default public QQ additions consume and publish retained exact owners without eagerly exporting coefficient rows; the first equality/hash/uv/pack/serialization observation extracts, validates, and freezes the canonical tuple. Genus-2/3 differential, reference-certificate, lifecycle, close/recreate, memory/cancellation, tuple-pickle, helper-rebinding, attribute-injection, transplant, and malformed-resource tests pass. A 10,000-call local receipt measured 21.06 us for the direct prepared composite boundary and ordinary public additions at 44.43 us (same operands), 49.17 us (small distinct retained operands), and 57.26 us (larger retained operands); eager uv and hash observations remain separately visible at 1.65 ms and 1.28 ms. The hyperelliptic-curves-kernels package now occupies a measured 214710 source bytes, so its narrow budget rose from 205000 to 220000.",
+    "risks": [
+      "The public small-distinct P+Q path is about 49 us locally, a major improvement but still above the 30 us stretch target and the previously measured <=2x Magma acceptance gate; direct native arithmetic is about 21 us and the remainder is exact public object publication, authentication, and lifecycle overhead.",
+      "First semantic observation deliberately pays exact canonical-row extraction and reduced-divisor validation; workloads that immediately force uv, hash, or serialization do not receive the retained-chain speedup.",
+      "After rebasing onto a7b68890, focused gather tests pass, but portable sees a mixed-version generated module cache because the lane refreshed compiler/module/runtime caches without performing a second full native-pack build. Final integration must run one coherent pnpm build before rerunning portable; the pre-gather full build and all QQ-focused math/native tests passed."
+    ],
+    "next_steps": [
+      "Integrate fac5f43f on top of a7b68890, regenerate the combined native-boundary and Wasm reports, and run one coherent pnpm build followed by pnpm test:portable.",
+      "Run the bounded bench-1 public QQ addition receipt only after the integrated build is clean; report the <=2x Magma gate honestly.",
+      "If public addition still misses, profile runtime public-resource wrapper/finalizer and authenticated object publication rather than moving Cantor mathematics into handwritten C."
+    ]
   }
 }
