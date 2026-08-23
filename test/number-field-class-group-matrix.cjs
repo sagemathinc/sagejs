@@ -51,6 +51,7 @@ from sagejs.number_fields.class_group_matrix import (
     RelationMatrixError,
     RelationPresentation,
     SparseRelationRow,
+    extend_relation_presentation_with_duplicate_rows,
     extract_relation_presentation,
     modular_rank_and_pivots,
 )
@@ -113,6 +114,24 @@ for case in fixture['cases']:
         assert replayed.invariants == presentation.invariants
         assert replayed.generator_transforms == presentation.generator_transforms
         assert replayed.verify()
+
+        duplicate = extend_relation_presentation_with_duplicate_rows(
+            presentation, (rows[0], rows[0])
+        )
+        assert duplicate.verify()
+        assert duplicate.invariants == presentation.invariants
+        assert duplicate.order == presentation.order
+        assert len(duplicate.dependency_transforms) == (
+            len(presentation.dependency_transforms) + 2
+        )
+        assert [row.dense() for row in duplicate.relation_rows] == rows + [
+            rows[0], rows[0]
+        ]
+        rebuilt_duplicate = extract_relation_presentation(
+            rows + [rows[0], rows[0]], columns, backend=presentation.backend
+        )
+        assert duplicate.invariants == rebuilt_duplicate.invariants
+        assert duplicate.order == rebuilt_duplicate.order
 
         corrupted = copy.deepcopy(presentation.to_dict())
         if corrupted['rows'] and columns:

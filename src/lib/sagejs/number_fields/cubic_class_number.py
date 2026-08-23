@@ -2728,6 +2728,7 @@ def bounded_cubic_minkowski_class_number(
             )
         if not dependency_candidates:
             return
+        prior_relation_count = len(collector.records)
         started = time.perf_counter()
         admitted = 0
         dependency_proposals = tuple(
@@ -2768,11 +2769,31 @@ def bounded_cubic_minkowski_class_number(
         relation_metrics["integral_sieve_dependency_relations"] = admitted
         if admitted:
             relation_records = tuple(collector.records)
-            presentation = matrix_module.extract_relation_presentation(
-                tuple(record.row for record in relation_records),
-                len(factor_base),
-                require_full_rank=True,
+            extend_duplicates = getattr(
+                matrix_module,
+                "extend_relation_presentation_with_duplicate_rows",
+                None,
             )
+            try:
+                presentation = (
+                    extend_duplicates(
+                        presentation,
+                        tuple(
+                            record.row
+                            for record in relation_records[prior_relation_count:]
+                        ),
+                    )
+                    if callable(extend_duplicates)
+                    else None
+                )
+            except (ArithmeticError, TypeError, ValueError):
+                presentation = None
+            if presentation is None:
+                presentation = matrix_module.extract_relation_presentation(
+                    tuple(record.row for record in relation_records),
+                    len(factor_base),
+                    require_full_rank=True,
+                )
         phase_timings["fallback-unit-seed"] = time.perf_counter() - started
 
     if presentation.rank != len(factor_base) or presentation.order is None:

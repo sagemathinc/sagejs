@@ -1505,6 +1505,69 @@ class RelationPresentation:
         return answer
 
 
+def extend_relation_presentation_with_duplicate_rows(
+    presentation: RelationPresentation,
+    rows: Iterable[Any],
+) -> RelationPresentation:
+    """Extend exact transforms when each appended relation duplicates a row.
+
+    A new row equal to source row `j` contributes the primitive dependency
+    `new - j = 0`.  Appending that dependency to both left transforms and a
+    zero row to HNF/SNF preserves unimodularity and every invariant without
+    recomputing either normal form.  This is useful for unit witnesses: two
+    distinct principal generators with the same valuation row differ by an
+    exact unit.
+    """
+    if not isinstance(presentation, RelationPresentation):
+        raise RelationMatrixError("a duplicate-row extension needs a presentation")
+    columns = presentation.column_count
+    retained = list(presentation.relation_rows)
+    duplicate_sources: list[int] = []
+    appended: list[SparseRelationRow] = []
+    for raw_row in rows:
+        row = SparseRelationRow(columns, raw_row)
+        source = next(
+            (index for index, existing in enumerate(retained) if existing == row),
+            None,
+        )
+        if source is None:
+            raise RelationMatrixError("an appended relation is not a duplicate row")
+        duplicate_sources.append(source)
+        appended.append(row)
+        retained.append(row)
+    if not appended:
+        return presentation
+    old_count = presentation.row_count
+    new_count = len(retained)
+
+    def extend_left(transform: tuple[tuple[int, ...], ...]) -> list[list[int]]:
+        answer = [list(row) + [0] * len(appended) for row in transform]
+        for offset, source in enumerate(duplicate_sources):
+            row = [0] * new_count
+            row[source] = -1
+            row[old_count + offset] = 1
+            answer.append(row)
+        return answer
+
+    zero_rows = [[0] * columns for _row in appended]
+    answer = RelationPresentation(
+        columns,
+        retained,
+        [list(row) for row in presentation.hnf] + zero_rows,
+        extend_left(presentation.hnf_left_transform),
+        [list(row) for row in presentation.smith] + zero_rows,
+        extend_left(presentation.smith_left_transform),
+        presentation.smith_right_transform,
+        presentation.smith_right_inverse,
+        presentation.backend,
+    )
+    if not answer.verify():
+        raise RelationMatrixError(
+            "a duplicate-row presentation extension failed replay"
+        )
+    return answer
+
+
 def _product(values: Iterable[int]) -> int:
     answer = 1
     for value in values:
@@ -1698,6 +1761,7 @@ __all__ = [
     "SparseRelationRow",
     "exact_relation_hnf_basis",
     "exact_relation_hnf_support",
+    "extend_relation_presentation_with_duplicate_rows",
     "extract_relation_presentation",
     "modular_rank_and_pivots",
 ]
