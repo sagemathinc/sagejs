@@ -193,6 +193,7 @@ import sagejs.number_fields.cubic_class_number as cubic
 from sagejs.number_fields import class_group_factor_base as factor_bases
 from sagejs.number_fields import maximal_order
 from sagejs.number_fields import prime_ideals
+from sagejs.number_fields.class_group_relations import reconstruct_factor_base_ideal
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -276,11 +277,12 @@ assert [record.to_dict() for record in packed_factor_records] == (
     packed.certificate.factor_base
 )
 
-# Positive powers of one packed factor stay in the HNF representation during
-# the optional lower-bound search.  These corpus fields do not have a local
-# obstruction under the configured modulus cap, but they must not fall back
-# to an ordinary ideal merely because their projective-line representative is
-# P^2 or P^4.
+# Positive prime powers and signed products whose denominator can be cleared
+# by a complete rational-prime relation stay in the packed HNF representation
+# during the optional lower-bound search.  These corpus fields do not have a
+# local obstruction under the configured modulus cap, but they must not fall
+# back merely because their projective-line representative is P^2, P^4, or
+# P^3*Q^-3.
 saved_ordinary_obstruction = cubic._find_cubic_norm_obstruction
 saved_packed_obstruction = cubic._find_packed_cubic_norm_obstruction
 observed_powers = []
@@ -294,14 +296,43 @@ def observed_packed_obstruction(factor_base, line, **kwargs):
 cubic._find_cubic_norm_obstruction = forbidden_ordinary_obstruction
 cubic._find_packed_cubic_norm_obstruction = observed_packed_obstruction
 try:
-    for polynomial, expected_power in (
-        (x**3 - x**2 + 3*x + 6, 2),
-        (x**3 - x**2 - 14*x + 30, 4),
+    for polynomial, expected_row in (
+        (x**3 - x**2 + 3*x + 6, (2,)),
+        (x**3 - x**2 + 7*x + 8, (3, -3)),
+        (x**3 - x**2 - 14*x + 30, (4,)),
     ):
         power_field = NumberField(polynomial, "u")
         power_result = cubic.bounded_cubic_minkowski_class_number(power_field)
         assert not power_result.complete
-        assert (expected_power,) in observed_powers
+        assert expected_row in observed_powers
+        power_plan = factor_bases.factor_base_plan(
+            power_field.maximal_order(), proof=True, theorem="minkowski"
+        )
+        power_factors = cubic.packed_cubic_factor_records(power_plan)
+        assert power_factors is not None
+        line = next(
+            line
+            for line in cubic._projective_line_specs(
+                power_result.presentation, max_lines=128
+            )
+            if tuple(value for value in line["ambient_row"] if value) == expected_row
+        )
+        packed_basis = cubic._packed_cubic_integral_basis_for_ambient_row(
+            power_factors, tuple(line["ambient_row"])
+        )
+        assert packed_basis is not None
+        packed_rows, packed_norm = packed_basis
+        ordinary_records, ordinary_factors = (
+            cubic._materialize_packed_cubic_factor_records(power_factors)
+        )
+        assert len(ordinary_records) == len(power_factors)
+        ordinary = reconstruct_factor_base_ideal(
+            power_field.maximal_order(),
+            ordinary_factors,
+            line["ambient_row"],
+        ).numerator()
+        assert packed_rows == tuple(tuple(row) for row in ordinary._basis_rows)
+        assert ordinary.norm() == packed_norm
 finally:
     cubic._find_cubic_norm_obstruction = saved_ordinary_obstruction
     cubic._find_packed_cubic_norm_obstruction = saved_packed_obstruction

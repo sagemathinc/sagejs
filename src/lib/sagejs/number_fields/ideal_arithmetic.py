@@ -391,13 +391,22 @@ def _packed_integral_element_valuations(
         return None
 
 
-def _packed_ideal_product(left: Any, right: Any) -> Any:
-    degree = int(left.number_field().degree())
+def packed_ideal_product_basis_from_bases(
+    field: Any,
+    left_basis: tuple[int, ...],
+    left_denominator: int,
+    right_basis: tuple[int, ...],
+    right_denominator: int,
+) -> tuple[tuple[int, ...], int] | None:
+    """Multiply two exact packed bases and return their canonical HNF."""
+    degree = int(field.degree())
     if (
         degree < 1
         or degree > MAX_PACKED_IDEAL_PRODUCT_DEGREE
-        or left.is_zero()
-        or right.is_zero()
+        or len(left_basis) != degree * degree
+        or len(right_basis) != degree * degree
+        or int(left_denominator) <= 0
+        or int(right_denominator) <= 0
     ):
         return None
     kernel_module = __import__(
@@ -411,13 +420,11 @@ def _packed_ideal_product(left: Any, right: Any) -> Any:
     if not callable(kernel):
         return None
     try:
-        left_values, left_denominator = _packed_ideal_basis(left)
-        right_values, right_denominator = _packed_ideal_basis(right)
-        tensor, tensor_denominator = _field_multiplication_tensor(left.number_field())
+        tensor, tensor_denominator = _field_multiplication_tensor(field)
         maximum_bits = max(
             [1]
-            + [abs(value).bit_length() for value in left_values]
-            + [abs(value).bit_length() for value in right_values]
+            + [abs(value).bit_length() for value in left_basis]
+            + [abs(value).bit_length() for value in right_basis]
             + [abs(value).bit_length() for value in tensor]
         )
         product_bits = 3 * maximum_bits + (degree * degree).bit_length()
@@ -430,14 +437,41 @@ def _packed_ideal_product(left: Any, right: Any) -> Any:
             output,
             source,
             workspace,
-            kernel_integer_buffer(kernel, left_values),
-            kernel_integer_buffer(kernel, right_values),
+            kernel_integer_buffer(kernel, left_basis),
+            kernel_integer_buffer(kernel, right_basis),
             kernel_integer_buffer(kernel, tensor),
             degree,
         ):
             return None
-        values = integer_buffer_values(output)
+        values = tuple(int(value) for value in integer_buffer_values(output))
         denominator = left_denominator * right_denominator * tensor_denominator
+        return values[: degree * degree], int(denominator)
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+
+
+def _packed_ideal_product(left: Any, right: Any) -> Any:
+    degree = int(left.number_field().degree())
+    if (
+        degree < 1
+        or degree > MAX_PACKED_IDEAL_PRODUCT_DEGREE
+        or left.is_zero()
+        or right.is_zero()
+    ):
+        return None
+    try:
+        left_values, left_denominator = _packed_ideal_basis(left)
+        right_values, right_denominator = _packed_ideal_basis(right)
+        packed = packed_ideal_product_basis_from_bases(
+            left.number_field(),
+            left_values,
+            left_denominator,
+            right_values,
+            right_denominator,
+        )
+        if packed is None:
+            return None
+        values, denominator = packed
         rows = [
             [
                 sage.QQ(int(values[row * degree + column])) / sage.QQ(denominator)
@@ -446,7 +480,7 @@ def _packed_ideal_product(left: Any, right: Any) -> Any:
             for row in range(degree)
         ]
         return NumberFieldIdeal._from_canonical_basis_rows(left.ring(), rows)
-    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+    except (OverflowError, RuntimeError, TypeError, ValueError):
         return None
 
 
