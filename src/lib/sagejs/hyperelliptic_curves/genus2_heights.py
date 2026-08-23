@@ -5,9 +5,9 @@ The production envelope in this module is intentionally explicit.
 * Exact Flynn quartic Kummer duplication supports every checked
   odd-degree genus-2 Mumford divisor over `QQ`, including generalized
   equations `y^2 + h*y = f`.
-* A factorization-free modular-gcd finite local-correction engine and an
-  exact real-place correction iteration implement the practical
-  Müller--Stoll path for primitive integral classical quintics.
+* A factorization-free modular-gcd finite local-correction engine and a
+  normalized outward-rounded real-ball correction iteration implement the
+  practical Müller--Stoll path for primitive integral classical quintics.
 * An automatic, conservative, proved height-difference enclosure is supplied
   for primitive integral classical quintics `y^2=f(x)`.  It combines Stoll's
   root-partition bound at infinity with an audited coefficient bound for the
@@ -21,11 +21,10 @@ labelled numerical reference; a supplied global height-difference assumption
 produces only a conditional enclosure. Even-degree transformations are not
 inferred.
 
-The real-place iterator is exact and projectively gcd-normalized, but its
-coordinate bit size still grows by roughly a factor of four per step. A
-configurable pre-duplication budget prevents accidental runaway work. This is
-therefore a certified bounded-exact path, not yet the arbitrary-precision
-floating/ball archimedean engine of a complete optimized phase exit.
+The production real-place iterator projectively normalizes after every step,
+so it retains four bounded-size balls rather than exponentially growing exact
+coordinates.  The exact path remains available as a deliberately guarded
+small-step differential oracle.
 """
 
 from __future__ import annotations
@@ -35,7 +34,7 @@ from typing import Any, cast
 from sagejs.hyperelliptic_curves.genus2_kummer import (
     KummerCoordinates,
     classical_duplication_l1_bound,
-    classical_duplication_raw,
+    classical_duplication_specialized_terms,
     divisor_provenance,
     exact_divisor_capability,
     exact_model_capability,
@@ -286,6 +285,141 @@ def _coordinate_size_bits_upper(point: KummerCoordinates) -> int:
     )
 
 
+def _ceil_div(numerator: int, denominator: int) -> int:
+    """Return the exact ceiling of an integer quotient."""
+    return -((-numerator) // denominator)
+
+
+def _dyadic_multiply(
+    left: tuple[int, int], right: tuple[int, int], scale: int
+) -> tuple[int, int]:
+    """Multiply two outward dyadic intervals with common denominator `scale`."""
+    products = (
+        left[0] * right[0],
+        left[0] * right[1],
+        left[1] * right[0],
+        left[1] * right[1],
+    )
+    return min(products) // scale, _ceil_div(max(products), scale)
+
+
+def _dyadic_power(value: tuple[int, int], exponent: int, scale: int) -> tuple[int, int]:
+    """Raise a dyadic interval to a nonnegative integer power."""
+    exponent = int(exponent)
+    if exponent < 0:
+        raise ValueError("a dyadic interval power must be nonnegative")
+    answer = (scale, scale)
+    base = value
+    while exponent:
+        if exponent & 1:
+            answer = _dyadic_multiply(answer, base, scale)
+        exponent //= 2
+        if exponent:
+            base = _dyadic_multiply(base, base, scale)
+    return answer
+
+
+def _dyadic_divide_positive(
+    numerator: tuple[int, int], denominator: tuple[int, int], scale: int
+) -> tuple[int, int]:
+    """Divide by a strictly positive dyadic interval, rounding outwards."""
+    denominator_lower, denominator_upper = denominator
+    if denominator_lower <= 0:
+        raise ZeroDivisionError("the dyadic denominator is not separated from zero")
+    lower, upper = numerator
+    if lower >= 0:
+        return (
+            (lower * scale) // denominator_upper,
+            _ceil_div(upper * scale, denominator_lower),
+        )
+    if upper <= 0:
+        return (
+            (lower * scale) // denominator_lower,
+            _ceil_div(upper * scale, denominator_upper),
+        )
+    return (
+        (lower * scale) // denominator_lower,
+        _ceil_div(upper * scale, denominator_lower),
+    )
+
+
+def _dyadic_max_absolute(
+    values: tuple[tuple[int, int], ...],
+) -> tuple[int, int]:
+    """Enclose the maximum absolute value of dyadic numerator intervals."""
+    absolute: list[tuple[int, int]] = []
+    for lower, upper in values:
+        if lower >= 0:
+            absolute.append((lower, upper))
+        elif upper <= 0:
+            absolute.append((-upper, -lower))
+        else:
+            absolute.append((0, max(-lower, upper)))
+    return (
+        max(value[0] for value in absolute),
+        max(value[1] for value in absolute),
+    )
+
+
+def _specialized_duplication_dyadic(
+    coordinates: tuple[
+        tuple[int, int], tuple[int, int], tuple[int, int], tuple[int, int]
+    ],
+    terms: tuple[tuple[tuple[int, int, int, int, int], ...], ...],
+    *,
+    scale: int,
+) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int], tuple[int, int]]:
+    """Evaluate model-specialized Flynn quartics on dyadic intervals.
+
+    The generic exact evaluator intentionally mirrors the source tables.  At
+    the real place, however, rediscovering zero coefficient monomials and
+    rebuilding all four coordinate powers for every sparse term dominates
+    cold height calls. This evaluator consumes the once-specialized tables,
+    shares the sixteen powers, and rounds every multiplication outwards to one
+    common dyadic denominator. Only the four scale logarithms per iteration
+    need the more general `RealBall` interface.
+    """
+
+    powers: list[tuple[tuple[int, int], ...]] = []
+    one = (scale, scale)
+    for coordinate in coordinates:
+        row = [one]
+        for _exponent in range(4):
+            row.append(_dyadic_multiply(row[-1], coordinate, scale))
+        powers.append(tuple(row))
+
+    output: list[tuple[int, int]] = []
+    for table in terms:
+        total = (0, 0)
+        for coefficient, exponent1, exponent2, exponent3, exponent4 in table:
+            value = (coefficient * scale, coefficient * scale)
+            for index, exponent in enumerate(
+                (exponent1, exponent2, exponent3, exponent4)
+            ):
+                if exponent:
+                    value = _dyadic_multiply(value, powers[index][exponent], scale)
+            total = (total[0] + value[0], total[1] + value[1])
+        output.append(total)
+    return cast(
+        tuple[tuple[int, int], tuple[int, int], tuple[int, int], tuple[int, int]],
+        tuple(output),
+    )
+
+
+def _scaled_tail_steps(bound: RealBall, target_bits: int) -> int:
+    """Return `n` with `width(bound)/4^n <= 2^-target_bits`."""
+    target_bits = int(target_bits)
+    if target_bits < 0:
+        raise ValueError("target height accuracy must be nonnegative")
+    width = bound.width()
+    numerator = int(width.numerator)
+    denominator = int(width.denominator)
+    steps = 0
+    while numerator * (2**target_bits) > denominator * (4**steps):
+        steps += 1
+    return steps
+
+
 class AutomaticHeightBounds(_SealedRecord):
     """A proved two-sided bound for the naive/canonical height correction."""
 
@@ -414,6 +548,70 @@ class FiniteHeightCorrectionResult(_SealedRecord):
 
     def __repr__(self) -> str:
         return "FiniteHeightCorrectionResult(" + repr(self.ball) + ")"
+
+
+class ArchimedeanHeightCorrectionResult(_SealedRecord):
+    """Certified normalized real-place Kummer correction.
+
+    The stored interval encloses `mu_infinity(P)`.  Every iterate is
+    projectively normalized, so coordinate sizes remain bounded independently
+    of the number of duplication steps.
+    """
+
+    def __init__(
+        self,
+        ball: RealBall,
+        partial_sum: RealBall,
+        tail_bound: RealBall,
+        steps: int,
+        diagnostics: dict[str, Any],
+    ) -> None:
+        self._ball_data = _ball_data(ball)
+        self._partial_sum_data = _ball_data(partial_sum)
+        self._tail_bound_data = _ball_data(tail_bound)
+        self._steps = int(steps)
+        self._diagnostics = _freeze_data(diagnostics)
+        self._seal()
+
+    @property
+    def ball(self) -> RealBall:
+        return _ball_from_data(self._ball_data)
+
+    @property
+    def partial_sum(self) -> RealBall:
+        return _ball_from_data(self._partial_sum_data)
+
+    @property
+    def tail_bound(self) -> RealBall:
+        return _ball_from_data(self._tail_bound_data)
+
+    @property
+    def steps(self) -> int:
+        return self._steps
+
+    @property
+    def diagnostics(self) -> dict[str, Any]:
+        return cast(dict[str, Any], _copy_data(self._diagnostics))
+
+    @property
+    def rigorous(self) -> bool:
+        return self.ball.rigorous
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "sagejs.hyperelliptic.genus2-archimedean-height-correction.v1",
+            "meaning": "mu_infinity(P)",
+            "algorithm": "normalized-certified-real-kummer-iteration",
+            "rigorous": self.rigorous,
+            "steps": self.steps,
+            "enclosure": self.ball.to_dict(),
+            "partial_sum": self.partial_sum.to_dict(),
+            "tail_bound": self.tail_bound.to_dict(),
+            "diagnostics": self.diagnostics,
+        }
+
+    def __repr__(self) -> str:
+        return "ArchimedeanHeightCorrectionResult(" + repr(self.ball) + ")"
 
 
 def automatic_height_bounds(
@@ -562,6 +760,34 @@ def _common_content(values: tuple[int, int, int, int]) -> int:
     return common
 
 
+def _specialized_duplication_mod(
+    coordinates: tuple[int, int, int, int],
+    terms: tuple[tuple[tuple[int, int, int, int, int], ...], ...],
+    modulus: int,
+) -> tuple[int, int, int, int]:
+    """Evaluate specialized Flynn quartics modulo one positive modulus."""
+    powers: list[tuple[int, ...]] = []
+    for coordinate in coordinates:
+        reduced = coordinate % modulus
+        row = [1, reduced]
+        for _exponent in range(2, 5):
+            row.append((row[-1] * reduced) % modulus)
+        powers.append(tuple(row))
+    output: list[int] = []
+    for table in terms:
+        total = 0
+        for coefficient, exponent1, exponent2, exponent3, exponent4 in table:
+            value = coefficient % modulus
+            for index, exponent in enumerate(
+                (exponent1, exponent2, exponent3, exponent4)
+            ):
+                if exponent:
+                    value = (value * powers[index][exponent]) % modulus
+            total = (total + value) % modulus
+        output.append(total)
+    return cast(tuple[int, int, int, int], tuple(output))
+
+
 def _finite_correction_steps(discriminant_bound: int, precision: int) -> int:
     # log(D) < bit_length(D), so this integer test conservatively enforces
     # log(D)/(3*4^steps) <= 2^-precision without a floating comparison.
@@ -579,6 +805,8 @@ def factorization_free_finite_correction(
     *,
     precision: int = 80,
     steps: int | None = None,
+    specialized_terms: tuple[tuple[tuple[int, int, int, int, int], ...], ...]
+    | None = None,
 ) -> FiniteHeightCorrectionResult:
     """Certify the finite height correction without factoring a discriminant.
 
@@ -625,11 +853,13 @@ def factorization_free_finite_correction(
 
     field = IntervalBallField(precision)
     coordinates = kummer_coordinates(divisor).coordinates()
+    if specialized_terms is None:
+        specialized_terms = classical_duplication_specialized_terms(jacobian)
     partial = _zero_ball(precision, "empty-finite-correction-sum")
     gcd_values: list[str] = []
     modulus = discriminant_bound ** (steps + 2)
     for index in range(steps):
-        raw = classical_duplication_raw(jacobian, coordinates, modulus=modulus)
+        raw = _specialized_duplication_mod(coordinates, specialized_terms, modulus)
         content = _common_content(raw)
         common = _gcd(discriminant_bound, content)
         if common == 0:
@@ -661,6 +891,9 @@ def factorization_free_finite_correction(
             "modulus_exponent": steps + 2,
             "raw_duplication_gcds": tuple(gcd_values),
             "factorization_used": False,
+            "specialized_quartic_term_counts": tuple(
+                len(table) for table in specialized_terms
+            ),
             "tail_formula": "log(D)/(3*4^steps)",
             "reference": (
                 "Mueller--Stoll, Canonical Heights on Genus Two Jacobians, "
@@ -669,6 +902,215 @@ def factorization_free_finite_correction(
         }
     )
     return FiniteHeightCorrectionResult(ball, partial, tail, steps, diagnostics)
+
+
+def normalized_archimedean_correction(
+    divisor: Any,
+    *,
+    precision: int = 80,
+    steps: int | None = None,
+    target_bits: int | None = None,
+    bounds: AutomaticHeightBounds | None = None,
+    specialized_terms: tuple[tuple[tuple[int, int, int, int, int], ...], ...]
+    | None = None,
+) -> ArchimedeanHeightCorrectionResult:
+    """Certify the real-place correction with bounded projective coordinates.
+
+    This evaluates Flynn's duplication quartics on outward-rounded real
+    intervals and divides every image by its maximum absolute coordinate.
+    Thus the exact-coordinate growth of repeated rational duplication is
+    replaced by a fixed four-ball state.  Stoll's global real-place bound,
+    scaled by `4^-steps`, certifies the omitted tail.
+    """
+    capability = exact_divisor_capability(divisor)
+    capability.require()
+    jacobian = divisor.parent()
+    f_value = jacobian.f()
+    if (
+        not jacobian.h().is_zero()
+        or int(f_value.degree()) != 5
+        or _integer_coefficients(f_value, 6) is None
+    ):
+        diagnostics = dict(capability.diagnostics)
+        diagnostics["archimedean_correction"] = (
+            "unsupported-outside-classical-integral-envelope"
+        )
+        raise Genus2HeightCapabilityError(
+            "normalized certified real correction requires an integral "
+            "classical quintic",
+            diagnostics,
+        )
+    precision = int(precision)
+    if precision < 16:
+        raise ValueError("archimedean-correction precision must be at least 16 bits")
+    if target_bits is not None:
+        target_bits = int(target_bits)
+        if target_bits < 1:
+            raise ValueError("target height accuracy must be positive")
+    if bounds is None:
+        bounds = automatic_height_bounds(jacobian, precision=precision)
+    if bounds.diagnostics.get("automatic_bound") != "certified":
+        raise Genus2HeightCapabilityError(
+            "normalized real correction requires certified automatic bounds",
+            bounds.diagnostics,
+        )
+
+    field = IntervalBallField(precision)
+    discriminant_bound = 16 * abs(int(str(f_value.discriminant())))
+    finite_global = field.log_integer(discriminant_bound) / RealBall(
+        3, precision_bits=precision
+    )
+    archimedean_global = RealBall(
+        (bounds.correction_lower - finite_global).lower,
+        bounds.correction_upper.upper,
+        precision_bits=precision,
+        rigorous=True,
+        source="Stoll/Flynn global real-place correction bound",
+    )
+    if steps is None:
+        steps = _scaled_tail_steps(
+            archimedean_global,
+            target_bits if target_bits is not None else precision,
+        )
+    else:
+        steps = int(steps)
+        if steps < 0:
+            raise ValueError("archimedean-correction steps must be nonnegative")
+
+    integer_coordinates = kummer_coordinates(divisor).coordinates()
+    initial_scale = max(abs(value) for value in integer_coordinates)
+    if initial_scale == 0:
+        return ArchimedeanHeightCorrectionResult(
+            _zero_ball(precision),
+            _zero_ball(precision),
+            _zero_ball(precision),
+            0,
+            {
+                "archimedean_correction": "exact-zero-kummer-origin",
+                "bounded_projective_state": True,
+            },
+        )
+    dyadic_scale = 2**precision
+    coordinates = cast(
+        tuple[tuple[int, int], tuple[int, int], tuple[int, int], tuple[int, int]],
+        tuple(
+            (
+                (value * dyadic_scale) // initial_scale,
+                _ceil_div(value * dyadic_scale, initial_scale),
+            )
+            for value in integer_coordinates
+        ),
+    )
+    if specialized_terms is None:
+        specialized_terms = classical_duplication_specialized_terms(jacobian)
+
+    partial = _zero_ball(precision, "empty-archimedean-correction-sum")
+    maximum_state_width_bits = precision
+    scale_enclosures: list[dict[str, str]] = []
+    dyadic_scales: list[tuple[int, int]] = []
+    for index in range(steps):
+        raw = _specialized_duplication_dyadic(
+            coordinates,
+            specialized_terms,
+            scale=dyadic_scale,
+        )
+        image_scale_dyadic = _dyadic_max_absolute(raw)
+        if image_scale_dyadic[0] <= 0:
+            raise Genus2HeightResolutionError(
+                "real Kummer interval iteration could not separate the "
+                "projective image from zero; increase precision",
+                {
+                    "step": index,
+                    "precision_bits": precision,
+                    "image_scale_dyadic_numerators": image_scale_dyadic,
+                },
+            )
+        image_scale = RealBall.dyadic_endpoints(
+            image_scale_dyadic[0],
+            -precision,
+            image_scale_dyadic[1],
+            -precision,
+            precision_bits=precision,
+            source="outward dyadic maximum Kummer coordinate",
+        )
+        dyadic_scales.append(image_scale_dyadic)
+        coordinates = cast(
+            tuple[tuple[int, int], tuple[int, int], tuple[int, int], tuple[int, int]],
+            tuple(
+                _dyadic_divide_positive(value, image_scale_dyadic, dyadic_scale)
+                for value in raw
+            ),
+        )
+        state_width_bits = min(
+            precision - max(0, (value[1] - value[0]).bit_length())
+            for value in coordinates
+        )
+        maximum_state_width_bits = min(maximum_state_width_bits, state_width_bits)
+        scale_enclosures.append(
+            {
+                "step": str(index),
+                "lower": str(image_scale.lower),
+                "upper": str(image_scale.upper),
+            }
+        )
+
+    # Adjacent scale logarithms can be combined into one logarithm; for four,
+    #   log(s0)/4 + ... + log(s3)/4^4
+    #     = log(s0^64*s1^16*s2^4*s3)/4^4.
+    # Four-step grouping retains an outward dyadic certificate while reducing
+    # transcendental boundary crossings without material interval inflation.
+    logarithm_block_size = 4
+    for block_start in range(0, steps, logarithm_block_size):
+        block_end = min(steps, block_start + logarithm_block_size)
+        combined = (dyadic_scale, dyadic_scale)
+        for index in range(block_start, block_end):
+            exponent = 4 ** (block_end - index - 1)
+            combined = _dyadic_multiply(
+                combined,
+                _dyadic_power(dyadic_scales[index], exponent, dyadic_scale),
+                dyadic_scale,
+            )
+        combined_ball = RealBall.dyadic_endpoints(
+            combined[0],
+            -precision,
+            combined[1],
+            -precision,
+            precision_bits=precision,
+            source="four-step outward dyadic Kummer scale product",
+        )
+        weight = RealBall(4**block_end, precision_bits=precision)
+        partial = partial - field.log(combined_ball) / weight
+
+    divisor_scale = RealBall(4**steps, precision_bits=precision)
+    tail = archimedean_global / divisor_scale
+    ball = partial + tail
+    return ArchimedeanHeightCorrectionResult(
+        ball,
+        partial,
+        tail,
+        steps,
+        {
+            "archimedean_correction": "certified",
+            "bounded_projective_state": True,
+            "coordinate_storage": "four outward-rounded real balls",
+            "specialized_quartic_term_counts": tuple(
+                len(table) for table in specialized_terms
+            ),
+            "scale_logarithm_block_size": logarithm_block_size,
+            "scale_logarithm_evaluations": (steps + logarithm_block_size - 1)
+            // logarithm_block_size,
+            "working_precision_bits": precision,
+            "target_bits": target_bits,
+            "minimum_state_width_bits": maximum_state_width_bits,
+            "scale_enclosures": tuple(scale_enclosures),
+            "tail_formula": "global_real_correction_bound/4^steps",
+            "factorization_used": False,
+            "references": (
+                "Flynn, The group law on the Jacobian of a curve of genus 2, Appendix C",
+                "Mueller--Stoll, Canonical Heights on Genus Two Jacobians, Sections 10 and 17",
+            ),
+        },
+    )
 
 
 class HeightContext:
@@ -684,6 +1126,12 @@ class HeightContext:
             raise ValueError("the exact-coordinate bit budget must be at least 1024")
         self._jacobian = jacobian
         self._max_exact_coordinate_bits = max_exact_coordinate_bits
+        try:
+            self._classical_duplication_terms = classical_duplication_specialized_terms(
+                jacobian
+            )
+        except Exception:
+            self._classical_duplication_terms = None
         try:
             l1_bound = classical_duplication_l1_bound(jacobian)
             self._duplication_overhead_bits_upper = 4 * len(str(l1_bound)) + 8
@@ -703,6 +1151,8 @@ class HeightContext:
         self._automatic_bounds: dict[int, AutomaticHeightBounds | None] = {}
         self._automatic_bound_errors: dict[int, dict[str, Any]] = {}
         self._local_corrections: dict[Any, dict[str, Any]] = {}
+        self._finite_corrections: dict[Any, FiniteHeightCorrectionResult] = {}
+        self._archimedean_corrections: dict[Any, ArchimedeanHeightCorrectionResult] = {}
         self._chain_hits = 0
         self._chain_misses = 0
         self._doublings = 0
@@ -710,6 +1160,10 @@ class HeightContext:
         self._kummer_misses = 0
         self._local_correction_hits = 0
         self._local_correction_misses = 0
+        self._finite_correction_hits = 0
+        self._finite_correction_misses = 0
+        self._archimedean_correction_hits = 0
+        self._archimedean_correction_misses = 0
 
     @property
     def jacobian(self) -> Any:
@@ -816,14 +1270,76 @@ class HeightContext:
         self._automatic_bounds[precision] = answer
         return None if answer is None else answer.copy()
 
+    def finite_correction(
+        self,
+        divisor: Any,
+        *,
+        precision: int,
+        steps: int,
+    ) -> FiniteHeightCorrectionResult:
+        """Return a cached certified finite correction."""
+        key = (self._key(divisor), int(precision), int(steps))
+        cached = self._finite_corrections.get(key)
+        if cached is not None:
+            self._finite_correction_hits += 1
+            return cached
+        self._finite_correction_misses += 1
+        answer = factorization_free_finite_correction(
+            divisor,
+            precision=int(precision),
+            steps=int(steps),
+            specialized_terms=self._classical_duplication_terms,
+        )
+        self._finite_corrections[key] = answer
+        return answer
+
+    def archimedean_correction(
+        self,
+        divisor: Any,
+        *,
+        precision: int,
+        steps: int,
+        bounds: AutomaticHeightBounds,
+        target_bits: int | None,
+    ) -> ArchimedeanHeightCorrectionResult:
+        """Return a cached normalized real-place correction."""
+        key = (
+            self._key(divisor),
+            int(precision),
+            int(steps),
+            target_bits,
+            str(bounds.correction_lower.lower),
+            str(bounds.correction_upper.upper),
+        )
+        cached = self._archimedean_corrections.get(key)
+        if cached is not None:
+            self._archimedean_correction_hits += 1
+            return cached
+        self._archimedean_correction_misses += 1
+        answer = normalized_archimedean_correction(
+            divisor,
+            precision=int(precision),
+            steps=int(steps),
+            target_bits=target_bits,
+            bounds=bounds,
+            specialized_terms=self._classical_duplication_terms,
+        )
+        self._archimedean_corrections[key] = answer
+        return answer
+
     def diagnostics(self) -> dict[str, Any]:
         return {
             "schema": "sagejs.hyperelliptic.genus2-height-context.v1",
             "archimedean_engine_capability": (
-                "certified-bounded-exact-projective-iteration"
+                "certified-normalized-real-ball-projective-iteration"
             ),
             "max_exact_coordinate_bits": self.max_exact_coordinate_bits,
             "duplication_overhead_bits_upper": self._duplication_overhead_bits_upper,
+            "specialized_quartic_term_counts": (
+                None
+                if self._classical_duplication_terms is None
+                else tuple(len(table) for table in self._classical_duplication_terms)
+            ),
             "chain_cache_entries": len(self._chains),
             "chain_cache_hits": self._chain_hits,
             "chain_cache_misses": self._chain_misses,
@@ -834,6 +1350,14 @@ class HeightContext:
             "local_correction_cache_entries": len(self._local_corrections),
             "local_correction_cache_hits": self._local_correction_hits,
             "local_correction_cache_misses": self._local_correction_misses,
+            "finite_correction_cache_entries": len(self._finite_corrections),
+            "finite_correction_cache_hits": self._finite_correction_hits,
+            "finite_correction_cache_misses": self._finite_correction_misses,
+            "archimedean_correction_cache_entries": len(self._archimedean_corrections),
+            "archimedean_correction_cache_hits": self._archimedean_correction_hits,
+            "archimedean_correction_cache_misses": (
+                self._archimedean_correction_misses
+            ),
             "precision_fields": tuple(sorted(self._fields)),
             "automatic_bound_precisions": tuple(
                 sorted(
@@ -943,7 +1467,13 @@ class CanonicalHeightResult(_SealedRecord):
         replay = canonical_height(
             divisor,
             steps=self._steps,
-            precision=self._ball.precision_bits,
+            precision=int(
+                self._diagnostics.get(
+                    "requested_precision_bits", self._ball.precision_bits
+                )
+            ),
+            target_bits=self._diagnostics.get("target_bits"),
+            algorithm=str(self._diagnostics.get("requested_algorithm", "auto")),
             height_difference_bound=height_difference_bound,
             torsion_order=torsion_order,
             context=replay_context,
@@ -1083,17 +1613,14 @@ def _local_correction_breakdown(
     finite_tail = field.log_integer(discriminant_bound) / RealBall(
         3 * 4**steps, precision_bits=precision
     )
-    # The automatic lower bound is exactly -log(A_delta)/3. Its scaled
-    # version bounds the remaining real-place tail below. Removing the
-    # finite log(D)/3 contribution from the automatic upper bound gives the
-    # corresponding real-place upper tail.
-    archimedean_tail_lower = bounds.correction_lower / RealBall(
-        4**steps, precision_bits=precision
-    )
-    archimedean_global_upper = bounds.correction_upper - field.log_integer(
-        discriminant_bound
-    ) / RealBall(3, precision_bits=precision)
-    archimedean_tail_upper = archimedean_global_upper / RealBall(
+    # Since total correction is finite+archimedean and the finite correction
+    # lies in [0,log(D)/3], the real-place correction lies in
+    # [total_lower-log(D)/3,total_upper]. Scale that interval for the tail.
+    archimedean_tail_lower = (
+        bounds.correction_lower
+        - field.log_integer(discriminant_bound) / RealBall(3, precision_bits=precision)
+    ) / RealBall(4**steps, precision_bits=precision)
+    archimedean_tail_upper = bounds.correction_upper / RealBall(
         4**steps, precision_bits=precision
     )
     answer = {
@@ -1131,11 +1658,21 @@ def canonical_height(
     *,
     steps: int = 6,
     precision: int = 100,
+    target_bits: int | None = None,
+    algorithm: str = "auto",
     height_difference_bound: Any = None,
     torsion_order: Any = None,
     context: HeightContext | None = None,
 ) -> CanonicalHeightResult:
-    """Compute a genus-2 canonical-height enclosure by exact doubling.
+    """Compute a certified genus-2 canonical-height enclosure.
+
+    For primitive integral classical quintics, `algorithm="auto"` uses the
+    factorization-free finite correction and normalized real-ball Kummer
+    iteration whenever a target accuracy is requested or a long explicit
+    chain would be needed. This path has polynomial-size modular state and
+    four bounded real balls rather than exponentially growing exact
+    coordinates. Small bounded calls retain the cheaper exact oracle;
+    `algorithm="exact"` selects it explicitly.
 
     `height_difference_bound`, when supplied, is treated as an unverified
     caller assumption about `|h_K-hhat|`; exact syntax is required, but syntax
@@ -1147,10 +1684,21 @@ def canonical_height(
     capability.require()
     steps = int(steps)
     precision = int(precision)
+    algorithm = str(algorithm)
+    if algorithm not in ("auto", "local", "exact"):
+        raise ValueError("height algorithm must be 'auto', 'local', or 'exact'")
     if steps < 0:
         raise ValueError("height doubling steps must be nonnegative")
     if precision < 16:
         raise ValueError("height precision must be at least 16 bits")
+    if target_bits is not None:
+        target_bits = int(target_bits)
+        if target_bits < 1:
+            raise ValueError("target_bits must be positive")
+    working_precision = max(
+        precision,
+        (target_bits + 32) if target_bits is not None else precision,
+    )
     if context is None:
         context = HeightContext(divisor.parent())
     elif context.jacobian is not divisor.parent():
@@ -1169,7 +1717,7 @@ def canonical_height(
                 {"torsion_order": str(order)},
             )
         return CanonicalHeightResult(
-            _zero_ball(precision, "verified-torsion-canonical-height"),
+            _zero_ball(working_precision, "verified-torsion-canonical-height"),
             status="exact-torsion-zero",
             steps=0,
             provenance=divisor_provenance(divisor),
@@ -1177,35 +1725,20 @@ def canonical_height(
             diagnostics={
                 "torsion_certificate": "verified-annihilating-multiple",
                 "annihilating_multiple": str(order),
+                "requested_algorithm": algorithm,
+                "selected_algorithm": "verified-torsion",
+                "requested_precision_bits": precision,
+                "target_bits": target_bits,
                 "context": context.diagnostics(),
             },
         )
 
-    chain = context.chain(divisor, steps)
-    if _find_kummer_repeat(chain):
-        return CanonicalHeightResult(
-            _zero_ball(precision, "exact-kummer-cycle-torsion-height"),
-            status="exact-torsion-zero",
-            steps=steps,
-            provenance=divisor_provenance(divisor),
-            bounds=None,
-            diagnostics={
-                "torsion_certificate": "repeated-exact-kummer-coordinate",
-                "context": context.diagnostics(),
-            },
-        )
-
-    terminal = chain[steps]
-    height_integer = terminal.naive_height_integer()
-    field = context.field(precision)
-    naive_height = field.log_integer(height_integer)
-    scale = RealBall(4**steps, precision_bits=precision)
-    terminal_approximation = naive_height / scale
+    field = context.field(working_precision)
     bounds = None
     if height_difference_bound is not None:
         absolute = _exact_ball(
             height_difference_bound,
-            precision,
+            working_precision,
             "caller-supplied-unverified-absolute-height-difference-assumption",
         )
         bounds = AutomaticHeightBounds(
@@ -1218,13 +1751,232 @@ def canonical_height(
             },
         )
     else:
-        bounds = context.automatic_bounds(precision)
+        bounds = context.automatic_bounds(working_precision)
+
+    use_local = (
+        algorithm != "exact"
+        and (algorithm == "local" or target_bits is not None or steps >= 9)
+        and height_difference_bound is None
+        and bounds is not None
+        and bounds.diagnostics.get("automatic_bound") == "certified"
+    )
+    if algorithm == "local" and not use_local:
+        diagnostics = {} if bounds is None else bounds.diagnostics
+        raise Genus2HeightCapabilityError(
+            "the local height engine requires a primitive integral classical quintic",
+            diagnostics,
+        )
+
+    if use_local and bounds is not None:
+        selected_steps = steps
+        discriminant_bound = 16 * abs(int(str(divisor.parent().f().discriminant())))
+        finite_global = field.log_integer(discriminant_bound) / RealBall(
+            3, precision_bits=working_precision
+        )
+        archimedean_global = RealBall(
+            (bounds.correction_lower - finite_global).lower,
+            bounds.correction_upper.upper,
+            precision_bits=working_precision,
+            rigorous=True,
+            source="Stoll/Flynn global real-place correction bound",
+        )
+        if target_bits is not None:
+            selected_steps = max(
+                selected_steps,
+                _finite_correction_steps(discriminant_bound, target_bits + 2),
+                _scaled_tail_steps(archimedean_global, target_bits + 2),
+            )
+            # Straight interval boxes deliberately favor a small, auditable
+            # state over an opaque floating orbit.  Reserve enough guard bits
+            # for dependency growth through the quartic map; without this,
+            # a long iteration may honestly lose separation from the
+            # projective origin even though the asymptotic tail is small.
+            # The fixed-scale dyadic quartic kernel loses at most a few bits
+            # per normalized step on the audited classical envelope.  Four
+            # bits per step plus a 48-bit reserve is both conservative on the
+            # exact/Magma fixtures and materially cheaper than the former
+            # generic-box seven-bit reserve.
+            guarded_precision = target_bits + 4 * selected_steps + 48
+            if working_precision < guarded_precision:
+                working_precision = guarded_precision
+                field = context.field(working_precision)
+                guarded_bounds = context.automatic_bounds(working_precision)
+                if guarded_bounds is None:
+                    raise Genus2HeightCapabilityError(
+                        "guarded local iteration lost certified model bounds",
+                        {},
+                    )
+                bounds = guarded_bounds
+        initial = context.kummer(divisor)
+        initial_height_integer = initial.naive_height_integer()
+        initial_naive_height = field.log_integer(initial_height_integer)
+        finite = context.finite_correction(
+            divisor,
+            precision=working_precision,
+            steps=selected_steps,
+        )
+        archimedean = context.archimedean_correction(
+            divisor,
+            precision=working_precision,
+            steps=selected_steps,
+            bounds=bounds,
+            target_bits=target_bits,
+        )
+        raw_ball = initial_naive_height - finite.ball - archimedean.ball
+        local_approximation = (
+            initial_naive_height - finite.partial_sum - archimedean.partial_sum
+        )
+        zero = _zero_ball(working_precision)
+        ball = RealBall(
+            zero.lower if raw_ball.lower < zero.lower else raw_ball.lower,
+            raw_ball.upper,
+            precision_bits=working_precision,
+            rigorous=True,
+            source=(
+                "Mueller--Stoll factorization-free finite correction plus "
+                "normalized certified real Kummer correction"
+            ),
+        )
+        achieved_width_bits = _enclosure_width_bits(ball)
+        if target_bits is not None and achieved_width_bits < target_bits:
+            raise Genus2HeightResolutionError(
+                "the certified local height enclosure did not reach target_bits; "
+                "increase precision",
+                {
+                    "target_bits": target_bits,
+                    "achieved_enclosure_width_bits": achieved_width_bits,
+                    "working_precision_bits": working_precision,
+                    "selected_steps": selected_steps,
+                },
+            )
+
+        oracle_steps = min(2, selected_steps)
+        oracle_chain = context.chain(divisor, oracle_steps)
+        if _find_kummer_repeat(oracle_chain):
+            return CanonicalHeightResult(
+                _zero_ball(working_precision, "exact-kummer-cycle-torsion-height"),
+                status="exact-torsion-zero",
+                steps=oracle_steps,
+                provenance=divisor_provenance(divisor),
+                bounds=None,
+                diagnostics={
+                    "torsion_certificate": "repeated-exact-kummer-coordinate",
+                    "requested_algorithm": algorithm,
+                    "selected_algorithm": "exact-small-step-torsion-oracle",
+                    "requested_precision_bits": precision,
+                    "target_bits": target_bits,
+                    "context": context.diagnostics(),
+                },
+            )
+        scale_enclosures = archimedean.diagnostics["scale_enclosures"]
+        finite_gcds = finite.diagnostics["raw_duplication_gcds"]
+        oracle_scales: list[str] = []
+        oracle_gcds: list[str] = []
+        for index in range(oracle_steps):
+            source_height = oracle_chain[index].naive_height_integer()
+            raw_coordinates = cast(
+                tuple[int, int, int, int],
+                tuple(
+                    _rational_pair(value)[0]
+                    for value in oracle_chain[
+                        index + 1
+                    ].raw_coordinates_before_normalization()
+                ),
+            )
+            raw_height = max(abs(value) for value in raw_coordinates)
+            scale_text = str(raw_height) + "/" + str(source_height**4)
+            scale_interval = RealBall(
+                scale_enclosures[index]["lower"],
+                scale_enclosures[index]["upper"],
+                precision_bits=working_precision,
+            )
+            if not scale_interval.contains(scale_text):
+                raise Genus2HeightResolutionError(
+                    "normalized real iteration failed its exact small-step oracle",
+                    {"step": index, "exact_scale": scale_text},
+                )
+            content = _common_content(raw_coordinates)
+            finite_gcd = _gcd(discriminant_bound, content)
+            if str(finite_gcd) != finite_gcds[index]:
+                raise Genus2HeightResolutionError(
+                    "modular finite correction failed its exact small-step oracle",
+                    {"step": index, "exact_gcd": str(finite_gcd)},
+                )
+            oracle_scales.append(scale_text)
+            oracle_gcds.append(str(finite_gcd))
+        return CanonicalHeightResult(
+            ball,
+            status="certified-enclosure",
+            steps=selected_steps,
+            provenance=divisor_provenance(divisor),
+            bounds=bounds,
+            diagnostics={
+                "algorithm": "mueller-stoll-modular-local-kummer",
+                "requested_algorithm": algorithm,
+                "selected_algorithm": "local",
+                "requested_precision_bits": precision,
+                "working_precision_bits": working_precision,
+                "target_bits": target_bits,
+                "achieved_enclosure_width_bits": achieved_width_bits,
+                "enclosure_width_bits": achieved_width_bits,
+                "initial_naive_height_integer": str(initial_height_integer),
+                "terminal_limit_approximation": local_approximation.to_dict(),
+                "finite_correction": finite.to_dict(),
+                "archimedean_correction": archimedean.to_dict(),
+                "local_corrections": {
+                    "status": "certified-partial-sums-and-tails",
+                    "finite_partial": finite.partial_sum.to_dict(),
+                    "finite_tail_interval": finite.tail_bound.to_dict(),
+                    "archimedean_partial": archimedean.partial_sum.to_dict(),
+                    "archimedean_tail_interval": archimedean.tail_bound.to_dict(),
+                    "raw_duplication_gcds": finite.diagnostics["raw_duplication_gcds"],
+                    "factorization_used": False,
+                    "telescoping_identity": (
+                        "h_K(P)-hhat(P)=mu_finite(P)+mu_infinity(P)"
+                    ),
+                },
+                "exact_small_step_oracle": {
+                    "steps": oracle_steps,
+                    "scale_ratios": tuple(oracle_scales),
+                    "finite_gcds": tuple(oracle_gcds),
+                    "status": "passed",
+                },
+                "asymptotic_state": (
+                    "polynomial-size modular finite state and four bounded real balls"
+                ),
+                "context": context.diagnostics(),
+            },
+        )
+
+    chain = context.chain(divisor, steps)
+    if _find_kummer_repeat(chain):
+        return CanonicalHeightResult(
+            _zero_ball(working_precision, "exact-kummer-cycle-torsion-height"),
+            status="exact-torsion-zero",
+            steps=steps,
+            provenance=divisor_provenance(divisor),
+            bounds=None,
+            diagnostics={
+                "torsion_certificate": "repeated-exact-kummer-coordinate",
+                "requested_algorithm": algorithm,
+                "selected_algorithm": "exact",
+                "requested_precision_bits": precision,
+                "target_bits": target_bits,
+                "context": context.diagnostics(),
+            },
+        )
+
+    terminal = chain[steps]
+    height_integer = terminal.naive_height_integer()
+    naive_height = field.log_integer(height_integer)
+    scale = RealBall(4**steps, precision_bits=working_precision)
+    terminal_approximation = naive_height / scale
 
     if bounds is None:
         ball = RealBall(
             terminal_approximation.lower,
             terminal_approximation.upper,
-            precision_bits=precision,
+            precision_bits=working_precision,
             rigorous=False,
             source=(
                 "repeated-doubling-reference-without-global-height-difference-bound"
@@ -1234,13 +1986,13 @@ def canonical_height(
     else:
         raw_lower = (naive_height - bounds.correction_upper) / scale
         raw_upper = (naive_height - bounds.correction_lower) / scale
-        zero = _zero_ball(precision)
+        zero = _zero_ball(working_precision)
         lower = zero.lower if raw_lower.lower < zero.lower else raw_lower.lower
         conditional = bounds.diagnostics.get("automatic_bound") == "caller-supplied"
         ball = RealBall(
             lower,
             raw_upper.upper,
-            precision_bits=precision,
+            precision_bits=working_precision,
             rigorous=not conditional,
             source=(
                 "exact Kummer repeated doubling plus certified global "
@@ -1265,6 +2017,11 @@ def canonical_height(
             ),
             "scale": str(4**steps),
             "algorithm": "direct-flynn-kummer-quartic-limit",
+            "requested_algorithm": algorithm,
+            "selected_algorithm": "exact",
+            "requested_precision_bits": precision,
+            "working_precision_bits": working_precision,
+            "target_bits": target_bits,
             "projective_normalization": (
                 "primitive-integral-gcd-after-every-exact-duplication"
             ),
@@ -1286,7 +2043,7 @@ def canonical_height(
                 "HeightContext enforces a pre-duplication resource budget"
             ),
             "local_corrections": _local_correction_breakdown(
-                context, chain, bounds, precision
+                context, chain, bounds, working_precision
             ),
             "context": context.diagnostics(),
         },
@@ -1377,6 +2134,10 @@ class HeightPairingResult(_SealedRecord):
                 "precision_bits": int(
                     self._diagnostics.get("precision_bits", precision)
                 ),
+                "target_bits": self._diagnostics.get("target_bits"),
+                "requested_algorithm": str(
+                    self._diagnostics.get("requested_algorithm", "auto")
+                ),
                 "context": _copy_data(self._diagnostics.get("context", {})),
             },
         )
@@ -1405,6 +2166,8 @@ class HeightPairingResult(_SealedRecord):
             point_values,
             steps=steps,
             precision=precision,
+            target_bits=self._diagnostics.get("target_bits"),
+            algorithm=str(self._diagnostics.get("requested_algorithm", "auto")),
             height_difference_bound=height_difference_bound,
             context=replay_context,
         )
@@ -1458,6 +2221,8 @@ def height_pairing(
     *,
     steps: int = 6,
     precision: int = 100,
+    target_bits: int | None = None,
+    algorithm: str = "auto",
     height_difference_bound: Any = None,
     context: HeightContext | None = None,
 ) -> HeightPairingResult:
@@ -1476,6 +2241,8 @@ def height_pairing(
             value,
             steps=steps,
             precision=precision,
+            target_bits=target_bits,
+            algorithm=algorithm,
             height_difference_bound=height_difference_bound,
             context=context,
         )
@@ -1493,6 +2260,8 @@ def height_pairing(
                 values[left] + values[right],
                 steps=steps,
                 precision=precision,
+                target_bits=target_bits,
+                algorithm=algorithm,
                 height_difference_bound=height_difference_bound,
                 context=context,
             )
@@ -1513,6 +2282,8 @@ def height_pairing(
             "algorithm": "quadratic-height-polarization",
             "steps": int(steps),
             "precision_bits": int(precision),
+            "target_bits": target_bits,
+            "requested_algorithm": str(algorithm),
             "off_diagonal_height_data": tuple(off_diagonal),
             "context": context.diagnostics(),
         },
@@ -1637,6 +2408,10 @@ class RegulatorResult(_SealedRecord):
             point_values,
             steps=steps,
             precision=precision,
+            target_bits=self._pairing._diagnostics.get("target_bits"),
+            algorithm=str(
+                self._pairing._diagnostics.get("requested_algorithm", "auto")
+            ),
             height_difference_bound=height_difference_bound,
             context=replay_context,
         )
@@ -1675,6 +2450,8 @@ def regulator(
     *,
     steps: int = 6,
     precision: int = 100,
+    target_bits: int | None = None,
+    algorithm: str = "auto",
     height_difference_bound: Any = None,
     context: HeightContext | None = None,
 ) -> RegulatorResult:
@@ -1683,6 +2460,8 @@ def regulator(
         points,
         steps=steps,
         precision=precision,
+        target_bits=target_bits,
+        algorithm=algorithm,
         height_difference_bound=height_difference_bound,
         context=context,
     )
@@ -1725,6 +2504,7 @@ def regulator(
 
 
 __all__ = [
+    "ArchimedeanHeightCorrectionResult",
     "AutomaticHeightBounds",
     "CanonicalHeightResult",
     "FiniteHeightCorrectionResult",
@@ -1737,5 +2517,6 @@ __all__ = [
     "canonical_height",
     "factorization_free_finite_correction",
     "height_pairing",
+    "normalized_archimedean_correction",
     "regulator",
 ]
