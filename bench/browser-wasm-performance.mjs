@@ -185,6 +185,40 @@ export function validatePerformanceWorkloads(manifest) {
   return manifest;
 }
 
+export function selectPerformanceWorkloads(workloads, shard) {
+  if (shard == null) {
+    return {
+      workloads,
+      selection: {
+        kind: "complete",
+        case_ids: workloads.cases.map((item) => item.id),
+      },
+    };
+  }
+  const match = /^(\d+)\/(\d+)$/.exec(shard);
+  if (!match) {
+    throw new Error("--shard must use the one-based INDEX/COUNT form");
+  }
+  const index = Number(match[1]);
+  const count = Number(match[2]);
+  if (
+    !Number.isSafeInteger(index) || !Number.isSafeInteger(count) ||
+    count < 1 || count > workloads.cases.length || index < 1 || index > count
+  ) {
+    throw new Error("--shard must select a valid nonempty workload shard");
+  }
+  const cases = workloads.cases.filter((_, position) => position % count === index - 1);
+  return {
+    workloads: { ...workloads, cases },
+    selection: {
+      kind: "shard",
+      index,
+      count,
+      case_ids: cases.map((item) => item.id),
+    },
+  };
+}
+
 function ratio(browserValue, nativeValue) {
   return Number.isFinite(nativeValue) && nativeValue > 0
     ? browserValue / nativeValue
@@ -436,17 +470,24 @@ async function runPerformance(driver, workloads, samples, workloadIdentity) {
   };
 }
 
-export function checkBudget(report, budget, requireBaseline) {
+export function checkBudget(
+  report,
+  budget,
+  requireBaseline,
+  options = {},
+) {
   if (budget.schema !== "sagejs.browser-wasm-budget/v1") {
     throw new Error(`unsupported budget schema ${budget.schema}`);
   }
   const failures = [];
   const key = report.runtime.kind === "browser-wasm" ? report.runtime.engine : "node-native";
   const baseline = budget.performance_baseline?.[key];
-  if (!baseline && requireBaseline) {
+  const enforceRegressionBaseline = options.enforceRegressionBaseline !== false;
+  const enforceNativeRatio = options.enforceNativeRatio !== false;
+  if (!baseline && requireBaseline && enforceRegressionBaseline) {
     failures.push(`reviewed performance_baseline.${key} is absent`);
   }
-  if (baseline) {
+  if (baseline && enforceRegressionBaseline) {
     const threshold = budget.thresholds;
     if (report.startup_ms.median > baseline.startup_ms.median * (1 + threshold.startup_regression_fraction)) {
       failures.push("startup median regressed beyond its reviewed allowance");
@@ -475,7 +516,7 @@ export function checkBudget(report, budget, requireBaseline) {
   if (report.interrupt_latency_ms.maximum > budget.thresholds.maximum_interrupt_latency_ms) {
     failures.push("interrupt latency exceeded its absolute safety ceiling");
   }
-  const ratioBaseline = report.runtime.kind === "browser-wasm"
+  const ratioBaseline = enforceNativeRatio && report.runtime.kind === "browser-wasm"
     ? budget.native_ratio_baseline?.[key]
     : null;
   if (
@@ -533,7 +574,9 @@ async function main() {
     path.join(repositoryRoot, "bench", "browser-wasm-performance-cases.json"),
   ));
   const nativeReferencePath = option("--native-reference");
+  const shard = option("--shard");
   const requireBaseline = process.argv.includes("--require-baseline");
+  const safetyCeilingsOnly = process.argv.includes("--safety-ceilings-only");
   if (!Number.isSafeInteger(samples) || samples < 1 || samples > 50) {
     throw new Error("--samples must be an integer from 1 through 50");
   }
@@ -543,13 +586,23 @@ async function main() {
   if (runtimeKind === "node-native" && nativeReferencePath) {
     throw new Error("a node-native run cannot consume a native reference");
   }
+  if (safetyCeilingsOnly && requireBaseline) {
+    throw new Error("--safety-ceilings-only cannot be combined with --require-baseline");
+  }
   const workloadBytes = await fs.promises.readFile(workloadPath);
   const workloads = validatePerformanceWorkloads(JSON.parse(workloadBytes));
   const workloadIdentity = `sha256:${sha256(workloadBytes)}`;
+  const selected = selectPerformanceWorkloads(workloads, shard);
   const driver = runtimeKind === "browser-wasm"
     ? await createBrowserDriver(engine)
     : await createNativeDriver();
-  const report = await runPerformance(driver, workloads, samples, workloadIdentity);
+  const report = await runPerformance(
+    driver,
+    selected.workloads,
+    samples,
+    workloadIdentity,
+  );
+  report.workload_selection = selected.selection;
   if (runtimeKind === "browser-wasm") {
     if (nativeReferencePath) {
       const referenceBytes = await fs.promises.readFile(nativeReferencePath);
@@ -569,7 +622,10 @@ async function main() {
   }
   if (budgetPath) {
     const budget = JSON.parse(await fs.promises.readFile(budgetPath, "utf8"));
-    report.budget = checkBudget(report, budget, requireBaseline);
+    report.budget = checkBudget(report, budget, requireBaseline, {
+      enforceNativeRatio: !safetyCeilingsOnly,
+      enforceRegressionBaseline: !safetyCeilingsOnly,
+    });
   } else {
     report.budget = null;
   }

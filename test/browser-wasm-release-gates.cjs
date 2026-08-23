@@ -15,6 +15,10 @@ const {
   parseHeadersFile,
   validateHeadersRules,
 } = require("../packages/flint-wasm/scripts/browser-wasm-deployment.cjs");
+const {
+  nativeOracleCacheIdentity,
+  nativeOracleCacheKey,
+} = require("../scripts/native-oracle-cache-key.cjs");
 
 function fixtureDirectory(answer = 42) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-wasm-release-"));
@@ -65,6 +69,46 @@ test("release artifact receipts validate hashes, Wasm magic, compression, and re
     fs.rmSync(left, { recursive: true });
     fs.rmSync(right, { recursive: true });
   }
+});
+
+test("native oracle cache identity is content-addressed by every native stage", () => {
+  const identity = nativeOracleCacheIdentity(path.join(__dirname, ".."));
+  assert.equal(identity.schema, "sagejs.native-oracle-actions-cache/v1");
+  assert.deepEqual(
+    identity.artifacts.map((item) => item.id),
+    [
+      "fflas-addon",
+      "fflas-dependencies",
+      "flint-addon",
+      "flint-dependencies",
+      "graph-addon",
+      "graph-dependencies",
+      "m4ri-addon",
+      "m4ri-dependencies",
+    ],
+  );
+  for (const artifact of identity.artifacts) {
+    assert.match(artifact.key, /^[0-9a-f]{64}$/);
+  }
+  assert.match(nativeOracleCacheKey(path.join(__dirname, "..")), /^[0-9a-f]{64}$/);
+});
+
+test("release CI shards performance and reuses only authenticated native cache entries", () => {
+  const workflow = fs.readFileSync(
+    path.join(__dirname, "..", ".github", "workflows", "wasm-release.yml"),
+    "utf8",
+  );
+  assert.match(workflow, /node scripts\/native-oracle-cache-key\.cjs/);
+  assert.match(workflow, /SAGEJS_PARALLEL_NATIVE_CACHE/);
+  assert.match(workflow, /pnpm parallel:cache -- prepare/);
+  assert.doesNotMatch(workflow, /pnpm bootstrap/);
+  assert.match(workflow, /browser-parity:/);
+  assert.match(workflow, /browser-performance:/);
+  assert.match(workflow, /browser-security-chromium:/);
+  assert.match(workflow, /browser-webkit-recovery:/);
+  assert.match(workflow, /shard: \[1, 2, 3, 4\]/);
+  assert.match(workflow, /--shard \$\{\{ matrix\.shard \}\}\/4/);
+  assert.match(workflow, /name: Browser release gates/);
 });
 
 test("grammar modules inherit the authenticated bounded Tree-sitter memory", () => {
@@ -307,6 +351,45 @@ test("required performance budgets reject newly added unbaselined workloads", as
     "reviewed native_ratio_baseline.chromium.operations.new-heavy-workload is absent",
   ]);
   assert.deepEqual(checkBudget(report, budget, false).failures, []);
+  const safetyOnly = checkBudget(report, {
+    ...budget,
+    thresholds: { ...budget.thresholds, maximum_interrupt_latency_ms: 4 },
+  }, false, {
+    enforceRegressionBaseline: false,
+    enforceNativeRatio: false,
+  });
+  assert.deepEqual(safetyOnly.failures, [
+    "interrupt latency exceeded its absolute safety ceiling",
+  ]);
+});
+
+test("performance workload shards are deterministic, disjoint, and complete", async () => {
+  const { selectPerformanceWorkloads } = await import(
+    "../bench/browser-wasm-performance.mjs"
+  );
+  const workloads = {
+    schema: "sagejs.browser-wasm-performance-cases/v1",
+    cases: Array.from({ length: 20 }, (_, index) => ({ id: `case-${index}` })),
+  };
+  const selected = Array.from({ length: 4 }, (_, index) =>
+    selectPerformanceWorkloads(workloads, `${index + 1}/4`));
+  assert.deepEqual(selected.map((item) => item.workloads.cases.length), [5, 5, 5, 5]);
+  assert.deepEqual(
+    selected.flatMap((item) => item.selection.case_ids).sort(),
+    workloads.cases.map((item) => item.id).sort(),
+  );
+  assert.equal(
+    new Set(selected.flatMap((item) => item.selection.case_ids)).size,
+    workloads.cases.length,
+  );
+  assert.throws(
+    () => selectPerformanceWorkloads(workloads, "0/4"),
+    /valid nonempty workload shard/,
+  );
+  assert.throws(
+    () => selectPerformanceWorkloads(workloads, "one-of-four"),
+    /INDEX\/COUNT/,
+  );
 });
 
 test("browser/native comparison requires identical workload identities", async () => {

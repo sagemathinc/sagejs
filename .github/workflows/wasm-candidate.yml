@@ -1,0 +1,116 @@
+name: Sage.js WebAssembly fast candidate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wasm-candidate-${{ github.ref }}
+  cancel-in-progress: true
+
+# This is deliberately a fast, non-deployable signal. The Cloudflare deployment
+# workflow accepts artifacts only from wasm-release.yml, which retains two clean
+# builds, native parity, three browser engines, three samples, and every security
+# and recovery gate.
+jobs:
+  candidate-build:
+    name: One clean candidate build
+    runs-on: ubuntu-24.04
+    environment: sagejs-source-mirror
+    timeout-minutes: 180
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      SAGEJS_WASM_SOURCE_MIRROR_DIR: /tmp/sagejs-wasm-source-mirror
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - name: Fetch every pinned build source from the private R2 mirror
+        run: |
+          node packages/flint-wasm/scripts/source-mirror.mjs fetch \
+            --output "$SAGEJS_WASM_SOURCE_MIRROR_DIR"
+      - run: pnpm install --frozen-lockfile
+      - id: toolchain
+        run: echo "path=$(node packages/flint-wasm/scripts/wasm-toolchain.cjs cache-path)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.toolchain.outputs.path }}
+          key: sagejs-cowasm-v1-${{ runner.os }}-${{ hashFiles('packages/flint-wasm/toolchain/lock.json') }}
+      - name: Build and authenticate one candidate artifact
+        run: |
+          node packages/flint-wasm/scripts/wasm-toolchain.cjs prepare
+          pnpm build
+          pnpm --dir packages/flint-wasm build
+          node packages/flint-wasm/scripts/production-receipt.cjs validate
+          node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
+            --headers website/live/_headers
+          node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs \
+            --budget bench/browser-wasm-budget.json \
+            --require-baseline \
+            --output build/wasm-candidate-artifact.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wasm-candidate-build
+          path: |
+            packages/flint-wasm/dist
+            build/wasm-candidate-artifact.json
+          if-no-files-found: error
+
+  candidate-chromium:
+    name: One-sample Chromium candidate signal
+    needs: candidate-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-candidate-build
+          path: build/prebuilt
+      - name: Restore the candidate artifact
+        run: |
+          rm -rf packages/flint-wasm/dist
+          cp -a build/prebuilt/packages/flint-wasm/dist packages/flint-wasm/dist
+          node packages/flint-wasm/scripts/production-receipt.cjs validate
+      - run: pnpm exec playwright-core install --with-deps chromium
+      - name: Run full parity and a one-sample safety profile
+        run: |
+          node packages/flint-wasm/test/browser-wasm-parity.mjs \
+            --tier release \
+            --engines chromium \
+            --require-engines chromium \
+            --receipt build/wasm-candidate-parity-chromium.json
+          node bench/browser-wasm-performance.mjs \
+            --engine chromium \
+            --samples 1 \
+            --budget bench/browser-wasm-budget.json \
+            --safety-ceilings-only \
+            --output build/wasm-candidate-performance-chromium.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: wasm-candidate-chromium-receipts
+          path: build/wasm-candidate-*-chromium.json
+          if-no-files-found: error
