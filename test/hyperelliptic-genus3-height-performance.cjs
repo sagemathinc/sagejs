@@ -41,6 +41,19 @@ test(
           "    warm = heights.genus3_theta(z, tau, prec=80, radius=4)",
           "    first_data = first.to_dict()",
           "    warm_data = warm.to_dict()",
+          "    large_tau = [[mp.mpc(0,1),mp.mpc(0),mp.mpc(0)],",
+          "                 [mp.mpc(0),mp.mpc(0,'1.2'),mp.mpc(0)],",
+          "                 [mp.mpc(0),mp.mpc(0),mp.mpc('1e18','1.4')]]",
+          "    nearby_tau = [[value for value in row] for row in large_tau]",
+          "    nearby_tau[2][2] += mp.mpf('2e-14')",
+          "    large_first = heights.genus3_theta(z, large_tau, prec=80, radius=4)",
+          "    nearby = heights.genus3_theta(z, nearby_tau, prec=80, radius=4)",
+          "    nearby_direct = direct_theta(z, nearby_tau, 6)",
+          "    provenance = {'nested': {'steps': [{'verified': True}]}}",
+          "    cached_provenance = heights._deep_copy_nested(provenance)",
+          "    exposed_provenance = heights._deep_copy_nested(cached_provenance)",
+          "    provenance['nested']['steps'][0]['verified'] = False",
+          "    exposed_provenance['nested']['steps'][0]['verified'] = False",
           "    answer = (",
           "        abs(first.value-fine) < mp.mpf('1e-25'),",
           "        abs(first.refinement_difference-abs(fine-coarse)) < mp.mpf('1e-25'),",
@@ -52,6 +65,12 @@ test(
           "        warm_data['terms'] >= 10*warm_data['exponential_evaluations'],",
           "        first.refinement_stable and warm.refinement_stable,",
           "        not first.rigorous and not warm.rigorous,",
+          "        large_first.refinement_stable and nearby.refinement_stable,",
+          "        not nearby.to_dict()['plan_cache_hit'],",
+          "        nearby.to_dict()['algorithm'].startswith('single-traversal direct'),",
+          "        nearby.to_dict()['direct_exponentials'] == 2197,",
+          "        abs(nearby.value-nearby_direct) < mp.mpf('1e-25'),",
+          "        cached_provenance['nested']['steps'][0]['verified'],",
           "    )",
           "answer",
         ].join("\n"),
@@ -60,7 +79,7 @@ test(
       assert.equal(
         result.repr,
         "(True, True, 'prepared quadratic lattice with reanchored line recurrence', " +
-          "2926, 509, True, 170, True, True, True)",
+          "2926, 509, True, 170, True, True, True, True, True, True, True, True, True)",
       );
     } finally {
       await session.close();
