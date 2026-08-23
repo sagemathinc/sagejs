@@ -21,6 +21,8 @@ from sagejs.native import (
 
 PACKED_MUMFORD_SCHEMA = "sagejs.hyperelliptic.packed-mumford.odd.v1"
 _PACKED_ROW_WORDS = 8
+_PACKED_BATCH_FORMAT = PACKED_MUMFORD_SCHEMA + ".batch8"
+_PACKED_DIVISOR_FORMAT = PACKED_MUMFORD_SCHEMA + ".divisor8"
 
 
 class PreparedJacobianCapability:
@@ -250,11 +252,13 @@ class PreparedMultiSearchDiagnostics:
 class PreparedDivisorBatch:
     """Immutable sequence of lazily published canonical packed divisors.
 
-    One immutable tuple backs the whole batch.  Indexing publishes and caches
-    an ordinary public divisor, while equality and a subsequent prepared
-    operation can consume canonical rows without allocating one Python object
-    per item.  The public constructor is intentionally closed: only a prepared
-    context may publish rows already proved by its kernel.
+    One opaque runtime capsule backs the whole batch.  Native read-only inputs
+    borrow that storage without copying; dynamic fallback and public access
+    receive explicit owned copies.  Indexing publishes and caches an ordinary
+    public divisor, while a subsequent prepared operation consumes the sealed
+    words without allocating one Python object per item.  The public
+    constructor is intentionally closed: only a prepared context may publish
+    rows already proved by its kernel.
     """
 
     __slots__ = ("__binding", "__published")
@@ -262,9 +266,9 @@ class PreparedDivisorBatch:
     def __init__(self, *_args: Any, **_keywords: Any) -> None:
         raise TypeError("prepared divisor batches are published by their context")
 
-    def _state(self) -> tuple[Any, tuple[int, ...], int]:
+    def _state(self) -> tuple[Any, Any, int]:
         binding = self.__binding
-        if binding[0] is not self:
+        if len(binding) != 4 or binding[0] is not self:
             raise ArithmeticError("a prepared divisor batch binding was corrupted")
         return binding[1], binding[2], binding[3]
 
@@ -276,14 +280,38 @@ class PreparedDivisorBatch:
         """Return how many element wrappers have been demanded so far."""
         return len(self.__published)
 
-    def _rows_for(self, context: Any) -> tuple[int, ...]:
-        owner, packed, _count = self._state()
+    def _lease_for(self, context: Any) -> Any:
+        """Return an opaque read-only native lease after exact rebinding."""
+        owner, capsule, count = self._state()
         if context is not owner:
             raise ValueError("a prepared divisor batch belongs to another context")
-        return packed
+        return runtime.immutable_uint64_capsule_lease(
+            capsule,
+            self,
+            owner._capsule_model_label(),
+            _PACKED_BATCH_FORMAT,
+            count,
+        )
+
+    def _rows_for(self, context: Any) -> tuple[int, ...]:
+        """Return an owned immutable copy for dynamic or public consumers."""
+        owner, capsule, count = self._state()
+        if context is not owner:
+            raise ValueError("a prepared divisor batch belongs to another context")
+        copied = runtime.immutable_uint64_capsule_copy(
+            capsule,
+            self,
+            owner._capsule_model_label(),
+            _PACKED_BATCH_FORMAT,
+            count,
+        )
+        if len(copied) != _PACKED_ROW_WORDS * count:
+            raise ArithmeticError("a prepared divisor batch span was corrupted")
+        return tuple(int(copied[index]) for index in range(len(copied)))
 
     def _row(self, index: int) -> tuple[int, ...]:
-        _owner, packed, _count = self._state()
+        owner, _capsule, _count = self._state()
+        packed = self._rows_for(owner)
         offset = 8 * index
         return (
             packed[offset],
@@ -303,9 +331,10 @@ class PreparedDivisorBatch:
         step: int,
         count: int,
     ) -> Any:
-        owner, packed, total = self._state()
+        owner, _capsule, total = self._state()
         if owner is not context:
             raise ValueError("a prepared divisor batch belongs to another context")
+        packed = self._rows_for(context)
         rows: list[int] = []
         position = start
         for _index in range(count):
@@ -316,9 +345,13 @@ class PreparedDivisorBatch:
         return context._publish_frozen_batch(tuple(rows), count)
 
     def __getitem__(self, index: Any) -> Any:
-        owner, packed, count = self._state()
+        owner, _capsule, count = self._state()
         if isinstance(index, slice):
-            return tuple(self[position] for position in range(count)[index])
+            positions = range(count)[index]
+            packed = self._rows_for(owner)
+            return tuple(
+                self._published_at(owner, packed, position) for position in positions
+            )
         position = _exact_integer(index, "batch index")
         if position < 0:
             position += count
@@ -326,31 +359,55 @@ class PreparedDivisorBatch:
             raise IndexError("prepared divisor batch index out of range")
         cached = self.__published.get(position)
         if cached is None:
-            cached = owner._publish_kernel_output(packed, 8 * position)
+            packed = self._rows_for(owner)
+            cached = self._published_at(owner, packed, position)
+        return cached
+
+    def _published_at(
+        self,
+        owner: Any,
+        packed: tuple[int, ...],
+        position: int,
+        materialize: bool = False,
+    ) -> Any:
+        cached = self.__published.get(position)
+        if cached is None:
+            if materialize:
+                cached = owner._publish_materialized_kernel_output(packed, 8 * position)
+            else:
+                cached = owner._publish_kernel_output(packed, 8 * position)
             self.__published[position] = cached
+        elif materialize:
+            cached.uv()
         return cached
 
     def __iter__(self) -> Any:
-        _owner, _packed, count = self._state()
+        owner, _capsule, count = self._state()
+        packed = self._rows_for(owner)
         index = 0
         while index < count:
-            yield self[index]
+            yield self._published_at(owner, packed, index)
             index += 1
 
     def __eq__(self, other: object) -> bool:
         if other is self:
             return True
         try:
-            context, packed, count = self._state()
+            context, _capsule, count = self._state()
             if len(other) != count:  # type: ignore[arg-type]
                 return False
+            packed = self._rows_for(context)
             if isinstance(other, PreparedDivisorBatch):
-                other_context, other_packed, _other_count = other._state()
+                other_context, _other_capsule, _other_count = other._state()
                 if other_context is context:
+                    other_packed = other._rows_for(context)
                     return packed == other_packed
             index = 0
             while index < count:
-                if self._row(index) != context.pack(other[index]):  # type: ignore[index]
+                offset = _PACKED_ROW_WORDS * index
+                if packed[offset : offset + _PACKED_ROW_WORDS] != context.pack(
+                    other[index]  # type: ignore[index]
+                ):
                     return False
                 index += 1
             return True
@@ -368,9 +425,11 @@ class PreparedDivisorBatch:
 
     def materialize(self) -> tuple[Any, ...]:
         """Return an ordinary tuple after constructing every `(u,v)` pair."""
-        answer = tuple(self)
-        for divisor in answer:
-            divisor.uv()
+        owner, _capsule, count = self._state()
+        packed = self._rows_for(owner)
+        answer = tuple(
+            self._published_at(owner, packed, index, True) for index in range(count)
+        )
         return answer
 
 
@@ -757,6 +816,10 @@ class PreparedJacobianArithmetic:
         h_values.extend([0] * (4 - len(h_values)))
         return tuple(f_values + h_values)
 
+    def _capsule_model_label(self) -> str:
+        """Bind opaque storage to this exact Jacobian context identity."""
+        return self.model_fingerprint + ":" + str(id(self))
+
     def _check_batch_size(self, count: int) -> None:
         if count > self._max_batch_items:
             raise RuntimeError(
@@ -790,8 +853,13 @@ class PreparedJacobianArithmetic:
         if divisor.parent() is not self._jacobian:
             raise ValueError("the divisor belongs to a different Jacobian")
         cached = divisor._packed_row
-        if cached is not None:
+        if cached is not None and not divisor.is_materialized():
+            # Lazy wrappers were registered with the runtime's write-once
+            # capsule owner map before they escaped the prepared context.
             return cached
+        # For an already-public materialized divisor, derive the mathematical
+        # row first.  A malicious capsule pre-registration may deny caching,
+        # but can never supply mathematical authority.
         self._jacobian._validate_reduced(divisor[0], divisor[1])
         u_value, v_value = divisor.uv()
         degree = int(u_value.degree())
@@ -804,11 +872,20 @@ class PreparedJacobianArithmetic:
         row = tuple([degree] + u_values[:4] + v_values[:3])
         if row[degree + 1] != 1:
             raise ArithmeticError("packed u is not monic")
-        self._bind_packed_row(divisor, row)
+        if cached is not None:
+            if cached != row:
+                raise ArithmeticError(
+                    "a Jacobian divisor packed row disagrees with its provenance"
+                )
+            return cached
+        # Do not register one runtime capsule per already-materialized public
+        # divisor.  Its `(u,v)` pair is immutable mathematical provenance, and
+        # thousands of single-owner registrations cost substantially more than
+        # validating and sealing the one prepared batch that consumes them.
         return row
 
     def _bind_packed_row(self, divisor: Any, row: tuple[int, ...]) -> None:
-        """Bind a proved row once through the divisor's opaque descriptor."""
+        """Bind a proved row once through opaque write-once runtime storage."""
         if divisor.parent() is not self._jacobian:
             raise ValueError("the divisor belongs to a different Jacobian")
         existing = divisor._packed_row
@@ -816,10 +893,17 @@ class PreparedJacobianArithmetic:
             if existing != row:
                 raise ArithmeticError("a divisor already has a different packed row")
             return
+        capsule = runtime.immutable_uint64_capsule(
+            row,
+            divisor,
+            self.model_fingerprint + ":" + str(id(self._jacobian)),
+            _PACKED_DIVISOR_FORMAT,
+            1,
+        )
         object.__setattr__(
             divisor,
             "_MumfordDivisor__packed_row_binding",
-            (divisor, row),
+            (divisor, capsule),
         )
 
     def _canonical_row(self, row: Any) -> tuple[int, ...]:
@@ -843,7 +927,9 @@ class PreparedJacobianArithmetic:
             raise ValueError("packed Mumford v has nonzero unused words")
         return values
 
-    def _new_packed_divisor(self, row: tuple[int, ...]) -> Any:
+    def _new_packed_divisor(
+        self, row: tuple[int, ...], materialize: bool = False
+    ) -> Any:
         """Internally publish one kernel-proved immutable canonical row."""
         # Deliberately bypass the public constructor only after the prepared
         # context has validated or produced the row.  There is no parent token,
@@ -851,14 +937,23 @@ class PreparedJacobianArithmetic:
         # can opt out of the public Mumford relation checks.
         divisor = object.__new__(self._divisor_class)
         divisor._parent = self._jacobian
-        divisor._u = None
-        divisor._v = None
-        object.__setattr__(
-            divisor,
-            "_MumfordDivisor__packed_row_binding",
-            (divisor, row),
-        )
+        if materialize:
+            degree = row[0]
+            field = self._jacobian.base_ring()
+            ring = self._jacobian.polynomial_ring()
+            divisor._u = ring([field(value) for value in row[1 : degree + 2]])
+            divisor._v = ring([field(value) for value in row[5 : 5 + degree]])
+        else:
+            divisor._u = None
+            divisor._v = None
+        object.__setattr__(divisor, "_MumfordDivisor__packed_row_binding", None)
         divisor._packed_hash = None
+        if not materialize:
+            # Lazy divisors need an opaque authoritative row before escape.
+            # Materialized divisors already have immutable mathematical
+            # provenance in `(u,v)`; a later `pack` derives the canonical row
+            # from that provenance before installing any cache capsule.
+            self._bind_packed_row(divisor, row)
         return divisor
 
     def _publish_kernel_output(self, output: Any, offset: int) -> Any:
@@ -880,26 +975,49 @@ class PreparedJacobianArithmetic:
         )
         return self._new_packed_divisor(row)
 
-    def _publish_kernel_batch(self, output: Any, count: int) -> PreparedDivisorBatch:
-        """Freeze one proved native output buffer as a lazy public sequence."""
-        # The compiled boundary already exposes a checked BigUint64Array.
-        # Freezing it as a tuple is a single bulk sequence copy; converting
-        # each word through Python's generic `int` constructor costs more than
-        # the complete fixed-degree group law and adds no validation.
-        packed = tuple(output)
-        return self._publish_frozen_batch(packed, count)
+    def _publish_materialized_kernel_output(self, output: Any, offset: int) -> Any:
+        """Publish one proved row with its fixed-degree `(u,v)` provenance."""
+        row = (
+            int(output[offset]),
+            int(output[offset + 1]),
+            int(output[offset + 2]),
+            int(output[offset + 3]),
+            int(output[offset + 4]),
+            int(output[offset + 5]),
+            int(output[offset + 6]),
+            int(output[offset + 7]),
+        )
+        return self._new_packed_divisor(row, True)
 
-    def _publish_frozen_batch(
-        self, packed: tuple[int, ...], count: int
-    ) -> PreparedDivisorBatch:
-        """Internally publish trusted immutable canonical rows as one sequence."""
+    def _publish_kernel_batch(self, output: Any, count: int) -> PreparedDivisorBatch:
+        """Seal one proved native output buffer as a lazy public sequence."""
+        return self._publish_frozen_batch(output, count)
+
+    def _publish_frozen_batch(self, packed: Any, count: int) -> PreparedDivisorBatch:
+        """Internally copy trusted canonical rows into opaque sealed storage."""
         if len(packed) != 8 * count:
             raise ArithmeticError("a packed Cantor batch has the wrong span")
         batch = object.__new__(PreparedDivisorBatch)
+        capsule = runtime.immutable_uint64_capsule(
+            packed,
+            batch,
+            self._capsule_model_label(),
+            _PACKED_BATCH_FORMAT,
+            count,
+        )
+        return self._publish_capsule_batch(batch, capsule, count)
+
+    def _publish_capsule_batch(
+        self,
+        batch: PreparedDivisorBatch,
+        capsule: Any,
+        count: int,
+    ) -> PreparedDivisorBatch:
+        """Bind an already owner-registered capsule to its fresh batch shell."""
         object.__setattr__(
             batch,
             "_PreparedDivisorBatch__binding",
-            (batch, self, packed, count),
+            (batch, self, capsule, count),
         )
         object.__setattr__(batch, "_PreparedDivisorBatch__published", {})
         return batch
@@ -907,16 +1025,34 @@ class PreparedJacobianArithmetic:
     def prepare_batch(self, elements: Any) -> PreparedDivisorBatch:
         """Freeze public divisors as canonical rows for a retained pipeline."""
         if isinstance(elements, PreparedDivisorBatch):
-            elements._rows_for(self)
+            elements._lease_for(self)
             return elements
         values = tuple(elements)
         self._check_batch_size(len(values))
         for value in values:
             if value.parent() is not self._jacobian:
                 raise ValueError("every batch divisor must lie in this Jacobian")
-        return self._publish_frozen_batch(
-            tuple(self._pack_public_batch(values)), len(values)
-        )
+        batch = object.__new__(PreparedDivisorBatch)
+        try:
+            capsule = runtime.immutable_uint64_capsule_gather(
+                batch,
+                values,
+                self.model_fingerprint + ":" + str(id(self._jacobian)),
+                _PACKED_DIVISOR_FORMAT,
+                1,
+                _PACKED_ROW_WORDS,
+                self._capsule_model_label(),
+                _PACKED_BATCH_FORMAT,
+                len(values),
+            )
+        except ValueError:
+            # Divisors created before this context, or a deliberately
+            # `check=False` object, may not have an owner-registered capsule.
+            # Recompute and validate every canonical row before publishing.
+            return self._publish_frozen_batch(
+                tuple(self._pack_public_batch(values)), len(values)
+            )
+        return self._publish_capsule_batch(batch, capsule, len(values))
 
     def unpack(self, row: Any) -> Any:
         """Validate and publish one canonical odd-degree v1 row."""
@@ -961,13 +1097,13 @@ class PreparedJacobianArithmetic:
             raise ValueError("left and right batches must have the same length")
         self._check_batch_size(len(left_values))
         if left_is_packed:
-            left_values._rows_for(self)
+            left_values._lease_for(self)
         else:
             for value in left_values:
                 if value.parent() is not self._jacobian:
                     raise ValueError("every batch divisor must lie in this Jacobian")
         if right_is_packed:
-            right_values._rows_for(self)
+            right_values._lease_for(self)
         else:
             for value in right_values:
                 if value.parent() is not self._jacobian:
@@ -977,24 +1113,19 @@ class PreparedJacobianArithmetic:
         packed_left = None
         packed_right = None
         if selected == "native":
-            packed_cache: dict[int, tuple[int, ...]] = {}
             if left_is_packed:
-                packed_left = kernel_uint64_buffer(
-                    self._add_kernel, left_values._rows_for(self)
-                )
+                packed_left = left_values._lease_for(self)
             else:
-                left_rows = self._pack_public_batch(left_values, packed_cache)
-                packed_left = kernel_uint64_buffer(self._add_kernel, left_rows)
+                prepared_left = self.prepare_batch(left_values)
+                packed_left = prepared_left._lease_for(self)
             if right_is_packed:
                 if right_values is left_values:
                     packed_right = packed_left
                 else:
-                    packed_right = kernel_uint64_buffer(
-                        self._add_kernel, right_values._rows_for(self)
-                    )
+                    packed_right = right_values._lease_for(self)
             else:
-                right_rows = self._pack_public_batch(right_values, packed_cache)
-                packed_right = kernel_uint64_buffer(self._add_kernel, right_rows)
+                prepared_right = self.prepare_batch(right_values)
+                packed_right = prepared_right._lease_for(self)
         pack_ns = time.perf_counter_ns() - started
         statuses: tuple[int, ...] = ()
         validation_ns = 0
@@ -1285,7 +1416,7 @@ class PreparedJacobianArithmetic:
             raise ValueError("element and scalar batches must have the same length")
         self._check_batch_size(len(values))
         if values_are_packed:
-            values._rows_for(self)
+            values._lease_for(self)
         else:
             for value in values:
                 if value.parent() is not self._jacobian:
@@ -1315,12 +1446,10 @@ class PreparedJacobianArithmetic:
         packed_rows = None
         if selected == "native":
             if values_are_packed:
-                packed_rows = kernel_uint64_buffer(
-                    self._scalar_kernel, values._rows_for(self)
-                )
+                packed_rows = values._lease_for(self)
             else:
-                rows = self._pack_public_batch(values)
-                packed_rows = kernel_uint64_buffer(self._scalar_kernel, rows)
+                prepared_values = self.prepare_batch(values)
+                packed_rows = prepared_values._lease_for(self)
         maximum_bits = max(
             (_bit_length(abs(value)) for value in scalar_values), default=0
         )
