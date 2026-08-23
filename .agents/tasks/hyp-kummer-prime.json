@@ -45,6 +45,46 @@
       "commit": "76b863adb13c683b265ddc0c987b727fd7291990",
       "workspace_fingerprint": "6a3ba23766388e982eb5d00c6d190989d1aff38f8f5d400eb3305ac57cb4c271",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-native-kummer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.453,
+      "started_at": "2026-08-23T03:14:15.168Z",
+      "commit": "fa4c3ea1c9090bf264f202aea3d457f929309c9d",
+      "workspace_fingerprint": "a3b3b57d13a4324859c23d13553ce0f78c7ff537ae2be00b1e30b8d39510c092",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.115,
+      "started_at": "2026-08-23T03:14:27.299Z",
+      "commit": "fa4c3ea1c9090bf264f202aea3d457f929309c9d",
+      "workspace_fingerprint": "a3b3b57d13a4324859c23d13553ce0f78c7ff537ae2be00b1e30b8d39510c092",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.502,
+      "started_at": "2026-08-23T03:16:02.258Z",
+      "commit": "fa4c3ea1c9090bf264f202aea3d457f929309c9d",
+      "workspace_fingerprint": "a3b3b57d13a4324859c23d13553ce0f78c7ff537ae2be00b1e30b8d39510c092",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "./bin/sagejs native compile src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py --cache-root /tmp/hyp-kummer-receipt-cache",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.692,
+      "started_at": "2026-08-23T03:16:15.101Z",
+      "commit": "fa4c3ea1c9090bf264f202aea3d457f929309c9d",
+      "workspace_fingerprint": "a3b3b57d13a4324859c23d13553ce0f78c7ff537ae2be00b1e30b8d39510c092",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -52,14 +92,14 @@
     "risks": [
       "General Flynn biquadratic pseudo-addition is not yet implemented: xADD is exact only when either input is the identity or A-B is the identity (duplication); all other rows return KUMMER_UNSUPPORTED_DIFFERENTIAL.",
       "The module currently imports _CLASSICAL_DELTA_1 through _CLASSICAL_DELTA_4 from genus2_kummer.py, which is an upward BSD-layer edge for a public Jacobian dependency.",
-      "The local architecture gate reaches the package graph but fails because this module raises hyperelliptic-curves-algorithms to 619263 bytes versus its current 610000-byte budget.",
+      "The local architecture gate reaches the package graph but fails because this module raises hyperelliptic-curves-algorithms to 619831 bytes versus its current 610000-byte budget.",
       "The actual Wasm execution differential is conditionally skipped without a complete WASI FLINT toolchain; bridge classification is always tested.",
       "No native Windows/macOS/aarch64 execution receipt was collected in this lane; the fixed uint64 source ABI and dynamic fallbacks are platform-neutral but still need integration-matrix validation."
     ],
     "next_steps": [
       "Move the four immutable Flynn tables verbatim, preserving tuple order/content, plus preferably the generic sparse evaluator into neutral genus2_kummer_formulas.py; have both genus2_kummer.py and this module import that single audited source.",
       "Raise or rebalance the hyperelliptic-curves-algorithms lazy byte budget in the integration lane.",
-      "Construct/cache this context from J.prepared_arithmetic() after exposing original f/h coefficient buffers, then route 2-primary annihilation filters through it.",
+      "Construct/cache this context as Genus2PrimeKummerContext(ctx.prime, ctx.f_coefficients, ctx.h_coefficients) from the Cantor lane's prepared context, then route 2-primary annihilation filters through it.",
       "Add the full audited Flynn biquadratic forms before advertising general differential addition or arbitrary Kummer-only scalar multiplication.",
       "Register the three kernels in the production native/Wasm manifest and run the conditional exact Wasm differential on a configured toolchain."
     ]
