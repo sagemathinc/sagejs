@@ -1216,6 +1216,86 @@ test("generated opaque FLINT resources close deterministically", () => {
   );
 });
 
+test("owned FFI resource plans cache resolution and reject metadata drift", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-ffi-resource-plan-"));
+  try {
+    const backendPath = join(directory, "backend.cjs");
+    const programPath = join(directory, "program.py");
+    writeFileSync(backendPath, [
+      '"use strict";',
+      "let createGets = 0;",
+      "let closeGets = 0;",
+      "let creates = 0;",
+      "let closes = 0;",
+      'Object.defineProperty(module.exports, "create", {',
+      "  get() {",
+      "    createGets += 1;",
+      "    return function(value) { creates += 1; return { value }; };",
+      "  },",
+      "});",
+      'Object.defineProperty(module.exports, "close", {',
+      "  get() {",
+      "    closeGets += 1;",
+      "    return function(_handle) { closes += 1; };",
+      "  },",
+      "});",
+      "module.exports.stats = () => [createGets, closeGets, creates, closes];",
+      "",
+    ].join("\n"));
+    const hash = "0".repeat(64);
+    const declaration = `test@${hash}:create`;
+    const resource = `resource:test@${hash}:fixture`;
+    writeFileSync(programPath, [
+      "import sagejs.runtime as runtime",
+      `declaration = ${JSON.stringify(declaration)}`,
+      `resource = ${JSON.stringify(resource)}`,
+      `backend_path = ${JSON.stringify(backendPath)}`,
+      "def create(value, resource_identity=resource, package_name=backend_path, create_export='create', close_export='close', parameter_type='uint64', minimum=1, error_policy='direct', error_exception=None, error_message=None):",
+      "    return runtime.ffi_resource_create(",
+      "        declaration, resource_identity, package_name, create_export,",
+      "        close_export, [value], [parameter_type], [minimum],",
+      "        error_policy, error_exception, error_message,",
+      "    )",
+      "first = create(2)",
+      "second = create(3)",
+      "runtime.ffi_resource_close(first)",
+      "runtime.ffi_resource_close(second)",
+      "backend = runtime.require_module(backend_path)",
+      "stats = runtime.reflect.get(backend, 'stats')",
+      "print(runtime.reflect.apply(stats, runtime.undefined, []))",
+      "mismatches = (",
+      "    {'resource_identity': resource + '_other'},",
+      "    {'package_name': backend_path + '.missing'},",
+      "    {'create_export': 'other_create'},",
+      "    {'close_export': 'other_close'},",
+      "    {'parameter_type': 'Integer'},",
+      "    {'minimum': 2},",
+      "    {'error_policy': 'zero_is_error'},",
+      "    {'error_exception': 'ValueError'},",
+      "    {'error_message': 'other'},",
+      ")",
+      "for mismatch in mismatches:",
+      "    try:",
+      "        create(4, **mismatch)",
+      "    except TypeError as error:",
+      "        assert 'metadata mismatch' in str(error)",
+      "    else:",
+      "        raise AssertionError('cached resource metadata drift was accepted')",
+      "print(runtime.reflect.apply(stats, runtime.undefined, []))",
+      "",
+    ].join("\n"));
+    const result = spawnSync(
+      process.execPath,
+      [join(root, "bin", "sagejs"), "--python", programPath],
+      { cwd: root, encoding: "utf8" },
+    );
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(result.stdout.trim(), "[1, 1, 2, 2]\n[1, 1, 2, 2]");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("resource results accept checked UInt64Buffer arguments", () => {
   const source = [
     "import sagejs.runtime as runtime",

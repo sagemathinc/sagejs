@@ -1733,16 +1733,6 @@ def ρσ_ffi_resource_create(
     """Create an opaque owned resource through a checked declaration."""
     return r"""%js (() => {
         if (
-            typeof declaration_identity !== "string"
-            || !/^[a-z][a-z0-9_]*@[0-9a-f]{64}:[A-Za-z_][A-Za-z0-9_]*$/
-                .test(declaration_identity)
-            || typeof resource_identity !== "string"
-            || !/^resource:[a-z][a-z0-9_]*@[0-9a-f]{64}:[A-Za-z_][A-Za-z0-9_]*$/
-                .test(resource_identity)
-        ) {
-            throw new TypeError("invalid FFI resource declaration identity");
-        }
-        if (
             values.length !== parameter_types.length
             || values.length !== parameter_minimums.length
         ) {
@@ -1750,18 +1740,95 @@ def ρσ_ffi_resource_create(
                 `FFI declaration ${declaration_identity} argument count mismatch`
             );
         }
-        const backend = __sagejs_runtime_require__(package_name);
-        const create = Reflect.get(backend, create_export);
-        const close = Reflect.get(backend, close_export);
-        if (typeof create !== "function" || typeof close !== "function") {
-            throw new RuntimeError(
-                `FFI resource backend ${package_name} lacks `
-                + `${create_export}/${close_export}`
-            );
+        const resolver_name = "__sagejs_ffi_resource_plan_v1__";
+        let resolve = Reflect.get(globalThis, resolver_name);
+        if (resolve === undefined) {
+            resolve = (() => {
+                const plans = new Map();
+                return (require, declaration, meta) => {
+                    let p = plans.get(declaration);
+                    if (p !== undefined) {
+                        const saved = p.meta;
+                        const mismatch = saved.length !== meta.length
+                            || saved.some((x, i) => !Object.is(x, meta[i]));
+                        if (mismatch) throw new TypeError(
+                            `FFI resource declaration ${declaration} metadata mismatch`
+                        );
+                        if (p.require === require) return p;
+                    }
+                    const resource = meta[0];
+                    const declaration_ok = typeof declaration === "string"
+                        && /^[a-z][a-z0-9_]*@[0-9a-f]{64}:[A-Za-z_][A-Za-z0-9_]*$/
+                            .test(declaration);
+                    const resource_ok = typeof resource === "string"
+                        && /^resource:[a-z][a-z0-9_]*@[0-9a-f]{64}:[A-Za-z_][A-Za-z0-9_]*$/
+                            .test(resource);
+                    if (!declaration_ok || !resource_ok) throw new TypeError(
+                        "invalid FFI resource declaration identity"
+                    );
+                    const backend = require(meta[1]);
+                    const create = Reflect.get(backend, meta[2]);
+                    const close = Reflect.get(backend, meta[3]);
+                    if (typeof create !== "function" || typeof close !== "function") {
+                        throw new RuntimeError(
+                            `FFI resource backend ${meta[1]} lacks ${meta[2]}/${meta[3]}`
+                        );
+                    }
+                    const exception = {
+                        IndexError, OverflowError, RuntimeError, TypeError, ValueError
+                    }[meta[6]];
+                    if (meta[6] !== null && typeof exception !== "function") {
+                        throw new RuntimeError(`unsupported FFI exception ${meta[6]}`);
+                    }
+                    const manifest = backend.__sagejs_ffi_manifest__;
+                    const lifecycle = manifest?.resource_lifecycle;
+                    const first_type = 8;
+                    const kinds = meta.slice(
+                        first_type, first_type + meta[7]
+                    ).map((type) => type.startsWith("resource:") ? 0
+                        : type === "Integer" ? 1 : type === "uint64" ? 2
+                        : type === "bool" ? 3 : type === "UInt64Buffer" ? 4
+                        : type === "ByteBuffer" ? 5 : -1);
+                    p = Object.freeze({
+                        meta: Object.freeze(meta), require, backend, create, close,
+                        exception, kinds: Object.freeze(kinds),
+                        self_finalizes:
+                            manifest?.schema === "sagejs.ffi/generated-host-adapter-v1"
+                            && typeof manifest?.library === "string"
+                            && declaration.startsWith(`${manifest.library}:`)
+                            && lifecycle?.model === "node-api-basic-post-finalizer-v1"
+                            && lifecycle?.self_finalizing === true
+                    });
+                    plans.set(declaration, p);
+                    return p;
+                };
+            })();
+            Object.defineProperty(globalThis, resolver_name, {
+                value: resolve, writable: false, configurable: false,
+                enumerable: false
+            });
         }
-        const marshalled = values.map((value, index) => {
+        if (typeof resolve !== "function") {
+            throw new TypeError("invalid FFI resource plan cache");
+        }
+        const plan = resolve(
+            __sagejs_runtime_require__,
+            declaration_identity,
+            [
+                resource_identity, package_name, create_export, close_export,
+                error_policy, error_message, error_exception,
+                parameter_types.length, ...parameter_types,
+                parameter_minimums.length, ...parameter_minimums
+            ]
+        );
+        const {backend, create, close} = plan;
+        const marshalled = new Array(values.length);
+        for (let index = 0; index < values.length; index++) {
+            let valid = false;
             const type = parameter_types[index];
-            if (type.startsWith("resource:")) {
+            const value = values[index];
+            const kind = plan.kinds[index];
+            if (kind === 0) {
                 const tag = globalThis.__sagejs_ffi_resource_tag__;
                 const state = tag === undefined ? undefined : value?.[tag];
                 if (
@@ -1773,13 +1840,18 @@ def ρσ_ffi_resource_create(
                         `invalid dynamic FFI resource argument for ${type}`
                     );
                 }
-                return state.handle;
-            }
-            if (type === "Integer") {
-                if (typeof value === "bigint") return value;
-                if (Number.isSafeInteger(value)) return BigInt(value);
-            }
-            if (type === "uint64") {
+                marshalled[index] = state.handle;
+                continue;
+            } else if (kind === 1) {
+                if (typeof value === "bigint") {
+                    marshalled[index] = value;
+                    continue;
+                }
+                if (Number.isSafeInteger(value)) {
+                    marshalled[index] = BigInt(value);
+                    continue;
+                }
+            } else if (kind === 2) {
                 const exact = typeof value === "bigint"
                     ? value
                     : Number.isSafeInteger(value) ? BigInt(value) : -1n;
@@ -1790,11 +1862,13 @@ def ρσ_ffi_resource_create(
                             `FFI resource argument is below minimum ${minimum}`
                         );
                     }
-                    return exact;
+                    marshalled[index] = exact;
+                    continue;
                 }
-            }
-            if (type === "bool" && typeof value === "boolean") return value;
-            if (type === "UInt64Buffer") {
+            } else if (kind === 3 && typeof value === "boolean") {
+                marshalled[index] = value;
+                continue;
+            } else if (kind === 4) {
                 if (
                     value !== null
                     && (typeof value === "object"
@@ -1802,7 +1876,7 @@ def ρσ_ffi_resource_create(
                 ) {
                     const length = Number(Reflect.get(value, "length"));
                     if (Number.isSafeInteger(length) && length >= 0) {
-                        if (value instanceof BigUint64Array) return value;
+                        valid = true;
                         for (let position = 0; position < length; position++) {
                             const entry = Reflect.get(value, String(position));
                             const exact = typeof entry === "bigint"
@@ -1815,36 +1889,22 @@ def ρσ_ffi_resource_create(
                                 );
                             }
                         }
-                        return value;
                     }
                 }
-            }
-            if (type === "ByteBuffer") {
+            } else if (kind === 5) {
                 const tagName = Object.prototype.toString.call(value);
-                if (
+                valid = (
                     ArrayBuffer.isView(value)
                     && tagName === "[object Uint8Array]"
                     && value.BYTES_PER_ELEMENT === 1
-                ) {
-                    return value;
-                }
+                );
             }
-            throw new TypeError(
+            if (!valid) throw new TypeError(
                 `invalid dynamic FFI resource argument for ${type}`
             );
-        });
-        const exception_classes = {
-            IndexError, OverflowError, RuntimeError, TypeError, ValueError
-        };
-        const exception_class = exception_classes[error_exception];
-        if (
-            error_exception !== null
-            && typeof exception_class !== "function"
-        ) {
-            throw new RuntimeError(
-                `unsupported FFI exception ${error_exception}`
-            );
+            marshalled[index] = value;
         }
+        const exception_class = plan.exception;
         let handle;
         try {
             handle = Reflect.apply(create, backend, marshalled);
@@ -1877,16 +1937,7 @@ def ρσ_ffi_resource_create(
                 "Sage.js declared FFI resource"
             )
         );
-        const manifest = Reflect.get(backend, "__sagejs_ffi_manifest__");
-        const lifecycle = manifest?.resource_lifecycle;
-        const backend_self_finalizes = (
-            manifest?.schema === "sagejs.ffi/generated-host-adapter-v1"
-            && typeof manifest?.library === "string"
-            && declaration_identity.startsWith(`${manifest.library}:`)
-            && lifecycle?.model === "node-api-basic-post-finalizer-v1"
-            && lifecycle?.self_finalizing === true
-        );
-        const registry = backend_self_finalizes ? null : (
+        const registry = plan.self_finalizes ? null : (
             globalThis.__sagejs_ffi_resource_registry__ ??=
                 new FinalizationRegistry((state) => {
                     if (state.closed) return;
