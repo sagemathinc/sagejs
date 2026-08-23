@@ -366,7 +366,16 @@ class FactoredPrincipalWitness:
 
     @classmethod
     def from_element(cls, value: Any) -> FactoredPrincipalWitness:
-        return cls(value.parent(), [[value, 1]])
+        field = value.parent()
+        element = field(value)
+        if element.is_zero():
+            raise ValueError("zero cannot occur in a principal witness")
+        # A single exponent-one element is already a canonical factorization.
+        # Avoid the generic combine-by-JSON and sorting path used for arbitrary
+        # factor lists while retaining the identical canonical element payload.
+        answer = cls(field, ())
+        answer._factors = [[element, 1, _element_payload(field, element)]]
+        return answer
 
     def factors(self) -> tuple[tuple[Any, int], ...]:
         return tuple((entry[0], entry[1]) for entry in self._factors)

@@ -94,6 +94,13 @@ assert element_valuations(K(2), ()) == ()
 shared_norm_witness = FactoredPrincipalWitness(
     K, ((K(2), 1), (K.gen() + 1, 2))
 )
+single_witness = FactoredPrincipalWitness.from_element(K.gen() + 1)
+assert single_witness.to_dict() == FactoredPrincipalWitness(
+    K, ((K.gen() + 1, 1),)
+).to_dict()
+assert FactoredPrincipalWitness.from_dict(K, single_witness.to_dict()).evaluate() == (
+    K.gen() + 1
+)
 shared_norm_expected = shared_norm_witness.norm()
 element_type = type(K.gen())
 original_element_norm = element_type.norm
