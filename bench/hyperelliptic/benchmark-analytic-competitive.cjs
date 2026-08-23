@@ -110,6 +110,7 @@ function performanceGates(sageRows, pariRows, precisionBits) {
       sagejs_over_pari: initializationRatio,
       target_maximum_ratio: 2,
       passed: initializationRatio !== null && initializationRatio <= 2,
+      comparison: "bounded-4-worker-sagejs-vs-resident-pari",
       contract:
         "each item constructs a new coefficient-prefix plan state and a new LFunctionInit; only exact coefficients are warm",
     },
@@ -290,7 +291,7 @@ async function main() {
   try {
     await session.evaluate(
       [
-        "from sagejs.hyperelliptic_curves.lseries import GlobalCoefficientPrefix, HyperellipticLSeries",
+        "from sagejs.hyperelliptic_curves.lseries import GlobalCoefficientPrefix, HyperellipticLSeries, native_central_weight_values",
         "from sagejs.hyperelliptic_curves.genus3_completion import genus3_candidate_kernel_available",
         "from sagejs.hyperelliptic_curves.periods import clear_period_cache, real_period",
         "import sagejs.hyperelliptic_curves.periods as period_module",
@@ -401,6 +402,15 @@ async function main() {
         samples,
         0,
         3,
+      ),
+    );
+    rows.push(
+      await sageMeasurement(
+        session,
+        `central_plan_order4_${precisionBits}bit_coefficients_warm_single_worker`,
+        `native_central_weight_values(C,${precisionBits},isolated_prefix2(),4,coefficient_workers=1)['values'][-1]['raw_derivatives'][-1]`,
+        samples,
+        1,
       ),
     );
     await session.evaluate(
@@ -580,6 +590,8 @@ async function main() {
       pari_lfuninit: "central domain [1,0,0], derivative order 4",
       initialization_gate:
         "fresh isolated coefficient-prefix state, L-series wrapper, analytic plan, and result per item; exact coefficients alone are warm",
+      sagejs_native_coefficient_workers: 4,
+      equal_core_reference_stage: `central_plan_order4_${precisionBits}bit_coefficients_warm_single_worker`,
       process_cold_ms: Number(processColdMs.toFixed(3)),
       cache_hits_are_separate: true,
       rigorous_claim: false,

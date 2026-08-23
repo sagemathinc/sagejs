@@ -31,6 +31,11 @@ test("the competitive initialization gate measures analytic cache misses", () =>
     /bit_coefficient_prefix_cache_hit_100/u,
   );
   assert.match(source, /bit_same_lseries_cache_hit_100/u);
+  assert.match(source, /bounded-4-worker-sagejs-vs-resident-pari/u);
+  assert.match(
+    source,
+    /bit_coefficients_warm_single_worker/u,
+  );
 });
 
 test(
@@ -85,7 +90,7 @@ test(
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 C = HyperellipticCurve(x, x**3-x+1)
-from sagejs.hyperelliptic_curves.lseries import HyperellipticLSeries
+from sagejs.hyperelliptic_curves.lseries import HyperellipticLSeries, native_central_weight_values
 prefix = C.lseries()._coefficient_prefix
 native_L = C.lseries()
 native = native_L.central_jet(4, prec=32, algorithm="native")
@@ -94,7 +99,14 @@ reference = reference_L.central_jet(4, prec=32, algorithm="inverse_mellin")
 for left, right in zip(native, reference):
     assert float(abs(left-right)) <= 0.000244140625 * max(1.0, float(abs(right)))
 assert native_L.last_diagnostics()["algorithm"] == "native-arb-central-mellin-weights"
+assert native_L.last_diagnostics()["native_stage_diagnostics"]["coefficient_worker_count"] == 4
 assert reference_L.last_diagnostics()["algorithm"] == "native-arb-double-mellin"
+single = native_central_weight_values(C, 32, prefix, 4, coefficient_workers=1)
+assert single is not None
+assert single["native_stage_diagnostics"]["coefficient_worker_count"] == 1
+for left, right in zip(native, single["values"][0]["raw_derivatives"]):
+    single_value = CC(float(right[0]), float(right[1]))
+    assert float(abs(left-single_value)) <= 0.000244140625 * max(1.0, float(abs(left)))
 C3 = HyperellipticCurve(R([0,1,3,5,7,6,4,1]), R([1]))
 prefix3 = C3.lseries()._coefficient_prefix
 native3_L = C3.lseries()

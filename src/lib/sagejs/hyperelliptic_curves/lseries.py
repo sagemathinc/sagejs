@@ -1149,8 +1149,13 @@ def native_central_weight_values(
     precision_bits: int,
     coefficient_prefix: GlobalCoefficientPrefix,
     maximum_derivative: int = 0,
+    coefficient_workers: int | None = None,
 ) -> dict[str, Any] | None:
-    """Evaluate the one-contour central weights with FLINT Arb/Acb."""
+    """Evaluate the one-contour central weights with FLINT Arb/Acb.
+
+    `coefficient_workers` is an internal benchmarking/control hook.  The
+    native backend otherwise selects its bounded production default.
+    """
     try:
         backend = runtime.flint_backend()
         function = _property(backend, "hyperellipticCentralWeights")
@@ -1167,6 +1172,8 @@ def native_central_weight_values(
             precision_bits,
             maximum_derivative,
         ]
+        if coefficient_workers is not None:
+            arguments.append(int(coefficient_workers))
         planned = runtime.reflect.apply(function, backend, arguments)
         required = int(_property(planned, "requiredCutoff"))
         coefficients = coefficient_prefix.through(required)
@@ -1216,6 +1223,20 @@ def native_central_weight_values(
             "coefficient_terms": int(_property(native, "coefficientTerms")),
             "native_stage_diagnostics": {
                 "shared_coarse_fine_coefficient_traversal": True,
+                "coefficient_worker_count": int(
+                    _optional_property(native, "coefficientWorkerCount", 1)
+                ),
+                "coefficient_worker_capability": str(
+                    _optional_property(
+                        native, "coefficientWorkerCapability", "single-worker"
+                    )
+                ),
+                "coefficient_worker_grid_slots": int(
+                    _optional_property(native, "coefficientWorkerGridSlots", 0)
+                ),
+                "coefficient_worker_creation_fallbacks": int(
+                    _optional_property(native, "coefficientWorkerCreationFallbacks", 0)
+                ),
                 "shared_coefficient_logarithms": int(
                     _optional_property(native, "sharedCoefficientLogarithms", 0)
                 ),
@@ -1228,11 +1249,20 @@ def native_central_weight_values(
                 "coefficient_traversal_cpu_seconds": str(
                     _optional_property(native, "coefficientTraversalCpuSeconds", 0)
                 ),
+                "coefficient_traversal_wall_seconds": str(
+                    _optional_property(native, "coefficientTraversalWallSeconds", 0)
+                ),
                 "coarse_completion_cpu_seconds": str(
                     _optional_property(native, "coarseCompletionCpuSeconds", 0)
                 ),
                 "fine_completion_cpu_seconds": str(
                     _optional_property(native, "fineCompletionCpuSeconds", 0)
+                ),
+                "total_cpu_seconds": str(
+                    _optional_property(native, "totalCpuSeconds", 0)
+                ),
+                "total_wall_seconds": str(
+                    _optional_property(native, "totalWallSeconds", 0)
                 ),
             },
             "coefficient_backend_counts": dict(coefficient_prefix.backend_counts),

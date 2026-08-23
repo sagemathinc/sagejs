@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { Worker } = require("node:worker_threads");
 const flint = require("..");
 
 function rootNumber(coefficients) {
@@ -206,11 +207,24 @@ test("genus-2/3 central weights return packed completed and raw jets", () => {
   assert.match(result.analyticErrorStatus, /central_weight_contour/);
   assert.ok(result.coefficientTerms > 0);
   assert.equal(result.sharedCoefficientLogarithms, 1);
+  assert.equal(result.coefficientWorkerCount, process.platform === "win32" ? 1 : 4);
+  assert.equal(
+    result.coefficientWorkerCapability,
+    process.platform === "win32"
+      ? "single-worker-windows-fallback"
+      : "pthread-bounded-4",
+  );
+  assert.ok(result.coefficientWorkerGridSlots > 0);
+  assert.ok(result.coefficientWorkerGridSlots <= 200000);
+  assert.equal(result.coefficientWorkerCreationFallbacks, 0);
   assert.equal(result.coarsePhaseUpdates, result.coarseContourPoints + 1);
   assert.equal(result.finePhaseUpdates, result.contourPoints + 1);
   assert.ok(result.coefficientTraversalCpuSeconds >= 0);
+  assert.ok(result.coefficientTraversalWallSeconds >= 0);
   assert.ok(result.coarseCompletionCpuSeconds >= 0);
   assert.ok(result.fineCompletionCpuSeconds >= 0);
+  assert.ok(result.totalCpuSeconds >= 0);
+  assert.ok(result.totalWallSeconds >= 0);
 });
 
 test("paired central grids retain the independent-grid numerical oracle", () => {
@@ -223,9 +237,10 @@ test("paired central grids retain the independent-grid numerical oracle", () => 
     coefficients[index] = ((index * 17 + 5) % 23) - 11;
   }
   const result = flint.hyperellipticCentralWeights(
-    713n, 1, 2, coefficients, 64, 4,
+    713n, 1, 2, coefficients, 64, 4, 1,
   );
   assert.equal(result.status, "ok");
+  assert.equal(result.coefficientWorkerCount, 1);
   const nonzero = coefficients.reduce(
     (count, coefficient) => count + Number(coefficient !== 0),
     0,
@@ -247,6 +262,20 @@ test("paired central grids retain the independent-grid numerical oracle", () => 
     result.rawDerivatives[4].realMidpoint,
     "4.2928121643628384998414410420705",
   );
+
+  const parallel = flint.hyperellipticCentralWeights(
+    713n, 1, 2, coefficients, 64, 4, 4,
+  );
+  assert.equal(parallel.status, "ok");
+  assert.equal(parallel.coefficientWorkerCount, 4);
+  assert.equal(
+    parallel.rawDerivatives[0].realMidpoint.slice(0, 26),
+    result.rawDerivatives[0].realMidpoint.slice(0, 26),
+  );
+  assert.equal(
+    parallel.rawDerivatives[4].realMidpoint.slice(0, 26),
+    result.rawDerivatives[4].realMidpoint.slice(0, 26),
+  );
   assert.equal(
     result.completedDerivatives[2].realMidpoint,
     "0.31292051296699307030470448036596",
@@ -256,4 +285,34 @@ test("paired central grids retain the independent-grid numerical oracle", () => 
     "0.63750381200009793494268854314495",
   );
   assert.ok(result.refinementStable);
+});
+
+test("parallel central grids cooperatively observe a shared cancellation flag", async () => {
+  const probe = flint.hyperellipticCentralWeights(
+    713n, 1, 2, new Int32Array([0, 1]), 64, 4,
+  );
+  const coefficients = new Int32Array(probe.requiredCutoff + 1);
+  coefficients.fill(7, 1);
+  const shared = new SharedArrayBuffer(Uint32Array.BYTES_PER_ELEMENT);
+  const cancel = new Uint32Array(shared);
+  const worker = new Worker(
+    `const { parentPort, workerData } = require("node:worker_threads");
+     const flag = new Int32Array(workerData);
+     parentPort.on("message", () => {
+       Atomics.wait(flag, 0, 0, 5);
+       Atomics.store(flag, 0, 1);
+     });
+     parentPort.postMessage("ready");`,
+    { eval: true, workerData: shared },
+  );
+  try {
+    await new Promise((resolve) => worker.once("message", resolve));
+    worker.postMessage("go");
+    const result = flint.hyperellipticCentralWeights(
+      713n, 1, 2, coefficients, 64, 4, 4, cancel,
+    );
+    assert.equal(result.status, "cancelled");
+  } finally {
+    await worker.terminate();
+  }
 });
