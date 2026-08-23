@@ -4,7 +4,14 @@
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
-const { existsSync, readFileSync, realpathSync, writeFileSync } = require("node:fs");
+const {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
 const os = require("node:os");
 const { dirname, join, relative, resolve } = require("node:path");
 const { performance } = require("node:perf_hooks");
@@ -834,6 +841,47 @@ witness.  Neither backend is labeled rigorous.
 `;
 }
 
+function finalizeReceipt(receipt, options, sourceStatus, reportRenderer = renderReport) {
+  const serialized = `${JSON.stringify(receipt, null, 2)}\n`;
+  if (options.output) writeFileSync(options.output, serialized);
+  else process.stdout.write(serialized);
+  if (options.report) writeFileSync(options.report, reportRenderer(receipt));
+
+  if (receipt.acceptance) {
+    assert.equal(sourceStatus, "", "acceptance receipt requires a clean source tree");
+    assert(
+      receipt.validation.fivefold_exit_gate,
+      `same-host speedup ${receipt.validation.same_host_process_cold_speedup} is below 5x`,
+    );
+  }
+}
+
+function verifyFailedGateSerialization() {
+  const temporaryDirectory = mkdtempSync(
+    join(os.tmpdir(), "sagejs-genus3-height-finalize-"),
+  );
+  const output = join(temporaryDirectory, "receipt.json");
+  const report = join(temporaryDirectory, "report.md");
+  const receipt = {
+    schema: "sagejs.hyperelliptic-genus3-height-acceptance.v1",
+    acceptance: true,
+    validation: {
+      same_host_process_cold_speedup: 4.5,
+      fivefold_exit_gate: false,
+    },
+  };
+  try {
+    assert.throws(
+      () => finalizeReceipt(receipt, { output, report }, "", () => "failed gate\n"),
+      /same-host speedup 4\.5 is below 5x/,
+    );
+    assert.deepEqual(JSON.parse(readFileSync(output, "utf8")), receipt);
+    assert.equal(readFileSync(report, "utf8"), "failed gate\n");
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
 function parseArguments() {
   const options = {
     check: false,
@@ -922,6 +970,7 @@ async function main() {
   verifyHistoricalObject();
   assert(existsSync(magmaTimingScript));
   if (options.check) {
+    verifyFailedGateSerialization();
     process.stdout.write(
       `Genus-3 height benchmark sources verified (${expectedFixtureScriptSha256.slice(0, 12)}, historical ${historicalCommit.slice(0, 12)}, timing ${fileSha256(magmaTimingScript).slice(0, 12)})\n`,
     );
@@ -1045,14 +1094,7 @@ async function main() {
     magma_timing_gate: "not-applicable; descriptive/non-gating",
   };
 
-  if (receipt.acceptance) {
-    assert.equal(sourceStatus, "", "acceptance receipt requires a clean source tree");
-    assert(receipt.validation.fivefold_exit_gate, `same-host speedup ${speedup} is below 5x`);
-  }
-  const serialized = `${JSON.stringify(receipt, null, 2)}\n`;
-  if (options.output) writeFileSync(options.output, serialized);
-  else process.stdout.write(serialized);
-  if (options.report) writeFileSync(options.report, renderReport(receipt));
+  finalizeReceipt(receipt, options, sourceStatus);
 }
 
 main().catch((error) => {
