@@ -105,6 +105,28 @@ Each receipt pins commit, source hashes, CPU, operating system, compiler, Node,
 native profile, Magma version, PARI version, precision, algorithm options,
 warmup count, repetition count, and exact result digest.
 
+### Available performance hosts
+
+Use the following named machines rather than anonymous or incidental hosts:
+
+| SSH target | Architecture and operating system | Role |
+|---|---|---|
+| `ssh bench-1` | x86-64 Linux | Primary quiet acceptance host; the only host with Magma; run Sage.js/Magma and any available PARI/SageMath comparisons here. |
+| `ssh bench-arm` | aarch64 Linux | Native ARM64 correctness, standalone-core overhead, memory, and architecture-specific performance. |
+| `ssh m1` | Apple Silicon macOS | Native macOS ARM64 correctness, performance, packaging, and optional Metal/WebGPU work. |
+| `ssh windows` | Windows Server | Native Windows x64 correctness, performance, packaging, worker, and cancellation behavior. |
+
+Magma performance comparisons are therefore made **only on `bench-1`**.  Do
+not copy its Magma timing into an ARM, macOS, or Windows table, and do not mark
+the missing competitor executable as a Sage.js win.  On `bench-arm`, `m1`, and
+`windows`, compare Sage.js with its same-source standalone core, its previous
+per-host receipt, and Wasm where available.  Record PARI or SageMath comparison
+rows only on machines where the exact pinned executable is actually present.
+
+Absolute timings across different architectures are descriptive, not direct
+speed ratios.  Architecture gates compare each host with its own committed
+baseline and require exact cross-host output digests.
+
 ### Performance gates
 
 The program has three levels of success:
@@ -120,6 +142,9 @@ The program has three levels of success:
 
 These are workload-specific gates, not universal marketing claims.  A failure
 must name the dominant stage and remain visible in the benchmark report.
+The Magma-relative portions of these gates refer to `bench-1`; the
+cross-platform gates refer to each named host's own Sage.js/standalone
+baseline.
 
 ## Current evidence and the actual gaps
 
@@ -396,10 +421,10 @@ with exact projective iteration retained as a readable small-step oracle.
 
 The host-independent core must compile for:
 
-- Linux x86-64;
-- Linux arm64;
-- macOS Apple Silicon;
-- native Windows x64;
+- Linux x86-64 on `bench-1`;
+- Linux arm64 on `bench-arm`;
+- macOS Apple Silicon on `m1`;
+- native Windows x64 on `windows`;
 - WebAssembly/WASI when the required integer/field primitives are available.
 
 Wasm uses checked copied-byte transfers and bounded chunks.  It must produce
@@ -416,8 +441,9 @@ capability/fallback result rather than a packaging crash.
 3. Require result equality before emitting a timing row.
 4. Record dynamic Sage.js, current native Sage.js, standalone native cores,
    Magma, PARI where applicable, and SageMath.
-5. Check in Linux x64 cold/warm/batch receipts and smoke receipts for the
-   other supported platforms.
+5. Check in the full Linux x64 Sage.js/Magma/PARI receipt from `bench-1` and
+   Sage.js/standalone/Wasm cold/warm/batch receipts from `bench-arm`, `m1`, and
+   `windows`.
 6. Add a human-readable report generated from the JSON, not hand-copied
    timings.
 
@@ -625,8 +651,8 @@ Exit criteria:
 
 1. Derive crossover thresholds from full public workloads, not kernel-only
    microbenchmarks.
-2. Record native and Wasm exact digests on Linux x64/arm64, macOS arm64, and
-   Windows x64.
+2. Record native and Wasm exact digests on `bench-1`, `bench-arm`, `m1`, and
+   `windows` from the same exact commit and corpus.
 3. Run address/undefined/leak sanitizers on native resource paths.
 4. Test missing artifact, cancellation, memory exhaustion, worker loss, and
    cache corruption.
@@ -717,6 +743,9 @@ versions, retain both receipts instead of rewriting history.
 - fingerprint `bench-1` hardware and operating-system images on every run so a
   recreated or resized VM starts a new comparable series rather than silently
   replacing the old baseline;
+- apply the corresponding platform-native preflight on `bench-arm`, `m1`, and
+  `windows`; record Unix `uptime`/process data on the first two and PowerShell
+  system, load, and process data on Windows;
 - pin CPU governor and thread counts where possible;
 - report rather than hide shared-host status;
 - alternate system order to reduce thermal bias;
