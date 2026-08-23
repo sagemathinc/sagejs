@@ -1,9 +1,38 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { mkdtempSync, rmSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join } = require("node:path");
+const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
+const { compile } = require("@sagemath/sagejs/native");
 const { createSage } = require("../dist/tools/kernel.js");
+
+const root = join(__dirname, "..");
+const sagejs = join(root, "bin", "sagejs");
+const periodSource = join(
+  root,
+  "src",
+  "lib",
+  "sagejs",
+  "hyperelliptic_curves",
+  "periods.py",
+);
+
+function runSage(source, environment) {
+  const result = spawnSync(process.execPath, [sagejs, "--python"], {
+    cwd: root,
+    encoding: "utf8",
+    env: { ...process.env, ...environment },
+    input: source,
+    timeout: 180_000,
+  });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return result.stdout.trim();
+}
 
 test(
   "bounded Arb edge batches match arbitrary-precision Python quadrature",
@@ -75,6 +104,85 @@ True
       assert.equal(result.repr, "True");
     } finally {
       await session.close();
+    }
+  },
+);
+
+test(
+  "packed sign and conjugation preselectors match arbitrary precision",
+  { timeout: 180_000 },
+  async () => {
+    const cache = mkdtempSync(join(tmpdir(), "sagejs-period-assembly-native-"));
+    try {
+      const compiled = await compile({
+        sourcePath: periodSource,
+        cacheRoot: cache,
+      });
+      for (const name of [
+        "_period_sign_mask_float64_kernel",
+        "_conjugation_action_float64_kernel",
+      ]) {
+        assert.equal(
+          compiled.ir.functions.find((item) => item.name === name).kernelKind,
+          "float64",
+        );
+      }
+      const witness = String.raw`
+from mpmath import mp
+import sagejs.hyperelliptic_curves.periods as period_module
+from sagejs.native import is_compiled
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+summary = []
+for curve in (
+    HyperellipticCurve(x**5-x+1),
+    HyperellipticCurve(x**7-x+1, x**2),
+):
+    genus = int(curve.genus())
+    completed, coefficients = period_module._completed_model(curve)
+    with mp.workprec(128):
+        geometry = period_module._branch_geometry(curve, completed, 128)
+        arb = period_module._edge_integrals_arb(
+            geometry["ordered_points"],
+            period_module._mp_exact(coefficients[-1]),
+            genus,
+            4,
+            16,
+            112,
+        )
+        assert arb is not None
+        edges, _diagnostics = arb
+        selected = period_module._periods_from_edges(edges, genus)
+        exhaustive = period_module._periods_from_edges(edges, genus, True)
+        difference = period_module._maximum_matrix_difference(
+            selected["period_matrix"], exhaustive["period_matrix"]
+        )
+        assert difference < mp.power(2, -90), difference
+        candidate = period_module._float64_conjugation_preselection(
+            selected["period_matrix"], genus
+        )
+        assert candidate is not None
+        tolerance = mp.power(2, -80)
+        checked = period_module._conjugation_action(
+            selected["period_matrix"], genus, tolerance, candidate
+        )
+        derived = period_module._conjugation_action(
+            selected["period_matrix"], genus, tolerance, None
+        )
+        assert checked["matrix"] == derived["matrix"]
+        summary.append((genus, checked["matrix"]))
+print(summary)
+`;
+      const native = runSage(`${witness}\nassert is_compiled(period_module._period_sign_mask_float64_kernel)\nassert is_compiled(period_module._conjugation_action_float64_kernel)`, {
+        SAGEJS_NATIVE_CACHE_DIR: cache,
+      });
+      const dynamic = runSage(witness, {
+        SAGEJS_NATIVE_CACHE_DIR: cache,
+        SAGEJS_NATIVE_DISABLE: "1",
+      });
+      assert.equal(native, dynamic);
+    } finally {
+      rmSync(cache, { recursive: true, force: true });
     }
   },
 );

@@ -118,6 +118,7 @@ async function main() {
   try {
     await session.evaluate(
       [
+        "import time",
         "from sagejs.hyperelliptic_curves.periods import clear_period_cache, real_period",
         "R=PolynomialRing(QQ,'x')",
         "def qr(t):",
@@ -131,23 +132,26 @@ async function main() {
     );
     for (let caseIndex = 0; caseIndex < cases.length; caseIndex += 1) {
       const timings = [];
+      const transportTimings = [];
       let representation = null;
-      await session.evaluate(
-        `clear_period_cache(); p=real_period(curves[${caseIndex}],prec=64,use_cache=False); expected=RealField(64)(period_cases[${caseIndex}]['expected']); assert abs(p.model_period()-expected)/expected<RealField(64)('1e-15'); True`,
+      const validated = await session.evaluate(
+        `clear_period_cache(); p=real_period(curves[${caseIndex}],prec=64,use_cache=False); expected=RealField(64)(period_cases[${caseIndex}]['expected']); assert abs(p.model_period()-expected)/expected<RealField(64)('1e-15'); (str(p.model_period()),p.achieved_stability_bits,tuple(tuple(a['engine'] for a in r['quadrature_attempts']) for r in p.diagnostics()['refinement_runs']))`,
         { timeout: 300_000 },
       );
+      representation = validated.repr;
       for (let sample = 0; sample < samples; sample += 1) {
         const started = performance.now();
         const result = await session.evaluate(
-          `clear_period_cache(); p=real_period(curves[${caseIndex}],prec=64,use_cache=False); (str(p.model_period()),p.achieved_stability_bits,tuple(tuple(a['engine'] for a in r['quadrature_attempts']) for r in p.diagnostics()['refinement_runs']))`,
+          `clear_period_cache(); period_started=time.perf_counter(); p=real_period(curves[${caseIndex}],prec=64,use_cache=False); (time.perf_counter()-period_started)*1000`,
           { timeout: 300_000 },
         );
-        timings.push(performance.now() - started);
-        representation = result.repr;
+        transportTimings.push(performance.now() - started);
+        timings.push(Number(result.repr));
       }
       rows.push({
         id: cases[caseIndex].id,
         ...summarize(timings),
+        transport: summarize(transportTimings),
         result: representation,
         expected: cases[caseIndex].expected,
       });
@@ -172,7 +176,10 @@ async function main() {
         },
         contract: {
           precision_bits: 64,
-          sagejs: "resident process, cold exact topology and public result; cache disabled",
+          sagejs:
+            "resident process, cold exact topology and public result; cache disabled; wall time measured inside Sage.js",
+          sagejs_transport:
+            "Node/kernel request wall time is recorded separately and excluded from arithmetic comparison",
           pari: "resident GP process, hyperellperiods(model,2)",
           result_oracle: "pinned PARI 2.18.1-alpha decimal corpus",
           rigorous: false,
