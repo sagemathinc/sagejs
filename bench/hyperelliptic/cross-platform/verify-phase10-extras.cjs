@@ -61,6 +61,11 @@ for (const { path, value } of receipts) {
   assert.equal(value.wasm.resource_bounds.short_output_unchanged, true);
   assert.notEqual(value.wasm.cancellation.exit_code, 0);
   assert.equal(value.wasm.cancellation.recovery_stdout, "42");
+  assert.equal(
+    value.wasm.package_load_test.status,
+    value.wasm.package_load_test.exit_code === 0 ? "passed" : "failed",
+  );
+  assert.match(value.wasm.package_load_test.stdout_sha256, /^[0-9a-f]{64}$/);
   if (value.host.platform === "win32") {
     assert.equal(value.standalone.status, "unavailable");
     assert.match(value.standalone.reason, /POSIX static-archive/);
