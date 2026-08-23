@@ -831,140 +831,147 @@ def _matrix_maximum(values: Any) -> Any:
     return answer
 
 
-def _float64_period_sign_mask(edges: list[list[Any]], genus: int) -> int | None:
-    """Select the positive near-symmetric sign pattern in binary64.
+@native
+def _period_sign_mask_float64_kernel(
+    edge_data: Float64Buffer,
+    sign_data: Float64Buffer,
+    workspace: Float64Buffer,
+    output: Float64Buffer,
+    genus: uint64,
+    mask_count: uint64,
+) -> float:
+    """Preselect one Riemann-positive edge-sign mask in a packed call.
 
-    This is only a preselector.  The chosen pattern is reconstructed and
-    validated with the arbitrary-precision Riemann gates below; a failed
-    preselection falls back to the exhaustive arbitrary-precision search.
+    The output remains only a binary64 candidate.  `_periods_from_edges`
+    reconstructs the corresponding matrices at arbitrary precision and
+    applies the full symmetry and positivity gates before accepting it.
     """
     width = 2 * genus
-    a_real = [0.0 for _index in range(genus * genus)]
-    a_imag = [0.0 for _index in range(genus * genus)]
-    edge_real = [0.0 for _index in range(2 * genus * genus)]
-    edge_imag = [0.0 for _index in range(2 * genus * genus)]
-    for edge in range(2 * genus):
-        for row in range(genus):
-            index = edge * genus + row
-            edge_real[index] = runtime.parse_float(str(mp.re(edges[edge][row])))
-            edge_imag[index] = runtime.parse_float(str(mp.im(edges[edge][row])))
-    for row in range(genus):
-        for column in range(genus):
-            target = row * genus + column
-            source = (2 * column) * genus + row
-            a_real[target] = 2.0 * edge_real[source]
-            a_imag[target] = 2.0 * edge_imag[source]
+    square = genus * genus
+    augmented_real_start: uint64 = 0
+    augmented_imag_start: uint64 = 2 * square
+    inverse_real_start: uint64 = 4 * square
+    inverse_imag_start: uint64 = 5 * square
+    b_real_start: uint64 = 6 * square
+    b_imag_start: uint64 = 7 * square
+    tau_real_start: uint64 = 8 * square
+    tau_imag_start: uint64 = 9 * square
+    output[0] = 64.0
 
-    augmented_real = [0.0 for _index in range(genus * width)]
-    augmented_imag = [0.0 for _index in range(genus * width)]
     for row in range(genus):
         for column in range(genus):
-            source = row * genus + column
+            source = 2 * ((2 * column) * genus + row)
             target = row * width + column
-            augmented_real[target] = a_real[source]
-            augmented_imag[target] = a_imag[source]
-        augmented_real[row * width + genus + row] = 1.0
+            workspace[augmented_real_start + target] = 2.0 * edge_data[source]
+            workspace[augmented_imag_start + target] = 2.0 * edge_data[source + 1]
+        workspace[augmented_real_start + row * width + genus + row] = 1.0
     for column in range(genus):
         pivot = column
         pivot_norm = 0.0
         for row in range(column, genus):
             index = row * width + column
-            norm = (
-                augmented_real[index] * augmented_real[index]
-                + augmented_imag[index] * augmented_imag[index]
-            )
+            real = workspace[augmented_real_start + index]
+            imaginary = workspace[augmented_imag_start + index]
+            norm = real * real + imaginary * imaginary
             if norm > pivot_norm:
                 pivot = row
                 pivot_norm = norm
         if pivot_norm == 0.0:
-            return None
+            return 64.0
         if pivot != column:
             for entry in range(width):
                 left = column * width + entry
                 right = pivot * width + entry
-                temporary = augmented_real[left]
-                augmented_real[left] = augmented_real[right]
-                augmented_real[right] = temporary
-                temporary = augmented_imag[left]
-                augmented_imag[left] = augmented_imag[right]
-                augmented_imag[right] = temporary
+                temporary = workspace[augmented_real_start + left]
+                workspace[augmented_real_start + left] = workspace[
+                    augmented_real_start + right
+                ]
+                workspace[augmented_real_start + right] = temporary
+                temporary = workspace[augmented_imag_start + left]
+                workspace[augmented_imag_start + left] = workspace[
+                    augmented_imag_start + right
+                ]
+                workspace[augmented_imag_start + right] = temporary
         pivot_index = column * width + column
-        pivot_real = augmented_real[pivot_index]
-        pivot_imag = augmented_imag[pivot_index]
+        pivot_real = workspace[augmented_real_start + pivot_index]
+        pivot_imag = workspace[augmented_imag_start + pivot_index]
         pivot_denominator = pivot_real * pivot_real + pivot_imag * pivot_imag
         for entry in range(width):
             index = column * width + entry
-            real = augmented_real[index]
-            imaginary = augmented_imag[index]
-            augmented_real[index] = (
+            real = workspace[augmented_real_start + index]
+            imaginary = workspace[augmented_imag_start + index]
+            workspace[augmented_real_start + index] = (
                 real * pivot_real + imaginary * pivot_imag
             ) / pivot_denominator
-            augmented_imag[index] = (
+            workspace[augmented_imag_start + index] = (
                 imaginary * pivot_real - real * pivot_imag
             ) / pivot_denominator
         for row in range(genus):
-            if row == column:
-                continue
-            factor_index = row * width + column
-            factor_real = augmented_real[factor_index]
-            factor_imag = augmented_imag[factor_index]
-            for entry in range(width):
-                source = column * width + entry
-                target = row * width + entry
-                augmented_real[target] -= (
-                    factor_real * augmented_real[source]
-                    - factor_imag * augmented_imag[source]
-                )
-                augmented_imag[target] -= (
-                    factor_real * augmented_imag[source]
-                    + factor_imag * augmented_real[source]
-                )
+            if row != column:
+                factor_index = row * width + column
+                factor_real = workspace[augmented_real_start + factor_index]
+                factor_imag = workspace[augmented_imag_start + factor_index]
+                for entry in range(width):
+                    source = column * width + entry
+                    target = row * width + entry
+                    source_real = workspace[augmented_real_start + source]
+                    source_imag = workspace[augmented_imag_start + source]
+                    workspace[augmented_real_start + target] -= (
+                        factor_real * source_real - factor_imag * source_imag
+                    )
+                    workspace[augmented_imag_start + target] -= (
+                        factor_real * source_imag + factor_imag * source_real
+                    )
 
-    inverse_real = [0.0 for _index in range(genus * genus)]
-    inverse_imag = [0.0 for _index in range(genus * genus)]
     for row in range(genus):
         for column in range(genus):
             source = row * width + genus + column
             target = row * genus + column
-            inverse_real[target] = augmented_real[source]
-            inverse_imag[target] = augmented_imag[source]
+            workspace[inverse_real_start + target] = workspace[
+                augmented_real_start + source
+            ]
+            workspace[inverse_imag_start + target] = workspace[
+                augmented_imag_start + source
+            ]
 
-    best_mask = None
-    best_score = runtime.number.POSITIVE_INFINITY
-    for mask in range(1 << (2 * genus - 1)):
-        signs = [1]
-        for index in range(1, 2 * genus):
-            signs.append(-1 if mask & (1 << (index - 1)) else 1)
-        b_real = [0.0 for _index in range(genus * genus)]
-        b_imag = [0.0 for _index in range(genus * genus)]
+    best_score = 1.0e300
+    for mask in range(mask_count):
+        for index in range(4 * square):
+            workspace[b_real_start + index] = 0.0
         for row in range(genus):
             for column in range(genus):
                 target = row * genus + column
                 for item in range(column, genus):
-                    source = (2 * item + 1) * genus + row
-                    b_real[target] += 2.0 * signs[2 * item + 1] * edge_real[source]
-                    b_imag[target] += 2.0 * signs[2 * item + 1] * edge_imag[source]
-        tau_real = [0.0 for _index in range(genus * genus)]
-        tau_imag = [0.0 for _index in range(genus * genus)]
+                    odd_edge = 2 * item + 1
+                    sign = sign_data[mask * width + odd_edge]
+                    source = 2 * (odd_edge * genus + row)
+                    workspace[b_real_start + target] += 2.0 * sign * edge_data[source]
+                    workspace[b_imag_start + target] += (
+                        2.0 * sign * edge_data[source + 1]
+                    )
         maximum = 1.0
         for row in range(genus):
+            even_sign = sign_data[mask * width + 2 * row]
             for column in range(genus):
                 target = row * genus + column
                 for index in range(genus):
                     left = row * genus + index
                     right = index * genus + column
-                    tau_real[target] += signs[2 * row] * (
-                        inverse_real[left] * b_real[right]
-                        - inverse_imag[left] * b_imag[right]
+                    workspace[tau_real_start + target] += even_sign * (
+                        workspace[inverse_real_start + left]
+                        * workspace[b_real_start + right]
+                        - workspace[inverse_imag_start + left]
+                        * workspace[b_imag_start + right]
                     )
-                    tau_imag[target] += signs[2 * row] * (
-                        inverse_real[left] * b_imag[right]
-                        + inverse_imag[left] * b_real[right]
+                    workspace[tau_imag_start + target] += even_sign * (
+                        workspace[inverse_real_start + left]
+                        * workspace[b_imag_start + right]
+                        + workspace[inverse_imag_start + left]
+                        * workspace[b_real_start + right]
                     )
-                norm = sqrt(
-                    tau_real[target] * tau_real[target]
-                    + tau_imag[target] * tau_imag[target]
-                )
+                real = workspace[tau_real_start + target]
+                imaginary = workspace[tau_imag_start + target]
+                norm = sqrt(real * real + imaginary * imaginary)
                 if norm > maximum:
                     maximum = norm
         defect = 0.0
@@ -972,36 +979,79 @@ def _float64_period_sign_mask(edges: list[list[Any]], genus: int) -> int | None:
             for column in range(genus):
                 left = row * genus + column
                 right = column * genus + row
-                real = tau_real[left] - tau_real[right]
-                imaginary = tau_imag[left] - tau_imag[right]
+                real = (
+                    workspace[tau_real_start + left] - workspace[tau_real_start + right]
+                )
+                imaginary = (
+                    workspace[tau_imag_start + left] - workspace[tau_imag_start + right]
+                )
                 difference = sqrt(real * real + imaginary * imaginary)
                 if difference > defect:
                     defect = difference
         score = defect / maximum
+        accepted: uint64 = 1
         if score >= best_score:
-            continue
-        y00 = tau_imag[0]
+            accepted = 0
+        y00 = workspace[tau_imag_start]
         if y00 <= 0.0:
-            continue
-        y01 = (tau_imag[1] + tau_imag[genus]) / 2.0
-        y11 = tau_imag[genus + 1]
+            accepted = 0
+        y01 = (workspace[tau_imag_start + 1] + workspace[tau_imag_start + genus]) / 2.0
+        y11 = workspace[tau_imag_start + genus + 1]
         determinant2 = y00 * y11 - y01 * y01
         if determinant2 <= 0.0:
-            continue
+            accepted = 0
         if genus == 3:
-            y02 = (tau_imag[2] + tau_imag[2 * genus]) / 2.0
-            y12 = (tau_imag[genus + 2] + tau_imag[2 * genus + 1]) / 2.0
-            y22 = tau_imag[2 * genus + 2]
+            y02 = (
+                workspace[tau_imag_start + 2] + workspace[tau_imag_start + 2 * genus]
+            ) / 2.0
+            y12 = (
+                workspace[tau_imag_start + genus + 2]
+                + workspace[tau_imag_start + 2 * genus + 1]
+            ) / 2.0
+            y22 = workspace[tau_imag_start + 2 * genus + 2]
             determinant3 = (
                 y00 * (y11 * y22 - y12 * y12)
                 - y01 * (y01 * y22 - y12 * y02)
                 + y02 * (y01 * y12 - y11 * y02)
             )
             if determinant3 <= 0.0:
-                continue
-        best_mask = mask
-        best_score = score
-    return best_mask
+                accepted = 0
+        if accepted == 1:
+            output[0] = float(mask)
+            best_score = score
+    return best_score
+
+
+def _float64_period_sign_mask(edges: list[list[Any]], genus: int) -> int | None:
+    """Select the positive near-symmetric sign pattern in binary64.
+
+    This is only a preselector.  The chosen pattern is reconstructed and
+    validated with the arbitrary-precision Riemann gates below; a failed
+    preselection falls back to the exhaustive arbitrary-precision search.
+    """
+    edge_data = []
+    for edge in range(2 * genus):
+        for row in range(genus):
+            edge_data.extend(
+                [
+                    runtime.parse_float(str(mp.re(edges[edge][row]))),
+                    runtime.parse_float(str(mp.im(edges[edge][row]))),
+                ]
+            )
+    kernel = _period_sign_mask_float64_kernel
+    mask_count = 1 << (2 * genus - 1)
+    sign_data = []
+    for mask in range(mask_count):
+        sign_data.append(1.0)
+        for edge in range(1, 2 * genus):
+            sign_data.append(-1.0 if mask & (1 << (edge - 1)) else 1.0)
+    packed_edges = kernel_float64_buffer(kernel, edge_data)
+    packed_signs = kernel_float64_buffer(kernel, sign_data)
+    workspace = kernel_float64_zeros(kernel, 10 * genus * genus)
+    output = kernel_float64_zeros(kernel, 1)
+    kernel(packed_edges, packed_signs, workspace, output, genus, mask_count)
+    mask = int(output[0])
+    return None if mask == 64 else mask
 
 
 def _periods_from_edges(
@@ -1119,6 +1169,106 @@ def _integer_matrix_product(
             for column in range(len(right[0]))
         ]
         for row in range(len(left))
+    ]
+
+
+@native
+def _conjugation_action_float64_kernel(
+    period_data: Float64Buffer,
+    workspace: Float64Buffer,
+    output: Float64Buffer,
+    genus: uint64,
+) -> float:
+    """Solve `B^-1 diag(1,-1) B` as one packed binary64 preselection.
+
+    This kernel does not certify integrality.  Its rounded output is always
+    checked against the arbitrary-precision period matrix by
+    `_conjugation_action`, including the involution and anti-symplectic gates.
+    """
+    dimension = 2 * genus
+    width = 2 * dimension
+    for row in range(dimension):
+        sign = 1.0
+        period_row = row
+        component: uint64 = 0
+        if row >= genus:
+            sign = -1.0
+            period_row = row - genus
+            component = 1
+        for column in range(dimension):
+            source = 2 * (period_row * dimension + column) + component
+            value = period_data[source]
+            workspace[row * width + column] = value
+            workspace[row * width + dimension + column] = sign * value
+
+    minimum_pivot = 1.0e300
+    for column in range(dimension):
+        pivot = column
+        pivot_norm = 0.0
+        for row in range(column, dimension):
+            value = workspace[row * width + column]
+            norm = value * value
+            if norm > pivot_norm:
+                pivot = row
+                pivot_norm = norm
+        if pivot_norm == 0.0:
+            return 0.0
+        pivot_size = sqrt(pivot_norm)
+        if pivot_size < minimum_pivot:
+            minimum_pivot = pivot_size
+        if pivot != column:
+            for entry in range(width):
+                left = column * width + entry
+                right = pivot * width + entry
+                temporary = workspace[left]
+                workspace[left] = workspace[right]
+                workspace[right] = temporary
+        pivot_value = workspace[column * width + column]
+        for entry in range(width):
+            index = column * width + entry
+            workspace[index] /= pivot_value
+        for row in range(dimension):
+            if row != column:
+                factor = workspace[row * width + column]
+                for entry in range(width):
+                    workspace[row * width + entry] -= (
+                        factor * workspace[column * width + entry]
+                    )
+
+    for row in range(dimension):
+        for column in range(dimension):
+            output[row * dimension + column] = workspace[
+                row * width + dimension + column
+            ]
+    return minimum_pivot
+
+
+def _float64_conjugation_preselection(
+    period_matrix: Any, genus: int
+) -> list[list[int]] | None:
+    """Return a packed binary64 candidate for full-precision validation."""
+    dimension = 2 * genus
+    period_data = []
+    for row in range(genus):
+        for column in range(dimension):
+            period_data.extend(
+                [
+                    runtime.parse_float(str(mp.re(period_matrix[row, column]))),
+                    runtime.parse_float(str(mp.im(period_matrix[row, column]))),
+                ]
+            )
+    kernel = _conjugation_action_float64_kernel
+    packed_periods = kernel_float64_buffer(kernel, period_data)
+    workspace = kernel_float64_zeros(kernel, 2 * dimension * dimension)
+    output = kernel_float64_zeros(kernel, dimension * dimension)
+    minimum_pivot = kernel(packed_periods, workspace, output, genus)
+    if not isfinite(minimum_pivot) or minimum_pivot <= 1.0e-14:
+        return None
+    if any(not isfinite(output[index]) for index in range(dimension * dimension)):
+        return None
+    return [
+        [int(mp.nint(output[row * dimension + column])) for column in range(dimension)]
+        for row in range(dimension)
     ]
 
 
@@ -1502,12 +1652,36 @@ def _run_period_computation(
                 "the Riemann symmetry relation did not stabilize after adaptive quadrature refinement",
                 {"attempts": quadrature_attempts},
             )
-        action = _conjugation_action(
-            periods["period_matrix"],
-            genus,
-            128 * internal_tolerance,
-            preferred_conjugation,
-        )
+        conjugation_preselected = False
+        action_preference = preferred_conjugation
+        if action_preference is None:
+            action_preference = _float64_conjugation_preselection(
+                periods["period_matrix"], genus
+            )
+            conjugation_preselected = action_preference is not None
+        if preferred_conjugation is None and action_preference is not None:
+            try:
+                action = _conjugation_action(
+                    periods["period_matrix"],
+                    genus,
+                    128 * internal_tolerance,
+                    action_preference,
+                )
+            except HyperellipticPeriodCapabilityError:
+                conjugation_preselected = False
+                action = _conjugation_action(
+                    periods["period_matrix"],
+                    genus,
+                    128 * internal_tolerance,
+                    None,
+                )
+        else:
+            action = _conjugation_action(
+                periods["period_matrix"],
+                genus,
+                128 * internal_tolerance,
+                action_preference,
+            )
         lattice = _real_lattice_data(
             periods["period_matrix"],
             action["matrix"],
@@ -1528,6 +1702,7 @@ def _run_period_computation(
                 else int(quadrature_evidence_bits)
             ),
             "conjugation_action_reused": preferred_conjugation is not None,
+            "conjugation_action_preselected": conjugation_preselected,
             "geometry": geometry,
             "periods": periods,
             "action": action,
