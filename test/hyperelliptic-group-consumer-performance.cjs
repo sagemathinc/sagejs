@@ -277,13 +277,21 @@ assert J.order() == 32
 assert J.group_structure(algorithm="basis", seed=3) == (2, 2, 8)
 assert J.group_structure(algorithm="exhaustive", seed=3) == (2, 2, 8)
 original_generic_basis = J._generic_group_basis
+original_points = J.points
+point_enumerations = [0]
 def forbidden_repeated_basis(*_args, **_kwds):
     raise AssertionError("a complete tiny group must reuse exhaustive points")
+def counted_points(*args, **kwds):
+    point_enumerations[0] += 1
+    return original_points(*args, **kwds)
 J._generic_group_basis = forbidden_repeated_basis
+J.points = counted_points
 try:
     G, phi = J.abelian_group(algorithm="exhaustive", seed=3)
 finally:
     J._generic_group_basis = original_generic_basis
+    J.points = original_points
+assert point_enumerations[0] == 1
 assert G.invariants() == (2, 2, 8)
 assert len(phi._inverse_coordinates) == 32
 assert phi._certificate is None

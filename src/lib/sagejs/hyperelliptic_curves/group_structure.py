@@ -733,6 +733,17 @@ def invariant_factors_from_elements(
         raise ArithmeticError(
             "computed group invariants do not multiply to the group order"
         )
+    # The automatic tiny-group path has already paid for a complete exact
+    # enumeration.  Retain only this bounded case on the Jacobian so the
+    # immediately following explicit-map request does not enumerate the same
+    # 32 or 64 public divisors a second time.  The map builder independently
+    # checks the parent, cardinality, basis orders, coordinate-key collisions,
+    # and full table size before trusting this optimization cache.
+    if int(order) <= 64 and elements:
+        parent_function = getattr(elements[0], "parent", None)
+        if callable(parent_function):
+            parent: Any = parent_function()
+            parent._tiny_exhaustive_group_elements = (int(order), tuple(elements))
     return tuple(invariants)
 
 
