@@ -52,6 +52,7 @@ from sagejs.native import (
     kernel_uint64_buffer,
 )
 from sagejs.number_fields.class_unit_analytic import IntervalBallField, RealBall
+import sagejs.hyperelliptic_curves.genus2_heights as height_module
 import sagejs.runtime as runtime
 
 R = PolynomialRing(QQ, "x")
@@ -1263,6 +1264,80 @@ except RuntimeError as error:
     callback_exception = "deliberate" in str(error)
 assert callback_exception
 assert cache_state(exception_context) == (0, 0, 0, 0, 0, 0)
+
+counter_names = (
+    "_canonical_height_entries", "_canonical_height_hits",
+    "_canonical_height_misses", "_height_pairing_entries",
+    "_height_pairing_hits", "_height_pairing_misses",
+)
+class HostileHeightContext(HeightContext):
+    _armed = False
+    def __setattr__(self, name, value):
+        if name in counter_names and self._armed:
+            raise RuntimeError("hostile counter write")
+        self.__dict__[name] = value
+    def __hash__(self):
+        raise RuntimeError("hostile context hash")
+    def __eq__(self, other):
+        raise RuntimeError("hostile context equality")
+
+hostile_context = HostileHeightContext(J)
+hostile_context._armed = True
+hostile_before = tuple(hostile_context.__dict__[name] for name in counter_names)
+hostile_rejections = []
+for hostile_kind in ("pairing", "regulator", "canonical"):
+    try:
+        if hostile_kind == "pairing":
+            height_pairing(
+                [P,Q], precision=64, target_bits=64,
+                algorithm="local", context=hostile_context,
+            )
+        elif hostile_kind == "regulator":
+            regulator(
+                [P,Q], precision=64, target_bits=64,
+                algorithm="local", context=hostile_context,
+            )
+        else:
+            canonical_height(
+                P, precision=64, target_bits=64,
+                algorithm="local", context=hostile_context,
+            )
+    except Genus2HeightCapabilityError as error:
+        hostile_rejections.append("exact HeightContext" in str(error))
+assert hostile_rejections == [True, True, True]
+hostile_context._armed = False
+assert tuple(hostile_context.__dict__[name] for name in counter_names) == hostile_before
+
+hostile_getattribute_calls = [0]
+class HostileGetattributeContext(HeightContext):
+    def __getattribute__(self, name):
+        hostile_getattribute_calls[0] += 1
+        raise RuntimeError("hostile counter read")
+
+hostile_getattribute_context = HostileGetattributeContext(J)
+hostile_getattribute_rejected = False
+try:
+    height_pairing(
+        [P,Q], precision=64, target_bits=64,
+        algorithm="local", context=hostile_getattribute_context,
+    )
+except Genus2HeightCapabilityError as error:
+    hostile_getattribute_rejected = "exact HeightContext" in str(error)
+assert hostile_getattribute_rejected
+assert hostile_getattribute_calls[0] == 0
+
+# Familiar-looking module helpers are not an authentication or transaction
+# boundary; adding/rebinding them cannot redirect the lexically captured base
+# object operations used by the exact context.
+height_module._height_proof_counter_value = lambda context, name: 999
+height_module._height_proof_set_counter = lambda context, name, value: None
+rebound_counter_context = HeightContext(J)
+rebound_counter_pairing = height_pairing(
+    [P,Q], precision=64, target_bits=64,
+    algorithm="local", context=rebound_counter_context,
+)
+assert rebound_counter_pairing.rigorous
+assert cache_state(rebound_counter_context) == (3, 0, 3, 1, 0, 1)
 [
     batch_data["point_count"],
     partial_pairing.height_results[1].diagnostics["batch"]["point_count"],
