@@ -27,20 +27,29 @@ Documented deviations from upstream Sage, all of them temporary:
 * `minimize` and `minimize_constrained` return a plain `list[float]`.
   Upstream returns `vector(RDF, ...)`; a later phase gives Sage.js the same
   real double vector and these functions will return one.
-* `minimize` implements only the downhill simplex method, so it accepts
-  `algorithm="default"` and `algorithm="simplex"` and raises
-  `NotImplementedError` for the gradient-based algorithms. Upstream routes
-  `algorithm="default"` to BFGS whenever a gradient is available (which for
-  a symbolic `func` it always is, because it differentiates automatically);
-  here `gradient` and `hessian` are accepted and ignored until those
-  algorithms land.
-* `minimize_constrained` implements only COBYLA, so `algorithm="default"`
-  and `algorithm="cobyla"` are accepted and `"l-bfgs-b"` and `"tnc"` raise
-  `NotImplementedError` naming the algorithm. Upstream sends *bound*
-  constraints to TNC by default and to L-BFGS-B on request; here bound
-  constraints are turned into the equivalent pair of COBYLA inequality
-  constraints instead. Nothing silently falls back to a different
-  algorithm.
+* `minimize` implements all six of upstream's algorithms —
+  `"default"`/`"simplex"` (downhill simplex), `"powell"`, `"bfgs"`, `"cg"`
+  and `"ncg"` — routed exactly as upstream routes them, including
+  `algorithm="default"` selecting BFGS whenever a gradient is available,
+  which for a symbolic `func` it always is. Sage.js's `Expression` has no
+  `gradient()`/`hessian()` methods the way upstream Sage's does, so this
+  module builds them itself, out of the `Expression.derivative` API that
+  does exist, rather than adding either method to the symbolic bootstrap
+  package; see `_symbolic_gradient_callable` and
+  `_symbolic_hessian_callable` below.
+* `minimize_constrained` implements all three of upstream's algorithms —
+  COBYLA, L-BFGS-B and TNC — routed exactly as upstream routes them:
+  bound-interval `cons` goes to TNC by default (`algorithm="default"` or
+  `"tnc"`) or to L-BFGS-B on request (`algorithm="l-bfgs-b"`); `g(x) >= 0`
+  constraint-function `cons` always goes to COBYLA, regardless of
+  `algorithm`, exactly as upstream's own `fmin_cobyla` call never consults
+  `algorithm` either. The one deliberate deviation: asking a box-only
+  solver (`"l-bfgs-b"`/`"tnc"`) for constraint functions, or COBYLA for
+  bound intervals, raises `TypeError` naming the mismatch rather than
+  upstream's silent substitution (function constraints) or its dedicated
+  COBYLA-only support (bound intervals used to be turned into inequality
+  constraints here, before L-BFGS-B and TNC existed). Nothing silently
+  falls back to a different algorithm.
 * Upstream `minimize` and `minimize_constrained` both fall off the end of an
   `if`/`elif` chain — for an unrecognized `algorithm` and for an
   unrecognized `cons` respectively — and fail with `UnboundLocalError`, and
@@ -73,8 +82,12 @@ import sagejs.runtime as runtime
 from .brent_minimize import fminbound
 from .brent_root import brentq
 from .cobyla import cobyla
+from .gradient_methods import fmin_bfgs, fmin_cg, fmin_ncg
+from .lbfgsb import fmin_l_bfgs_b
 from .levenberg_marquardt import leastsq
 from .nelder_mead import nelder_mead
+from .powell import powell
+from .tnc import fmin_tnc
 
 _symbolic_module_cache = runtime.undefined
 
@@ -101,17 +114,52 @@ _NO_FIT_PARAMETERS = (
     "expression"
 )
 
-# The constrained algorithms upstream reaches through SciPy that this package
-# does not carry yet, mapped onto how they are named in the error message.
-_DEFERRED_CONSTRAINED = {
-    "l-bfgs-b": "L-BFGS-B (Byrd, Lu, Nocedal and Zhu, [ZBN1997])",
-    "tnc": "the truncated Newton method (TNC)",
-}
+# The four `minimize_constrained(algorithm=...)` values this package
+# understands. `"default"` is not itself a solver: which of the other three
+# it resolves to depends on the *shape* of `cons` -- see `minimize_constrained`.
+_CONSTRAINED_ALGORITHMS = ("default", "cobyla", "l-bfgs-b", "tnc")
 
 # `minimize_constrained(**args)` keywords, which upstream forwards to
 # `scipy.optimize.fmin_cobyla`. The `cobyla` in this package spells them the
 # same way, so the mapping is the identity and only `maxfun` counts things.
 _COBYLA_OPTIONS = ("rhobeg", "rhoend", "maxfun", "catol")
+
+# `minimize_constrained(algorithm="l-bfgs-b", **args)` keywords, matching
+# `fmin_l_bfgs_b`'s own parameter names, which are scipy's `fmin_l_bfgs_b`
+# names exactly -- the mapping is the identity.
+_LBFGSB_OPTIONS = {
+    "m": "m",
+    "factr": "factr",
+    "pgtol": "pgtol",
+    "epsilon": "epsilon",
+    "maxfun": "maxfun",
+    "maxiter": "maxiter",
+    "maxls": "maxls",
+}
+_LBFGSB_INTEGER_OPTIONS = ("m", "maxfun", "maxiter", "maxls")
+
+# `minimize_constrained(algorithm="tnc"|"default", **args)` keywords upstream
+# forwards to `scipy.optimize.fmin_tnc`, mapped onto `fmin_tnc`'s own
+# parameter names here. Only `epsilon` differs in spelling: scipy calls it
+# `epsilon`, this package's `fmin_tnc` (matching MINPACK/`tnc.c` usage
+# elsewhere in the module) calls it `eps`.
+_TNC_OPTIONS = {
+    "epsilon": "eps",
+    "maxCGit": "maxCGit",
+    "maxfun": "maxfun",
+    "eta": "eta",
+    "stepmx": "stepmx",
+    "accuracy": "accuracy",
+    "fmin": "fmin",
+    "ftol": "ftol",
+    "xtol": "xtol",
+    "pgtol": "pgtol",
+    "rescale": "rescale",
+}
+_TNC_INTEGER_OPTIONS = ("maxCGit", "maxfun")
+# `scale` and `offset` are per-variable sequences, not scalars, so they are
+# coerced separately from every other `_TNC_OPTIONS` entry.
+_TNC_VECTOR_OPTIONS = ("scale", "offset")
 
 # `minimize(**args)` keywords that upstream forwards to `scipy.optimize.fmin`,
 # mapped onto the corresponding `nelder_mead` parameter names.
@@ -125,6 +173,47 @@ _SIMPLEX_OPTIONS = {
 # The `nelder_mead` parameters among `_SIMPLEX_OPTIONS` that count things
 # rather than measure them, and so are coerced with `int` and not `float`.
 _INTEGER_OPTIONS = ("maxiter", "maxfev")
+
+# `minimize(algorithm="powell", **args)` keywords, mapped onto `powell`'s own
+# parameter names. `powell` already spells `xtol`/`ftol`/`maxiter` the way
+# upstream's `scipy.optimize.fmin_powell` does; only `maxfun` differs, since
+# `powell` calls the same thing `maxfev`.
+_POWELL_OPTIONS = {
+    "xtol": "xtol",
+    "ftol": "ftol",
+    "maxiter": "maxiter",
+    "maxfun": "maxfev",
+}
+
+# `minimize(algorithm="bfgs"|"cg", **args)` keywords. `fmin_bfgs`/`fmin_cg`
+# already spell every one of these the way upstream's
+# `scipy.optimize.fmin_bfgs`/`fmin_cg` do, so the mapping is the identity.
+_BFGS_OPTIONS = {
+    "gtol": "gtol",
+    "norm": "norm",
+    "epsilon": "epsilon",
+    "maxiter": "maxiter",
+    "c1": "c1",
+    "c2": "c2",
+}
+_CG_OPTIONS = dict(_BFGS_OPTIONS)
+
+# `minimize(algorithm="ncg", **args)` keywords, matching `fmin_ncg`'s own
+# parameter names, which are upstream's `scipy.optimize.fmin_ncg` names.
+_NCG_OPTIONS = {
+    "avextol": "avextol",
+    "epsilon": "epsilon",
+    "maxiter": "maxiter",
+    "c1": "c1",
+    "c2": "c2",
+}
+
+# The options among `_POWELL_OPTIONS`/`_BFGS_OPTIONS`/`_CG_OPTIONS`/
+# `_NCG_OPTIONS` that count things rather than measure them.
+_GRADIENT_INTEGER_OPTIONS = ("maxiter", "maxfev")
+
+# The six `minimize()` algorithm names Sage documents, `"default"` included.
+_MINIMIZE_ALGORITHMS = ("default", "simplex", "powell", "bfgs", "cg", "ncg")
 
 
 def _symbolic_module() -> Any:
@@ -251,22 +340,82 @@ def _point_callable(g: Any) -> Any:
     return evaluate
 
 
-def _lower_bound(index: int, low: float) -> Any:
-    """Build the COBYLA constraint `x[index] - low >= 0`."""
+def _symbolic_partials(func: Any, order: Sequence[Any]) -> list[Any]:
+    """Differentiate `func` once with respect to each variable in `order`.
 
-    def evaluate(point: Sequence[float]) -> float:
-        return float(point[index]) - low
+    Sage.js's `Expression` has no `gradient()` method, unlike upstream
+    Sage's, so the gradient is assembled here out of `Expression.derivative`
+    instead — one partial derivative per entry of `order`. A variable that
+    does not occur in `func` differentiates to the zero expression exactly
+    as `Expression.derivative` already handles it, so the returned list
+    always has the same length and order as `order`, whether or not `func`
+    mentions every variable in it.
+    """
+    return [func.derivative(variable) for variable in order]
+
+
+def _symbolic_gradient_callable(func: Any, order: Sequence[Any]) -> Any:
+    """Build `grad func` as a `list[float]`-returning callable over `order`.
+
+    Each entry of `_symbolic_partials` is compiled independently with
+    `_compiled_over`, all over the same `order`, so the returned callable
+    matches the `Callable[[Sequence[float]], Sequence[float]]` shape
+    `fmin_bfgs`/`fmin_cg`/`fmin_ncg` expect for `fprime`.
+    """
+    order = list(order)
+    compiled = [
+        _compiled_over(partial, order) for partial in _symbolic_partials(func, order)
+    ]
+
+    def evaluate(point: Sequence[float]) -> list[float]:
+        return [component(point) for component in compiled]
 
     return evaluate
 
 
-def _upper_bound(index: int, high: float) -> Any:
-    """Build the COBYLA constraint `high - x[index] >= 0`."""
+def _symbolic_hessian_callable(func: Any, order: Sequence[Any]) -> Any:
+    """Build `hess func` as a `list[list[float]]`-returning callable.
 
-    def evaluate(point: Sequence[float]) -> float:
-        return high - float(point[index])
+    Sage.js's `Expression` has no `hessian()` method either. Each entry of
+    row `i` is the mixed partial `d/d(order[i]) d/d(order[j]) func`,
+    obtained by differentiating `func` once for the gradient (row `i`'s own
+    partial) and once more for column `j`, then compiling every entry over
+    `order`. The result matches `fmin_ncg`'s `fhess` shape.
+    """
+    order = list(order)
+    gradient = _symbolic_partials(func, order)
+    compiled = [
+        [_compiled_over(partial.derivative(variable), order) for variable in order]
+        for partial in gradient
+    ]
+
+    def evaluate(point: Sequence[float]) -> list[list[float]]:
+        return [[entry(point) for entry in row] for row in compiled]
 
     return evaluate
+
+
+def _mapped_options(args: dict[str, Any], mapping: dict[str, str]) -> dict[str, Any]:
+    """Validate and coerce a `minimize()` `**args` mapping onto `mapping`.
+
+    `mapping` translates Sage's keyword spelling onto this package's own
+    parameter name (the identity for every algorithm but `"powell"`'s
+    `maxfun`/`maxfev`); values are coerced with `int` for the counting
+    options in `_GRADIENT_INTEGER_OPTIONS` and `float` for everything else,
+    the same convention `_SIMPLEX_OPTIONS`/`_cobyla_options` use.
+    """
+    options: dict[str, Any] = {}
+    for name in args:
+        target = mapping.get(name)
+        if target is None:
+            raise TypeError(
+                "minimize() got an unexpected keyword argument %r" % (name,)
+            )
+        value = args[name]
+        options[target] = (
+            int(value) if target in _GRADIENT_INTEGER_OPTIONS else float(value)
+        )
+    return options
 
 
 def _bound_pairs(cons: Any) -> list[tuple[float | None, float | None]] | None:
@@ -311,20 +460,6 @@ def _bound_pairs(cons: Any) -> list[tuple[float | None, float | None]] | None:
     return pairs
 
 
-def _bound_constraints(
-    bounds: Sequence[tuple[float | None, float | None]],
-) -> list[Any]:
-    """Turn `(min, max)` intervals into COBYLA `g(x) >= 0` constraints."""
-    constraints: list[Any] = []
-    for index in range(len(bounds)):
-        low, high = bounds[index]
-        if low is not None:
-            constraints.append(_lower_bound(index, low))
-        if high is not None:
-            constraints.append(_upper_bound(index, high))
-    return constraints
-
-
 def _constraint_callables(cons: Any, order: Sequence[Any] | None) -> list[Any]:
     """Compile `cons` into a list of COBYLA `g(x) >= 0` constraints.
 
@@ -354,7 +489,8 @@ def _constraint_callables(cons: Any, order: Sequence[Any] | None) -> list[Any]:
 
 
 def _cobyla_options(args: dict[str, Any]) -> dict[str, Any]:
-    """Validate and coerce the `**args` `minimize_constrained` forwards."""
+    """Validate and coerce the `**args` `minimize_constrained` forwards to
+    `cobyla`."""
     options: dict[str, Any] = {}
     for name in args:
         if name not in _COBYLA_OPTIONS:
@@ -364,6 +500,69 @@ def _cobyla_options(args: dict[str, Any]) -> dict[str, Any]:
         value = args[name]
         options[name] = int(value) if name == "maxfun" else float(value)
     return options
+
+
+def _lbfgsb_options(args: dict[str, Any]) -> dict[str, Any]:
+    """Validate and coerce the `**args` `minimize_constrained` forwards to
+    `fmin_l_bfgs_b`, under `_LBFGSB_OPTIONS`'s (identity) name mapping."""
+    options: dict[str, Any] = {}
+    for name in args:
+        target = _LBFGSB_OPTIONS.get(name)
+        if target is None:
+            raise TypeError(
+                "minimize_constrained() got an unexpected keyword argument %r" % (name,)
+            )
+        value = args[name]
+        options[target] = (
+            int(value) if target in _LBFGSB_INTEGER_OPTIONS else float(value)
+        )
+    return options
+
+
+def _tnc_options(args: dict[str, Any]) -> dict[str, Any]:
+    """Validate and coerce the `**args` `minimize_constrained` forwards to
+    `fmin_tnc`, under `_TNC_OPTIONS`'s name mapping (`epsilon` -> `eps`,
+    every other name unchanged). `scale` and `offset` are per-variable
+    sequences and are coerced element-wise rather than as a single scalar."""
+    options: dict[str, Any] = {}
+    for name in args:
+        value = args[name]
+        if name in _TNC_VECTOR_OPTIONS:
+            options[name] = [float(v) for v in value]
+            continue
+        target = _TNC_OPTIONS.get(name)
+        if target is None:
+            raise TypeError(
+                "minimize_constrained() got an unexpected keyword argument %r" % (name,)
+            )
+        options[target] = int(value) if target in _TNC_INTEGER_OPTIONS else float(value)
+    return options
+
+
+def _minimize_constrained_gradient(
+    gradient: Callable[..., Any] | None, func: Any, order: Sequence[Any] | None
+) -> Callable[[Sequence[float]], list[float]] | None:
+    """Resolve the `gradient` `fprime` argument for the bound-constrained
+    (L-BFGS-B/TNC) path.
+
+    Upstream unconditionally differentiates a symbolic `func` itself
+    (`func.gradient()`), discarding whatever `gradient` the caller passed --
+    unlike `minimize()`, which only fills in a missing gradient. That
+    asymmetry is upstream's own and is reproduced here: a symbolic `func`
+    always gets its automatic gradient on this path. Sage.js's `Expression`
+    has no `gradient()` method, so `_symbolic_gradient_callable` builds one
+    out of `Expression.derivative`, exactly as `minimize()` does.
+    """
+    if _is_symbolic(func):
+        assert order is not None
+        return _symbolic_gradient_callable(func, order)
+    if gradient is None:
+        return None
+
+    def evaluate(point: Sequence[float]) -> list[float]:
+        return [float(v) for v in gradient(point)]
+
+    return evaluate
 
 
 def _fit_data_rows(data: Any) -> list[list[float]]:
@@ -622,14 +821,28 @@ def minimize(
         func: A symbolic expression, or a Python function taking a single
             tuple of `n` components.
         x0: The initial point.
-        gradient: Accepted for source compatibility and currently unused;
-            the downhill simplex method needs no derivatives.
-        hessian: Accepted for source compatibility and currently unused.
-        algorithm: `"default"` or `"simplex"` — both select the downhill
-            simplex (Nelder-Mead) method.
+        gradient: The gradient of `func`, accepting a coordinate sequence
+            and returning one `float` per component. Computed automatically
+            when `func` is a symbolic expression and `gradient` is not
+            given; `"bfgs"`, `"cg"` and `"ncg"` fall back to a forward-
+            difference approximation when it is still `None` at that point
+            (`"ncg"` excepted — see below).
+        hessian: The Hessian of `func`, accepting a coordinate sequence and
+            returning `n` rows of `n` second partial derivatives. Computed
+            automatically for a symbolic `func` when `algorithm="ncg"` and
+            `hessian` is not given; `"ncg"` falls back to a forward-
+            difference Hessian-vector product when it is still `None`.
+        algorithm: `"default"`, `"simplex"`, `"powell"`, `"bfgs"`, `"cg"` or
+            `"ncg"`. `"default"` selects `"bfgs"` whenever a gradient is
+            available — which for a symbolic `func` it always is, since one
+            is then differentiated automatically — and `"simplex"`
+            otherwise, exactly as upstream routes it.
         verbose: When `True`, print a convergence message.
-        **args: Forwarded to the simplex method. `xtol`, `ftol`, `maxiter`
-            and `maxfun` carry Sage's SciPy-facing spellings.
+        **args: Forwarded to the selected algorithm, under Sage's SciPy-
+            facing keyword spellings: `xtol`, `ftol`, `maxiter` and `maxfun`
+            for `"simplex"`/`"powell"`; `gtol`, `norm`, `epsilon`, `maxiter`,
+            `c1` and `c2` for `"bfgs"`/`"cg"`; `avextol`, `epsilon`,
+            `maxiter`, `c1` and `c2` for `"ncg"`.
 
     Returns:
         The minimizing point as a `list[float]`.
@@ -640,46 +853,124 @@ def minimize(
         rely on list-specific behaviour.
 
     Raises:
-        NotImplementedError: For any `algorithm` other than `"default"` and
-            `"simplex"`. The gradient-based methods (`"powell"`, `"bfgs"`,
-            `"cg"`, `"ncg"`) arrive in a later phase.
-        TypeError: For an unrecognized keyword argument.
+        NotImplementedError: For any `algorithm` other than the six above.
+        TypeError: For an unrecognized keyword argument, or for
+            `algorithm="ncg"` when no gradient is available (`func` is not
+            symbolic and `gradient` was not given) — `fmin_ncg` requires
+            one, unlike `"bfgs"`/`"cg"`.
+
+    Sage.js's `Expression` has no `gradient()`/`hessian()` methods the way
+    upstream Sage's does; see `_symbolic_gradient_callable` and
+    `_symbolic_hessian_callable` above for how they are assembled instead,
+    out of `Expression.derivative` over `func.variables()` — the same order
+    `_vector_float_callable` compiles `func` itself over.
     """
-    if algorithm not in ("default", "simplex"):
+    if algorithm not in _MINIMIZE_ALGORITHMS:
         raise NotImplementedError(
-            "minimize() algorithm %r is not implemented yet; only the "
-            "downhill simplex method is available, and the gradient-based "
-            "algorithms ('powell', 'bfgs', 'cg', 'ncg') arrive in a later "
-            "phase" % (algorithm,)
+            "minimize() algorithm %r is not implemented; algorithm must be "
+            "one of 'default', 'simplex', 'powell', 'bfgs', 'cg', 'ncg'" % (algorithm,)
         )
 
+    symbolic = _is_symbolic(func)
+    order = list(func.variables()) if symbolic else None
     f = _vector_float_callable(func)
+
+    needs_gradient = algorithm in ("default", "bfgs", "cg", "ncg")
+    if symbolic and gradient is None and needs_gradient:
+        assert order is not None
+        gradient = _symbolic_gradient_callable(func, order)
+
+    resolved = algorithm
+    if algorithm == "default":
+        resolved = "simplex" if gradient is None else "bfgs"
+
+    if resolved == "ncg" and symbolic and hessian is None:
+        assert order is not None
+        hessian = _symbolic_hessian_callable(func, order)
+
     start = [float(value) for value in x0]
 
-    options: dict[str, Any] = {}
-    for name in args:
-        target = _SIMPLEX_OPTIONS.get(name)
-        if target is None:
-            raise TypeError(
-                "minimize() got an unexpected keyword argument %r" % (name,)
-            )
-        value = args[name]
-        options[target] = int(value) if target in _INTEGER_OPTIONS else float(value)
+    if resolved == "simplex":
+        options: dict[str, Any] = {}
+        for name in args:
+            target = _SIMPLEX_OPTIONS.get(name)
+            if target is None:
+                raise TypeError(
+                    "minimize() got an unexpected keyword argument %r" % (name,)
+                )
+            value = args[name]
+            options[target] = int(value) if target in _INTEGER_OPTIONS else float(value)
+        simplex_result = nelder_mead(f, start, **options)
+        if verbose:
+            if simplex_result.converged:
+                print("Optimization terminated successfully.")
+            else:
+                print(
+                    "Warning: the simplex method did not converge (%s)."
+                    % simplex_result.flag
+                )
+            # `%f` is not among the conversions the Sage.js string
+            # formatter implements, so the value is rendered with `%s`.
+            print("         Current function value: %s" % simplex_result.fun)
+            print("         Iterations: %d" % simplex_result.iterations)
+            print("         Function evaluations: %d" % simplex_result.function_calls)
+        return [float(value) for value in simplex_result.x]
 
-    result = nelder_mead(f, start, **options)
+    if resolved == "powell":
+        powell_options = _mapped_options(args, _POWELL_OPTIONS)
+        powell_result = powell(f, start, **powell_options)
+        if verbose:
+            if powell_result.converged:
+                print("Optimization terminated successfully.")
+            else:
+                print(
+                    "Warning: Powell's method did not converge (%s)."
+                    % powell_result.flag
+                )
+            print("         Current function value: %s" % powell_result.fun)
+            print("         Iterations: %d" % powell_result.iterations)
+            print("         Function evaluations: %d" % powell_result.function_calls)
+        return [float(value) for value in powell_result.x]
 
+    if resolved == "bfgs":
+        bfgs_options = _mapped_options(args, _BFGS_OPTIONS)
+        bfgs_result = fmin_bfgs(f, start, fprime=gradient, **bfgs_options)
+        if verbose:
+            print(bfgs_result.message)
+            print("         Current function value: %s" % bfgs_result.fun)
+            print("         Iterations: %d" % bfgs_result.nit)
+            print("         Function evaluations: %d" % bfgs_result.nfev)
+            print("         Gradient evaluations: %d" % bfgs_result.njev)
+        return [float(value) for value in bfgs_result.x]
+
+    if resolved == "cg":
+        cg_options = _mapped_options(args, _CG_OPTIONS)
+        cg_result = fmin_cg(f, start, fprime=gradient, **cg_options)
+        if verbose:
+            print(cg_result.message)
+            print("         Current function value: %s" % cg_result.fun)
+            print("         Iterations: %d" % cg_result.nit)
+            print("         Function evaluations: %d" % cg_result.nfev)
+            print("         Gradient evaluations: %d" % cg_result.njev)
+        return [float(value) for value in cg_result.x]
+
+    # resolved == "ncg"
+    if gradient is None:
+        raise TypeError(
+            "minimize() algorithm 'ncg' requires a gradient: pass one "
+            "explicitly, or use a symbolic func so one is differentiated "
+            "automatically"
+        )
+    ncg_options = _mapped_options(args, _NCG_OPTIONS)
+    ncg_result = fmin_ncg(f, start, fprime=gradient, fhess=hessian, **ncg_options)
     if verbose:
-        if result.converged:
-            print("Optimization terminated successfully.")
-        else:
-            print("Warning: the simplex method did not converge (%s)." % result.flag)
-        # `%f` is not among the conversions the Sage.js string formatter
-        # implements, so the value is rendered with `%s`.
-        print("         Current function value: %s" % result.fun)
-        print("         Iterations: %d" % result.iterations)
-        print("         Function evaluations: %d" % result.function_calls)
-
-    return [float(value) for value in result.x]
+        print(ncg_result.message)
+        print("         Current function value: %s" % ncg_result.fun)
+        print("         Iterations: %d" % ncg_result.nit)
+        print("         Function evaluations: %d" % ncg_result.nfev)
+        print("         Gradient evaluations: %d" % ncg_result.njev)
+        print("         Hessian evaluations: %d" % ncg_result.nhev)
+    return [float(value) for value in ncg_result.x]
 
 
 def minimize_constrained(
@@ -701,15 +992,58 @@ def minimize_constrained(
             variable, is read as bounds; either endpoint may be `None` for
             "unbounded on that side", and a whole entry may be `None` for
             "unbounded in that variable". An empty list means no
-            constraints.
+            constraints at all, and is accepted by every algorithm.
         x0: The initial point. It need not be feasible.
-        gradient: Accepted for source compatibility and currently unused.
-            Upstream consults it only on the bound constrained path, which
-            here runs COBYLA — a derivative-free method.
-        algorithm: `"default"` or `"cobyla"` — both select COBYLA.
-        **args: Forwarded to `cobyla`: `rhobeg`, `rhoend`, `maxfun` and
-            `catol`, the same names upstream passes to
-            `scipy.optimize.fmin_cobyla`.
+        gradient: The gradient of `func`, accepting a coordinate sequence and
+            returning one `float` per component. Consulted only on the
+            bound-constrained path (`"l-bfgs-b"`/`"tnc"`); COBYLA is
+            derivative-free and never sees it, matching upstream. A symbolic
+            `func` gets its gradient differentiated automatically on that
+            path regardless of what is passed here — see
+            `_minimize_constrained_gradient`.
+        algorithm: `"default"`, `"cobyla"`, `"l-bfgs-b"` or `"tnc"`.
+            `"default"` does not name a solver by itself: which one it
+            resolves to depends on the *shape* of `cons`, exactly as
+            upstream resolves it --
+
+            * `cons` a list of `(min, max)` bound intervals (or `None`
+              entries), or empty: `"l-bfgs-b"` selects L-BFGS-B;
+              `"default"` and `"tnc"` both select TNC. `"cobyla"` is
+              rejected — COBYLA takes `g(x) >= 0` constraint functions, not
+              bound intervals.
+            * `cons` one or more constraint functions: `"default"` and
+              `"cobyla"` select COBYLA; `"l-bfgs-b"` and `"tnc"` are
+              rejected, since a box-only solver cannot represent a general
+              inequality.
+
+            **Documented divergence from upstream, deliberately not a
+            bug-for-bug copy.** Upstream tests `algorithm` exactly once,
+            as `algorithm == 'l-bfgs-b'`, and lets everything else fall
+            through: bound intervals with any other name run TNC, and
+            constraint functions run COBYLA regardless of what was asked
+            for. Nothing is reported either way, so `algorithm='L-BFGS-B'`
+            — a capitalisation slip — silently runs TNC and the result
+            gives no hint. Sage.js validates `algorithm` and raises instead.
+            Reported upstream as
+            [sagemath/sage#42711](https://github.com/sagemath/sage/issues/42711);
+            the doctests upstream ships never exercise these fall-throughs,
+            so the corpus in `upstream-tests/sage/numerical/` is unaffected.
+
+            The same report covers two further upstream defects this
+            function does not reproduce, because `cons` is read by shape
+            rather than by `cons[0]`'s type: upstream raises `IndexError`
+            from `cons[0]` when `cons` is `[]` (a natural spelling of "no
+            constraints", accepted here), and `UnboundLocalError` when a
+            constraint is any callable that is not a plain function — a
+            `functools.partial`, a bound method, an object with `__call__`.
+            `_constraint_callables` tests `callable(...)`, so all of those
+            work, and anything else gets a `TypeError` naming the index.
+        **args: Forwarded to the selected solver, under Sage's SciPy-facing
+            keyword spellings: `rhobeg`, `rhoend`, `maxfun` and `catol` for
+            COBYLA; `m`, `factr`, `pgtol`, `epsilon`, `maxfun`, `maxiter`
+            and `maxls` for L-BFGS-B; `epsilon`, `scale`, `offset`,
+            `maxCGit`, `maxfun`, `eta`, `stepmx`, `accuracy`, `fmin`,
+            `ftol`, `xtol`, `pgtol` and `rescale` for TNC.
 
     Returns:
         The minimizing point as a `list[float]`.
@@ -720,12 +1054,16 @@ def minimize_constrained(
         rely on list-specific behaviour.
 
     Raises:
-        NotImplementedError: For `algorithm="l-bfgs-b"` or
-            `algorithm="tnc"`, which arrive in a later phase, and for any
-            other unrecognized `algorithm`. Nothing falls back silently to
-            a different method.
-        TypeError: If `cons` is neither of the two shapes above, or for an
-            unrecognized keyword argument.
+        NotImplementedError: For any `algorithm` other than the four above.
+        TypeError: If `cons` is neither of the two shapes above; if
+            `algorithm="cobyla"` is combined with bound-interval `cons`; if
+            `algorithm` is `"l-bfgs-b"` or `"tnc"` and `cons` holds one or
+            more constraint functions; or for an unrecognized keyword
+            argument. The two algorithm/shape mismatches are Sage.js
+            rejecting what upstream silently reroutes — see `algorithm`
+            above and sagemath/sage#42711.
+        ValueError: If a bound-interval `cons` has a different length than
+            `x0`.
 
     A symbolic `func` is compiled over `func.arguments()`, its *declaration*
     order, so `f(y, x) = x - y` is minimized over `(y, x)`. That differs
@@ -733,25 +1071,15 @@ def minimize_constrained(
     alphabetical order; the module docstring explains why the asymmetry is
     kept.
 
-    Bound constraints are turned into the equivalent pair of COBYLA
-    inequality constraints, `x[i] - min >= 0` and `max - x[i] >= 0` —
-    upstream instead routes them to TNC, or to L-BFGS-B on request, neither
-    of which is available yet. `x0` is *not* clipped into the box on the way
-    in, even though both of those solvers do clip: COBYLA works towards
-    feasibility from wherever it starts, and clipping would place the first
-    simplex on the boundary, which is the worst conditioned place for it.
+    `x0` is not clipped into the box before an `"l-bfgs-b"`/`"tnc"` run —
+    both solvers project it themselves, matching upstream's scipy calls,
+    which never clip on the way in either.
     """
-    if algorithm in _DEFERRED_CONSTRAINED:
+    if algorithm not in _CONSTRAINED_ALGORITHMS:
         raise NotImplementedError(
-            "minimize_constrained() algorithm %r is not implemented yet; %s "
-            "arrives in a later phase. Only COBYLA ('default', 'cobyla') is "
-            "available, and it is not substituted silently."
-            % (algorithm, _DEFERRED_CONSTRAINED[algorithm])
-        )
-    if algorithm not in ("default", "cobyla"):
-        raise NotImplementedError(
-            "minimize_constrained() algorithm %r is not implemented yet; "
-            "only COBYLA ('default', 'cobyla') is available" % (algorithm,)
+            "minimize_constrained() algorithm %r is not implemented; "
+            "algorithm must be one of 'default', 'cobyla', 'l-bfgs-b', 'tnc'"
+            % (algorithm,)
         )
 
     order: list[Any] | None = None
@@ -762,20 +1090,49 @@ def minimize_constrained(
         f = _point_callable(func)
 
     start = [float(value) for value in x0]
-    options = _cobyla_options(args)
+    cons_is_empty = isinstance(cons, (list, tuple)) and len(cons) == 0
+    bounds = None if cons_is_empty else _bound_pairs(cons)
 
-    bounds = _bound_pairs(cons)
-    if bounds is None:
-        constraints = _constraint_callables(cons, order)
-    else:
-        if len(bounds) != len(start):
+    if bounds is not None or cons_is_empty:
+        if bounds is not None and len(bounds) != len(start):
             raise ValueError(
                 "cons gives %d bound intervals but x0 has %d components"
                 % (len(bounds), len(start))
             )
-        constraints = _bound_constraints(bounds)
+        if algorithm == "cobyla":
+            raise TypeError(
+                "minimize_constrained() algorithm 'cobyla' does not accept "
+                "bound interval constraints (a list of (min, max) pairs); "
+                "COBYLA needs g(x) >= 0 constraint functions instead. Use "
+                "algorithm='default', 'l-bfgs-b' or 'tnc' for bound "
+                "constraints. Upstream Sage runs TNC here without saying so "
+                "-- see sagemath/sage#42711."
+            )
+        fprime = _minimize_constrained_gradient(gradient, func, order)
+        if algorithm == "l-bfgs-b":
+            lbfgsb_result = fmin_l_bfgs_b(
+                f, start, fprime=fprime, bounds=bounds, **_lbfgsb_options(args)
+            )
+            return [float(value) for value in lbfgsb_result.x]
+        # "default" and "tnc" both resolve to TNC for bound constraints.
+        tnc_result = fmin_tnc(
+            f, start, fprime=fprime, bounds=bounds, **_tnc_options(args)
+        )
+        return [float(value) for value in tnc_result.x]
 
-    result = cobyla(f, start, constraints, **options)
+    # `cons` holds one or more `g(x) >= 0` constraint functions: always
+    # COBYLA, regardless of `algorithm` -- see the Args docstring above.
+    if algorithm in ("l-bfgs-b", "tnc"):
+        raise TypeError(
+            "minimize_constrained() algorithm %r is a box-constrained "
+            "solver and cannot take general g(x) >= 0 constraint "
+            "functions; only a list of (min, max) bound intervals is "
+            "supported for this algorithm. Upstream Sage runs COBYLA here "
+            "and discards the requested algorithm silently -- see "
+            "sagemath/sage#42711." % (algorithm,)
+        )
+    constraints = _constraint_callables(cons, order)
+    result = cobyla(f, start, constraints, **_cobyla_options(args))
     return [float(value) for value in result.x]
 
 
@@ -905,3 +1262,219 @@ def find_fit(
         ring(parameter) == value
         for parameter, value in zip(parameter_list, estimated, strict=True)
     ]
+
+
+_NUMERICAL_OPTIMIZE_PROVENANCE = {
+    "kind": "sage-derived",
+    "source": "SageMath numerical optimization API",
+    "url": (
+        "https://doc.sagemath.org/html/en/reference/numerical/"
+        "sage/numerical/optimize.html"
+    ),
+    "license": "GPL-2.0-or-later",
+}
+runtime.register_doc(
+    "find_root",
+    find_root,
+    {
+        "kind": "function",
+        "module": "sage.numerical.optimize",
+        "tags": ["numerical mathematics", "optimization", "root finding"],
+        "backends": ["Sage.js Brent root finder"],
+        "sage_compatibility": {
+            "status": "compatible",
+            "notes": (
+                "Matches SciPy's `brentq` root, iteration count, and "
+                "function-call count exactly for the same bracket and "
+                "tolerances."
+            ),
+        },
+        "provenance": [
+            _NUMERICAL_OPTIMIZE_PROVENANCE,
+            {
+                "kind": "literature-implemented",
+                "source": "Brent's method for bracketed root finding",
+            },
+        ],
+        "implementation": {
+            "algorithm": (
+                "Brent's method, reproducing SciPy's `brentq` root, "
+                "iteration count, and function-call count exactly."
+            ),
+        },
+        "limitations": [],
+    },
+)
+runtime.register_doc(
+    "find_local_minimum",
+    find_local_minimum,
+    {
+        "kind": "function",
+        "module": "sage.numerical.optimize",
+        "tags": ["numerical mathematics", "optimization", "local optimization"],
+        "backends": ["Sage.js bounded Brent minimizer"],
+        "sage_compatibility": {
+            "status": "compatible",
+            "notes": "Matches Sage's bounded Brent search and `(value, point)` return convention.",
+        },
+        "provenance": [
+            _NUMERICAL_OPTIMIZE_PROVENANCE,
+            {
+                "kind": "literature-implemented",
+                "source": "Brent's method for bounded univariate minimization",
+            },
+        ],
+        "implementation": {
+            "algorithm": "Bounded Brent search (golden section combined with successive parabolic interpolation).",
+        },
+        "limitations": [],
+    },
+)
+runtime.register_doc(
+    "find_local_maximum",
+    find_local_maximum,
+    {
+        "kind": "function",
+        "module": "sage.numerical.optimize",
+        "tags": ["numerical mathematics", "optimization", "local optimization"],
+        "backends": ["Sage.js bounded Brent minimizer"],
+        "sage_compatibility": {
+            "status": "compatible",
+            "notes": "Matches Sage's bounded Brent search and `(value, point)` return convention.",
+        },
+        "provenance": [
+            _NUMERICAL_OPTIMIZE_PROVENANCE,
+            {
+                "kind": "literature-implemented",
+                "source": "Brent's method for bounded univariate minimization",
+            },
+        ],
+        "implementation": {
+            "algorithm": "Bounded Brent search over the negated objective.",
+        },
+        "limitations": [],
+    },
+)
+runtime.register_doc(
+    "minimize",
+    minimize,
+    {
+        "kind": "function",
+        "module": "sage.numerical.optimize",
+        "tags": ["numerical mathematics", "optimization", "minimization"],
+        "backends": [
+            "Sage.js Nelder-Mead, Powell, BFGS, conjugate-gradient, and Newton-CG solvers",
+        ],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "Matches Sage's algorithms, defaults, and automatic "
+                "symbolic differentiation; returns a `list[float]` where "
+                "Sage returns `vector(RDF, ...)`."
+            ),
+        },
+        "provenance": [
+            _NUMERICAL_OPTIMIZE_PROVENANCE,
+            {
+                "kind": "literature-implemented",
+                "source": (
+                    "Nelder-Mead (1965) simplex search, Powell's "
+                    "direction-set method, and BFGS/conjugate-gradient/"
+                    "Newton-CG quasi-Newton methods sharing a Wolfe line search"
+                ),
+            },
+        ],
+        "implementation": {
+            "algorithm": (
+                "`simplex` selects Nelder-Mead, `powell` selects Powell's "
+                "direction-set method, and `bfgs`/`cg`/`ncg` select "
+                "quasi-Newton, conjugate-gradient, and Newton-CG methods "
+                "sharing a Wolfe line search; symbolic objectives are "
+                "differentiated automatically for the gradient and, for "
+                "`ncg`, the Hessian."
+            ),
+        },
+        "limitations": [
+            "Returns a `list[float]` rather than Sage's `vector(RDF, ...)`.",
+        ],
+    },
+)
+runtime.register_doc(
+    "minimize_constrained",
+    minimize_constrained,
+    {
+        "kind": "function",
+        "module": "sage.numerical.optimize",
+        "tags": [
+            "numerical mathematics",
+            "optimization",
+            "constrained minimization",
+        ],
+        "backends": ["Sage.js COBYLA, L-BFGS-B, and TNC solvers"],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "Matches Sage's algorithms and defaults; returns a "
+                "`list[float]` where Sage returns `vector(RDF, ...)`, and "
+                "validates `algorithm` where Sage silently falls through "
+                "to a different solver."
+            ),
+        },
+        "provenance": [
+            _NUMERICAL_OPTIMIZE_PROVENANCE,
+            {
+                "kind": "literature-implemented",
+                "source": (
+                    "Powell's COBYLA, the Byrd-Lu-Nocedal-Zhu L-BFGS-B "
+                    "bound-constrained solver, and Nash's truncated "
+                    "Newton (TNC) method"
+                ),
+            },
+        ],
+        "implementation": {
+            "algorithm": (
+                "`cobyla` selects Powell's derivative-free "
+                "linear-approximation solver; `l-bfgs-b` and `tnc` select "
+                "bound-constrained quasi-Newton and truncated-Newton solvers."
+            ),
+        },
+        "limitations": [
+            "Returns a `list[float]` rather than Sage's `vector(RDF, ...)`.",
+            (
+                "Raises on an unrecognized `algorithm`, where upstream "
+                "Sage silently falls through to a different solver "
+                "(reported upstream as sagemath/sage#42711)."
+            ),
+        ],
+    },
+)
+runtime.register_doc(
+    "find_fit",
+    find_fit,
+    {
+        "kind": "function",
+        "module": "sage.numerical.optimize",
+        "tags": [
+            "numerical mathematics",
+            "optimization",
+            "curve fitting",
+            "least squares",
+        ],
+        "backends": ["Sage.js Levenberg-Marquardt least-squares solver"],
+        "sage_compatibility": {
+            "status": "compatible",
+            "notes": "Matches Sage's default Levenberg-Marquardt fitting behavior.",
+        },
+        "provenance": [
+            _NUMERICAL_OPTIMIZE_PROVENANCE,
+            {
+                "kind": "literature-implemented",
+                "source": "MINPACK's `lmdif`/`lmpar` Levenberg-Marquardt least-squares algorithm",
+            },
+        ],
+        "implementation": {
+            "algorithm": "Levenberg-Marquardt least squares, following MINPACK's `lmdif`/`lmpar`.",
+        },
+        "limitations": [],
+    },
+)

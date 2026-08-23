@@ -948,20 +948,35 @@ test("random_search's answer is the fold over its independent starts", async () 
 test("a failing worker pool falls back to sequential, same answer", async () => {
   const session = await openSurfaceSession();
   try {
-    // The scheduler on this runtime reports no worker capability, so the
-    // parallel branch is never selected on its own. Forcing it is the only
-    // way to exercise the failure path, and forcing it is also the honest
-    // test: the branch must be entered, must fail (there is no worker
-    // module), must be caught, and must produce the identical answer the
-    // sequential path produces -- with the fallback recorded in the flag
-    // rather than hidden.
+    // `sagejs.optimization.parallel_worker` is a real, allowlisted worker
+    // module now, so forcing the schedule is no longer enough to make the
+    // parallel branch fail -- an objective like `camel6` crosses the
+    // boundary and comes back with the right answer. The failure exercised
+    // here is therefore the one the boundary genuinely cannot carry: a
+    // CLOSURE. `_scaled` reads `scale` from its enclosing function, which is
+    // not a module global and so is not shipped with the serialized source;
+    // the worker raises `scale is not defined` (see
+    // `sagejs.optimization.parallel_worker` for the whole contract).
+    //
+    // The branch must be entered, must fail, must be caught, and must
+    // produce the identical answer the sequential path produces -- with the
+    // fallback recorded in the flag rather than hidden. `scale` is one, so
+    // the closure is numerically `camel6` and every published expectation
+    // about that objective still applies.
     const outcome = await evalList(
       session,
       [
         "import sagejs.optimization.random_search as _rs_module",
         "from sagejs.optimization.schedule import Schedule",
+        "",
+        "def _scaled_camel6(scale):",
+        "    def _scaled(v):",
+        "        return camel6(v) * scale",
+        "    return _scaled",
+        "",
+        "_closure = _scaled_camel6(_ONE)",
         "_args = dict(search_points=12, max_iterations=100, seed=7)",
-        "_sequential = random_search(camel6, CAMEL6_BOX, max_workers=1, **_args)",
+        "_sequential = random_search(_closure, CAMEL6_BOX, max_workers=1, **_args)",
         "",
         "_saved = _rs_module.make_schedule",
         "",
@@ -975,7 +990,7 @@ test("a failing worker pool falls back to sequential, same answer", async () => 
         "",
         "_rs_module.make_schedule = _force_parallel",
         "try:",
-        "    _forced = random_search(camel6, CAMEL6_BOX, **_args)",
+        "    _forced = random_search(_closure, CAMEL6_BOX, **_args)",
         "finally:",
         "    _rs_module.make_schedule = _saved",
         "",
@@ -1002,6 +1017,153 @@ test("a failing worker pool falls back to sequential, same answer", async () => 
     await session.close();
   }
 });
+
+// An objective expensive enough for the scheduler to accept, and shaped for
+// the worker boundary. Every objective in PRELUDE is far too cheap: one
+// local solve of `camel6` costs milliseconds, DEFAULT_POLICY refuses to
+// parallelise anything under 0.25 s per slice, and it is right to -- a pool
+// costs 0.4-0.7 s to create. So this one does real work: a two-parameter
+// exponential-decay least-squares fit over 3000 sample points, minimised
+// (to zero) at (a, b) = (2, 3), which puts one local solve at a few tenths
+// of a second.
+//
+// `math` is imported INSIDE the function body on purpose. A module always
+// resolves that way in a worker; a module referenced from module scope is
+// shipped only if the host can serialize the module object, which is not
+// something an objective should have to reason about. See
+// `sagejs.optimization.parallel_worker`.
+const FIT_OBJECTIVE = [
+  "_FIT_SAMPLES = 3000",
+  "_FIT_A = float(2)",
+  "_FIT_B = float(3)",
+  "",
+  "def fit_residual(v):",
+  "    import math",
+  "    a = float(v[0])",
+  "    b = float(v[1])",
+  "    total = _ZERO",
+  "    for index in range(_FIT_SAMPLES):",
+  "        t = float(index) / float(_FIT_SAMPLES)",
+  "        gap = a * math.exp(-b * t) - _FIT_A * math.exp(-_FIT_B * t)",
+  "        total = total + gap * gap",
+  "    return total / float(_FIT_SAMPLES)",
+  "",
+  "FIT_BOX = [(_ZERO, float(5)), (_ZERO, float(5))]",
+].join("\n");
+
+test(
+  "a large random_search dispatches across real workers, bit for bit",
+  { timeout: 600_000 },
+  async (t) => {
+    const session = await openSurfaceSession();
+    try {
+      // Nothing is forced in this test. `sagejs.optimization.parallel_worker`
+      // is listed in `taskRuntimeImports`
+      // (scripts/precompiled-python-packages.json), so once the optional
+      // precompiled worker graph exists the capability probe reports True and
+      // `random_search` selects the parallel branch on its own. That graph is
+      // built by `pnpm run python:precompile:run`, which `node
+      // scripts/build.cjs` does NOT do, so a checkout without it skips --
+      // the same guard test/number-field-maximal-order-parallel-worker.cjs
+      // uses.
+      if ((await evalRepr(session, "probe_worker_capability()")) !== "True") {
+        t.skip("optional precompiled worker module graph is unavailable");
+        return;
+      }
+      await session.evaluate(FIT_OBJECTIVE);
+
+      // Three runs of the same search at three worker bounds, with the
+      // schedule each one chose recorded as it is made. This is the
+      // non-negotiable property: a seed must give a bit-identical answer at
+      // one, two and four workers, because every start point is generated in
+      // this process from (seed, index) alone and a worker only solves the
+      // points it is handed.
+      //
+      // This is by far the slowest test in the file (about 25 s), and it has
+      // to be: the scheduler only accepts work that is worth a pool, so a
+      // test that proves the parallel path really runs must pay for real
+      // work three times over. The two-worker run is the most expensive of
+      // the three -- see the boundary cost noted in
+      // `sagejs.optimization.parallel_worker`.
+      const outcome = await evalList(
+        session,
+        [
+          "import sagejs.optimization.random_search as _rs_live",
+          "_seen = []",
+          "_saved_live = _rs_live.make_schedule",
+          "",
+          "def _record(**kwargs):",
+          "    _decision = _saved_live(**kwargs)",
+          "    _seen.append(_decision)",
+          "    return _decision",
+          "",
+          "_rs_live.make_schedule = _record",
+          "_args = dict(search_points=8, max_iterations=120, seed=11)",
+          "_runs = []",
+          "try:",
+          "    for _bound in (1, 2, 4):",
+          "        _runs.append(",
+          "            random_search(fit_residual, FIT_BOX,",
+          "                          max_workers=_bound, **_args)",
+          "        )",
+          "finally:",
+          "    _rs_live.make_schedule = _saved_live",
+          "_first = _runs[0]",
+          "[int(len(_seen) == 3),",
+          " int(all(list(_r.x) == list(_first.x) for _r in _runs)),",
+          " int(all(_r.fun == _first.fun for _r in _runs)),",
+          " int(all(_r.function_calls == _first.function_calls for _r in _runs)),",
+          " int(all(_r.iterations == _first.iterations for _r in _runs)),",
+          " sum(1 for _s in _seen if _s.mode == 'parallel'),",
+          " int(all(_r.flag == 'converged' for _r in _runs))]",
+        ].join("\n"),
+      );
+      const [decisions, sameX, sameFun, sameCalls, sameIterations, parallelRuns, allConverged] =
+        outcome;
+
+      assert.equal(decisions, 1, "each of the three runs must ask the scheduler once");
+      assert.deepEqual(
+        [sameX, sameFun, sameCalls, sameIterations],
+        [1, 1, 1, 1],
+        "one, two and four workers must agree bit for bit, down to the " +
+          "evaluation count",
+      );
+
+      // The gates are a function of how fast THIS machine solves one start,
+      // so a fast enough host can legitimately refuse to parallelise this
+      // workload. That is a correct outcome, not a failure -- but then this
+      // test has not shown what it is here to show, so it says so.
+      if (parallelRuns === 0) {
+        const reasons = await evalRepr(session, "[str(_s.reason) for _s in _seen]");
+        t.skip(`the scheduler declined to parallelise this workload: ${reasons}`);
+        return;
+      }
+
+      // A parallel run that quietly fell back would still be bit-identical,
+      // so identity alone proves nothing about dispatch. The flag is what
+      // separates them: `_run_parallel` appends
+      // ":parallel-fallback-sequential" whenever the pool raised. A bare
+      // "converged" on a run whose schedule said "parallel" means the pool
+      // was created, the objective crossed into the workers, and their
+      // results came back.
+      assert.equal(
+        allConverged,
+        1,
+        "a parallel run that fell back would carry the fallback suffix",
+      );
+
+      // And the answer is the published one: the residual's minimum is zero
+      // at (2, 3), and the fit is exact enough to be indistinguishable from
+      // it at this budget.
+      assert.ok(
+        (await evalFloat(session, "_first.fun")) < 1e-6,
+        "the fit residual's published minimum is 0 at (a, b) = (2, 3)",
+      );
+    } finally {
+      await session.close();
+    }
+  },
+);
 
 test("simulated_annealing is the fold over its independent chains", async () => {
   const session = await openSession();

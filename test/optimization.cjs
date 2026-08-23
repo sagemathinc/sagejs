@@ -1081,15 +1081,17 @@ test("minimize wraps the simplex method with Sage's calling convention", async (
       `tightening the tolerance made f worse: ${tightened} > ${residual}`,
     );
 
-    // An unimplemented algorithm reports itself by name instead of failing
-    // with the UnboundLocalError upstream Sage produces.
+    // An unrecognized algorithm reports itself by name instead of failing
+    // with the UnboundLocalError upstream Sage produces. ('bfgs', 'cg',
+    // 'ncg' and 'powell' are real algorithms now -- see
+    // test/optimization-gradient.cjs -- so this uses a name that is not.)
     const unimplemented = await messageFromRaise(
       session,
-      "minimize(rosenbrock, [float(0), float(0)], algorithm='bfgs')",
+      "minimize(rosenbrock, [float(0), float(0)], algorithm='bogus')",
       "NotImplementedError",
     );
     assert.ok(
-      unimplemented.includes("bfgs"),
+      unimplemented.includes("bogus"),
       `the message should name the algorithm: ${unimplemented}`,
     );
   } finally {

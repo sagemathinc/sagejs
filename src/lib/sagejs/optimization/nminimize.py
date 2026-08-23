@@ -107,6 +107,58 @@ violation is at most `tolerance`. An infeasible answer is still returned —
 with its true objective value, so the caller can see how close it came — but
 `converged` is `False` and `":infeasible"` is appended to `flag`.
 
+## Post-processing
+
+> "PostProcess — whether to post-process using local search methods"
+
+Wolfram lists that sub-option, with default `Automatic`, on all four
+heuristic methods, and nowhere publishes what `Automatic` decides. The
+policy below is therefore **ours**, stated so it can be argued with:
+
+* `Automatic` means *on*. Every accepted value is polished by a local
+  method started at the point the global method returned.
+* The polish is `nelder_mead` when the problem has no constraints, and
+  `cobyla` when it has any, so that a constrained polish moves under the
+  constraints themselves rather than under a soft penalty and cannot walk
+  out of the feasible region on its way to a lower objective.
+* An equality constraint `h(x) == 0` is handed to `cobyla` as the pair
+  `h(x) >= 0` and `-h(x) >= 0`; COBYLA takes inequalities only, and the
+  pair is the same set exactly.
+* The polish is asked for a tolerance `0.01 * tolerance` — a hundred times
+  tighter than the run — because its whole job is to turn "in the right
+  basin" into "at the bottom of it". That tightening applies to
+  feasibility too (it is `cobyla`'s `catol`): the acceptance rule below
+  calls anything within `tolerance` feasible, so a polish held only to
+  `tolerance` would be free to spend the entire feasibility margin buying
+  objective, and would hand back an answer sitting exactly on the edge of
+  what counts as feasible.
+* The polished point replaces the global one only if it *wins*: it must
+  stay inside the initial region (within `tolerance`), and it must be
+  better under the ordering used everywhere else here — feasible beats
+  infeasible, then smaller worst violation between two infeasible points,
+  then smaller objective, and NaN never wins. A polish that made things
+  worse is discarded and the global answer is returned untouched.
+* Because the region test is part of that rule, a polish that escapes the
+  initial region is discarded rather than clipped: the global methods
+  searched only that region and the answer stays in it.
+* Every evaluation the polish spends is added to `function_calls`,
+  including the ones spent on a polish that was then discarded.
+* `":polished"` is appended to `flag` exactly when the polished point did
+  replace the global one. A polish never changes `converged`, which keeps
+  reporting how the *global* run stopped.
+* `"PostProcess" -> False` skips all of this, and reproduces the
+  unpolished answer bit for bit.
+
+A variable declared over `Integers` is rounded before the polish's
+objective sees it too, exactly as during the run, so the polish walks the
+same lattice the answer lives on; it usually finds nothing better than the
+cell it started in, and then costs only the evaluations it spent looking.
+
+The one case where the polish is nearly free of effect by construction is
+`"RandomSearch"`, whose local phase already runs a local method from every
+start: its answer is a converged local minimum before post-processing ever
+sees it.
+
 ## Integer variables
 
 A variable declared over `"Integers"` has its coordinate rounded to the
@@ -131,6 +183,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
+from .cobyla import cobyla
 from .differential_evolution import differential_evolution
 from .global_result import GlobalResult
 from .nelder_mead import nelder_mead
@@ -164,11 +217,23 @@ _AUTOMATIC = "Automatic"
 _REJECTED_METHODS = ("Convex", "MOSEK", "Gurobi", "Xpress", "Couenne")
 """Documented `NMinimize` methods backed by libraries Sage.js does not link."""
 
-_SHARED_OPTIONS = ("RandomSeed", "Tolerance")
+_POST_PROCESS = "PostProcess"
+"""Wolfram's sub-option asking for a local-search polish of the answer."""
+
+_SHARED_OPTIONS = (_POST_PROCESS, "RandomSeed", "Tolerance")
 """Method sub-options every method's table lists, handled before dispatch."""
 
-_UNSUPPORTED_OPTIONS = ("PenaltyFunction", "PostProcess")
+_UNSUPPORTED_OPTIONS = ("PenaltyFunction",)
 """Sub-options whose `Automatic` behaviour Wolfram never publishes."""
+
+_POLISHED = ":polished"
+"""Appended to `flag` when a polished point replaced the global answer."""
+
+_POLISH_TOLERANCE_SCALE = 0.01
+"""The polish is run at this multiple of the requested `tolerance`."""
+
+_POLISH_RADIUS_SCALE = 0.1
+"""COBYLA's initial trust radius, as a fraction of the widest region side."""
 
 _OPTION_KEYWORDS: dict[str, dict[str, str]] = {
     "NelderMead": {
@@ -279,11 +344,14 @@ def nminimize(
             `"DifferentialEvolution"`, `"SimulatedAnnealing"` or
             `"RandomSearch"`.
         method_options: Wolfram method sub-options by their documented
-            string names, for example `{"ScalingFactor": 1.0}`. Two names
+            string names, for example `{"ScalingFactor": 1.0}`. Three names
             are shared by every method's table and are read here rather than
-            forwarded: `"RandomSeed"` overrides `seed` and `"Tolerance"`
-            overrides `tolerance`. Must be `None` or empty when `method` is
-            `"Automatic"`, since the method is not yet chosen.
+            forwarded: `"RandomSeed"` overrides `seed`, `"Tolerance"`
+            overrides `tolerance`, and `"PostProcess"` (`True`, `False` or
+            `"Automatic"`, the default, which means `True`) turns the local
+            polish described in the module docstring on or off. Only those
+            three may be given when `method` is `"Automatic"`, since the
+            method is not yet chosen.
         max_iterations: Iteration budget for the chosen method; `None` uses
             `100`, the only published numeric default.
         tolerance: Both the method's convergence tolerance and Wolfram's
@@ -305,12 +373,13 @@ def nminimize(
 
     Raises:
         ValueError: If `variables` is empty, a variable's region is
-            non-finite or inverted, `bounds` has the wrong length, a domain
-            or method name is not one of the documented ones, or a method
-            sub-option does not appear in that method's option table.
-        NotImplementedError: For `"PenaltyFunction"` and `"PostProcess"`,
-            whose `Automatic` behaviour Wolfram does not publish, and for
-            the convex and commercial methods.
+            non-finite or inverted, `bounds` has the wrong length, a domain,
+            method name or `"PostProcess"` value is not one of the
+            documented ones, or a method sub-option does not appear in that
+            method's option table.
+        NotImplementedError: For `"PenaltyFunction"`, whose `Automatic`
+            behaviour Wolfram does not publish, and for the convex and
+            commercial methods.
         TypeError: If a constraint is neither a `Constraint` nor a callable.
     """
     specs = _normalize_variables(variables, bounds)
@@ -321,6 +390,7 @@ def nminimize(
         seed = int(options["RandomSeed"])
     if "Tolerance" in options:
         tolerance = float(options["Tolerance"])
+    polish = _wants_post_process(options)
     limit = _DEFAULT_MAX_ITERATIONS if max_iterations is None else int(max_iterations)
 
     box = [(spec.low, spec.high) for spec in specs]
@@ -353,6 +423,11 @@ def nminimize(
         )
     else:
         raise ValueError("unknown NMinimize method %r" % (method,))
+
+    if polish:
+        outcome = _post_process(
+            objective, outcome, box, flags, rules, limit, tolerance, bool(maximize)
+        )
 
     return _finish(objective, outcome, flags, rules, tolerance, seed, extra)
 
@@ -797,6 +872,213 @@ def _run_automatic(
             seed=seed,
         ),
         extra + loser.function_calls,
+    )
+
+
+def _wants_post_process(options: dict[str, Any]) -> bool:
+    """Resolve `"PostProcess"`: absent or `Automatic` means polish, as we define it.
+
+    Wolfram documents the three values `True`, `False` and `Automatic` and
+    never says what `Automatic` decides; **our documented choice** is that
+    it polishes. See the module docstring for what the polish is.
+    """
+    if _POST_PROCESS not in options:
+        return True
+    value = options[_POST_PROCESS]
+    if isinstance(value, str):
+        if value == _AUTOMATIC:
+            return True
+        raise ValueError(
+            "method sub-option %r must be True, False or %r, not %r"
+            % (_POST_PROCESS, _AUTOMATIC, value)
+        )
+    return bool(value)
+
+
+def _signed_objective(
+    objective: Objective, flags: Sequence[bool], maximize: bool
+) -> Objective:
+    """Wrap `objective` with integer rounding and the `maximize` sign, no penalty.
+
+    This is what the polish minimizes: the constraints reach `cobyla` as
+    constraints, so folding them in as penalties a second time would make
+    the polish fight itself.
+    """
+    sign = -1.0 if maximize else 1.0
+
+    def evaluate(point: Sequence[float]) -> float:
+        return sign * float(objective(_snap(point, flags)))
+
+    return evaluate
+
+
+def _signed_constraint(g: Objective, flags: Sequence[bool], sign: float) -> Objective:
+    """Return `sign * g(snap(x))`, COBYLA's `g(x) >= 0` shape with rounding applied."""
+
+    def evaluate(point: Sequence[float]) -> float:
+        return sign * float(g(_snap(point, flags)))
+
+    return evaluate
+
+
+def _polish_constraints(
+    constraints: Sequence[Constraint], flags: Sequence[bool]
+) -> list[Objective]:
+    """Restate the constraints as the inequalities `cobyla` accepts.
+
+    `g(x) >= 0` passes through; an equality `h(x) == 0` becomes the pair
+    `h(x) >= 0` and `-h(x) >= 0`, which is the same set exactly and gives
+    COBYLA two linear models it can build rather than one it cannot.
+    """
+    result: list[Objective] = []
+    for constraint in constraints:
+        result.append(_signed_constraint(constraint.function, flags, 1.0))
+        if constraint.kind == _EQUALITY:
+            result.append(_signed_constraint(constraint.function, flags, -1.0))
+    return result
+
+
+def _polish_radius(box: Sequence[tuple[float, float]]) -> float:
+    """Return COBYLA's `rhobeg`: a tenth of the widest side of the initial region.
+
+    Powell's own advice is that `rhobeg` should be about a tenth of the
+    greatest expected change in a variable, and the region the caller asked
+    to search is the only statement of scale available here. A region with
+    every side pinned to zero width leaves nothing to scale, and falls back
+    to `cobyla`'s own default of `1.0`.
+    """
+    widest = 0.0
+    for low, high in box:
+        width = high - low
+        if width > widest:
+            widest = width
+    if widest <= 0.0:
+        return 1.0
+    return widest * _POLISH_RADIUS_SCALE
+
+
+def _inside_region(
+    point: Sequence[float], box: Sequence[tuple[float, float]], tolerance: float
+) -> bool:
+    """Return whether `point` sits in the initial region, within `tolerance`."""
+    for value, pair in zip(point, box, strict=True):
+        if math.isnan(value):
+            return False
+        if value < pair[0] - tolerance or value > pair[1] + tolerance:
+            return False
+    return True
+
+
+def _polish_wins(
+    candidate_value: float,
+    candidate_violation: float,
+    current_value: float,
+    current_violation: float,
+    tolerance: float,
+) -> bool:
+    """Order two points the way the rest of this module does: feasibility, then value.
+
+    A feasible point beats an infeasible one; between two infeasible points
+    the smaller worst violation wins; otherwise the smaller objective wins.
+    NaN never wins, so a polish that lost the objective cannot displace an
+    answer that still has one.
+    """
+    if math.isnan(candidate_value):
+        return False
+    candidate_feasible = candidate_violation <= tolerance
+    current_feasible = current_violation <= tolerance
+    if candidate_feasible != current_feasible:
+        return candidate_feasible
+    if not candidate_feasible and candidate_violation != current_violation:
+        return candidate_violation < current_violation
+    if math.isnan(current_value):
+        return True
+    return candidate_value < current_value
+
+
+def _post_process(
+    objective: Objective,
+    outcome: GlobalResult,
+    box: Sequence[tuple[float, float]],
+    flags: Sequence[bool],
+    constraints: Sequence[Constraint],
+    limit: int,
+    tolerance: float,
+    maximize: bool,
+) -> GlobalResult:
+    """Polish `outcome` with a local method, keeping the better of the two points.
+
+    `nelder_mead` polishes an unconstrained problem and `cobyla` a
+    constrained one; the polished point is accepted only if it stays in the
+    initial region and wins under `_polish_wins`. Either way the polish's
+    evaluations are folded into `function_calls`. The returned `fun` is in
+    the minimization sense the methods report, and is recomputed from `x`
+    by `_finish` before any caller sees it.
+    """
+    signed = _signed_objective(objective, flags, maximize)
+    calls = 0
+
+    def counted(point: Sequence[float]) -> float:
+        nonlocal calls
+        calls += 1
+        return signed(point)
+
+    start = [float(value) for value in outcome.x]
+    current_value = counted(start)
+    current_violation = _worst_violation(constraints, _snap(start, flags))
+    polish_tolerance = tolerance * _POLISH_TOLERANCE_SCALE
+
+    if len(constraints) == 0:
+        local = nelder_mead(
+            counted,
+            start,
+            xatol=polish_tolerance,
+            fatol=polish_tolerance,
+            maxiter=limit,
+        )
+        candidate = [float(value) for value in local.x]
+        candidate_value = local.fun
+    else:
+        width = len(start)
+        constrained = cobyla(
+            counted,
+            start,
+            _polish_constraints(constraints, flags),
+            rhobeg=_polish_radius(box),
+            rhoend=polish_tolerance,
+            maxfun=max(width + 2, limit * (width + 1)),
+            catol=polish_tolerance,
+        )
+        candidate = [float(value) for value in constrained.x]
+        candidate_value = constrained.fun
+
+    candidate_violation = _worst_violation(constraints, _snap(candidate, flags))
+    accepted = _inside_region(candidate, box, tolerance) and _polish_wins(
+        candidate_value,
+        candidate_violation,
+        current_value,
+        current_violation,
+        tolerance,
+    )
+
+    if not accepted:
+        return GlobalResult(
+            x=list(outcome.x),
+            fun=outcome.fun,
+            iterations=outcome.iterations,
+            function_calls=outcome.function_calls + calls,
+            converged=outcome.converged,
+            flag=outcome.flag,
+            seed=outcome.seed,
+        )
+    return GlobalResult(
+        x=candidate,
+        fun=candidate_value,
+        iterations=outcome.iterations,
+        function_calls=outcome.function_calls + calls,
+        converged=outcome.converged,
+        flag=outcome.flag + _POLISHED,
+        seed=outcome.seed,
     )
 
 

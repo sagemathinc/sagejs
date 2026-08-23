@@ -982,8 +982,11 @@ test("the solution sits on the boundary when the free minimum is outside", async
 
     // Expressed as bound intervals instead of as constraint functions, the
     // same box must give the same answer to the same accuracy. This is the
-    // bound-pair path of `minimize_constrained`, which turns each
-    // (min, max) into the COBYLA pair x[i] - min >= 0, max - x[i] >= 0.
+    // bound-interval path of `minimize_constrained`, which for
+    // `algorithm="default"` (as here) routes to TNC, exactly as upstream
+    // does -- see test/optimization-constrained.cjs for the full routing
+    // table (default/l-bfgs-b/tnc for bound intervals, cobyla only for
+    // constraint functions).
     const viaBounds = await evalList(
       session,
       [
@@ -1267,28 +1270,13 @@ test("one-dimensional constrained problems work through both doors", async () =>
   }
 });
 
-test("an unimplemented algorithm reports itself by name", async () => {
+test("an unrecognized algorithm or a shape mismatch is reported clearly", async () => {
   const session = await openSession();
   try {
-    // Upstream reaches L-BFGS-B and TNC through SciPy; neither exists here
-    // yet, and neither may be silently replaced by COBYLA.
-    for (const name of ["l-bfgs-b", "tnc"]) {
-      const message = await messageFromRaise(
-        session,
-        [
-          "minimize_constrained(lambda p: p[0]**2, [(-_ONE, _ONE)], [_ZERO],",
-          `                     algorithm='${name}')`,
-        ].join("\n"),
-        "NotImplementedError",
-      );
-      assert.ok(
-        message.includes(name),
-        `the message should name the algorithm: ${message}`,
-      );
-    }
-
-    // An algorithm nobody has ever implemented: upstream falls through to
-    // an UnboundLocalError about its own local `min`; here it is named.
+    // L-BFGS-B and TNC are real now (test/optimization-constrained.cjs
+    // covers their routing in depth); what remains a caller mistake here is
+    // an algorithm name nobody has ever implemented. Upstream falls through
+    // to an UnboundLocalError about its own local `min`; here it is named.
     const nonsense = await messageFromRaise(
       session,
       [
@@ -1302,16 +1290,47 @@ test("an unimplemented algorithm reports itself by name", async () => {
       `the message should name the algorithm: ${nonsense}`,
     );
 
-    // "default" and "cobyla" must select the same computation, exactly.
+    // "default" and "tnc" must select the same computation for bound-
+    // interval constraints, exactly -- upstream sends bound constraints to
+    // TNC whenever `algorithm != 'l-bfgs-b'`.
     await session.evaluate("_f = lambda p: (p[0] - float(5))**2");
     const sameAlgorithm = await evalBool(
       session,
       [
         "(minimize_constrained(_f, [(-_ONE, _ONE)], [_ZERO], algorithm='default')",
-        " == minimize_constrained(_f, [(-_ONE, _ONE)], [_ZERO], algorithm='cobyla'))",
+        " == minimize_constrained(_f, [(-_ONE, _ONE)], [_ZERO], algorithm='tnc'))",
       ].join("\n"),
     );
-    assert.ok(sameAlgorithm, "'default' and 'cobyla' must agree bit for bit");
+    assert.ok(sameAlgorithm, "'default' and 'tnc' must agree bit for bit");
+
+    // Sage.js rejects the two algorithm/shape mismatches that upstream
+    // silently reroutes instead: bound intervals with algorithm="cobyla"
+    // run TNC upstream, and constraint functions with a box-only solver run
+    // COBYLA upstream, both without a word. Reported as sagemath/sage#42711;
+    // see test/optimization-constrained.cjs for the full routing table.
+    const cobylaWithBounds = await messageFromRaise(
+      session,
+      "minimize_constrained(_f, [(-_ONE, _ONE)], [_ZERO], algorithm='cobyla')",
+      "TypeError",
+    );
+    assert.ok(
+      cobylaWithBounds.includes("cobyla") && cobylaWithBounds.includes("bound"),
+      `unexpected message: ${cobylaWithBounds}`,
+    );
+    for (const name of ["l-bfgs-b", "tnc"]) {
+      const message = await messageFromRaise(
+        session,
+        [
+          "minimize_constrained(lambda p: p[0]**2, [lambda p: p[0] - _ONE],",
+          `                     [_ZERO], algorithm='${name}')`,
+        ].join("\n"),
+        "TypeError",
+      );
+      assert.ok(
+        message.includes(name),
+        `the message should name the algorithm: ${message}`,
+      );
+    }
 
     // An unknown keyword is a caller mistake, not something to forward.
     const badOption = await messageFromRaise(

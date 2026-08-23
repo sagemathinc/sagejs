@@ -33,8 +33,9 @@ starting points, etc." Each start point here is one complete, independent
 local optimization — expensive enough on its own to amortise a worker's
 startup cost, unlike a single objective evaluation. `solve_from_start` is
 therefore the whole unit of work: it takes only plain, serialisable
-arguments (no closures, no shared state) and returns a plain tuple, so it can
-be pickled and shipped to a `multiprocessing.Pool` worker unchanged. It also
+arguments (no closures, no shared state) and returns a plain tuple, so
+`sagejs.optimization.parallel_worker` can run it inside a worker on nothing
+but the contents of one argument tuple. It also
 never lets a single failing start take the rest of the run down with it — a
 raising `local_method` or a raising `f` is caught internally and mapped to
 the sentinel `(list(start), _INFINITY, 0)`, which simply cannot win the final
@@ -67,20 +68,33 @@ arrives, never what it is.
    included) is partitioned by `slice_indices(n, schedule.slice_count)` —
    which, because a "unit" here already *is* one complete local solve,
    yields `n` singleton blocks — and dispatched in one `multiprocessing
-   .Pool(schedule.workers).map(...)` call over those blocks. `Pool.map`'s own
-   internal chunking then spreads the singleton blocks across the worker
-   pool; nothing here calls `apply_async`, per the defect `schedule.py`
-   documents for that entry point. The probe's start point is recomputed
-   inside the pool in this path rather than reused — a deterministic,
-   bit-identical recomputation, traded for a uniform dispatch that always
-   goes through the exact `slice_indices(total, schedule.slice_count)` shape
-   `schedule.py` documents.
+   .Pool(schedule.workers).starmap(...)` call over those blocks, whose
+   argument tuples are built by `sagejs.optimization.parallel_worker
+   .make_work_items`. The host assigns submitted item `i` to worker
+   `i % workers`, so the blocks spread evenly; nothing here calls
+   `apply_async`, per the defect `schedule.py` documents for that entry
+   point. The probe's start point is recomputed inside the pool in this path
+   rather than reused — a deterministic, bit-identical recomputation, traded
+   for a uniform dispatch that always goes through the exact
+   `slice_indices(total, schedule.slice_count)` shape `schedule.py`
+   documents.
 
-The whole parallel branch is wrapped in `try`/`except Exception`: a pickling
-failure, a pool-creation failure, a crashed worker — anything at all — falls
-back to running the remaining starts sequentially, and that fallback is
-recorded in the returned `GlobalResult.flag`. Parallelism here is strictly an
-optimisation; it is never load-bearing for correctness.
+`starmap` and not `map` for one concrete reason: the host encodes each
+argument of a submitted tuple on its own, and only that encoder can
+serialize a callable, so an objective packed into a single `map` payload
+would be handed to the data serializer, which has no case for a function.
+The objective therefore travels as its own argument, as compiled source
+plus the module-level *data* it references. `sagejs.optimization
+.parallel_worker` documents exactly which objectives survive that
+reconstruction — self-contained top-level functions, importing any module
+they need inside their own body — and which do not.
+
+The whole parallel branch is wrapped in `try`/`except Exception`: an
+objective outside that class, a serialization failure, a pool-creation
+failure, a crashed worker — anything at all — falls back to running the
+remaining starts sequentially, and that fallback is recorded in the returned
+`GlobalResult.flag`. Parallelism here is strictly an optimisation; it is
+never load-bearing for correctness.
 
 ## Reducing to `GlobalResult`
 
@@ -281,9 +295,9 @@ def solve_from_start(
     """Run one independent local solve from `start`, returning `(x, fun, calls)`.
 
     This is the whole unit of parallel work: every argument is a plain,
-    picklable value (a callable, floats, sequences of floats), so a caller
-    can hand this function and a block of `start` values straight to a
-    `multiprocessing.Pool` worker with nothing further to prepare.
+    serialisable value (a callable, floats, sequences of floats), so
+    `sagejs.optimization.parallel_worker.solve_start_block` can call it in a
+    worker with nothing to prepare beyond one argument tuple.
 
     `local_method` defaults to `nelder_mead` (Wolfram's documented default,
     unconstrained `FindMinimum`) and otherwise must satisfy the `LocalMethod`
@@ -341,30 +355,6 @@ def solve_from_start(
     return clipped, fun, calls
 
 
-def _solve_block(
-    payload: tuple[
-        list[list[float]],
-        Callable[[Sequence[float]], float],
-        Sequence[tuple[float, float]],
-        float,
-        int,
-        LocalMethod | None,
-    ],
-) -> list[tuple[list[float], float, int]]:
-    """The picklable top-level function `Pool.map` actually calls.
-
-    Runs every start in its block serially inside the worker process;
-    `Pool.map` already distributes the blocks themselves across the pool in
-    the single call made in `_run_parallel`, so no further parallelism is
-    needed within one block.
-    """
-    starts, f, bounds, tolerance, max_iterations, local_method = payload
-    return [
-        solve_from_start(f, bounds, start, tolerance, max_iterations, local_method)
-        for start in starts
-    ]
-
-
 def _run_parallel(
     f: Callable[[Sequence[float]], float],
     bounds: Sequence[tuple[float, float]],
@@ -375,38 +365,49 @@ def _run_parallel(
     workers: int,
     slice_count: int,
 ) -> list[tuple[list[float], float, int]]:
-    """Dispatch every start in `starts` to a worker pool in one `Pool.map` call.
+    """Dispatch every start in `starts` to a worker pool in one `starmap` call.
 
-    `multiprocessing` is imported here, inside the function the caller
-    already wraps in `try`/`except`, rather than at module load time: a
-    runtime that has no `multiprocessing` module at all (as `schedule.py`'s
-    `probe_worker_capability` anticipates) then simply raises `ImportError`
-    into that same fallback path instead of breaking every import of this
-    module.
+    `multiprocessing` and `sagejs.optimization.parallel_worker` are imported
+    here, inside the function the caller already wraps in `try`/`except`,
+    rather than at module load time: a runtime that has no `multiprocessing`
+    module at all (as `schedule.py`'s `probe_worker_capability` anticipates)
+    then simply raises `ImportError` into that same fallback path instead of
+    breaking every import of this module. The worker module's own import of
+    this one is at *its* module level, so the deferral here is also what
+    keeps the pair from importing each other in a cycle.
 
     `starts` is partitioned by `slice_indices(len(starts), slice_count)` —
     the exact `slice_indices(total, schedule.slice_count)` shape `schedule
     .py` documents. Because one unit of work here already is one complete
-    local solve, this always yields `len(starts)` singleton blocks; `Pool
-    .map`'s own internal chunking, not any chunking done here, is what
-    spreads those singleton blocks across `workers` processes. The blocks
-    are submitted in exactly one `.map()` call, never through
-    `apply_async`, per the defect `schedule.py` documents for that entry
-    point.
+    local solve, this always yields `len(starts)` singleton blocks, and the
+    host assigns submitted item `i` to worker `i % workers`, which spreads
+    them evenly. They are submitted in exactly one `.starmap()` call, never
+    through `apply_async`, per the defect `schedule.py` documents for that
+    entry point.
+
+    `starmap` rather than `map` because the host encodes each *argument* of
+    a submitted tuple separately and only that encoder can serialize a
+    callable: an objective packed inside a single `map` payload reaches the
+    data serializer instead, which has no case for a function. See
+    `sagejs.optimization.parallel_worker` for the whole boundary contract and
+    for which objectives survive it.
     """
     import multiprocessing
 
+    from sagejs.optimization.parallel_worker import (
+        make_work_items,
+        solve_start_block,
+    )
+
     blocks = slice_indices(len(starts), slice_count)
-    payloads = [
-        (list(starts[begin:end]), f, bounds, tolerance, max_iterations, local_method)
-        for begin, end in blocks
-        if end > begin
-    ]
-    if not payloads:
+    items = make_work_items(
+        f, bounds, starts, blocks, tolerance, max_iterations, local_method
+    )
+    if not items:
         return []
 
     with multiprocessing.Pool(workers) as pool:
-        chunks = pool.map(_solve_block, payloads)
+        chunks = pool.starmap(solve_start_block, items)
 
     combined: list[tuple[list[float], float, int]] = []
     for chunk in chunks:
