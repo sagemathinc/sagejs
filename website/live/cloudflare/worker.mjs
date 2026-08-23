@@ -13,6 +13,10 @@ const SECURITY_HEADERS = Object.freeze({
 
 const RELEASE_PATTERN = /^[a-f0-9]{64}$/;
 const IMMUTABLE_ASSET_PATTERN = /^assets\/sha256-[a-f0-9]{64}\//;
+// Increment this whenever the representation stored in Cache API changes.
+// Cache API entries survive Worker deployments, so a new Worker must never
+// inherit responses produced by an older encoding contract.
+const EDGE_CACHE_SCHEMA = "2";
 
 function secureHeaders(headers = new Headers()) {
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
@@ -75,11 +79,12 @@ function acceptsBrotli(request) {
     });
 }
 
-function cacheRequest(request, logicalPath, release, encoding) {
+export function cacheRequest(request, logicalPath, release, encoding) {
   const url = new URL(request.url);
   url.search = "";
   url.searchParams.set("__sagejs_release", release);
   url.searchParams.set("__sagejs_encoding", encoding);
+  url.searchParams.set("__sagejs_cache", EDGE_CACHE_SCHEMA);
   url.pathname = `/${logicalPath}`;
   return new Request(url, { method: "GET" });
 }

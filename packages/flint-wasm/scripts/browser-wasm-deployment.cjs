@@ -2,6 +2,7 @@
 "use strict";
 
 const fs = require("node:fs");
+const { createHash } = require("node:crypto");
 const path = require("node:path");
 
 const REQUIRED_HEADERS = new Map([
@@ -113,6 +114,31 @@ async function validateDeployedOrigin(origin, { expectedRuntime } = {}) {
   }
   if (assetManifest?.schema !== "org.sagejs.web/assets-v2") {
     failures.push("asset-manifest.json has an invalid schema");
+  }
+  const immutableSample = assetManifest?.assets
+    ?.filter((record) => typeof record?.path === "string" && record.path.startsWith("./assets/"))
+    .sort((left, right) => (right.bytes ?? 0) - (left.bytes ?? 0))[0];
+  if (immutableSample) {
+    const pathname = new URL(immutableSample.path, url).pathname;
+    const immutableIdentity = await fetchDeployedAsset(url, pathname, "identity");
+    const immutableBrotli = await fetchDeployedAsset(url, pathname, "br");
+    if (immutableIdentity.response.headers.has("content-encoding")) {
+      failures.push("identity immutable response must not be content-encoded");
+    }
+    if (immutableBrotli.response.headers.get("content-encoding")?.toLowerCase() !== "br") {
+      failures.push("Brotli immutable response must declare content-encoding br");
+    }
+    if (!immutableIdentity.body.equals(immutableBrotli.body)) {
+      failures.push("identity and Brotli immutable responses decode to different bytes");
+    }
+    if (
+      immutableIdentity.body.length !== immutableSample.bytes
+      || createHash("sha256").update(immutableIdentity.body).digest("hex") !== immutableSample.sha256
+    ) {
+      failures.push("live immutable response differs from its asset-manifest byte contract");
+    }
+  } else {
+    failures.push("asset-manifest.json has no immutable asset to validate");
   }
   if (runtime && assetManifest && runtime.artifactIdentity !== assetManifest.artifactIdentity) {
     failures.push("runtime and asset manifests identify different artifacts");

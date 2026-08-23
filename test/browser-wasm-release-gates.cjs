@@ -2,6 +2,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
 const { once } = require("node:events");
 const fs = require("node:fs");
 const http = require("node:http");
@@ -189,18 +190,24 @@ test("Cloudflare-compatible header policy is parsed and security checked", () =>
   assert.match(validateHeadersRules(rules).join("\n"), /cross-origin-opener-policy/);
 });
 
-async function withDeploymentOrigin({ doubleBrotli = false } = {}, callback) {
+async function withDeploymentOrigin({ doubleBrotli = false, doubleImmutableBrotli = false } = {}, callback) {
   const release = "a".repeat(64);
   const runtime = Buffer.from(`${JSON.stringify({
     schema: "org.sagejs.web/runtime-v1",
     revision: "fixture-revision",
     artifactIdentity: `sha256:${"b".repeat(64)}`,
   })}\n`);
+  const immutable = Buffer.from("export const answer = 42;\n");
+  const immutablePath = `/assets/sha256-${"b".repeat(64)}/runtime.mjs`;
   const manifest = Buffer.from(`${JSON.stringify({
     schema: "org.sagejs.web/assets-v2",
     release,
     artifactIdentity: `sha256:${"b".repeat(64)}`,
-    assets: [],
+    assets: [{
+      path: `.${immutablePath}`,
+      bytes: immutable.length,
+      sha256: createHash("sha256").update(immutable).digest("hex"),
+    }],
   })}\n`);
   const server = http.createServer((request, response) => {
     response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
@@ -230,6 +237,17 @@ async function withDeploymentOrigin({ doubleBrotli = false } = {}, callback) {
       }
       return;
     }
+    if (request.url === immutablePath) {
+      response.setHeader("Content-Type", "text/javascript; charset=utf-8");
+      if ((request.headers["accept-encoding"] ?? "").includes("br")) {
+        response.setHeader("Content-Encoding", "br");
+        const compressed = brotliCompressSync(immutable);
+        response.end(doubleImmutableBrotli ? brotliCompressSync(compressed) : compressed);
+      } else {
+        response.end(immutable);
+      }
+      return;
+    }
     response.statusCode = 404;
     response.end("missing");
   });
@@ -255,6 +273,12 @@ test("deployed origin validation rejects double-compressed Brotli", async () => 
     assert.match(
       (await validateDeployedOrigin(origin, { expectedRuntime })).join("\n"),
       /decode to different bytes/,
+    );
+  });
+  await withDeploymentOrigin({ doubleImmutableBrotli: true }, async (origin, expectedRuntime) => {
+    assert.match(
+      (await validateDeployedOrigin(origin, { expectedRuntime })).join("\n"),
+      /immutable responses decode to different bytes/,
     );
   });
 });

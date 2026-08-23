@@ -7,6 +7,7 @@ import test from "node:test";
 import { brotliDecompress } from "node:zlib";
 import { promisify } from "node:util";
 import {
+  cacheRequest,
   handleRequest,
   logicalAssetPath,
   storageKey,
@@ -57,6 +58,16 @@ test("Cloudflare Worker maps immutable and release shell objects without path es
     "release shells remain immutable and independently selectable",
   );
   assert.throws(() => storageKey("index.html", "not-a-release"), /invalid release/);
+  const edgeKey = new URL(cacheRequest(
+    new Request("https://app.sagejs.org/ignored?old=value"),
+    `assets/sha256-${"b".repeat(64)}/runtime.wasm`,
+    release,
+    "br",
+  ).url);
+  assert.equal(edgeKey.searchParams.get("__sagejs_cache"), "2");
+  assert.equal(edgeKey.searchParams.get("__sagejs_release"), release);
+  assert.equal(edgeKey.searchParams.get("__sagejs_encoding"), "br");
+  assert.equal(edgeKey.searchParams.has("old"), false);
 
   const seen = [];
   const bucket = {
