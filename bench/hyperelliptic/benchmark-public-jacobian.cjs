@@ -102,6 +102,14 @@ for genus, curve in [
         left, right, algorithm="native", materialize=True
     )
     reference_add = lambda: context.add_batch(left, right, algorithm="reference")
+    native_negate = lambda: context.negate_batch(right, algorithm="native")
+    reference_negate = lambda: context.negate_batch(right, algorithm="reference")
+    native_subtract = lambda: context.subtract_batch(
+        left, right, algorithm="native"
+    )
+    reference_subtract = lambda: context.subtract_batch(
+        left, right, algorithm="reference"
+    )
     native_scalar = lambda: context.scalar_batch(
         left[:scalar_comparison_items],
         scalars[:scalar_comparison_items],
@@ -132,6 +140,8 @@ for genus, curve in [
     )
 
     native_add()
+    native_negate()
+    native_subtract()
     native_scalar()
     retained_input = context.add_batch(left, right, algorithm="native")
     assert retained_input.published_count == 0
@@ -156,6 +166,10 @@ for genus, curve in [
         native_add_materialized
     )
     reference_add_ns, reference_add_result = timed(reference_add, 3)
+    native_negate_ns, native_negate_result = timed(native_negate)
+    reference_negate_ns, reference_negate_result = timed(reference_negate, 3)
+    native_subtract_ns, native_subtract_result = timed(native_subtract)
+    reference_subtract_ns, reference_subtract_result = timed(reference_subtract, 3)
     native_scalar_ns, native_scalar_result = timed(native_scalar, 5)
     native_scalar_materialized_ns, native_scalar_materialized_result = timed(
         native_scalar_materialized, 3
@@ -170,6 +184,8 @@ for genus, curve in [
     assert retained_input.published_count == 0
     assert retained_add_result.published_count == 0
     assert native_add_materialized_result == reference_add_result
+    assert native_negate_result == reference_negate_result
+    assert native_subtract_result == reference_subtract_result
     assert all(not value.is_materialized() for value in native_add_result)
     assert all(value.is_materialized() for value in native_add_materialized_result)
     assert native_scalar_result == reference_scalar_result
@@ -195,6 +211,12 @@ for genus, curve in [
         ),
         "reference_add_median_ns": reference_add_ns,
         "add_speedup": reference_add_ns / native_add_ns,
+        "native_negate_median_ns": native_negate_ns,
+        "reference_negate_median_ns": reference_negate_ns,
+        "negate_speedup": reference_negate_ns / native_negate_ns,
+        "native_subtract_median_ns": native_subtract_ns,
+        "reference_subtract_median_ns": reference_subtract_ns,
+        "subtract_speedup": reference_subtract_ns / native_subtract_ns,
         "materialized_add_speedup": reference_add_ns / native_add_materialized_ns,
         "native_scalar_median_ns": native_scalar_ns,
         "native_scalar_materialized_median_ns": native_scalar_materialized_ns,

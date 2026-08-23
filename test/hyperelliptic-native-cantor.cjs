@@ -212,6 +212,31 @@ def check_curve(curve, exhaustive):
     )
     assert doubled == doubled_reference
 
+    negated, negate_diagnostics = context.negate_batch(
+        sample, algorithm=selected, diagnostics=True
+    )
+    negated_reference = tuple(point._negate_reference() for point in sample)
+    assert negated == negated_reference
+    assert negate_diagnostics.operation == "negate"
+    shifted = tuple(sample[(index + 1) % len(sample)] for index in range(len(sample)))
+    differences, subtract_diagnostics = context.subtract_batch(
+        sample, shifted, algorithm=selected, diagnostics=True
+    )
+    difference_reference = context.add_batch(
+        sample,
+        tuple(point._negate_reference() for point in shifted),
+        algorithm="reference",
+    )
+    assert differences == difference_reference
+    assert subtract_diagnostics.operation == "subtract"
+    if compiled:
+        assert isinstance(negated, PreparedDivisorBatch)
+        assert isinstance(differences, PreparedDivisorBatch)
+        assert negated.published_count == 0
+        assert differences.published_count == 0
+    assert sample[1].negate(algorithm=selected) == negated_reference[1]
+    assert sample[1].subtract(sample[2], algorithm=selected) == difference_reference[1]
+
     progression = context.progression_batch(
         sample[0], sample[1], 19, algorithm=selected
     )

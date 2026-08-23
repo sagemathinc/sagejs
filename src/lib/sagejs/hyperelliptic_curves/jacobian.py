@@ -378,13 +378,34 @@ class MumfordDivisor(sage.Element):
         u_value, v_value = self.uv()
         return self._parent, ([u_value, v_value],)
 
-    def __neg__(self) -> Any:
+    def _negate_reference(self) -> Any:
         u, v = self.uv()
         return self._parent._element(
             u,
             _polynomial_remainder(-self._parent.h() - v, u),
             False,
         )
+
+    def negate(
+        self,
+        *,
+        algorithm: str = "auto",
+        diagnostics: bool = False,
+    ) -> Any:
+        """Return the canonical inverse through prepared or reference arithmetic."""
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown Jacobian negation algorithm " + repr(algorithm))
+        context = self._parent.prepared_arithmetic(algorithm=algorithm)
+        if diagnostics or context.native_available:
+            result = context.negate_batch((self,), diagnostics=diagnostics)
+            if diagnostics:
+                values, record = result
+                return values[0], record
+            return result[0]
+        return self._negate_reference()
+
+    def __neg__(self) -> Any:
+        return self.negate()
 
     def _neg_(self) -> Any:
         return self.__neg__()
@@ -437,8 +458,31 @@ class MumfordDivisor(sage.Element):
             return self
         return self.__add__(other)
 
+    def subtract(
+        self,
+        other: Any,
+        *,
+        algorithm: str = "auto",
+        diagnostics: bool = False,
+    ) -> Any:
+        """Subtract a divisor through prepared or reference arithmetic."""
+        if not isinstance(other, MumfordDivisor) or other._parent is not self._parent:
+            raise TypeError("Jacobian divisors must have the same parent")
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError(
+                "unknown Jacobian subtraction algorithm " + repr(algorithm)
+            )
+        context = self._parent.prepared_arithmetic(algorithm=algorithm)
+        if diagnostics or context.native_available:
+            result = context.subtract_batch((self,), (other,), diagnostics=diagnostics)
+            if diagnostics:
+                values, record = result
+                return values[0], record
+            return result[0]
+        return self.add(other._negate_reference(), algorithm="reference")
+
     def __sub__(self, other: Any) -> Any:
-        return self + (-other)
+        return self.subtract(other)
 
     def __mul__(self, scalar: Any) -> Any:
         return self.__rmul__(scalar)
@@ -452,7 +496,7 @@ class MumfordDivisor(sage.Element):
         if not runtime.is_exact_integer(scalar):
             raise TypeError("Jacobian divisor multipliers must be integers")
         if scalar < 0:
-            return (-self)._scalar_multiple_reference(-scalar)
+            return self._negate_reference()._scalar_multiple_reference(-scalar)
         result = self._parent.zero()
         addend = self
         while scalar:

@@ -948,6 +948,70 @@ class PreparedJacobianArithmetic:
             return answer, record
         return result
 
+    def negate_batch(
+        self,
+        elements: Any,
+        *,
+        algorithm: str | None = None,
+        diagnostics: bool = False,
+        materialize: bool = False,
+    ) -> Any:
+        """Return canonical inverses, retaining packed rows when native."""
+        count = len(elements) if isinstance(elements, PreparedDivisorBatch) else None
+        values: Any = elements if count is not None else tuple(elements)
+        if count is None:
+            count = len(values)
+        result = self.scalar_batch(
+            values,
+            (-1 for _index in range(count)),
+            algorithm=algorithm,
+            diagnostics=diagnostics,
+            materialize=materialize,
+        )
+        if diagnostics:
+            answer, record = result
+            record.operation = "negate"
+            return answer, record
+        return result
+
+    def subtract_batch(
+        self,
+        lefts: Any,
+        rights: Any,
+        *,
+        algorithm: str | None = None,
+        diagnostics: bool = False,
+        materialize: bool = False,
+    ) -> Any:
+        """Subtract paired divisors without materializing native intermediates."""
+        if diagnostics:
+            negated, negate_record = self.negate_batch(
+                rights,
+                algorithm=algorithm,
+                diagnostics=True,
+            )
+            answer, add_record = self.add_batch(
+                lefts,
+                negated,
+                algorithm=algorithm,
+                diagnostics=True,
+                materialize=materialize,
+            )
+            add_record.operation = "subtract"
+            add_record.pack_ns += negate_record.pack_ns
+            add_record.kernel_ns += negate_record.kernel_ns
+            add_record.unpack_ns += negate_record.unpack_ns
+            add_record.materialization_ns += negate_record.materialization_ns
+            add_record.validation_ns += negate_record.validation_ns
+            return answer, add_record
+        negated = self.negate_batch(rights, algorithm=algorithm)
+        return self.add_batch(
+            lefts,
+            negated,
+            algorithm=algorithm,
+            materialize=materialize,
+        )
+
     def progression_batch(
         self,
         start: Any,
@@ -1201,7 +1265,7 @@ class PreparedJacobianArithmetic:
 
     def _reference_scalar(self, value: Any, scalar: int) -> Any:
         if scalar < 0:
-            return self._reference_scalar(-value, -scalar)
+            return self._reference_scalar(value._negate_reference(), -scalar)
         result = self._jacobian.zero()
         addend = value
         while scalar:
