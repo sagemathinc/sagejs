@@ -14,7 +14,9 @@ import time
 from sagejs.hyperelliptic_curves.genus3_completion import summarize_genus3_candidate_progressions
 from sagejs.hyperelliptic_curves.rforest import rforest_hasse_witt_rows
 
-def measure(prime, polynomial, h=None, seed=1, coordinates=None):
+def measure(
+    prime, polynomial, h=None, seed=1, coordinates=None, algorithm="basis"
+):
     R = PolynomialRing(GF(prime), "x")
     x = R.gen()
     f = R(polynomial)
@@ -24,7 +26,7 @@ def measure(prime, polynomial, h=None, seed=1, coordinates=None):
     order = J.order()
     order_seconds = time.perf_counter() - started
     started = time.perf_counter()
-    structure = J.group_structure(algorithm="basis", seed=seed)
+    structure = J.group_structure(algorithm=algorithm, seed=seed)
     structure_seconds = time.perf_counter() - started
     exhaustive_seconds = None
     exhaustive_structure = None
@@ -34,7 +36,7 @@ def measure(prime, polynomial, h=None, seed=1, coordinates=None):
         exhaustive_seconds = time.perf_counter() - started
         assert exhaustive_structure == structure
     started = time.perf_counter()
-    G, phi = J.abelian_group(algorithm="basis", seed=seed)
+    G, phi = J.abelian_group(algorithm=algorithm, seed=seed)
     map_seconds = time.perf_counter() - started
     query_seconds = None
     query = None
@@ -117,6 +119,7 @@ rows = (
         h=(1,0,1),
         seed=3,
         coordinates=(1,1,7),
+        algorithm="auto",
     ),
 )
 candidate_stream = measure_candidate_stream()
