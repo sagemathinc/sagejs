@@ -56,6 +56,61 @@
     "exact_digest_equal": true,
     "status_counts_equal": true
   },
+  "causal_baseline_ab31e4f3": {
+    "immutable": true,
+    "purpose": "last exact integrated receipt before the no-parent finite-field cache bypass",
+    "commit": "ab31e4f3ff8095dcfcdbb34d4d29fb142dc3ae01",
+    "command": "node bench/rforest/benchmark-genus3-certified.cjs --limits 100000 --stages certification",
+    "exact": {
+      "rows": 9592,
+      "unique": 9587,
+      "fallback": 1,
+      "omitted": 4,
+      "primary_samples": 9588,
+      "stream_digest": "3728105193022836152423678822391807418"
+    },
+    "certification": {
+      "wall_seconds": 126.17510347,
+      "cpu_user_seconds": 130.986621,
+      "cpu_system_seconds": 0.921691,
+      "rss_start_kib": 426288,
+      "rss_end_kib": 841328,
+      "peak_rss_kib": 842276,
+      "stages_seconds": {
+        "residue": 8.0503898,
+        "candidate": 28.2011707,
+        "primary": 57.9895701,
+        "twist": 0.0274827,
+        "fallback": 0.152138
+      },
+      "speedup_over_materialized_781_814_seconds": 6.19626285
+    },
+    "rank_three_order_32": {
+      "structure": [2, 2, 8],
+      "query": [1, 1, 7],
+      "verified": true,
+      "cold_seconds": {
+        "structure": 0.17129,
+        "explicit_map": 1.050641
+      },
+      "warm_seconds": {
+        "structure_samples": [0.063432, 0.057692, 0.068783, 0.054984],
+        "explicit_map_samples": [0.393614, 0.33856, 0.329878, 0.339845],
+        "structure_median": 0.060562,
+        "explicit_map_median": 0.339203
+      }
+    },
+    "acceptance": {
+      "certification_speedup_at_least_5x": "pass",
+      "wall_below_300_seconds": "pass",
+      "peak_rss_below_512_mib": "fail",
+      "rank_three_structure_10x_cold": "pass",
+      "rank_three_map_10x_cold": "fail",
+      "rank_three_structure_10x_warm": "pass",
+      "rank_three_map_10x_warm": "pass",
+      "overall": "fail"
+    }
+  },
   "notes": [
     "The command completed successfully and exact outputs agree, but the performance acceptance thresholds failed.",
     "The materialized control's candidate stage excludes batched tuple publication, which occurs before the per-row observer; its uninstrumented remainder is therefore much larger.",
