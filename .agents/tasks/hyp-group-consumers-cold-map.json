@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-group-consumers-cold-map",
+  "title": "Phase-4 process-cold explicit-map gate",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile and, if source-correct, remove reusable one-time publication overhead so the exact genus-3 order-32 rank-three explicit map meets the process-cold 0.8103 second gate while preserving one enumeration, exact map verification, and provenance.",
+  "base_commit": "b30ecbfae62760d44a24438f3fb7f99bedfe1eee",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/abelian_group.py",
+    "test/hyperelliptic-group-consumer-performance.cjs",
+    "bench/hyperelliptic/benchmark-group-consumers.cjs",
+    "bench/results/hyperelliptic-rank3-cold-map-linux-x64-2026-08-23.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact [2,2,8] structure, (1,1,7) round trip, exhaustive map verification, and historical baseline timing"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
