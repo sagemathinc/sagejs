@@ -187,6 +187,27 @@ assert len(packed.relation_records) == 5
 from sagejs.number_fields.class_group_relations import ExactRelationCollector, RelationNotSmoothError
 order = packed_field.maximal_order()
 basis = tuple(order.basis())
+
+# Batch admission replays the packed sieve norm through the determinant of
+# multiplication in the integral order basis.  It must not fall back to a
+# general field-element resultant, and it retains the identical witness.
+norm_collector = ExactRelationCollector(order, packed.factor_base)
+element_type = type(packed_field.gen())
+saved_element_norm = element_type.norm
+def forbidden_element_norm(self):
+    raise AssertionError("cubic batch admission recomputed an element resultant")
+element_type.norm = forbidden_element_norm
+try:
+    norm_batch = norm_collector.admit_integral_order_basis_rows(((
+        (0, 1, -1),
+        packed.relation_records[2].row,
+        packed.relation_records[2].provenance,
+    ),))
+finally:
+    element_type.norm = saved_element_norm
+assert norm_batch is not None and len(norm_batch) == 1
+assert norm_batch[0].record.to_dict() == packed.relation_records[2].to_dict()
+
 probe_collector = ExactRelationCollector(order, packed.factor_base)
 try:
     # Both rows have norm 27.  Exact containment, not norm equality alone,

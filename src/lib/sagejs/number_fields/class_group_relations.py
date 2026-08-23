@@ -650,6 +650,44 @@ def _factor_base_row_norm_from_norms(
     return answer
 
 
+def _cubic_order_basis_element_norm(
+    multiplication_table: tuple[tuple[tuple[int, ...], ...], ...],
+    coordinates: tuple[int, ...],
+) -> int:
+    """Return the signed norm from one integral cubic multiplication table.
+
+    The packed cubic sieve evaluates an interpolated norm form.  Relation
+    admission deliberately uses this different exact construction: assemble
+    multiplication by the supplied order element directly and take its
+    three-by-three determinant.  Thus a proposed norm remains untrusted while
+    avoiding a general field-element resultant for every retained row.
+    """
+    if len(coordinates) != 3 or len(multiplication_table) != 3:
+        raise ValueError("a cubic norm replay has the wrong dimension")
+    rows: list[list[int]] = []
+    for right in range(3):
+        row: list[int] = []
+        for output in range(3):
+            row.append(
+                sum(
+                    coordinates[left] * multiplication_table[left][right][output]
+                    for left in range(3)
+                )
+            )
+        rows.append(row)
+    a, b, c = rows[0]
+    d, e, f = rows[1]
+    g, h, i = rows[2]
+    return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
+
+
+def _integral_structure_constant(value: Any) -> int:
+    rational = sage.QQ(value)
+    if rational._denominator != 1:
+        raise ValueError("an order multiplication-table entry is not integral")
+    return int(rational._numerator)
+
+
 def _factor_positive_integer(value: int) -> list[list[int]]:
     if value < 1:
         raise ValueError("a norm numerator or denominator must be positive")
@@ -1359,6 +1397,37 @@ class ExactRelationCollector:
         if self._order_basis is None:
             self._order_basis = tuple(self.order.basis())
         field = self.order.number_field()
+        cubic_multiplication_table: tuple[tuple[tuple[int, ...], ...], ...] | None = (
+            None
+        )
+        if degree == 3:
+            try:
+                maximal_module = __import__(
+                    "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
+                )
+                raw_table = maximal_module._nf_order_multiplication_table(self.order)
+                cubic_multiplication_table = tuple(
+                    tuple(
+                        tuple(_integral_structure_constant(entry) for entry in product)
+                        for product in left
+                    )
+                    for left in raw_table
+                )
+                if any(
+                    len(left) != 3 or any(len(product) != 3 for product in left)
+                    for left in cubic_multiplication_table
+                ):
+                    cubic_multiplication_table = None
+            except (
+                AttributeError,
+                ArithmeticError,
+                ImportError,
+                OverflowError,
+                RuntimeError,
+                TypeError,
+                ValueError,
+            ):
+                cubic_multiplication_table = None
         normalized: list[
             tuple[tuple[int, ...], tuple[int, ...], dict[str, Any] | None, Any, Any]
         ] = []
@@ -1389,7 +1458,11 @@ class ExactRelationCollector:
                 element += coefficient * basis_element
             if element.is_zero():
                 raise ValueError("a sieved relation generator must be nonzero")
-            witness_norm = sage.QQ(element.norm())
+            witness_norm = sage.QQ(
+                element.norm()
+                if cubic_multiplication_table is None
+                else _cubic_order_basis_element_norm(cubic_multiplication_table, values)
+            )
             if witness_norm < 0:
                 witness_norm = -witness_norm
             if witness_norm <= 1:
