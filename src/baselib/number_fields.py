@@ -1502,19 +1502,7 @@ class NumberFieldIdeal:
         return _nf_global("matrix")(sage.QQ, self._basis_rows)
 
     def __contains__(self, value: object) -> bool:
-        try:
-            element = self._field(value)
-        except Exception:
-            return False
-        if len(self._basis_rows) == 0:
-            return element.is_zero()
-        row = _nf_coordinates(element, self._field.degree())
-        if self._membership_inverse_cache is runtime.undefined:
-            self._membership_inverse_cache = self.basis_matrix().inverse()
-        coordinates = (
-            _nf_global("vector")(sage.QQ, row) * self._membership_inverse_cache
-        )
-        return all(value._denominator == 1 for value in coordinates)
+        return _nf_ideal_arithmetic_module().ideal_contains_element(self, value)
 
     def contains_ideal(self, other: NumberFieldIdeal) -> bool:
         return _nf_ideal_arithmetic_module().ideal_contains(self, other)

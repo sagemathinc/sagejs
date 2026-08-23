@@ -30,6 +30,9 @@ _om = __import__("sagejs.number_fields.om_types", fromlist=["om_types"])
 _candidate_kernel = __import__(
     "sagejs.number_fields.bl_composite_kernel", fromlist=["bl_composite_kernel"]
 )
+_ideal_arithmetic = __import__(
+    "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+)
 
 NumberFieldIdeal = _nf.NumberFieldIdeal
 _nf_coordinates = _nf._nf_coordinates
@@ -1184,11 +1187,11 @@ def _dedekind_kummer_prime_candidate(
     if verify_candidate:
         if not p_basis:
             p_basis = tuple(order.ideal(prime).basis())
-        if not all(value in candidate for value in p_basis):
-            raise ArithmeticError("a packed Dedekind--Kummer ideal omits p*O")
-        if second_generator not in candidate:
+        if not _ideal_arithmetic.ideal_contains_elements(
+            candidate, p_basis + (second_generator,)
+        ):
             raise ArithmeticError(
-                "a packed Dedekind--Kummer ideal omits its exact generator"
+                "a packed Dedekind--Kummer ideal omits p*O or its exact generator"
             )
         expected_norm = runtime.bigint(prime) ** runtime.bigint(residue_degree)
         if candidate.norm() != expected_norm:
@@ -1460,7 +1463,7 @@ def verify_prime_decomposition(
         residue_degree = ideal.residue_class_degree()
         if residue_degree < 1:
             failures.append("a residue degree is not positive")
-        if not all(element in ideal for element in p_ideal.basis()):
+        if not _ideal_arithmetic.ideal_contains(ideal, p_ideal):
             failures.append("a prime lattice does not contain p*O")
         if not ideal.is_integral():
             failures.append("a prime lattice is not integral")

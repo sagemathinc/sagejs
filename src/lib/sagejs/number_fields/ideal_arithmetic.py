@@ -34,6 +34,8 @@ MAX_MULTIPLICATION_TENSOR_CACHE_ENTRIES = 32
 
 _multiplication_tensor_cache: list[tuple[Any, tuple[int, ...], int]] = []
 _ideal_product_kernel_override: Any = None
+_element_membership_kernel_override: Any = None
+_element_membership_batch_kernel_override: Any = None
 _element_valuations_kernel_override: Any = None
 
 
@@ -160,6 +162,157 @@ def _packed_membership_word_capacity(
             bounds.append((value + diagonal - 1) // diagonal)
             maximum = max(maximum, bounds[-1])
     return max(16, (maximum.bit_length() + 63) // 64 + 1)
+
+
+def _packed_element_membership(ideal: Any, element: Any) -> bool | None:
+    """Test one exact element through the packed canonical HNF solver."""
+    degree = int(ideal.number_field().degree())
+    if degree < 1 or degree > MAX_PACKED_IDEAL_PRODUCT_DEGREE:
+        return None
+    if _element_membership_kernel_override is False:
+        return None
+    try:
+        kernel_module = __import__(
+            "sagejs.number_fields.bl_composite_kernel",
+            fromlist=["bl_composite_kernel"],
+        )
+        kernel = (
+            _element_membership_kernel_override
+            if callable(_element_membership_kernel_override)
+            else getattr(kernel_module, "packed_lattice_memberships_in_place", None)
+        )
+        if not callable(kernel):
+            return None
+        basis = _packed_ideal_basis(ideal)
+        vector, vector_denominator = _packed_element_coordinates(element, degree)
+        word_capacity = _packed_membership_word_capacity([basis], vector, degree)
+        output = kernel_integer_zeros(kernel, 1, 1)
+        if not kernel(
+            output,
+            kernel_integer_zeros(kernel, degree, word_capacity),
+            kernel_integer_buffer(kernel, basis[0]),
+            kernel_integer_buffer(kernel, [basis[1]]),
+            kernel_integer_buffer(kernel, vector),
+            vector_denominator,
+            degree,
+            1,
+        ):
+            return None
+        values = tuple(int(value) for value in integer_buffer_values(output))
+        if values == (0,):
+            return False
+        if values == (1,):
+            return True
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        pass
+    return None
+
+
+def ideal_contains_element(ideal: Any, value: Any) -> bool:
+    """Return exact element membership with a readable matrix fallback."""
+    if not isinstance(ideal, NumberFieldIdeal):
+        raise TypeError("ideal membership requires a number-field ideal")
+    try:
+        element = ideal.number_field()(value)
+    except Exception:
+        return False
+    if ideal.is_zero():
+        return bool(element.is_zero())
+    packed = _packed_element_membership(ideal, element)
+    if packed is not None:
+        return packed
+    row = _nf_coordinates(element, ideal.number_field().degree())
+    try:
+        inverse = ideal._membership_inverse_cache
+    except AttributeError:
+        # A source checkout may reuse a runtime bootstrap built before this
+        # immutable cache slot was introduced.
+        inverse = runtime.undefined
+    if inverse is runtime.undefined:
+        ideal._membership_inverse_cache = ideal.basis_matrix().inverse()
+        inverse = ideal._membership_inverse_cache
+    coordinates = _nf_global("vector")(sage.QQ, row) * inverse
+    return all(coordinate._denominator == 1 for coordinate in coordinates)
+
+
+def _packed_elements_membership(ideal: Any, elements: tuple[Any, ...]) -> bool | None:
+    """Test several elements against one HNF lattice in one packed call."""
+    degree = int(ideal.number_field().degree())
+    count = len(elements)
+    if (
+        degree < 1
+        or degree > MAX_PACKED_IDEAL_PRODUCT_DEGREE
+        or count < 1
+        or count > MAX_PACKED_ELEMENT_VALUATION_LATTICES
+    ):
+        return None
+    if _element_membership_batch_kernel_override is False:
+        return None
+    try:
+        kernel_module = __import__(
+            "sagejs.number_fields.bl_composite_kernel",
+            fromlist=["bl_composite_kernel"],
+        )
+        kernel = (
+            _element_membership_batch_kernel_override
+            if callable(_element_membership_batch_kernel_override)
+            else getattr(
+                kernel_module,
+                "packed_known_overorder_contains_vectors_in_place",
+                None,
+            )
+        )
+        if not callable(kernel):
+            return None
+        basis = _packed_ideal_basis(ideal)
+        packed_vectors = [
+            _packed_element_coordinates(element, degree) for element in elements
+        ]
+        word_capacity = max(
+            _packed_membership_word_capacity([basis], vector, degree)
+            for vector, _denominator in packed_vectors
+        )
+        return bool(
+            kernel(
+                kernel_integer_zeros(kernel, degree * degree, word_capacity),
+                kernel_integer_buffer(kernel, basis[0]),
+                kernel_integer_buffer(
+                    kernel,
+                    [
+                        value
+                        for vector, _denominator in packed_vectors
+                        for value in vector
+                    ],
+                ),
+                kernel_integer_buffer(
+                    kernel,
+                    [denominator for _vector, denominator in packed_vectors],
+                ),
+                basis[1],
+                degree,
+                count,
+            )
+        )
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+
+
+def ideal_contains_elements(ideal: Any, values: Any) -> bool:
+    """Return whether every supplied exact element belongs to `ideal`."""
+    if not isinstance(ideal, NumberFieldIdeal):
+        raise TypeError("ideal membership requires a number-field ideal")
+    try:
+        elements = tuple(ideal.number_field()(value) for value in values)
+    except Exception:
+        return False
+    if not elements:
+        return True
+    if ideal.is_zero():
+        return all(element.is_zero() for element in elements)
+    packed = _packed_elements_membership(ideal, elements)
+    if packed is not None:
+        return packed
+    return all(ideal_contains_element(ideal, element) for element in elements)
 
 
 def _packed_integral_element_valuations(
@@ -309,7 +462,7 @@ def ideal_product(left: Any, right: Any) -> Any:
 def ideal_contains(container: Any, contained: Any) -> bool:
     """Return whether `contained` is a sublattice of `container`."""
     _same_order(container, contained)
-    return all(element in container for element in contained.basis())
+    return ideal_contains_elements(container, contained.basis())
 
 
 def ideal_divides(divisor: Any, dividend: Any) -> bool:
@@ -642,6 +795,8 @@ __all__ = [
     "element_valuations",
     "factor_integral_ideal",
     "ideal_contains",
+    "ideal_contains_element",
+    "ideal_contains_elements",
     "ideal_divides",
     "ideal_from_dict",
     "ideal_inverse",
