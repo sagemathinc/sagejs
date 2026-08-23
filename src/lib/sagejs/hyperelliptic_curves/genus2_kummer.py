@@ -716,6 +716,59 @@ def classical_duplication_l1_bound(jacobian: Any) -> int:
     return max(1, max(bounds))
 
 
+def classical_duplication_specialized_terms(
+    jacobian: Any,
+) -> tuple[tuple[tuple[int, int, int, int, int], ...], ...]:
+    """Specialize Flynn's quartics to one integral classical quintic.
+
+    Each returned term is `(coefficient,e1,e2,e3,e4)`. Terms killed by a
+    zero model coefficient are removed once at context construction rather
+    than rediscovered during every real-place iteration.
+    """
+    capability = exact_model_capability(jacobian)
+    capability.require()
+    if not jacobian.h().is_zero() or int(jacobian.f().degree()) != 5:
+        raise Genus2KummerCapabilityError(
+            "specialized classical quartics require h=0 and degree(f)=5",
+            dict(capability.diagnostics),
+        )
+    coefficients: list[int] = []
+    for value in _polynomial_coefficients(jacobian.f(), 6):
+        numerator, denominator = _rational_pair(value)
+        if denominator != 1:
+            raise Genus2KummerCapabilityError(
+                "specialized classical quartics require integral coefficients",
+                dict(capability.diagnostics),
+            )
+        coefficients.append(numerator)
+    specialized: list[tuple[tuple[int, int, int, int, int], ...]] = []
+    for table in (
+        _CLASSICAL_DELTA_1,
+        _CLASSICAL_DELTA_2,
+        _CLASSICAL_DELTA_3,
+        _CLASSICAL_DELTA_4,
+    ):
+        output: list[tuple[int, int, int, int, int]] = []
+        for term in table:
+            coefficient = int(term[0])
+            for index in range(6):
+                exponent = int(term[index + 5])
+                if exponent:
+                    coefficient *= coefficients[index] ** exponent
+            if coefficient:
+                output.append(
+                    (
+                        coefficient,
+                        int(term[1]),
+                        int(term[2]),
+                        int(term[3]),
+                        int(term[4]),
+                    )
+                )
+        specialized.append(tuple(output))
+    return tuple(specialized)
+
+
 def classical_duplication_raw(
     jacobian: Any,
     coordinates: tuple[int, int, int, int],
@@ -903,6 +956,7 @@ def duplicate_kummer_coordinates(point: KummerCoordinates) -> KummerCoordinates:
 __all__ = [
     "classical_duplication_l1_bound",
     "classical_duplication_raw",
+    "classical_duplication_specialized_terms",
     "Genus2KummerCapability",
     "Genus2KummerCapabilityError",
     "KummerCoordinates",

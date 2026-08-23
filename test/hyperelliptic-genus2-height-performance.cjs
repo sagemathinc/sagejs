@@ -12,6 +12,7 @@ from sagejs.hyperelliptic_curves.genus2_heights import (
     height_pairing,
     regulator,
 )
+from sagejs.number_fields.class_unit_analytic import RealBall
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -91,6 +92,47 @@ assert diagnostics["archimedean_correction_cache_hits"] > 0
       result.repr,
       /^\[\d+, True, True, 'certified-positive', True\]$/,
     );
+  } finally {
+    await session.close();
+  }
+});
+
+test("high-precision local tails retain the declared Magma oracle accuracy", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      `${setup}
+context = HeightContext(J)
+height = canonical_height(
+    P, precision=128, target_bits=128, algorithm="local", context=context
+)
+# Magma 2.18-5 prints more digits than remain stable as its Precision parameter
+# varies.  The first 96 bits are independently stable; do not promote the
+# displayed tail to a false 128-bit oracle.
+oracle = RealBall(
+    "0.55175981952139493925311708933354526634108654109670",
+    precision_bits=192,
+)
+radius = RealBall(1, precision_bits=192) / RealBall(2**96, precision_bits=192)
+oracle96 = RealBall(
+    oracle.lower - radius.upper,
+    oracle.upper + radius.upper,
+    precision_bits=192,
+)
+height.ball.intersection(oracle96)
+arch = height.diagnostics["archimedean_correction"]["diagnostics"]
+assert height.diagnostics["achieved_enclosure_width_bits"] >= 128
+assert arch["specialized_quartic_term_counts"] == (12, 15, 16, 14)
+assert arch["scale_logarithm_block_size"] == 4
+[
+    height.steps,
+    height.diagnostics["achieved_enclosure_width_bits"],
+    arch["scale_logarithm_evaluations"],
+]
+`,
+      { timeout: 120_000 },
+    );
+    assert.match(result.repr, /^\[\d+, 1\d\d, \d+\]$/);
   } finally {
     await session.close();
   }

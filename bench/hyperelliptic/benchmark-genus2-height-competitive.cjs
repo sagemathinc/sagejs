@@ -9,6 +9,11 @@ const { createSage } = require("../../dist/tools/kernel.js");
 
 const root = resolve(__dirname, "../..");
 const oracle = "0.55175981952139493925311708933354526634108654109670";
+// Magma 2.18-5 returns the same trailing digits for Precision 100 through 500;
+// exact Kummer limits show that only the first roughly 100 bits are stable.
+// Treat this legacy executable as a 96-bit oracle instead of promoting its
+// printed tail to a false high-precision certificate.
+const oracleConfidenceBits = 96;
 const targetIndex = process.argv.indexOf("--targets");
 const targets = (targetIndex < 0 ? "64" : process.argv[targetIndex + 1])
   .split(",")
@@ -46,6 +51,7 @@ async function sageRows() {
       [
         "import time",
         "from sagejs.hyperelliptic_curves.genus2_heights import HeightContext, canonical_height, height_pairing, regulator",
+        "from sagejs.number_fields.class_unit_analytic import RealBall",
         "height_bench_R = PolynomialRing(QQ, 'x')",
         "height_bench_x = height_bench_R.gen()",
         "height_bench_C = HyperellipticCurve(height_bench_x**5-height_bench_x+1)",
@@ -64,26 +70,66 @@ async function sageRows() {
           `height_bench_cold = 1000*(time.perf_counter()-height_bench_started)`,
           `assert height_bench_height.rigorous`,
           `assert height_bench_height.diagnostics['achieved_enclosure_width_bits'] >= ${target}`,
-          `assert height_bench_height.ball.contains('${oracle}')`,
+          `height_bench_oracle_center = RealBall('${oracle}', precision_bits=${target + 64})`,
+          `height_bench_oracle_radius = RealBall(1, precision_bits=${target + 64})/RealBall(2**${oracleConfidenceBits}, precision_bits=${target + 64})`,
+          `height_bench_oracle_compatible = height_bench_height.ball.intersection(RealBall(height_bench_oracle_center.lower-height_bench_oracle_radius.upper, height_bench_oracle_center.upper+height_bench_oracle_radius.upper, precision_bits=${target + 64})) is not None`,
+          `assert height_bench_oracle_compatible`,
           `height_bench_started = time.perf_counter()`,
           `for height_bench_index in range(${repetitions}):`,
           `    height_bench_warm = canonical_height(height_bench_P, precision=${target}, target_bits=${target}, algorithm='local', context=height_bench_context)`,
           `height_bench_warm_ms = 1000*(time.perf_counter()-height_bench_started)/${repetitions}`,
-          `str(${target})+'|'+str(height_bench_height.steps)+'|'+str(height_bench_height.diagnostics['working_precision_bits'])+'|'+str(height_bench_height.diagnostics['achieved_enclosure_width_bits'])+'|'+str(height_bench_cold)+'|'+str(height_bench_warm_ms)+'|'+str(height_bench_height.ball.lower)+'|'+str(height_bench_height.ball.upper)+'|'+str(height_bench_context.diagnostics()['finite_correction_cache_hits'])+'|'+str(height_bench_context.diagnostics()['archimedean_correction_cache_hits'])`,
+          `str(${target})+'|'+str(height_bench_height.steps)+'|'+str(height_bench_height.diagnostics['working_precision_bits'])+'|'+str(height_bench_height.diagnostics['achieved_enclosure_width_bits'])+'|'+str(height_bench_cold)+'|'+str(height_bench_warm_ms)+'|'+str(height_bench_height.ball.lower)+'|'+str(height_bench_height.ball.upper)+'|'+str(height_bench_context.diagnostics()['finite_correction_cache_hits'])+'|'+str(height_bench_context.diagnostics()['archimedean_correction_cache_hits'])+'|'+str(height_bench_height.diagnostics['archimedean_correction']['diagnostics']['minimum_state_width_bits'])+'|'+str(height_bench_oracle_compatible)`,
         ].join("\n"),
         { timeout: 900_000 },
       );
       const fields = unquote(result.repr).split("|");
+      const steps = Number(fields[1]);
+      const workingPrecisionBits = Number(fields[2]);
+      const profileResult = await session.evaluate(
+        [
+          "height_bench_started = time.perf_counter()",
+          "height_bench_profile_context = HeightContext(height_bench_J)",
+          "height_bench_context_ms = 1000*(time.perf_counter()-height_bench_started)",
+          `height_bench_started = time.perf_counter()`,
+          `height_bench_initial_bounds = height_bench_profile_context.automatic_bounds(${target + 32})`,
+          "height_bench_initial_bounds_ms = 1000*(time.perf_counter()-height_bench_started)",
+          "height_bench_started = time.perf_counter()",
+          `height_bench_guarded_bounds = height_bench_profile_context.automatic_bounds(${workingPrecisionBits})`,
+          "height_bench_guarded_bounds_ms = 1000*(time.perf_counter()-height_bench_started)",
+          "height_bench_started = time.perf_counter()",
+          `height_bench_profile_finite = height_bench_profile_context.finite_correction(height_bench_P, precision=${workingPrecisionBits}, steps=${steps})`,
+          "height_bench_finite_ms = 1000*(time.perf_counter()-height_bench_started)",
+          "height_bench_started = time.perf_counter()",
+          `height_bench_profile_arch = height_bench_profile_context.archimedean_correction(height_bench_P, precision=${workingPrecisionBits}, steps=${steps}, bounds=height_bench_guarded_bounds, target_bits=${target})`,
+          "height_bench_arch_ms = 1000*(time.perf_counter()-height_bench_started)",
+          "height_bench_started = time.perf_counter()",
+          `height_bench_profile_assembled = canonical_height(height_bench_P, precision=${target}, target_bits=${target}, algorithm='local', context=height_bench_profile_context)`,
+          "height_bench_assembly_ms = 1000*(time.perf_counter()-height_bench_started)",
+          "str(height_bench_context_ms)+'|'+str(height_bench_initial_bounds_ms)+'|'+str(height_bench_guarded_bounds_ms)+'|'+str(height_bench_finite_ms)+'|'+str(height_bench_arch_ms)+'|'+str(height_bench_assembly_ms)",
+        ].join("\n"),
+        { timeout: 900_000 },
+      );
+      const profileFields = unquote(profileResult.repr).split("|");
       rows.push({
         targetBits: Number(fields[0]),
-        steps: Number(fields[1]),
-        workingPrecisionBits: Number(fields[2]),
+        steps,
+        workingPrecisionBits,
         achievedEnclosureWidthBits: Number(fields[3]),
         objectColdMilliseconds: Number(fields[4]),
         warmMilliseconds: Number(fields[5]),
         enclosure: { lower: fields[6], upper: fields[7], rigorous: true },
         finiteCacheHits: Number(fields[8]),
         archimedeanCacheHits: Number(fields[9]),
+        minimumStateWidthBits: Number(fields[10]),
+        fixedOracleCompatibleAtDeclaredAccuracy: fields[11] === "True",
+        stageMilliseconds: {
+          contextAndSpecializedQuartics: Number(profileFields[0]),
+          initialAutomaticBounds: Number(profileFields[1]),
+          guardedAutomaticBounds: Number(profileFields[2]),
+          finiteCorrection: Number(profileFields[3]),
+          archimedeanCorrection: Number(profileFields[4]),
+          cachedAssemblyAndExactOracle: Number(profileFields[5]),
+        },
       });
     }
 
@@ -195,6 +241,7 @@ async function main() {
       pointQ: "[x-1,1]",
       normalization: "Cassels-Flynn 2Theta principal polarization",
       oracle,
+      oracleConfidenceBits,
       targets,
       repetitions,
       modes: ["resident object cold", "resident prepared-context warm"],
