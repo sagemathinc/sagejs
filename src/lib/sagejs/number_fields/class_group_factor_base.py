@@ -649,11 +649,44 @@ def minkowski_bound(value: Any) -> FactorBaseBound:
         return cached
     _order, _field, degree, r1, r2, discriminant = _field_metadata(order)
     coefficient = _Rational((4**r2) * _factorial(degree), degree**degree)
+    # These classical Archimedean rational bounds are intentionally coarse,
+    # but they decide the floor in nearly every small and medium field without
+    # constructing a high-height Machin enclosure of pi.  The independent
+    # arbitrary-precision path below remains authoritative whenever this
+    # interval crosses an integer.
+    coarse_bits = 64
+    coarse_pi = _Interval(_Rational(333, 106), _Rational(355, 113))
+    coarse_denominator = _Interval.exact(ONE) if r2 == 0 else coarse_pi.power(r2)
+    coarse_interval = (
+        _sqrt_rational_interval(_Rational(discriminant), coarse_bits)
+        * _Interval.exact(coefficient)
+        / coarse_denominator
+    )
+    coarse_bound = _same_integer(coarse_interval, "floor")
+    if coarse_bound is not None:
+        result = FactorBaseBound(
+            "Minkowski",
+            (),
+            coarse_bound,
+            degree,
+            (r1, r2),
+            discriminant,
+            coarse_bits,
+            coarse_interval,
+            {
+                "formula": "floor((4/pi)^r2*n!/n^n*sqrt(abs(D)))",
+                "rounding": "floor-certified-rational-interval",
+                "pi_enclosure": "333/106 < pi < 355/113",
+            },
+        )
+        _store_bound(order, "minkowski", result)
+        return result
     for bits in (64, 96, 128, 192, 256, 384, MAX_INTERVAL_BITS):
+        pi_power = _Interval.exact(ONE) if r2 == 0 else _pi_interval(bits).power(r2)
         interval = (
             _sqrt_rational_interval(_Rational(discriminant), bits)
             * _Interval.exact(coefficient)
-            / _pi_interval(bits).power(r2)
+            / pi_power
         )
         bound = _same_integer(interval, "floor")
         if bound is not None:

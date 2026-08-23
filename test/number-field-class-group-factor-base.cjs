@@ -722,6 +722,37 @@ compact = [
     for record in auto_records
 ]
 assert compact == case["minkowski_factor_base"]
+
+# A classical rational enclosure decides ordinary Minkowski floors without
+# evaluating the high-height Machin interval.  Its endpoints contain the
+# independent direct exact-rational construction.  A deliberately near-
+# integer imaginary quadratic bound still enters the full precision loop.
+coarse_pi = factor_bases._Interval(
+    factor_bases._Rational(333, 106), factor_bases._Rational(355, 113)
+)
+direct_pi = factor_bases._pi_scalar_interval(256)
+assert coarse_pi.lower < direct_pi.lower < direct_pi.upper < coarse_pi.upper
+saved_pi_interval = factor_bases._pi_interval
+def forbidden_pi_interval(bits):
+    raise AssertionError("a coarse Minkowski decision evaluated Machin pi")
+factor_bases._pi_interval = forbidden_pi_interval
+coarse_x = R.gen()
+coarse_field = NumberField(
+    coarse_x**3 - coarse_x**2 - 6 * coarse_x - 12, "coarse"
+)
+assert minkowski_bound(coarse_field.maximal_order()).bound == 9
+factor_bases._pi_interval = saved_pi_interval
+
+pi_calls = [0]
+def counted_pi_interval(bits):
+    pi_calls[0] += 1
+    return saved_pi_interval(bits)
+factor_bases._pi_interval = counted_pi_interval
+near_x = R.gen()
+near_integer = NumberField(near_x**2 + 1481, "near")
+assert minkowski_bound(near_integer.maximal_order()).bound == 48
+factor_bases._pi_interval = saved_pi_interval
+assert pi_calls[0] >= 1
 assert len(auto_records) == benchmark["auto_factor_base_size"]
 assert auto_seconds < benchmark["maximum_auto_factor_base_seconds"]
 
