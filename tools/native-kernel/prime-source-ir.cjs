@@ -548,7 +548,7 @@ function lowerAssignment(statement, context) {
   const symbol = assign.operator.endsWith("=") ? assign.operator.slice(0, -1) : "";
   const bitwise = uint64BitwiseOperation(symbol);
   expect(context, assign,
-    ["+", "-", "*"].includes(symbol) || bitwise !== undefined,
+    ["+", "-", "*", "//", "%"].includes(symbol) || bitwise !== undefined,
     `unsupported augmented operator ${assign.operator}`);
   expect(context, assign.left, context.variables.get(target) === "uint64" &&
     context.initialized.has(target), `augmented target ${target} must be uint64`);
