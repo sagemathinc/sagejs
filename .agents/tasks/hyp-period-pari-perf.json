@@ -6,7 +6,7 @@
   "lane": "hyperelliptic-curves",
   "status": "active",
   "owner": "user",
-  "objective": "Fuse exact completed-model validation, qqbar topology, two Arb/Acb period refinements, Riemann and conjugation validation, and exact real-lattice assembly behind one bounded FLINT operation while retaining the ordinary-source witness and measuring exact genus-2/3 PARI corpus performance",
+  "objective": "Fuse exact completed-model validation, qqbar topology, independent Arb/Acb refinements, Riemann and conjugation validation, real-lattice assembly, and bounded Abel--Jacobi point batches behind mature FLINT operations while retaining ordinary-source witnesses and measuring exact genus-2/3 PARI and Magma contracts",
   "base_commit": "0a2f78699bd18693aa7967d711a0215b67480df2",
   "claims": [
     "src/lib/sagejs/hyperelliptic_curves/periods.py",
@@ -34,7 +34,8 @@
       "cpython",
       "javascript",
       "same-source mpmath quadrature",
-      "PARI/GP 2.18.1-alpha hyperellperiods corpus"
+      "PARI/GP 2.18.1-alpha hyperellperiods corpus",
+      "Magma 2.18.5 ToAnalyticJacobian conjugate-pair corpus"
     ],
     "exceptions": [
       "The canonical compiler cannot yet lower variable-precision qqbar/Arb/Acb matrices or FLINT exact integer kernel/SNF resources. The bounded mature-FLINT operation mirrors the ordinary Python topology, panel quadrature, Riemann, conjugation, and lattice formulas; has no host callbacks after entry; publishes only after two arbitrary-precision refinements; and retains a lazily materialized ordinary-source witness plus exact differential and PARI oracles. These representations should become declared compiler resources when supported."
@@ -81,11 +82,40 @@
       "commit": "4b0e069b8e95e95a83e39981658b394a2e9cbaf2",
       "workspace_fingerprint": "f207d86e26502ae63775793aad5d5e51b5f542266b19a7dada7e78fce50b60e1",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-period-arb-performance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.654,
+      "started_at": "2026-08-23T09:19:44.515Z",
+      "commit": "92dae550b488e123d5ae715c41efbbfa2295369d",
+      "workspace_fingerprint": "c246b10c1647756d5f95f928d51f528e7cf42374d6377f2de306831e537654f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.494,
+      "started_at": "2026-08-23T09:20:15.478Z",
+      "commit": "92dae550b488e123d5ae715c41efbbfa2295369d",
+      "workspace_fingerprint": "c246b10c1647756d5f95f928d51f528e7cf42374d6377f2de306831e537654f3",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Commits 4b0e069b and c5ac3082 deliver the fused complete Arb/Acb period operation and exact bench-1 PARI receipt: resident 64-bit g2/g3 ratios are 1.7273x and 1.46594x. Commit 92dae550 adds public bounded Abel--Jacobi batches: exact point validation, one qqbar root isolation and ray plan per batch, three increasing Arb/Acb refinement witnesses, ordinary-source replay, and a correct scalar capability fallback. The exact bench-1 Magma receipt records a 151.952 ms public 12-point Sage.js median versus 1420 ms for twelve separate Magma ToAnalyticJacobian calls sharing one prepared AnalyticJacobian, a 9.345x batch win.",
+    "risks": [
+      "Integration must classify the new napi:@sagemath/sagejs-flint:hyperellipticAbelJacobiBatchArb export and regenerate native inventories before architecture:check and the full native suite can be final.",
+      "Magma and Sage.js choose different homology bases, so the receipt retains both numeric outputs but uses exact point equations, conjugate-pair cancellation, and Sage.js ordinary-source replay instead of asserting coordinate equality across bases.",
+      "The Abel batch reaches 38 measured stability bits for this 64-bit request while retaining 64-bit Arb arithmetic accuracy and independent 96/128/160-bit refinements; the already-integrated period path still preserves its separate greater-than-44-bit two-refinement acceptance evidence.",
+      "Platforms without the FLINT host capability remain mathematically correct through the ordinary scalar fallback but do not receive the batch performance improvement."
+    ],
+    "next_steps": [
+      "Classify hyperellipticAbelJacobiBatchArb as a retained hyperelliptic external-library host adapter and regenerate the export inventory.",
+      "Rebuild the FLINT addon after integration, rerun the focused period/Abel test, architecture:check, and test:native against the rebuilt addon.",
+      "Record non-acceptance cross-architecture performance receipts on bench-arm and m1 when their FLINT addon builds are available; keep Windows on the tested capability fallback until the native dependency stack is supported there."
+    ]
   }
 }
