@@ -2942,18 +2942,23 @@ class NumberFieldParent(sage.Parent):
                     max_relation_seed_prime_ideals=(None if requested_proof else 7),
                 )
             if artifact.complete:
-                matcher = getattr(
+                authority_reader = getattr(
                     cubic_class_numbers,
-                    "authenticated_cubic_class_number_result_matches",
+                    "authenticated_cubic_class_number",
                     None,
                 )
-                if not callable(matcher) or not matcher(artifact, self):
+                certified_order = (
+                    authority_reader(artifact, self)
+                    if callable(authority_reader)
+                    else None
+                )
+                if certified_order is None:
                     raise ArithmeticError(
                         "cached cubic class-number evidence lost authentication"
                     )
                 if producer_ran:
                     self._bounded_cubic_class_number_artifact = artifact
-                return int(artifact.order())
+                return int(_untyped(certified_order))
             seed_reader = getattr(
                 cubic_class_numbers, "authenticated_cubic_relation_seed", None
             )

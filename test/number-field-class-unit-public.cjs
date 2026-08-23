@@ -267,13 +267,16 @@ except ArithmeticError as error:
 cubic_module.bounded_cubic_minkowski_class_number = original_producer
 assert not hasattr(K_forged, "_bounded_cubic_class_number_artifact")
 
-# Cache reads rebind the immutable source snapshot and fail after mutation.
+# Cache reads consume the scalar sealed at the exact producer boundary.  The
+# public result wrapper is diagnostic data, so mutating it cannot alter or
+# invalidate the already certified class number.
 artifact.diagnostics["quotient_order"] = 4
 try:
-    K.class_number(proof=True)
-    raise AssertionError("mutated live cubic evidence remained authenticated")
-except ArithmeticError as error:
-    assert "lost authentication" in str(error)
+    artifact.certificate._class_number = 4
+    raise AssertionError("a frozen cubic certificate accepted mutation")
+except AttributeError as error:
+    assert "read-only" in str(error)
+assert K.class_number(proof=True) == 3
 artifact.diagnostics["quotient_order"] = 3
 assert K.class_number(proof=True) == 3
 

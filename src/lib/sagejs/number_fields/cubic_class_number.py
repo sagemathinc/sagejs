@@ -1335,57 +1335,6 @@ def authenticated_cubic_relation_seed(result: Any, field: Any) -> Any:
     return None
 
 
-def _cubic_class_number_result_snapshot(result: CubicClassNumberResult) -> Any:
-    """Snapshot every mutable proof-bearing field of one live result."""
-    certificate = result.certificate
-    if type(certificate) is not CubicMinkowskiClassNumberCertificate:
-        raise TypeError("a live cubic class-number result needs the exact certificate")
-    factor_base = []
-    for ideal in result.factor_base:
-        serializer = getattr(ideal, "to_dict", None)
-        if not callable(serializer):
-            raise TypeError("a live cubic factor-base ideal is not serializable")
-        factor_base.append(serializer())
-    relations = []
-    for record in result.relation_records:
-        serializer = getattr(record, "to_dict", None)
-        if not callable(serializer):
-            raise TypeError("a live cubic relation record is not serializable")
-        relations.append(serializer())
-    presentation = result.presentation
-    presentation_serializer = getattr(presentation, "to_dict", None)
-    if not callable(presentation_serializer):
-        raise TypeError("a live cubic presentation is not serializable")
-    return _freeze_authentication_value(
-        {
-            "complete": result.complete,
-            "reason": result.reason,
-            "minkowski_bound": result.minkowski_bound,
-            "proof_status": result.proof_status,
-            # These strings are the certificate's canonical immutable source.
-            # Snapshotting them avoids reparsing the potentially large exact
-            # witness payload merely to compare it with itself.
-            "certificate": {
-                "plan_json": certificate._plan_json,
-                "factor_base_json": certificate._factor_base_json,
-                "relations_json": certificate._relations_json,
-                "presentation_json": certificate._presentation_json,
-                "obstructions_json": certificate._obstructions_json,
-                "caps_json": certificate._caps_json,
-                "body_json": certificate._body_json,
-                "class_number": certificate._class_number,
-                "proof_status": certificate.proof_status,
-                "source": certificate.source,
-                "content_sha256": certificate._content_sha256,
-            },
-            "factor_base": factor_base,
-            "relations": relations,
-            "presentation": presentation_serializer(),
-            "diagnostics": result.diagnostics,
-        }
-    )
-
-
 class _AuthenticatedCubicClassNumberResult:
     """Immutable producer-issued seal for one live exact cubic result."""
 
@@ -1414,7 +1363,11 @@ class _AuthenticatedCubicClassNumberResult:
         self.relation_count = len(result.relation_records)
         self.__dict__["_source_field"] = result.field
         self.__dict__["_source_result"] = result
-        self.__dict__["_source_snapshot"] = _cubic_class_number_result_snapshot(result)
+        self.__dict__["_source_certificate"] = certificate
+        # The complete result is checked once, synchronously, at the exact
+        # producer boundary.  Public scalar class-number reads subsequently
+        # consume this module-issued seal, not the mutable diagnostic/result
+        # wrapper.  Detached certificates still take the full replay path.
         self.__dict__["_frozen"] = True
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -1426,15 +1379,18 @@ class _AuthenticatedCubicClassNumberResult:
     def certified(self) -> bool:
         try:
             source = self.__dict__.get("_source_result")
+            certificate = self.__dict__.get("_source_certificate")
             return (
                 type(source) is CubicClassNumberResult
                 and source.field is self.__dict__.get("_source_field")
-                and source.complete
+                and source.__dict__.get("_live_authentication") is self
+                and source.certificate is certificate
+                and type(certificate) is CubicMinkowskiClassNumberCertificate
+                and certificate.field is self.__dict__.get("_source_field")
+                and certificate.stable_hash() == self.certificate_sha256
                 and self.proof_status == "exact-unconditional"
                 and self.__dict__.get("_authentication_snapshot")
                 == _authenticated_cubic_class_number_snapshot(self)
-                and self.__dict__.get("_source_snapshot")
-                == _cubic_class_number_result_snapshot(source)
             )
         except (AttributeError, TypeError, ValueError):
             return False
@@ -1465,32 +1421,34 @@ def _issue_cubic_class_number_result(
     authentication.__dict__["_authentication_snapshot"] = (
         _authenticated_cubic_class_number_snapshot(authentication)
     )
-    # Construction above validates the source result and takes its immutable
-    # snapshot synchronously.  The first public consumer performs the
-    # mutation-sensitive comparison; repeating it here only serialized the
-    # entire proof-bearing result twice before returning it.
+    # Construction binds the exact certificate, source field/result identities,
+    # and certified scalar synchronously.  Public scalar consumers need only
+    # validate this constant-size seal; they never trust the diagnostic wrapper.
     result.__dict__["_live_authentication"] = authentication
     return result
 
 
 def authenticated_cubic_class_number_result_matches(result: Any, field: Any) -> bool:
     """Check a producer-issued live result without detached arithmetic replay."""
+    return authenticated_cubic_class_number(result, field) is not None
+
+
+def authenticated_cubic_class_number(result: Any, field: Any) -> int | None:
+    """Return the sealed live class number, or `None` without exact authority."""
     if type(result) is not CubicClassNumberResult or result.field is not field:
-        return False
+        return None
     try:
         authentication = result.__dict__.get("_live_authentication")
-        certificate = result.certificate
-        return (
+        if (
             type(authentication) is _AuthenticatedCubicClassNumberResult
-            and type(certificate) is CubicMinkowskiClassNumberCertificate
             and authentication.__dict__.get("_source_result") is result
             and authentication.__dict__.get("_source_field") is field
             and authentication.certified
-            and authentication.class_number == result.order()
-            and authentication.certificate_sha256 == certificate.stable_hash()
-        )
+        ):
+            return int(authentication.class_number)
     except (AttributeError, TypeError, ValueError):
-        return False
+        pass
+    return None
 
 
 def bounded_cubic_minkowski_class_number(
@@ -2097,6 +2055,7 @@ __all__ = [
     "CUBIC_CLASS_NUMBER_CERTIFICATE_SCHEMA",
     "CubicClassNumberResult",
     "CubicMinkowskiClassNumberCertificate",
+    "authenticated_cubic_class_number",
     "authenticated_cubic_class_number_result_matches",
     "authenticated_cubic_relation_seed",
     "bounded_cubic_minkowski_class_number",
