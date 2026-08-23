@@ -938,24 +938,30 @@ def _cantor_add_one(
 def packed_cantor_copy_batch(
     output: UInt64Buffer,
     statuses: UInt64Buffer,
-    source: UInt64Buffer,
+    model: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
     count: uint64,
+    genus: uint64,
     modulus: PrimeFieldModulus,
 ) -> bool:
-    """Copy canonical-sized rows as a boundary-only traversal control."""
+    """Copy rows through the exact add ABI as a boundary-only control."""
     checked_modulus = modulus + 0
     if (
         checked_modulus <= 2
+        or (genus != 2 and genus != 3)
+        or len(model) != 12
         or len(output) != count * 8
         or len(statuses) != count
-        or len(source) != count * 8
+        or len(left) != count * 8
+        or len(right) != count * 8
     ):
         return False
     item: uint64 = 0
     while item < count:
         index: uint64 = 0
         while index < 8:
-            output[item * 8 + index] = source[item * 8 + index]
+            output[item * 8 + index] = left[item * 8 + index]
             index += 1
         statuses[item] = 1
         item += 1

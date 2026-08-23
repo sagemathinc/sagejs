@@ -190,6 +190,12 @@ for genus, curve in [
     raw_copy_input = kernel_uint64_buffer(
         packed_cantor_copy_batch, retained_left_rows
     )
+    raw_copy_right = kernel_uint64_buffer(
+        packed_cantor_copy_batch, retained_right_rows
+    )
+    raw_copy_model = kernel_uint64_buffer(
+        packed_cantor_copy_batch, context.model_coefficients
+    )
     raw_copy_output = kernel_uint64_zeros(
         packed_cantor_copy_batch, 8 * len(retained_left)
     )
@@ -199,8 +205,11 @@ for genus, curve in [
     raw_copy = lambda: packed_cantor_copy_batch(
         raw_copy_output,
         raw_copy_status,
+        raw_copy_model,
         raw_copy_input,
+        raw_copy_right,
         len(retained_left),
+        genus,
         context.prime,
     )
 
@@ -217,8 +226,11 @@ for genus, curve in [
         assert packed_cantor_copy_batch(
             copy_output,
             copy_status,
+            raw_copy_model,
             copy_input,
+            raw_copy_right,
             len(retained_left),
+            genus,
             context.prime,
         )
         return context._publish_kernel_batch(copy_output, len(retained_left))

@@ -633,7 +633,7 @@ test("packed Cantor kernels retain an ordinary CPython fallback", () => {
     "assert packed_cantor_add_batch(out,status,model,identity*2,identity*2,2,2,3)",
     "assert out == identity*2 and status == [5,5]",
     "copy_out = [99]*16; copy_status = [0,0]",
-    "assert packed_cantor_copy_batch(copy_out,copy_status,identity*2,2,3)",
+    "assert packed_cantor_copy_batch(copy_out,copy_status,model,identity*2,identity*2,2,2,3)",
     "assert copy_out == identity*2 and copy_status == [1,1]",
     "progression_out = [99]*16; progression_status = [0,0]",
     "assert packed_cantor_progression_batch(progression_out,progression_status,model,identity,identity,2,2,3)",
