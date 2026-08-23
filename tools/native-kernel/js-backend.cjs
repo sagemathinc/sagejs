@@ -910,7 +910,10 @@ function emitPrimeSourcePublicFunction(fn) {
         if (field.type === "UInt64Buffer") {
           lines.push(`  const ${local} = uint64NativeBuffer(${access}, ` +
             `${jsString(param.name + "." + field.name)}, ` +
-            `${fn.analysis.effects.externalWrites.includes(param.name)});`);
+            // Record-field alias effects are not represented independently in
+            // the current IR. Fail closed: only direct UInt64Buffer parameters
+            // with a proved read-only effect may borrow immutable storage.
+            `true);`);
           nativeFields.push(`${field.name}: ${local}.typed`);
         } else {
           lines.push(`  const ${local} = uint64RecordField(${access}, ` +
