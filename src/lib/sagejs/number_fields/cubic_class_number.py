@@ -375,20 +375,25 @@ def _materialize_packed_cubic_factor_records(
         if not isinstance(packed, PackedCubicFactorRecord):
             raise TypeError("a packed factor base mixed record representations")
         # These rows and the residue presentation were produced together from
-        # the exact modular factor/subspace and have already been used as the
-        # immutable relation lattice.  Materializing the public ideal should
-        # therefore cross only the representation boundary: the ordinary
-        # constructor independently canonicalizes the rows and checks closure
-        # under the maximal order.  Refactoring the same rational prime and
-        # rediscovering this HNF used to dominate every coupled cubic fallback.
-        prime_ideal = prime_module.NumberFieldPrimeIdeal(
+        # the exact modular ideal.  Rebuild the canonical HNF once from that
+        # subspace through the same source-transparent candidate boundary,
+        # then require byte-for-byte equality with the retained relation
+        # lattice.  Refactoring the rational prime or replaying generic ideal
+        # closure for every factor merely rediscovers these same rows and used
+        # to dominate every coupled cubic fallback.
+        prime_ideal = prime_module._prime_candidate_from_modular_subspace(
             packed.order,
-            [list(row) for row in packed.rows],
+            [list(row) for row in packed.subspace],
             packed.prime,
             packed.ramification,
             packed.residue_degree,
             dict(packed.presentation),
+            use_packed=True,
         )
+        if tuple(tuple(value for value in row) for row in prime_ideal._basis_rows) != (
+            packed.rows
+        ):
+            raise ArithmeticError("packed factor-base materialization changed its HNF")
         record = factor_module.FactorBasePrimeRecord(
             packed.index,
             prime_ideal,
