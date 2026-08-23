@@ -15,7 +15,8 @@
     "src/lib/sagejs/hyperelliptic_curves/genus3_completion.py",
     "src/lib/sagejs/hyperelliptic_curves/genus3_candidate_kernel.py",
     "test/hyperelliptic-group-consumer-performance.cjs",
-    "bench/hyperelliptic/benchmark-group-consumers.cjs"
+    "bench/hyperelliptic/benchmark-group-consumers.cjs",
+    "bench/results/hyperelliptic-genus3-packed-certification-linux-x64-2026-08-23.json"
   ],
   "dependencies": [],
   "references": [],

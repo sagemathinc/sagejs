@@ -1,0 +1,64 @@
+{
+  "schema": "sagejs.hyperelliptic.genus3-packed-certification-benchmark.v1",
+  "recorded_at": "2026-08-23T06:59:31Z",
+  "host": "bench-1",
+  "platform": "linux-x64",
+  "commit": "628b950e0e1cf8e0eed8f9aa5e4edd9987ecb09d",
+  "curve": "y^2 = x^7 + x + 1",
+  "prime_interval": [3, 100000],
+  "acceptance": {
+    "minimum_speedup": 5.0,
+    "maximum_wall_seconds": 300.0,
+    "maximum_peak_rss_kib": 524288,
+    "result": "fail"
+  },
+  "exact": {
+    "rows": 9591,
+    "unique": 9587,
+    "fallback": 1,
+    "omitted": 3,
+    "candidate_count": 10696699,
+    "digest_modulus": "170141183460469231731687303715884105727",
+    "digest": "111937544391237275120981664694344651122"
+  },
+  "control_materialized": {
+    "wall_seconds": 781.8141062259674,
+    "elapsed_seconds": 785.69,
+    "peak_rss_kib": 587636,
+    "stages_seconds": {
+      "residue": 8.08815169334412,
+      "candidate": 1.60894989967346,
+      "primary": 140.937358856201,
+      "twist": 0.0196771621704102,
+      "fallback": 0.15018105506897
+    },
+    "kernel_calls": 23299,
+    "group_operations": 5619929
+  },
+  "packed_stream": {
+    "wall_seconds": 328.72318029403687,
+    "elapsed_seconds": 329.76,
+    "peak_rss_kib": 721932,
+    "stages_seconds": {
+      "residue": 8.14521074295044,
+      "candidate": 61.6652963161469,
+      "primary": 61.8037700653076,
+      "twist": 0.0211162567138672,
+      "fallback": 0.147865056991577
+    },
+    "kernel_calls": 23299,
+    "group_operations": null,
+    "group_operations_note": "collector mismatch: the packed run read snake_case but production diagnostics use camelCase groupOperations"
+  },
+  "comparison": {
+    "speedup": 2.378335794654484,
+    "peak_rss_ratio": 1.228536032509921,
+    "exact_digest_equal": true,
+    "status_counts_equal": true
+  },
+  "notes": [
+    "The command completed successfully and exact outputs agree, but the performance acceptance thresholds failed.",
+    "The materialized control's candidate stage excludes batched tuple publication, which occurs before the per-row observer; its uninstrumented remainder is therefore much larger.",
+    "Do not interpret the unavailable packed group-operation total as zero work."
+  ]
+}
