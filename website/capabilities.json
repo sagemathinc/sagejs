@@ -221,12 +221,12 @@
         "level": "foundational",
         "label": "Integer partitions as a complete combinatorial class",
         "summary": "Integer partitions are an ordinary Sage parent with Sage's enumeration order, exact counting that never enumerates, membership, ranking, and uniform sampling. The remaining combinatorial classes are explicit next work.",
-        "includes": ["Partition and Partitions", "Sage enumeration order", "exact cardinality by Euler's pentagonal recurrence", "measured against SageMath and PARI/GP", "min_part / max_part / length / min_length / max_length / parts_in", "rank, unrank, first, last", "uniform random_element without enumeration", "conjugate, hook lengths, dominance order, Ferrers diagrams", "number_of_partitions", "sage.combinat.partition import path"]
+        "includes": ["Partition and Partitions", "Sage enumeration order", "FLINT-backed exact cardinality with a portable pentagonal recurrence", "measured against SageMath and PARI/GP", "min_part / max_part / length / min_length / max_length / parts_in", "rank, unrank, first, last", "uniform random_element without enumeration", "conjugate, hook lengths, dominance order, Ferrers diagrams", "number_of_partitions", "sage.combinat.partition import path"]
       },
-      "summary": "Integer partitions are a complete Sage-compatible combinatorial class with exact counting, ranking, and uniform sampling.",
-      "implementation": "Ordinary CPython-parseable Python. One memoized recursion over the largest remaining part serves counting, ranking, and sampling; unconstrained counts use Euler's pentagonal number recurrence.",
+      "summary": "Integer partitions are a complete Sage-compatible combinatorial class with FLINT-backed exact counting, ranking, and uniform sampling.",
+      "implementation": "Ordinary CPython-parseable Python. One memoized recursion over the largest remaining part serves constrained counting, ranking, and sampling. Unconstrained counting delegates to FLINT's Hardy-Ramanujan-Rademacher implementation and keeps Euler's pentagonal recurrence as the exact portable path.",
       "evidence": "A focused regression suite cross-checks cardinality against enumeration for every class it can list, round-trips rank and unrank, confirms conjugation is an involution which permutes each class, and reproduces n! from the hook length formula through the sum of squares of standard Young tableau counts. Every partition number through p(400) agrees with PARI/GP numbpart, and bench/compare-partitions.cjs measures counting, enumeration, ranking, and sampling against SageMath and PARI/GP.",
-      "target": "Route partition counting to FLINT's Rademacher implementation, which is about a thousand times faster at n = 10^4, then add permutations, subsets, compositions, tuples, integer vectors, and set partitions on the same protocol.",
+      "target": "Add permutations, subsets, compositions, tuples, integer vectors, and set partitions on the same protocol, then close the remaining interpreter-bound gaps in listing and uniform sampling.",
       "priority": "next"
     },
     {

@@ -23,6 +23,7 @@ flint = Library(
     python_module="sagejs.ffi.flint",
     package="@sagemath/sagejs-flint",
     headers=[
+        "flint/arith.h",
         "flint/dirichlet.h",
         "flint/fmpz.h",
         "flint/fmpz_mat.h",
@@ -4598,6 +4599,23 @@ def dirichlet_group_num_primitive(group: DirichletGroup) -> uint64: ...
     wasm=True,
 )
 def n_is_prime(value: uint64) -> bool: ...
+
+
+@flint.function(
+    dynamic="numberOfPartitions",
+    symbol="arith_number_of_partitions",
+    returns=void,
+    abi=[
+        out("result", fmpz_t),
+        in_("size", ulong),
+    ],
+    effects=Effects(pure=True, allocates=True),
+    result=Direct(),
+    # The WebAssembly build does not carry FLINT's arithmetic module; hosts
+    # without it keep the portable pentagonal recurrence.
+    wasm=False,
+)
+def arith_number_of_partitions(size: uint64) -> Integer: ...
 
 
 @flint.function(

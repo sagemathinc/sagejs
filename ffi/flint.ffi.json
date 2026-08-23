@@ -8,6 +8,7 @@
     },
     "native": {
       "headers": [
+        "flint/arith.h",
         "flint/dirichlet.h",
         "flint/fmpz.h",
         "flint/fmpz_mat.h",
@@ -16883,6 +16884,71 @@
         "dynamic": true,
         "native": true,
         "wasm": true
+      }
+    },
+    {
+      "id": "arith_number_of_partitions",
+      "python_name": "arith_number_of_partitions",
+      "signature": {
+        "parameters": [
+          {
+            "name": "size",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "Integer",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "numberOfPartitions"
+      },
+      "native": {
+        "symbol": "arith_number_of_partitions",
+        "return_type": "void",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "fmpz_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "size",
+            "abi_type": "ulong",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
       }
     },
     {

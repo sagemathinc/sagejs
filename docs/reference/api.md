@@ -5953,14 +5953,15 @@ This API and documentation are adapted from
 - Kind: `function`
 - Module: `sage.combinat`
 - Tags: combinatorics, enumerative combinatorics, partitions, integer sequences
-- Backends: Sage.js exact enumeration
+- Backends: Sage.js exact enumeration, FLINT
 - Sage compatibility: partial — Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented.
-- Limitations: The pentagonal recurrence computes every partition number up to its argument, so counting costs about `n^(3/2)` big-integer additions.  SageMath and PARI/GP use the Hardy-Ramanujan-Rademacher formula through FLINT and answer far larger arguments; see `bench/compare-partitions.cjs`.
+- Limitations: Counting uses FLINT's Hardy-Ramanujan-Rademacher implementation where it is available, and the pentagonal recurrence otherwise.  The recurrence computes every partition number below its argument, so a host without FLINT answers large arguments far more slowly; both paths are exact.  See `bench/compare-partitions.cjs`.
 
 ### Provenance
 
 - `sage-derived` — [SageMath `sage.combinat.partition`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html); revision SageMath 10.9; license GPL-2.0-or-later
-- `literature-implemented` — Euler's pentagonal number theorem recurrence for `p(n)`
+- `library-backed` — [FLINT `arith_number_of_partitions`](https://flintlib.org/doc/arith.html); license LGPL-3.0-or-later
+- `literature-implemented` — Euler's pentagonal number theorem recurrence for `p(n)`, the portable path when FLINT is unavailable
 
 ### References
 
@@ -6224,7 +6225,7 @@ This API and documentation are adapted from
 - Kind: `class`
 - Module: `sage.combinat`
 - Tags: combinatorics, enumerative combinatorics, partitions, integer sequences
-- Backends: Sage.js exact enumeration
+- Backends: Sage.js exact enumeration, FLINT
 - Sage compatibility: partial — Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented.
 - Limitations: Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration.
 
@@ -6573,14 +6574,15 @@ This API and documentation are adapted from
 - Kind: `function`
 - Module: `sage.combinat`
 - Tags: combinatorics, enumerative combinatorics, partitions, integer sequences
-- Backends: Sage.js exact enumeration
+- Backends: Sage.js exact enumeration, FLINT
 - Sage compatibility: partial — Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented.
-- Limitations: Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration. The pentagonal recurrence computes every partition number up to its argument, so counting costs about `n^(3/2)` big-integer additions.  SageMath and PARI/GP use the Hardy-Ramanujan-Rademacher formula through FLINT and answer far larger arguments; see `bench/compare-partitions.cjs`.
+- Limitations: Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration. Counting uses FLINT's Hardy-Ramanujan-Rademacher implementation where it is available, and the pentagonal recurrence otherwise.  The recurrence computes every partition number below its argument, so a host without FLINT answers large arguments far more slowly; both paths are exact.  See `bench/compare-partitions.cjs`.
 
 ### Provenance
 
 - `sage-derived` — [SageMath `sage.combinat.partition`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html); revision SageMath 10.9; license GPL-2.0-or-later
-- `literature-implemented` — Euler's pentagonal number theorem recurrence for `p(n)`
+- `library-backed` — [FLINT `arith_number_of_partitions`](https://flintlib.org/doc/arith.html); license LGPL-3.0-or-later
+- `literature-implemented` — Euler's pentagonal number theorem recurrence for `p(n)`, the portable path when FLINT is unavailable
 - `literature-implemented` — Counting-driven ranking, unranking, and uniform random selection over a recursively counted set
 - `sagejs-original` — One memoized recursion over the largest remaining part serves cardinality, rank, unrank, and random_element, so the four agree by construction rather than by separate implementation
 

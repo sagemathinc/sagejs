@@ -33,10 +33,19 @@ inherited from any of those sources.
 
 ### Performance
 
-Counting here is `O(n^(3/2))` big-integer additions, because the recurrence
-computes every partition number up to its argument.  SageMath and PARI/GP
-evaluate the Hardy-Ramanujan-Rademacher formula through FLINT instead and stay
-fast far beyond that.  `bench/compare-partitions.cjs` measures all three.
+Counting is delegated to FLINT's `arith_number_of_partitions`, the same
+Hardy-Ramanujan-Rademacher implementation SageMath uses.  Once the routine is
+bound, `p(10^6)` costs about 4 ms here against SageMath's 3 ms and PARI/GP's
+7 ms; the first count in a process pays about 150 ms to bind it.  A host
+without FLINT falls back to the pentagonal recurrence, which is `O(n^(3/2))`
+big-integer additions because it computes every partition number below its
+argument.  Both paths are exact, and `Partitions_n._portable_cardinality`
+exposes the second one for differential testing.
+
+Enumeration, ranking, and sampling stay in ordinary Python.  Addressing a
+member is faster than Sage, which iterates, while listing and uniform sampling
+are slower by roughly the interpreter gap; `bench/compare-partitions.cjs`
+measures all of it against SageMath and PARI/GP.
 """
 
 # Ruff's WASM build reports I001 while proposing this same import block.
@@ -84,6 +93,8 @@ class _CombinatState:
         self.partition_counts = [runtime.bigint(1)]
         self.partitions_all: Any = None
         self.partitions_by_size = {}
+        # None until a host is probed for FLINT's arithmetic module.
+        self.native_counts: Any = None
 
 
 _combinat_state = _CombinatState()
@@ -112,10 +123,40 @@ def _partition_extend_counts(limit: int) -> None:
         _combinat_state.partition_counts.append(total)
 
 
-def _partition_count(value: int) -> Any:
-    """Return the exact number of partitions of `value` as a big integer."""
+def _partition_count_native(value: int) -> Any:
+    """Return `p(value)` from FLINT, or `runtime.undefined` when unavailable."""
+    if _combinat_state.native_counts is False:
+        return runtime.undefined
+    try:
+        module = __import__("sagejs.ffi.flint", fromlist=["flint"])
+        answer = module.arith_number_of_partitions(value)
+    except Exception:
+        # A host without the arithmetic module keeps the portable recurrence.
+        _combinat_state.native_counts = False
+        return runtime.undefined
+    _combinat_state.native_counts = True
+    return answer
+
+
+def _partition_count_portable(value: int) -> Any:
+    """Return `p(value)` from the pentagonal recurrence, never from FLINT."""
     _partition_extend_counts(value)
     return _combinat_state.partition_counts[value]
+
+
+def _partition_count(value: int) -> Any:
+    """
+    Return the exact number of partitions of `value`.
+
+    FLINT evaluates the Hardy-Ramanujan-Rademacher formula, which stays fast
+    for arguments far past the reach of the recurrence.  The pentagonal
+    recurrence remains the portable answer, and both are exact, so a host
+    without FLINT differs in speed and not in results.
+    """
+    native = _partition_count_native(value)
+    if native is not runtime.undefined:
+        return native
+    return _partition_count_portable(value)
 
 
 def _combinat_random_word() -> int:
@@ -758,6 +799,19 @@ class Partitions_n(_PartitionsBase):
             )
         )
 
+    def _portable_cardinality(self) -> Any:
+        """
+        Return the cardinality without FLINT, for differential testing.
+
+        Unconstrained classes answer from the pentagonal recurrence and
+        constrained ones from the memoized recursion over the largest
+        remaining part.  Both are exact, so this must agree with
+        `cardinality` on every host.
+        """
+        if not self._constrained():
+            return runtime.normalize_integer(_partition_count_portable(self._size))
+        return self.cardinality()
+
     def __contains__(self, value: object) -> bool:
         if isinstance(value, Partition):
             entries = value.to_list()
@@ -1153,7 +1207,16 @@ _SAGE_PROVENANCE = {
 }
 _PENTAGONAL_PROVENANCE = {
     "kind": "literature-implemented",
-    "source": "Euler's pentagonal number theorem recurrence for `p(n)`",
+    "source": (
+        "Euler's pentagonal number theorem recurrence for `p(n)`, the "
+        "portable path when FLINT is unavailable"
+    ),
+}
+_FLINT_PROVENANCE = {
+    "kind": "library-backed",
+    "source": "FLINT `arith_number_of_partitions`",
+    "url": "https://flintlib.org/doc/arith.html",
+    "license": "LGPL-3.0-or-later",
 }
 _RANKING_PROVENANCE = {
     "kind": "literature-implemented",
@@ -1216,7 +1279,7 @@ def _register_combinat_doc(
                 "partitions",
                 "integer sequences",
             ],
-            "backends": ["Sage.js exact enumeration"],
+            "backends": ["Sage.js exact enumeration", "FLINT"],
             "sage_compatibility": {
                 "status": "partial",
                 "notes": (
@@ -1238,10 +1301,13 @@ _ENUMERATION_LIMITATION = (
     "avoid enumeration."
 )
 _COUNTING_LIMITATION = (
-    "The pentagonal recurrence computes every partition number up to its "
-    "argument, so counting costs about `n^(3/2)` big-integer additions.  "
-    "SageMath and PARI/GP use the Hardy-Ramanujan-Rademacher formula through "
-    "FLINT and answer far larger arguments; see `bench/compare-partitions.cjs`."
+    "Counting uses FLINT's Hardy-Ramanujan-Rademacher implementation where it "
+    "is available, and the pentagonal recurrence otherwise.  The recurrence "
+    "computes every partition number below its argument, so a host without "
+    "FLINT answers large arguments far more slowly; both paths are exact.  "
+    "The first count in a process also pays about 150 ms to bind the native "
+    "routine, after which a count costs a few milliseconds at any argument.  "
+    "See `bench/compare-partitions.cjs`."
 )
 
 _register_combinat_doc(
@@ -1258,6 +1324,7 @@ _register_combinat_doc(
     "function",
     [
         _SAGE_PROVENANCE,
+        _FLINT_PROVENANCE,
         _PENTAGONAL_PROVENANCE,
         _RANKING_PROVENANCE,
         _SHARED_MEMO_PROVENANCE,
@@ -1273,7 +1340,7 @@ _register_combinat_doc(
     "number_of_partitions",
     number_of_partitions,
     "function",
-    [_SAGE_PROVENANCE, _PENTAGONAL_PROVENANCE],
+    [_SAGE_PROVENANCE, _FLINT_PROVENANCE, _PENTAGONAL_PROVENANCE],
     [_ANDREWS_REFERENCE],
     [_COUNTING_LIMITATION],
 )

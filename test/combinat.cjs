@@ -65,6 +65,42 @@ test("partitions enumerate in Sage's order with exact counts", async () => {
   });
 });
 
+test("counting agrees across the FLINT and portable paths", async () => {
+  await withSage(async (session) => {
+    // FLINT's Rademacher implementation and the pentagonal recurrence are
+    // independent algorithms; they must return the same exact integers.
+    assert.equal(
+      (
+        await evaluated(session, [
+          "sizes = list(range(0, 60)) + [100, 250, 400]",
+          "[Partitions(n).cardinality() == Partitions(n)._portable_cardinality()",
+          " for n in sizes] == [True] * len(sizes)",
+        ])
+      ).repr,
+      "True",
+    );
+    // A third, unrelated route: the memoized recursion over the largest part.
+    assert.equal(
+      (
+        await evaluated(session, [
+          "cls = Partitions(120)",
+          "cls._count(120, 120, 0, 120) == number_of_partitions(120)",
+        ])
+      ).repr,
+      "True",
+    );
+    // Arguments far past the reach of enumeration stay exact.
+    assert.equal(
+      (await evaluated(session, "number_of_partitions(100000) % 10**12")).repr,
+      "569421098519",
+    );
+    assert.equal(
+      (await evaluated(session, "number_of_partitions(10**6) % 10**12")).repr,
+      "467104673818",
+    );
+  });
+});
+
 test("partition classes honor the supported constraints", async () => {
   await withSage(async (session) => {
     assert.equal(

@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 117,
-    "declared-ffi": 414,
+    "declared-ffi": 415,
     "declared-ffi-resource": 29,
     "napi-export": 317,
     "runtime-intrinsic": 138,
@@ -535,6 +535,17 @@
       "dynamic_package": "@sagemath/sagejs-fflas",
       "dynamic_export": "ffiFflasModularFloatRref",
       "symbol": "sagejs_fflas_modular_float_rref",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:arith_number_of_partitions",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "arith_number_of_partitions",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "numberOfPartitions",
+      "symbol": "arith_number_of_partitions",
       "disposition": "declared-safe-ffi"
     },
     {

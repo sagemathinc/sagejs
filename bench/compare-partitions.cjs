@@ -27,9 +27,11 @@ const gp = process.env.SAGELITE_GP || "gp";
 const SAMPLES = Number(process.env.SAGEJS_BENCH_SAMPLES || 5);
 
 const CASES = [
+  "count-cold-100",
   "count-100",
   "count-1000",
   "count-10000",
+  "count-1000000",
   "cardinality-200",
   "constrained-100",
   "list-30",
@@ -38,9 +40,11 @@ const CASES = [
 ];
 // PARI has no combinatorial class; `numbpart` is exactly the counting case.
 const PARI_CASES = new Map([
+  ["count-cold-100", 100],
   ["count-100", 100],
   ["count-1000", 1000],
   ["count-10000", 10000],
+  ["count-1000000", 1000000],
 ]);
 
 function median(values) {

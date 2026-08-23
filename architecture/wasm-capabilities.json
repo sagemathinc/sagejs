@@ -4249,6 +4249,26 @@
       "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
+      "id": "ffi:flint:arith_number_of_partitions",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "source-transparent-mathematical-kernel",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "FLINT's arithmetic module is not carried by the WebAssembly build. Partition counting keeps its exact pentagonal recurrence there, which `Partitions_n._portable_cardinality` exposes for differential testing.",
+      "wasm_declared": false,
+      "public_explanation": "Partition counting uses FLINT where it is available and an exact pentagonal recurrence otherwise; both answers are identical."
+    },
+    {
       "id": "ffi:flint:fmpz_gcd",
       "kind": "declared-ffi-function",
       "family": "flint",
