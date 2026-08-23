@@ -2,12 +2,12 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 40,
+    "registered_kernels": 41,
     "production_kernels": 31,
     "compiled_functions": 232,
     "unsupported_production_functions": 0,
-    "non_production_functions": 36,
-    "same_source_fallback_functions": 36
+    "non_production_functions": 37,
+    "same_source_fallback_functions": 37
   },
   "kernels": [
     {
@@ -182,6 +182,17 @@
       "total_functions": 3,
       "fallback_reasons": [
         "tracked-production-artifact-predates-hyperelliptic-performance-kernels"
+      ]
+    },
+    {
+      "id": "hyperelliptic-period-edge-batch-production",
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 1,
+      "total_functions": 1,
+      "fallback_reasons": [
+        "float64-buffer-production-wasm-bridge-pending"
       ]
     },
     {

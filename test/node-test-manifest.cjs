@@ -317,6 +317,7 @@ const integration = [
   "test/hyperelliptic-bsd-public.cjs",
   "test/hyperelliptic-bsd-saturation-adapter.cjs",
   "test/hyperelliptic-bsd-saturation.cjs",
+  "test/hyperelliptic-analytic-performance.cjs",
   "test/hyperelliptic-global-lseries.cjs",
   "test/hyperelliptic-genus2-height-performance.cjs",
   "test/hyperelliptic-genus2-heights.cjs",

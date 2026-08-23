@@ -1,19 +1,19 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "cff0d943e1fe3d97e67f1f704b4e08be191776f5ec3c1f95e98f0e5d140e513d",
+  "source_sha256": "b68907ea1510ecd34f12ea272321a9d6b22f3af93cd30e5980e613ab2cf1f22c",
   "counts": {
-    "total": 960,
+    "total": 961,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
       "napi-export": 317,
-      "production-kernel": 40,
+      "production-kernel": 41,
       "runtime-intrinsic": 137,
       "specialist-capability": 25
     },
     "by_disposition": {
-      "compiled-source": 40,
+      "compiled-source": 41,
       "desktop-only": 14,
       "generated-wasm": 302,
       "portable-fallback": 560,
@@ -22,7 +22,7 @@
     "by_status": {
       "available": 516,
       "desktop-only": 14,
-      "fallback": 430
+      "fallback": 431
     }
   },
   "workflow_aliases": {
@@ -5858,6 +5858,18 @@
         "genus2-prime-kummer"
       ],
       "explanation": "Packed genus-2 prime-field Kummer projection, duplication, and audited degenerate pseudo-addition use the exact same-source fallback in the current WebAssembly release artifact."
+    },
+    {
+      "id": "kernel:hyperelliptic-period-edge-batch-production",
+      "family": "hyperelliptic-period-edge-batch",
+      "disposition": "compiled-source",
+      "status": "fallback",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "source-kernel-pack",
+      "public_consumers": [
+        "hyperelliptic-periods"
+      ],
+      "explanation": "Packed binary64 period seed quadrature uses its same-source fallback in the current WebAssembly artifact; every published period still requires independent arbitrary-precision refinement and Riemann-relation validation."
     },
     {
       "id": "kernel:number-field-composite-analysis-production",

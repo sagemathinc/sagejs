@@ -10960,6 +10960,34 @@
       }
     },
     {
+      "id": "kernel:hyperelliptic-period-edge-batch-production",
+      "kind": "production-kernel",
+      "family": "hyperelliptic-period-edge-batch",
+      "source": "src/lib/sagejs/hyperelliptic_curves/periods.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "source-kernel-pack",
+      "public_consumers": [
+        "hyperelliptic-periods"
+      ],
+      "tests": [
+        "production-kernel-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "Native and dynamic binary64 seed quadrature are differential-tested, but the tracked Wasm bridge does not yet marshal Float64Buffer kernels. Browsers retain the exact same-source fallback while the general Float64 production ABI is validated.",
+      "public_explanation": "Packed binary64 period seed quadrature uses its same-source fallback in the current WebAssembly artifact; every published period still requires independent arbitrary-precision refinement and Riemann-relation validation.",
+      "compiled_coverage": {
+        "compiled_functions": 0,
+        "fallback_functions": 1,
+        "total_functions": 1,
+        "production_pack": false,
+        "fallback_reasons": [
+          "float64-buffer-production-wasm-bridge-pending"
+        ]
+      }
+    },
+    {
       "id": "kernel:genus3-weil-candidate-production",
       "kind": "production-kernel",
       "family": "genus3-weil-candidate",
