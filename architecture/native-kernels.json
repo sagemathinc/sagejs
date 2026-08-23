@@ -549,12 +549,14 @@
       "id": "hyperelliptic-cantor-production",
       "source": "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
       "functions": [
+        "packed_cantor_copy_batch",
         "packed_cantor_add_batch",
         "packed_cantor_progression_batch",
         "packed_cantor_search_progression",
-        "packed_cantor_scalar_batch"
+        "packed_cantor_scalar_batch",
+        "packed_cantor_scalar_many_primes"
       ],
-      "semantic_domain": "complete prepared generalized Cantor addition, arithmetic progressions, fused bounded BSGS progression search, and signed scalar multiplication for genus-2/3 odd-degree one-infinity models over odd primes at most 2^32-1",
+      "semantic_domain": "bounded packed copy traversal, complete prepared generalized Cantor addition, arithmetic progressions, fused bounded BSGS progression search, signed scalar multiplication, and fused many-prime scalar witnesses for genus-2/3 odd-degree one-infinity models over odd primes at most 2^32-1",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "sage", "magma", "reference-cantor"],

@@ -29,6 +29,7 @@ const unit = [
   "test/runtime-intrinsics.cjs",
   "test/exact-integer-range-v1.cjs",
   "test/uint64-structural-runtime.cjs",
+  "test/immutable-uint64-capsule.cjs",
   "test/lint-authoritative.cjs",
   "test/baselib-boundaries.cjs",
   "test/compiled-module-isolation.cjs",
