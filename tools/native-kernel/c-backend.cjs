@@ -919,6 +919,34 @@ function wrapperValue(param) {
   return `sagejs_wrapper_${param.name}`;
 }
 
+function createIdentifierAllocator(initial = []) {
+  const used = new Set(initial);
+  return (base) => {
+    let candidate = base;
+    let suffix = 1;
+    while (used.has(candidate)) {
+      candidate = `${base}_${suffix}`;
+      suffix += 1;
+    }
+    used.add(candidate);
+    return candidate;
+  };
+}
+
+function wrapperIdentifierContext(fn) {
+  const parameters = new Map(fn.params.map((param) => [
+    param.name,
+    wrapperValue(param),
+  ]));
+  const fresh = createIdentifierAllocator(parameters.values());
+  return {
+    fresh,
+    parameter(param) {
+      return parameters.get(param.name);
+    },
+  };
+}
+
 function resourceCName(resource) {
   return String(resource.compiler_type || resource.python_name)
     .replace(/[^A-Za-z0-9_]/g, "_");
@@ -983,23 +1011,28 @@ function writtenSizedResourceParameters(fn) {
   });
 }
 
-function resourceRefreshStatements(fn) {
+function resourceRefreshStatements(fn, parameterValue = wrapperValue) {
   return writtenSizedResourceParameters(fn).flatMap(({ parameter, resource }) => [
     `    if (!sagejs_native_check_napi(env, ` +
-      `${resourceRefreshName(resource)}(env, ${wrapperValue(parameter)})))`,
+      `${resourceRefreshName(resource)}(env, ${parameterValue(parameter)})))`,
     "        goto fail;",
   ]);
 }
 
-function resourceFailureRefreshStatements(fn) {
+function resourceFailureRefreshStatements(fn, parameterValue = wrapperValue) {
   return writtenSizedResourceParameters(fn).map(({ parameter, resource }) =>
     `        (void) ${resourceRefreshName(resource)}(env, ` +
-      `${wrapperValue(parameter)});`
+      `${parameterValue(parameter)});`
   );
 }
 
 function emitTaggedWrapper(fn) {
-  const declarations = ["    sagejs_native_status sagejs_wrapper_status = {0, NULL};"];
+  const identifiers = wrapperIdentifierContext(fn);
+  const parameterValue = (param) => identifiers.parameter(param);
+  const wrapperStatus = identifiers.fresh("sagejs_wrapper_status");
+  const declarations = [
+    `    sagejs_native_status ${wrapperStatus} = {0, NULL};`,
+  ];
   const initialization = [];
   const parsing = [];
   const cleanup = [];
@@ -1007,7 +1040,7 @@ function emitTaggedWrapper(fn) {
     (param) => param.default === undefined,
   ).length;
   for (const [index, param] of fn.params.entries()) {
-    const value = wrapperValue(param);
+    const value = parameterValue(param);
     let parse;
     let defaultValue;
     const resource = functionResource(fn, param.type);
@@ -1070,6 +1103,9 @@ function emitTaggedWrapper(fn) {
   }
   const resultTypes = tupleElementTypes(fn.returnType) || [fn.returnType];
   const tupleResult = isTupleType(fn.returnType);
+  const wrapperItem = tupleResult
+    ? identifiers.fresh("sagejs_wrapper_item")
+    : undefined;
   const returnedResource = functionResource(fn, fn.returnType);
   if (returnedResource !== undefined && tupleResult) {
     throw new Error("native resource tuple returns are not supported");
@@ -1079,7 +1115,7 @@ function emitTaggedWrapper(fn) {
   const resultCreation = [];
   resultTypes.forEach((type, index) => {
     const suffix = tupleResult ? `_${index}` : "";
-    const value = `sagejs_wrapper_result${suffix}`;
+    const value = identifiers.fresh(`sagejs_wrapper_result${suffix}`);
     const resource = functionResource(fn, type);
     if (resource !== undefined) {
       declarations.push(
@@ -1112,7 +1148,7 @@ function emitTaggedWrapper(fn) {
       cleanup.push(`    sagejs_tagged_clear(&${value});`);
       resultArguments.push(`&${value}`);
       resultCreation.push(tupleResult
-        ? `    sagejs_wrapper_item = create_tagged_bigint(env, &${value});`
+        ? `    ${wrapperItem} = create_tagged_bigint(env, &${value});`
         : `    result = create_tagged_bigint(env, &${value});`);
     } else {
       declarations.push(
@@ -1121,9 +1157,9 @@ function emitTaggedWrapper(fn) {
       resultArguments.push(`&${value}`);
       const create = type === "bool"
         ? `napi_get_boolean(env, ${value} != 0, ` +
-          `${tupleResult ? "&sagejs_wrapper_item" : "&result"})`
+          `${tupleResult ? `&${wrapperItem}` : "&result"})`
         : `napi_create_bigint_uint64(env, ${value}, ` +
-          `${tupleResult ? "&sagejs_wrapper_item" : "&result"})`;
+          `${tupleResult ? `&${wrapperItem}` : "&result"})`;
       resultCreation.push(
         `    if (!sagejs_native_check_napi(env, ${create}))`,
         "        goto fail;",
@@ -1131,11 +1167,11 @@ function emitTaggedWrapper(fn) {
     }
     if (tupleResult) {
       resultCreation.push(
-        "    if (sagejs_wrapper_item == NULL)",
+        `    if (${wrapperItem} == NULL)`,
         "        goto fail;",
-        `    if (!sagejs_native_check_napi(env, napi_set_element(env, result, ${index}, sagejs_wrapper_item)))`,
+        `    if (!sagejs_native_check_napi(env, napi_set_element(env, result, ${index}, ${wrapperItem})))`,
         "        goto fail;",
-        "    sagejs_wrapper_item = NULL;",
+        `    ${wrapperItem} = NULL;`,
       );
     }
   });
@@ -1144,22 +1180,23 @@ function emitTaggedWrapper(fn) {
       `    if (!sagejs_native_check_napi(env, napi_create_array_with_length(env, ${resultTypes.length}, &result)))`,
       "        goto fail;",
     );
-    declarations.push("    napi_value sagejs_wrapper_item = NULL;");
+    declarations.push(`    napi_value ${wrapperItem} = NULL;`);
   }
   const argumentsList = fn.params.map((param) =>
     functionResource(fn, param.type) !== undefined
-      ? `${wrapperValue(param)}->value`
+      ? `${parameterValue(param)}->value`
       : param.type === "Integer"
-      ? `&${wrapperValue(param)}`
-      : wrapperValue(param)
+      ? `&${parameterValue(param)}`
+      : parameterValue(param)
   );
-  const execution = `    if (!tagged_${fn.name}(&sagejs_wrapper_status, ` +
+  const failureRefresh = resourceFailureRefreshStatements(fn, parameterValue);
+  const execution = `    if (!tagged_${fn.name}(&${wrapperStatus}, ` +
     `${resultArguments.join(", ")}` +
     `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))\n` +
     "    {\n" +
-    `${resourceFailureRefreshStatements(fn).join("\n")}` +
-    `${resourceFailureRefreshStatements(fn).length ? "\n" : ""}` +
-    "        sagejs_native_throw_status(env, &sagejs_wrapper_status);\n" +
+    `${failureRefresh.join("\n")}` +
+    `${failureRefresh.length ? "\n" : ""}` +
+    `        sagejs_native_throw_status(env, &${wrapperStatus});\n` +
     "        goto fail;\n" +
     "    }";
   return `
@@ -1182,7 +1219,7 @@ ${initialization.join("\n")}
 ${parsing.join("\n")}
 ${execution}
 ${resultInitialization.join("\n")}
-${resourceRefreshStatements(fn).join("\n")}
+${resourceRefreshStatements(fn, parameterValue).join("\n")}
 ${resultCreation.join("\n")}
 ${cleanup.join("\n")}
     return result;
@@ -1194,7 +1231,12 @@ ${cleanup.join("\n")}
 }
 
 function emitExactWrapper(fn) {
-  const declarations = ["    sagejs_native_status sagejs_wrapper_status = {0, NULL};"];
+  const identifiers = wrapperIdentifierContext(fn);
+  const parameterValue = (param) => identifiers.parameter(param);
+  const wrapperStatus = identifiers.fresh("sagejs_wrapper_status");
+  const declarations = [
+    `    sagejs_native_status ${wrapperStatus} = {0, NULL};`,
+  ];
   const initialization = [];
   const parsing = [];
   const cleanup = [];
@@ -1202,7 +1244,7 @@ function emitExactWrapper(fn) {
     (param) => param.default === undefined,
   ).length;
   for (const [index, param] of fn.params.entries()) {
-    const value = wrapperValue(param);
+    const value = parameterValue(param);
     let parse;
     let defaultValue;
     const resource = functionResource(fn, param.type);
@@ -1211,14 +1253,15 @@ function emitExactWrapper(fn) {
       parse = `if (!${resourceUnwrapName(resource)}(env, args[${index}], ` +
         `&${value}))\n            goto fail;`;
     } else if (param.type === "Integer") {
-      declarations.push(`    mpz_t ${value};`, `    int ${value}_initialized = 0;`);
-      initialization.push(`    mpz_init(${value});`, `    ${value}_initialized = 1;`);
+      const initialized = identifiers.fresh(`${value}_initialized`);
+      declarations.push(`    mpz_t ${value};`, `    int ${initialized} = 0;`);
+      initialization.push(`    mpz_init(${value});`, `    ${initialized} = 1;`);
       parse = `if (!get_integer(env, args[${index}], ${value}))\n` +
         "            goto fail;";
       defaultValue = `if (mpz_set_str(${value}, ` +
         `${cString(param.default)}, 10) != 0)\n` +
         "            goto fail;";
-      cleanup.push(`    if (${value}_initialized)`, `        mpz_clear(${value});`);
+      cleanup.push(`    if (${initialized})`, `        mpz_clear(${value});`);
     } else if (param.type === "uint64") {
       declarations.push(`    uint64_t ${value};`);
       parse = `if (!get_uint64(env, args[${index}], &${value}))\n` +
@@ -1262,6 +1305,9 @@ function emitExactWrapper(fn) {
   }
   const resultTypes = tupleElementTypes(fn.returnType) || [fn.returnType];
   const tupleResult = isTupleType(fn.returnType);
+  const wrapperItem = tupleResult
+    ? identifiers.fresh("sagejs_wrapper_item")
+    : undefined;
   const returnedResource = functionResource(fn, fn.returnType);
   if (returnedResource !== undefined && tupleResult) {
     throw new Error("native resource tuple returns are not supported");
@@ -1271,7 +1317,7 @@ function emitExactWrapper(fn) {
   const resultCreation = [];
   resultTypes.forEach((type, index) => {
     const suffix = tupleResult ? `_${index}` : "";
-    const value = `sagejs_wrapper_result${suffix}`;
+    const value = identifiers.fresh(`sagejs_wrapper_result${suffix}`);
     const resource = functionResource(fn, type);
     if (resource !== undefined) {
       declarations.push(
@@ -1299,12 +1345,13 @@ function emitExactWrapper(fn) {
         "        goto fail;",
       );
     } else if (type === "Integer") {
-      declarations.push(`    mpz_t ${value};`, `    int ${value}_initialized = 0;`);
-      initialization.push(`    mpz_init(${value});`, `    ${value}_initialized = 1;`);
-      cleanup.push(`    if (${value}_initialized)`, `        mpz_clear(${value});`);
+      const initialized = identifiers.fresh(`${value}_initialized`);
+      declarations.push(`    mpz_t ${value};`, `    int ${initialized} = 0;`);
+      initialization.push(`    mpz_init(${value});`, `    ${initialized} = 1;`);
+      cleanup.push(`    if (${initialized})`, `        mpz_clear(${value});`);
       resultArguments.push(value);
       resultCreation.push(tupleResult
-        ? `    sagejs_wrapper_item = create_bigint(env, ${value});`
+        ? `    ${wrapperItem} = create_bigint(env, ${value});`
         : `    result = create_bigint(env, ${value});`);
     } else {
       declarations.push(
@@ -1313,9 +1360,9 @@ function emitExactWrapper(fn) {
       resultArguments.push(`&${value}`);
       const create = type === "bool"
         ? `napi_get_boolean(env, ${value} != 0, ` +
-          `${tupleResult ? "&sagejs_wrapper_item" : "&result"})`
+          `${tupleResult ? `&${wrapperItem}` : "&result"})`
         : `napi_create_bigint_uint64(env, ${value}, ` +
-          `${tupleResult ? "&sagejs_wrapper_item" : "&result"})`;
+          `${tupleResult ? `&${wrapperItem}` : "&result"})`;
       resultCreation.push(
         `    if (!sagejs_native_check_napi(env, ${create}))`,
         "        goto fail;",
@@ -1323,11 +1370,11 @@ function emitExactWrapper(fn) {
     }
     if (tupleResult) {
       resultCreation.push(
-        "    if (sagejs_wrapper_item == NULL)",
+        `    if (${wrapperItem} == NULL)`,
         "        goto fail;",
-        `    if (!sagejs_native_check_napi(env, napi_set_element(env, result, ${index}, sagejs_wrapper_item)))`,
+        `    if (!sagejs_native_check_napi(env, napi_set_element(env, result, ${index}, ${wrapperItem})))`,
         "        goto fail;",
-        "    sagejs_wrapper_item = NULL;",
+        `    ${wrapperItem} = NULL;`,
       );
     }
   });
@@ -1336,19 +1383,20 @@ function emitExactWrapper(fn) {
       `    if (!sagejs_native_check_napi(env, napi_create_array_with_length(env, ${resultTypes.length}, &result)))`,
       "        goto fail;",
     );
-    declarations.push("    napi_value sagejs_wrapper_item = NULL;");
+    declarations.push(`    napi_value ${wrapperItem} = NULL;`);
   }
   const argumentsList = fn.params.map((param) =>
     functionResource(fn, param.type) !== undefined
-      ? `${wrapperValue(param)}->value`
-      : wrapperValue(param)
+      ? `${parameterValue(param)}->value`
+      : parameterValue(param)
   );
-  const execution = `    if (!native_${fn.name}(&sagejs_wrapper_status, ${resultArguments.join(", ")}` +
+  const failureRefresh = resourceFailureRefreshStatements(fn, parameterValue);
+  const execution = `    if (!native_${fn.name}(&${wrapperStatus}, ${resultArguments.join(", ")}` +
     `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))\n` +
     "    {\n" +
-    `${resourceFailureRefreshStatements(fn).join("\n")}` +
-    `${resourceFailureRefreshStatements(fn).length ? "\n" : ""}` +
-    "        sagejs_native_throw_status(env, &sagejs_wrapper_status);\n" +
+    `${failureRefresh.join("\n")}` +
+    `${failureRefresh.length ? "\n" : ""}` +
+    `        sagejs_native_throw_status(env, &${wrapperStatus});\n` +
     "        goto fail;\n" +
     "    }";
   return `
@@ -1371,7 +1419,7 @@ ${initialization.join("\n")}
 ${parsing.join("\n")}
 ${execution}
 ${resultInitialization.join("\n")}
-${resourceRefreshStatements(fn).join("\n")}
+${resourceRefreshStatements(fn, parameterValue).join("\n")}
 ${resultCreation.join("\n")}
 ${cleanup.join("\n")}
     return result;
@@ -1752,14 +1800,21 @@ fail:
 }
 
 function emitFloat64NodeAdapter(fn) {
+  const parameterNames = new Map(fn.params.map((param) => [
+    param.name,
+    cName(param.name),
+  ]));
+  const fresh = createIdentifierAllocator(parameterNames.values());
+  const wrapperStatus = fresh("sagejs_wrapper_status");
+  const float64Result = fresh("sagejs_float64_result");
   const declarations = [
-    "    sagejs_native_status sagejs_wrapper_status = {0, NULL};",
-    "    double sagejs_float64_result = 0.0;",
+    `    sagejs_native_status ${wrapperStatus} = {0, NULL};`,
+    `    double ${float64Result} = 0.0;`,
     "    napi_value result;",
   ];
   const parsing = [];
   for (const [index, param] of fn.params.entries()) {
-    const name = cName(param.name);
+    const name = parameterNames.get(param.name);
     if (param.type === "uint64") {
       declarations.push(`    uint64_t ${name};`);
       parsing.push(
@@ -1799,14 +1854,14 @@ ${declarations.join("\n")}
         return NULL;
     }
 ${parsing.join("\n")}
-    if (!sagejs_kernel_${fn.name}(&sagejs_wrapper_status,
-            &sagejs_float64_result, ${fn.params.map((param) => cName(param.name)).join(", ")}))
+    if (!sagejs_kernel_${fn.name}(&${wrapperStatus},
+            &${float64Result}, ${fn.params.map((param) => parameterNames.get(param.name)).join(", ")}))
     {
-        sagejs_native_throw_status(env, &sagejs_wrapper_status);
+        sagejs_native_throw_status(env, &${wrapperStatus});
         return NULL;
     }
     if (!sagejs_native_check_napi(env,
-            napi_create_double(env, sagejs_float64_result, &result)))
+            napi_create_double(env, ${float64Result}, &result)))
         return NULL;
     return result;
 }`;
