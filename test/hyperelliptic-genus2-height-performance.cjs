@@ -525,12 +525,12 @@ assert local.diagnostics["selected_algorithm"] == "local"
 assert local.diagnostics["exact_small_step_oracle"]["status"] == "passed"
 assert local.diagnostics["finite_correction"]["diagnostics"][
     "recurrence_backend"
-] == "native-integer-buffer"
+] == "native-integer-buffer-batch"
 assert local.diagnostics["archimedean_correction"]["diagnostics"][
     "recurrence_backend"
-] == "native-integer-buffer"
+] == "native-integer-buffer-batch"
 assert local.diagnostics["asymptotic_state"] == (
-    "polynomial-size modular finite state and four bounded real balls"
+    "point-major polynomial-size modular state and bounded dyadic balls"
 )
 diagnostics = context.diagnostics()
 assert diagnostics["direct_kummer_quartic_doublings"] == 0
@@ -1338,6 +1338,40 @@ rebound_counter_pairing = height_pairing(
 )
 assert rebound_counter_pairing.rigorous
 assert cache_state(rebound_counter_context) == (3, 0, 3, 1, 0, 1)
+
+class FakeField:
+    def __init__(self, precision_bits):
+        self.precision_bits = precision_bits
+    def log_integer(self, value):
+        return RealBall(100, precision_bits=self.precision_bits, rigorous=True)
+
+poison_context = HeightContext(J)
+fake_field = FakeField(96)
+poison_context.field = lambda precision: fake_field
+poison_context._fields = {64: fake_field, 96: fake_field, 128: fake_field}
+def poisoned_context_method(*args, **kwds):
+    raise RuntimeError("poisoned height-context method")
+poison_context.kummer = poisoned_context_method
+poison_context.finite_correction = poisoned_context_method
+poison_context.archimedean_correction = poisoned_context_method
+poison_context._max_exact_coordinate_bits = 1
+poison_height = canonical_height(
+    P, precision=64, target_bits=32,
+    algorithm="local", context=poison_context,
+)
+poison_pairing = height_pairing(
+    [P,Q], precision=64, target_bits=32,
+    algorithm="local", context=poison_context,
+)
+poison_regulator = regulator(
+    [P,Q], precision=64, target_bits=32,
+    algorithm="local", context=poison_context,
+)
+known_height = "0.55175981952139493925311708933354526634108654109670"
+assert poison_height.rigorous and poison_height.ball.contains(known_height)
+assert poison_pairing.rigorous
+assert poison_pairing.height_results[0].ball.contains(known_height)
+assert poison_regulator.rigorous and poison_regulator.status == "certified-positive"
 [
     batch_data["point_count"],
     partial_pairing.height_results[1].diagnostics["batch"]["point_count"],

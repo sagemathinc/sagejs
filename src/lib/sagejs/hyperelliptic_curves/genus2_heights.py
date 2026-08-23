@@ -1856,6 +1856,7 @@ def _canonical_heights_uncached_local_batch(
     algorithm: str,
     context: HeightContext,
     cancel: Any = None,
+    _proof_bounds: AutomaticHeightBounds | None = None,
     _closed_dependencies: tuple[Any, ...] = (
         perf_counter,
         ArchimedeanHeightCorrectionResult,
@@ -1864,6 +1865,8 @@ def _canonical_heights_uncached_local_batch(
         Genus2HeightCapabilityError,
         Genus2HeightResolutionError,
         Genus2HeightResourceLimitError,
+        HeightContext.diagnostics,
+        IntervalBallField,
         RealBall,
         _ceil_div,
         _check_height_batch_cancel,
@@ -1876,8 +1879,8 @@ def _canonical_heights_uncached_local_batch(
         _integer_coefficients,
         _mueller_stoll_discriminant_bound,
         _scaled_tail_steps,
-        _validated_context_specialized_terms,
         _zero_ball,
+        classical_duplication_specialized_terms,
         divisor_provenance,
         dyadic_kummer_height_recurrence_batch,
         dyadic_log_interval_batch,
@@ -1908,6 +1911,8 @@ def _canonical_heights_uncached_local_batch(
         Genus2HeightCapabilityError,
         Genus2HeightResolutionError,
         Genus2HeightResourceLimitError,
+        height_context_diagnostics,
+        IntervalBallField,
         RealBall,
         _ceil_div,
         _check_height_batch_cancel,
@@ -1920,8 +1925,8 @@ def _canonical_heights_uncached_local_batch(
         _integer_coefficients,
         _mueller_stoll_discriminant_bound,
         _scaled_tail_steps,
-        _validated_context_specialized_terms,
         _zero_ball,
+        classical_duplication_specialized_terms,
         divisor_provenance,
         dyadic_kummer_height_recurrence_batch,
         dyadic_log_interval_batch,
@@ -1961,7 +1966,7 @@ def _canonical_heights_uncached_local_batch(
     if normalized_target is not None and normalized_target < 1:
         raise ValueError("target_bits must be positive")
     jacobian = values[0].parent()
-    if context.jacobian is not jacobian:
+    if context.__dict__["_jacobian"] is not jacobian:
         raise ValueError("the height context belongs to a different Jacobian")
     for divisor in values:
         if divisor.parent() is not jacobian:
@@ -1971,7 +1976,7 @@ def _canonical_heights_uncached_local_batch(
     _check_height_batch_cancel(cancel, "model-specialization")
     specialized_terms = cast(
         tuple[tuple[tuple[int, int, int, int, int], ...], ...],
-        _validated_context_specialized_terms(context),
+        classical_duplication_specialized_terms(jacobian),
     )
     f_value = jacobian.f()
     if (
@@ -1992,8 +1997,15 @@ def _canonical_heights_uncached_local_batch(
             else normalized_precision
         ),
     )
-    field = context.field(working_precision)
-    bounds = context.automatic_bounds(working_precision)
+    field = IntervalBallField(working_precision)
+    if field.__class__ is not IntervalBallField or int(field.precision_bits) != int(
+        working_precision
+    ):
+        raise Genus2HeightCapabilityError(
+            "the proof-grade interval field constructor returned an invalid field",
+            {"interval_field": "rejected-type-or-precision-mismatch"},
+        )
+    bounds = _proof_bounds
     if bounds is None or bounds.diagnostics.get("automatic_bound") != "certified":
         raise Genus2HeightCapabilityError(
             "the batched local height engine requires certified automatic bounds",
@@ -2019,7 +2031,14 @@ def _canonical_heights_uncached_local_batch(
         guarded_precision = normalized_target + 4 * selected_steps + 48
         if working_precision < guarded_precision:
             working_precision = guarded_precision
-            field = context.field(working_precision)
+            field = IntervalBallField(working_precision)
+            if field.__class__ is not IntervalBallField or int(
+                field.precision_bits
+            ) != int(working_precision):
+                raise Genus2HeightCapabilityError(
+                    "the proof-grade interval field constructor returned an invalid field",
+                    {"interval_field": "rejected-type-or-precision-mismatch"},
+                )
     if selected_steps > 1024 or point_count * selected_steps > 16384:
         raise Genus2HeightResourceLimitError(
             "the certified local-height batch exceeds its bounded recurrence plan",
@@ -2313,8 +2332,8 @@ def _canonical_heights_uncached_local_batch(
     oracle_at = perf_counter()
 
     _check_height_batch_cancel(cancel, "proof-assembly")
-    context._finite_correction_misses += point_count
-    context._archimedean_correction_misses += point_count
+    context.__dict__["_finite_correction_misses"] += point_count
+    context.__dict__["_archimedean_correction_misses"] += point_count
     finite_tail = field.log_integer(discriminant_bound) / RealBall(
         3 * 4**selected_steps, precision_bits=working_precision
     )
@@ -2479,7 +2498,7 @@ def _canonical_heights_uncached_local_batch(
                         "requested_precision_bits": normalized_precision,
                         "target_bits": normalized_target,
                         "batch_point_count": point_count,
-                        "context": context.diagnostics(),
+                        "context": height_context_diagnostics(context),
                     },
                 )
             )
@@ -2560,7 +2579,7 @@ def _canonical_heights_uncached_local_batch(
                     "asymptotic_state": (
                         "point-major polynomial-size modular state and bounded dyadic balls"
                     ),
-                    "context": context.diagnostics(),
+                    "context": height_context_diagnostics(context),
                 },
             )
         )
@@ -3395,6 +3414,7 @@ def _install_height_proof_state(
     canonical_result_type = CanonicalHeightResult
     pairing_result_type = HeightPairingResult
     height_context_type = HeightContext
+    height_context_diagnostics_function = HeightContext.diagnostics
     encoded_frozen_dict_type = _EncodedFrozenDict
     frozen_dict_type = _FrozenDict
     type_function = type
@@ -3474,8 +3494,8 @@ def _install_height_proof_state(
         )
 
     def validated_context_terms(context: Any) -> Any:
-        expected = specialized_terms_function(context.jacobian)
-        if context._classical_duplication_terms != expected:
+        expected = specialized_terms_function(context.__dict__["_jacobian"])
+        if context.__dict__["_classical_duplication_terms"] != expected:
             raise Genus2HeightCapabilityError(
                 "cached Flynn tables do not match the exact Jacobian model",
                 {"specialized_quartics": "rejected-mutated-height-context"},
@@ -3632,7 +3652,7 @@ def _install_height_proof_state(
         payload: Any, jacobian: Any, context: HeightContext
     ) -> CanonicalHeightResult:
         encoded_diagnostics = replace_encoded_dictionary(
-            payload[5], "context", context.diagnostics()
+            payload[5], "context", height_context_diagnostics_function(context)
         )
         bounds = None
         if payload[4] is not None:
@@ -3808,6 +3828,20 @@ def _install_height_proof_state(
         )
         if context is not None:
             require_exact_context(context)
+            stored_bounds = context.__dict__["_automatic_bounds"]
+            if not isinstance(stored_bounds, dict):
+                raise Genus2HeightCapabilityError(
+                    "the height context automatic-bound cache is invalid",
+                    {"automatic_bound": "rejected-context-cache-representation"},
+                )
+            for stored_bound in stored_bounds.values():
+                if stored_bound is not None and not bound_is_certified(
+                    stored_bound, divisor.parent()
+                ):
+                    raise Genus2HeightCapabilityError(
+                        "the height context contains an unproved automatic bound",
+                        {"automatic_bound": "rejected-context-cache-entry"},
+                    )
         if context is not None and any(
             callback_context is context
             for callback_context in cancellation_callback_contexts
@@ -3829,7 +3863,7 @@ def _install_height_proof_state(
         )
         if eligible:
             cache_context = cast(HeightContext, context)
-            if cache_context.jacobian is not divisor.parent():
+            if cache_context.__dict__["_jacobian"] is not divisor.parent():
                 raise ValueError("the height context belongs to a different Jacobian")
             cached = cached_canonical(
                 cache_context, divisor, parameters, count_hit=True
@@ -3837,6 +3871,7 @@ def _install_height_proof_state(
             if cached is not None:
                 return cached
             change_counter(cache_context, "_canonical_height_misses", 1)
+        candidate_bounds: AutomaticHeightBounds | None = None
         if (
             context is not None
             and height_difference_bound is None
@@ -3851,7 +3886,10 @@ def _install_height_proof_state(
                     else normalized_precision
                 ),
             )
-            candidate_bounds = cache_context.automatic_bounds(working_precision)
+            candidate_bounds = restore_bound(
+                theorem_source(divisor.parent(), working_precision),
+                divisor.parent(),
+            )
             if candidate_bounds is not None and not bound_is_certified(
                 candidate_bounds, divisor.parent()
             ):
@@ -3864,16 +3902,31 @@ def _install_height_proof_state(
                     "the local height engine requires model-bound automatic bounds",
                     {},
                 )
-        answer = canonical_height_function(
-            divisor,
-            steps=steps,
-            precision=precision,
-            target_bits=target_bits,
-            algorithm=algorithm,
-            height_difference_bound=height_difference_bound,
-            torsion_order=torsion_order,
-            context=context,
-        )
+        if eligible and normalized_algorithm != "exact":
+            cache_context = cast(HeightContext, context)
+            answer = canonical_height_batch_function(
+                (divisor,),
+                steps=normalized_steps,
+                precision=normalized_precision,
+                target_bits=normalized_target,
+                algorithm=normalized_algorithm,
+                context=cache_context,
+                _proof_bounds=candidate_bounds,
+            )[0]
+        else:
+            proof_context = context
+            if eligible and normalized_algorithm == "exact":
+                proof_context = height_context_type(divisor.parent())
+            answer = canonical_height_function(
+                divisor,
+                steps=steps,
+                precision=precision,
+                target_bits=target_bits,
+                algorithm=algorithm,
+                height_difference_bound=height_difference_bound,
+                torsion_order=torsion_order,
+                context=proof_context,
+            )
         if eligible:
             cache_context = cast(HeightContext, context)
             record = canonical_record(cache_context, divisor, parameters, answer)
@@ -3901,7 +3954,7 @@ def _install_height_proof_state(
         payload: Any, jacobian: Any, context: HeightContext
     ) -> HeightPairingResult:
         encoded_diagnostics = replace_encoded_dictionary(
-            payload[2], "context", context.diagnostics()
+            payload[2], "context", height_context_diagnostics_function(context)
         )
         return pairing_result_type(
             tuple(
@@ -3965,7 +4018,7 @@ def _install_height_proof_state(
 
         cache_context = cast(HeightContext, context)
         jacobian = values[0].parent()
-        if cache_context.jacobian is not jacobian:
+        if cache_context.__dict__["_jacobian"] is not jacobian:
             raise ValueError("the height context belongs to a different Jacobian")
         for value in values:
             if value.parent() is not jacobian:
@@ -4037,6 +4090,17 @@ def _install_height_proof_state(
                     is None
                 )
                 if missing:
+                    proof_precision = max(
+                        parameters[1],
+                        (
+                            parameters[2] + 32
+                            if parameters[2] is not None
+                            else parameters[1]
+                        ),
+                    )
+                    proof_bounds = restore_bound(
+                        theorem_source(jacobian, proof_precision), jacobian
+                    )
                     batch_answers = canonical_height_batch_function(
                         missing,
                         steps=parameters[0],
@@ -4045,6 +4109,7 @@ def _install_height_proof_state(
                         algorithm=parameters[3],
                         context=cache_context,
                         cancel=transaction_cancel,
+                        _proof_bounds=proof_bounds,
                     )
                     batch_misses = len(missing)
                     for value, batch_answer in zip(missing, batch_answers, strict=True):
