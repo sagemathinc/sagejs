@@ -238,10 +238,12 @@ async function wasmReceipt(repeat) {
     projectSamples.push(performance.now() - started);
   }
 
-  let boundsError;
+  const shortOutput = new BigUint64Array(8).fill(99n);
+  let boundsError = null;
+  let boundsResult;
   try {
-    add(
-      new BigUint64Array(8),
+    boundsResult = add(
+      shortOutput,
       new BigUint64Array(2),
       new BigUint64Array(12),
       new BigUint64Array(16),
@@ -253,7 +255,8 @@ async function wasmReceipt(repeat) {
   } catch (error) {
     boundsError = { name: error.name, message: error.message };
   }
-  assert(boundsError, "Wasm source-bound validation accepted a short output");
+  assert.equal(boundsResult, false);
+  assert.deepEqual(Array.from(shortOutput), Array(8).fill(99n));
 
   const cli = join(packageRoot, "node-cli.mjs");
   const verify = requiredCommand(process.execPath, [cli, "--verify-only"], {
@@ -298,7 +301,11 @@ async function wasmReceipt(repeat) {
       exact_sha256: exactArrayDigest(projectOutput),
       status_sha256: exactArrayDigest(projectStatuses),
     },
-    resource_bounds: boundsError,
+    resource_bounds: {
+      result: boundsResult,
+      error: boundsError,
+      short_output_unchanged: true,
+    },
     package_verification: {
       elapsed_ms: verify.elapsed_ms,
       stdout_sha256: sha256(verify.stdout),

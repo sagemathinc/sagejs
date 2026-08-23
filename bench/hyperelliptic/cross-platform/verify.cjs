@@ -32,6 +32,16 @@ for (const { path, value } of receipts) {
     reference.repository.commit,
     `${path}: repository commit`,
   );
+  assert.match(
+    value.repository.harness_sha256,
+    /^[0-9a-f]{64}$/,
+    `${path}: runner digest`,
+  );
+  assert.equal(
+    value.repository.harness_sha256,
+    reference.repository.harness_sha256,
+    `${path}: runner digest`,
+  );
   assert.deepEqual(
     value.repository.source_sha256,
     reference.repository.source_sha256,

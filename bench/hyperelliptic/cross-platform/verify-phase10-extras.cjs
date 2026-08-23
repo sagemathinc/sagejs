@@ -56,7 +56,9 @@ for (const { path, value } of receipts) {
     `${path}: authenticated manifest`,
   );
   assert.deepEqual(exact(value), exact(reference), `${path}: portable digests`);
-  assert(value.wasm.resource_bounds.name.length > 0);
+  assert.equal(value.wasm.resource_bounds.result, false);
+  assert.equal(value.wasm.resource_bounds.error, null);
+  assert.equal(value.wasm.resource_bounds.short_output_unchanged, true);
   assert.notEqual(value.wasm.cancellation.exit_code, 0);
   assert.equal(value.wasm.cancellation.recovery_stdout, "42");
   if (value.host.platform === "win32") {

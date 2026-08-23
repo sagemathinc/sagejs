@@ -718,14 +718,24 @@ async function workerMain(config) {
         session,
         "tuple(cantor_context.pack(v) for v in cantor_add_materialized)",
       );
-      const exactScalar = await sageEvaluation(
-        session,
-        "tuple(cantor_context.pack(v) for v in cantor_scalar)",
-      );
-      const exactMaterializedScalar = await sageEvaluation(
-        session,
-        "tuple(cantor_context.pack(v) for v in cantor_scalar_materialized)",
-      );
+      let exactScalar;
+      let exactMaterializedScalar;
+      if (config.workerMode === "native") {
+        exactScalar = await sageEvaluation(
+          session,
+          `tuple(cantor_context.pack(v) for v in cantor_context.scalar_batch(left[:${config.cantorScalarItems}],scalars))`,
+        );
+        exactMaterializedScalar = await sageEvaluation(
+          session,
+          `tuple(cantor_context.pack(v) for v in cantor_context.scalar_batch(left[:${config.cantorScalarItems}],scalars,materialize=True))`,
+        );
+      } else {
+        exactScalar = await sageEvaluation(
+          session,
+          "tuple(cantor_context.pack(v) for v in cantor_scalar)",
+        );
+        exactMaterializedScalar = exactScalar;
+      }
       const exactProgression = await sageEvaluation(
         session,
         "cantor_progression",
@@ -1025,6 +1035,7 @@ async function coordinatorMain(config) {
       root,
       commit: command("git", ["rev-parse", "HEAD"]).stdout,
       status: command("git", ["status", "--porcelain=v1"]).stdout,
+      harness_sha256: sha256(readFileSync(__filename)),
       build_receipt_sha256: fileDigest("dist/build-receipt.json"),
       source_sha256: Object.fromEntries(
         relevantSources.map((path) => [path, fileDigest(path)]),
