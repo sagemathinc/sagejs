@@ -1151,9 +1151,13 @@ def _presentation_modulus_is_irreducible(
     presentation: dict[str, Any], prime: int, residue_degree: int
 ) -> bool:
     """Replay irreducibility of one canonical residue presentation."""
-    modular_factors = _om.factor_mod_prime(
-        tuple(int(value) for value in presentation["modulus"]), prime
-    )
+    modulus = tuple(int(value) % prime for value in presentation["modulus"])
+    if residue_degree == 1:
+        # Every nonconstant linear polynomial over a field is irreducible.
+        # Avoid entering the generic modular factorization engine for the
+        # overwhelmingly common residue-degree-one prime ideals.
+        return len(modulus) == 2 and modulus[1] != 0
+    modular_factors = _om.factor_mod_prime(modulus, prime)
     return bool(
         len(modular_factors) == 1
         and int(modular_factors[0].multiplicity) == 1

@@ -153,10 +153,13 @@ test("prime verification checks the exact HNF kernel directly", async () => {
             "D = O.factor_rational_prime(2)\n" +
             "for P in D.prime_ideals():\n" +
             "    P.residue_coordinates = lambda value: (_ for _ in ()).throw(AssertionError('field-element reduction'))\n" +
-            "D.verify()['certified']",
+            "prime_ideals = __import__('sagejs.number_fields.prime_ideals', fromlist=['prime_ideals'])\n" +
+            "linear = prime_ideals._presentation_modulus_is_irreducible({'modulus': (1, 1)}, 2, 1)\n" +
+            "constant = prime_ideals._presentation_modulus_is_irreducible({'modulus': (1, 0)}, 2, 1)\n" +
+            "[D.verify()['certified'], linear, constant]",
         )
       ).repr,
-      "True",
+      "[True, True, False]",
     );
   } finally {
     await session.close();
