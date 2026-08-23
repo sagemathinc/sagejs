@@ -883,44 +883,33 @@ def _filter_division_candidates(
     filtered = 0
     torsion = __import__(
         "sagejs.hyperelliptic_curves.torsion",
-        fromlist=[
-            "PreparedRationalReductionBatch",
-            "_packed_scalar_batch_rows",
-        ],
+        fromlist=["PreparedRationalReductionBatch"],
     )
-    rows = torsion.PreparedRationalReductionBatch(
+    prepared = torsion.PreparedRationalReductionBatch(
         jacobian,
         tuple(survivors),
         cancel=cancelled,
-    ).reduce_many(
+    )
+    rows = prepared.reduce_many(
         tuple(context[0] for context in contexts),
         algorithm=algorithm,
         allow_nonintegral=True,
         packed=True,
     )
-    rows_by_prime = {int(row["prime"]): row for row in rows}
+    matches = prepared.scalar_zero_many(
+        rows,
+        ell,
+        algorithm=algorithm,
+        targets=tuple(context[1] for context in contexts),
+        packed=True,
+    )
     alive = [True for _candidate in survivors]
-    for _prime, packed_target in contexts:
+    for prime_matches in matches:
         if not any(alive):
             break
         _check_cancelled(cancelled, "division-filter batch")
-        row = rows_by_prime[int(_prime)]
-        reduced_jacobian = row["reduced_jacobian"]
-        reducible_indices = []
-        reduced = []
-        for index, reduced_candidate in enumerate(row["divisors"]):
-            if alive[index] and reduced_candidate is not None:
-                reducible_indices.append(index)
-                reduced.append(reduced_candidate)
-        multiples = torsion._packed_scalar_batch_rows(
-            reduced_jacobian,
-            tuple(reduced),
-            tuple(ell for _candidate in reduced),
-            algorithm=algorithm,
-        )
-        matches = tuple(value == packed_target for value in multiples)
-        for index, matches_target in zip(reducible_indices, matches, strict=True):
-            if not matches_target:
+        for index, matches_target in enumerate(prime_matches):
+            if alive[index] and matches_target is False:
                 alive[index] = False
                 filtered += 1
     return tuple(

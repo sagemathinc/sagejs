@@ -41,6 +41,9 @@ function run(command, args, options = {}) {
 
 const witness = String.raw`
 from sagejs.native import is_compiled
+from sagejs.hyperelliptic_curves.jacobian_kernels import (
+    packed_cantor_scalar_many_primes,
+)
 from sagejs.hyperelliptic_curves.rational_reduction_kernels import (
     reduce_rational_mumford_many_primes,
 )
@@ -59,6 +62,7 @@ from sagejs.hyperelliptic_curves.saturation import (
 )
 
 assert is_compiled(reduce_rational_mumford_many_primes)
+assert is_compiled(packed_cantor_scalar_many_primes)
 dynamic_reduction = getattr(
     reduce_rational_mumford_many_primes,
     "javascript",
@@ -118,6 +122,45 @@ def check_curve(curve):
         for divisor in row["divisors"]
         if divisor is not None
     )
+    native_packed = prepared.reduce_many(
+        (101, 103, 107),
+        algorithm="native",
+        allow_nonintegral=True,
+        packed=True,
+    )
+    reference_packed = prepared.reduce_many(
+        (101, 103, 107),
+        algorithm="reference",
+        allow_nonintegral=True,
+        packed=True,
+    )
+    for native_row, reference_row in zip(native_packed, reference_packed, strict=True):
+        reference_context = reference_row["reduced_jacobian"].prepared_arithmetic(
+            algorithm="auto", max_batch_items=len(divisors)
+        )
+        assert native_row["model_coefficients"] == reference_context.model_coefficients
+    zero_scalars = tuple(
+        tuple(0 for _divisor in divisors) for _row in native_packed
+    )
+    fused, fused_diagnostics = prepared.scalar_zero_many(
+        native_packed, zero_scalars, algorithm="native", diagnostics=True
+    )
+    replay = prepared.scalar_zero_many(
+        reference_packed, zero_scalars, algorithm="reference"
+    )
+    assert fused == replay
+    assert all(value in (None, True) for row in fused for value in row)
+    assert fused_diagnostics["kernel_crossings"] == 1
+    fused_uniform, uniform_diagnostics = prepared.scalar_zero_many(
+        native_packed, 2, algorithm="native", packed=True, diagnostics=True
+    )
+    replay_uniform = prepared.scalar_zero_many(
+        reference_packed, 2, algorithm="reference"
+    )
+    assert tuple(tuple(row) for row in fused_uniform) == replay_uniform
+    assert uniform_diagnostics["matches_target_count"] == sum(
+        value is True for row in replay_uniform for value in row
+    )
     return diagnostics["divisor_count"]
 
 
@@ -167,6 +210,19 @@ except RationalTorsionCapabilityError as error:
     assert error.diagnostics["estimated_materialized_bytes"] == 128
 else:
     raise AssertionError("lazy packed-row materialization escaped its memory bound")
+
+fused_limited = PreparedRationalReductionBatch(
+    J, (P,), max_memory_bytes=memory_probe.estimated_bytes + 300
+)
+fused_limited_rows = fused_limited.reduce_many(
+    (5, 11), algorithm="native", packed=True
+)
+try:
+    fused_limited.scalar_zero_many(fused_limited_rows, 2, algorithm="native")
+except RationalTorsionCapabilityError as error:
+    assert error.diagnostics["fused_output_bytes"] > 300
+else:
+    raise AssertionError("fused scalar buffers escaped their memory bound")
 
 cancelled = PreparedRationalReductionBatch(J, (P,), cancel=lambda: True)
 try:
