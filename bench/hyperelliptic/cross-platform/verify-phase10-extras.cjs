@@ -19,6 +19,9 @@ const receipts = paths.map((path) => ({
   value: JSON.parse(readFileSync(path, "utf8")),
 }));
 const reference = receipts[0].value;
+const portableHarness = receipts.find(
+  ({ value }) => value.host.platform !== "darwin",
+)?.value.repository.harness_sha256;
 
 function exact(value) {
   return {
@@ -43,10 +46,18 @@ for (const { path, value } of receipts) {
   );
   assert.equal(value.repository.commit, reference.repository.commit);
   assert.equal(value.repository.status, "", `${path}: dirty source checkout`);
-  assert.equal(
-    value.repository.harness_sha256,
-    reference.repository.harness_sha256,
-    `${path}: harness digest`,
+  assert.match(value.repository.harness_sha256, /^[0-9a-f]{64}$/);
+  if (value.host.platform !== "darwin" && portableHarness !== undefined) {
+    assert.equal(
+      value.repository.harness_sha256,
+      portableHarness,
+      `${path}: portable harness digest`,
+    );
+  }
+  assert.deepEqual(
+    value.repository.package_smoke_overlay,
+    reference.repository.package_smoke_overlay,
+    `${path}: package-smoke test overlay`,
   );
   assert.equal(value.configuration.repeat, reference.configuration.repeat);
   assert.equal(value.wasm.status, "available", `${path}: Wasm capability`);
@@ -66,9 +77,21 @@ for (const { path, value } of receipts) {
     value.wasm.package_load_test.exit_code === 0 ? "passed" : "failed",
   );
   assert.match(value.wasm.package_load_test.stdout_sha256, /^[0-9a-f]{64}$/);
+  assert.equal(value.wasm.package_load_test.status, "passed");
+  assert.equal(
+    value.wasm.package_load_test.test_patch_commit,
+    value.repository.package_smoke_overlay.test_patch_commit,
+  );
+  assert.equal(
+    value.wasm.package_load_test.test_source_sha256,
+    value.repository.package_smoke_overlay.patched_test_sha256,
+  );
   if (value.host.platform === "win32") {
     assert.equal(value.standalone.status, "unavailable");
     assert.match(value.standalone.reason, /POSIX static-archive/);
+  } else if (value.host.platform === "darwin") {
+    assert.equal(value.standalone.status, "unavailable");
+    assert.match(value.standalone.reason, /GNU\/ELF/);
   } else {
     assert.equal(value.standalone.status, "available");
     for (const row of value.wasm.cantor) {

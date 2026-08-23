@@ -341,6 +341,13 @@ function standaloneReceipt() {
         "the checked-in standalone harness currently has a POSIX static-archive linker contract; Windows native kernels remain covered separately",
     };
   }
+  if (platform() === "darwin") {
+    return {
+      status: "unavailable",
+      reason:
+        "the checked-in standalone harness emits GNU/ELF --gc-sections and --exclude-libs linker flags rejected by native Mach-O ld; macOS native kernels remain covered separately",
+    };
+  }
   const result = requiredCommand(
     process.execPath,
     [join(root, "bench", "hyperelliptic", "benchmark-public-jacobian.cjs")],
