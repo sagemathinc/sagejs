@@ -256,8 +256,30 @@ def _product_integers(values: Any) -> int:
 class MumfordDivisor(sage.Element):
     """A canonical reduced divisor class on an odd-degree Jacobian."""
 
-    def __init__(self, parent: Any, u: Any, v: Any, check: bool = True) -> None:
+    def __init__(
+        self,
+        parent: Any,
+        u: Any,
+        v: Any,
+        check: bool = True,
+        *,
+        packed_row: tuple[int, ...] | None = None,
+        packed_token: Any = None,
+    ) -> None:
         self._parent = parent
+        self._packed_hash: int | None = None
+        if packed_row is not None:
+            if packed_token is not parent._packed_construction_token:
+                raise ValueError("packed Jacobian rows require context validation")
+            # Packed rows are created only by the context-bound internal
+            # publisher after it has checked the canonical v1 shape.  Keeping
+            # the exact row here avoids constructing coefficient and
+            # polynomial objects for results that immediately feed another
+            # packed group operation.
+            self._u = None
+            self._v = None
+            self._packed_row = packed_row
+            return
         ring = parent.polynomial_ring()
         u = ring(u)
         v = ring(v)
@@ -278,7 +300,22 @@ class MumfordDivisor(sage.Element):
         self._u = u
         self._v = v
         self._packed_row: tuple[int, ...] | None = None
-        self._packed_hash: int | None = None
+
+    def _materialize(self) -> None:
+        if self._u is not None:
+            return
+        row = self._packed_row
+        if row is None:
+            raise ArithmeticError("a Jacobian divisor has no representation")
+        degree = row[0]
+        field = self._parent.base_ring()
+        ring = self._parent.polynomial_ring()
+        self._u = ring([field(value) for value in row[1 : degree + 2]])
+        self._v = ring([field(value) for value in row[5 : 5 + degree]])
+
+    def is_materialized(self) -> bool:
+        """Return whether the polynomial `(u,v)` pair has been constructed."""
+        return self._u is not None
 
     def parent(self) -> Any:
         return self._parent
@@ -287,36 +324,46 @@ class MumfordDivisor(sage.Element):
         return self._parent.curve()
 
     def uv(self) -> tuple[Any, Any]:
+        self._materialize()
         return self._u, self._v
 
     def degree(self) -> int:
+        if self._packed_row is not None:
+            return self._packed_row[0]
         return self._u.degree()
 
     def is_zero(self) -> bool:
+        if self._packed_row is not None:
+            return self._packed_row[0] == 0
         return self._u.is_one() and self._v.is_zero()
 
     def __bool__(self) -> bool:
         return not self.is_zero()
 
     def __iter__(self) -> Any:
-        yield self._u
-        yield self._v
+        yield from self.uv()
 
     def __getitem__(self, index: int) -> Any:
-        return (self._u, self._v)[index]
+        return self.uv()[index]
 
     def __repr__(self) -> str:
-        return "(" + str(self._u) + ", " + str(self._v) + ")"
+        u_value, v_value = self.uv()
+        return "(" + str(u_value) + ", " + str(v_value) + ")"
 
     __str__ = __repr__
 
     def _eq_(self, other: Any) -> bool:
-        return (
-            isinstance(other, MumfordDivisor)
-            and self._parent is other._parent
-            and self._u == other._u
-            and self._v == other._v
-        )
+        if not isinstance(other, MumfordDivisor) or self._parent is not other._parent:
+            return False
+        if self._packed_row is not None or other._packed_row is not None:
+            try:
+                context = self._parent.prepared_arithmetic()
+                return context.pack(self) == context.pack(other)
+            except (ArithmeticError, NotImplementedError, TypeError, ValueError):
+                pass
+        left_u, left_v = self.uv()
+        right_u, right_v = other.uv()
+        return left_u == right_u and left_v == right_v
 
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
@@ -330,17 +377,19 @@ class MumfordDivisor(sage.Element):
                 packed = self._parent.prepared_arithmetic().pack(self)
                 self._packed_hash = hash((id(self._parent), packed))
             except (ArithmeticError, NotImplementedError, TypeError, ValueError):
-                self._packed_hash = hash((id(self._parent), str(self._u), str(self._v)))
+                u_value, v_value = self.uv()
+                self._packed_hash = hash((id(self._parent), str(u_value), str(v_value)))
         return self._packed_hash
 
     def __reduce__(self) -> tuple[Any, tuple[Any, ...]]:
-        return self._parent, ([self._u, self._v],)
+        u_value, v_value = self.uv()
+        return self._parent, ([u_value, v_value],)
 
     def __neg__(self) -> Any:
-        u = self._u
+        u, v = self.uv()
         return self._parent._element(
             u,
-            _polynomial_remainder(-self._parent.h() - self._v, u),
+            _polynomial_remainder(-self._parent.h() - v, u),
             False,
         )
 
@@ -362,7 +411,9 @@ class MumfordDivisor(sage.Element):
             raise TypeError("Jacobian divisors must have the same parent")
         context = self._parent.prepared_arithmetic(algorithm=algorithm)
         if not diagnostics and not context.native_available:
-            u, v = self._parent._compose(self._u, self._v, other._u, other._v)
+            left_u, left_v = self.uv()
+            right_u, right_v = other.uv()
+            u, v = self._parent._compose(left_u, left_v, right_u, right_v)
             return self._parent._element(u, v, False)
         result = context.add_batch((self,), (other,), diagnostics=diagnostics)
         if diagnostics:
@@ -626,6 +677,7 @@ class HyperellipticJacobian(sage.Parent):
         self._group_basis_cache: dict[str, Any] | None = None
         self._group_structure_diagnostics_cache: dict[str, Any] | None = None
         self._prepared_arithmetic_cache: dict[tuple[str, int], Any] = {}
+        self._packed_construction_token = object()
 
     def curve(self) -> Any:
         return self._curve
@@ -815,6 +867,17 @@ class HyperellipticJacobian(sage.Parent):
 
     def _element(self, u: Any, v: Any, check: bool) -> MumfordDivisor:
         return MumfordDivisor(self, u, v, check)
+
+    def _packed_element(self, row: tuple[int, ...]) -> MumfordDivisor:
+        """Publish one internally validated canonical packed divisor lazily."""
+        return MumfordDivisor(
+            self,
+            None,
+            None,
+            False,
+            packed_row=row,
+            packed_token=self._packed_construction_token,
+        )
 
     def __call__(self, *args: Any, check: bool = True) -> MumfordDivisor:
         if len(args) == 0 or (len(args) == 1 and args[0] == 0):

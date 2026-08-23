@@ -75,6 +75,7 @@ class PreparedBatchDiagnostics:
         pack_ns: int,
         kernel_ns: int,
         unpack_ns: int,
+        materialization_ns: int,
         validation_ns: int,
         statuses: tuple[int, ...],
     ) -> None:
@@ -85,7 +86,11 @@ class PreparedBatchDiagnostics:
         self.count = count
         self.pack_ns = pack_ns
         self.kernel_ns = kernel_ns
+        # `unpack_ns` is retained as an attribute for in-tree consumers; v1
+        # diagnostics report the more precise operation name `publication`.
         self.unpack_ns = unpack_ns
+        self.publication_ns = unpack_ns
+        self.materialization_ns = materialization_ns
         self.validation_ns = validation_ns
         self.statuses = statuses
 
@@ -103,7 +108,8 @@ class PreparedBatchDiagnostics:
             "timings_ns": {
                 "pack": self.pack_ns,
                 "kernel": self.kernel_ns,
-                "unpack": self.unpack_ns,
+                "publication": self.publication_ns,
+                "materialization": self.materialization_ns,
                 "validation": self.validation_ns,
             },
             "status_counts": branch_counts,
@@ -441,8 +447,7 @@ class PreparedJacobianArithmetic:
         divisor._packed_row = row
         return row
 
-    def unpack(self, row: Any) -> Any:
-        """Validate and publish one canonical odd-degree v1 row."""
+    def _canonical_row(self, row: Any) -> tuple[int, ...]:
         if self.prime is None:
             raise NotImplementedError(
                 "packed Mumford v1 is unavailable: " + self._domain_reason
@@ -461,6 +466,35 @@ class PreparedJacobianArithmetic:
             raise ValueError("packed Mumford u has nonzero unused words")
         if any(values[index] != 0 for index in range(5 + degree, 8)):
             raise ValueError("packed Mumford v has nonzero unused words")
+        return values
+
+    def _publish_packed(self, row: Any) -> Any:
+        """Publish a canonical kernel row without materializing polynomials."""
+        return self._jacobian._packed_element(self._canonical_row(row))
+
+    def _publish_kernel_output(self, output: Any, offset: int) -> Any:
+        """Copy one proved canonical kernel row into an immutable divisor."""
+        # The exact source kernel has already checked the model, all inputs,
+        # the Mumford relation, reduction, coefficient bounds, and its nonzero
+        # per-item status.  Copy the eight owned buffer words directly: running
+        # the generic public parser here would repeat thousands of dynamic
+        # integer and shape checks in retained-packed pipelines.
+        row = (
+            int(output[offset]),
+            int(output[offset + 1]),
+            int(output[offset + 2]),
+            int(output[offset + 3]),
+            int(output[offset + 4]),
+            int(output[offset + 5]),
+            int(output[offset + 6]),
+            int(output[offset + 7]),
+        )
+        return self._jacobian._packed_element(row)
+
+    def unpack(self, row: Any) -> Any:
+        """Validate and publish one canonical odd-degree v1 row."""
+        values = self._canonical_row(row)
+        degree = values[0]
         field = self._jacobian.base_ring()
         ring = self._jacobian.polynomial_ring()
         divisor = self._jacobian._element(
@@ -490,6 +524,7 @@ class PreparedJacobianArithmetic:
         *,
         algorithm: str | None = None,
         diagnostics: bool = False,
+        materialize: bool = False,
     ) -> Any:
         left_values = tuple(lefts)
         right_values = tuple(rights)
@@ -513,6 +548,7 @@ class PreparedJacobianArithmetic:
         pack_ns = time.perf_counter_ns() - started
         statuses: tuple[int, ...] = ()
         validation_ns = 0
+        materialization_ns = 0
         if selected == "reference":
             started = time.perf_counter_ns()
             answer = tuple(
@@ -552,10 +588,15 @@ class PreparedJacobianArithmetic:
                 raise ArithmeticError("the packed Cantor kernel returned a failed item")
             started = time.perf_counter_ns()
             answer = tuple(
-                self.unpack(tuple(int(output[8 * item + index]) for index in range(8)))
+                self._publish_kernel_output(output, 8 * item)
                 for item in range(len(left_values))
             )
             unpack_ns = time.perf_counter_ns() - started
+        if materialize:
+            started = time.perf_counter_ns()
+            for divisor in answer:
+                divisor.uv()
+            materialization_ns = time.perf_counter_ns() - started
         record = PreparedBatchDiagnostics(
             operation="add",
             requested=self._algorithm if algorithm is None else algorithm,
@@ -565,6 +606,7 @@ class PreparedJacobianArithmetic:
             pack_ns=pack_ns,
             kernel_ns=kernel_ns,
             unpack_ns=unpack_ns,
+            materialization_ns=materialization_ns,
             validation_ns=validation_ns,
             statuses=statuses,
         )
@@ -576,10 +618,15 @@ class PreparedJacobianArithmetic:
         *,
         algorithm: str | None = None,
         diagnostics: bool = False,
+        materialize: bool = False,
     ) -> Any:
         values: tuple[Any, ...] = tuple(elements)
         result = self.add_batch(
-            values, values, algorithm=algorithm, diagnostics=diagnostics
+            values,
+            values,
+            algorithm=algorithm,
+            diagnostics=diagnostics,
+            materialize=materialize,
         )
         if diagnostics:
             answer, record = result
@@ -596,12 +643,15 @@ class PreparedJacobianArithmetic:
         algorithm: str | None = None,
         diagnostics: bool = False,
         packed: bool = False,
+        materialize: bool = False,
         max_group_operations: Any = None,
     ) -> Any:
         """Return `(start + i*step)` in one batch, optionally as packed rows."""
         length = _exact_integer(count, "count")
         if length < 0:
             raise ValueError("count must be nonnegative")
+        if packed and materialize:
+            raise ValueError("packed progression results cannot be materialized")
         self._check_batch_size(length)
         if start.parent() is not self._jacobian or step.parent() is not self._jacobian:
             raise ValueError("progression divisors must lie in this Jacobian")
@@ -625,6 +675,7 @@ class PreparedJacobianArithmetic:
             step_row = self.pack(step)
         pack_ns = time.perf_counter_ns() - started
         validation_ns = 0
+        materialization_ns = 0
         if selected == "reference":
             started = time.perf_counter_ns()
             values = []
@@ -669,12 +720,15 @@ class PreparedJacobianArithmetic:
             else:
                 started = time.perf_counter_ns()
                 answer = tuple(
-                    self.unpack(
-                        tuple(int(output[8 * item + index]) for index in range(8))
-                    )
+                    self._publish_kernel_output(output, 8 * item)
                     for item in range(length)
                 )
                 unpack_ns = time.perf_counter_ns() - started
+        if materialize:
+            started = time.perf_counter_ns()
+            for divisor in answer:
+                divisor.uv()
+            materialization_ns = time.perf_counter_ns() - started
         record = PreparedBatchDiagnostics(
             operation="progression",
             requested=self._algorithm if algorithm is None else algorithm,
@@ -684,6 +738,7 @@ class PreparedJacobianArithmetic:
             pack_ns=pack_ns,
             kernel_ns=kernel_ns,
             unpack_ns=unpack_ns,
+            materialization_ns=materialization_ns,
             validation_ns=validation_ns,
             statuses=statuses,
         )
@@ -696,6 +751,7 @@ class PreparedJacobianArithmetic:
         *,
         algorithm: str | None = None,
         diagnostics: bool = False,
+        materialize: bool = False,
         max_group_operations: Any = None,
     ) -> Any:
         values = tuple(elements)
@@ -745,6 +801,7 @@ class PreparedJacobianArithmetic:
                 magnitude //= 1 << 64
         pack_ns = time.perf_counter_ns() - started
         validation_ns = 0
+        materialization_ns = 0
         if selected == "reference":
             started = time.perf_counter_ns()
             answer = tuple(
@@ -779,10 +836,15 @@ class PreparedJacobianArithmetic:
             statuses = tuple(int(status_buffer[index]) for index in range(len(values)))
             started = time.perf_counter_ns()
             answer = tuple(
-                self.unpack(tuple(int(output[8 * item + index]) for index in range(8)))
+                self._publish_kernel_output(output, 8 * item)
                 for item in range(len(values))
             )
             unpack_ns = time.perf_counter_ns() - started
+        if materialize:
+            started = time.perf_counter_ns()
+            for divisor in answer:
+                divisor.uv()
+            materialization_ns = time.perf_counter_ns() - started
         record = PreparedBatchDiagnostics(
             operation="scalar",
             requested=self._algorithm if algorithm is None else algorithm,
@@ -792,6 +854,7 @@ class PreparedJacobianArithmetic:
             pack_ns=pack_ns,
             kernel_ns=kernel_ns,
             unpack_ns=unpack_ns,
+            materialization_ns=materialization_ns,
             validation_ns=validation_ns,
             statuses=statuses,
         )
@@ -816,6 +879,7 @@ class PreparedJacobianArithmetic:
         *,
         algorithm: str | None = None,
         diagnostics: bool = False,
+        materialize: bool = False,
     ) -> Any:
         values: tuple[Any, ...] = tuple(elements)
         self._check_batch_size(len(values))
@@ -832,6 +896,7 @@ class PreparedJacobianArithmetic:
                 pack_ns=0,
                 kernel_ns=0,
                 unpack_ns=0,
+                materialization_ns=0,
                 validation_ns=0,
                 statuses=(),
             )
@@ -854,6 +919,11 @@ class PreparedJacobianArithmetic:
             all_statuses.extend(record.statuses)
             level = pair_sums + carry
         answer = next(iter(level))
+        materialization_ns = 0
+        if materialize:
+            started = time.perf_counter_ns()
+            answer.uv()
+            materialization_ns = time.perf_counter_ns() - started
         record = PreparedBatchDiagnostics(
             operation="sum",
             requested=self._algorithm if algorithm is None else algorithm,
@@ -863,6 +933,7 @@ class PreparedJacobianArithmetic:
             pack_ns=total_pack,
             kernel_ns=total_kernel,
             unpack_ns=total_unpack,
+            materialization_ns=materialization_ns,
             validation_ns=total_validation,
             statuses=tuple(all_statuses),
         )

@@ -98,11 +98,20 @@ for genus, curve in [
     scalar_throughput_items = 64
 
     native_add = lambda: context.add_batch(left, right, algorithm="native")
+    native_add_materialized = lambda: context.add_batch(
+        left, right, algorithm="native", materialize=True
+    )
     reference_add = lambda: context.add_batch(left, right, algorithm="reference")
     native_scalar = lambda: context.scalar_batch(
         left[:scalar_comparison_items],
         scalars[:scalar_comparison_items],
         algorithm="native",
+    )
+    native_scalar_materialized = lambda: context.scalar_batch(
+        left[:scalar_comparison_items],
+        scalars[:scalar_comparison_items],
+        algorithm="native",
+        materialize=True,
     )
     reference_scalar = lambda: context.scalar_batch(
         left[:scalar_comparison_items],
@@ -117,15 +126,37 @@ for genus, curve in [
 
     native_add()
     native_scalar()
+    _diagnostic_add_result, add_diagnostics = context.add_batch(
+        left, right, algorithm="native", diagnostics=True
+    )
+    _diagnostic_materialized_add_result, materialized_add_diagnostics = (
+        context.add_batch(
+            left,
+            right,
+            algorithm="native",
+            diagnostics=True,
+            materialize=True,
+        )
+    )
     native_add_ns, native_add_result = timed(native_add)
+    native_add_materialized_ns, native_add_materialized_result = timed(
+        native_add_materialized
+    )
     reference_add_ns, reference_add_result = timed(reference_add, 3)
     native_scalar_ns, native_scalar_result = timed(native_scalar, 5)
+    native_scalar_materialized_ns, native_scalar_materialized_result = timed(
+        native_scalar_materialized, 3
+    )
     reference_scalar_ns, reference_scalar_result = timed(reference_scalar, 1)
     native_scalar_throughput_ns, native_scalar_throughput_result = timed(
         native_scalar_throughput, 1
     )
     assert native_add_result == reference_add_result
+    assert native_add_materialized_result == reference_add_result
+    assert all(not value.is_materialized() for value in native_add_result)
+    assert all(value.is_materialized() for value in native_add_materialized_result)
     assert native_scalar_result == reference_scalar_result
+    assert native_scalar_materialized_result == reference_scalar_result
     assert native_scalar_throughput_result[:scalar_comparison_items] == reference_scalar_result
     digest = context.fingerprint(context.sum(native_add_result, algorithm="native"))
     rows.append({
@@ -136,12 +167,22 @@ for genus, curve in [
         "scalar_throughput_items": scalar_throughput_items,
         "scalar_bits": 256,
         "native_add_median_ns": native_add_ns,
+        "native_add_materialized_median_ns": native_add_materialized_ns,
+        "native_add_stages": add_diagnostics.to_dict()["timings_ns"],
+        "native_add_materialized_stages": (
+            materialized_add_diagnostics.to_dict()["timings_ns"]
+        ),
         "reference_add_median_ns": reference_add_ns,
         "add_speedup": reference_add_ns / native_add_ns,
+        "materialized_add_speedup": reference_add_ns / native_add_materialized_ns,
         "native_scalar_median_ns": native_scalar_ns,
+        "native_scalar_materialized_median_ns": native_scalar_materialized_ns,
         "native_scalar_throughput_ns": native_scalar_throughput_ns,
         "reference_scalar_median_ns": reference_scalar_ns,
         "scalar_speedup": reference_scalar_ns / native_scalar_ns,
+        "materialized_scalar_speedup": (
+            reference_scalar_ns / native_scalar_materialized_ns
+        ),
         "result_digest": digest,
     })
 

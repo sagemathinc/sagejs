@@ -1,7 +1,14 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -29,6 +36,35 @@ function run(command, args, options = {}) {
   if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return result.stdout.trim();
+}
+
+function filesNamed(directory, name) {
+  const answer = [];
+  for (const entry of readdirSync(directory)) {
+    const path = join(directory, entry);
+    if (statSync(path).isDirectory()) {
+      answer.push(...filesNamed(path, name));
+    } else if (entry === name) {
+      answer.push(path);
+    }
+  }
+  return answer;
+}
+
+function cFunction(source, signature) {
+  const start = source.lastIndexOf(signature);
+  assert.notEqual(start, -1, `missing generated function ${signature}`);
+  const open = source.indexOf("{", start);
+  assert.notEqual(open, -1, `missing body for ${signature}`);
+  let depth = 0;
+  for (let index = open; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    if (source[index] === "}") {
+      depth -= 1;
+      if (depth === 0) return source.slice(start, index + 1);
+    }
+  }
+  throw new Error(`unterminated generated function ${signature}`);
 }
 
 const witness = String.raw`
@@ -85,7 +121,39 @@ def check_curve(curve, exhaustive):
     actual, diagnostics = context.add_batch(
         left, right, algorithm=selected, diagnostics=True
     )
+    lazy_sample = actual[:min(8, len(actual))]
+    if compiled:
+        assert all(not divisor.is_materialized() for divisor in lazy_sample)
     assert actual == expected
+    if compiled:
+        # Canonical-key equality, hashing, truth, and another prepared pack do
+        # not force polynomial allocation.
+        for divisor in lazy_sample:
+            row = context.pack(divisor)
+            assert context.fingerprint(divisor)
+            assert hash(divisor) == hash(divisor)
+            assert divisor.degree() == row[0]
+            assert bool(divisor) == (row[0] != 0)
+            changed = list(row)
+            changed[-1] = (changed[-1] + 1) % context.prime
+            assert context.pack(divisor) == row
+        assert all(not divisor.is_materialized() for divisor in lazy_sample)
+        forced, forced_diagnostics = context.add_batch(
+            left[:8],
+            right[:8],
+            algorithm="native",
+            diagnostics=True,
+            materialize=True,
+        )
+        assert forced == expected[:8]
+        assert all(divisor.is_materialized() for divisor in forced)
+        timings = diagnostics.to_dict()["timings_ns"]
+        assert "publication" in timings and "materialization" in timings
+        assert diagnostics.materialization_ns == 0
+        assert forced_diagnostics.materialization_ns >= 0
+        serialized = J._divisor_data(lazy_sample[0])
+        assert lazy_sample[0].is_materialized()
+        assert J.divisor_from_data(serialized) == lazy_sample[0]
     assert diagnostics.selected == selected
     observed_statuses = set(diagnostics.statuses) if compiled else set()
     if not compiled:
@@ -277,6 +345,26 @@ test("prepared packed Cantor arithmetic is exact in dynamic and native modes", (
       "--cache-root",
       cache,
     ]);
+    const core = filesNamed(cache, "kernel_core.c")
+      .map((path) => readFileSync(path, "utf8"))
+      .find((text) => text.includes("sagejs_kernel_packed_cantor_add_batch"));
+    assert.ok(core, "compiled Cantor core source was not inspectable");
+    for (const signature of [
+      "int sagejs_kernel__cantor_add_one(",
+      "int sagejs_kernel__poly_xgcd(",
+    ]) {
+      const body = cFunction(core, signature);
+      assert.match(body, /word__poly_copy/);
+      assert.doesNotMatch(body, /sagejs_kernel__poly_copy/);
+      assert.doesNotMatch(body, /native__poly_copy|mpz_|SAGEJS_WORD_PROMOTE/);
+    }
+    for (const signature of [
+      "SAGEJS_WORD_INLINE int word__poly_copy(",
+      "SAGEJS_WORD_INLINE int word__poly_clear(",
+    ]) {
+      const body = cFunction(core, signature);
+      assert.doesNotMatch(body, /native__|mpz_|SAGEJS_WORD_PROMOTE/);
+    }
     const native = run(process.execPath, [sagejs, program], {
       env: {
         SAGEJS_NATIVE_CACHE_DIR: cache,
