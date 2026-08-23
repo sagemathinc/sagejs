@@ -9,13 +9,13 @@ function gpPolynomial(values) {
   return `Polrev([${values.join(",")}])`;
 }
 
-function statisticSamples(name, expression, repetitions, batchSize) {
+function statisticSamples(name, coldExpression, warmExpression, repetitions, batchSize) {
   return `
 ${name}_cold=[]; ${name}_warm=[]; ${name}_loop=[];
-for(i=1,${repetitions}, t=getwalltime(); ${name}_x=${expression}; ${name}_cold=concat(${name}_cold,getwalltime()-t));
-${name}_x=${expression};
-for(i=1,${repetitions}, t=getwalltime(); ${name}_y=${expression}; ${name}_warm=concat(${name}_warm,getwalltime()-t));
-for(i=1,${repetitions}, t=getwalltime(); for(j=1,${batchSize},${name}_y=${expression}); ${name}_loop=concat(${name}_loop,getwalltime()-t));`;
+for(i=1,${repetitions}, t=getwalltime(); ${name}_x=${coldExpression}; ${name}_cold=concat(${name}_cold,getwalltime()-t));
+${name}_x=${coldExpression};
+for(i=1,${repetitions}, t=getwalltime(); ${name}_y=${warmExpression}; ${name}_warm=concat(${name}_warm,getwalltime()-t));
+for(i=1,${repetitions}, t=getwalltime(); for(j=1,${batchSize},${name}_y=${warmExpression}); ${name}_loop=concat(${name}_loop,getwalltime()-t));`;
 }
 
 function exactResult(caseData, variable) {
@@ -33,28 +33,34 @@ function caseSource(caseData, index, defaults, overrides = {}) {
   const f = gpPolynomial(caseData.model.f);
   const h = gpPolynomial(caseData.model.h);
   const name = `c${index}`;
+  const requestedPrecisionBits = caseData.precision ?? 64;
   let expression;
+  let coldExpression;
   let setup = "";
   if (caseData.kind === "local_factor") {
     const model = caseData.model.h.some((value) => BigInt(value) !== 0n)
       ? `[Mod(1,${caseData.model.prime})*${f},Mod(1,${caseData.model.prime})*${h}]`
       : `Mod(1,${caseData.model.prime})*${f}`;
     expression = `hyperellcharpoly(${model})`;
+    coldExpression = expression;
   } else if (caseData.kind === "real_period") {
     expression = `hyperellperiods(${caseData.model.h.some((value) => BigInt(value) !== 0n) ? `[${f},${h}]` : f},2)`;
+    coldExpression = expression;
   } else if (caseData.kind === "central_value") {
     if (caseData.model.genus !== 2) return `print("SJS|${caseData.id}|unsupported|PARI lfungenus2 is genus-2 only");`;
     setup = `${name}_L=lfungenus2([${f},${h}]); ${name}_I=lfuninit(${name}_L,[1,0,0],4);`;
     expression = `lfun(${name}_I,1,0)`;
+    coldExpression = `lfun(lfuninit(lfungenus2([${f},${h}]),[1,0,0],4),1,0)`;
   } else if (caseData.kind === "lfunction_init") {
     if (caseData.model.genus !== 2) return `print("SJS|${caseData.id}|unsupported|PARI lfungenus2 is genus-2 only");`;
     setup = `${name}_L=lfungenus2([${f},${h}]);`;
     expression = `lfuninit(${name}_L,[1,0,0],${caseData.maximum_order})`;
+    coldExpression = `lfuninit(lfungenus2([${f},${h}]),[1,0,0],${caseData.maximum_order})`;
   } else {
     return `print("SJS|${caseData.id}|unsupported|PARI has no comparable ${caseData.kind} contract");`;
   }
-  return `${setup}${statisticSamples(name, expression, repetitions, batchSize)}
-print("SJS|${caseData.id}|ok|",Str(${name}_cold),"|",Str(${name}_warm),"|",Str(${name}_loop),"|",${exactResult(caseData, `${name}_x`)});`;
+  return `default(realbitprecision,${requestedPrecisionBits}); ${name}_bits=default(realbitprecision); ${setup}${statisticSamples(name, coldExpression, expression, repetitions, batchSize)}
+print("SJS|${caseData.id}|ok|",Str(${name}_cold),"|",Str(${name}_warm),"|",Str(${name}_loop),"|",${exactResult(caseData, `${name}_x`)},"|",Str(${name}_bits));`;
 }
 
 function parseVector(text) {
@@ -89,7 +95,13 @@ function parseRows(stdout, cases, defaults, overrides = {}) {
       warm_samples_ms: parseVector(fields[4]),
       repeated_warm_loop_samples_ms: parseVector(fields[5]),
       repeated_warm_loop_size: overrides.batch_size ?? caseData.timing?.batch_size ?? defaults.batch_size,
-      warm_mode: caseData.timing?.warm_mode ?? "warm-arithmetic",
+      warm_mode: caseData.kind === "central_value"
+        ? "prepared-analytic-evaluation"
+        : caseData.kind === "lfunction_init"
+          ? "prepared-descriptor-init"
+          : "resident-recompute",
+      requested_precision_bits: caseData.precision ?? null,
+      effective_pari_bit_precision: Number(fields[7]),
     });
   }
   return rows;
@@ -102,7 +114,7 @@ function handle(request) {
   const defaults = corpus.defaults;
   const overrides = request.defaults ?? {};
   const source = [
-    "default(parisizemax,4000000000); default(realprecision,80);",
+    "default(parisizemax,4000000000); default(realbitprecision,64);",
     ...cases.map((value, index) => caseSource(value, index, defaults, overrides)),
     "quit;",
   ].join("\n");
