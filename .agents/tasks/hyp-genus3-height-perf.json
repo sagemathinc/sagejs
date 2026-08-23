@@ -4,13 +4,14 @@
   "id": "hyp-genus3-height-perf",
   "title": "Hyp Genus3 Height Perf",
   "lane": "hyperelliptic-curves",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Reduce the prepared genus-3 canonical-height theta path by at least fivefold while preserving exact finite replay and Magma agreement.",
   "base_commit": "76b863adb13c683b265ddc0c987b727fd7291990",
   "claims": [
     "src/lib/sagejs/hyperelliptic_curves/genus3_heights.py",
-    "test/hyperelliptic-genus3-height-performance.cjs"
+    "test/hyperelliptic-genus3-height-performance.cjs",
+    "test/hyperelliptic-bsd-oracles/sagejs-genus3-height-radius6.json"
   ],
   "dependencies": [],
   "references": [],
@@ -118,11 +119,11 @@
     }
   ],
   "handoff": {
-    "summary": "Prepared and cached the exact-period A-coordinate map and individual normalized Abel lifts, with exact duplicate/conjugate linear reuse and conservative refinement bounds. Replaced independent cubic theta enumerations by a cached tau-only lattice plan, a reanchored last-coordinate recurrence, and one deterministic traversal for the radius-r and radius-(r+2) sums. The pinned Magma radius-6 public height replay fell from 407.87s to about 73s (5.59x), retained exact finite replay and refinement stability, and agrees with Magma within 1.85e-20. The structural regression independently recomputes the legacy direct lattice sums and checks that a warm radius-4 evaluation uses 170 exponentials instead of 2926 term exponentials.",
+    "summary": "Prepared and cached the exact-period A-coordinate map and individual normalized Abel lifts, with exact duplicate/conjugate linear reuse and conservative refinement bounds. Replaced independent cubic theta enumerations by a cached tau-only lattice plan, a reanchored last-coordinate recurrence, and one deterministic traversal for the radius-r and radius-(r+2) sums. Cache identity uses every active-precision mpf bit, while large phase arguments select a collision-free direct single-traversal fallback. The pinned Magma radius-6 public height replay fell from 407.87s to 65.68s (6.21x), retained exact finite replay and refinement stability, and agrees with Magma within 1.85e-20. The structural regression independently recomputes the legacy direct lattice sums and checks that a warm radius-4 evaluation uses 170 exponentials instead of 2926 term exponentials.",
     "risks": [
       "Theta truncation and rounding remain explicitly nonrigorous; the optimization preserves the existing radius-refinement witness rather than claiming an enclosure.",
       "The exact-process caches are deliberately bounded (12 theta plans, 12 coordinate maps, and 64 point lifts), so workloads cycling through many unrelated period matrices will see cold-plan costs.",
-      "The optimized pinned replay differs from the stored Sage.js decimal string by about 6e-21 while remaining within the fixture's 2e-20 Magma threshold; any opt-in exact-string replay should be changed to a tolerance comparison by the integration lane.",
+      "Matrices or Abel arguments whose real phase scale exceeds 2^24 intentionally use the slower direct fine-cube traversal so argument reduction cannot corrupt the recurrence path.",
       "pnpm test:changed reached the unit tier but failed only because the new claimed test is not yet registered in the shared central test manifest, which this lane must not edit."
     ],
     "next_steps": [

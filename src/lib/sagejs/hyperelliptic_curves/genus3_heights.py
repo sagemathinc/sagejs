@@ -1685,6 +1685,17 @@ def _nested_tuple(value: Any) -> Any:
     return value
 
 
+def _deep_copy_nested(value: Any) -> Any:
+    """Copy nested verification data without retaining mutable aliases."""
+    if isinstance(value, dict):
+        return {key: _deep_copy_nested(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_deep_copy_nested(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_deep_copy_nested(item) for item in value)
+    return value
+
+
 def _period_coordinate_key(
     curve: Any,
     period_result: Any,
@@ -1889,7 +1900,7 @@ def split_mumford_archimedean_pairing(
             "raw": tuple(tuple(value) for value in raw_vector),
             "normalized": normalized,
             "refinement_difference": str(abel_data["refinement_difference"]),
-            "abel_verification": dict(abel_verification),
+            "abel_verification": _deep_copy_nested(dict(abel_verification)),
             "abel_cache_hit": bool(abel_result.cache_hit),
         }
         if len(_NORMALIZED_ABEL_CACHE) >= _NORMALIZED_ABEL_CACHE_LIMIT:
@@ -1967,7 +1978,9 @@ def split_mumford_archimedean_pairing(
                         "sign": sign,
                         "prepared_cache_hit": bool(reused),
                         "abel_cache_hit": bool(data["abel_cache_hit"]),
-                        "abel_verification": dict(data["abel_verification"]),
+                        "abel_verification": _deep_copy_nested(
+                            data["abel_verification"]
+                        ),
                     }
                     for point, (data, sign, reused) in zip(
                         points, components, strict=True
@@ -2162,16 +2175,16 @@ def _period_geometry(period_matrix: Any) -> tuple[list[list[Any]], Any]:
 _THETA_PLAN_CACHE: dict[tuple[Any, ...], Any] = {}
 _THETA_PLAN_CACHE_LIMIT = 12
 _THETA_RECURRENCE_REANCHOR = 32
+_THETA_RECURRENCE_PHASE_LIMIT = 1 << 24
 
 
 def _theta_matrix_key(tau: list[list[Any]], precision: int) -> tuple[Any, ...]:
-    """Return a precision-bound immutable key for one normalized matrix."""
-    digits = max(20, int(precision * 0.30103) + 8)
+    """Return the full active-precision identity of a normalized matrix."""
     return tuple(
         tuple(
             (
-                str(mp.nstr(mp.re(value), digits)),
-                str(mp.nstr(mp.im(value), digits)),
+                tuple(mp.re(value)._mpf_),
+                tuple(mp.im(value)._mpf_),
             )
             for value in row
         )
@@ -2202,6 +2215,15 @@ class _ThetaLatticePlan:
         self.precision = precision
         self.a_value = tuple(mp.mpf("0.5") for _index in range(3))
         self.b_value = tuple(mp.mpf(3 - index) / 2 for index in range(3))
+        quadratic_phase_scale = max(
+            abs(mp.re(value)) for row in tau for value in row
+        ) * mp.power(mp.mpf(fine_radius) + mp.mpf("0.5"), 2)
+        self.direct_evaluation = quadratic_phase_scale > _THETA_RECURRENCE_PHASE_LIMIT
+        self.quadratic_exponentials = 0
+        if self.direct_evaluation:
+            self.ratio_step = mp.mpc(0)
+            self.lines = ()
+            return
         self.ratio_step = mp.exp(2 * mp.pi * mp.j * tau[2][2])
         self.quadratic_exponentials = 1
         line_length = 2 * fine_radius + 1
@@ -2271,8 +2293,52 @@ def _prepared_theta_lattice(
 
 def _theta_sums_from_plan(
     z_value: list[Any], plan: _ThetaLatticePlan
-) -> tuple[Any, Any, dict[str, int]]:
+) -> tuple[Any, Any, dict[str, Any]]:
     """Evaluate coarse and fine sums in one deterministic fine traversal."""
+    linear_phase_scale = max(
+        abs(mp.re(z_value[index] + plan.b_value[index])) for index in range(3)
+    ) * (mp.mpf(plan.fine_radius) + mp.mpf("0.5"))
+    if plan.direct_evaluation or linear_phase_scale > _THETA_RECURRENCE_PHASE_LIMIT:
+        fine_terms = []
+        coarse_terms = []
+        radius = plan.fine_radius
+        coarse = plan.coarse_radius
+        for n0 in range(-radius, radius + 1):
+            for n1 in range(-radius, radius + 1):
+                for n2 in range(-radius, radius + 1):
+                    shifted = (
+                        mp.mpf(n0) + plan.a_value[0],
+                        mp.mpf(n1) + plan.a_value[1],
+                        mp.mpf(n2) + plan.a_value[2],
+                    )
+                    quadratic = mp.mpc(0)
+                    for row in range(3):
+                        for column in range(3):
+                            quadratic += (
+                                shifted[row] * plan.tau[row][column] * shifted[column]
+                            )
+                    linear = sum(
+                        shifted[index] * (z_value[index] + plan.b_value[index])
+                        for index in range(3)
+                    )
+                    term = mp.exp(mp.pi * mp.j * quadratic + 2 * mp.pi * mp.j * linear)
+                    fine_terms.append(term)
+                    if (
+                        -coarse <= n0 <= coarse
+                        and -coarse <= n1 <= coarse
+                        and -coarse <= n2 <= coarse
+                    ):
+                        coarse_terms.append(term)
+        return (
+            mp.fsum(coarse_terms),
+            mp.fsum(fine_terms),
+            {
+                "linear_exponentials": 0,
+                "direct_exponentials": len(fine_terms),
+                "recurrence_multiplications": 0,
+                "algorithm": "single-traversal direct lattice fallback for large phase arguments",
+            },
+        )
     fine_terms = []
     coarse_terms = []
     linear_step = mp.exp(2 * mp.pi * mp.j * (z_value[2] + plan.b_value[2]))
@@ -2307,7 +2373,9 @@ def _theta_sums_from_plan(
         mp.fsum(fine_terms),
         {
             "linear_exponentials": linear_exponentials,
+            "direct_exponentials": 0,
             "recurrence_multiplications": recurrence_multiplications,
+            "algorithm": "prepared quadratic lattice with reanchored line recurrence",
         },
     )
 
@@ -2345,7 +2413,9 @@ class ThetaEvaluation:
         plan_cache_hit: bool = False,
         plan_quadratic_exponentials: int = 0,
         linear_exponentials: int = 0,
+        direct_exponentials: int = 0,
         recurrence_multiplications: int = 0,
+        algorithm: str = "prepared quadratic lattice with reanchored line recurrence",
     ) -> None:
         self.value = value
         self.refinement_difference = difference
@@ -2356,7 +2426,9 @@ class ThetaEvaluation:
         self.plan_cache_hit = bool(plan_cache_hit)
         self.plan_quadratic_exponentials = int(plan_quadratic_exponentials)
         self.linear_exponentials = int(linear_exponentials)
+        self.direct_exponentials = int(direct_exponentials)
         self.recurrence_multiplications = int(recurrence_multiplications)
+        self.algorithm = str(algorithm)
         self.rigorous = False
         self.analytic_error_status = (
             "radius-refinement-stable; truncation and rounding not enclosed"
@@ -2372,12 +2444,15 @@ class ThetaEvaluation:
             "radius": self.radius,
             "terms": self.terms,
             "precision_bits": self.precision,
-            "algorithm": "prepared quadratic lattice with reanchored line recurrence",
+            "algorithm": self.algorithm,
             "plan_cache_hit": self.plan_cache_hit,
             "plan_quadratic_exponentials": self.plan_quadratic_exponentials,
             "linear_exponentials": self.linear_exponentials,
+            "direct_exponentials": self.direct_exponentials,
             "exponential_evaluations": (
-                self.plan_quadratic_exponentials + self.linear_exponentials
+                self.plan_quadratic_exponentials
+                + self.linear_exponentials
+                + self.direct_exponentials
             ),
             "recurrence_multiplications": self.recurrence_multiplications,
             "refinement_stable": self.refinement_stable,
@@ -2428,6 +2503,7 @@ def _genus3_theta_prepared(
         diagnostics["tolerance"] = mp.nstr(tolerance, 20)
         diagnostics["plan_cache_hit"] = cache_hit
         diagnostics["linear_exponentials"] = recurrence["linear_exponentials"]
+        diagnostics["direct_exponentials"] = recurrence["direct_exponentials"]
         raise Genus3HeightNumericalIndeterminacyError(
             "theta radius refinement did not stabilize", diagnostics
         )
@@ -2441,7 +2517,9 @@ def _genus3_theta_prepared(
         plan_cache_hit=cache_hit,
         plan_quadratic_exponentials=(0 if cache_hit else plan.quadratic_exponentials),
         linear_exponentials=recurrence["linear_exponentials"],
+        direct_exponentials=recurrence["direct_exponentials"],
         recurrence_multiplications=recurrence["recurrence_multiplications"],
+        algorithm=recurrence["algorithm"],
     )
 
 
