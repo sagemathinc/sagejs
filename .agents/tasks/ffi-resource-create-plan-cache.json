@@ -34,7 +34,28 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.911,
+      "started_at": "2026-08-23T23:19:35.320Z",
+      "commit": "b30ab1bcd94a9b4ef4d8c84c03412a4c5454713e",
+      "workspace_fingerprint": "e849a4771423e60e0c037afe34f7826d20409543b333e8ab9aec8d142638f544",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 37.388,
+      "started_at": "2026-08-23T23:19:47.632Z",
+      "commit": "b30ab1bcd94a9b4ef4d8c84c03412a4c5454713e",
+      "workspace_fingerprint": "e849a4771423e60e0c037afe34f7826d20409543b333e8ab9aec8d142638f544",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "Adds a closure-private, immutable owned-resource creation plan cache keyed by authenticated declaration identity. Repeated calls reuse backend exports, exception/lifecycle policy, and parameter marshalling kinds; every supplied metadata field is compared exactly and drift fails closed before backend work. A neutral real-FLINT 5x50000 local comparison reduced median FmpzPolynomial create+close from 10.493us to 9.567us (8.8%) and FmpqMatrix from 9.252us to 8.422us (9.0%). Focused FFI tests, strict baselib, full build, and architecture checks pass.",
     "risks": [
