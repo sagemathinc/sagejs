@@ -54,6 +54,37 @@ function boundCapsule(values = [11n, 17n, 23n]) {
   return { owner, capsule };
 }
 
+const gatherSourceModel = "gather-source-model/v1";
+const gatherSourceFormat = "gather-source-row/v1";
+const gatherDestinationModel = "gather-destination-model/v1";
+const gatherDestinationFormat = "gather-destination-batch/v1";
+
+function gatherSource(values, identity = "gather-source") {
+  const owner = Object.freeze({ identity });
+  const capsule = capsuleRuntime.createImmutableUInt64Capsule(
+    values,
+    owner,
+    gatherSourceModel,
+    gatherSourceFormat,
+    1,
+  );
+  return { owner, capsule };
+}
+
+function gather(destinationOwner, sourceOwners, count = sourceOwners.length) {
+  return capsuleRuntime.gatherImmutableUInt64Capsules(
+    destinationOwner,
+    sourceOwners,
+    gatherSourceModel,
+    gatherSourceFormat,
+    1,
+    8,
+    gatherDestinationModel,
+    gatherDestinationFormat,
+    count,
+  );
+}
+
 test("immutable uint64 capsules hide owned storage and enforce exact binding", () => {
   assert.equal(
     Reflect.has(capsuleRuntime, "borrowImmutableUInt64Lease"),
@@ -242,6 +273,270 @@ test("capsule owners are write-once and reject forgeries or transplants", () => 
   ));
 });
 
+test("authenticated gather concatenates repeated registered owners opaquely", () => {
+  const first = gatherSource(
+    [1n, 2n, 3n, 4n, 5n, 6n, 7n, 8n],
+    "gather-first",
+  );
+  const second = gatherSource(
+    [11n, 12n, 13n, 14n, 15n, 16n, 17n, 18n],
+    "gather-second",
+  );
+  const destinationOwner = Object.freeze({ identity: "gather-destination" });
+  const capsule = gather(
+    destinationOwner,
+    Object.freeze([first.owner, second.owner, first.owner]),
+  );
+
+  assert.equal(Object.getPrototypeOf(capsule), null);
+  assert.equal(Object.isFrozen(capsule), true);
+  assert.deepEqual(Reflect.ownKeys(capsule), []);
+  assert.equal(Reflect.get(capsule, "length"), undefined);
+  const copied = capsuleRuntime.copyImmutableUInt64Capsule(
+    capsule,
+    destinationOwner,
+    gatherDestinationModel,
+    gatherDestinationFormat,
+    3,
+  );
+  assert.deepEqual([...copied], [
+    1n, 2n, 3n, 4n, 5n, 6n, 7n, 8n,
+    11n, 12n, 13n, 14n, 15n, 16n, 17n, 18n,
+    1n, 2n, 3n, 4n, 5n, 6n, 7n, 8n,
+  ]);
+  copied[0] = 99n;
+  assert.equal(
+    capsuleRuntime.copyImmutableUInt64Capsule(
+      capsule,
+      destinationOwner,
+      gatherDestinationModel,
+      gatherDestinationFormat,
+      3,
+    )[0],
+    1n,
+  );
+  for (const binding of [
+    ["wrong-destination-model/v1", gatherDestinationFormat, 3],
+    [gatherDestinationModel, "wrong-destination-format/v1", 3],
+    [gatherDestinationModel, gatherDestinationFormat, 2],
+  ]) {
+    assert.throws(
+      () => capsuleRuntime.copyImmutableUInt64Capsule(
+        capsule,
+        destinationOwner,
+        ...binding,
+      ),
+      /binding mismatch/,
+    );
+  }
+
+  assert.throws(
+    () => gather(
+      destinationOwner,
+      Object.freeze([second.owner]),
+    ),
+    /owner is already registered/,
+  );
+  assert.equal(
+    capsuleRuntime.copyImmutableUInt64Capsule(
+      capsule,
+      destinationOwner,
+      gatherDestinationModel,
+      gatherDestinationFormat,
+      3,
+    ).length,
+    24,
+  );
+});
+
+test("authenticated gather rejects invalid bindings and rolls back atomically", () => {
+  const source = gatherSource(
+    [21n, 22n, 23n, 24n, 25n, 26n, 27n, 28n],
+    "gather-validation",
+  );
+  const owners = Object.freeze([source.owner]);
+  let iteratorCalls = 0;
+  const iterable = Object.freeze({
+    [Symbol.iterator]() {
+      iteratorCalls += 1;
+      return owners[Symbol.iterator]();
+    },
+  });
+
+  for (const [label, invoke, pattern] of [
+    [
+      "mutable owner sequence",
+      (owner) => gather(owner, [source.owner]),
+      /must be a frozen tuple/,
+    ],
+    [
+      "forged owner",
+      (owner) => gather(owner, Object.freeze([Object.freeze({})])),
+      /source owner is not registered/,
+    ],
+    [
+      "capsule transplant",
+      (owner) => gather(owner, Object.freeze([source.capsule])),
+      /source owner is not registered/,
+    ],
+    [
+      "wrong source model",
+      (owner) => capsuleRuntime.gatherImmutableUInt64Capsules(
+        owner,
+        owners,
+        "wrong-source-model/v1",
+        gatherSourceFormat,
+        1,
+        8,
+        gatherDestinationModel,
+        gatherDestinationFormat,
+        1,
+      ),
+      /source binding mismatch/,
+    ],
+    [
+      "wrong source format",
+      (owner) => capsuleRuntime.gatherImmutableUInt64Capsules(
+        owner,
+        owners,
+        gatherSourceModel,
+        "wrong-source-format/v1",
+        1,
+        8,
+        gatherDestinationModel,
+        gatherDestinationFormat,
+        1,
+      ),
+      /source binding mismatch/,
+    ],
+    [
+      "wrong source count",
+      (owner) => capsuleRuntime.gatherImmutableUInt64Capsules(
+        owner,
+        owners,
+        gatherSourceModel,
+        gatherSourceFormat,
+        2,
+        8,
+        gatherDestinationModel,
+        gatherDestinationFormat,
+        1,
+      ),
+      /source binding mismatch/,
+    ],
+    [
+      "wrong destination count",
+      (owner) => gather(owner, owners, 2),
+      /destination count does not match/,
+    ],
+    [
+      "zero item words",
+      (owner) => capsuleRuntime.gatherImmutableUInt64Capsules(
+        owner,
+        owners,
+        gatherSourceModel,
+        gatherSourceFormat,
+        1,
+        0,
+        gatherDestinationModel,
+        gatherDestinationFormat,
+        1,
+      ),
+      /item word count must be positive/,
+    ],
+    [
+      "resource ceiling",
+      (owner) => capsuleRuntime.gatherImmutableUInt64Capsules(
+        owner,
+        owners,
+        gatherSourceModel,
+        gatherSourceFormat,
+        1,
+        536870913,
+        gatherDestinationModel,
+        gatherDestinationFormat,
+        1,
+      ),
+      /exceeds the 4 GiB runtime limit/,
+    ],
+  ]) {
+    const destinationOwner = Object.freeze({ identity: label });
+    assert.throws(() => invoke(destinationOwner), pattern);
+    const recovered = gather(destinationOwner, owners);
+    assert.equal(
+      capsuleRuntime.copyImmutableUInt64Capsule(
+        recovered,
+        destinationOwner,
+        gatherDestinationModel,
+        gatherDestinationFormat,
+        1,
+      ).length,
+      8,
+    );
+  }
+
+  const short = gatherSource([31n, 32n, 33n], "gather-short");
+  const shortDestination = Object.freeze({ identity: "short-destination" });
+  assert.throws(
+    () => gather(shortDestination, Object.freeze([short.owner])),
+    /physical word count mismatch/,
+  );
+  assert.doesNotThrow(() => gather(shortDestination, owners));
+
+  const iterableDestination = Object.freeze({ identity: "iterable-destination" });
+  assert.throws(
+    () => capsuleRuntime.gatherImmutableUInt64Capsules(
+      iterableDestination,
+      iterable,
+      gatherSourceModel,
+      gatherSourceFormat,
+      1,
+      8,
+      gatherDestinationModel,
+      gatherDestinationFormat,
+      1,
+    ),
+    /must be a frozen tuple/,
+  );
+  assert.equal(iteratorCalls, 0);
+  assert.doesNotThrow(() => gather(iterableDestination, owners));
+});
+
+test("authenticated gather rolls back a reentrant destination reservation", () => {
+  const source = gatherSource(
+    [41n, 42n, 43n, 44n, 45n, 46n, 47n, 48n],
+    "gather-reentrant-source",
+  );
+  const destinationOwner = Object.freeze({ identity: "gather-reentrant" });
+  const target = Object.freeze([source.owner]);
+  let attempts = 0;
+  const reentrantOwners = new Proxy(target, {
+    get(array, property, receiver) {
+      if (property === "0") {
+        attempts += 1;
+        gather(destinationOwner, target);
+      }
+      return Reflect.get(array, property, receiver);
+    },
+  });
+  assert.throws(
+    () => gather(destinationOwner, reentrantOwners),
+    /owner is already registered/,
+  );
+  assert.equal(attempts, 1);
+  const recovered = gather(destinationOwner, target);
+  assert.equal(
+    capsuleRuntime.copyImmutableUInt64Capsule(
+      recovered,
+      destinationOwner,
+      gatherDestinationModel,
+      gatherDestinationFormat,
+      1,
+    )[7],
+    48n,
+  );
+});
+
 test("authorized leases borrow read-only storage in native kernels", async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-immutable-u64-"));
   try {
@@ -343,8 +638,26 @@ function allocate() {
   return [new WeakRef(owner), new WeakRef(capsule), new WeakRef(lease)];
 }
 
+function allocateGather() {
+  const sourceOwner = Object.freeze({});
+  const sourceCapsule = runtime.createImmutableUInt64Capsule(
+    [1n, 2n, 3n, 4n, 5n, 6n, 7n, 8n],
+    sourceOwner, "gather-gc-source/v1", "gather-gc-row/v1", 1);
+  const destinationOwner = Object.freeze({});
+  const destinationCapsule = runtime.gatherImmutableUInt64Capsules(
+    destinationOwner, Object.freeze([sourceOwner, sourceOwner]),
+    "gather-gc-source/v1", "gather-gc-row/v1", 1, 8,
+    "gather-gc-destination/v1", "gather-gc-batch/v1", 2);
+  return [
+    new WeakRef(sourceOwner),
+    new WeakRef(sourceCapsule),
+    new WeakRef(destinationOwner),
+    new WeakRef(destinationCapsule),
+  ];
+}
+
 (async () => {
-  const references = allocate();
+  const references = [...allocate(), ...allocateGather()];
   for (let attempt = 0; attempt < 400; attempt += 1) {
     await new Promise((resolve) => setImmediate(resolve));
     global.gc();
@@ -386,6 +699,47 @@ lease = runtime.immutable_uint64_capsule_lease(
 )
 assert "11" not in repr(capsule)
 assert "11" not in repr(lease)
+
+first_owner = object()
+second_owner = object()
+runtime.immutable_uint64_capsule(
+    [1, 2, 3, 4, 5, 6, 7, 8],
+    first_owner,
+    "python-gather-source/v1",
+    "python-gather-row/v1",
+    1,
+)
+runtime.immutable_uint64_capsule(
+    [11, 12, 13, 14, 15, 16, 17, 18],
+    second_owner,
+    "python-gather-source/v1",
+    "python-gather-row/v1",
+    1,
+)
+destination_owner = object()
+gathered = runtime.immutable_uint64_capsule_gather(
+    destination_owner,
+    (first_owner, second_owner, first_owner),
+    "python-gather-source/v1",
+    "python-gather-row/v1",
+    1,
+    8,
+    "python-gather-destination/v1",
+    "python-gather-batch/v1",
+    3,
+)
+gathered_copy = runtime.immutable_uint64_capsule_copy(
+    gathered,
+    destination_owner,
+    "python-gather-destination/v1",
+    "python-gather-batch/v1",
+    3,
+)
+assert [int(gathered_copy[index]) for index in range(24)] == [
+    1, 2, 3, 4, 5, 6, 7, 8,
+    11, 12, 13, 14, 15, 16, 17, 18,
+    1, 2, 3, 4, 5, 6, 7, 8,
+]
 print("PYTHON_CAPSULE_OPAQUE_OK")
 `;
   assert.match(
@@ -427,7 +781,42 @@ try:
     )
 except (TypeError, ValueError):
     caught.append("capsule")
-assert caught == ["binding", "duplicate", "source", "capsule"]
+try:
+    runtime.immutable_uint64_capsule_gather(
+        object(),
+        [owner],
+        "catch-model/v1",
+        "catch-row/v1",
+        3,
+        3,
+        "catch-destination/v1",
+        "catch-batch/v1",
+        1,
+    )
+except TypeError:
+    caught.append("mutable-gather")
+try:
+    runtime.immutable_uint64_capsule_gather(
+        object(),
+        (object(),),
+        "catch-model/v1",
+        "catch-row/v1",
+        3,
+        3,
+        "catch-destination/v1",
+        "catch-batch/v1",
+        1,
+    )
+except ValueError:
+    caught.append("unauthenticated-gather")
+assert caught == [
+    "binding",
+    "duplicate",
+    "source",
+    "capsule",
+    "mutable-gather",
+    "unauthenticated-gather",
+]
 print("PYTHON_CAPSULE_ERRORS_OK")
 `;
   assert.match(
@@ -452,6 +841,12 @@ test("neutral witness remains ordinary CPython", () => {
     "probe = [0]",
     "assert immutable_uint64_mutation_probe(probe, 7)",
     "assert probe == [7]",
+    "def explicit_copy_gather(rows):",
+    "    answer = []",
+    "    for row in rows:",
+    "        answer.extend(list(row))",
+    "    return answer",
+    "assert explicit_copy_gather(([1, 2], [3, 4], [1, 2])) == [1, 2, 3, 4, 1, 2]",
     "print('cpython-ok')",
     "",
   ].join("\n");

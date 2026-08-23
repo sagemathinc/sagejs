@@ -72,6 +72,7 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   integer_buffer_from_packed_bytes: "ρσ_integer_buffer_from_packed_bytes",
   integer_buffer_to_packed_bytes: "ρσ_integer_buffer_to_packed_bytes",
   immutable_uint64_capsule: "ρσ_modules[\"sagejs.runtime\"].immutable_uint64_capsule",
+  immutable_uint64_capsule_gather: "ρσ_modules[\"sagejs.runtime\"].immutable_uint64_capsule_gather",
   immutable_uint64_capsule_lease: "ρσ_modules[\"sagejs.runtime\"].immutable_uint64_capsule_lease",
   immutable_uint64_capsule_copy: "ρσ_modules[\"sagejs.runtime\"].immutable_uint64_capsule_copy",
   exact_integer_values_from_packed_bytes:

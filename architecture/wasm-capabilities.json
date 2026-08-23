@@ -18606,6 +18606,25 @@
       "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
     },
     {
+      "id": "runtime:immutable_uint64_capsule_gather",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation.",
+      "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
       "id": "runtime:immutable_uint64_capsule_lease",
       "kind": "runtime-intrinsic",
       "family": "runtime",

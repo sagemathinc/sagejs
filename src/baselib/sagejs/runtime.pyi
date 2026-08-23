@@ -270,6 +270,17 @@ def immutable_uint64_capsule_lease(
 def immutable_uint64_capsule_copy(
     capsule: Any, owner: object, model: str, format: str, count: int
 ) -> Any: ...
+def immutable_uint64_capsule_gather(
+    destination_owner: object,
+    source_owners: tuple[object, ...],
+    source_model: str,
+    source_format: str,
+    source_count: int,
+    item_words: int,
+    destination_model: str,
+    destination_format: str,
+    destination_count: int,
+) -> Any: ...
 def integer_buffer(source: Any, minimum_word_capacity: int = ...) -> Any: ...
 def integer_buffer_from_packed_bytes(source: Any, length: int) -> Any: ...
 def integer_buffer_prefix(source: Any, length: int) -> Any: ...

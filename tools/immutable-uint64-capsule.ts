@@ -23,6 +23,8 @@ interface CapsuleState extends CapsuleBinding {
 const capsules = new WeakMap<CapsuleObject, CapsuleState>();
 const leases = new WeakMap<CapsuleObject, CapsuleState>();
 const ownerCapsules = new WeakMap<object, CapsuleObject>();
+const MAX_CAPSULE_BYTES = 4 * 1024 * 1024 * 1024;
+const UINT64_BYTES = 8;
 
 function opaqueObject(): CapsuleObject {
   return Object.freeze(Object.create(null));
@@ -52,6 +54,23 @@ function checkedCount(value: unknown): number {
     );
   }
   return Number(value);
+}
+
+function checkedPositiveCount(value: unknown, name: string): number {
+  const count = checkedCount(value);
+  if (count === 0) {
+    throw new RangeError(`immutable uint64 capsule ${name} must be positive`);
+  }
+  return count;
+}
+
+function checkedOwnerTuple(value: unknown): readonly unknown[] {
+  if (!Array.isArray(value) || !Object.isFrozen(value)) {
+    throw new TypeError(
+      "immutable uint64 capsule source owners must be a frozen tuple",
+    );
+  }
+  return value;
 }
 
 function ownedValues(source: unknown): BigUint64Array {
@@ -130,6 +149,45 @@ function stateFor(
   return state;
 }
 
+function stateForOwner(
+  owner: unknown,
+  model: string,
+  format: string,
+  count: number,
+  itemWords: number,
+): CapsuleState {
+  const checked = checkedOwner(owner);
+  const capsule = ownerCapsules.get(checked);
+  if (capsule === undefined) {
+    throw new RangeError(
+      "immutable uint64 capsule source owner is not registered",
+    );
+  }
+  const state = capsules.get(capsule);
+  if (
+    state === undefined ||
+    state.owner !== checked ||
+    ownerCapsules.get(checked) !== capsule
+  ) {
+    throw new TypeError(
+      "immutable uint64 capsule source registry identity mismatch",
+    );
+  }
+  if (
+    state.model !== model ||
+    state.format !== format ||
+    state.count !== count
+  ) {
+    throw new RangeError("immutable uint64 capsule source binding mismatch");
+  }
+  if (state.values.length !== itemWords) {
+    throw new RangeError(
+      "immutable uint64 capsule source physical word count mismatch",
+    );
+  }
+  return state;
+}
+
 export function createImmutableUInt64Capsule(
   source: unknown,
   owner: unknown,
@@ -181,6 +239,92 @@ export function copyImmutableUInt64Capsule(
   );
 }
 
+/**
+ * Concatenate privately registered capsules into one new opaque capsule.
+ *
+ * The destination owner is reserved before the source tuple is inspected, so
+ * getters or proxies cannot reenter and publish a competing destination. The
+ * reservation is removed on every failure before a capsule escapes.
+ */
+export function gatherImmutableUInt64Capsules(
+  destinationOwner: unknown,
+  sourceOwners: unknown,
+  sourceModel: unknown,
+  sourceFormat: unknown,
+  sourceCount: unknown,
+  itemWords: unknown,
+  destinationModel: unknown,
+  destinationFormat: unknown,
+  destinationCount: unknown,
+): CapsuleObject {
+  const destination = checkedOwner(destinationOwner);
+  const expectedSourceModel = checkedLabel(sourceModel, "source model");
+  const expectedSourceFormat = checkedLabel(sourceFormat, "source format");
+  const expectedSourceCount = checkedCount(sourceCount);
+  const wordsPerItem = checkedPositiveCount(itemWords, "item word count");
+  const binding = checkedBinding(
+    destination,
+    destinationModel,
+    destinationFormat,
+    destinationCount,
+  );
+  if (ownerCapsules.has(destination)) {
+    throw new RangeError("immutable uint64 capsule owner is already registered");
+  }
+
+  const capsule = opaqueObject();
+  ownerCapsules.set(destination, capsule);
+  try {
+    const owners = checkedOwnerTuple(sourceOwners);
+    if (owners.length !== binding.count) {
+      throw new RangeError(
+        "immutable uint64 capsule destination count does not match source owners",
+      );
+    }
+    if (
+      binding.count > Math.floor(MAX_CAPSULE_BYTES / UINT64_BYTES / wordsPerItem)
+    ) {
+      throw new RangeError(
+        "immutable uint64 capsule gather exceeds the 4 GiB runtime limit",
+      );
+    }
+    const totalWords = binding.count * wordsPerItem;
+    if (!Number.isSafeInteger(totalWords)) {
+      throw new RangeError(
+        "immutable uint64 capsule gathered word count is not a safe integer",
+      );
+    }
+    let values: BigUint64Array;
+    try {
+      values = new BigUint64Array(totalWords);
+    } catch (error) {
+      if (error instanceof RangeError) {
+        throw new RangeError(
+          "immutable uint64 capsule gather allocation failed",
+        );
+      }
+      throw error;
+    }
+    for (let index = 0; index < binding.count; index += 1) {
+      const state = stateForOwner(
+        Reflect.get(owners, String(index)),
+        expectedSourceModel,
+        expectedSourceFormat,
+        expectedSourceCount,
+        wordsPerItem,
+      );
+      values.set(state.values, index * wordsPerItem);
+    }
+    capsules.set(capsule, { ...binding, values });
+    return capsule;
+  } catch (error) {
+    if (ownerCapsules.get(destination) === capsule) {
+      ownerCapsules.delete(destination);
+    }
+    throw error;
+  }
+}
+
 /** Private capability passed directly to authenticated generated wrappers. */
 function borrowImmutableUInt64Lease(
   lease: unknown,
@@ -219,5 +363,10 @@ export function installImmutableUInt64CapsuleRuntime(): void {
     globalThis,
     "__sagejs_copy_immutable_uint64_capsule__",
     copyImmutableUInt64Capsule,
+  );
+  Reflect.set(
+    globalThis,
+    "__sagejs_gather_immutable_uint64_capsules__",
+    gatherImmutableUInt64Capsules,
   );
 }
