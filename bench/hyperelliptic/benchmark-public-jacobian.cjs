@@ -183,6 +183,22 @@ for genus, curve in [
     reference_search = lambda: context.search_progression(
         basis[0], 1, 1, search_count, algorithm="reference", diagnostics=True
     )
+    multi_search_bases = (1, 1, 1, 1)
+    multi_search_counts = (search_count,) * len(multi_search_bases)
+    native_multi_search = lambda: context.search_progressions(
+        basis[0],
+        multi_search_bases,
+        1,
+        multi_search_counts,
+        algorithm="native",
+        diagnostics=True,
+    )
+    repeated_native_search = lambda: tuple(
+        context.search_progression(
+            basis[0], 1, 1, search_count, algorithm="native"
+        )
+        for _index in multi_search_bases
+    )
 
     native_add()
     native_negate()
@@ -347,6 +363,12 @@ for genus, curve in [
     )
     native_search_ns, native_search_result = timed(native_search, 3)
     reference_search_ns, reference_search_result = timed(reference_search, 1)
+    native_multi_search_ns, native_multi_search_result = timed(
+        native_multi_search, 3
+    )
+    repeated_native_search_ns, repeated_native_search_result = timed(
+        repeated_native_search, 3
+    )
     assert native_add_result == reference_add_result
     assert retained_input.published_count == 0
     assert retained_add_result.published_count == 0
@@ -382,6 +404,12 @@ for genus, curve in [
         value.is_materialized() for value in materialized_scalar_batch_result
     )
     assert native_search_result[0] == reference_search_result[0]
+    assert native_search_result[0] is None
+    assert native_multi_search_result[0] is None
+    assert native_multi_search_result[1].progressions_scanned == len(
+        multi_search_bases
+    )
+    assert all(value is None for value in repeated_native_search_result)
     digest = context.fingerprint(context.sum(native_add_result, algorithm="native"))
     rows.append({
         "genus": genus,
@@ -443,6 +471,14 @@ for genus, curve in [
         "search_status": native_search_result[1].status,
         "search_group_operations": native_search_result[1].group_operations,
         "search_hash_collisions": native_search_result[1].hash_collisions,
+        "multi_search_progressions": len(multi_search_bases),
+        "native_multi_search_median_ns": native_multi_search_ns,
+        "repeated_native_search_median_ns": repeated_native_search_ns,
+        "multi_search_speedup": repeated_native_search_ns / native_multi_search_ns,
+        "multi_search_group_operations": (
+            native_multi_search_result[1].group_operations
+        ),
+        "multi_search_table_bytes": native_multi_search_result[1].table_bytes,
         "result_digest": digest,
     })
 

@@ -74,6 +74,7 @@ from sagejs.hyperelliptic_curves.jacobian_kernels import (
     packed_cantor_copy_batch,
     packed_cantor_progression_batch,
     packed_cantor_search_progression,
+    packed_cantor_search_progressions,
     packed_cantor_scalar_batch,
 )
 from sagejs.hyperelliptic_curves.jacobian_native import PreparedDivisorBatch
@@ -83,6 +84,7 @@ assert compiled == is_compiled(packed_cantor_scalar_batch)
 assert compiled == is_compiled(packed_cantor_copy_batch)
 assert compiled == is_compiled(packed_cantor_progression_batch)
 assert compiled == is_compiled(packed_cantor_search_progression)
+assert compiled == is_compiled(packed_cantor_search_progressions)
 selected = "native" if compiled else "reference"
 
 
@@ -106,6 +108,7 @@ def check_curve(curve, exhaustive):
     assert capability.model_kind == "odd-degree-one-infinity"
     assert capability.selected == selected
     assert capability.search_available == compiled
+    assert capability.multi_search_available == compiled
     points = J.points(max_elements=10000, max_candidates=100000)
 
     for point in points:
@@ -360,6 +363,50 @@ def check_curve(curve, exhaustive):
     )
     assert missing is None
     assert missing_diagnostics.status == "not_found"
+    ordered, ordered_diagnostics = context.search_progressions(
+        search_point,
+        (1, search_order),
+        1,
+        (search_order, 3),
+        algorithm=selected,
+        diagnostics=True,
+    )
+    assert ordered == (0, search_order - 1)
+    assert ordered_diagnostics.status == "found"
+    assert ordered_diagnostics.progressions_scanned == 1
+    if compiled:
+        assert ordered_diagnostics.table_bytes > 0
+    assert context.search_progressions(
+        search_point,
+        (search_order, 1),
+        1,
+        (3, search_order),
+        algorithm=selected,
+    ) == (0, 0)
+    multi_missing, multi_missing_diagnostics = context.search_progressions(
+        search_point,
+        (1, 1),
+        search_order,
+        (1, 1),
+        algorithm=selected,
+        diagnostics=True,
+    )
+    assert multi_missing is None
+    assert multi_missing_diagnostics.status == "not_found"
+    assert multi_missing_diagnostics.progressions_scanned == 2
+    try:
+        context.search_progressions(
+            search_point,
+            (1, search_order),
+            1,
+            (search_order, 3),
+            algorithm=selected,
+            max_group_operations=0,
+        )
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("multi-search operation resource limit was ignored")
     try:
         context.search_progression(
             search_point,
@@ -397,6 +444,27 @@ def check_curve(curve, exhaustive):
         )
         assert raw_status == [1]
         assert raw_output == [search_order - 1]
+        raw_multi_output = [99, 99]
+        raw_multi_status = [0]
+        raw_multi_diagnostics = [0] * 7
+        assert packed_cantor_search_progressions(
+            raw_multi_output,
+            raw_multi_status,
+            raw_multi_diagnostics,
+            list(context.model_coefficients),
+            list(context.pack(search_point)),
+            [1, search_order],
+            [1],
+            [search_order, 3],
+            2,
+            1,
+            baby_count,
+            10000,
+            context.genus,
+            context.prime,
+        )
+        assert raw_multi_status == [1]
+        assert raw_multi_output == [0, search_order - 1]
 
     # Exhaust every small-field divisor against a literal represented interval.
     # This covers identity keys, repeated baby rows, found/not-found outcomes,
@@ -415,6 +483,27 @@ def check_curve(curve, exhaustive):
             assert context.search_progression(
                 point, base, stride, count, algorithm="reference"
             ) == expected_index
+        bases = (1, 2, 5)
+        counts = (3, 4, 5)
+        stride = 3
+        expected_multi = None
+        for progression, (base, count) in enumerate(
+            zip(bases, counts, strict=True)
+        ):
+            for index in range(count):
+                if context._reference_scalar(
+                    point, base + index * stride
+                ).is_zero():
+                    expected_multi = (progression, index)
+                    break
+            if expected_multi is not None:
+                break
+        assert context.search_progressions(
+            point, bases, stride, counts, algorithm=selected
+        ) == expected_multi
+        assert context.search_progressions(
+            point, bases, stride, counts, algorithm="reference"
+        ) == expected_multi
 
     assert context.sum(sample, algorithm=selected) == context.sum(
         sample, algorithm="reference"
@@ -602,6 +691,22 @@ test("prepared packed Cantor arithmetic is exact in dynamic and native modes", (
       searchBody,
       /native__row_|native__search_record|mpz_|SAGEJS_WORD_PROMOTE/,
     );
+    const multiSearchBody = cFunction(
+      core,
+      "int sagejs_kernel_packed_cantor_search_progressions(",
+    );
+    for (const helper of [
+      "word__row_hash",
+      "word__row_copy",
+      "word__row_equal",
+      "word__multi_search_record",
+    ]) {
+      assert.match(multiSearchBody, new RegExp(helper));
+    }
+    assert.doesNotMatch(
+      multiSearchBody,
+      /native__row_|native__multi_search_record|mpz_|SAGEJS_WORD_PROMOTE/,
+    );
     const native = run(process.execPath, [sagejs, program], {
       env: {
         SAGEJS_NATIVE_CACHE_DIR: cache,
@@ -626,7 +731,7 @@ test("packed Cantor kernels retain an ordinary CPython fallback", () => {
   const program = [
     "import sys",
     `sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})`,
-    "from sagejs.hyperelliptic_curves.jacobian_kernels import packed_cantor_add_batch, packed_cantor_copy_batch, packed_cantor_progression_batch, packed_cantor_search_progression, packed_cantor_scalar_batch",
+    "from sagejs.hyperelliptic_curves.jacobian_kernels import packed_cantor_add_batch, packed_cantor_copy_batch, packed_cantor_progression_batch, packed_cantor_search_progression, packed_cantor_search_progressions, packed_cantor_scalar_batch",
     "model = [1,1,0,0,0,1,0,0] + [0]*4",
     "identity = [0,1,0,0,0,0,0,0]",
     "out = [99]*16; status = [0,0]",
@@ -644,6 +749,9 @@ test("packed Cantor kernels retain an ordinary CPython fallback", () => {
     "search_out = [99]; search_status = [0]; search_diagnostics = [0]*5",
     "assert packed_cantor_search_progression(search_out,search_status,search_diagnostics,model,identity,[1],[1],1,4,2,10,2,3)",
     "assert search_out == [0] and search_status == [1]",
+    "multi_out = [99,99]; multi_status = [0]; multi_diagnostics = [0]*7",
+    "assert packed_cantor_search_progressions(multi_out,multi_status,multi_diagnostics,model,identity,[1,2],[1],[4,4],2,1,2,20,2,3)",
+    "assert multi_out == [0,0] and multi_status == [1]",
     "print('cpython-ok')",
   ].join("\n");
   const python = process.env.PYTHON ||

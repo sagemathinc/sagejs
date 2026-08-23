@@ -36,6 +36,7 @@ class PreparedJacobianCapability:
         prime: int | None,
         model_fingerprint: str,
         search_available: bool = False,
+        multi_search_available: bool = False,
     ) -> None:
         self.available = bool(available)
         self.selected = str(selected)
@@ -46,6 +47,7 @@ class PreparedJacobianCapability:
         self.schema = PACKED_MUMFORD_SCHEMA
         self.model_fingerprint = str(model_fingerprint)
         self.search_available = bool(search_available)
+        self.multi_search_available = bool(multi_search_available)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -58,6 +60,7 @@ class PreparedJacobianCapability:
             "schema": self.schema,
             "model_fingerprint": self.model_fingerprint,
             "search_available": self.search_available,
+            "multi_search_available": self.multi_search_available,
         }
 
     def __repr__(self) -> str:
@@ -176,6 +179,72 @@ class PreparedSearchDiagnostics:
 
     def __repr__(self) -> str:
         return "PreparedSearchDiagnostics(" + repr(self.to_dict()) + ")"
+
+
+class PreparedMultiSearchDiagnostics:
+    """Exact counters and non-proof timing for ordered progression searches."""
+
+    def __init__(
+        self,
+        *,
+        requested: str,
+        selected: str,
+        fallback_reason: str,
+        status: str,
+        counts: tuple[int, ...],
+        baby_count: int,
+        group_operations: int,
+        scalar_bits: int,
+        baby_steps: int,
+        giant_steps: int,
+        hash_collisions: int,
+        progressions_scanned: int,
+        table_bytes: int,
+        pack_ns: int,
+        kernel_ns: int,
+    ) -> None:
+        self.operation = "search_progressions"
+        self.requested = requested
+        self.selected = selected
+        self.fallback_reason = fallback_reason
+        self.status = status
+        self.counts = counts
+        self.progression_count = len(counts)
+        self.total_count = sum(counts)
+        self.baby_count = baby_count
+        self.group_operations = group_operations
+        self.scalar_bits = scalar_bits
+        self.baby_steps = baby_steps
+        self.giant_steps = giant_steps
+        self.hash_collisions = hash_collisions
+        self.progressions_scanned = progressions_scanned
+        self.table_bytes = table_bytes
+        self.pack_ns = pack_ns
+        self.kernel_ns = kernel_ns
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "operation": self.operation,
+            "requested": self.requested,
+            "selected": self.selected,
+            "fallback_reason": self.fallback_reason,
+            "status": self.status,
+            "counts": self.counts,
+            "progression_count": self.progression_count,
+            "total_count": self.total_count,
+            "baby_count": self.baby_count,
+            "group_operations": self.group_operations,
+            "scalar_bits": self.scalar_bits,
+            "baby_steps": self.baby_steps,
+            "giant_steps": self.giant_steps,
+            "hash_collisions": self.hash_collisions,
+            "progressions_scanned": self.progressions_scanned,
+            "table_bytes": self.table_bytes,
+            "timings_ns": {"pack": self.pack_ns, "kernel": self.kernel_ns},
+        }
+
+    def __repr__(self) -> str:
+        return "PreparedMultiSearchDiagnostics(" + repr(self.to_dict()) + ")"
 
 
 class PreparedDivisorBatch:
@@ -505,11 +574,13 @@ class PreparedJacobianArithmetic:
             packed_cantor_progression_batch,
             packed_cantor_scalar_batch,
             packed_cantor_search_progression,
+            packed_cantor_search_progressions,
         )
 
         self._add_kernel = packed_cantor_add_batch
         self._progression_kernel = packed_cantor_progression_batch
         self._search_kernel = packed_cantor_search_progression
+        self._multi_search_kernel = packed_cantor_search_progressions
         self._scalar_kernel = packed_cantor_scalar_batch
         self._native_available = (
             self.prime is not None
@@ -519,6 +590,9 @@ class PreparedJacobianArithmetic:
         )
         self._search_available = self._native_available and is_compiled(
             self._search_kernel
+        )
+        self._multi_search_available = self._native_available and is_compiled(
+            self._multi_search_kernel
         )
         if algorithm == "native" and not self._native_available:
             raise NotImplementedError(
@@ -541,6 +615,11 @@ class PreparedJacobianArithmetic:
     def search_available(self) -> bool:
         """Return whether the fused one-boundary BSGS kernel is compiled."""
         return self._search_available
+
+    @property
+    def multi_search_available(self) -> bool:
+        """Return whether ordered shared-table BSGS search is compiled."""
+        return self._multi_search_available
 
     @property
     def max_batch_items(self) -> int:
@@ -608,6 +687,7 @@ class PreparedJacobianArithmetic:
             prime=self.prime,
             model_fingerprint=self.model_fingerprint,
             search_available=self._search_available,
+            multi_search_available=self._multi_search_available,
         )
 
     def _selection(self, requested: str | None) -> tuple[str, str]:
@@ -645,6 +725,25 @@ class PreparedJacobianArithmetic:
         if algorithm == "native":
             raise NotImplementedError(
                 "prepared native Cantor progression search is unavailable: " + reason
+            )
+        return "reference", reason
+
+    def _multi_search_selection(self, requested: str | None) -> tuple[str, str]:
+        algorithm = self._algorithm if requested is None else requested
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown prepared Jacobian algorithm " + repr(algorithm))
+        if algorithm == "reference":
+            return "reference", "explicit-reference"
+        if self._multi_search_available:
+            return "native", "supported-source-transparent-multi-search-kernel"
+        reason = (
+            self._domain_reason
+            if self.prime is None
+            else "source-transparent-multi-search-artifact-unavailable"
+        )
+        if algorithm == "native":
+            raise NotImplementedError(
+                "prepared native multi-progression search is unavailable: " + reason
             )
         return "reference", reason
 
@@ -1528,6 +1627,249 @@ class PreparedJacobianArithmetic:
                 + str(operation_limit)
             )
         return (found_index, record) if diagnostics else found_index
+
+    def search_progressions(
+        self,
+        element: Any,
+        bases: Any,
+        stride: Any,
+        counts: Any,
+        *,
+        baby_count: Any = None,
+        algorithm: str | None = None,
+        diagnostics: bool = False,
+        max_group_operations: Any = None,
+    ) -> Any:
+        """Search ordered progressions with one shared BSGS baby table.
+
+        The result is `None` or `(progression_index, represented_index)`.  The
+        first matching input progression wins, and its least represented index
+        is returned.  All progressions share the positive `stride`; `bases` and
+        `counts` must be equally sized, nonempty positive sequences.
+        """
+        if element.parent() is not self._jacobian:
+            raise ValueError("the search divisor belongs to a different Jacobian")
+        base_values = tuple(_exact_integer(value, "base") for value in bases)
+        count_values = tuple(_exact_integer(value, "count") for value in counts)
+        if len(base_values) == 0 or len(base_values) != len(count_values):
+            raise ValueError("bases and counts must have the same nonzero length")
+        self._check_batch_size(len(base_values))
+        if any(value <= 0 for value in base_values):
+            raise ValueError("every progression base must be positive")
+        if any(value <= 0 for value in count_values):
+            raise ValueError("every progression count must be positive")
+        stride_value = _exact_integer(stride, "stride")
+        if stride_value <= 0:
+            raise ValueError("stride must be positive")
+        maximum_count = max(count_values)
+        if baby_count is None:
+            baby_value = _ceil_square_root(maximum_count)
+        else:
+            baby_value = _exact_integer(baby_count, "baby_count")
+        if baby_value < 1 or baby_value > min(self._max_batch_items, 1_000_000):
+            raise RuntimeError(
+                "prepared search baby table exceeds max_batch_items="
+                + str(self._max_batch_items)
+            )
+        if (baby_value - 1) ** 2 >= maximum_count or baby_value**2 < maximum_count:
+            raise ValueError("baby_count must equal ceil(sqrt(max(counts)))")
+        if any(value >= 1 << 64 for value in count_values):
+            raise ValueError("a progression count exceeds the uint64 kernel ABI")
+        giant_counts = tuple(
+            (value + baby_value - 1) // baby_value for value in count_values
+        )
+        full_operation_bound = (
+            _scalar_group_operations(stride_value)
+            + _scalar_group_operations(baby_value)
+            + baby_value
+            - 1
+        )
+        for base_value, giant_count in zip(base_values, giant_counts, strict=True):
+            full_operation_bound += _scalar_group_operations(base_value)
+            full_operation_bound += giant_count - 1
+        if max_group_operations is None:
+            operation_limit = full_operation_bound
+        else:
+            operation_limit = _exact_integer(
+                max_group_operations, "max_group_operations"
+            )
+            if operation_limit < 0:
+                raise ValueError("max_group_operations must be nonnegative")
+        if operation_limit >= 1 << 64:
+            raise ValueError("max_group_operations exceeds the uint64 kernel ABI")
+        selected, reason = self._multi_search_selection(algorithm)
+        requested = self._algorithm if algorithm is None else algorithm
+
+        started = time.perf_counter_ns()
+        packed_element = self.pack(element) if selected == "native" else ()
+        maximum_bits = max(
+            _bit_length(stride_value),
+            max(_bit_length(value) for value in base_values),
+        )
+        words_per_scalar = max(1, (maximum_bits + 63) // 64)
+        base_words: list[int] = []
+        for base_value in base_values:
+            base_copy = base_value
+            for _index in range(words_per_scalar):
+                base_words.append(base_copy % (1 << 64))
+                base_copy //= 1 << 64
+        stride_words: list[int] = []
+        stride_copy = stride_value
+        for _index in range(words_per_scalar):
+            stride_words.append(stride_copy % (1 << 64))
+            stride_copy //= 1 << 64
+        pack_ns = time.perf_counter_ns() - started
+
+        status_name = "not_found"
+        group_operations = 0
+        scalar_bits = 0
+        baby_steps = 0
+        giant_steps = 0
+        hash_collisions = 0
+        progressions_scanned = 0
+        table_bytes = 0
+        found: tuple[int, int] | None = None
+        if selected == "reference":
+            started = time.perf_counter_ns()
+            needed = _scalar_group_operations(stride_value)
+            if group_operations + needed > operation_limit:
+                status_name = "resource_limit"
+                stride_multiple = self._jacobian.zero()
+            else:
+                stride_multiple = self._reference_scalar(element, stride_value)
+                group_operations += needed
+                scalar_bits += _bit_length(stride_value)
+            needed = _scalar_group_operations(baby_value)
+            if (
+                status_name != "resource_limit"
+                and group_operations + needed > operation_limit
+            ):
+                status_name = "resource_limit"
+                giant_stride = self._jacobian.zero()
+            elif status_name != "resource_limit":
+                giant_stride = self._reference_scalar(stride_multiple, baby_value)
+                group_operations += needed
+                scalar_bits += _bit_length(baby_value)
+            else:
+                giant_stride = self._jacobian.zero()
+            table: dict[Any, int] = {}
+            if status_name != "resource_limit":
+                current = self._jacobian.zero()
+                for baby in range(baby_value):
+                    baby_steps += 1
+                    if current not in table:
+                        table[current] = baby
+                    if baby + 1 < baby_value:
+                        if group_operations == operation_limit:
+                            status_name = "resource_limit"
+                            break
+                        current = self._reference_add(current, stride_multiple)
+                        group_operations += 1
+            if status_name != "resource_limit":
+                increment = -giant_stride
+                for progression, (base_value, count_value, giant_count) in enumerate(
+                    zip(base_values, count_values, giant_counts, strict=True)
+                ):
+                    progressions_scanned += 1
+                    needed = _scalar_group_operations(base_value)
+                    if group_operations + needed > operation_limit:
+                        status_name = "resource_limit"
+                        break
+                    base_multiple = self._reference_scalar(element, base_value)
+                    group_operations += needed
+                    scalar_bits += _bit_length(base_value)
+                    current = -base_multiple
+                    for giant in range(giant_count):
+                        giant_steps += 1
+                        baby = table.get(current)
+                        if baby is not None:
+                            candidate = giant * baby_value + baby
+                            if candidate < count_value:
+                                found = (progression, candidate)
+                                status_name = "found"
+                                break
+                        if giant + 1 < giant_count:
+                            if group_operations == operation_limit:
+                                status_name = "resource_limit"
+                                break
+                            current = self._reference_add(current, increment)
+                            group_operations += 1
+                    if status_name != "not_found":
+                        break
+            kernel_ns = time.perf_counter_ns() - started
+        else:
+            assert self.prime is not None
+            output = kernel_uint64_zeros(self._multi_search_kernel, 2)
+            status_buffer = kernel_uint64_zeros(self._multi_search_kernel, 1)
+            diagnostic_buffer = kernel_uint64_zeros(self._multi_search_kernel, 7)
+            started = time.perf_counter_ns()
+            accepted = self._multi_search_kernel(
+                output,
+                status_buffer,
+                diagnostic_buffer,
+                kernel_uint64_buffer(self._multi_search_kernel, self._model),
+                kernel_uint64_buffer(self._multi_search_kernel, packed_element),
+                kernel_uint64_buffer(self._multi_search_kernel, base_words),
+                kernel_uint64_buffer(self._multi_search_kernel, stride_words),
+                kernel_uint64_buffer(self._multi_search_kernel, count_values),
+                len(base_values),
+                words_per_scalar,
+                baby_value,
+                operation_limit,
+                self.genus,
+                self.prime,
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            if not accepted:
+                raise ArithmeticError(
+                    "the packed Cantor multi-progression search rejected its buffer ABI"
+                )
+            status = int(status_buffer[0])
+            group_operations = int(diagnostic_buffer[0])
+            scalar_bits = int(diagnostic_buffer[1])
+            baby_steps = int(diagnostic_buffer[2])
+            giant_steps = int(diagnostic_buffer[3])
+            hash_collisions = int(diagnostic_buffer[4])
+            progressions_scanned = int(diagnostic_buffer[5])
+            table_bytes = int(diagnostic_buffer[6])
+            if status == 1:
+                found = (int(output[0]), int(output[1]))
+                status_name = "found"
+            elif status == 2:
+                status_name = "not_found"
+            elif status == 3:
+                status_name = "resource_limit"
+            elif status == 4:
+                raise ArithmeticError(
+                    "the packed Cantor multi-progression search rejected validated input"
+                )
+            else:
+                raise ArithmeticError(
+                    "the packed Cantor multi-progression search returned an invalid status"
+                )
+        record = PreparedMultiSearchDiagnostics(
+            requested=requested,
+            selected=selected,
+            fallback_reason=reason,
+            status=status_name,
+            counts=count_values,
+            baby_count=baby_value,
+            group_operations=group_operations,
+            scalar_bits=scalar_bits,
+            baby_steps=baby_steps,
+            giant_steps=giant_steps,
+            hash_collisions=hash_collisions,
+            progressions_scanned=progressions_scanned,
+            table_bytes=table_bytes,
+            pack_ns=pack_ns,
+            kernel_ns=kernel_ns,
+        )
+        if status_name == "resource_limit":
+            raise RuntimeError(
+                "prepared multi-progression search exceeds max_group_operations="
+                + str(operation_limit)
+            )
+        return (found, record) if diagnostics else found
 
     def sum(
         self,
