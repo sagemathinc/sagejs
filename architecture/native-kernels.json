@@ -579,8 +579,12 @@
     {
       "id": "hyperelliptic-period-edge-batch-production",
       "source": "src/lib/sagejs/hyperelliptic_curves/periods.py",
-      "functions": ["_period_edge_batch_float64"],
-      "semantic_domain": "packed binary64 seed quadrature for every edge and differential of genus-2/3 hyperelliptic periods, subject to independent arbitrary-precision refinement and Riemann-relation validation before publication",
+      "functions": [
+        "_period_edge_batch_float64",
+        "_period_sign_mask_float64_kernel",
+        "_conjugation_action_float64_kernel"
+      ],
+      "semantic_domain": "packed binary64 seed quadrature, Riemann-sign preselection, and conjugation-action preselection for genus-2/3 hyperelliptic periods, subject to independent arbitrary-precision refinement and Riemann, positivity, period-equality, involution, and anti-symplectic validation before publication",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "mpmath", "pari"],
