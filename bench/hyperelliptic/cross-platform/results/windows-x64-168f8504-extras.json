@@ -1,0 +1,102 @@
+{
+  "schema": "sagejs.hyperelliptic-phase10-portable-extras.v1",
+  "started_at": "2026-08-23T16:02:03.821Z",
+  "repository": {
+    "commit": "168f850407f3f685545932b1b770f40b42c74ad6",
+    "status": "",
+    "harness_sha256": "586e62374cf944eb08b52dedb0d1954655d1a1c8183c142a99aff23daaf73dcc"
+  },
+  "host": {
+    "hostname": "cocalc-vm-e1d2fb8e3de341f781653364",
+    "platform": "win32",
+    "architecture": "x64",
+    "node": "v26.5.1"
+  },
+  "configuration": {
+    "repeat": 5
+  },
+  "standalone": {
+    "status": "unavailable",
+    "reason": "the checked-in standalone harness currently has a POSIX static-archive linker contract; Windows native kernels remain covered separately"
+  },
+  "wasm": {
+    "status": "available",
+    "manifest_sha256": "17dcb97fe3b7085a93dadc81658a0058d79387f144506342d53389fc9a91a78a",
+    "artifact_id": null,
+    "pack_count": 36,
+    "load_ms": 36.60929999999996,
+    "process_rss_bytes": 85528576,
+    "cantor": [
+      {
+        "genus": 2,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 2.5428999999999746,
+          "median": 3.2561000000000035,
+          "max": 3.7028000000000247,
+          "mad": 0.23250000000001592
+        },
+        "exact_sha256": "6aa08d78cca6c13a9db2e08eed347753f11e244e10c2c5c8e833734301af4579",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "16532588233038003552"
+      },
+      {
+        "genus": 3,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 2.5079999999999814,
+          "median": 2.52679999999998,
+          "max": 3.1428999999999974,
+          "mad": 0.010199999999940701
+        },
+        "exact_sha256": "5b744187da93296da6ef5f2bbfbdad554708d052ad35a1144970515974a6500d",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "8706117988639488592"
+      }
+    ],
+    "kummer_project": {
+      "items": 4096,
+      "wall_ms": {
+        "count": 5,
+        "min": 3.4510999999999967,
+        "median": 3.95169999999996,
+        "max": 4.791499999999928,
+        "mad": 0.47450000000003456
+      },
+      "exact_sha256": "7aeb8f81607106b01b78ec62f2b6eb29c55fd2df9d9190d02df584cb28ad49b5",
+      "status_sha256": "9247c332f18377770d8324295d982e7ef80195863ccaa25e38803940a79b9e61"
+    },
+    "resource_bounds": {
+      "result": false,
+      "error": null,
+      "short_output_unchanged": true
+    },
+    "package_verification": {
+      "elapsed_ms": 324.20590000000004,
+      "stdout_sha256": "45a9b2b3352452432c44f6dcbfcc012c45f209aaf9cdf7c91fe65a757f002a3a",
+      "stderr": ""
+    },
+    "cancellation": {
+      "elapsed_ms": 3549.761,
+      "exit_code": 124,
+      "signal": null,
+      "stdout": "",
+      "stderr": "SageSessionTimeoutError: Sage.js evaluation timed out after 100 ms\n    at Timeout.<anonymous> (file:///C:/Users/user/sagejs-hyp-cross-168f8504/packages/flint-wasm/kernel.mjs:274:13)\n    at listOnTimeout (node:internal/timers:635:17)\n    at process.processTimers (node:internal/timers:571:7)",
+      "recovery_elapsed_ms": 1848.8647999999994,
+      "recovery_stdout": "42"
+    },
+    "package_load_test": {
+      "status": "failed",
+      "exit_code": 1,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 3503.2497000000003,
+      "stdout_sha256": "5e49dbf5b51f39ac35ea57999c33b6c2e1d093130ecec7c4b1e37ccf13d497e3",
+      "stdout": "(node:5196) ExperimentalWarning: WASI is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n✖ authenticated production packs execute every hyperelliptic source family (1646.5487ms)\n✖ the public Node-Wasm evaluator authenticates all hyperelliptic kernel routes (1671.1254ms)\n﹣ a real browser authenticates and executes all hyperelliptic kernel routes (0.2269ms) # Chromium is not installed\nℹ tests 3\nℹ suites 0\nℹ pass 0\nℹ fail 2\nℹ cancelled 0\nℹ skipped 1\nℹ todo 0\nℹ duration_ms 3439.2846\n\n✖ failing tests:\n\ntest at packages\\flint-wasm\\test\\hyperelliptic-production-kernels.test.mjs:326:1\n✖ authenticated production packs execute every hyperelliptic source family (1646.5487ms)\n  AssertionError [ERR_ASSERTION]: \n  C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\native-kernels\\c5da9491fcf1089972e908d0d5913b5ce945c996dfda8de3b2ff5e8a6c369dff\\index.cjs:1064\n      throw new TypeError(\"leading must be a binary64 float\");\n      ^\n  \n  TypeError: leading must be a binary64 float\n      at _period_edge_batch_float64 (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\native-kernels\\c5da9491fcf1089972e908d0d5913b5ce945c996dfda8de3b2ff5e8a6c369dff\\index.cjs:1064:11)\n      at evalmachine.<anonymous>:16:271\n      at Script.runInThisContext (node:vm:138:12)\n      at runInThisContext (node:vm:318:38)\n      at execute (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:306:50)\n      at runJS (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:330:52)\n      at compileAndRun (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:555:9)\n      at push (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:573:30)\n      at readLine (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:599:24)\n      at C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:624:13\n  sagejs/runtime-bootstrap-python.js:26777\n          throw ρσ_exception_value(new NameError(ρσ_operator_add(ρσ_operator_add(\"local variable '\", name), \"' referenced before assignment\")));\n          ^\n  \n  ReferenceError: local variable 'period_checksum' referenced before assignment\n      at ρσ_check_unbound (sagejs/runtime-bootstrap-python.js:26777:34)\n      at evalmachine.<anonymous>:37:432\n      at evalmachine.<anonymous>:74:8\n      at evalmachine.<anonymous>:84:4\n      at Script.runInThisContext (node:vm:138:12)\n      at runInThisContext (node:vm:318:38)\n      at execute (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:306:50)\n      at runJS (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:330:52)\n      at compileAndRun (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:555:9)\n      at Interface.<anonymous> (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:651:13)\n  \n  \n  1 !== 0\n  \n      at dynamicOracle (file:///C:/Users/user/sagejs-hyp-cross-168f8504/packages/flint-wasm/test/hyperelliptic-production-kernels.test.mjs:284:10)\n      at TestContext.<anonymous> (file:///C:/Users/user/sagejs-hyp-cross-168f8504/packages/flint-wasm/test/hyperelliptic-production-kernels.test.mjs:327:20)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1382:25)\n      at Test.start (node:internal/test_runner/test:1242:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: 1,\n    expected: 0,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n\ntest at packages\\flint-wasm\\test\\hyperelliptic-production-kernels.test.mjs:449:1\n✖ the public Node-Wasm evaluator authenticates all hyperelliptic kernel routes (1671.1254ms)\n  AssertionError [ERR_ASSERTION]: \n  C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\native-kernels\\c5da9491fcf1089972e908d0d5913b5ce945c996dfda8de3b2ff5e8a6c369dff\\index.cjs:1064\n      throw new TypeError(\"leading must be a binary64 float\");\n      ^\n  \n  TypeError: leading must be a binary64 float\n      at _period_edge_batch_float64 (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\native-kernels\\c5da9491fcf1089972e908d0d5913b5ce945c996dfda8de3b2ff5e8a6c369dff\\index.cjs:1064:11)\n      at evalmachine.<anonymous>:16:271\n      at Script.runInThisContext (node:vm:138:12)\n      at runInThisContext (node:vm:318:38)\n      at execute (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:306:50)\n      at runJS (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:330:52)\n      at compileAndRun (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:555:9)\n      at push (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:573:30)\n      at readLine (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:599:24)\n      at C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:624:13\n  sagejs/runtime-bootstrap-python.js:26777\n          throw ρσ_exception_value(new NameError(ρσ_operator_add(ρσ_operator_add(\"local variable '\", name), \"' referenced before assignment\")));\n          ^\n  \n  ReferenceError: local variable 'period_checksum' referenced before assignment\n      at ρσ_check_unbound (sagejs/runtime-bootstrap-python.js:26777:34)\n      at evalmachine.<anonymous>:37:432\n      at evalmachine.<anonymous>:74:8\n      at evalmachine.<anonymous>:84:4\n      at Script.runInThisContext (node:vm:138:12)\n      at runInThisContext (node:vm:318:38)\n      at execute (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:306:50)\n      at runJS (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:330:52)\n      at compileAndRun (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:555:9)\n      at Interface.<anonymous> (C:\\Users\\user\\sagejs-hyp-cross-168f8504\\dist\\tools\\repl.js:651:13)\n  \n  \n  1 !== 0\n  \n      at dynamicOracle (file:///C:/Users/user/sagejs-hyp-cross-168f8504/packages/flint-wasm/test/hyperelliptic-production-kernels.test.mjs:284:10)\n      at TestContext.<anonymous> (file:///C:/Users/user/sagejs-hyp-cross-168f8504/packages/flint-wasm/test/hyperelliptic-production-kernels.test.mjs:452:20)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1382:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)\n      at Test.postRun (node:internal/test_runner/test:1522:19)\n      at Test.run (node:internal/test_runner/test:1447:12)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: 1,\n    expected: 0,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }",
+      "stderr": ""
+    }
+  },
+  "finished_at": "2026-08-23T16:02:13.285Z"
+}
