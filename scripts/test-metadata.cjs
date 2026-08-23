@@ -86,6 +86,16 @@ function parseTestMetadata(source, filename = "test file") {
     throw new Error(`${filename} platform tests must belong to the unit tier`);
   }
 
+  const loadsNativePackage = /require\(\s*["'](?:\.\.\/packages\/(?:flint|fflas|graph|m4ri)(?:\/index\.cjs)?|@sagemath\/sagejs-(?:flint|fflas|graph|m4ri))["']\s*\)/.test(
+    source,
+  );
+  if (tier === "unit" && portableValue !== "false" && loadsNativePackage) {
+    throw new Error(
+      `${filename} loads an installed native package and must declare ` +
+        "// sagejs-test-portable: false",
+    );
+  }
+
   return Object.freeze({
     tier,
     portable: tier === "unit" && portableValue !== "false",

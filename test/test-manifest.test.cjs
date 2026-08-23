@@ -55,4 +55,12 @@ test("missing, duplicate, and invalid co-located metadata fail closed", () => {
     ),
     /cannot put a specialized test/,
   );
+  assert.throws(
+    () => parseTestMetadata(
+      "// sagejs-test-tier: unit\nconst flint = " +
+        "require(" + "'../packages/flint');\n",
+      "test/native-on-clean-runner.cjs",
+    ),
+    /must declare.*sagejs-test-portable: false/,
+  );
 });
