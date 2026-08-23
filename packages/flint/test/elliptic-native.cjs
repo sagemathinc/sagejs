@@ -195,7 +195,7 @@ test("genus-2/3 central weights return packed completed and raw jets", () => {
   const coefficients = new Int32Array(probe.requiredCutoff + 1);
   coefficients[1] = 1;
   const result = flint.hyperellipticCentralWeights(
-    713n, 1, 2, coefficients, 32, 4,
+    713n, 1, 2, coefficients, 32, 4, 4, null, null,
   );
   assert.equal(result.status, "ok");
   assert.equal(result.algorithm, "central-mellin-weights");
@@ -237,7 +237,7 @@ test("paired central grids retain the independent-grid numerical oracle", () => 
     coefficients[index] = ((index * 17 + 5) % 23) - 11;
   }
   const result = flint.hyperellipticCentralWeights(
-    713n, 1, 2, coefficients, 64, 4, 1,
+    713n, 1, 2, coefficients, 64, 4, 1, null, null,
   );
   assert.equal(result.status, "ok");
   assert.equal(result.coefficientWorkerCount, 1);
@@ -264,7 +264,7 @@ test("paired central grids retain the independent-grid numerical oracle", () => 
   );
 
   const parallel = flint.hyperellipticCentralWeights(
-    713n, 1, 2, coefficients, 64, 4, 4,
+    713n, 1, 2, coefficients, 64, 4, 4, null, null,
   );
   assert.equal(parallel.status, "ok");
   assert.equal(parallel.coefficientWorkerCount, 4);
@@ -309,10 +309,109 @@ test("parallel central grids cooperatively observe a shared cancellation flag", 
     await new Promise((resolve) => worker.once("message", resolve));
     worker.postMessage("go");
     const result = flint.hyperellipticCentralWeights(
-      713n, 1, 2, coefficients, 64, 4, 4, cancel,
+      713n, 1, 2, coefficients, 64, 4, 4, cancel, null,
     );
     assert.equal(result.status, "cancelled");
+    Atomics.store(cancel, 0, 0);
+    worker.postMessage("go");
+    const tableConstruction = flint.hyperellipticCentralWeights(
+      713n, 1, 2, coefficients, 64, 4, 4, cancel,
+    );
+    assert.equal(tableConstruction.status, "cancelled");
+    assert.equal(tableConstruction.universalWeightTable, undefined);
   } finally {
     await worker.terminate();
   }
+});
+
+test("universal central Taylor tables are reusable and keep direct-grid oracles", () => {
+  const probe = flint.hyperellipticCentralWeights(
+    713n, 1, 2, new Int32Array([0, 1]), 64, 4,
+  );
+  assert.equal(probe.universalWeightTableSupported, true);
+  const coefficients = new Int32Array(probe.requiredCutoff + 1);
+  coefficients[1] = 1;
+  for (let index = 2; index < coefficients.length; index += 1) {
+    coefficients[index] = ((index * 17 + 5) % 23) - 11;
+  }
+  const direct = flint.hyperellipticCentralWeights(
+    713n, 1, 2, coefficients, 64, 4, 1, null, null,
+  );
+  const constructed = flint.hyperellipticCentralWeights(
+    713n, 1, 2, coefficients, 64, 4,
+  );
+  assert.equal(constructed.algorithm, "universal-central-taylor-weights");
+  assert.equal(constructed.universalWeightTableUsed, true);
+  assert.equal(constructed.universalWeightTableCacheHit, false);
+  assert.equal(
+    constructed.coefficientWorkerCapability,
+    "single-worker-universal-table",
+  );
+  assert.equal(constructed.coefficientWorkerCount, 1);
+  assert.equal(
+    constructed.universalWeightTableCoefficientCount,
+    2 * constructed.universalWeightTableSegmentCount * 5 * 21,
+  );
+  assert.ok(constructed.universalWeightTableConstructionWallSeconds > 0);
+  assert.ok(constructed.universalWeightTableConstructionCpuSeconds > 0);
+  assert.ok(constructed.universalWeightTableEvaluationCpuSeconds > 0);
+  assert.ok(constructed.universalWeightTableTailRelativeDifference < 1e-18);
+  assert.ok(constructed.refinementStable);
+  const reused = flint.hyperellipticCentralWeights(
+    713n, 1, 2, coefficients, 64, 4, 1, null,
+    constructed.universalWeightTable,
+  );
+  assert.equal(reused.universalWeightTableCacheHit, true);
+  assert.equal(reused.universalWeightTableConstructionWallSeconds, 0);
+  for (let order = 0; order <= 4; order += 1) {
+    const expected = Number(direct.rawDerivatives[order].realMidpoint);
+    const observed = Number(reused.rawDerivatives[order].realMidpoint);
+    assert.equal(
+      reused.rawDerivatives[order].realMidpoint,
+      constructed.rawDerivatives[order].realMidpoint,
+    );
+    assert.ok(
+      Math.abs(observed - expected) <=
+        2 ** -30 * Math.max(1, Math.abs(expected)),
+    );
+  }
+  const otherProbe = flint.hyperellipticCentralWeights(
+    719n, 1, 2, new Int32Array([0, 1]), 64, 4,
+  );
+  assert.equal(
+    otherProbe.universalWeightTableSegmentStart,
+    probe.universalWeightTableSegmentStart,
+  );
+  assert.equal(
+    otherProbe.universalWeightTableSegmentCount,
+    probe.universalWeightTableSegmentCount,
+  );
+  const otherCoefficients = new Int32Array(otherProbe.requiredCutoff + 1);
+  otherCoefficients[1] = 1;
+  for (let index = 2; index < otherCoefficients.length; index += 1) {
+    otherCoefficients[index] = ((index * 17 + 5) % 23) - 11;
+  }
+  const otherDirect = flint.hyperellipticCentralWeights(
+    719n, 1, 2, otherCoefficients, 64, 4, 1, null, null,
+  );
+  const otherReused = flint.hyperellipticCentralWeights(
+    719n, 1, 2, otherCoefficients, 64, 4, 1, null,
+    constructed.universalWeightTable,
+  );
+  assert.equal(otherReused.universalWeightTableCacheHit, true);
+  for (let order = 0; order <= 4; order += 1) {
+    const expected = Number(otherDirect.rawDerivatives[order].realMidpoint);
+    const observed = Number(otherReused.rawDerivatives[order].realMidpoint);
+    assert.ok(
+      Math.abs(observed - expected) <=
+        2 ** -30 * Math.max(1, Math.abs(expected)),
+    );
+  }
+  assert.throws(
+    () => flint.hyperellipticCentralWeights(
+      713n, 1, 2, coefficients, 64, 3, 1, null,
+      constructed.universalWeightTable,
+    ),
+    /does not match this plan/,
+  );
 });

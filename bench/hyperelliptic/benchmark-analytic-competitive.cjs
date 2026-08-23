@@ -52,6 +52,22 @@ function ratio(numerator, denominator) {
   return Number((numerator / denominator).toFixed(3));
 }
 
+function coldAmortizationCount(cold, direct, warm) {
+  if (
+    cold === null ||
+    direct === null ||
+    warm === null ||
+    !Number.isFinite(cold) ||
+    !Number.isFinite(direct) ||
+    !Number.isFinite(warm) ||
+    cold < 0 ||
+    direct <= warm
+  ) {
+    return null;
+  }
+  return Math.ceil(cold / (direct - warm));
+}
+
 function performanceGates(sageRows, pariRows, precisionBits) {
   const initStage = `lfunction_init_order4_${precisionBits}bit_fresh_plan_coefficients_warm_100`;
   const sageInitBatch = rowMedian(sageRows, initStage);
@@ -102,6 +118,22 @@ function performanceGates(sageRows, pariRows, precisionBits) {
   const minimumGenus3 = genus3Ratios.every((value) => value !== null)
     ? Math.min(...genus3Ratios)
     : null;
+  const coldTable = rowMedian(
+    sageRows,
+    `universal_weight_table_order4_${precisionBits}bit_cold`,
+  );
+  const warmTable = rowMedian(
+    sageRows,
+    `central_plan_order4_${precisionBits}bit_coefficients_warm_universal_table`,
+  );
+  const directOne = rowMedian(
+    sageRows,
+    `central_plan_order4_${precisionBits}bit_coefficients_warm_single_worker`,
+  );
+  const directFour = rowMedian(
+    sageRows,
+    `central_plan_order4_${precisionBits}bit_coefficients_warm_bounded4_direct`,
+  );
   return {
     small_conductor_initialization: {
       sagejs_median_ms: sageInit,
@@ -110,9 +142,9 @@ function performanceGates(sageRows, pariRows, precisionBits) {
       sagejs_over_pari: initializationRatio,
       target_maximum_ratio: 2,
       passed: initializationRatio !== null && initializationRatio <= 2,
-      comparison: "bounded-4-worker-sagejs-vs-resident-pari",
+      comparison: "single-worker-universal-table-sagejs-vs-resident-pari",
       contract:
-        "each item constructs a new coefficient-prefix plan state and a new LFunctionInit; only exact coefficients are warm",
+        "each item constructs a new coefficient-prefix plan state and a new LFunctionInit; exact coefficients and one curve-independent universal weight table are warm",
     },
     prepared_central_value_over_fresh_plan: {
       fresh_plan_median_ms: fresh,
@@ -133,6 +165,23 @@ function performanceGates(sageRows, pariRows, precisionBits) {
       minimum_speedup: minimumGenus3,
       target_minimum_speedup: 5,
       passed: minimumGenus3 !== null && minimumGenus3 >= 5,
+    },
+    universal_table_cold_amortization: {
+      cold_construction_median_ms: coldTable,
+      warm_universal_evaluation_median_ms: warmTable,
+      direct_one_worker_median_ms: directOne,
+      direct_bounded4_median_ms: directFour,
+      calls_to_amortize_against_one_worker: coldAmortizationCount(
+        coldTable,
+        directOne,
+        warmTable,
+      ),
+      calls_to_amortize_against_bounded4: coldAmortizationCount(
+        coldTable,
+        directFour,
+        warmTable,
+      ),
+      pass_fail_gate: false,
     },
   };
 }
@@ -291,7 +340,7 @@ async function main() {
   try {
     await session.evaluate(
       [
-        "from sagejs.hyperelliptic_curves.lseries import GlobalCoefficientPrefix, HyperellipticLSeries, native_central_weight_values",
+        "from sagejs.hyperelliptic_curves.lseries import GlobalCoefficientPrefix, HyperellipticLSeries, clear_central_weight_cache, native_central_weight_values",
         "from sagejs.hyperelliptic_curves.genus3_completion import genus3_candidate_kernel_available",
         "from sagejs.hyperelliptic_curves.periods import clear_period_cache, real_period",
         "import sagejs.hyperelliptic_curves.periods as period_module",
@@ -394,6 +443,15 @@ async function main() {
         "True",
       ].join("\n"),
     );
+    await session.evaluate("clear_central_weight_cache()");
+    rows.push(
+      await sageMeasurement(
+        session,
+        `universal_weight_table_order4_${precisionBits}bit_cold`,
+        `HyperellipticLSeries(C,isolated_prefix2()).init(prec=${precisionBits},max_order=4,algorithm='native').central_value()`,
+        samples,
+      ),
+    );
     rows.push(
       await sageMeasurement(
         session,
@@ -407,8 +465,26 @@ async function main() {
     rows.push(
       await sageMeasurement(
         session,
+        `central_plan_order4_${precisionBits}bit_coefficients_warm_universal_table`,
+        `native_central_weight_values(C,${precisionBits},isolated_prefix2(),4)['values'][-1]['raw_derivatives'][-1]`,
+        samples,
+        1,
+      ),
+    );
+    rows.push(
+      await sageMeasurement(
+        session,
         `central_plan_order4_${precisionBits}bit_coefficients_warm_single_worker`,
-        `native_central_weight_values(C,${precisionBits},isolated_prefix2(),4,coefficient_workers=1)['values'][-1]['raw_derivatives'][-1]`,
+        `native_central_weight_values(C,${precisionBits},isolated_prefix2(),4,coefficient_workers=1,use_universal_table=False)['values'][-1]['raw_derivatives'][-1]`,
+        samples,
+        1,
+      ),
+    );
+    rows.push(
+      await sageMeasurement(
+        session,
+        `central_plan_order4_${precisionBits}bit_coefficients_warm_bounded4_direct`,
+        `native_central_weight_values(C,${precisionBits},isolated_prefix2(),4,coefficient_workers=4,use_universal_table=False)['values'][-1]['raw_derivatives'][-1]`,
         samples,
         1,
       ),
@@ -471,6 +547,16 @@ async function main() {
         1,
       ),
     );
+    for (let order = 0; order < 4; order += 1) {
+      rows.push(
+        await sageMeasurement(
+          session,
+          `universal_weight_table_order${order}_${precisionBits}bit_cold`,
+          `HyperellipticLSeries(C,isolated_prefix2()).central_jet(${order},prec=${precisionBits},algorithm='native')[${order}]`,
+          1,
+        ),
+      );
+    }
     for (let order = 0; order <= 4; order += 1) {
       rows.push(
         await sageMeasurement(
@@ -518,6 +604,16 @@ async function main() {
         "True",
       ].join("\n"),
     );
+    for (let order = 0; order < 4; order += 1) {
+      rows.push(
+        await sageMeasurement(
+          session,
+          `genus3_universal_weight_table_order${order}_16bit_cold`,
+          `HyperellipticLSeries(C3,isolated_prefix3()).central_jet(${order},prec=16,algorithm='native')[${order}]`,
+          1,
+        ),
+      );
+    }
     for (let order = 0; order <= 4; order += 1) {
       rows.push(
         await sageMeasurement(
@@ -589,9 +685,14 @@ async function main() {
       matched_precision_bits: precisionBits,
       pari_lfuninit: "central domain [1,0,0], derivative order 4",
       initialization_gate:
-        "fresh isolated coefficient-prefix state, L-series wrapper, analytic plan, and result per item; exact coefficients alone are warm",
-      sagejs_native_coefficient_workers: 4,
+        "fresh isolated coefficient-prefix state, L-series wrapper, analytic plan, and result per item; exact coefficients and a curve-independent universal weight table are warm",
+      universal_weight_table_construction_stage: `universal_weight_table_order4_${precisionBits}bit_cold`,
+      sagejs_direct_grid_fallback_workers: 4,
+      sagejs_universal_table_workers: 1,
       equal_core_reference_stage: `central_plan_order4_${precisionBits}bit_coefficients_warm_single_worker`,
+      bounded4_fallback_reference_stage: `central_plan_order4_${precisionBits}bit_coefficients_warm_bounded4_direct`,
+      cold_table_crossover_contract:
+        "derive explicitly from the separately timed cold-table stage and direct fallback rows; construction is never counted as an initialization cache hit",
       process_cold_ms: Number(processColdMs.toFixed(3)),
       cache_hits_are_separate: true,
       rigorous_claim: false,

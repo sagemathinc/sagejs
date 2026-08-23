@@ -31,11 +31,24 @@ test("the competitive initialization gate measures analytic cache misses", () =>
     /bit_coefficient_prefix_cache_hit_100/u,
   );
   assert.match(source, /bit_same_lseries_cache_hit_100/u);
-  assert.match(source, /bounded-4-worker-sagejs-vs-resident-pari/u);
+  assert.match(
+    source,
+    /single-worker-universal-table-sagejs-vs-resident-pari/u,
+  );
+  assert.match(source, /universal_weight_table_order4_/u);
+  assert.match(
+    source,
+    /one curve-independent universal weight table are warm/u,
+  );
   assert.match(
     source,
     /bit_coefficients_warm_single_worker/u,
   );
+  assert.match(source, /use_universal_table=False/u);
+  assert.match(source, /bit_coefficients_warm_bounded4_direct/u);
+  assert.match(source, /universal_table_cold_amortization/u);
+  assert.match(source, /calls_to_amortize_against_bounded4/u);
+  assert.match(source, /construction is never counted as an initialization cache hit/u);
 });
 
 test(
@@ -90,7 +103,8 @@ test(
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 C = HyperellipticCurve(x, x**3-x+1)
-from sagejs.hyperelliptic_curves.lseries import HyperellipticLSeries, native_central_weight_values
+from sagejs.hyperelliptic_curves.lseries import HyperellipticLSeries, central_weight_cache_info, clear_central_weight_cache, native_central_weight_values
+clear_central_weight_cache()
 prefix = C.lseries()._coefficient_prefix
 native_L = C.lseries()
 native = native_L.central_jet(4, prec=32, algorithm="native")
@@ -98,15 +112,26 @@ reference_L = HyperellipticLSeries(C, prefix)
 reference = reference_L.central_jet(4, prec=32, algorithm="inverse_mellin")
 for left, right in zip(native, reference):
     assert float(abs(left-right)) <= 0.000244140625 * max(1.0, float(abs(right)))
-assert native_L.last_diagnostics()["algorithm"] == "native-arb-central-mellin-weights"
-assert native_L.last_diagnostics()["native_stage_diagnostics"]["coefficient_worker_count"] == 4
+assert native_L.last_diagnostics()["algorithm"] == "native-arb-universal-central-taylor-weights"
+table_diagnostics = native_L.last_diagnostics()["native_stage_diagnostics"]["universal_weight_table"]
+assert table_diagnostics["used"]
+assert not table_diagnostics["cache_hit"]
+assert table_diagnostics["coefficient_count"] > 0
+assert central_weight_cache_info()["native_universal_tables"] == 1
 assert reference_L.last_diagnostics()["algorithm"] == "native-arb-double-mellin"
-single = native_central_weight_values(C, 32, prefix, 4, coefficient_workers=1)
+single = native_central_weight_values(C, 32, prefix, 4, coefficient_workers=1, use_universal_table=False)
 assert single is not None
+assert single["algorithm"] == "native-arb-central-mellin-weights"
 assert single["native_stage_diagnostics"]["coefficient_worker_count"] == 1
 for left, right in zip(native, single["values"][0]["raw_derivatives"]):
     single_value = CC(float(right[0]), float(right[1]))
     assert float(abs(left-single_value)) <= 0.000244140625 * max(1.0, float(abs(left)))
+reused_prefix = HyperellipticLSeries(C)._coefficient_prefix
+reused = native_central_weight_values(C, 32, reused_prefix, 4)
+assert reused is not None
+assert reused["native_stage_diagnostics"]["universal_weight_table"]["cache_hit"]
+clear_central_weight_cache()
+assert central_weight_cache_info()["native_universal_tables"] == 0
 C3 = HyperellipticCurve(R([0,1,3,5,7,6,4,1]), R([1]))
 prefix3 = C3.lseries()._coefficient_prefix
 native3_L = C3.lseries()
