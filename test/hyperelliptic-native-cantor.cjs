@@ -69,6 +69,8 @@ function cFunction(source, signature) {
 
 const witness = String.raw`
 from sagejs.native import is_compiled
+import sagejs.runtime as runtime
+import pickle
 from sagejs.hyperelliptic_curves.jacobian_kernels import (
     packed_cantor_add_batch,
     packed_cantor_copy_batch,
@@ -80,6 +82,7 @@ from sagejs.hyperelliptic_curves.jacobian_kernels import (
 from sagejs.hyperelliptic_curves.jacobian_native import PreparedDivisorBatch
 
 compiled = is_compiled(packed_cantor_add_batch)
+capsule_factory = runtime.immutable_uint64_capsule
 assert compiled == is_compiled(packed_cantor_scalar_batch)
 assert compiled == is_compiled(packed_cantor_copy_batch)
 assert compiled == is_compiled(packed_cantor_progression_batch)
@@ -570,9 +573,28 @@ except ValueError as error:
 else:
     raise AssertionError("public unpack accepted a row outside the curve relation")
 attack_points = J0.points(max_elements=10000, max_candidates=100000)
-P = attack_points[1]
-Q = attack_points[2]
 attack_context = J0.prepared_arithmetic()
+P = attack_context.unpack(attack_context.pack(attack_points[1]))
+Q = attack_context.unpack(attack_context.pack(attack_points[2]))
+serialized_source = attack_context.add_batch((P,), (J0.zero(),))[0]
+serialized_packet = pickle.dumps(serialized_source)
+serialized_roundtrip = pickle.loads(serialized_packet)
+serialized_context = serialized_roundtrip.parent().prepared_arithmetic()
+assert serialized_context.model_fingerprint == attack_context.model_fingerprint
+assert serialized_context.pack(serialized_roundtrip) == attack_context.pack(
+    serialized_source
+)
+
+# check=False retains its public compatibility semantics, but an invalid pair
+# is never registered as canonical and still fails a prepared boundary.
+unchecked_invalid = type(P)(J0, x, R(0), False)
+assert getattr(unchecked_invalid, "_MumfordDivisor__packed_row_binding") is None
+try:
+    attack_context.prepare_batch((unchecked_invalid,))
+except (ArithmeticError, TypeError, ValueError):
+    pass
+else:
+    raise AssertionError("unchecked invalid construction gained a packed capsule")
 try:
     PreparedDivisorBatch(attack_context, (0, 1, 0, 0, 0, 0, 0, 0), 1)
 except TypeError:
@@ -591,6 +613,14 @@ else:
 binding_name = "_MumfordDivisor__packed_row_binding"
 P_binding = getattr(P, binding_name)
 Q_binding = getattr(Q, binding_name)
+object.__setattr__(P, binding_name, (P, Q_row))
+try:
+    attack_context.pack(P)
+except (ArithmeticError, TypeError, ValueError) as error:
+    assert "capsule" in str(error) or "binding was corrupted" in str(error)
+else:
+    raise AssertionError("an owner-rebound tuple row became authoritative")
+object.__setattr__(P, binding_name, P_binding)
 object.__setattr__(P, binding_name, Q_binding)
 try:
     attack_context.pack(P)
@@ -599,25 +629,101 @@ except ArithmeticError as error:
 else:
     raise AssertionError("a transplanted hidden binding did not fail closed")
 object.__setattr__(P, binding_name, P_binding)
+object.__setattr__(P, binding_name, (P, Q_binding[1]))
+try:
+    attack_context.pack(P)
+except (ArithmeticError, TypeError, ValueError) as error:
+    assert "binding mismatch" in str(error)
+else:
+    raise AssertionError("an owner-rebound foreign divisor capsule was accepted")
+object.__setattr__(P, binding_name, P_binding)
 assert P != Q
 assert hash(P) == P_hash
 assert repr(P) == P_repr
 assert attack_context.add_batch((P,), (J0.zero(),))[0] == P
-if compiled:
-    first_batch = attack_context.add_batch((P,), (J0.zero(),), algorithm="native")
-    second_batch = attack_context.add_batch((Q,), (J0.zero(),), algorithm="native")
-    batch_binding_name = "_PreparedDivisorBatch__binding"
-    first_binding = getattr(first_batch, batch_binding_name)
-    second_binding = getattr(second_batch, batch_binding_name)
-    object.__setattr__(first_batch, batch_binding_name, second_binding)
-    try:
-        first_batch[0]
-    except ArithmeticError as error:
-        assert "binding was corrupted" in str(error)
-    else:
-        raise AssertionError("a transplanted batch binding did not fail closed")
-    object.__setattr__(first_batch, batch_binding_name, first_binding)
-    assert first_batch[0] == P
+first_batch = attack_context.prepare_batch((P,))
+second_batch = attack_context.prepare_batch((Q,))
+batch_binding_name = "_PreparedDivisorBatch__binding"
+first_binding = getattr(first_batch, batch_binding_name)
+second_binding = getattr(second_batch, batch_binding_name)
+assert "packed" not in repr(first_binding[2]).lower()
+assert "0" not in repr(first_binding[2])
+object.__setattr__(first_batch, batch_binding_name, second_binding)
+try:
+    first_batch[0]
+except ArithmeticError as error:
+    assert "binding was corrupted" in str(error)
+else:
+    raise AssertionError("a transplanted batch binding did not fail closed")
+# Even repairing the visible self slot cannot transplant another batch's
+# opaque storage: the runtime capsule rechecks its original owner identity.
+object.__setattr__(
+    first_batch,
+    batch_binding_name,
+    (first_batch, attack_context, second_binding[2], second_binding[3]),
+)
+try:
+    first_batch._rows_for(attack_context)
+except (ArithmeticError, TypeError, ValueError) as error:
+    assert "binding mismatch" in str(error)
+else:
+    raise AssertionError("a rebound foreign capsule did not fail closed")
+same_J = HyperellipticCurve(x**5 + x**2 + 1).jacobian()
+same_context = same_J.prepared_arithmetic()
+object.__setattr__(
+    first_batch,
+    batch_binding_name,
+    (first_batch, same_context, first_binding[2], first_binding[3]),
+)
+try:
+    first_batch._rows_for(same_context)
+except (ArithmeticError, TypeError, ValueError) as error:
+    assert "binding mismatch" in str(error)
+else:
+    raise AssertionError("a batch moved to an equal-model parent context")
+object.__setattr__(first_batch, batch_binding_name, first_binding)
+try:
+    capsule_factory(
+        second_batch._rows_for(attack_context),
+        first_batch,
+        attack_context.model_fingerprint + ":" + str(id(attack_context)),
+        "sagejs.hyperelliptic.packed-mumford.odd.v1.batch8",
+        1,
+    )
+except (ArithmeticError, TypeError, ValueError) as error:
+    assert "already registered" in str(error)
+else:
+    raise AssertionError("a batch owner accepted a second forged capsule")
+object.__setattr__(first_batch, batch_binding_name, first_binding)
+assert first_batch[0] == P
+
+# A public materialized divisor computes its row from (u,v) before trying to
+# cache it.  Malicious capsule pre-registration can only make that cache step
+# fail; the attacker's unrelated row is never consulted as provenance.
+source_R = attack_points[3]
+u_R, v_R = source_R.uv()
+# Deliberately bypass the public constructor to model a malicious owner
+# pre-registration against otherwise valid materialized provenance.
+R_public = object.__new__(type(source_R))
+R_public._parent = J0
+R_public._u = u_R
+R_public._v = v_R
+object.__setattr__(R_public, binding_name, None)
+R_public._packed_hash = None
+R_capsule = capsule_factory(
+    Q_row,
+    R_public,
+    attack_context.model_fingerprint + ":" + str(id(J0)),
+    "sagejs.hyperelliptic.packed-mumford.odd.v1.divisor8",
+    1,
+)
+object.__setattr__(R_public, binding_name, (R_public, R_capsule))
+try:
+    attack_context.pack(R_public)
+except (ArithmeticError, TypeError, ValueError) as error:
+    assert "disagrees with its provenance" in str(error)
+else:
+    raise AssertionError("malicious pre-registration authenticated a public row")
 
 try:
     HyperellipticCurve(x**6 + x + 1).jacobian()
@@ -707,15 +813,15 @@ test("prepared packed Cantor arithmetic is exact in dynamic and native modes", (
       multiSearchBody,
       /native__row_|native__multi_search_record|mpz_|SAGEJS_WORD_PROMOTE/,
     );
-    const native = run(process.execPath, [sagejs, program], {
-      env: {
-        SAGEJS_NATIVE_CACHE_DIR: cache,
-      },
-    });
     const dynamic = run(process.execPath, [sagejs, program], {
       env: {
         SAGEJS_NATIVE_CACHE_DIR: cache,
         SAGEJS_NATIVE_DISABLE: "1",
+      },
+    });
+    const native = run(process.execPath, [sagejs, program], {
+      env: {
+        SAGEJS_NATIVE_CACHE_DIR: cache,
       },
     });
     assert.match(native, /compiled=True/);

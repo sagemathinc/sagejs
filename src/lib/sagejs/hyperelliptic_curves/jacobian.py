@@ -280,7 +280,7 @@ class MumfordDivisor(sage.Element):
             parent._validate_reduced(u, v)
         self._u = u
         self._v = v
-        self.__packed_row_binding: tuple[Any, tuple[int, ...]] | None = None
+        self.__packed_row_binding: tuple[Any, Any] | None = None
 
     @property
     def _packed_row(self) -> tuple[int, ...] | None:
@@ -290,7 +290,17 @@ class MumfordDivisor(sage.Element):
             return None
         if len(binding) != 2 or binding[0] is not self:
             raise ArithmeticError("a Jacobian divisor packed binding was corrupted")
-        return binding[1]
+        context = self._parent.prepared_arithmetic()
+        copied = runtime.immutable_uint64_capsule_copy(
+            binding[1],
+            self,
+            context.model_fingerprint + ":" + str(id(self._parent)),
+            "sagejs.hyperelliptic.packed-mumford.odd.v1.divisor8",
+            1,
+        )
+        if len(copied) != 8:
+            raise ArithmeticError("a Jacobian divisor packed span was corrupted")
+        return tuple(int(copied[index]) for index in range(8))
 
     def _materialize(self) -> None:
         if self._u is not None:
@@ -319,14 +329,16 @@ class MumfordDivisor(sage.Element):
         return self._u, self._v
 
     def degree(self) -> int:
-        if self._packed_row is not None:
-            return self._packed_row[0]
+        packed = self._packed_row
+        if packed is not None:
+            return packed[0]
         assert self._u is not None
         return self._u.degree()
 
     def is_zero(self) -> bool:
-        if self._packed_row is not None:
-            return self._packed_row[0] == 0
+        packed = self._packed_row
+        if packed is not None:
+            return packed[0] == 0
         assert self._u is not None and self._v is not None
         return self._u.is_one() and self._v.is_zero()
 
@@ -348,7 +360,9 @@ class MumfordDivisor(sage.Element):
     def _eq_(self, other: Any) -> bool:
         if not isinstance(other, MumfordDivisor) or self._parent is not other._parent:
             return False
-        if self._packed_row is not None or other._packed_row is not None:
+        self_packed = self._packed_row
+        other_packed = other._packed_row
+        if self_packed is not None or other_packed is not None:
             try:
                 context = self._parent.prepared_arithmetic()
                 return context.pack(self) == context.pack(other)
@@ -377,6 +391,63 @@ class MumfordDivisor(sage.Element):
     def __reduce__(self) -> tuple[Any, tuple[Any, ...]]:
         u_value, v_value = self.uv()
         return self._parent, ([u_value, v_value],)
+
+    def __getstate__(self) -> dict[str, Any]:
+        """Return portable mathematical state without opaque native storage."""
+        field = self._parent.base_ring()
+        if not hasattr(field, "characteristic") or not hasattr(field, "order"):
+            raise NotImplementedError(
+                "Mumford divisor pickle state currently requires a prime field"
+            )
+        prime = int(field.characteristic())
+        if int(field.order()) != prime:
+            raise NotImplementedError(
+                "Mumford divisor pickle state currently requires a prime field"
+            )
+        u_value, v_value = self.uv()
+
+        def coefficients(polynomial: Any) -> list[int]:
+            return [int(value) for value in polynomial.list()]
+
+        return {
+            "version": 1,
+            "prime": prime,
+            "variable": self._parent.polynomial_ring().variable_name(),
+            "f": coefficients(self._parent.f()),
+            "h": coefficients(self._parent.h()),
+            "u": coefficients(u_value),
+            "v": coefficients(v_value),
+        }
+
+    def __setstate__(self, state: Mapping[str, Any]) -> None:
+        """Restore and revalidate portable finite-field mathematical state."""
+        expected = {"version", "prime", "variable", "f", "h", "u", "v"}
+        if not isinstance(state, dict) or set(state) != expected:
+            raise ValueError("invalid Mumford divisor pickle state")
+        if state["version"] != 1:
+            raise ValueError("unsupported Mumford divisor pickle state version")
+        finite_fields = __import__(
+            "sagejs._baselib.finite_fields",
+            fromlist=["GF"],
+        )
+        model = __import__(
+            "sagejs.hyperelliptic_curves.model",
+            fromlist=["HyperellipticCurve"],
+        )
+        field = finite_fields.GF(state["prime"])
+        ring = sage.PolynomialRing(field, state["variable"])
+        jacobian = model.HyperellipticCurve(
+            ring(state["f"]),
+            ring(state["h"]),
+        ).jacobian()
+        u_value = ring(state["u"])
+        v_value = ring(state["v"])
+        jacobian._validate_reduced(u_value, v_value)
+        self._parent = jacobian
+        self._u = u_value
+        self._v = v_value
+        self.__packed_row_binding = None
+        self._packed_hash = None
 
     def _negate_reference(self) -> Any:
         u, v = self.uv()

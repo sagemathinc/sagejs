@@ -214,15 +214,17 @@ for genus, curve in [
     retained_left_rows = retained_left._rows_for(context)
     retained_right_rows = retained_right._rows_for(context)
     prepare_public = lambda: context.prepare_batch(left)
+    prepare_cached = lambda: context.prepare_batch(retained_left)
+    construction_u, construction_v = basis[0].uv()
+    construct_public = lambda: tuple(
+        type(basis[0])(J, construction_u, construction_v) for _index in range(1000)
+    )
+    construct_and_prepare_public = lambda: context.prepare_batch(construct_public())
     publish_frozen = lambda: context._publish_frozen_batch(
         retained_left_rows, len(retained_left)
     )
-    raw_copy_input = kernel_uint64_buffer(
-        packed_cantor_copy_batch, retained_left_rows
-    )
-    raw_copy_right = kernel_uint64_buffer(
-        packed_cantor_copy_batch, retained_right_rows
-    )
+    raw_copy_input = retained_left._lease_for(context)
+    raw_copy_right = retained_right._lease_for(context)
     raw_copy_model = kernel_uint64_buffer(
         packed_cantor_copy_batch, context.model_coefficients
     )
@@ -265,8 +267,27 @@ for genus, curve in [
         )
         return context._publish_kernel_batch(copy_output, len(retained_left))
 
-    raw_add_left = kernel_uint64_buffer(packed_cantor_add_batch, retained_left_rows)
-    raw_add_right = kernel_uint64_buffer(packed_cantor_add_batch, retained_right_rows)
+    def retained_copy_boundary():
+        copy_output = kernel_uint64_zeros(
+            packed_cantor_copy_batch, 8 * len(retained_left)
+        )
+        copy_status = kernel_uint64_zeros(
+            packed_cantor_copy_batch, len(retained_left)
+        )
+        assert packed_cantor_copy_batch(
+            copy_output,
+            copy_status,
+            raw_copy_model,
+            retained_left._lease_for(context),
+            retained_right._lease_for(context),
+            len(retained_left),
+            genus,
+            context.prime,
+        )
+        return context._publish_kernel_batch(copy_output, len(retained_left))
+
+    raw_add_left = retained_left._lease_for(context)
+    raw_add_right = retained_right._lease_for(context)
     raw_add_output = kernel_uint64_zeros(
         packed_cantor_add_batch, 8 * len(retained_left)
     )
@@ -327,9 +348,23 @@ for genus, curve in [
     native_add_ns, native_add_result = timed(native_add)
     retained_add_ns, retained_add_result = timed(retained_add)
     prepare_public_ns, prepared_result = timed(prepare_public)
+    prepare_cached_ns, cached_result = timed(prepare_cached)
+    construct_public_ns, constructed_result = timed(construct_public)
+    construct_and_prepare_ns, constructed_prepared_result = timed(
+        construct_and_prepare_public, 3
+    )
+    fresh_prepare_samples = []
+    fresh_prepared_result = None
+    for _index in range(3):
+        fresh_values = construct_public()
+        fresh_started = time.perf_counter_ns()
+        fresh_prepared_result = context.prepare_batch(fresh_values)
+        fresh_prepare_samples.append(time.perf_counter_ns() - fresh_started)
+    fresh_prepare_ns = median(fresh_prepare_samples)
     publish_frozen_ns, published_result = timed(publish_frozen)
     raw_copy_ns, raw_copy_result = timed(raw_copy)
     full_copy_boundary_ns, full_copy_result = timed(full_copy_boundary)
+    retained_copy_boundary_ns, retained_copy_result = timed(retained_copy_boundary)
     raw_add_ns, raw_add_result = timed(raw_add)
     raw_fixed_add_ns, raw_fixed_add_result = timed_resident(raw_fixed_add)
     native_add_materialized_ns, native_add_materialized_result = timed(
@@ -374,11 +409,19 @@ for genus, curve in [
     assert retained_add_result.published_count == 0
     assert prepared_result == retained_left
     assert prepared_result.published_count == 0
+    assert cached_result is retained_left
+    assert all(value == basis[0] for value in constructed_result)
+    assert len(constructed_prepared_result) == 1000
+    assert constructed_prepared_result[0] == basis[0]
+    assert len(fresh_prepared_result) == 1000
+    assert fresh_prepared_result[0] == basis[0]
     assert published_result == retained_left
     assert published_result.published_count == 0
     assert raw_copy_result
     assert full_copy_result == retained_left
     assert full_copy_result.published_count == 0
+    assert retained_copy_result == retained_left
+    assert retained_copy_result.published_count == 0
     assert raw_add_result
     assert raw_fixed_add_result
     raw_fixed_digest = 0
@@ -424,9 +467,14 @@ for genus, curve in [
         "retained_add_published_input": retained_input.published_count,
         "retained_add_published_output": retained_add_result.published_count,
         "prepare_public_batch_median_ns": prepare_public_ns,
+        "prepare_fresh_unregistered_batch_median_ns": fresh_prepare_ns,
+        "prepare_cached_batch_median_ns": prepare_cached_ns,
+        "validated_public_construction_median_ns": construct_public_ns,
+        "validated_public_construct_and_prepare_median_ns": construct_and_prepare_ns,
         "publish_frozen_batch_median_ns": publish_frozen_ns,
         "raw_copy_boundary_median_ns": raw_copy_ns,
         "full_copy_boundary_median_ns": full_copy_boundary_ns,
+        "retained_copy_boundary_median_ns": retained_copy_boundary_ns,
         "raw_add_boundary_median_ns": raw_add_ns,
         "raw_fixed_add_boundary_median_ns": raw_fixed_add_ns,
         "raw_fixed_digest": str(raw_fixed_digest),
