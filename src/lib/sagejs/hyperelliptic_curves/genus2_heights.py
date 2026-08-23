@@ -2564,6 +2564,7 @@ def _canonical_heights_uncached_local_batch(
                 },
             )
         )
+    _check_height_batch_cancel(cancel, "proof-assembly-complete")
     return tuple(answers)
 
 
@@ -3384,6 +3385,8 @@ def _install_height_proof_state(
     """
     automatic_sources: list[tuple[Any, int, Any]] = []
     canonical_records: list[tuple[Any, Any, Any, Any, Any, Any, Any]] = []
+    staged_canonical_records: list[tuple[Any, Any, Any, Any, Any, Any, Any]] = []
+    active_pairing_contexts: list[Any] = []
     pairing_records: list[tuple[Any, Any, Any, Any, Any, Any, Any]] = []
     maximum_records = 512
 
@@ -3632,27 +3635,31 @@ def _install_height_proof_state(
         expected_terms = validated_context_terms(cache_context)
         exact_model_binding = model_binding(divisor.parent())
         exact_point_binding = point_binding(divisor)
-        for record in reversed(canonical_records):
-            if (
-                record[0] is cache_context
-                and record[2] == parameters
-                and (record[1] is divisor or record[1] == divisor)
-            ):
+        for records, published in (
+            (staged_canonical_records, False),
+            (canonical_records, True),
+        ):
+            for record in reversed(records):
                 if (
-                    record[3] != exact_model_binding
-                    or record[4] != exact_point_binding
-                    or record[5] != expected_terms
+                    record[0] is cache_context
+                    and record[2] == parameters
+                    and (record[1] is divisor or record[1] == divisor)
                 ):
-                    raise Genus2HeightCapabilityError(
-                        "cached canonical height derivation does not match the exact request",
-                        {
-                            "canonical_height_cache": "rejected-proof-binding-mismatch",
-                            "parameters": parameters,
-                        },
-                    )
-                if count_hit:
-                    cache_context._canonical_height_hits += 1
-                return restore_canonical(record[6], divisor.parent(), cache_context)
+                    if (
+                        record[3] != exact_model_binding
+                        or record[4] != exact_point_binding
+                        or record[5] != expected_terms
+                    ):
+                        raise Genus2HeightCapabilityError(
+                            "cached canonical height derivation does not match the exact request",
+                            {
+                                "canonical_height_cache": "rejected-proof-binding-mismatch",
+                                "parameters": parameters,
+                            },
+                        )
+                    if count_hit and published:
+                        cache_context._canonical_height_hits += 1
+                    return restore_canonical(record[6], divisor.parent(), cache_context)
         return None
 
     def canonical_record(
@@ -3695,6 +3702,41 @@ def _install_height_proof_state(
             removed[0]._canonical_height_entries = max(
                 0, removed[0]._canonical_height_entries - 1
             )
+
+    def commit_pairing_transaction(
+        new_canonical_records: tuple[Any, ...],
+        new_pairing_record: Any,
+        canonical_misses: int,
+    ) -> None:
+        """Commit detached canonical and pairing records without user code."""
+        next_canonical = canonical_records + list(new_canonical_records)
+        removed_canonical = tuple(
+            next_canonical[: max(0, len(next_canonical) - maximum_records)]
+        )
+        next_canonical = next_canonical[-maximum_records:]
+        next_pairing = pairing_records + [new_pairing_record]
+        removed_pairing = tuple(
+            next_pairing[: max(0, len(next_pairing) - maximum_records)]
+        )
+        next_pairing = next_pairing[-maximum_records:]
+        # Both replacement lists are fully allocated before either hidden
+        # registry changes.  No callback, theorem derivation, or public object
+        # access occurs between these two slice assignments.
+        canonical_records[:] = next_canonical
+        pairing_records[:] = next_pairing
+        for record in new_canonical_records:
+            record[0]._canonical_height_entries += 1
+        new_pairing_record[0]._height_pairing_entries += 1
+        for record in removed_canonical:
+            record[0]._canonical_height_entries = max(
+                0, record[0]._canonical_height_entries - 1
+            )
+        for record in removed_pairing:
+            record[0]._height_pairing_entries = max(
+                0, record[0]._height_pairing_entries - 1
+            )
+        new_pairing_record[0]._canonical_height_misses += canonical_misses
+        new_pairing_record[0]._height_pairing_misses += 1
 
     def wrapped_canonical_height(
         divisor: Any,
@@ -3778,7 +3820,13 @@ def _install_height_proof_state(
             cache_context = cast(HeightContext, context)
             record = canonical_record(cache_context, divisor, parameters, answer)
             if record is not None:
-                publish_canonical_records((record,))
+                if any(
+                    active_context is cache_context
+                    for active_context in active_pairing_contexts
+                ):
+                    staged_canonical_records.append(record)
+                else:
+                    publish_canonical_records((record,))
         return answer
 
     def pairing_payload(result: HeightPairingResult) -> tuple[Any, ...]:
@@ -3836,39 +3884,63 @@ def _install_height_proof_state(
                 or parameters[0] >= 9
             )
         )
-        if eligible:
-            cache_context = cast(HeightContext, context)
-            jacobian = values[0].parent()
-            if cache_context.jacobian is not jacobian:
-                raise ValueError("the height context belongs to a different Jacobian")
-            for value in values:
-                if value.parent() is not jacobian:
-                    raise ValueError("all pairing points must lie on the same Jacobian")
-            expected_terms = validated_context_terms(cache_context)
-            exact_model_binding = model_binding(jacobian)
-            point_bindings = tuple(point_binding(value) for value in values)
-            for record in reversed(pairing_records):
+        if not eligible:
+            return height_pairing_function(
+                values,
+                steps=steps,
+                precision=precision,
+                target_bits=target_bits,
+                algorithm=algorithm,
+                height_difference_bound=height_difference_bound,
+                context=context,
+                cancel=cancel,
+            )
+
+        cache_context = cast(HeightContext, context)
+        jacobian = values[0].parent()
+        if cache_context.jacobian is not jacobian:
+            raise ValueError("the height context belongs to a different Jacobian")
+        for value in values:
+            if value.parent() is not jacobian:
+                raise ValueError("all pairing points must lie on the same Jacobian")
+        expected_terms = validated_context_terms(cache_context)
+        exact_model_binding = model_binding(jacobian)
+        point_bindings = tuple(point_binding(value) for value in values)
+        for record in reversed(pairing_records):
+            if (
+                record[0] is cache_context
+                and record[2] == parameters
+                and record[1] == values
+            ):
                 if (
-                    record[0] is cache_context
-                    and record[2] == parameters
-                    and record[1] == values
+                    record[3] != exact_model_binding
+                    or record[4] != point_bindings
+                    or record[5] != expected_terms
                 ):
-                    if (
-                        record[3] != exact_model_binding
-                        or record[4] != point_bindings
-                        or record[5] != expected_terms
-                    ):
-                        raise Genus2HeightCapabilityError(
-                            "cached height pairing derivation does not match the exact request",
-                            {
-                                "height_pairing_cache": "rejected-proof-binding-mismatch",
-                                "ordered_basis_size": len(values),
-                                "parameters": parameters,
-                            },
-                        )
-                    cache_context._height_pairing_hits += 1
-                    return restore_pairing(record[6], jacobian, cache_context)
-            cache_context._height_pairing_misses += 1
+                    raise Genus2HeightCapabilityError(
+                        "cached height pairing derivation does not match the exact request",
+                        {
+                            "height_pairing_cache": "rejected-proof-binding-mismatch",
+                            "ordered_basis_size": len(values),
+                            "parameters": parameters,
+                        },
+                    )
+                cache_context._height_pairing_hits += 1
+                return restore_pairing(record[6], jacobian, cache_context)
+
+        counter_snapshot = (
+            cache_context._canonical_height_entries,
+            cache_context._canonical_height_hits,
+            cache_context._canonical_height_misses,
+            cache_context._height_pairing_entries,
+            cache_context._height_pairing_hits,
+            cache_context._height_pairing_misses,
+        )
+        stage_start = len(staged_canonical_records)
+        active_pairing_contexts.append(cache_context)
+        batch_misses = 0
+        committed = False
+        try:
             if parameters[3] != "exact":
                 requested_heights: list[Any] = list(values)
                 for left in range(len(values)):
@@ -3896,13 +3968,13 @@ def _install_height_proof_state(
                         context=cache_context,
                         cancel=cancel,
                     )
-                    pending_records: list[Any] = []
+                    batch_misses = len(missing)
                     for value, batch_answer in zip(missing, batch_answers, strict=True):
                         record = canonical_record(
                             cache_context, value, parameters, batch_answer
                         )
                         if record is not None:
-                            pending_records.append(record)
+                            staged_canonical_records.append(record)
                         elif batch_answer.status != "exact-torsion-zero":
                             raise Genus2HeightCapabilityError(
                                 "a batched local height did not produce an authenticated proof payload",
@@ -3911,39 +3983,48 @@ def _install_height_proof_state(
                                     "point": point_binding(value),
                                 },
                             )
-                    publish_canonical_records(tuple(pending_records))
-        answer = height_pairing_function(
-            values,
-            steps=steps,
-            precision=precision,
-            target_bits=target_bits,
-            algorithm=algorithm,
-            height_difference_bound=height_difference_bound,
-            context=context,
-            cancel=cancel,
-        )
-        if eligible and answer.rigorous:
-            cache_context = cast(HeightContext, context)
-            jacobian = values[0].parent()
-            expected_terms = validated_context_terms(cache_context)
-            pairing_records.append(
-                (
-                    cache_context,
-                    values,
-                    parameters,
-                    model_binding(jacobian),
-                    tuple(point_binding(value) for value in values),
-                    expected_terms,
-                    pairing_payload(answer),
-                )
+            answer = height_pairing_function(
+                values,
+                steps=steps,
+                precision=precision,
+                target_bits=target_bits,
+                algorithm=algorithm,
+                height_difference_bound=height_difference_bound,
+                context=context,
+                cancel=cancel,
             )
-            cache_context._height_pairing_entries += 1
-            if len(pairing_records) > maximum_records:
-                removed = pairing_records.pop(0)
-                removed[0]._height_pairing_entries = max(
-                    0, removed[0]._height_pairing_entries - 1
-                )
-        return answer
+            if not answer.rigorous:
+                return answer
+            expected_terms = validated_context_terms(cache_context)
+            pairing_record = (
+                cache_context,
+                values,
+                parameters,
+                model_binding(jacobian),
+                tuple(point_binding(value) for value in values),
+                expected_terms,
+                pairing_payload(answer),
+            )
+            _check_height_batch_cancel(cancel, "pairing-proof-commit")
+            commit_pairing_transaction(
+                tuple(staged_canonical_records[stage_start:]),
+                pairing_record,
+                batch_misses,
+            )
+            committed = True
+            return answer
+        finally:
+            active_pairing_contexts.pop()
+            del staged_canonical_records[stage_start:]
+            if not committed:
+                (
+                    cache_context._canonical_height_entries,
+                    cache_context._canonical_height_hits,
+                    cache_context._canonical_height_misses,
+                    cache_context._height_pairing_entries,
+                    cache_context._height_pairing_hits,
+                    cache_context._height_pairing_misses,
+                ) = counter_snapshot
 
     return (
         wrapped_automatic_bounds,
@@ -4147,7 +4228,6 @@ def regulator(
         context=context,
         cancel=cancel,
     )
-    _check_height_batch_cancel(cancel, "regulator-determinant")
     determinant = _interval_determinant(pairing.matrix)
     if pairing.rigorous and determinant.contains_zero():
         raise Genus2HeightResolutionError(
