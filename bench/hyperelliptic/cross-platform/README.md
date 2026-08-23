@@ -48,11 +48,12 @@ The coefficient-only stream exercises the new bounded-materialization public
 path. Kummer and Cantor use the same Python source bodies in both modes and are
 the actual dynamic/native differential workloads. The fixed Cantor performance
 slice is 1,000 public additions, 64 independent 256-bit scalars, and a packed
-1,000-element progression in both genus 2 and genus 3. The progression is
-timed once as retained packed rows and once with forced public-divisor
-materialization; their full packed digests must agree. A complete tiny
-`GF(3)` Jacobian supplies a separate exact digest independent of those timing
-checksums.
+1,000-element progression in both genus 2 and genus 3. Addition and scalar
+batches are timed once with packed-backed public divisors retained and once
+with polynomial `(u,v)` materialization forced. Progressions report raw packed
+rows, packed-backed public divisors, and forced materialization separately.
+Every full packed digest must agree. A complete tiny `GF(3)` Jacobian supplies
+a separate exact digest independent of those timing checksums.
 
 Receipts are immutable evidence. If the commit, compiler, VM image, workload,
 or runner changes, add a new receipt rather than overwriting an old one.
