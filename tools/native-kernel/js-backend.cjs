@@ -562,6 +562,11 @@ function normalizedArgument(param) {
   return param.name;
 }
 
+function uint64BufferMayBeWritten(fn, name) {
+  const externalWrites = fn.analysis?.effects?.externalWrites;
+  return !Array.isArray(externalWrites) || externalWrites.includes(name);
+}
+
 function declaredFfiErrors(fn) {
   const translations = Object.create(null);
   const visit = (operations) => {
@@ -614,7 +619,7 @@ function exactNativeExpression(fn, backend) {
           ? "uint64NativeBuffer" : "int64NativeBuffer"}(` +
       `sagejs_native_${param.name}, ${jsString(param.name)}` +
       `${param.type === "UInt64Buffer"
-        ? `, ${fn.analysis.effects.externalWrites.includes(param.name)}`
+        ? `, ${uint64BufferMayBeWritten(fn, param.name)}`
         : ""});`
   );
   const args = fn.params.map((param) =>
@@ -629,7 +634,7 @@ function exactNativeExpression(fn, backend) {
         : `sagejs_native_${param.name}.handle`
   ).join(", ");
   const copies = buffers
-    .filter((param) => fn.analysis.effects.externalWrites.includes(param.name))
+    .filter((param) => uint64BufferMayBeWritten(fn, param.name))
     .map((param) => `      sagejs_native_descriptor_${param.name}.copyBack();`);
   const call = `nativeExactCall(${jsString(fn.name)}, [${args}], ${backend}, ` +
     `${ffiErrors})`;
@@ -879,7 +884,7 @@ function emitPrimeSourcePublicFunction(fn) {
     if (param.type === "UInt64Buffer") {
       return `  const sagejs_${param.name} = uint64NativeBuffer(` +
         `${param.name}, ${jsString(param.name)}, ` +
-        `${fn.analysis.effects.externalWrites.includes(param.name)});`;
+        `${uint64BufferMayBeWritten(fn, param.name)});`;
     }
     if (param.type === "uint64") return uint64Validation(param.name);
     if (param.type === "PrimeModulusValue") {
