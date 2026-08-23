@@ -41,8 +41,14 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Final exact 158acf09 pinned-Node-22 certification completes p<=100000 with the established exact digest in 140.122 seconds. Bounded Pollard-rho removes both factor-tail aborts. The strict memory gate remains narrowly open: OS peak RSS is 529860 KiB, 5572 KiB above 512 MiB. The companion local-data materialization receipt preserves all four exact public modes at 10k/100k across three repetitions.",
+    "risks": [
+      "Phase-4 certification still fails the strict peak-RSS gate by 5705728 bytes despite passing exactness, completion, speedup, and wall-time gates.",
+      "The lane base predates substantial integration work; integrate source commit 8fd21692 and this receipt commit rather than merging the branch wholesale."
+    ],
+    "next_steps": [
+      "Profile the narrow 5.7 MB high-water miss read-only and reduce production retention without exposed GC or a benchmark-contract change.",
+      "Retain the immutable exact 158acf09 p100k receipt as the acceptance baseline for any memory follow-up."
+    ]
   }
 }
