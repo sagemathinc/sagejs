@@ -28,20 +28,27 @@ class InstrumentedPrepared:
         self.scalar_batches = 0
         self.add_batches = 0
         self.sums = 0
-    def scalar_batch(self, elements, scalars, max_group_operations=None):
+    def scalar_batch(
+        self, elements, scalars, algorithm=None, max_group_operations=None
+    ):
         self.scalar_batches += 1
         return tuple(
-            element.scalar_multiple(scalar, algorithm="reference")
+            element._scalar_multiple_reference(scalar)
             for element, scalar in zip(elements, scalars)
         )
     def add_batch(self, left, right):
         self.add_batches += 1
-        return tuple(a + b for a, b in zip(left, right))
+        answer = []
+        for a, b in zip(left, right):
+            u, v = J._compose(a[0], a[1], b[0], b[1])
+            answer.append(J._element(u, v, False))
+        return tuple(answer)
     def sum(self, elements):
         self.sums += 1
         answer = J.zero()
         for element in elements:
-            answer += element
+            u, v = J._compose(answer[0], answer[1], element[0], element[1])
+            answer = J._element(u, v, False)
         return answer
 
 prepared = InstrumentedPrepared()
@@ -59,19 +66,29 @@ assert actual_order == D.order(
 assert prepared.scalar_batches == 1
 
 budget = GroupOperationBudget(100000, 1000, 1024*1024, "auto")
-value = budget.linear_combination((3, 5), (D, 2*D))
-assert value == 13*D
+value = budget.linear_combination(
+    (3, 5), (D, D._scalar_multiple_reference(2))
+)
+assert value == D._scalar_multiple_reference(13)
 assert prepared.scalar_batches == 2
 assert prepared.sums == 1
 
-pair = add_pairs_batched((D, 2*D), (3*D, 4*D), algorithm="auto")
-assert pair == (4*D, 6*D)
+pair = add_pairs_batched(
+    (D, D._scalar_multiple_reference(2)),
+    (D._scalar_multiple_reference(3), D._scalar_multiple_reference(4)),
+    algorithm="auto",
+)
+assert pair == (
+    D._scalar_multiple_reference(4), D._scalar_multiple_reference(6)
+)
 assert prepared.add_batches == 1
 assert group_element_key(D) == group_element_key(J(D))
 
 prepared.native_available = False
 fallback_budget = GroupOperationBudget(100000, 1000, 1024*1024, "auto")
-assert fallback_budget.linear_combination((3, 5), (D, 2*D)) == 13*D
+assert fallback_budget.linear_combination(
+    (3, 5), (D, D._scalar_multiple_reference(2))
+) == D._scalar_multiple_reference(13)
 assert prepared.scalar_batches == 2
 assert prepared.sums == 1
 True`,
@@ -168,10 +185,12 @@ class InstrumentedPrepared:
         self.native_available = True
         self.scalar_batches = 0
         self.progression_batches = 0
-    def scalar_batch(self, elements, scalars, max_group_operations=None):
+    def scalar_batch(
+        self, elements, scalars, algorithm=None, max_group_operations=None
+    ):
         self.scalar_batches += 1
         return tuple(
-            element.scalar_multiple(scalar, algorithm="reference")
+            element._scalar_multiple_reference(scalar)
             for element, scalar in zip(elements, scalars)
         )
     def progression_batch(
@@ -183,7 +202,8 @@ class InstrumentedPrepared:
         for index in range(count):
             values.append(group_element_key(current) if packed else current)
             if index + 1 < count:
-                current = current + step
+                u, v = J._compose(current[0], current[1], step[0], step[1])
+                current = J._element(u, v, False)
         return tuple(values)
 
 prepared = InstrumentedPrepared()
