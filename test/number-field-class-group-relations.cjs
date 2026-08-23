@@ -48,6 +48,7 @@ from sagejs.number_fields.class_group_relations import (
     exact_lll_reduce,
     factor_ideal_over_base,
     factor_witness_over_base,
+    initial_rational_prime_relation_proposals,
     initial_rational_prime_relations,
     minkowski_lll_lattice,
     plan_automorphism_orbits,
@@ -190,6 +191,27 @@ assert collector_cache["retained_ideal_objects"] <= (
     collector_cache["max_retained_ideal_objects"]
 )
 assert collector.admission_receipt_diagnostics()["integral_norm_certificates"] == len(initial)
+
+# A caller may authenticate the same complete rational-prime relations in one
+# packed batch with later integral proposals.  The coordinate proposals must
+# remain byte-for-byte equivalent to the scalar public helper.
+initial_proposals = initial_rational_prime_relation_proposals(
+    ExactRelationCollector(O, factor_base)
+)
+combined_initial_collector = ExactRelationCollector(O, factor_base)
+combined_initial = combined_initial_collector.admit_integral_order_basis_rows(
+    initial_proposals
+)
+assert combined_initial is not None
+assert [item.record.to_dict() for item in combined_initial] == [
+    item.record.to_dict() for item in initial
+]
+assert combined_initial_collector.admission_receipt_diagnostics()[
+    "integral_batch_calls"
+] == 1
+assert combined_initial_collector.admission_receipt_diagnostics()[
+    "integral_batch_rows"
+] == len(initial)
 
 # Exact order-basis coordinates prove integrality by construction while
 # retaining the identical relation record and detached replay payload.

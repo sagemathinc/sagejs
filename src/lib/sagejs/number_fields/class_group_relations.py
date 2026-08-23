@@ -1694,11 +1694,11 @@ class ExactRelationCollector:
         return orbit.derive(relation, self)
 
 
-def initial_rational_prime_relations(
+def initial_rational_prime_relation_proposals(
     collector: ExactRelationCollector,
     rational_primes: Iterable[int] | None = None,
-) -> tuple[RelationAdmission, ...]:
-    """Admit deterministic `(p)` relations whose full split is in the base."""
+) -> tuple[tuple[tuple[int, ...], tuple[int, ...], dict[str, Any]], ...]:
+    """Return exact order-coordinate proposals for complete `(p)` relations."""
     if rational_primes is None:
         candidates = sorted(
             {int(prime.rational_prime()) for prime in collector.factor_base}
@@ -1707,7 +1707,11 @@ def initial_rational_prime_relations(
         candidates = sorted(
             {_checked_integer(value, "rational prime") for value in rational_primes}
         )
-    answer: list[RelationAdmission] = []
+    prime_module = __import__(
+        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+    )
+    one_coordinates = tuple(prime_module._order_one_coordinates(collector.order))
+    answer: list[tuple[tuple[int, ...], tuple[int, ...], dict[str, Any]]] = []
     for sequence, rational_prime in enumerate(candidates):
         row = [0] * len(collector.factor_base)
         local_degree = 0
@@ -1725,16 +1729,34 @@ def initial_rational_prime_relations(
         # equality without multiplying the same prime powers a second time.
         if local_degree != int(collector.order.number_field().degree()):
             continue
-        generator = collector.order.number_field()(rational_prime)
         answer.append(
-            collector.admit_integral_generator_row(
-                generator,
-                row,
-                provenance={
+            (
+                tuple(rational_prime * value for value in one_coordinates),
+                tuple(row),
+                {
                     "algorithm": "rational-prime-decomposition",
                     "rational_prime": rational_prime,
                     "sequence": sequence,
                 },
+            )
+        )
+    return tuple(answer)
+
+
+def initial_rational_prime_relations(
+    collector: ExactRelationCollector,
+    rational_primes: Iterable[int] | None = None,
+) -> tuple[RelationAdmission, ...]:
+    """Admit deterministic `(p)` relations whose full split is in the base."""
+    answer: list[RelationAdmission] = []
+    for coordinates, row, provenance in initial_rational_prime_relation_proposals(
+        collector, rational_primes
+    ):
+        answer.append(
+            collector.admit_integral_order_basis_row(
+                coordinates,
+                row,
+                provenance=provenance,
             )
         )
     return tuple(answer)
@@ -3196,6 +3218,7 @@ __all__ = [
     "RelationSearchState",
     "exact_lll_reduce",
     "factor_ideal_over_base",
+    "initial_rational_prime_relation_proposals",
     "factor_witness_over_base",
     "initial_rational_prime_relations",
     "minkowski_lll_lattice",

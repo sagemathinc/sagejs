@@ -1919,8 +1919,16 @@ class ClassUnitGroupEngine:
             relations = self.components.relations
             matrix = self.components.matrix
             trial = relations.ExactRelationCollector(self.order, factor_base)
-            relations.initial_rational_prime_relations(trial)
-            remaining = self.limits.max_relations - len(trial.records)
+            initial_proposals_reader = getattr(
+                relations, "initial_rational_prime_relation_proposals", None
+            )
+            raw_initial_proposals: Any = (
+                initial_proposals_reader(trial)
+                if callable(initial_proposals_reader)
+                else ()
+            )
+            initial_proposals = tuple(raw_initial_proposals)
+            remaining = self.limits.max_relations - len(initial_proposals)
             if remaining <= 0:
                 return collector
             candidates: Any = propose(
@@ -1934,7 +1942,7 @@ class ClassUnitGroupEngine:
                 return collector
             selected: Any = select(
                 matrix,
-                tuple(record.row for record in trial.records),
+                tuple(proposal[1] for proposal in initial_proposals),
                 candidates,
                 len(factor_base),
             )
@@ -1964,8 +1972,13 @@ class ClassUnitGroupEngine:
                 for row, coordinates, _expected_norm in candidates_group
             )
             batch_admit = getattr(trial, "admit_integral_order_basis_rows", None)
-            batch = batch_admit(proposals) if callable(batch_admit) else None
+            batch = (
+                batch_admit(initial_proposals + proposals)
+                if callable(batch_admit) and initial_proposals
+                else None
+            )
             if batch is None:
+                relations.initial_rational_prime_relations(trial)
                 for coordinates, row, provenance in proposals:
                     trial.admit_integral_order_basis_row(
                         coordinates,
