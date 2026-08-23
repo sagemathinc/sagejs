@@ -4,7 +4,7 @@
   "totals": {
     "registered_kernels": 43,
     "production_kernels": 36,
-    "compiled_functions": 249,
+    "compiled_functions": 253,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -157,9 +157,9 @@
       "id": "genus2-kummer-height-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 2,
+      "compiled_functions": 6,
       "fallback_functions": 0,
-      "total_functions": 2,
+      "total_functions": 6,
       "fallback_reasons": []
     },
     {
