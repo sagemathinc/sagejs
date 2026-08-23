@@ -143,6 +143,16 @@
       "commit": "cc4352ea5038ea1caa1f2643c688e1b5ba70a0c9",
       "workspace_fingerprint": "66ee160686f2fcf4d5bc0198ec5303d9442d8b0fbd2ddc9fa973ee1ab6a1fd8d",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-genus2-height-performance.cjs test/hyperelliptic-genus2-heights.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.495,
+      "started_at": "2026-08-23T08:41:51.492Z",
+      "commit": "76d04f7de56d2a11c18481aae399b89b68fd2556",
+      "workspace_fingerprint": "9faf4345c367e0171dc5043b98a31a331527edaebb718a99ec668b3928a7c90f",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -150,7 +160,7 @@
     "risks": [
       "The production local path currently covers primitive integral classical odd-degree quintics with h=0; generalized, rational-coefficient, and other models retain the guarded exact path.",
       "Legacy Magma 2.18-5 prints a stable arbitrary-looking tail but agrees with the exact Kummer recurrence only through about 100 bits. The benchmark conservatively treats only its 96-bit prefix as an independent oracle; wider Sage.js certificates are theorem-backed and checked against the exact recurrence.",
-      "The new neutral kernel leaves hyperelliptic-curves-algorithms 547 bytes over its current lazy budget. The integration lane owns the required two-function production-kernel registry and package routing/budget adjustment; architecture checks currently stop at this expected package gate.",
+      "The reviewed implementation sequence depends on the production-kernel registry, package routing, and adjusted lazy budget integrated at root commit 71cdb818. Root's focused integration, strict, and architecture checks passed before the quiet receipt; cherry-picking only the receipt commit onto a pre-integration tree is insufficient.",
       "Focused cross-platform runtime receipts remain to be collected on Windows x64, Linux arm64, and macOS arm64; the implementation is ordinary Python and introduces no native dependency.",
       "The final quiet bench-1 acceptance at integrated commit 71cdb818 measured Sage.js 64/128/256-bit object-cold latency 365.08/380.64/782.15 ms and authenticated warm latency 12.44/10.88/11.53 ms, with achieved widths 67/131/259 and both recurrences native. Magma 2.18-5 measured 190/20/20 ms cold and 8.571/12.857/24.286 ms warm, but only its 64-bit row is accuracy-matched; its 128/256-bit output has only 96 demonstrated stable bits. The accuracy-matched 64-bit ratios are 1.92x cold and 1.45x warm, so the Phase-7 <=2x gate passes. Reused rank-2 Sage.js pairing/regulator measured 20.38/27.54 ms versus Magma 42.857/40 ms; Sage.js wins the reused workload, while its 855.43 ms cold pairing remains 17.1x Magma's 50 ms and is the clear remaining envelope."
     ],
