@@ -321,6 +321,7 @@ const integration = [
   "test/hyperelliptic-genus2-heights.cjs",
   "test/hyperelliptic-genus3-completion.cjs",
   "test/hyperelliptic-genus3-heights.cjs",
+  "test/hyperelliptic-genus3-height-performance.cjs",
   "test/hyperelliptic-genus3-certified-oracle.cjs",
   "test/hyperelliptic-genus3-certified.cjs",
   "test/hyperelliptic-genus3-jacobian-search-differential.cjs",
