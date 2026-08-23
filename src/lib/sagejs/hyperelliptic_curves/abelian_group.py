@@ -12,6 +12,8 @@ from sagejs.hyperelliptic_curves.group_structure import (
     basis_from_generators,
     coordinates_in_basis,
     factor_integer_bounded,
+    group_element_key,
+    scalar_multiples_batched,
     validate_factorization,
 )
 
@@ -212,7 +214,7 @@ class JacobianAbelianMap:
         domain: FiniteAbelianGroup,
         codomain: Any,
         generators: Any,
-        inverse_coordinates: dict[Any, tuple[Any, ...]] | None = None,
+        inverse_coordinates: Any = None,
         *,
         factorization: Any = None,
         certificate: Any = None,
@@ -223,9 +225,18 @@ class JacobianAbelianMap:
         self._domain = domain
         self._codomain = codomain
         self._generators = tuple(generators)
-        self._inverse_coordinates = (
-            {} if inverse_coordinates is None else dict(inverse_coordinates)
-        )
+        self._inverse_coordinates: dict[Any, tuple[Any, tuple[Any, ...]]] = {}
+        if inverse_coordinates is not None:
+            items = (
+                inverse_coordinates.items()
+                if hasattr(inverse_coordinates, "items")
+                else inverse_coordinates
+            )
+            for divisor, coordinates in items:
+                self._inverse_coordinates[group_element_key(divisor)] = (
+                    divisor,
+                    tuple(coordinates),
+                )
         self._factorization = tuple(factorization or ())
         self._certificate = certificate
         self._max_group_operations = max_group_operations
@@ -246,16 +257,23 @@ class JacobianAbelianMap:
 
     def __call__(self, element: Any) -> Any:
         value = self._domain(element)
-        answer = self._codomain.zero()
-        for coordinate, generator in zip(
-            value.coordinates(), self._generators, strict=True
-        ):
-            answer += coordinate * generator
-        return answer
+        if not self._generators:
+            return self._codomain.zero()
+        budget = GroupOperationBudget(
+            self._max_group_operations,
+            self._max_baby_steps,
+            self._max_memory_bytes,
+            "auto",
+        )
+        return budget.linear_combination(value.coordinates(), self._generators)
 
     def preimage(self, divisor: Any) -> FiniteAbelianGroupElement:
         divisor = self._codomain(divisor)
-        coordinates = self._inverse_coordinates.get(divisor)
+        key = group_element_key(divisor)
+        cached = self._inverse_coordinates.get(key)
+        coordinates = None if cached is None else cached[1]
+        if cached is not None and cached[0] != divisor:
+            coordinates = None
         if coordinates is None:
             budget = GroupOperationBudget(
                 self._max_group_operations,
@@ -270,7 +288,7 @@ class JacobianAbelianMap:
                 self._factorization,
                 budget,
             )
-            self._inverse_coordinates[divisor] = coordinates
+            self._inverse_coordinates[key] = (divisor, coordinates)
         return self._domain(coordinates)
 
     inverse = preimage
@@ -278,12 +296,15 @@ class JacobianAbelianMap:
     def verify(self) -> bool:
         if len(self._generators) != len(self._domain.invariants()):
             return False
-        for generator, order in zip(
-            self._generators, self._domain.invariants(), strict=True
-        ):
-            if not (order * generator).is_zero():
+        if self._generators:
+            products = scalar_multiples_batched(
+                self._generators,
+                self._domain.invariants(),
+                algorithm="auto",
+            )
+            if any(not product.is_zero() for product in products):
                 return False
-        for divisor, coordinates in self._inverse_coordinates.items():
+        for divisor, coordinates in self._inverse_coordinates.values():
             if self(self._domain(coordinates)) != divisor:
                 return False
         if self._certificate is not None:
@@ -354,9 +375,12 @@ def certified_abelian_group(
         raise ArithmeticError("the certified basis disagrees with the structure")
     generators = tuple(result["generators"])
     certificate = jacobian._group_certificate_from_basis(result)
-    coordinate_table: dict[Any, tuple[Any, ...]] = {
-        jacobian.zero(): tuple(sage.ZZ(0) for _value in invariant_values)
-    }
+    coordinate_table: list[tuple[Any, tuple[Any, ...]]] = [
+        (
+            jacobian.zero(),
+            tuple(sage.ZZ(0) for _value in invariant_values),
+        )
+    ]
     # Retain the old complete table only for genuinely tiny groups. It remains
     # an excellent independent oracle, while larger inverse queries use the
     # bounded vector-DLP implementation lazily.
@@ -370,17 +394,25 @@ def certified_abelian_group(
                 "auto",
             )
             for element in elements:
-                coordinate_table[element] = coordinates_in_basis(
-                    element,
-                    generators,
-                    invariant_values,
-                    factors,
-                    budget,
+                coordinate_table.append(
+                    (
+                        element,
+                        coordinates_in_basis(
+                            element,
+                            generators,
+                            invariant_values,
+                            factors,
+                            budget,
+                        ),
+                    )
                 )
         except JacobianResourceLimitError:
-            coordinate_table = {
-                jacobian.zero(): tuple(sage.ZZ(0) for _value in invariant_values)
-            }
+            coordinate_table = [
+                (
+                    jacobian.zero(),
+                    tuple(sage.ZZ(0) for _value in invariant_values),
+                )
+            ]
     homomorphism = JacobianAbelianMap(
         group,
         jacobian,
