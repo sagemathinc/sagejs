@@ -6,7 +6,7 @@
   "lane": "hyperelliptic-curves",
   "status": "active",
   "owner": "user",
-  "objective": "Replace high-precision per-node mpmath period quadrature with a bounded packed FLINT Arb/Acb batch while preserving independent refinement evidence and measure exact genus-2/3 PARI corpus performance",
+  "objective": "Fuse exact completed-model validation, qqbar topology, two Arb/Acb period refinements, Riemann and conjugation validation, and exact real-lattice assembly behind one bounded FLINT operation while retaining the ordinary-source witness and measuring exact genus-2/3 PARI corpus performance",
   "base_commit": "0a2f78699bd18693aa7967d711a0215b67480df2",
   "claims": [
     "src/lib/sagejs/hyperelliptic_curves/periods.py",
@@ -35,7 +35,7 @@
       "PARI/GP 2.18.1-alpha hyperellperiods corpus"
     ],
     "exceptions": [
-      "The canonical compiler cannot yet lower variable-precision Arb/Acb values or cached Gauss--Legendre nodes. The narrow bounded bridge mirrors the ordinary Python panel formula, has no host callbacks after entry, retains exact source/differential/PARI oracles, and should become a declared Arb resource or compiler capability when that representation is supported."
+      "The canonical compiler cannot yet lower variable-precision qqbar/Arb/Acb matrices or FLINT exact integer kernel/SNF resources. The bounded mature-FLINT operation mirrors the ordinary Python topology, panel quadrature, Riemann, conjugation, and lattice formulas; has no host callbacks after entry; publishes only after two arbitrary-precision refinements; and retains a lazily materialized ordinary-source witness plus exact differential and PARI oracles. These representations should become declared compiler resources when supported."
     ]
   },
   "platforms": {
