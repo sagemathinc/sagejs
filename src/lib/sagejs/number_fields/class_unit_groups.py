@@ -36,7 +36,6 @@ MAX_UNCONDITIONAL_CUBIC_RELATION_SEED_SIZE = 10
 DEFAULT_CUBIC_SATURATION_RELATION_BATCH = 12
 MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 
-_VERIFIED_ENGINE_PRESENTATION_TOKEN = object()
 _CUBIC_RELATION_SEED_UNREAD = object()
 
 
@@ -1302,7 +1301,6 @@ class ClassUnitGroupEngine:
         self._relation_witness_logarithm_cache: dict[
             tuple[int, int], tuple[Any, str, tuple[Any, ...]]
         ] = {}
-        self._authenticated_dependency_units: set[str] = set()
         self._partials: dict[tuple[Any, ...], _LargePrimePartial] = {}
         self._relation_unit_log_rank = 0
         self._relation_search_state: Any = None
@@ -1427,6 +1425,46 @@ class ClassUnitGroupEngine:
         bind = getattr(self.context, "_bind_live_analytic_proof", None)
         if callable(bind) and self._live_context_token is not None:
             bind(self._live_context_token, proof)
+
+    def _context_relation_stage_authenticated(
+        self, collector: Any, presentation: Any
+    ) -> bool:
+        authenticate = getattr(self.context, "_live_relation_stage_authenticated", None)
+        return bool(
+            callable(authenticate)
+            and self._live_context_token is not None
+            and authenticate(self._live_context_token, collector, presentation)
+        )
+
+    def _retain_context_dependency_units(
+        self,
+        collector: Any,
+        presentation: Any,
+        dependencies: Iterable[Iterable[int]],
+        units: Iterable[Any],
+    ) -> bool:
+        retain = getattr(self.context, "_retain_live_dependency_units", None)
+        return bool(
+            callable(retain)
+            and self._live_context_token is not None
+            and retain(
+                self._live_context_token,
+                collector,
+                presentation,
+                dependencies,
+                units,
+            )
+        )
+
+    def _context_dependency_unit_authenticated(self, unit: Any) -> bool:
+        authenticate = getattr(
+            self.context, "_live_dependency_unit_authenticated", None
+        )
+        return bool(
+            callable(authenticate)
+            and self._live_context_token is not None
+            and authenticate(self._live_context_token, unit)
+        )
 
     def _verify_context_class_group_construction(self, group: Any) -> bool:
         verify = getattr(self.context, "_verify_live_class_group_construction", None)
@@ -3130,37 +3168,22 @@ class ClassUnitGroupEngine:
         collector: Any,
         presentation: Any,
         unit_rank: int,
-        *,
-        _verified_presentation_token: Any = None,
     ) -> tuple[Any, ...]:
         started = self._phase_start()
         if unit_rank == 0:
             self._phase_finish("unit-recovery", started)
             self._stage("unit-recovery", "complete", rank=0, candidates=0)
             return ()
-        # The engine-only token is passed only when no progress, cancellation,
-        # or checkpoint callback can interpose after the verified matrix
-        # extractor. External/direct callers retain the full replay.
-        if (
-            _verified_presentation_token is not _VERIFIED_ENGINE_PRESENTATION_TOKEN
-            and not presentation.verify()
-        ):
-            raise ArithmeticError("the relation presentation failed exact replay")
         records = tuple(collector.records)
         admission_verifier = getattr(collector, "verify_admission_receipt", None)
-        live_prefix_verifier = getattr(
-            collector, "_all_records_live_authenticated", None
-        )
-        live_relations_authenticated = bool(
-            _verified_presentation_token is _VERIFIED_ENGINE_PRESENTATION_TOKEN
-            and callable(live_prefix_verifier)
-            and live_prefix_verifier(
-                self.components.relations._LIVE_VERIFIED_RELATION_PREFIX_TOKEN
-            )
+        live_relations_authenticated = self._context_relation_stage_authenticated(
+            collector, presentation
         )
         if live_relations_authenticated:
             self._resource_usage["unit_live_relation_authority_hits"] += 1
         else:
+            if not presentation.verify():
+                raise ArithmeticError("the relation presentation failed exact replay")
             live_relations_authenticated = callable(admission_verifier) and all(
                 admission_verifier(self.order, collector.factor_base, record)
                 for record in records
@@ -3172,21 +3195,21 @@ class ClassUnitGroupEngine:
         units, selected_dependencies = self._select_dependency_unit_basis(
             records, dependencies, unit_rank
         )
-        if live_relations_authenticated:
-            for dependency, unit in zip(selected_dependencies, units, strict=True):
-                relation_row = [0] * len(collector.factor_base)
-                for coefficient, record in zip(dependency, records, strict=True):
-                    if len(record.row) != len(relation_row):
-                        raise ArithmeticError(
-                            "an authenticated relation has the wrong exact width"
-                        )
-                    for index, value in enumerate(record.row):
-                        relation_row[index] += int(coefficient) * int(value)
-                stable_hash = getattr(unit, "stable_hash", None)
-                if not any(relation_row) and callable(stable_hash):
-                    if len(self._authenticated_dependency_units) >= 1024:
-                        self._authenticated_dependency_units.pop()
-                    self._authenticated_dependency_units.add(str(stable_hash()))
+        if live_relations_authenticated and not self._retain_context_dependency_units(
+            collector, presentation, selected_dependencies, units
+        ):
+            live_relations_authenticated = False
+            if (
+                not presentation.verify()
+                or not callable(admission_verifier)
+                or not all(
+                    admission_verifier(self.order, collector.factor_base, record)
+                    for record in records
+                )
+            ):
+                raise ArithmeticError(
+                    "the relation dependency authority failed exact replay"
+                )
         if not units:
             self._phase_finish("unit-recovery", started)
             self._stage(
@@ -3236,11 +3259,7 @@ class ClassUnitGroupEngine:
         one = self.order.ideal(1)
         for unit in units:
             self._resource_usage["unit_principal_authority_requests"] += 1
-            stable_hash = getattr(unit, "stable_hash", None)
-            if (
-                callable(stable_hash)
-                and str(stable_hash()) in self._authenticated_dependency_units
-            ):
+            if self._context_dependency_unit_authenticated(unit):
                 self._resource_usage["unit_principal_authority_hits"] += 1
                 continue
             self._resource_usage["unit_principal_authority_fallbacks"] += 1
@@ -3875,16 +3894,7 @@ class ClassUnitGroupEngine:
                 if admitted == 0:
                     continue
                 relation_units = self._independent_units(
-                    collector,
-                    presentation,
-                    unit_rank,
-                    _verified_presentation_token=(
-                        _VERIFIED_ENGINE_PRESENTATION_TOKEN
-                        if self.progress is None
-                        and not self._cancelled_callback_supplied
-                        and self.checkpoint_controller is None
-                        else None
-                    ),
+                    collector, presentation, unit_rank
                 )
                 combined = self._select_unit_basis(
                     tuple(units) + tuple(relation_units), unit_rank
@@ -4218,18 +4228,7 @@ class ClassUnitGroupEngine:
                         "unit_rank_target": unit_rank,
                     },
                 )
-            units = self._independent_units(
-                collector,
-                presentation,
-                unit_rank,
-                _verified_presentation_token=(
-                    _VERIFIED_ENGINE_PRESENTATION_TOKEN
-                    if self.progress is None
-                    and not self._cancelled_callback_supplied
-                    and self.checkpoint_controller is None
-                    else None
-                ),
-            )
+            units = self._independent_units(collector, presentation, unit_rank)
             torsion, regulator, index = self._analytic_index(
                 presentation, units, unit_rank
             )

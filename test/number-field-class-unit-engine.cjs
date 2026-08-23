@@ -426,7 +426,7 @@ class UnitAuthorityProbe:
     def principal_ideal(self, order):
         principal_calls[0] += 1
         return order.ideal(1)
-engine._authenticated_dependency_units.add("trusted-unit")
+engine.context._live_artifacts.authenticated_dependency_unit_hashes.add("trusted-unit")
 engine._verify_exact_units(
     (UnitAuthorityProbe("trusted-unit"), UnitAuthorityProbe("cold-unit"))
 )

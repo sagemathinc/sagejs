@@ -458,6 +458,7 @@ class _LiveClassUnitArtifacts:
         self.generation_verification_active = True
         self.saturation_record: Any = None
         self.saturation_live_authority_available = False
+        self.authenticated_dependency_unit_hashes: set[str] = set()
         self.class_group: Any = None
         self.unit_group: Any = None
         self.sealed = False
@@ -496,21 +497,35 @@ class _LiveClassUnitArtifacts:
         self.presentation = presentation
         return self.reusable
 
-    def relation_payloads(
-        self, collector: Any, presentation: Any
-    ) -> tuple[dict[str, Any], ...] | None:
+    def relation_stage_authenticated(self, collector: Any, presentation: Any) -> bool:
         if (
             self.sealed
             or not self.reusable
             or collector is not self.collector
             or presentation is not self.presentation
         ):
-            return None
-        current = tuple(getattr(collector, "records", ()))
-        if len(current) != len(self.relations) or any(
-            retained is not supplied
-            for retained, supplied in zip(self.relations, current, strict=True)
+            return False
+        current_factors = tuple(getattr(collector, "factor_base", ()))
+        if len(current_factors) != len(self.factor_base) or any(
+            retained is not current
+            for retained, current in zip(self.factor_base, current_factors, strict=True)
         ):
+            return False
+        current_relations = tuple(getattr(collector, "records", ()))
+        return bool(
+            len(current_relations) == len(self.relations)
+            and all(
+                retained is current
+                for retained, current in zip(
+                    self.relations, current_relations, strict=True
+                )
+            )
+        )
+
+    def relation_payloads(
+        self, collector: Any, presentation: Any
+    ) -> tuple[dict[str, Any], ...] | None:
+        if not self.relation_stage_authenticated(collector, presentation):
             return None
         # `reusable` means no callback, cancellation hook, or checkpoint can
         # interpose after `bind_relations` authenticated this exact prefix.
@@ -569,22 +584,62 @@ class _LiveClassUnitArtifacts:
     def dependency_hashes(
         self, collector: Any, presentation: Any
     ) -> tuple[str, str] | None:
+        if self.generation_hashes is None or not self.relation_stage_authenticated(
+            collector, presentation
+        ):
+            return None
+        return self.generation_hashes[1], self.generation_hashes[2]
+
+    def retain_dependency_units(
+        self,
+        collector: Any,
+        presentation: Any,
+        dependencies: Iterable[Iterable[int]],
+        units: Iterable[Any],
+    ) -> bool:
+        """Retain principality authority derived from exact relation kernels."""
+        # The engine calls this immediately after
+        # `relation_stage_authenticated()` and has no callback boundary in a
+        # reusable context.  Recheck the exact stage objects, but do not walk
+        # the same factor/record identity vectors a second time.
         if (
-            self.generation_hashes is None
+            self.sealed
             or not self.reusable
             or collector is not self.collector
             or presentation is not self.presentation
         ):
-            return None
-        # The reusable context has had no external control boundary since the
-        # prefix was authenticated and the generation hashes were captured.
-        current = tuple(getattr(collector, "records", ()))
-        if len(current) != len(self.relations) or any(
-            retained is not supplied
-            for retained, supplied in zip(self.relations, current, strict=True)
-        ):
-            return None
-        return self.generation_hashes[1], self.generation_hashes[2]
+            return False
+        relations = self.relations
+        factor_base_width = len(self.factor_base)
+        hashes: list[str] = []
+        for dependency, unit in zip(dependencies, units, strict=True):
+            coefficients = tuple(int(value) for value in dependency)
+            if len(coefficients) != len(relations) or not any(coefficients):
+                return False
+            relation_row = [0] * factor_base_width
+            for coefficient, record in zip(coefficients, relations, strict=True):
+                row = tuple(record.row)
+                if len(row) != factor_base_width:
+                    return False
+                for index, value in enumerate(row):
+                    relation_row[index] += coefficient * int(value)
+            stable_hash = getattr(unit, "stable_hash", None)
+            if not any(relation_row) and callable(stable_hash):
+                hashes.append(str(stable_hash()))
+        for value in hashes:
+            if len(self.authenticated_dependency_unit_hashes) >= 1024:
+                self.authenticated_dependency_unit_hashes.pop()
+            self.authenticated_dependency_unit_hashes.add(value)
+        return True
+
+    def dependency_unit_authenticated(self, unit: Any) -> bool:
+        if self.sealed or not self.reusable:
+            return False
+        stable_hash = getattr(unit, "stable_hash", None)
+        return bool(
+            callable(stable_hash)
+            and str(stable_hash()) in self.authenticated_dependency_unit_hashes
+        )
 
     def bind_saturation_record(self, record: Any, *, authenticated: bool) -> None:
         if self.sealed:
@@ -620,46 +675,25 @@ class _LiveClassUnitArtifacts:
             if (
                 collector is None
                 or presentation is None
+                or not self.relation_stage_authenticated(collector, presentation)
                 or getattr(group, "_order", None) is not self.order
                 or getattr(group, "_relation_reconstructor", None) is not collector
                 or getattr(group, "_presentation", None) is not presentation
             ):
                 return False
-            current_factors = tuple(getattr(collector, "factor_base", ()))
             group_factors = tuple(getattr(group, "_factor_base", ()))
-            if (
-                len(current_factors) != len(self.factor_base)
-                or len(group_factors) != len(self.factor_base)
-                or any(
-                    retained is not current
-                    for retained, current in zip(
-                        self.factor_base, current_factors, strict=True
-                    )
-                )
-                or any(
-                    retained is not supplied
-                    for retained, supplied in zip(
-                        self.factor_base, group_factors, strict=True
-                    )
+            if len(group_factors) != len(self.factor_base) or any(
+                retained is not supplied
+                for retained, supplied in zip(
+                    self.factor_base, group_factors, strict=True
                 )
             ):
                 return False
-            current_relations = tuple(getattr(collector, "records", ()))
             group_relations = tuple(getattr(group, "_relations", ()))
-            if (
-                len(current_relations) != len(self.relations)
-                or len(group_relations) != len(self.relations)
-                or any(
-                    retained is not current
-                    for retained, current in zip(
-                        self.relations, current_relations, strict=True
-                    )
-                )
-                or any(
-                    retained is not supplied
-                    for retained, supplied in zip(
-                        self.relations, group_relations, strict=True
-                    )
+            if len(group_relations) != len(self.relations) or any(
+                retained is not supplied
+                for retained, supplied in zip(
+                    self.relations, group_relations, strict=True
                 )
             ):
                 return False
@@ -755,6 +789,9 @@ class _LiveClassUnitArtifacts:
             "has_saturation_record": self.saturation_record is not None,
             "saturation_live_authority_available": (
                 self.saturation_live_authority_available
+            ),
+            "authenticated_dependency_units": len(
+                self.authenticated_dependency_unit_hashes
             ),
             "has_class_group": self.class_group is not None,
             "has_unit_group": self.unit_group is not None,
@@ -877,6 +914,41 @@ class ClassUnitGroupContext:
             raise TypeError("live relation payloads are engine-owned")
         live = self._live_artifacts
         return None if live is None else live.relation_payloads(collector, presentation)
+
+    def _live_relation_stage_authenticated(
+        self, token: Any, collector: Any, presentation: Any
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live relation state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.relation_stage_authenticated(collector, presentation)
+        )
+
+    def _retain_live_dependency_units(
+        self,
+        token: Any,
+        collector: Any,
+        presentation: Any,
+        dependencies: Iterable[Iterable[int]],
+        units: Iterable[Any],
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live dependency-unit state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.retain_dependency_units(
+                collector, presentation, dependencies, units
+            )
+        )
+
+    def _live_dependency_unit_authenticated(self, token: Any, unit: Any) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live dependency-unit state is engine-owned")
+        live = self._live_artifacts
+        return bool(live is not None and live.dependency_unit_authenticated(unit))
 
     def _bind_live_generation_evidence(
         self,
