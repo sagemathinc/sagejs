@@ -167,7 +167,8 @@ function git(...args) {
 
 function gpProvisioning(gp) {
   if (!existsSync(gp)) throw new Error(`the pinned GP executable is missing: ${gp}`);
-  const versionOutput = checked(gp, ["--version"], { timeout: 30_000 }).stdout.trim();
+  const versionResult = checked(gp, ["--version"], { timeout: 30_000 });
+  const versionOutput = `${versionResult.stdout}\n${versionResult.stderr}`.trim();
   const match = /Version\s+([0-9.]+\s+\([^)]+\))/u.exec(versionOutput);
   const version = match?.[1] ?? versionOutput.split(/\r?\n/u)[0];
   return {
