@@ -11,6 +11,32 @@ remaining part, so `cardinality`, `unrank`, `rank`, and `random_element` all
 agree by construction.  Unconstrained counts instead use Euler's pentagonal
 number recurrence, which stays exact for arguments far beyond the range where
 enumeration is practical.
+
+### Provenance
+
+The public API, the enumeration order, and the documentation prose follow
+SageMath's `sage.combinat.partition`, checked against SageMath 10.9.  No
+SageMath source was transliterated: the algorithms are implemented from their
+published descriptions, recorded per name in the documentation registry.
+
+- Counting `p(n)` uses the recurrence from Euler's pentagonal number theorem
+  (Andrews, *The Theory of Partitions*, 1976).
+- Constrained counting, `rank`, and `unrank` use counting-driven ranking over
+  a recursively counted set (Kreher and Stinson, *Combinatorial Algorithms*,
+  1999).
+- `random_element` selects a uniform index and descends the same count table
+  (the classical technique described by Nijenhuis and Wilf, *Combinatorial
+  Algorithms for Computers and Calculators*, 1978).
+
+Sharing a single memo across all four operations is a Sage.js choice, not one
+inherited from any of those sources.
+
+### Performance
+
+Counting here is `O(n^(3/2))` big-integer additions, because the recurrence
+computes every partition number up to its argument.  SageMath and PARI/GP
+evaluate the Hardy-Ramanujan-Rademacher formula through FLINT instead and stay
+fast far beyond that.  `bench/compare-partitions.cjs` measures all three.
 """
 
 # Ruff's WASM build reports I001 while proposing this same import block.
@@ -1112,11 +1138,71 @@ def number_of_partitions(size: Any) -> Any:
     return runtime.normalize_integer(_partition_count(value))
 
 
+# Every algorithm here is implemented from its published description; no
+# SageMath source was transliterated.  What is adapted from Sage is the public
+# API, the enumeration order, and the documentation prose.
+_SAGE_PROVENANCE = {
+    "kind": "sage-derived",
+    "source": "SageMath `sage.combinat.partition`",
+    "revision": "SageMath 10.9",
+    "url": (
+        "https://doc.sagemath.org/html/en/reference/combinat/"
+        "sage/combinat/partition.html"
+    ),
+    "license": "GPL-2.0-or-later",
+}
+_PENTAGONAL_PROVENANCE = {
+    "kind": "literature-implemented",
+    "source": "Euler's pentagonal number theorem recurrence for `p(n)`",
+}
+_RANKING_PROVENANCE = {
+    "kind": "literature-implemented",
+    "source": (
+        "Counting-driven ranking, unranking, and uniform random selection "
+        "over a recursively counted set"
+    ),
+}
+_SHARED_MEMO_PROVENANCE = {
+    "kind": "sagejs-original",
+    "source": (
+        "One memoized recursion over the largest remaining part serves "
+        "cardinality, rank, unrank, and random_element, so the four agree by "
+        "construction rather than by separate implementation"
+    ),
+}
+_ANDREWS_REFERENCE = {
+    "id": "andrews-theory-of-partitions",
+    "type": "book",
+    "title": "The Theory of Partitions",
+    "authors": ["George E. Andrews"],
+    "year": 1976,
+    "relevant_sections": "Chapter 1, the pentagonal number theorem",
+}
+_KREHER_STINSON_REFERENCE = {
+    "id": "kreher-stinson-combinatorial-algorithms",
+    "type": "book",
+    "title": "Combinatorial Algorithms: Generation, Enumeration, and Search",
+    "authors": ["Donald L. Kreher", "Douglas R. Stinson"],
+    "year": 1999,
+    "relevant_sections": "Chapter 2, ranking and unranking",
+}
+_NIJENHUIS_WILF_REFERENCE = {
+    "id": "nijenhuis-wilf-combinatorial-algorithms",
+    "type": "book",
+    "title": "Combinatorial Algorithms for Computers and Calculators",
+    "authors": ["Albert Nijenhuis", "Herbert S. Wilf"],
+    "year": 1978,
+    "relevant_sections": "Uniform random selection from a counted set",
+}
+
+
 def _register_combinat_doc(
     name: str,
     value: Any,
     kind: str,
-    upstream: str,
+    provenance: list[Any],
+    references: list[Any],
+    limitations: list[Any],
 ) -> None:
     runtime.register_doc(
         name,
@@ -1139,45 +1225,57 @@ def _register_combinat_doc(
                     "regular, and restricted constraints are not implemented."
                 ),
             },
-            "provenance": [
-                {
-                    "kind": "sage-derived",
-                    "source": "SageMath `" + upstream + "`",
-                    "url": (
-                        "https://doc.sagemath.org/html/en/reference/combinat/"
-                        "sage/combinat/partition.html"
-                    ),
-                    "license": "GPL-2.0-or-later",
-                },
-            ],
-            "limitations": [
-                (
-                    "Enumeration is exact but explicit, so listing a class is "
-                    "practical only while its cardinality is small.  Counting, "
-                    "ranking, and uniform sampling avoid enumeration."
-                ),
-            ],
+            "provenance": provenance,
+            "references": references,
+            "limitations": limitations,
         },
     )
 
+
+_ENUMERATION_LIMITATION = (
+    "Enumeration is exact but explicit, so listing a class is practical only "
+    "while its cardinality is small.  Counting, ranking, and uniform sampling "
+    "avoid enumeration."
+)
+_COUNTING_LIMITATION = (
+    "The pentagonal recurrence computes every partition number up to its "
+    "argument, so counting costs about `n^(3/2)` big-integer additions.  "
+    "SageMath and PARI/GP use the Hardy-Ramanujan-Rademacher formula through "
+    "FLINT and answer far larger arguments; see `bench/compare-partitions.cjs`."
+)
 
 _register_combinat_doc(
     "Partition",
     Partition,
     "class",
-    "sage.combinat.partition.Partition",
+    [_SAGE_PROVENANCE],
+    [],
+    [_ENUMERATION_LIMITATION],
 )
 _register_combinat_doc(
     "Partitions",
     Partitions,
     "function",
-    "sage.combinat.partition.Partitions",
+    [
+        _SAGE_PROVENANCE,
+        _PENTAGONAL_PROVENANCE,
+        _RANKING_PROVENANCE,
+        _SHARED_MEMO_PROVENANCE,
+    ],
+    [
+        _ANDREWS_REFERENCE,
+        _KREHER_STINSON_REFERENCE,
+        _NIJENHUIS_WILF_REFERENCE,
+    ],
+    [_ENUMERATION_LIMITATION, _COUNTING_LIMITATION],
 )
 _register_combinat_doc(
     "number_of_partitions",
     number_of_partitions,
     "function",
-    "sage.combinat.partition.number_of_partitions",
+    [_SAGE_PROVENANCE, _PENTAGONAL_PROVENANCE],
+    [_ANDREWS_REFERENCE],
+    [_COUNTING_LIMITATION],
 )
 
 

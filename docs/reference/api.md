@@ -5955,11 +5955,16 @@ This API and documentation are adapted from
 - Tags: combinatorics, enumerative combinatorics, partitions, integer sequences
 - Backends: Sage.js exact enumeration
 - Sage compatibility: partial — Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented.
-- Limitations: Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration.
+- Limitations: The pentagonal recurrence computes every partition number up to its argument, so counting costs about `n^(3/2)` big-integer additions.  SageMath and PARI/GP use the Hardy-Ramanujan-Rademacher formula through FLINT and answer far larger arguments; see `bench/compare-partitions.cjs`.
 
 ### Provenance
 
-- `sage-derived` — [SageMath `sage.combinat.partition.number_of_partitions`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html); license GPL-2.0-or-later
+- `sage-derived` — [SageMath `sage.combinat.partition`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html); revision SageMath 10.9; license GPL-2.0-or-later
+- `literature-implemented` — Euler's pentagonal number theorem recurrence for `p(n)`
+
+### References
+
+- George E. Andrews, The Theory of Partitions (1976).
 
 ## `NumberField`
 
@@ -6225,7 +6230,7 @@ This API and documentation are adapted from
 
 ### Provenance
 
-- `sage-derived` — [SageMath `sage.combinat.partition.Partition`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html); license GPL-2.0-or-later
+- `sage-derived` — [SageMath `sage.combinat.partition`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html); revision SageMath 10.9; license GPL-2.0-or-later
 
 ## `Partition.cells`
 
@@ -6570,11 +6575,20 @@ This API and documentation are adapted from
 - Tags: combinatorics, enumerative combinatorics, partitions, integer sequences
 - Backends: Sage.js exact enumeration
 - Sage compatibility: partial — Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented.
-- Limitations: Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration.
+- Limitations: Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration. The pentagonal recurrence computes every partition number up to its argument, so counting costs about `n^(3/2)` big-integer additions.  SageMath and PARI/GP use the Hardy-Ramanujan-Rademacher formula through FLINT and answer far larger arguments; see `bench/compare-partitions.cjs`.
 
 ### Provenance
 
-- `sage-derived` — [SageMath `sage.combinat.partition.Partitions`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html); license GPL-2.0-or-later
+- `sage-derived` — [SageMath `sage.combinat.partition`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html); revision SageMath 10.9; license GPL-2.0-or-later
+- `literature-implemented` — Euler's pentagonal number theorem recurrence for `p(n)`
+- `literature-implemented` — Counting-driven ranking, unranking, and uniform random selection over a recursively counted set
+- `sagejs-original` — One memoized recursion over the largest remaining part serves cardinality, rank, unrank, and random_element, so the four agree by construction rather than by separate implementation
+
+### References
+
+- George E. Andrews, The Theory of Partitions (1976).
+- Donald L. Kreher, Douglas R. Stinson, Combinatorial Algorithms: Generation, Enumeration, and Search (1999).
+- Albert Nijenhuis, Herbert S. Wilf, Combinatorial Algorithms for Computers and Calculators (1978).
 
 ## `Partitions.cardinality`
 
