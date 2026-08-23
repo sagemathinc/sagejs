@@ -295,6 +295,15 @@ def write_main_name(output, filename=None):
         output.indent()
         if output.options.reuse_main_module:
             output.print(
+                "var __name__, __package__, __loader__, __spec__, __cached__, "
+                "__builtins__"
+            )
+            if filename:
+                output.print(", __file__")
+            output.semicolon()
+            output.newline()
+            output.indent()
+            output.print(
                 "if (!ρσ_modules.__main__[Symbol.for("
                 "'sagejs.compiler.main-magic-initialized')]) {"
                 '__name__ = "__main__"; __package__ = null; '
@@ -704,17 +713,22 @@ def print_top_level(self, output):
             )
             output.end_statement()
 
+    def write_strict_directive():
+        # Python never permits assignment to create an implicit global.  Keep
+        # wrapped programs, bare output, and reusable REPL snippets under the
+        # same JavaScript rule so a missing compiler declaration fails in
+        # every execution path.
+        output.indent()
+        output.print('"use strict"')
+        output.end_statement()
+
     if output.options.private_scope and is_main:
 
         def f_main_function():
             output.print("function()")
 
             def f_full_function():
-                # strict mode is more verbose about errors, and less forgiving about them
-                # kind of like Python
-                output.indent()
-                output.print('"use strict"')
-                output.end_statement()
+                write_strict_directive()
 
                 prologue(self, output)
                 write_imports(self, output)
@@ -754,6 +768,7 @@ def print_top_level(self, output):
         output.print("")
     else:
         if is_main:
+            write_strict_directive()
             prologue(self, output)
             write_imports(self, output)
             output.module_control_flow_names = control_flow_import_names(self)

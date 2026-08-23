@@ -923,6 +923,12 @@ try {
       "def inner():",
       "    return [b for a, b in [(1, 2), (3, 4)]]",
       "print(inner())",
+      "first, *rest = [1, 2, 3]",
+      "print(first, rest)",
+      "def split(values):",
+      "    head, *middle, last = values",
+      "    return head, middle, last",
+      "print(split([4, 5, 6, 7]))",
       "",
     ].join("\n"),
     "utf8",
@@ -960,7 +966,15 @@ try {
   assert.equal(run([loadingFile]).trim(), "49");
   assert.equal(
     run(["--python", unpackFile]).trim(),
-    ["[3, 7]", "{'x': 1, 'y': 2}", "26", "[6]", "[2, 4]"].join("\n"),
+    [
+      "[3, 7]",
+      "{'x': 1, 'y': 2}",
+      "26",
+      "[6]",
+      "[2, 4]",
+      "1 [2, 3]",
+      "(4, [5, 6], 7)",
+    ].join("\n"),
   );
   assert.equal(
     run([multiprocessingFile]).trim(),

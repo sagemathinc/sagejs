@@ -286,6 +286,13 @@ export class PythonAstSemanticAnalyzer {
       names.push(target.name);
       return;
     }
+    if (
+      target instanceof this.compiler.AST_UnaryPrefix &&
+      target.operator === "*"
+    ) {
+      this.addTarget(target.expression, names);
+      return;
+    }
     if (target instanceof this.compiler.AST_Seq) {
       names.push("ρσ_unpack");
       for (const value of target.to_array()) this.addTarget(value, names);
@@ -319,7 +326,6 @@ export class PythonAstSemanticAnalyzer {
           ) {
             this.addTarget(statement.init, names);
           } else if (statement instanceof this.compiler.AST_With) {
-            names.push("ρσ_with_exception", "ρσ_with_suppress");
             for (const clause of statement.clauses ?? []) {
               if (clause.alias) names.push(clause.alias.name);
             }
