@@ -3,8 +3,11 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <time.h>
+
+#include <pthread.h>
 
 #include <flint/acb.h>
 #include <flint/acb_poly.h>
@@ -27,6 +30,7 @@
 #define SAGEJS_EC_LSERIES_MAX_POINT_GRID_TERMS 10000000
 #define SAGEJS_EC_LSERIES_MAX_HEIGHT 100.0
 #define SAGEJS_EC_LSERIES_MAX_REAL_OFFSET 8.0
+#define SAGEJS_HG_CENTRAL_MAX_WORKER_GRID_SLOTS 200000
 
 static void coefficient_tail_bound(
     arb_t result, const arb_t a, slong cutoff, slong order, slong precision)
@@ -1289,6 +1293,32 @@ static int check_napi(napi_env env, napi_status status)
             ? info->error_message
             : "Node-API call failed");
     return 0;
+}
+
+static int hg_cancellation_pointer(
+    napi_env env,
+    napi_value value,
+    const _Atomic uint32_t **cancel)
+{
+    napi_valuetype cancel_type;
+    *cancel = NULL;
+    if (!check_napi(env, napi_typeof(env, value, &cancel_type))) return 0;
+    if (cancel_type == napi_undefined || cancel_type == napi_null) return 1;
+    bool is_array;
+    napi_typedarray_type type;
+    size_t length, offset;
+    napi_value buffer;
+    if (!check_napi(env, napi_is_typedarray(env, value, &is_array)) ||
+        !is_array ||
+        !check_napi(env, napi_get_typedarray_info(env, value, &type, &length,
+            (void **) cancel, &buffer, &offset)) ||
+        type != napi_uint32_array || length < 1)
+    {
+        napi_throw_type_error(
+            env, NULL, "cancel must be a Uint32Array or undefined");
+        return 0;
+    }
+    return 1;
 }
 
 static int value_to_slong(
@@ -2731,10 +2761,40 @@ typedef struct
     slong coefficient_logarithms;
     slong coarse_phase_updates;
     slong fine_phase_updates;
+    slong coefficient_worker_count;
+    slong coefficient_worker_grid_slots;
+    slong coefficient_worker_creation_fallbacks;
     double coefficient_traversal_cpu_seconds;
+    double coefficient_traversal_wall_seconds;
     double coarse_completion_cpu_seconds;
     double fine_completion_cpu_seconds;
+    double total_cpu_seconds;
+    double total_wall_seconds;
 } hg_central_weight_stage_diagnostics;
+
+typedef struct
+{
+    acb_ptr coarse_bases;
+    acb_ptr fine_bases;
+    const int32_t *coefficients;
+    slong start;
+    slong stop;
+    slong precision;
+    const hg_central_weight_plan *coarse_plan;
+    const hg_central_weight_plan *fine_plan;
+    slong coefficient_logarithms;
+    slong coarse_phase_updates;
+    slong fine_phase_updates;
+    const _Atomic uint32_t *cancel;
+    _Atomic int *cancelled;
+} hg_central_weight_coefficient_work;
+
+static double hg_wall_seconds(void)
+{
+    struct timespec now;
+    if (timespec_get(&now, TIME_UTC) != TIME_UTC) return 0.0;
+    return (double) now.tv_sec + (double) now.tv_nsec / 1000000000.0;
+}
 
 static int hg_central_weight_make_plan(
     hg_central_weight_plan *plan,
@@ -3077,6 +3137,116 @@ static int hg_central_weight_finish_grid(
     return 1;
 }
 
+/* Accumulate one disjoint coefficient interval into private coarse/fine Arb
+ * grids.  Every worker owns all FLINT temporaries and output balls it mutates;
+ * the caller merges the finished grids in a fixed lane order.  This keeps the
+ * finite-arithmetic enclosure and the two independent contour refinements
+ * intact while making the dominant Dirichlet-polynomial traversal parallel. */
+static void *hg_central_weight_coefficient_worker(void *argument)
+{
+    hg_central_weight_coefficient_work *work =
+        (hg_central_weight_coefficient_work *) argument;
+    const slong coarse_count = work->coarse_plan->contour_points + 1;
+    const slong fine_count = work->fine_plan->contour_points + 1;
+    const int reanchor_phases = work->precision >= 192;
+
+    arb_t logarithm, amplitude, angle, sine, cosine;
+    arb_init(logarithm);
+    arb_init(amplitude);
+    arb_init(angle);
+    arb_init(sine);
+    arb_init(cosine);
+    acb_t phase, phase_step;
+    acb_init(phase);
+    acb_init(phase_step);
+
+    work->coefficient_logarithms = 0;
+    work->coarse_phase_updates = 0;
+    work->fine_phase_updates = 0;
+    for (slong n = work->start; n < work->stop; ++n)
+    {
+        if (work->cancel != NULL &&
+            atomic_load_explicit(work->cancel, memory_order_relaxed) != 0)
+        {
+            atomic_store_explicit(
+                work->cancelled, 1, memory_order_relaxed);
+            break;
+        }
+        const int32_t coefficient_value = work->coefficients[n];
+        if (coefficient_value == 0) continue;
+        ++work->coefficient_logarithms;
+        arb_set_ui(logarithm, (ulong) n);
+        arb_log(logarithm, logarithm, work->precision);
+        /* `Re(s)` is the small exact integer 2 or 3.  Form a_n/n^Re(s)
+         * directly instead of exponentiating `-Re(s)*log(n)`. */
+        ulong amplitude_denominator = (ulong) n * (ulong) n;
+        if (work->fine_plan->contour_real == 3)
+            amplitude_denominator *= (ulong) n;
+        arb_set_si(amplitude, (slong) coefficient_value);
+        arb_div_ui(
+            amplitude, amplitude, amplitude_denominator, work->precision);
+
+        arb_set_d(angle, -work->coarse_plan->contour_step);
+        arb_mul(angle, angle, logarithm, work->precision);
+        arb_sin_cos(sine, cosine, angle, work->precision);
+        acb_set_arb_arb(phase_step, cosine, sine);
+        acb_one(phase);
+        for (slong index = 0; index < coarse_count; ++index)
+        {
+            if (reanchor_phases && index != 0 &&
+                (index & SAGEJS_HG_PHASE_REANCHOR_MASK) == 0)
+            {
+                arb_set_d(angle, -work->coarse_plan->contour_step);
+                arb_mul_ui(angle, angle, (ulong) index, work->precision);
+                arb_mul(angle, angle, logarithm, work->precision);
+                arb_sin_cos(sine, cosine, angle, work->precision);
+                acb_set_arb_arb(phase, cosine, sine);
+            }
+            acb_addmul_arb(work->coarse_bases + index, phase, amplitude,
+                work->precision);
+            if (index + 1 < coarse_count &&
+                (!reanchor_phases ||
+                    ((index + 1) & SAGEJS_HG_PHASE_REANCHOR_MASK) != 0))
+                acb_mul(phase, phase, phase_step, work->precision);
+        }
+        work->coarse_phase_updates += coarse_count;
+
+        arb_set_d(angle, -work->fine_plan->contour_step);
+        arb_mul(angle, angle, logarithm, work->precision);
+        arb_sin_cos(sine, cosine, angle, work->precision);
+        acb_set_arb_arb(phase_step, cosine, sine);
+        acb_one(phase);
+        for (slong index = 0; index < fine_count; ++index)
+        {
+            if (reanchor_phases && index != 0 &&
+                (index & SAGEJS_HG_PHASE_REANCHOR_MASK) == 0)
+            {
+                arb_set_d(angle, -work->fine_plan->contour_step);
+                arb_mul_ui(angle, angle, (ulong) index, work->precision);
+                arb_mul(angle, angle, logarithm, work->precision);
+                arb_sin_cos(sine, cosine, angle, work->precision);
+                acb_set_arb_arb(phase, cosine, sine);
+            }
+            acb_addmul_arb(work->fine_bases + index, phase, amplitude,
+                work->precision);
+            if (index + 1 < fine_count &&
+                (!reanchor_phases ||
+                    ((index + 1) & SAGEJS_HG_PHASE_REANCHOR_MASK) != 0))
+                acb_mul(phase, phase, phase_step, work->precision);
+        }
+        work->fine_phase_updates += fine_count;
+    }
+
+    acb_clear(phase_step);
+    acb_clear(phase);
+    arb_clear(cosine);
+    arb_clear(sine);
+    arb_clear(angle);
+    arb_clear(amplitude);
+    arb_clear(logarithm);
+    return NULL;
+}
+
 static int hg_central_weight_grid_pair(
     acb_ptr coarse_completed,
     acb_ptr coarse_raw,
@@ -3090,6 +3260,8 @@ static int hg_central_weight_grid_pair(
     slong maximum_derivative,
     const hg_central_weight_plan *coarse_plan,
     const hg_central_weight_plan *fine_plan,
+    slong requested_worker_count,
+    const _Atomic uint32_t *cancel,
     hg_central_weight_stage_diagnostics *diagnostics)
 {
     if (available_cutoff < coarse_plan->cutoff ||
@@ -3101,6 +3273,7 @@ static int hg_central_weight_grid_pair(
         coarse_plan->contour_real != fine_plan->contour_real)
     {
         const clock_t fallback_started = clock();
+        const double fallback_wall_started = hg_wall_seconds();
         const int answer = hg_central_weight_grid(
                 coarse_completed, coarse_raw, coefficients, available_cutoff,
                 conductor, root_number, genus, maximum_derivative,
@@ -3110,101 +3283,119 @@ static int hg_central_weight_grid_pair(
                 conductor, root_number, genus, maximum_derivative, fine_plan);
         diagnostics->coefficient_traversal_cpu_seconds =
             (double) (clock() - fallback_started) / (double) CLOCKS_PER_SEC;
+        diagnostics->coefficient_traversal_wall_seconds =
+            hg_wall_seconds() - fallback_wall_started;
+        diagnostics->coefficient_worker_count = 1;
         return answer;
     }
     const slong precision = fine_plan->work_precision;
     const slong coarse_count = coarse_plan->contour_points + 1;
     const slong fine_count = fine_plan->contour_points + 1;
-    const int reanchor_phases = precision >= 192;
     acb_ptr coarse_bases = _acb_vec_init(coarse_count);
     acb_ptr fine_bases = _acb_vec_init(fine_count);
 
-    arb_t logarithm, amplitude, angle, sine, cosine;
     arb_t log_a_exact;
-    arb_init(logarithm);
-    arb_init(amplitude);
-    arb_init(angle);
-    arb_init(sine);
-    arb_init(cosine);
     arb_init(log_a_exact);
-    acb_t phase, phase_step;
-    acb_init(phase);
-    acb_init(phase_step);
 
     diagnostics->coefficient_logarithms = 0;
     diagnostics->coarse_phase_updates = 0;
     diagnostics->fine_phase_updates = 0;
+    slong worker_count = requested_worker_count;
+    if (worker_count < 1) worker_count = 1;
+    if (worker_count > 4) worker_count = 4;
+#ifdef _WIN32
+    /* pthreadVC is linked for other native dependencies, but the initial
+     * analytic worker receipt deliberately keeps Windows on the audited
+     * one-worker path until the exact four-lane corpus is recorded there. */
+    worker_count = 1;
+#endif
+    if (worker_count > fine_plan->cutoff)
+        worker_count = fine_plan->cutoff;
+    while (worker_count > 1 &&
+        worker_count * (coarse_count + fine_count) >
+            SAGEJS_HG_CENTRAL_MAX_WORKER_GRID_SLOTS)
+        --worker_count;
+    diagnostics->coefficient_worker_count = worker_count;
+    diagnostics->coefficient_worker_grid_slots =
+        worker_count * (coarse_count + fine_count);
+    diagnostics->coefficient_worker_creation_fallbacks = 0;
     const clock_t coefficient_started = clock();
+    const double coefficient_wall_started = hg_wall_seconds();
     hg_log_a_exact(log_a_exact, conductor, genus, precision);
-    for (slong n = 1; n <= fine_plan->cutoff; ++n)
+
+    hg_central_weight_coefficient_work work[4];
+    pthread_t threads[4];
+    int thread_started[4] = {0, 0, 0, 0};
+    _Atomic int cancelled;
+    atomic_init(&cancelled, 0);
+    for (slong lane = 0; lane < worker_count; ++lane)
     {
-        const int32_t coefficient_value = coefficients[n];
-        if (coefficient_value == 0) continue;
-        ++diagnostics->coefficient_logarithms;
-        arb_set_ui(logarithm, (ulong) n);
-        arb_log(logarithm, logarithm, precision);
-        /* `Re(s)` is the small exact integer 2 or 3.  Form a_n/n^Re(s)
-         * directly instead of exponentiating `-Re(s)*log(n)`.  This is both
-         * faster and a tighter Arb enclosure, while the exact logarithm is
-         * still shared by the independent coarse/fine phase grids. */
-        ulong amplitude_denominator = (ulong) n * (ulong) n;
-        if (fine_plan->contour_real == 3)
-            amplitude_denominator *= (ulong) n;
-        arb_set_si(amplitude, (slong) coefficient_value);
-        arb_div_ui(
-            amplitude, amplitude, amplitude_denominator, precision);
+        work[lane].coarse_bases = lane == 0
+            ? coarse_bases : _acb_vec_init(coarse_count);
+        work[lane].fine_bases = lane == 0
+            ? fine_bases : _acb_vec_init(fine_count);
+        work[lane].coefficients = coefficients;
+        work[lane].start =
+            1 + fine_plan->cutoff * lane / worker_count;
+        work[lane].stop =
+            1 + fine_plan->cutoff * (lane + 1) / worker_count;
+        work[lane].precision = precision;
+        work[lane].coarse_plan = coarse_plan;
+        work[lane].fine_plan = fine_plan;
+        work[lane].cancel = cancel;
+        work[lane].cancelled = &cancelled;
+    }
+    for (slong lane = 1; lane < worker_count; ++lane)
+    {
+        thread_started[lane] = pthread_create(&threads[lane], NULL,
+            hg_central_weight_coefficient_worker, work + lane) == 0;
+        if (!thread_started[lane])
+            ++diagnostics->coefficient_worker_creation_fallbacks;
+    }
+    hg_central_weight_coefficient_worker(work);
+    for (slong lane = 1; lane < worker_count; ++lane)
+        if (!thread_started[lane])
+            hg_central_weight_coefficient_worker(work + lane);
+    for (slong lane = 1; lane < worker_count; ++lane)
+        if (thread_started[lane])
+            (void) pthread_join(threads[lane], NULL);
 
-        arb_set_d(angle, -coarse_plan->contour_step);
-        arb_mul(angle, angle, logarithm, precision);
-        arb_sin_cos(sine, cosine, angle, precision);
-        acb_set_arb_arb(phase_step, cosine, sine);
-        acb_one(phase);
-        for (slong index = 0; index < coarse_count; ++index)
-        {
-            if (reanchor_phases && index != 0 &&
-                (index & SAGEJS_HG_PHASE_REANCHOR_MASK) == 0)
-            {
-                arb_set_d(angle, -coarse_plan->contour_step);
-                arb_mul_ui(angle, angle, (ulong) index, precision);
-                arb_mul(angle, angle, logarithm, precision);
-                arb_sin_cos(sine, cosine, angle, precision);
-                acb_set_arb_arb(phase, cosine, sine);
-            }
-            acb_addmul_arb(
-                coarse_bases + index, phase, amplitude, precision);
-            if (index + 1 < coarse_count &&
-                (!reanchor_phases ||
-                    ((index + 1) & SAGEJS_HG_PHASE_REANCHOR_MASK) != 0))
-                acb_mul(phase, phase, phase_step, precision);
-        }
-        diagnostics->coarse_phase_updates += coarse_count;
-
-        arb_set_d(angle, -fine_plan->contour_step);
-        arb_mul(angle, angle, logarithm, precision);
-        arb_sin_cos(sine, cosine, angle, precision);
-        acb_set_arb_arb(phase_step, cosine, sine);
-        acb_one(phase);
-        for (slong index = 0; index < fine_count; ++index)
-        {
-            if (reanchor_phases && index != 0 &&
-                (index & SAGEJS_HG_PHASE_REANCHOR_MASK) == 0)
-            {
-                arb_set_d(angle, -fine_plan->contour_step);
-                arb_mul_ui(angle, angle, (ulong) index, precision);
-                arb_mul(angle, angle, logarithm, precision);
-                arb_sin_cos(sine, cosine, angle, precision);
-                acb_set_arb_arb(phase, cosine, sine);
-            }
-            acb_addmul_arb(fine_bases + index, phase, amplitude, precision);
-            if (index + 1 < fine_count &&
-                (!reanchor_phases ||
-                    ((index + 1) & SAGEJS_HG_PHASE_REANCHOR_MASK) != 0))
-                acb_mul(phase, phase, phase_step, precision);
-        }
-        diagnostics->fine_phase_updates += fine_count;
+    for (slong lane = 0; lane < worker_count; ++lane)
+    {
+        diagnostics->coefficient_logarithms +=
+            work[lane].coefficient_logarithms;
+        diagnostics->coarse_phase_updates += work[lane].coarse_phase_updates;
+        diagnostics->fine_phase_updates += work[lane].fine_phase_updates;
     }
     diagnostics->coefficient_traversal_cpu_seconds =
         (double) (clock() - coefficient_started) / (double) CLOCKS_PER_SEC;
+    diagnostics->coefficient_traversal_wall_seconds =
+        hg_wall_seconds() - coefficient_wall_started;
+
+    if (atomic_load_explicit(&cancelled, memory_order_relaxed) != 0)
+    {
+        for (slong lane = 1; lane < worker_count; ++lane)
+        {
+            _acb_vec_clear(work[lane].fine_bases, fine_count);
+            _acb_vec_clear(work[lane].coarse_bases, coarse_count);
+        }
+        arb_clear(log_a_exact);
+        _acb_vec_clear(fine_bases, fine_count);
+        _acb_vec_clear(coarse_bases, coarse_count);
+        return -1;
+    }
+
+    for (slong lane = 1; lane < worker_count; ++lane)
+    {
+        for (slong index = 0; index < coarse_count; ++index)
+            acb_add(coarse_bases + index, coarse_bases + index,
+                work[lane].coarse_bases + index, precision);
+        for (slong index = 0; index < fine_count; ++index)
+            acb_add(fine_bases + index, fine_bases + index,
+                work[lane].fine_bases + index, precision);
+        _acb_vec_clear(work[lane].fine_bases, fine_count);
+        _acb_vec_clear(work[lane].coarse_bases, coarse_count);
+    }
 
     const clock_t coarse_started = clock();
     const int coarse_ok = hg_central_weight_finish_grid(
@@ -3219,14 +3410,7 @@ static int hg_central_weight_grid_pair(
     diagnostics->fine_completion_cpu_seconds =
         (double) (clock() - fine_started) / (double) CLOCKS_PER_SEC;
 
-    acb_clear(phase_step);
-    acb_clear(phase);
     arb_clear(log_a_exact);
-    arb_clear(cosine);
-    arb_clear(sine);
-    arb_clear(angle);
-    arb_clear(amplitude);
-    arb_clear(logarithm);
     _acb_vec_clear(fine_bases, fine_count);
     _acb_vec_clear(coarse_bases, coarse_count);
     return coarse_ok && fine_ok;
@@ -3674,28 +3858,38 @@ hg_failure:
 napi_value sagejs_hyperelliptic_central_weights(
     napi_env env, napi_callback_info info)
 {
-    napi_value args[6];
-    size_t argc = 6;
+    napi_value args[8];
+    size_t argc = 8;
     if (!check_napi(env,
             napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
         return NULL;
-    if (argc != 6)
+    if (argc < 6 || argc > 8)
     {
         napi_throw_type_error(env, NULL,
             "hyperellipticCentralWeights expects conductor, root number, "
-            "genus, coefficients, precision, and maximum derivative");
+            "genus, coefficients, precision, maximum derivative, and an "
+            "optional coefficient worker count and cancellation flag");
         return NULL;
     }
 
     fmpz_t conductor;
     fmpz_init(conductor);
     slong root_number, genus, target_bits, maximum_derivative;
+    slong requested_worker_count = 4;
+    const _Atomic uint32_t *cancel = NULL;
     if (!value_to_fmpz(env, args[0], conductor) ||
         !value_to_slong(env, args[1], -1, 1, &root_number) ||
         !value_to_slong(env, args[2], 2, 3, &genus) ||
         !value_to_slong(env, args[4], 16, 512, &target_bits) ||
         !value_to_slong(env, args[5], 0,
             SAGEJS_HG_LSERIES_MAX_DERIVATIVE, &maximum_derivative) ||
+        (argc == 7 &&
+            !value_to_slong(env, args[6], 1, 4,
+                &requested_worker_count)) ||
+        (argc == 8 &&
+            (!value_to_slong(env, args[6], 1, 4,
+                 &requested_worker_count) ||
+                !hg_cancellation_pointer(env, args[7], &cancel))) ||
         (root_number != -1 && root_number != 1))
     {
         fmpz_clear(conductor);
@@ -3721,15 +3915,24 @@ napi_value sagejs_hyperelliptic_central_weights(
         return NULL;
     }
     const slong available_cutoff = coefficient_view.length - 1;
-    napi_value result, status, rigorous;
+    napi_value result, status, rigorous, worker_capability;
+#ifdef _WIN32
+    const char *worker_capability_name = "single-worker-windows-fallback";
+#else
+    const char *worker_capability_name = "pthread-bounded-4";
+#endif
     if (!check_napi(env, napi_create_object(env, &result)) ||
         !check_napi(env, napi_create_string_utf8(env,
             available_cutoff < fine_plan.cutoff
                 ? "insufficient_coefficients" : "ok",
             NAPI_AUTO_LENGTH, &status)) ||
         !check_napi(env, napi_get_boolean(env, false, &rigorous)) ||
+        !check_napi(env, napi_create_string_utf8(env,
+            worker_capability_name, NAPI_AUTO_LENGTH, &worker_capability)) ||
         !set_named(env, result, "status", status) ||
         !set_named(env, result, "rigorous", rigorous) ||
+        !set_named(env, result, "coefficientWorkerCapability",
+            worker_capability) ||
         !set_named_slong(env, result, "genus", genus) ||
         !set_named_slong(env, result, "precisionBits", target_bits) ||
         !set_named_slong(
@@ -3767,13 +3970,32 @@ napi_value sagejs_hyperelliptic_central_weights(
     acb_ptr fine_completed = _acb_vec_init(derivative_count);
     acb_ptr fine_raw = _acb_vec_init(derivative_count);
     hg_central_weight_stage_diagnostics stage_diagnostics = {0};
+    const clock_t total_started = clock();
+    const double total_wall_started = hg_wall_seconds();
     const int computed = hg_central_weight_grid_pair(
         coarse_completed, coarse_raw, fine_completed, fine_raw,
         coefficient_view.data, available_cutoff, conductor, (int) root_number,
         genus, maximum_derivative, &coarse_plan, &fine_plan,
-        &stage_diagnostics);
+        requested_worker_count, cancel, &stage_diagnostics);
+    stage_diagnostics.total_cpu_seconds =
+        (double) (clock() - total_started) / (double) CLOCKS_PER_SEC;
+    stage_diagnostics.total_wall_seconds =
+        hg_wall_seconds() - total_wall_started;
     packed_coefficient_view_clear(&coefficient_view);
     fmpz_clear(conductor);
+    if (computed < 0)
+    {
+        napi_value cancelled_status;
+        if (!check_napi(env, napi_create_string_utf8(
+                env, "cancelled", NAPI_AUTO_LENGTH, &cancelled_status)) ||
+            !set_named(env, result, "status", cancelled_status))
+            goto hg_central_computed_failure;
+        _acb_vec_clear(fine_raw, derivative_count);
+        _acb_vec_clear(fine_completed, derivative_count);
+        _acb_vec_clear(coarse_raw, derivative_count);
+        _acb_vec_clear(coarse_completed, derivative_count);
+        return result;
+    }
     if (!computed)
     {
         napi_throw_error(env, NULL,
@@ -3837,12 +4059,24 @@ napi_value sagejs_hyperelliptic_central_weights(
             stage_diagnostics.coarse_phase_updates) ||
         !set_named_slong(env, result, "finePhaseUpdates",
             stage_diagnostics.fine_phase_updates) ||
+        !set_named_slong(env, result, "coefficientWorkerCount",
+            stage_diagnostics.coefficient_worker_count) ||
+        !set_named_slong(env, result, "coefficientWorkerGridSlots",
+            stage_diagnostics.coefficient_worker_grid_slots) ||
+        !set_named_slong(env, result, "coefficientWorkerCreationFallbacks",
+            stage_diagnostics.coefficient_worker_creation_fallbacks) ||
         !set_named_double(env, result, "coefficientTraversalCpuSeconds",
             stage_diagnostics.coefficient_traversal_cpu_seconds) ||
+        !set_named_double(env, result, "coefficientTraversalWallSeconds",
+            stage_diagnostics.coefficient_traversal_wall_seconds) ||
         !set_named_double(env, result, "coarseCompletionCpuSeconds",
             stage_diagnostics.coarse_completion_cpu_seconds) ||
         !set_named_double(env, result, "fineCompletionCpuSeconds",
             stage_diagnostics.fine_completion_cpu_seconds) ||
+        !set_named_double(env, result, "totalCpuSeconds",
+            stage_diagnostics.total_cpu_seconds) ||
+        !set_named_double(env, result, "totalWallSeconds",
+            stage_diagnostics.total_wall_seconds) ||
         !set_named(env, result, "analyticErrorStatus", error_status) ||
         !set_named(env, result, "algorithm", algorithm))
         goto hg_central_computed_failure;
