@@ -4,7 +4,7 @@
   "id": "hyp-analytic-perf",
   "title": "Hyp Analytic Perf",
   "lane": "hyperelliptic-curves",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Benchmark and optimize reusable genus-2/3 periods and initialized L-functions against PARI while preserving numerical honesty.",
   "base_commit": "52f14e0cdc6fd9fca0e9625d5d32cb1415b99a84",
@@ -43,7 +43,9 @@
   "validation": [
     "pnpm architecture:check",
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "node test/native-kernel.cjs",
+    "node --test test/hyperelliptic-analytic-performance.cjs test/hyperelliptic-global-lseries.cjs test/hyperelliptic-twist-lseries.cjs"
   ],
   "runs": [
     {
@@ -84,6 +86,56 @@
       "started_at": "2026-08-23T04:54:10.775Z",
       "commit": "8fc76245435dad17e2c8de4917c8653e6b95b9af",
       "workspace_fingerprint": "b887b34f831aa5fdd77698e95680137e5bc12631a74ccaa208b7ae073fc55ae5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/native-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.361,
+      "started_at": "2026-08-23T05:18:28.918Z",
+      "commit": "fee32bcc485dfbaca64613f825b36e3cc0d2fc4b",
+      "workspace_fingerprint": "507bd9f0b61fc3354692a5d11f8a843d4bce26b03f347b3926a5141a36b1ae22",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.598,
+      "started_at": "2026-08-23T05:19:35.139Z",
+      "commit": "fee32bcc485dfbaca64613f825b36e3cc0d2fc4b",
+      "workspace_fingerprint": "507bd9f0b61fc3354692a5d11f8a843d4bce26b03f347b3926a5141a36b1ae22",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.429,
+      "started_at": "2026-08-23T05:19:42.371Z",
+      "commit": "fee32bcc485dfbaca64613f825b36e3cc0d2fc4b",
+      "workspace_fingerprint": "507bd9f0b61fc3354692a5d11f8a843d4bce26b03f347b3926a5141a36b1ae22",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-analytic-performance.cjs test/hyperelliptic-global-lseries.cjs test/hyperelliptic-twist-lseries.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 66.778,
+      "started_at": "2026-08-23T05:20:20.240Z",
+      "commit": "fee32bcc485dfbaca64613f825b36e3cc0d2fc4b",
+      "workspace_fingerprint": "507bd9f0b61fc3354692a5d11f8a843d4bce26b03f347b3926a5141a36b1ae22",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 852.85,
+      "started_at": "2026-08-23T05:22:00.411Z",
+      "commit": "fee32bcc485dfbaca64613f825b36e3cc0d2fc4b",
+      "workspace_fingerprint": "507bd9f0b61fc3354692a5d11f8a843d4bce26b03f347b3926a5141a36b1ae22",
       "platform": "linux-x64"
     }
   ],
