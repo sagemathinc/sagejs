@@ -65,7 +65,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 875000,
+      "max_source_bytes": 925000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.native", "sagejs.ffi"],
       "files": [
@@ -453,7 +453,7 @@
       "id": "hyperelliptic-curves-kernels",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 150000,
+      "max_source_bytes": 175000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic",
         "hyperelliptic-curves"
@@ -463,14 +463,16 @@
         "sagejs.hyperelliptic_curves.genus2_kummer_height_kernel",
         "sagejs.hyperelliptic_curves.genus3_candidate_kernel",
         "sagejs.hyperelliptic_curves.jacobian_kernels",
-        "sagejs.hyperelliptic_curves.jacobian_kummer_native"
+        "sagejs.hyperelliptic_curves.jacobian_kummer_native",
+        "sagejs.hyperelliptic_curves.jacobian_rational_native"
       ],
       "files": [
         "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_formulas.py",
         "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_height_kernel.py",
         "src/lib/sagejs/hyperelliptic_curves/genus3_candidate_kernel.py",
         "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
-        "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py"
+        "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
+        "src/lib/sagejs/hyperelliptic_curves/jacobian_rational_native.py"
       ],
       "prefixes": []
     },
