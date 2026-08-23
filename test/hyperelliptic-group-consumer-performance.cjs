@@ -523,6 +523,13 @@ class InstrumentedPrepared:
                 u, v = J._compose(current[0], current[1], step[0], step[1])
                 current = J._element(u, v, False)
         return tuple(values)
+    def negate_batch(
+        self, elements, algorithm=None, diagnostics=False, materialize=False
+    ):
+        answer = tuple(element._negate_reference() for element in elements)
+        if diagnostics:
+            raise AssertionError("the instrumented legacy path does not request diagnostics")
+        return answer
     def search_progression(
         self, element, base, stride, count, baby_count=None,
         diagnostics=False, max_group_operations=None,
