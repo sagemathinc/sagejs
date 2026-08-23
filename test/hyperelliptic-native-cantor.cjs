@@ -234,6 +234,22 @@ def check_curve(curve, exhaustive):
         assert isinstance(differences, PreparedDivisorBatch)
         assert negated.published_count == 0
         assert differences.published_count == 0
+        prepared_sample = context.prepare_batch(sample[:min(16, len(sample))])
+        assert isinstance(prepared_sample, PreparedDivisorBatch)
+        assert context.prepare_batch(prepared_sample) is prepared_sample
+        assert prepared_sample == tuple(sample[:len(prepared_sample)])
+        assert prepared_sample.published_count == 0
+        packed_total, sum_diagnostics = context.sum(
+            prepared_sample,
+            algorithm="native",
+            diagnostics=True,
+        )
+        reference_total = context.sum(
+            sample[:len(prepared_sample)], algorithm="reference"
+        )
+        assert packed_total == reference_total
+        assert prepared_sample.published_count == 0
+        assert sum_diagnostics.operation == "sum"
     assert sample[1].negate(algorithm=selected) == negated_reference[1]
     assert sample[1].subtract(sample[2], algorithm=selected) == difference_reference[1]
 

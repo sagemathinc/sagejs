@@ -148,6 +148,7 @@ for genus, curve in [
     retained_add = lambda: context.add_batch(
         retained_input, retained_input, algorithm="native"
     )
+    native_sum = lambda: context.sum(retained_input, algorithm="native")
     _diagnostic_add_result, add_diagnostics = context.add_batch(
         left, right, algorithm="native", diagnostics=True
     )
@@ -166,6 +167,10 @@ for genus, curve in [
         native_add_materialized
     )
     reference_add_ns, reference_add_result = timed(reference_add, 3)
+    native_sum_ns, native_sum_result = timed(native_sum)
+    reference_sum_ns, reference_sum_result = timed(
+        lambda: context.sum(reference_add_result, algorithm="reference"), 1
+    )
     native_negate_ns, native_negate_result = timed(native_negate)
     reference_negate_ns, reference_negate_result = timed(reference_negate, 3)
     native_subtract_ns, native_subtract_result = timed(native_subtract)
@@ -183,6 +188,8 @@ for genus, curve in [
     assert native_add_result == reference_add_result
     assert retained_input.published_count == 0
     assert retained_add_result.published_count == 0
+    assert native_sum_result == reference_sum_result
+    assert retained_input.published_count == 0
     assert native_add_materialized_result == reference_add_result
     assert native_negate_result == reference_negate_result
     assert native_subtract_result == reference_subtract_result
@@ -204,6 +211,9 @@ for genus, curve in [
         "retained_add_median_ns": retained_add_ns,
         "retained_add_published_input": retained_input.published_count,
         "retained_add_published_output": retained_add_result.published_count,
+        "native_sum_median_ns": native_sum_ns,
+        "reference_sum_median_ns": reference_sum_ns,
+        "sum_speedup": reference_sum_ns / native_sum_ns,
         "native_add_materialized_median_ns": native_add_materialized_ns,
         "native_add_stages": add_diagnostics.to_dict()["timings_ns"],
         "native_add_materialized_stages": (

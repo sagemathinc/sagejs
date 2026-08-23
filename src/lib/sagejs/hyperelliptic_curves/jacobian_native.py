@@ -227,6 +227,25 @@ class PreparedDivisorBatch:
             packed[offset + 7],
         )
 
+    def _strided_for(
+        self,
+        context: Any,
+        start: int,
+        step: int,
+        count: int,
+    ) -> Any:
+        owner, packed, total = self._state()
+        if owner is not context:
+            raise ValueError("a prepared divisor batch belongs to another context")
+        rows: list[int] = []
+        position = start
+        for _index in range(count):
+            if position < 0 or position >= total:
+                raise IndexError("prepared divisor batch selection is out of range")
+            rows.extend(packed[8 * position : 8 * position + 8])
+            position += step
+        return context._publish_frozen_batch(tuple(rows), count)
+
     def __getitem__(self, index: Any) -> Any:
         owner, packed, count = self._state()
         if isinstance(index, slice):
@@ -769,8 +788,14 @@ class PreparedJacobianArithmetic:
         # each word through Python's generic `int` constructor costs more than
         # the complete fixed-degree group law and adds no validation.
         packed = tuple(output)
+        return self._publish_frozen_batch(packed, count)
+
+    def _publish_frozen_batch(
+        self, packed: tuple[int, ...], count: int
+    ) -> PreparedDivisorBatch:
+        """Internally publish trusted immutable canonical rows as one sequence."""
         if len(packed) != 8 * count:
-            raise ArithmeticError("a packed Cantor kernel returned the wrong span")
+            raise ArithmeticError("a packed Cantor batch has the wrong span")
         batch = object.__new__(PreparedDivisorBatch)
         object.__setattr__(
             batch,
@@ -779,6 +804,20 @@ class PreparedJacobianArithmetic:
         )
         object.__setattr__(batch, "_PreparedDivisorBatch__published", {})
         return batch
+
+    def prepare_batch(self, elements: Any) -> PreparedDivisorBatch:
+        """Freeze public divisors as canonical rows for a retained pipeline."""
+        if isinstance(elements, PreparedDivisorBatch):
+            elements._rows_for(self)
+            return elements
+        values = tuple(elements)
+        self._check_batch_size(len(values))
+        for value in values:
+            if value.parent() is not self._jacobian:
+                raise ValueError("every batch divisor must lie in this Jacobian")
+        return self._publish_frozen_batch(
+            tuple(self._pack_public_batch(values)), len(values)
+        )
 
     def unpack(self, row: Any) -> Any:
         """Validate and publish one canonical odd-degree v1 row."""
@@ -1498,44 +1537,71 @@ class PreparedJacobianArithmetic:
         diagnostics: bool = False,
         materialize: bool = False,
     ) -> Any:
-        values: tuple[Any, ...] = tuple(elements)
-        self._check_batch_size(len(values))
-        if not values:
+        selected, reason = self._selection(algorithm)
+        initial_pack_ns = 0
+        if selected == "native":
+            started = time.perf_counter_ns()
+            level: Any = self.prepare_batch(elements)
+            initial_pack_ns = time.perf_counter_ns() - started
+            count = len(level)
+        else:
+            level = tuple(elements)
+            count = len(level)
+            self._check_batch_size(count)
+            for value in level:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
+        if count == 0:
             answer = self._jacobian.zero()
             if not diagnostics:
                 return answer
             return answer, PreparedBatchDiagnostics(
                 operation="sum",
                 requested=self._algorithm if algorithm is None else algorithm,
-                selected=self._selection(algorithm)[0],
+                selected=selected,
                 fallback_reason="empty",
                 count=0,
-                pack_ns=0,
+                pack_ns=initial_pack_ns,
                 kernel_ns=0,
                 unpack_ns=0,
                 materialization_ns=0,
                 validation_ns=0,
                 statuses=(),
             )
-        total_pack = total_kernel = total_unpack = total_validation = 0
+        total_pack = initial_pack_ns
+        total_kernel = total_unpack = total_validation = 0
         all_statuses: list[int] = []
-        level: tuple[Any, ...] = values
-        selected, reason = self._selection(algorithm)
         while len(level) > 1:
-            lefts = level[0::2]
-            rights = level[1::2]
-            carry = () if len(lefts) == len(rights) else (lefts[-1],)
-            lefts = lefts[: len(rights)]
-            pair_sums, record = self.add_batch(
-                lefts, rights, algorithm=algorithm, diagnostics=True
-            )
-            total_pack += record.pack_ns
-            total_kernel += record.kernel_ns
-            total_unpack += record.unpack_ns
-            total_validation += record.validation_ns
-            all_statuses.extend(record.statuses)
-            level = pair_sums + carry
-        answer = next(iter(level))
+            pair_count = len(level) // 2
+            if isinstance(level, PreparedDivisorBatch):
+                lefts = level._strided_for(self, 0, 2, pair_count)
+                rights = level._strided_for(self, 1, 2, pair_count)
+            else:
+                lefts = level[0 : 2 * pair_count : 2]
+                rights = level[1 : 2 * pair_count : 2]
+            if diagnostics:
+                pair_sums, record = self.add_batch(
+                    lefts, rights, algorithm=algorithm, diagnostics=True
+                )
+                total_pack += record.pack_ns
+                total_kernel += record.kernel_ns
+                total_unpack += record.unpack_ns
+                total_validation += record.validation_ns
+                all_statuses.extend(record.statuses)
+            else:
+                pair_sums = self.add_batch(lefts, rights, algorithm=algorithm)
+            if len(level) % 2:
+                if isinstance(level, PreparedDivisorBatch) and isinstance(
+                    pair_sums, PreparedDivisorBatch
+                ):
+                    carry = level._row(len(level) - 1)
+                    packed = pair_sums._rows_for(self) + carry
+                    level = self._publish_frozen_batch(packed, pair_count + 1)
+                else:
+                    level = tuple(pair_sums) + (level[-1],)
+            else:
+                level = pair_sums
+        answer = level[0]
         materialization_ns = 0
         if materialize:
             started = time.perf_counter_ns()
@@ -1546,7 +1612,7 @@ class PreparedJacobianArithmetic:
             requested=self._algorithm if algorithm is None else algorithm,
             selected=selected,
             fallback_reason=reason,
-            count=len(values),
+            count=count,
             pack_ns=total_pack,
             kernel_ns=total_kernel,
             unpack_ns=total_unpack,
