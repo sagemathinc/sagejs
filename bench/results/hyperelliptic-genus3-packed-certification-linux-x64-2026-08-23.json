@@ -111,6 +111,55 @@
       "overall": "fail"
     }
   },
+  "local_shared_search_fc335f10": {
+    "purpose": "bounded exact acceptance of no-parent certification with one shared progression table",
+    "host": "project-cd40b605-e49e-4074-9c13-b9caa02cb60d",
+    "platform": "linux-x64",
+    "commit": "fc335f10c93a37719280134d256902457cb1f0f0",
+    "command": "node bench/rforest/benchmark-genus3-certified.cjs --limits 10007 --stages certification",
+    "exact": {
+      "rows": 1230,
+      "unique": 1225,
+      "fallback": 1,
+      "omitted": 4,
+      "primary_samples": 1226,
+      "stream_digest": "33987747261072766155784650560995234330"
+    },
+    "certification": {
+      "wall_seconds": 30.250315867,
+      "cpu_user_seconds": 32.108595,
+      "cpu_system_seconds": 0.259796,
+      "rss_start_kib": 225040,
+      "rss_end_kib": 433972,
+      "peak_rss_kib": 433972,
+      "stages_seconds": {
+        "residue": 0.595394611,
+        "candidate": 1.10664773,
+        "primary": 27.108136654,
+        "twist": 0.0268929,
+        "fallback": 0.146901846
+      }
+    },
+    "shared_search_audit_through_1009": {
+      "packed_source_kernel": 163,
+      "public_parent_kernel_fallback": 1,
+      "shared_progression_tables": 163,
+      "packed_direct_searches": 163,
+      "finite_prime_parent_cache_entries": 6
+    },
+    "focused_differential": {
+      "command": "node --test --test-name-pattern='packed genus-three witnesses' test/hyperelliptic-group-consumer-performance.cjs",
+      "result": "pass",
+      "tests": 1,
+      "duration_seconds": 2.735969129
+    },
+    "interpretation": {
+      "bounded_local_peak_below_512_mib": "pass",
+      "full_100000_peak_below_512_mib": "not_measured",
+      "exact_digest_matches_single_progression_no_parent_receipt": true,
+      "benchmark_host_is_pinned_bench_1": false
+    }
+  },
   "notes": [
     "The command completed successfully and exact outputs agree, but the performance acceptance thresholds failed.",
     "The materialized control's candidate stage excludes batched tuple publication, which occurs before the per-row observer; its uninstrumented remainder is therefore much larger.",
