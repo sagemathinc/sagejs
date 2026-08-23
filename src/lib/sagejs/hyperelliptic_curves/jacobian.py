@@ -277,6 +277,8 @@ class MumfordDivisor(sage.Element):
             parent._validate_reduced(u, v)
         self._u = u
         self._v = v
+        self._packed_row: tuple[int, ...] | None = None
+        self._packed_hash: int | None = None
 
     def parent(self) -> Any:
         return self._parent
@@ -323,7 +325,13 @@ class MumfordDivisor(sage.Element):
         return not self == other
 
     def __hash__(self) -> int:
-        return hash((id(self._parent), str(self._u), str(self._v)))
+        if self._packed_hash is None:
+            try:
+                packed = self._parent.prepared_arithmetic().pack(self)
+                self._packed_hash = hash((id(self._parent), packed))
+            except (ArithmeticError, NotImplementedError, TypeError, ValueError):
+                self._packed_hash = hash((id(self._parent), str(self._u), str(self._v)))
+        return self._packed_hash
 
     def __reduce__(self) -> tuple[Any, tuple[Any, ...]]:
         return self._parent, ([self._u, self._v],)
@@ -340,10 +348,42 @@ class MumfordDivisor(sage.Element):
         return self.__neg__()
 
     def _add_(self, other: Any) -> Any:
+        return self.add(other)
+
+    def add(
+        self,
+        other: Any,
+        *,
+        algorithm: str = "auto",
+        diagnostics: bool = False,
+    ) -> Any:
+        """Add two divisors through the prepared or reference Cantor law."""
         if not isinstance(other, MumfordDivisor) or other._parent is not self._parent:
             raise TypeError("Jacobian divisors must have the same parent")
-        u, v = self._parent._compose(self._u, self._v, other._u, other._v)
-        return self._parent._element(u, v, False)
+        context = self._parent.prepared_arithmetic(algorithm=algorithm)
+        if not diagnostics and not context.native_available:
+            u, v = self._parent._compose(self._u, self._v, other._u, other._v)
+            return self._parent._element(u, v, False)
+        result = context.add_batch((self,), (other,), diagnostics=diagnostics)
+        if diagnostics:
+            values, record = result
+            return values[0], record
+        return result[0]
+
+    def double(
+        self,
+        *,
+        algorithm: str = "auto",
+        diagnostics: bool = False,
+    ) -> Any:
+        """Return twice this divisor with optional execution diagnostics."""
+        result = self._parent.prepared_arithmetic(algorithm=algorithm).double_batch(
+            (self,), diagnostics=diagnostics
+        )
+        if diagnostics:
+            values, record = result
+            return values[0], record
+        return result[0]
 
     def __add__(self, other: Any) -> Any:
         return runtime.coercion_model.binOp("add", self, other)
@@ -368,15 +408,17 @@ class MumfordDivisor(sage.Element):
         if not runtime.is_exact_integer(scalar):
             raise TypeError("Jacobian divisor multipliers must be integers")
         if scalar < 0:
-            return (-self).__rmul__(-scalar)
+            return (-self)._scalar_multiple_reference(-scalar)
         result = self._parent.zero()
         addend = self
         while scalar:
             if scalar % 2:
-                result = result + addend
+                u, v = self._parent._compose(result[0], result[1], addend[0], addend[1])
+                result = self._parent._element(u, v, False)
             scalar //= 2
             if scalar:
-                addend = addend + addend
+                u, v = self._parent._compose(addend[0], addend[1], addend[0], addend[1])
+                addend = self._parent._element(u, v, False)
         return result
 
     def scalar_multiple(
@@ -394,6 +436,17 @@ class MumfordDivisor(sage.Element):
                 "sagejs.hyperelliptic_curves.jacobian_native",
                 fromlist=["native_scalar_multiply"],
             )
+            context = self._parent.prepared_arithmetic()
+            if context.native_available:
+                try:
+                    return context.scalar_batch(
+                        (self,),
+                        (scalar,),
+                        algorithm="native",
+                        max_group_operations=max_group_operations,
+                    )[0]
+                except RuntimeError as error:
+                    raise JacobianResourceLimitError(str(error)) from error
             try:
                 answer = native.native_scalar_multiply(
                     self,
@@ -572,6 +625,7 @@ class HyperellipticJacobian(sage.Parent):
         self._points_cache: list[MumfordDivisor] | None = None
         self._group_basis_cache: dict[str, Any] | None = None
         self._group_structure_diagnostics_cache: dict[str, Any] | None = None
+        self._prepared_arithmetic_cache: dict[tuple[str, int], Any] = {}
 
     def curve(self) -> Any:
         return self._curve
@@ -592,6 +646,41 @@ class HyperellipticJacobian(sage.Parent):
 
     def h(self) -> Any:
         return self._h
+
+    def prepared_arithmetic(
+        self,
+        *,
+        algorithm: str = "auto",
+        max_batch_items: int = 1_000_000,
+    ) -> Any:
+        """Return the immutable cached packed-arithmetic context.
+
+        The v1 native domain is deliberately restricted to odd-degree
+        one-point-at-infinity genus-2/3 models over supported odd prime
+        fields. `auto` has an exact ordinary-Cantor fallback.
+        """
+        if isinstance(max_batch_items, bool):
+            raise TypeError("max_batch_items must be an integer")
+        try:
+            maximum = int(max_batch_items)
+        except (TypeError, ValueError, OverflowError) as error:
+            raise TypeError("max_batch_items must be an integer") from error
+        if max_batch_items != maximum:
+            raise ValueError("max_batch_items must be an exact integer")
+        key = (algorithm, maximum)
+        context = self._prepared_arithmetic_cache.get(key)
+        if context is None:
+            native = __import__(
+                "sagejs.hyperelliptic_curves.jacobian_native",
+                fromlist=["PreparedJacobianArithmetic"],
+            )
+            context = native.PreparedJacobianArithmetic(
+                self,
+                algorithm=algorithm,
+                max_batch_items=maximum,
+            )
+            self._prepared_arithmetic_cache[key] = context
+        return context
 
     def _prime_field_model_data(self) -> dict[str, Any]:
         field = self.base_ring()
@@ -959,6 +1048,9 @@ class HyperellipticJacobian(sage.Parent):
                 divisors.append(self.point_to_divisor(point))
         if not divisors:
             return self.zero()
+        prepared = self.prepared_arithmetic()
+        if prepared.native_available:
+            return prepared.sum(divisors, algorithm="native")
         native = __import__(
             "sagejs.hyperelliptic_curves.jacobian_native",
             fromlist=["native_sum"],
@@ -1190,18 +1282,30 @@ class HyperellipticJacobian(sage.Parent):
             scalar_list = list(scalars)
             if len(scalar_list) != len(element_list):
                 raise ValueError("elements and scalars must have the same length")
-        answer = []
-        for element, scalar in zip(element_list, scalar_list, strict=True):
+        for element in element_list:
             if not isinstance(element, MumfordDivisor) or element.parent() is not self:
                 raise ValueError("every batch element must lie in this Jacobian")
-            answer.append(
-                element.scalar_multiple(
-                    scalar,
-                    algorithm=algorithm,
-                    max_group_operations=max_group_operations,
+        context = self.prepared_arithmetic()
+        if context.native_available and algorithm != "reference":
+            try:
+                return list(
+                    context.scalar_batch(
+                        element_list,
+                        scalar_list,
+                        algorithm="native",
+                        max_group_operations=max_group_operations,
+                    )
                 )
+            except RuntimeError as error:
+                raise JacobianResourceLimitError(str(error)) from error
+        return [
+            element.scalar_multiple(
+                scalar,
+                algorithm=algorithm,
+                max_group_operations=max_group_operations,
             )
-        return answer
+            for element, scalar in zip(element_list, scalar_list, strict=True)
+        ]
 
     def annihilation_tests(
         self,
