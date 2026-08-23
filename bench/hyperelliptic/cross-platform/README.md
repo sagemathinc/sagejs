@@ -69,3 +69,22 @@ digests and print a compact timing/RSS summary with:
 node bench/hyperelliptic/cross-platform/verify.cjs \
   bench/hyperelliptic/cross-platform/results/*.json
 ```
+
+Phase 10 also has a portable-artifact companion receipt. Run it from the same
+clean checkout after installing that exact commit's authenticated
+`packages/flint-wasm/dist` artifact:
+
+```sh
+node bench/hyperelliptic/cross-platform/run-phase10-extras.cjs \
+  --expected-commit COMMIT --repeat 5 \
+  --output bench/hyperelliptic/cross-platform/results/HOST-extras.json
+```
+
+This companion compares the checked-in POSIX standalone Cantor harness with
+the authenticated Wasm core on the same 1,000-row packed inputs and rejects a
+digest mismatch. It also records Kummer Wasm throughput, artifact
+authentication/load, evaluator cancellation and recovery, checked source
+bounds, and the production package-load test. The standalone cell is labeled
+unavailable on native Windows because the current standalone harness links
+POSIX static archives; the separately compiled Windows native mode is still
+required by the primary receipt.
