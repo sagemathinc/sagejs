@@ -14,7 +14,8 @@
     "src/lib/sagejs/hyperelliptic_curves/torsion.py",
     "src/lib/sagejs/hyperelliptic_curves/saturation.py",
     "test/hyperelliptic-rational-reduction-batch.cjs",
-    "bench/hyperelliptic/benchmark-rational-reduction-batch.cjs"
+    "bench/hyperelliptic/benchmark-rational-reduction-batch.cjs",
+    "bench/results/hyperelliptic-rational-phase6-acceptance-2026-08-23.json"
   ],
   "dependencies": [],
   "references": [],
