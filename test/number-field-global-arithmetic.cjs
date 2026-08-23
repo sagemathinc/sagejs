@@ -339,7 +339,18 @@ def counting_presentation_replay(value):
     presentation_replays[0] += 1
     return presentation_from_dict(value)
 matrix_module.RelationPresentation.from_dict = counting_presentation_replay
-classes1083 = bounded_cubic_minkowski_class_number(K1083)
+engine_module = __import__(
+    "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
+)
+engine_type = engine_module.ClassUnitGroupEngine
+class ForbiddenClassUnitEngine:
+    def __init__(self, *args, **kwargs):
+        raise AssertionError("a full-rank cubic prefix constructed the general engine")
+engine_module.ClassUnitGroupEngine = ForbiddenClassUnitEngine
+try:
+    classes1083 = bounded_cubic_minkowski_class_number(K1083)
+finally:
+    engine_module.ClassUnitGroupEngine = engine_type
 matrix_module.RelationPresentation.from_dict = presentation_from_dict
 assert presentation_replays[0] == 0
 assert classes1083.complete and classes1083.order() == 3

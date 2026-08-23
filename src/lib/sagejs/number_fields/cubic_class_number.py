@@ -1565,8 +1565,9 @@ def bounded_cubic_minkowski_class_number(
         fromlist=["class_group_factor_base"],
     )
     factor_started = time.perf_counter()
+    order = field.maximal_order()
     plan = factor_base_module.factor_base_plan(
-        field.maximal_order(),
+        order,
         proof=True,
         theorem="minkowski",
         max_bound=_positive_integer(max_bound, "maximum factor-base bound"),
@@ -1666,55 +1667,45 @@ def bounded_cubic_minkowski_class_number(
     matrix_module = __import__(
         "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
     )
-    engine_module = __import__(
-        "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
-    )
-
-    class _NoAnalyticComponents:
-        def __init__(self) -> None:
-            self.factor_base: Any = None
-            self.relations: Any = None
-            self.matrix: Any = None
-            self.analytic: Any = None
-            self.context: Any = None
-            self.factored: Any = None
-
-    components = _NoAnalyticComponents()
-    components.factor_base = factor_base_module
-    components.relations = relation_module
-    components.matrix = matrix_module
-    components.analytic = _NoAnalyticComponents()
-    components.context = None
-    components.factored = None
-    limits = engine_module.ClassUnitEngineLimits(
-        max_factor_base_bound=_positive_integer(max_bound, "maximum factor-base bound"),
-        max_factor_base_size=_positive_integer(
-            max_prime_ideals, "maximum prime ideals"
-        ),
-        max_relation_attempts=checked_caps["max_relation_attempts"],
-        max_relations=checked_caps["max_relations"],
-        max_candidates_per_ideal=checked_caps["max_candidates_per_ideal"],
-        max_random_terms=5,
-        max_coefficient_bound=3,
-        max_partial_relations=checked_caps["max_relations"],
-        max_memory_bytes=_positive_integer(max_memory_bytes, "maximum memory bytes"),
-    )
     relation_started = time.perf_counter()
-    engine = engine_module.ClassUnitGroupEngine(
-        field,
-        proof=True,
-        algorithm="minkowski",
-        limits=limits,
-        cancelled=cancelled,
-        components=components,
+    engine: Any = None
+    collector = relation_module.ExactRelationCollector(order, factor_base)
+    prime_module = __import__(
+        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
     )
-    collector = relation_module.ExactRelationCollector(engine.order, factor_base)
-    relation_module.initial_rational_prime_relations(collector)
-    sieve_capacity = checked_caps["max_relations"] - len(collector.records)
+    one_coordinates = tuple(prime_module._order_one_coordinates(order))
+    initial_proposals: list[
+        tuple[tuple[int, ...], tuple[int, ...], dict[str, Any]]
+    ] = []
+    for sequence, rational_prime in enumerate(
+        sorted({int(ideal.rational_prime()) for ideal in factor_base})
+    ):
+        row = [0] * len(factor_base)
+        local_degree = 0
+        for index, prime_ideal in enumerate(factor_base):
+            if int(prime_ideal.rational_prime()) != rational_prime:
+                continue
+            exponent = int(prime_ideal.ramification_index())
+            residue_degree = int(prime_ideal.residue_class_degree())
+            row[index] = exponent
+            local_degree += exponent * residue_degree
+        if local_degree == int(order.degree()):
+            initial_proposals.append(
+                (
+                    tuple(rational_prime * value for value in one_coordinates),
+                    tuple(row),
+                    {
+                        "algorithm": "rational-prime-decomposition",
+                        "rational_prime": rational_prime,
+                        "sequence": sequence,
+                    },
+                )
+            )
+    sieve_capacity = checked_caps["max_relations"] - len(initial_proposals)
     sieve_candidates: Any = None
     if sieve_capacity > 0:
         sieve_candidates = _packed_cubic_relation_candidates(
-            engine.order,
+            order,
             factor_base,
             maximum_candidates=sieve_capacity,
             cancelled=cancelled,
@@ -1724,7 +1715,7 @@ def bounded_cubic_minkowski_class_number(
     if sieve_candidates is not None:
         selected_sieve_candidates = _select_cubic_relation_candidates(
             matrix_module,
-            tuple(record.row for record in collector.records),
+            tuple(proposal[1] for proposal in initial_proposals),
             sieve_candidates,
             len(factor_base),
         )
@@ -1744,8 +1735,13 @@ def bounded_cubic_minkowski_class_number(
                 for row, coordinates, _expected_norm in selected_sieve_candidates
             )
             batch_admit = getattr(collector, "admit_integral_order_basis_rows", None)
-            batch: Any = batch_admit(proposals) if callable(batch_admit) else None
+            batch: Any = (
+                batch_admit(tuple(initial_proposals) + proposals)
+                if callable(batch_admit)
+                else None
+            )
             if batch is None:
+                relation_module.initial_rational_prime_relations(collector)
                 for coordinates, row, provenance in proposals:
                     # The packed norm only selected this proposal.  Integral
                     # admission independently recomputes the exact element
@@ -1757,17 +1753,21 @@ def bounded_cubic_minkowski_class_number(
                     )
                     sieve_admitted += 1
             else:
-                sieve_admitted = len(batch)
+                if len(batch) != len(initial_proposals) + len(proposals):
+                    raise ArithmeticError(
+                        "a packed cubic relation batch returned the wrong row count"
+                    )
+                sieve_admitted = len(proposals)
         except (ArithmeticError, TypeError, ValueError):
             # A packed proposal is never proof evidence by itself.  Discard
             # every proposed row if its independent containment replay fails;
             # the unchanged LLL relation search below remains authoritative.
-            collector = relation_module.ExactRelationCollector(
-                engine.order, factor_base
-            )
+            collector = relation_module.ExactRelationCollector(order, factor_base)
             relation_module.initial_rational_prime_relations(collector)
             selected_sieve_candidates = None
             sieve_admitted = 0
+    if not collector.records:
+        relation_module.initial_rational_prime_relations(collector)
     relation_metrics["integral_sieve_candidates"] = raw_sieve_count
     relation_metrics["integral_sieve_selected"] = (
         0 if selected_sieve_candidates is None else len(selected_sieve_candidates)
@@ -1777,6 +1777,7 @@ def bounded_cubic_minkowski_class_number(
     relation_metrics["integral_sieve_dependency_candidates"] = 0
     relation_metrics["integral_sieve_dependency_relations"] = 0
     relation_metrics["relation_prefix_finalized_without_search"] = 0
+    relation_search_state: Any = None
     try:
         # This class-number-only quotient needs full factor-base rank but no
         # logarithmic unit dependencies.  One exact row per searched ideal is
@@ -1793,12 +1794,56 @@ def bounded_cubic_minkowski_class_number(
             # the later coupled class/unit engine rebuilds its accumulator
             # from this authenticated prefix and resumes ordinary relation
             # search only when logarithmic unit dependencies are required.
-            engine._relation_search_state = relation_module.RelationSearchState(
-                engine.seed
-            )
+            relation_search_state = relation_module.RelationSearchState(0)
             relation_metrics["relation_prefix_finalized_without_search"] = 1
             relation_metrics["presentation_extractions"] = 1
         else:
+            engine_module = __import__(
+                "sagejs.number_fields.class_unit_groups",
+                fromlist=["class_unit_groups"],
+            )
+
+            class _NoAnalyticComponents:
+                def __init__(self) -> None:
+                    self.factor_base: Any = None
+                    self.relations: Any = None
+                    self.matrix: Any = None
+                    self.analytic: Any = None
+                    self.context: Any = None
+                    self.factored: Any = None
+
+            components = _NoAnalyticComponents()
+            components.factor_base = factor_base_module
+            components.relations = relation_module
+            components.matrix = matrix_module
+            components.analytic = _NoAnalyticComponents()
+            components.context = None
+            components.factored = None
+            limits = engine_module.ClassUnitEngineLimits(
+                max_factor_base_bound=_positive_integer(
+                    max_bound, "maximum factor-base bound"
+                ),
+                max_factor_base_size=_positive_integer(
+                    max_prime_ideals, "maximum prime ideals"
+                ),
+                max_relation_attempts=checked_caps["max_relation_attempts"],
+                max_relations=checked_caps["max_relations"],
+                max_candidates_per_ideal=checked_caps["max_candidates_per_ideal"],
+                max_random_terms=5,
+                max_coefficient_bound=3,
+                max_partial_relations=checked_caps["max_relations"],
+                max_memory_bytes=_positive_integer(
+                    max_memory_bytes, "maximum memory bytes"
+                ),
+            )
+            engine = engine_module.ClassUnitGroupEngine(
+                field,
+                proof=True,
+                algorithm="minkowski",
+                limits=limits,
+                cancelled=cancelled,
+                components=components,
+            )
             collector, presentation = engine._relations(
                 factor_base,
                 0,
@@ -1808,6 +1853,7 @@ def bounded_cubic_minkowski_class_number(
                 independent_relations_per_ideal=True,
                 target_missing_pivots=True,
             )
+            relation_search_state = engine._relation_search_state
     except RuntimeError:
         raise
     except ValueError as error:
@@ -1822,10 +1868,11 @@ def bounded_cubic_minkowski_class_number(
     relation_records = tuple(collector.records)
     live_factor_records = tuple(factor_records)
     live_collector = collector
-    live_search_state = engine._relation_search_state
-    live_has_partials = bool(engine._partials)
-    engine_diagnostics = engine._diagnostics()
-    engine_resources = engine_diagnostics.get("resources", {})
+    live_search_state = relation_search_state
+    live_has_partials = bool(engine is not None and engine._partials)
+    engine_resources = (
+        {} if engine is None else engine._diagnostics().get("resources", {})
+    )
     for name in (
         "relation_attempts",
         "relation_candidates",
@@ -1839,6 +1886,8 @@ def bounded_cubic_minkowski_class_number(
             and name not in relation_metrics
         ):
             relation_metrics[name] = int(value)
+    for name in ("relation_attempts", "relation_candidates", "ideals_tested"):
+        relation_metrics.setdefault(name, 0)
 
     dependency_seed_enriched = False
 
@@ -1857,7 +1906,7 @@ def bounded_cubic_minkowski_class_number(
         # discriminant.  Duplicate principal rows supply at most that many
         # cheap unit dependencies; the coupled engine independently checks
         # their logarithmic rank and continues its ordinary search if needed.
-        unit_rank_bound = 1 if int(engine.order.discriminant()) < 0 else 2
+        unit_rank_bound = 1 if int(order.discriminant()) < 0 else 2
         dependency_sieve_bound = _CUBIC_RELATION_SIEVE_BOUND
         dependency_candidates = _select_cubic_dependency_candidates(
             selected_sieve_candidates,
@@ -1874,7 +1923,7 @@ def bounded_cubic_minkowski_class_number(
             # relation/saturation round, while successful class-number-only
             # computations never pay for or serialize this fallback search.
             widened_candidates = _packed_cubic_relation_candidates(
-                engine.order,
+                order,
                 factor_base,
                 maximum_candidates=sieve_capacity,
                 coefficient_bound=_CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND,
