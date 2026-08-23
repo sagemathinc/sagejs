@@ -30,6 +30,7 @@ execFileSync(
 
 const setup = String.raw`
 from sagejs.hyperelliptic_curves.genus2_heights import (
+    Genus2HeightCapabilityError,
     HeightContext,
     canonical_height,
     height_pairing,
@@ -277,6 +278,20 @@ diagnostics = context.diagnostics()
 assert diagnostics["finite_correction_cache_hits"] > 0
 assert diagnostics["archimedean_correction_cache_hits"] > 0
 assert diagnostics["height_pairing_cache_hits"] == 1
+tampered_tables = [list(table) for table in context._classical_duplication_terms]
+term = tampered_tables[0][0]
+tampered_tables[0][0] = (term[0] + 1,) + term[1:]
+context._classical_duplication_terms = tuple(
+    tuple(table) for table in tampered_tables
+)
+pairing_cache_tamper_rejected = False
+try:
+    height_pairing(
+        [P, Q], steps=6, precision=80, algorithm="local", context=context
+    )
+except Genus2HeightCapabilityError:
+    pairing_cache_tamper_rejected = True
+assert pairing_cache_tamper_rejected
 [
     height.steps,
     height.diagnostics["achieved_enclosure_width_bits"] >= 16,
@@ -284,13 +299,14 @@ assert diagnostics["height_pairing_cache_hits"] == 1
     reg.status,
     diagnostics["finite_correction_cache_hits"] > 0,
     diagnostics["height_pairing_cache_hits"],
+    pairing_cache_tamper_rejected,
 ]
 `,
       { timeout: 180_000 },
     );
     assert.match(
       result.repr,
-      /^\[\d+, True, True, 'certified-positive', True, 1\]$/,
+      /^\[\d+, True, True, 'certified-positive', True, 1, True\]$/,
     );
   } finally {
     await session.close();

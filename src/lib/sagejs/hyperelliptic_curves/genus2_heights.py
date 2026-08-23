@@ -2543,6 +2543,14 @@ def height_pairing(
         context = HeightContext(jacobian)
     elif context.jacobian is not jacobian:
         raise ValueError("the height context belongs to a different Jacobian")
+    if (
+        context._classical_duplication_terms
+        is not context._trusted_classical_duplication_terms
+    ):
+        raise Genus2HeightCapabilityError(
+            "cached Flynn tables do not match the exact Jacobian model",
+            {"specialized_quartics": "rejected-mutated-height-context"},
+        )
     cache_key = None
     if height_difference_bound is None:
         cache_key = (
