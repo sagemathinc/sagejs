@@ -2068,7 +2068,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 1728,
+        "line": 1729,
         "lines": 184,
         "sha256": "98ad7c9d6d195026cca472915d1218816d3c3255c221fb6701b4f34038b276eb",
         "calls": [
@@ -2138,7 +2138,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 2323,
+        "line": 2324,
         "lines": 166,
         "sha256": "eb581a6624de19d5ef5ccc4775122cb4a03ab51548fde9cda821bbe5c9155d6d",
         "calls": [
@@ -2199,7 +2199,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 1913,
+        "line": 1914,
         "lines": 409,
         "sha256": "3897f58f776ff44c1f6254a5c0a5aaf842ba3159d9e62596f6f6f569786ee102",
         "calls": [
@@ -4754,9 +4754,9 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 3400,
-        "lines": 184,
-        "sha256": "7d57b3e739bb72835a8c07a3fe11810f0d836cf7512757ea0574b11438cf44b2",
+        "line": 3674,
+        "lines": 194,
+        "sha256": "12c24cfaf21db26e923e5d8769934004c2828eb495de5bb2970029210a6338bc",
         "calls": [
           "_acb_vec_clear",
           "_acb_vec_init",
@@ -4769,7 +4769,7 @@
           "fmpz_clear",
           "fmpz_init",
           "hg_ball_array",
-          "hg_central_weight_grid",
+          "hg_central_weight_grid_pair",
           "hg_central_weight_make_plan",
           "ldexp",
           "mag_clear",
@@ -4822,7 +4822,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 3186,
+        "line": 3460,
         "lines": 213,
         "sha256": "ee1c40b05db883f70bac9820946ba8bc13c6d782e75307b31bbae25b03794d36",
         "calls": [
