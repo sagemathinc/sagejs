@@ -370,15 +370,44 @@ def _row_times_matrix(row: list[int], matrix: list[list[int]], prime: int) -> li
 
 
 def _quotient_map(
-    subspace: list[list[int]], degree: int, prime: int
+    subspace: list[list[int]],
+    degree: int,
+    prime: int,
+    *,
+    cache: dict[Any, Any] | None = None,
 ) -> tuple[list[list[int]], list[list[int]]]:
     """Return a quotient-coordinate matrix and standard-coordinate lifts."""
+    key = None
+    if cache is not None:
+        key = (
+            degree,
+            prime,
+            tuple(
+                tuple(
+                    (int(row[column]) if column < len(row) else 0) % prime
+                    for column in range(degree)
+                )
+                for row in subspace
+            ),
+        )
+        cached = cache.get(key)
+        if cached is not None:
+            return (
+                [list(row) for row in cached[0]],
+                [list(row) for row in cached[1]],
+            )
     basis = _row_basis(subspace, degree, prime)
     annihilator = _nullspace(basis, degree, prime)
     dimension = len(annihilator)
     coordinate_matrix = _transpose(annihilator, degree)
     if dimension == 0:
-        return coordinate_matrix, []
+        lifts: list[list[int]] = []
+        if cache is not None and key is not None and len(cache) < 4 * degree:
+            cache[key] = (
+                tuple(tuple(value for value in row) for row in coordinate_matrix),
+                (),
+            )
+        return coordinate_matrix, lifts
 
     selected: list[int] = []
     images: list[list[int]] = []
@@ -398,6 +427,11 @@ def _quotient_map(
         for index, source in enumerate(selected):
             lift[source] = inverse[coordinate][index]
         lifts.append(lift)
+    if cache is not None and key is not None and len(cache) < 4 * degree:
+        cache[key] = (
+            tuple(tuple(value for value in row) for row in coordinate_matrix),
+            tuple(tuple(value for value in row) for row in lifts),
+        )
     return coordinate_matrix, lifts
 
 
@@ -543,10 +577,16 @@ def _primitive_presentation_reference(
     max_candidates: int,
     *,
     coordinate_matrix: list[list[int]] | None = None,
+    quotient_cache: dict[Any, Any] | None = None,
 ) -> dict[str, Any]:
     """Return the canonical presentation through the generic exact search."""
     if coordinate_matrix is None:
-        coordinate_matrix, _lifts = _quotient_map(kernel, degree, prime)
+        coordinate_matrix, _lifts = _quotient_map(
+            kernel,
+            degree,
+            prime,
+            cache=quotient_cache,
+        )
     return _primitive_presentation_from_quotient(
         degree,
         prime,
@@ -564,8 +604,15 @@ def _primitive_presentation(
     one: list[int],
     kernel: list[list[int]],
     max_candidates: int,
+    *,
+    quotient_cache: dict[Any, Any] | None = None,
 ) -> dict[str, Any]:
-    coordinate_matrix, _lifts = _quotient_map(kernel, degree, prime)
+    coordinate_matrix, _lifts = _quotient_map(
+        kernel,
+        degree,
+        prime,
+        cache=quotient_cache,
+    )
     quotient_degree = len(coordinate_matrix[0]) if coordinate_matrix else 0
     if quotient_degree != 1:
         return _primitive_presentation_reference(
@@ -576,6 +623,7 @@ def _primitive_presentation(
             kernel,
             max_candidates,
             coordinate_matrix=coordinate_matrix,
+            quotient_cache=quotient_cache,
         )
 
     # The generic canonical search starts with encoded vector 1.  In a
@@ -604,9 +652,16 @@ def _minimal_polynomial(
     table: list[list[list[int]]],
     one: list[int],
     kernel: list[list[int]],
+    *,
+    quotient_cache: dict[Any, Any] | None = None,
 ) -> tuple[int, ...]:
     """Return the exact minimal polynomial in one finite quotient algebra."""
-    coordinate_matrix, _lifts = _quotient_map(kernel, degree, prime)
+    coordinate_matrix, _lifts = _quotient_map(
+        kernel,
+        degree,
+        prime,
+        cache=quotient_cache,
+    )
     quotient_degree = len(coordinate_matrix[0]) if coordinate_matrix else 0
     powers: list[list[int]] = []
     power = list(one)
@@ -641,6 +696,8 @@ def _reduced_field_kernels(
     prime: int,
     table: list[list[list[int]]],
     one: list[int],
+    *,
+    quotient_cache: dict[Any, Any] | None = None,
 ) -> list[list[list[int]]]:
     """Recursively split a reduced quotient into its field-factor kernels.
 
@@ -651,7 +708,12 @@ def _reduced_field_kernels(
     strictly smaller reduced quotient components.
     """
     kernel = _row_basis(kernel, degree, prime)
-    coordinate_matrix, lifts = _quotient_map(kernel, degree, prime)
+    coordinate_matrix, lifts = _quotient_map(
+        kernel,
+        degree,
+        prime,
+        cache=quotient_cache,
+    )
     quotient_degree = len(lifts)
     if quotient_degree < 1:
         return []
@@ -687,7 +749,15 @@ def _reduced_field_kernels(
             "the reduced algebra has no nonscalar Frobenius fixed point"
         )
     splitter = _lift_quotient_coordinates(splitter_coordinates, lifts, degree, prime)
-    minimal = _minimal_polynomial(splitter, degree, prime, table, one, kernel)
+    minimal = _minimal_polynomial(
+        splitter,
+        degree,
+        prime,
+        table,
+        one,
+        kernel,
+        quotient_cache=quotient_cache,
+    )
     factors = _om.factor_mod_prime(minimal, prime)
     if len(factors) < 2 or any(
         int(factor.multiplicity) != 1 or len(factor.polynomial) != 2
@@ -712,7 +782,16 @@ def _reduced_field_kernels(
             raise ArithmeticError(
                 "a reduced-algebra split did not make strict progress"
             )
-        answer.extend(_reduced_field_kernels(child, degree, prime, table, one))
+        answer.extend(
+            _reduced_field_kernels(
+                child,
+                degree,
+                prime,
+                table,
+                one,
+                quotient_cache=quotient_cache,
+            )
+        )
     return answer
 
 
@@ -1357,7 +1436,15 @@ def _finite_algebra_fallback(
     table = _modular_table(order, prime)
     one = [value % prime for value in _order_one_coordinates(order)]
     radical = _nilradical(degree, prime, one, table)
-    field_kernels = _reduced_field_kernels(radical, degree, prime, table, one)
+    quotient_cache: dict[Any, Any] = {}
+    field_kernels = _reduced_field_kernels(
+        radical,
+        degree,
+        prime,
+        table,
+        one,
+        quotient_cache=quotient_cache,
+    )
     answer: list[NumberFieldPrimeIdeal] = []
     for maximal_subspace in field_kernels:
         # This bounded presentation search now runs only in one finite field,
@@ -1369,6 +1456,7 @@ def _finite_algebra_fallback(
             one,
             maximal_subspace,
             max_candidates,
+            quotient_cache=quotient_cache,
         )
         residue_degree = len(presentation["modulus"]) - 1
         power = maximal_subspace

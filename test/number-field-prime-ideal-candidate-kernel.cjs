@@ -104,18 +104,37 @@ x = R.gen()
 field = NumberField(x**3 - x**2 - 6*x - 12, "a")
 order = field.maximal_order()
 modular_table_calls = 0
+quotient_cache_events = []
 original_modular_table = prime_ideals._modular_table
+original_quotient_map = prime_ideals._quotient_map
 def counted_modular_table(*args, **kwargs):
     global modular_table_calls
     modular_table_calls += 1
     return original_modular_table(*args, **kwargs)
+def counted_quotient_map(*args, **kwargs):
+    cache = kwargs.get("cache")
+    before = None if cache is None else len(cache)
+    answer = original_quotient_map(*args, **kwargs)
+    after = None if cache is None else len(cache)
+    quotient_cache_events.append((cache, before, after))
+    return answer
 prime_ideals._modular_table = counted_modular_table
+prime_ideals._quotient_map = counted_quotient_map
 try:
     plan = factor_bases.factor_base_plan(order, proof=True, theorem="minkowski")
     records = factor_bases.build_factor_base(plan)
 finally:
     prime_ideals._modular_table = original_modular_table
+    prime_ideals._quotient_map = original_quotient_map
 assert modular_table_calls == 4
+producer_events = [event for event in quotient_cache_events if event[0] is not None]
+assert len(producer_events) == 6
+producer_cache = producer_events[0][0]
+assert all(event[0] is producer_cache for event in producer_events)
+assert sum(event[2] > event[1] for event in producer_events) == 3
+assert sum(event[2] == event[1] for event in producer_events) == 3
+assert len(producer_cache) == 3
+assert len([event for event in quotient_cache_events if event[0] is None]) >= 2
 payload = [record.to_dict() for record in records]
 encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
 assert hashlib.sha256(encoded).hexdigest() == "2262d9dce3278741e3b73e9d95eb70a2d81c2b86cc3436198cda58efcbfc5456"
@@ -156,6 +175,22 @@ for record in records:
         prime_ideals.DEFAULT_MAX_PRIMITIVE_CANDIDATES,
     )
     assert accelerated == reference
+
+# Cached quotient maps are frozen snapshots.  Mutating either returned matrix
+# cannot poison a later producer lookup, and the ordinary uncached result is
+# still the exact oracle used by independent verification.
+cache = {}
+subspace = prime_ideals._ideal_mod_p_subspace(p2[0], 2)
+uncached = prime_ideals._quotient_map(subspace, order.degree(), 2)
+first_cached = prime_ideals._quotient_map(
+    subspace, order.degree(), 2, cache=cache
+)
+assert first_cached == uncached and len(cache) == 1
+first_cached[0][0][0] = (first_cached[0][0][0] + 1) % 2
+first_cached[1][0][0] = (first_cached[1][0][0] + 1) % 2
+assert prime_ideals._quotient_map(
+    subspace, order.degree(), 2, cache=cache
+) == uncached
 
 # The direct degree-two irreducibility criterion is exhaustive over all monic
 # quadratics for several small prime fields and agrees with the generic exact
