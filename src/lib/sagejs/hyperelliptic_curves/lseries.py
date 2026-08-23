@@ -1580,7 +1580,12 @@ class LFunctionInit:
             self._maximum_order,
             self._algorithm,
         )
-        self._central_result = _clone_public_data(central_result)
+        # `_evaluate` already returns an object detached from both its reusable
+        # cache entry and `_last_diagnostics`.  This initialized evaluator owns
+        # that snapshot, and every public diagnostics call clones it again.
+        # Cloning it here a third time made prepared-curve initialization spend
+        # more time copying Arb diagnostics than constructing the public jet.
+        self._central_result = central_result
         raw_values = self._central_result["values"][0]["raw_derivatives"]
         completed_values = self._central_result["values"][0]["completed_derivatives"]
         self._central_raw: tuple[Any, ...] = tuple(
