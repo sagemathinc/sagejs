@@ -602,7 +602,7 @@ class Genus2PrimeKummerContext:
         return (
             [
                 status == KUMMER_OK and value == identity
-                for value, status in zip(values, statuses)
+                for value, status in zip(values, statuses, strict=True)
             ],
             statuses,
         )
