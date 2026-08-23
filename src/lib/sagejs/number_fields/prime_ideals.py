@@ -795,6 +795,87 @@ def _reduced_field_kernels(
     return answer
 
 
+def _monogenic_reduced_field_kernels(
+    radical: list[list[int]],
+    degree: int,
+    prime: int,
+    table: list[list[list[int]]],
+    one: list[int],
+    max_candidates: int,
+    *,
+    quotient_cache: dict[Any, Any] | None = None,
+) -> list[list[list[int]]] | None:
+    """Split a reduced monogenic quotient through one exact factorization.
+
+    The general Frobenius recursion below also handles products such as
+    `F_2^3`, which have no primitive element.  Small residue algebras are very
+    often monogenic, however.  In that case a canonical bounded primitive
+    search presents `O/pO` modulo its nilradical as `F_p[t]/(m)`.  Each
+    irreducible factor `g` of the squarefree `m` generates the maximal ideal
+    whose quotient is `F_p[t]/(g)`, so one factorization produces every field
+    kernel directly.
+
+    Any failure to obtain or authenticate that presentation returns `None`;
+    callers retain the complete recursive algorithm as the fail-closed path.
+    """
+    # This is only a fast-path probe.  In a nonmonogenic algebra every encoded
+    # vector must fail, so never spend the caller's potentially much larger
+    # primitive-element budget before entering the complete recursion.  There
+    # are only `p^degree - 1` nonzero encoded vectors in any case.
+    direct_candidates = min(
+        max_candidates,
+        2 * degree + 2,
+        prime**degree - 1,
+    )
+    if direct_candidates < 1:
+        return None
+    try:
+        presentation = _primitive_presentation_reference(
+            degree,
+            prime,
+            table,
+            one,
+            radical,
+            direct_candidates,
+            quotient_cache=quotient_cache,
+        )
+        quotient_degree = len(presentation["modulus"]) - 1
+        factors = _om.factor_mod_prime(presentation["modulus"], prime)
+    except (ArithmeticError, NotImplementedError, ValueError):
+        return None
+    if (
+        quotient_degree < 1
+        or not factors
+        or any(
+            int(factor.multiplicity) != 1 or len(factor.polynomial) < 2
+            for factor in factors
+        )
+        or sum(len(factor.polynomial) - 1 for factor in factors) != quotient_degree
+    ):
+        return None
+    if len(factors) == 1:
+        return [_row_basis(radical, degree, prime)]
+
+    primitive = [int(value) % prime for value in presentation["primitive"]]
+    answer: list[list[list[int]]] = []
+    for factor in factors:
+        factor_degree = len(factor.polynomial) - 1
+        factor_value = _evaluate_polynomial(
+            tuple(int(entry) for entry in factor.polynomial),
+            primitive,
+            one,
+            table,
+            prime,
+        )
+        child = _subspace_ideal_generated_by(
+            radical + [factor_value], degree, table, prime
+        )
+        if degree - len(child) != factor_degree:
+            return None
+        answer.append(child)
+    return answer
+
+
 def _evaluate_polynomial(
     polynomial: tuple[int, ...],
     value: list[int],
@@ -1437,14 +1518,24 @@ def _finite_algebra_fallback(
     one = [value % prime for value in _order_one_coordinates(order)]
     radical = _nilradical(degree, prime, one, table)
     quotient_cache: dict[Any, Any] = {}
-    field_kernels = _reduced_field_kernels(
+    field_kernels = _monogenic_reduced_field_kernels(
         radical,
         degree,
         prime,
         table,
         one,
+        max_candidates,
         quotient_cache=quotient_cache,
     )
+    if field_kernels is None:
+        field_kernels = _reduced_field_kernels(
+            radical,
+            degree,
+            prime,
+            table,
+            one,
+            quotient_cache=quotient_cache,
+        )
     answer: list[NumberFieldPrimeIdeal] = []
     for maximal_subspace in field_kernels:
         # This bounded presentation search now runs only in one finite field,

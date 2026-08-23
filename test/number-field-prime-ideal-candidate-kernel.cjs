@@ -128,11 +128,11 @@ finally:
     prime_ideals._quotient_map = original_quotient_map
 assert modular_table_calls == 4
 producer_events = [event for event in quotient_cache_events if event[0] is not None]
-assert len(producer_events) == 6
+assert len(producer_events) == 3
 producer_cache = producer_events[0][0]
 assert all(event[0] is producer_cache for event in producer_events)
 assert sum(event[2] > event[1] for event in producer_events) == 3
-assert sum(event[2] == event[1] for event in producer_events) == 3
+assert sum(event[2] == event[1] for event in producer_events) == 0
 assert len(producer_cache) == 3
 assert len([event for event in quotient_cache_events if event[0] is None]) >= 2
 payload = [record.to_dict() for record in records]
@@ -191,6 +191,42 @@ first_cached[1][0][0] = (first_cached[1][0][0] + 1) % 2
 assert prime_ideals._quotient_map(
     subspace, order.degree(), 2, cache=cache
 ) == uncached
+
+# A monogenic reduced quotient is split by one canonical minimal polynomial,
+# while the exact Frobenius recursion remains the oracle and the fallback for
+# products such as F_2^3 that cannot have a primitive element.
+table = prime_ideals._modular_table(order, 2)
+one = [value % 2 for value in prime_ideals._order_one_coordinates(order)]
+radical = prime_ideals._nilradical(order.degree(), 2, one, table)
+direct_kernels = prime_ideals._monogenic_reduced_field_kernels(
+    radical,
+    order.degree(),
+    2,
+    table,
+    one,
+    prime_ideals.DEFAULT_MAX_PRIMITIVE_CANDIDATES,
+)
+recursive_kernels = prime_ideals._reduced_field_kernels(
+    radical, order.degree(), 2, table, one
+)
+assert direct_kernels is not None
+assert sorted(direct_kernels) == sorted(recursive_kernels)
+
+product_table = [
+    [
+        [1 if left == right == coordinate else 0 for coordinate in range(3)]
+        for right in range(3)
+    ]
+    for left in range(3)
+]
+assert prime_ideals._monogenic_reduced_field_kernels(
+    [], 3, 2, product_table, [1, 1, 1], 8
+) is None
+assert len(
+    prime_ideals._reduced_field_kernels(
+        [], 3, 2, product_table, [1, 1, 1]
+    )
+) == 3
 
 # The direct degree-two irreducibility criterion is exhaustive over all monic
 # quadratics for several small prime fields and agrees with the generic exact
