@@ -59,6 +59,7 @@ function parseArguments(argv) {
     noMagma: false,
     output: null,
     printMagmaSource: false,
+    printSageSource: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -75,6 +76,7 @@ function parseArguments(argv) {
     else if (argument === "--no-magma") options.noMagma = true;
     else if (argument === "--output") options.output = resolve(argv[++index]);
     else if (argument === "--print-magma-source") options.printMagmaSource = true;
+    else if (argument === "--print-sage-source") options.printSageSource = true;
     else throw new Error(`unknown argument ${argument}`);
   }
   return options;
@@ -205,7 +207,10 @@ def time_mode(function, expected, item_count):
         started = time.perf_counter_ns()
         value = function()
         samples.append(time.perf_counter_ns() - started)
-    result = divisor_data(value)
+    # Observing one result is deliberately outside the timed interval.  In
+    # particular, indexing a sealed packed batch may copy its storage, and the
+    # Magma side likewise observes its final Mumford result after timing.
+    result = divisor_data(value[0])
     assert result == expected
     return {"samples_ns": samples, "item_count": item_count, "result": result}
 
@@ -245,50 +250,50 @@ for case in payload["cases"]:
             public_cheap_left, public_cheap_right, algorithm="native"
         )
         assert value.published_count == 0
-        return value[0]
+        return value
 
     def ordinary_double():
         value = context.double_batch(public_cheap_left, algorithm="native")
         assert value.published_count == 0
-        return value[0]
+        return value
 
     def ordinary_scalar():
         value = context.scalar_batch(
             public_scalar_left, scalar_values, algorithm="native"
         )
         assert value.published_count == 0
-        return value[0]
+        return value
 
     def retained_add():
         value = context.add_batch(cheap_left, cheap_right, algorithm="native")
         assert value.published_count == 0
-        return value[0]
+        return value
 
     def retained_double():
         value = context.double_batch(cheap_left, algorithm="native")
         assert value.published_count == 0
-        return value[0]
+        return value
 
     def retained_scalar():
         value = context.scalar_batch(
             scalar_left, scalar_values, algorithm="native"
         )
         assert value.published_count == 0
-        return value[0]
+        return value
 
     def materialized_add():
         value = context.add_batch(
             cheap_left, cheap_right, algorithm="native", materialize=True
         )
         assert len(value) == cheap_count and value[0].is_materialized()
-        return value[0]
+        return value
 
     def materialized_double():
         value = context.double_batch(
             cheap_left, algorithm="native", materialize=True
         )
         assert len(value) == cheap_count and value[0].is_materialized()
-        return value[0]
+        return value
 
     def materialized_scalar():
         value = context.scalar_batch(
@@ -298,7 +303,7 @@ for case in payload["cases"]:
             materialize=True,
         )
         assert len(value) == scalar_count and value[0].is_materialized()
-        return value[0]
+        return value
 
     expected = case["expected"]
     reference_results = {
@@ -485,6 +490,10 @@ function main() {
   const sources = { sage: sageSource(options), magma: magmaSource(options) };
   if (options.printMagmaSource) {
     process.stdout.write(sources.magma + "\n");
+    return;
+  }
+  if (options.printSageSource) {
+    process.stdout.write(sources.sage + "\n");
     return;
   }
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-finite-magma-contract-"));
