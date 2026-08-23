@@ -1306,6 +1306,11 @@ class ClassUnitGroupEngine:
         if self.progress is not None and not callable(self.progress):
             raise TypeError("progress must be callable")
         self.components = _Components() if components is None else components
+        self._context_module = getattr(self.components, "context", None)
+        if self._context_module is None:
+            self._context_module = _optional_module(
+                "sagejs.number_fields.class_unit_context"
+            )
         self._analytic_workspace: Any = None
         self._factored_logarithm_workspace: Any = None
         factored_workspace_type = getattr(
@@ -1330,7 +1335,7 @@ class ClassUnitGroupEngine:
         if self.checkpoint_controller is None and (
             checkpoint is not None or resume_from is not None
         ):
-            context_module = self.components.context
+            context_module = self._context_module
             if context_module is None:
                 raise ImportError("the class/unit checkpoint controller is unavailable")
             controller_type = getattr(context_module, "ClassUnitCheckpoint", None)
@@ -1403,7 +1408,7 @@ class ClassUnitGroupEngine:
                 max_checkpoint_bytes=max_checkpoint_bytes,
             )
         self.context: Any = getattr(self.checkpoint_controller, "context", None)
-        context_module = self.components.context
+        context_module = self._context_module
         context_type = getattr(context_module, "ClassUnitGroupContext", None)
         proof_state_type = getattr(context_module, "ClassUnitProofState", None)
         resource_limits_type = getattr(context_module, "ResourceLimits", None)
@@ -1542,8 +1547,6 @@ class ClassUnitGroupEngine:
             "saturation_live_authentication_hits": 0,
             "saturation_live_authentication_fallback_replays": 0,
         }
-        self._generation_verification_cache: dict[str, bool] = {}
-        self._generation_verification_cache_active = True
         self._unit_logarithm_cache: dict[tuple[int, str], tuple[Any, ...]] = {}
         self._relation_log_record_prefix: tuple[Any, ...] = ()
         self._relation_dependency_unit_hashes: dict[tuple[int, ...], str] = {}
@@ -1697,6 +1700,36 @@ class ClassUnitGroupEngine:
             return None
         return str(value[0]), str(value[1])
 
+    def _consume_context_generation_authority(
+        self, cache_key: str, evidence: Any
+    ) -> bool:
+        consume = getattr(self.context, "_consume_live_generation_authority", None)
+        return bool(
+            callable(consume)
+            and self._live_context_token is not None
+            and consume(self._live_context_token, cache_key, evidence)
+        )
+
+    def _context_generation_verification_cached(self, cache_key: str) -> bool:
+        cached = getattr(self.context, "_live_generation_verification_cached", None)
+        return bool(
+            callable(cached)
+            and self._live_context_token is not None
+            and cached(self._live_context_token, cache_key)
+        )
+
+    def _retain_context_generation_verification(self, cache_key: str) -> None:
+        retain = getattr(self.context, "_retain_live_generation_verification", None)
+        if callable(retain) and self._live_context_token is not None:
+            retain(self._live_context_token, cache_key)
+
+    def _deactivate_context_generation_verification(self) -> None:
+        deactivate = getattr(
+            self.context, "_deactivate_live_generation_verification", None
+        )
+        if callable(deactivate) and self._live_context_token is not None:
+            deactivate(self._live_context_token)
+
     def _bind_context_saturation_record(self, record: Any) -> None:
         bind = getattr(self.context, "_bind_live_saturation_record", None)
         if callable(bind) and self._live_context_token is not None:
@@ -1724,7 +1757,7 @@ class ClassUnitGroupEngine:
     ) -> None:
         """Seal the live computation state and its detached proof policy."""
         retain = getattr(self.context, "_retain_live_terminal", None)
-        proof_state_type = getattr(self.components.context, "ClassUnitProofState", None)
+        proof_state_type = getattr(self._context_module, "ClassUnitProofState", None)
         if (
             not callable(retain)
             or proof_state_type is None
@@ -2314,7 +2347,7 @@ class ClassUnitGroupEngine:
         plan, proof_primes = self._factor_base(proof=True, record_stage=False)
         if tuple(plan.assumptions):
             raise ArithmeticError("the Minkowski proof pass recorded an assumption")
-        context_module = self.components.context
+        context_module = self._context_module
         progress_type: Any = getattr(context_module, "MinkowskiProofProgress", None)
         record_type: Any = getattr(context_module, "MinkowskiProofProgressRecord", None)
         if not callable(progress_type) or not callable(record_type):
@@ -3585,7 +3618,6 @@ class ClassUnitGroupEngine:
                 "proof_status": proof_status,
             }
         )
-        live_authority_available = True
 
         def verify_generation(
             field: Any,
@@ -3595,7 +3627,6 @@ class ClassUnitGroupEngine:
             supplied_evidence: Any,
             supplied_proof_status: str,
         ) -> bool:
-            nonlocal live_authority_available
             del initial_units
             try:
                 self._resource_usage["generation_verification_calls"] += 1
@@ -3606,9 +3637,8 @@ class ClassUnitGroupEngine:
                 ):
                     return False
                 if (
-                    self._generation_verification_cache_active
-                    and live_authority_available
-                    and supplied_evidence is evidence
+                    supplied_evidence is evidence
+                    and self._consume_context_generation_authority(cache_key, evidence)
                 ):
                     # This first call is made synchronously by this producer,
                     # before the authority escapes.  The plan, factor base,
@@ -3616,8 +3646,6 @@ class ClassUnitGroupEngine:
                     # objects just constructed by the engine.  Consume the
                     # authority once and make every later call authenticate
                     # the canonical payload or perform detached replay.
-                    live_authority_available = False
-                    self._generation_verification_cache[cache_key] = True
                     self._resource_usage[
                         "generation_verification_live_authentication_hits"
                     ] += 1
@@ -3626,10 +3654,7 @@ class ClassUnitGroupEngine:
                 supplied_sha256, _, _ = _generation_evidence_digests(supplied_payload)
                 if supplied_sha256 != evidence_sha256:
                     return False
-                if (
-                    self._generation_verification_cache_active
-                    and self._generation_verification_cache.get(cache_key) is True
-                ):
+                if self._context_generation_verification_cached(cache_key):
                     self._resource_usage["generation_verification_cache_hits"] += 1
                     return True
                 self._resource_usage["generation_verification_full_replays"] += 1
@@ -3710,8 +3735,7 @@ class ClassUnitGroupEngine:
                             int(after_receipts.get("hits", 0))
                             - int(before_receipts.get("hits", 0))
                         )
-                if self._generation_verification_cache_active:
-                    self._generation_verification_cache[cache_key] = True
+                self._retain_context_generation_verification(cache_key)
                 return True
             except (AttributeError, TypeError, ValueError, ArithmeticError):
                 return False
@@ -4511,7 +4535,7 @@ class ClassUnitGroupEngine:
             finally:
                 # Proof objects used after the computation must replay their
                 # detached evidence instead of inheriting this live-work memo.
-                self._generation_verification_cache_active = False
+                self._deactivate_context_generation_verification()
             if not index.index_one or not saturation_replayed:
                 return self._incomplete(
                     (

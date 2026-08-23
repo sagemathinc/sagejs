@@ -453,6 +453,9 @@ class _LiveClassUnitArtifacts:
         self.analytic_proof: tuple[Any, ...] | None = None
         self.generation_evidence: Any = None
         self.generation_hashes: tuple[str, str, str] | None = None
+        self.generation_verification_cache: dict[str, bool] = {}
+        self.generation_live_authority_available = False
+        self.generation_verification_active = True
         self.saturation_record: Any = None
         self.class_group: Any = None
         self.unit_group: Any = None
@@ -526,6 +529,33 @@ class _LiveClassUnitArtifacts:
             str(hashes[1]),
             str(hashes[2]),
         )
+        self.generation_live_authority_available = self.reusable
+
+    def consume_generation_authority(self, cache_key: str, evidence: Any) -> bool:
+        if (
+            self.sealed
+            or not self.generation_verification_active
+            or not self.generation_live_authority_available
+            or evidence is not self.generation_evidence
+        ):
+            return False
+        self.generation_live_authority_available = False
+        self.generation_verification_cache[str(cache_key)] = True
+        return True
+
+    def generation_verification_cached(self, cache_key: str) -> bool:
+        return bool(
+            self.generation_verification_active
+            and self.generation_verification_cache.get(str(cache_key)) is True
+        )
+
+    def retain_generation_verification(self, cache_key: str) -> None:
+        if self.generation_verification_active:
+            self.generation_verification_cache[str(cache_key)] = True
+
+    def deactivate_generation_verification(self) -> None:
+        self.generation_verification_active = False
+        self.generation_live_authority_available = False
 
     def bind_analytic_proof(self, proof: Iterable[Any]) -> None:
         if self.sealed:
@@ -581,6 +611,7 @@ class _LiveClassUnitArtifacts:
             self.saturation_record = saturation_record
         self.class_group = class_group
         self.unit_group = unit_group
+        self.deactivate_generation_verification()
         self.sealed = True
 
     def diagnostics(self) -> dict[str, Any]:
@@ -594,6 +625,8 @@ class _LiveClassUnitArtifacts:
             "has_analytic_workspace": self.analytic_workspace is not None,
             "has_analytic_proof": self.analytic_proof is not None,
             "has_generation_authority": self.generation_hashes is not None,
+            "generation_verification_active": self.generation_verification_active,
+            "generation_verification_entries": len(self.generation_verification_cache),
             "has_saturation_record": self.saturation_record is not None,
             "has_class_group": self.class_group is not None,
             "has_unit_group": self.unit_group is not None,
@@ -728,6 +761,36 @@ class ClassUnitGroupContext:
         live = self._live_artifacts
         if live is not None:
             live.bind_generation_evidence(evidence, hashes)
+
+    def _consume_live_generation_authority(
+        self, token: Any, cache_key: str, evidence: Any
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live generation authority is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None and live.consume_generation_authority(cache_key, evidence)
+        )
+
+    def _live_generation_verification_cached(self, token: Any, cache_key: str) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live generation verification is engine-owned")
+        live = self._live_artifacts
+        return bool(live is not None and live.generation_verification_cached(cache_key))
+
+    def _retain_live_generation_verification(self, token: Any, cache_key: str) -> None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live generation verification is engine-owned")
+        live = self._live_artifacts
+        if live is not None:
+            live.retain_generation_verification(cache_key)
+
+    def _deactivate_live_generation_verification(self, token: Any) -> None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live generation verification is engine-owned")
+        live = self._live_artifacts
+        if live is not None:
+            live.deactivate_generation_verification()
 
     def _bind_live_analytic_proof(self, token: Any, proof: Iterable[Any]) -> None:
         if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:

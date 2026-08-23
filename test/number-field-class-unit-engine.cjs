@@ -1290,7 +1290,10 @@ assert counts == {
 assert engine._resource_usage["generation_reconstruction_calls"] == 0
 assert engine._resource_usage["generation_reconstruction_cache_hits"] == 0
 assert engine._resource_usage["generation_verification_cache_hits"] == 2
-engine._generation_verification_cache_active = False
+assert engine.context.live_diagnostics()["generation_verification_active"]
+assert engine.context.live_diagnostics()["generation_verification_entries"] == 1
+engine._deactivate_context_generation_verification()
+assert not engine.context.live_diagnostics()["generation_verification_active"]
 assert verifier(
     K, K.maximal_order(), (), 1, evidence,
     EXACT_RELATIONS_CONDITIONAL_GRH,

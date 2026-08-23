@@ -527,6 +527,8 @@ assert live_context["has_presentation"]
 assert live_context["has_analytic_workspace"]
 assert live_context["has_analytic_proof"]
 assert live_context["has_generation_authority"]
+assert not live_context["generation_verification_active"]
+assert live_context["generation_verification_entries"] >= 1
 assert live_context["has_saturation_record"]
 assert live_context["has_class_group"] and live_context["has_unit_group"]
 detached_context = context.to_dict()
