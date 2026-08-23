@@ -1029,9 +1029,6 @@ class PreparedJacobianArithmetic:
             return elements
         values = tuple(elements)
         self._check_batch_size(len(values))
-        for value in values:
-            if value.parent() is not self._jacobian:
-                raise ValueError("every batch divisor must lie in this Jacobian")
         batch = object.__new__(PreparedDivisorBatch)
         try:
             capsule = runtime.immutable_uint64_capsule_gather(
@@ -1048,7 +1045,14 @@ class PreparedJacobianArithmetic:
         except ValueError:
             # Divisors created before this context, or a deliberately
             # `check=False` object, may not have an owner-registered capsule.
-            # Recompute and validate every canonical row before publishing.
+            # Only this unauthenticated path consults the public parent and
+            # recomputes every canonical row.  A successful gather already
+            # proved owner identity and the exact parent-bound model label.
+            for value in values:
+                if value.parent() is not self._jacobian:
+                    raise ValueError(
+                        "every batch divisor must lie in this Jacobian"
+                    ) from None
             return self._publish_frozen_batch(
                 tuple(self._pack_public_batch(values)), len(values)
             )
@@ -1098,16 +1102,8 @@ class PreparedJacobianArithmetic:
         self._check_batch_size(len(left_values))
         if left_is_packed:
             left_values._lease_for(self)
-        else:
-            for value in left_values:
-                if value.parent() is not self._jacobian:
-                    raise ValueError("every batch divisor must lie in this Jacobian")
         if right_is_packed:
             right_values._lease_for(self)
-        else:
-            for value in right_values:
-                if value.parent() is not self._jacobian:
-                    raise ValueError("every batch divisor must lie in this Jacobian")
         selected, reason = self._selection(algorithm)
         started = time.perf_counter_ns()
         packed_left = None
@@ -1123,6 +1119,8 @@ class PreparedJacobianArithmetic:
                     packed_right = packed_left
                 else:
                     packed_right = right_values._lease_for(self)
+            elif right_values is left_values:
+                packed_right = packed_left
             else:
                 prepared_right = self.prepare_batch(right_values)
                 packed_right = prepared_right._lease_for(self)
@@ -1133,6 +1131,12 @@ class PreparedJacobianArithmetic:
         if selected == "reference":
             left_public = tuple(left_values)
             right_public = tuple(right_values)
+            for value in left_public:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
+            for value in right_public:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
             started = time.perf_counter_ns()
             answer = tuple(
                 self._reference_add(left, right)
