@@ -71,6 +71,7 @@ const witness = String.raw`
 from sagejs.native import is_compiled
 from sagejs.hyperelliptic_curves.jacobian_kernels import (
     packed_cantor_add_batch,
+    packed_cantor_copy_batch,
     packed_cantor_progression_batch,
     packed_cantor_search_progression,
     packed_cantor_scalar_batch,
@@ -79,6 +80,7 @@ from sagejs.hyperelliptic_curves.jacobian_native import PreparedDivisorBatch
 
 compiled = is_compiled(packed_cantor_add_batch)
 assert compiled == is_compiled(packed_cantor_scalar_batch)
+assert compiled == is_compiled(packed_cantor_copy_batch)
 assert compiled == is_compiled(packed_cantor_progression_batch)
 assert compiled == is_compiled(packed_cantor_search_progression)
 selected = "native" if compiled else "reference"
@@ -624,12 +626,15 @@ test("packed Cantor kernels retain an ordinary CPython fallback", () => {
   const program = [
     "import sys",
     `sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})`,
-    "from sagejs.hyperelliptic_curves.jacobian_kernels import packed_cantor_add_batch, packed_cantor_progression_batch, packed_cantor_search_progression, packed_cantor_scalar_batch",
+    "from sagejs.hyperelliptic_curves.jacobian_kernels import packed_cantor_add_batch, packed_cantor_copy_batch, packed_cantor_progression_batch, packed_cantor_search_progression, packed_cantor_scalar_batch",
     "model = [1,1,0,0,0,1,0,0] + [0]*4",
     "identity = [0,1,0,0,0,0,0,0]",
     "out = [99]*16; status = [0,0]",
     "assert packed_cantor_add_batch(out,status,model,identity*2,identity*2,2,2,3)",
     "assert out == identity*2 and status == [5,5]",
+    "copy_out = [99]*16; copy_status = [0,0]",
+    "assert packed_cantor_copy_batch(copy_out,copy_status,identity*2,2,3)",
+    "assert copy_out == identity*2 and copy_status == [1,1]",
     "progression_out = [99]*16; progression_status = [0,0]",
     "assert packed_cantor_progression_batch(progression_out,progression_status,model,identity,identity,2,2,3)",
     "assert progression_out == identity*2 and progression_status == [5,5]",

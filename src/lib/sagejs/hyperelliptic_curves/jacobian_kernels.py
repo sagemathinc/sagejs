@@ -935,6 +935,34 @@ def _cantor_add_one(
 
 
 @native
+def packed_cantor_copy_batch(
+    output: UInt64Buffer,
+    statuses: UInt64Buffer,
+    source: UInt64Buffer,
+    count: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Copy canonical-sized rows as a boundary-only traversal control."""
+    checked_modulus = modulus + 0
+    if (
+        checked_modulus <= 2
+        or len(output) != count * 8
+        or len(statuses) != count
+        or len(source) != count * 8
+    ):
+        return False
+    item: uint64 = 0
+    while item < count:
+        index: uint64 = 0
+        while index < 8:
+            output[item * 8 + index] = source[item * 8 + index]
+            index += 1
+        statuses[item] = 1
+        item += 1
+    return True
+
+
+@native
 def packed_cantor_add_batch(
     output: UInt64Buffer,
     statuses: UInt64Buffer,
@@ -1743,6 +1771,7 @@ def packed_cantor_search_progression(
 
 __all__ = [
     "packed_cantor_add_batch",
+    "packed_cantor_copy_batch",
     "packed_cantor_progression_batch",
     "packed_cantor_search_progression",
     "packed_cantor_scalar_batch",
