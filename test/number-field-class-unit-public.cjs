@@ -513,6 +513,31 @@ assert result.saturation_record.verify()
 resources = result.diagnostics["resources"]
 artifact = K._bounded_cubic_class_number_artifact
 artifact_search = artifact.diagnostics["relation_search"]
+context = result.context
+assert context is not None
+assert context.proof_state.label == "exact-unconditional"
+assert context.factor_base == result.conditional_factor_base
+assert context.relations == result.conditional_relation_records
+assert context.matrix_state is result.conditional_presentation_evidence
+live_context = context.live_diagnostics()
+assert live_context["reusable"] and live_context["sealed"]
+assert live_context["factor_base_size"] == len(result.conditional_factor_base)
+assert live_context["relation_count"] == len(result.conditional_relation_records)
+assert live_context["has_presentation"]
+assert live_context["has_analytic_workspace"]
+assert live_context["has_generation_authority"]
+assert live_context["has_saturation_record"]
+assert live_context["has_class_group"] and live_context["has_unit_group"]
+detached_context = context.to_dict()
+assert detached_context["schema"] == "sagejs.number-fields.class-unit-context.v1"
+assert len(detached_context["factor_base"]) == len(result.conditional_factor_base)
+assert len(detached_context["relations"]) == len(
+    result.conditional_relation_records
+)
+assert detached_context["matrix_state"] == (
+    result.conditional_presentation_evidence.to_dict()
+)
+assert "_live_artifacts" not in detached_context
 assert artifact_search["integral_sieve_dependency_candidates"] == 2
 assert artifact_search["integral_sieve_dependency_relations"] == 2
 assert artifact_search["integral_sieve_dependency_coefficient_bound"] == 2
@@ -558,6 +583,11 @@ assert callback_result.complete
 assert callback_result.diagnostics["resources"][
     "generation_live_relation_payload_hits"
 ] == 0
+callback_context = callback_result.context.live_diagnostics()
+assert not callback_context["reusable"] and callback_context["sealed"]
+assert callback_context["relation_count"] == len(
+    callback_result.conditional_relation_records
+)
 assert snapshot_calls[0] >= 2
 assert events
 

@@ -1402,6 +1402,72 @@ class ClassUnitGroupEngine:
                 component_decoders=decoders,
                 max_checkpoint_bytes=max_checkpoint_bytes,
             )
+        self.context: Any = getattr(self.checkpoint_controller, "context", None)
+        context_module = self.components.context
+        context_type = getattr(context_module, "ClassUnitGroupContext", None)
+        proof_state_type = getattr(context_module, "ClassUnitProofState", None)
+        resource_limits_type = getattr(context_module, "ResourceLimits", None)
+        if (
+            self.context is None
+            and callable(context_type)
+            and proof_state_type is not None
+            and callable(resource_limits_type)
+        ):
+            context_proof_state = proof_state_type.incomplete(
+                "class/unit computation in progress",
+                evidence={
+                    "schema": "sagejs.number-fields/class-unit-request-policy-v1",
+                    "requested_proof": self.proof,
+                },
+            )
+            limit_values = self.limits.to_dict()
+            standard_limit_names = {
+                "max_factor_base_size",
+                "max_relations",
+                "max_partial_relations",
+                "max_relation_attempts",
+                "max_precision_bits",
+                "max_memory_bytes",
+            }
+            extra_limits = {
+                name: limit_values[name]
+                for name in sorted(limit_values)
+                if name not in standard_limit_names
+            }
+            context_limits = resource_limits_type(
+                max_factor_base_size=self.limits.max_factor_base_size,
+                max_relations=self.limits.max_relations,
+                max_partial_relations=self.limits.max_partial_relations,
+                max_relation_attempts=self.limits.max_relation_attempts,
+                max_proof_primes=self.limits.max_factor_base_size,
+                max_precision_bits=self.limits.max_precision_bits,
+                max_checkpoint_bytes=max_checkpoint_bytes,
+                max_memory_bytes=self.limits.max_memory_bytes,
+                extra=extra_limits,
+            )
+            self.context = context_type(
+                self.field,
+                self.order,
+                context_proof_state,
+                algorithm=self.algorithm,
+                limits=context_limits,
+                random_seed=self.seed,
+            )
+        self._live_context_token = getattr(
+            context_module, "_LIVE_CLASS_UNIT_CONTEXT_TOKEN", None
+        )
+        activate_live_context = getattr(self.context, "_activate_live", None)
+        if callable(activate_live_context) and self._live_context_token is not None:
+            activate_live_context(
+                self._live_context_token,
+                reusable=(
+                    self.progress is None
+                    and not self._cancelled_callback_supplied
+                    and self.checkpoint_controller is None
+                ),
+                analytic_workspace=self._analytic_workspace,
+                factored_logarithm_workspace=self._factored_logarithm_workspace,
+            )
         self.stages: list[ClassUnitStage] = []
         self._started_ns = time.perf_counter_ns()
         self._phase_timings: dict[str, float] = {}
@@ -1585,6 +1651,83 @@ class ClassUnitGroupEngine:
         if self.checkpoint_controller is not None:
             self.checkpoint_controller.save(force=force)
 
+    def _bind_context_relations(
+        self, factor_base: tuple[Any, ...], collector: Any, presentation: Any
+    ) -> bool:
+        """Publish one exact relation/presentation stage to the live context."""
+        bind = getattr(self.context, "_bind_live_relations", None)
+        relation_token = getattr(
+            self.components.relations,
+            "_LIVE_VERIFIED_RELATION_PREFIX_TOKEN",
+            None,
+        )
+        if (
+            not callable(bind)
+            or self._live_context_token is None
+            or relation_token is None
+        ):
+            return False
+        return bool(
+            bind(
+                self._live_context_token,
+                factor_base,
+                collector,
+                presentation,
+                relation_token,
+            )
+        )
+
+    def _retain_context_terminal(
+        self,
+        proof_status: str,
+        reason: str,
+        *,
+        theorem: str | None = None,
+        bound: int | None = None,
+        assumptions: Iterable[str] = (),
+        units: Iterable[Any] = (),
+        saturation_record: Any = None,
+        class_group: Any = None,
+        unit_group: Any = None,
+        diagnostics: Any = None,
+    ) -> None:
+        """Seal the live computation state and its detached proof policy."""
+        retain = getattr(self.context, "_retain_live_terminal", None)
+        proof_state_type = getattr(self.components.context, "ClassUnitProofState", None)
+        if (
+            not callable(retain)
+            or proof_state_type is None
+            or self._live_context_token is None
+        ):
+            return
+        selected_assumptions = tuple(str(value) for value in assumptions)
+        proof_state = proof_state_type(
+            proof_status,
+            factor_base_theorem=theorem,
+            factor_base_bound=bound,
+            assumptions=selected_assumptions,
+            reason=(
+                reason
+                if proof_status
+                in (INCOMPLETE_RESOURCE_LIMIT, "heuristic-diagnostic-only")
+                else ""
+            ),
+            evidence={
+                "schema": "sagejs.number-fields/class-unit-terminal-policy-v1",
+                "proof_dependency_hashes": dict(self._proof_dependency_hashes),
+            },
+        )
+        retain(
+            self._live_context_token,
+            proof_state=proof_state,
+            units=units,
+            saturation_record=saturation_record,
+            class_group=class_group,
+            unit_group=unit_group,
+            proof_progress=self._proof_progress,
+            diagnostics={} if diagnostics is None else diagnostics,
+        )
+
     def _incomplete(
         self,
         reason: str,
@@ -1597,6 +1740,14 @@ class ClassUnitGroupEngine:
         self._stage("terminal", "incomplete", reason=reason)
         self._checkpoint_capture({"diagnostics": self._diagnostics(diagnostics)})
         self._checkpoint_save(force=True)
+        terminal_diagnostics = self._diagnostics(diagnostics)
+        self._retain_context_terminal(
+            INCOMPLETE_RESOURCE_LIMIT,
+            reason,
+            unit_group=unit_group,
+            saturation_record=self._saturation_record,
+            diagnostics=terminal_diagnostics,
+        )
         return ClassUnitComputation(
             self.field,
             proof_status=INCOMPLETE_RESOURCE_LIMIT,
@@ -1606,7 +1757,8 @@ class ClassUnitGroupEngine:
             stages=self.stages,
             unit_group=unit_group,
             tentative_invariants=invariants,
-            diagnostics=self._diagnostics(diagnostics),
+            context=self.context,
+            diagnostics=terminal_diagnostics,
             saturation_record=self._saturation_record,
             proof_progress=self._proof_progress,
             proof_dependency_hashes=self._proof_dependency_hashes,
@@ -1691,6 +1843,16 @@ class ClassUnitGroupEngine:
         self._stage("terminal", "complete", class_number=int(classes.order()))
         self._checkpoint_capture({"diagnostics": self._diagnostics()})
         self._checkpoint_save(force=True)
+        terminal_diagnostics = self._diagnostics()
+        self._retain_context_terminal(
+            EXACT_UNCONDITIONAL,
+            "bounded specialized exact algorithm",
+            theorem="bounded specialized exact class/unit theorem",
+            units=factored_units,
+            class_group=classes.group,
+            unit_group=unit_group,
+            diagnostics=terminal_diagnostics,
+        )
         return ClassUnitComputation(
             self.field,
             proof_status=EXACT_UNCONDITIONAL,
@@ -1701,7 +1863,8 @@ class ClassUnitGroupEngine:
             class_group=classes.group,
             unit_group=unit_group,
             tentative_invariants=classes.invariants(),
-            diagnostics=self._diagnostics(),
+            context=self.context,
+            diagnostics=terminal_diagnostics,
         )
 
     def _factor_base(
@@ -2833,6 +2996,7 @@ class ClassUnitGroupEngine:
             ),
             search_state=search.state.to_dict(),
         )
+        self._bind_context_relations(factor_base, collector, presentation)
         return collector, presentation
 
     def _unit_logarithmic_rank(
@@ -3343,22 +3507,18 @@ class ClassUnitGroupEngine:
     ) -> tuple[dict[str, Any], Any]:
         """Bind the exact class-generation theorem consumed by `h*R`."""
         relation_payloads: Any = None
-        if (
-            self.progress is None
-            and not self._cancelled_callback_supplied
-            and self.checkpoint_controller is None
-        ):
-            live_payloads = getattr(collector, "_live_relation_payloads", None)
-            relation_module = self.components.relations
-            live_token = getattr(
-                relation_module, "_LIVE_VERIFIED_RELATION_PREFIX_TOKEN", None
-            )
-            if callable(live_payloads) and live_token is not None:
-                try:
-                    live_values: Any = live_payloads(live_token)
+        context_relation_payloads = getattr(
+            self.context, "_live_relation_payloads", None
+        )
+        if callable(context_relation_payloads) and self._live_context_token is not None:
+            try:
+                live_values: Any = context_relation_payloads(
+                    self._live_context_token, collector, presentation
+                )
+                if live_values is not None:
                     relation_payloads = list(live_values)
-                except (AttributeError, TypeError, ValueError, ArithmeticError):
-                    relation_payloads = None
+            except (AttributeError, TypeError, ValueError, ArithmeticError):
+                relation_payloads = None
         if relation_payloads is None:
             relation_payloads = [
                 _component_payload(record) for record in collector.records
@@ -3380,6 +3540,13 @@ class ClassUnitGroupEngine:
             relations_sha256,
             presentation_sha256,
         ) = _generation_evidence_digests(evidence)
+        bind_generation = getattr(self.context, "_bind_live_generation_evidence", None)
+        if callable(bind_generation) and self._live_context_token is not None:
+            bind_generation(
+                self._live_context_token,
+                evidence,
+                (evidence_sha256, relations_sha256, presentation_sha256),
+            )
         self._generation_dependency_snapshot = (
             collector,
             presentation,
@@ -4369,6 +4536,42 @@ class ClassUnitGroupEngine:
                 }
             )
             self._checkpoint_save(force=True)
+            terminal_diagnostics = self._diagnostics(
+                {
+                    "factor_base_bound": int(plan.bound),
+                    "factor_base_size": len(factor_base),
+                    "relations": len(collector.records),
+                    "unconditional_prime_records": proof_records,
+                    "saturation": _saturation_diagnostic_summary(saturation_record),
+                    "proof_dependency_hashes": dict(self._proof_dependency_hashes),
+                    "proof_progress": (
+                        None
+                        if self._proof_progress is None
+                        else self._proof_progress.to_dict()
+                    ),
+                }
+            )
+            self._retain_context_terminal(
+                proof_status,
+                "exact relations and rigorous class/unit index one",
+                theorem=str(group.factor_base_theorem),
+                bound=(
+                    int(plan.bound)
+                    if proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+                    or not proof_records
+                    else None
+                ),
+                assumptions=(
+                    tuple(plan.assumptions)
+                    if proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+                    else ()
+                ),
+                units=units,
+                saturation_record=saturation_record,
+                class_group=group,
+                unit_group=unit_group,
+                diagnostics=terminal_diagnostics,
+            )
             result = ClassUnitComputation(
                 self.field,
                 proof_status=proof_status,
@@ -4379,21 +4582,8 @@ class ClassUnitGroupEngine:
                 class_group=group,
                 unit_group=unit_group,
                 tentative_invariants=presentation.invariants,
-                diagnostics=self._diagnostics(
-                    {
-                        "factor_base_bound": int(plan.bound),
-                        "factor_base_size": len(factor_base),
-                        "relations": len(collector.records),
-                        "unconditional_prime_records": proof_records,
-                        "saturation": _saturation_diagnostic_summary(saturation_record),
-                        "proof_dependency_hashes": dict(self._proof_dependency_hashes),
-                        "proof_progress": (
-                            None
-                            if self._proof_progress is None
-                            else self._proof_progress.to_dict()
-                        ),
-                    }
-                ),
+                context=self.context,
+                diagnostics=terminal_diagnostics,
                 saturation_record=saturation_record,
                 proof_progress=self._proof_progress,
                 proof_dependency_hashes=self._proof_dependency_hashes,

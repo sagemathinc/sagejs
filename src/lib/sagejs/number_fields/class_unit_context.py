@@ -43,6 +43,8 @@ ALGORITHMS = (
     "buchmann-hecke",
 )
 
+_LIVE_CLASS_UNIT_CONTEXT_TOKEN = object()
+
 _SEQUENCE_COMPONENTS = ("factor_base", "relations", "saturation_history")
 _SINGLE_COMPONENTS = (
     "search_state",
@@ -418,6 +420,142 @@ def _checked_precision_history(values: Iterable[Any]) -> tuple[int, ...]:
     return tuple(answer)
 
 
+class _LiveClassUnitArtifacts:
+    """Producer-owned algebraic state excluded from detached checkpoints.
+
+    `ClassUnitGroupContext` remains the portable serialization boundary.  This
+    companion owns the exact in-process objects that make one computation a
+    coherent transaction: its factor base, authenticated relation prefix,
+    presentation, units, analytic workspace, saturation record, and terminal
+    group.  Nothing here is trusted after serialization; checkpoint replay
+    continues through the ordinary component decoders and verifiers.
+    """
+
+    def __init__(
+        self,
+        field: Any,
+        order: Any,
+        *,
+        reusable: bool,
+        analytic_workspace: Any = None,
+        factored_logarithm_workspace: Any = None,
+    ) -> None:
+        self.field = field
+        self.order = order
+        self.reusable = bool(reusable)
+        self.factor_base: tuple[Any, ...] = ()
+        self.collector: Any = None
+        self.relations: tuple[Any, ...] = ()
+        self.presentation: Any = None
+        self.factored_units: tuple[Any, ...] = ()
+        self.analytic_workspace = analytic_workspace
+        self.factored_logarithm_workspace = factored_logarithm_workspace
+        self.generation_evidence: Any = None
+        self.generation_hashes: tuple[str, str, str] | None = None
+        self.saturation_record: Any = None
+        self.class_group: Any = None
+        self.unit_group: Any = None
+        self.sealed = False
+
+    def bind_relations(
+        self,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        relation_authentication_token: Any,
+    ) -> bool:
+        if self.sealed:
+            return False
+        factors = tuple(factor_base)
+        retained_factors = tuple(getattr(collector, "factor_base", ()))
+        if getattr(collector, "order", None) is not self.order or len(
+            retained_factors
+        ) != len(factors):
+            return False
+        if any(
+            retained is not supplied
+            for retained, supplied in zip(retained_factors, factors, strict=True)
+        ):
+            return False
+        authenticate = getattr(collector, "_all_records_live_authenticated", None)
+        if not callable(authenticate) or not authenticate(
+            relation_authentication_token
+        ):
+            return False
+        records = tuple(collector.records)
+        if len(tuple(getattr(presentation, "relation_rows", ()))) != len(records):
+            return False
+        self.factor_base = factors
+        self.collector = collector
+        self.relations = records
+        self.presentation = presentation
+        return self.reusable
+
+    def relation_payloads(
+        self, collector: Any, presentation: Any
+    ) -> tuple[dict[str, Any], ...] | None:
+        if (
+            self.sealed
+            or not self.reusable
+            or collector is not self.collector
+            or presentation is not self.presentation
+        ):
+            return None
+        current = tuple(getattr(collector, "records", ()))
+        if len(current) != len(self.relations) or any(
+            retained is not supplied
+            for retained, supplied in zip(self.relations, current, strict=True)
+        ):
+            return None
+        # The analytic certificate immediately captures canonical bytes.  This
+        # live-only projection therefore need not recursively clone normalized
+        # JSON trees a second time.
+        return tuple(record.to_dict() for record in self.relations)
+
+    def bind_generation_evidence(
+        self, evidence: Any, hashes: tuple[str, str, str]
+    ) -> None:
+        if self.sealed:
+            raise ValueError("a sealed class/unit context cannot accept evidence")
+        self.generation_evidence = evidence
+        self.generation_hashes = (
+            str(hashes[0]),
+            str(hashes[1]),
+            str(hashes[2]),
+        )
+
+    def retain_terminal(
+        self,
+        *,
+        units: Iterable[Any] = (),
+        saturation_record: Any = None,
+        class_group: Any = None,
+        unit_group: Any = None,
+    ) -> None:
+        if self.sealed:
+            raise ValueError("a class/unit context is already terminal")
+        self.factored_units = tuple(units)
+        self.saturation_record = saturation_record
+        self.class_group = class_group
+        self.unit_group = unit_group
+        self.sealed = True
+
+    def diagnostics(self) -> dict[str, Any]:
+        return {
+            "reusable": self.reusable,
+            "sealed": self.sealed,
+            "factor_base_size": len(self.factor_base),
+            "relation_count": len(self.relations),
+            "has_presentation": self.presentation is not None,
+            "unit_count": len(self.factored_units),
+            "has_analytic_workspace": self.analytic_workspace is not None,
+            "has_generation_authority": self.generation_hashes is not None,
+            "has_saturation_record": self.saturation_record is not None,
+            "has_class_group": self.class_group is not None,
+            "has_unit_group": self.unit_group is not None,
+        }
+
+
 class ClassUnitGroupContext:
     """One shared, checkpointable class-group and unit-group computation."""
 
@@ -482,7 +620,116 @@ class ClassUnitGroupContext:
         self.proof_progress = proof_progress
         self.precision_history = _checked_precision_history(precision_history)
         self.diagnostics = {} if diagnostics is None else diagnostics
+        self._live_artifacts: _LiveClassUnitArtifacts | None = None
         self._validate_components()
+
+    def _activate_live(
+        self,
+        token: Any,
+        *,
+        reusable: bool,
+        analytic_workspace: Any = None,
+        factored_logarithm_workspace: Any = None,
+    ) -> None:
+        """Attach the one producer-owned live state for this computation."""
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live class/unit contexts are engine-owned")
+        if self._live_artifacts is not None:
+            raise ValueError("the class/unit context is already live")
+        self._live_artifacts = _LiveClassUnitArtifacts(
+            self.field,
+            self.order,
+            reusable=reusable,
+            analytic_workspace=analytic_workspace,
+            factored_logarithm_workspace=factored_logarithm_workspace,
+        )
+
+    def _bind_live_relations(
+        self,
+        token: Any,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        relation_authentication_token: Any,
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live relation state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.bind_relations(
+                factor_base,
+                collector,
+                presentation,
+                relation_authentication_token,
+            )
+        )
+
+    def _live_relation_payloads(
+        self, token: Any, collector: Any, presentation: Any
+    ) -> tuple[dict[str, Any], ...] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live relation payloads are engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.relation_payloads(collector, presentation)
+
+    def _bind_live_generation_evidence(
+        self,
+        token: Any,
+        evidence: Any,
+        hashes: tuple[str, str, str],
+    ) -> None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live generation evidence is engine-owned")
+        live = self._live_artifacts
+        if live is not None:
+            live.bind_generation_evidence(evidence, hashes)
+
+    def _retain_live_terminal(
+        self,
+        token: Any,
+        *,
+        proof_state: ClassUnitProofState | None = None,
+        units: Iterable[Any] = (),
+        saturation_record: Any = None,
+        class_group: Any = None,
+        unit_group: Any = None,
+        proof_progress: Any = None,
+        diagnostics: Any = None,
+    ) -> None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("terminal live state is engine-owned")
+        if proof_state is not None:
+            if type(proof_state) is not ClassUnitProofState:
+                raise TypeError("terminal context proof state is not immutable")
+            self._proof_state = proof_state
+        live = self._live_artifacts
+        if live is not None:
+            live.retain_terminal(
+                units=units,
+                saturation_record=saturation_record,
+                class_group=class_group,
+                unit_group=unit_group,
+            )
+            # Retain the exact producer objects for lazy checkpoint projection.
+            # No canonical tree walk is charged to the ordinary public result.
+            self.factor_base = live.factor_base
+            self.relations = live.relations
+            self.matrix_state = live.presentation
+        if saturation_record is not None:
+            self.saturation_history = (saturation_record,)
+            self.analytic_state = getattr(
+                saturation_record, "analytic_validation", None
+            )
+        if proof_progress is not None:
+            self.proof_progress = proof_progress
+        if diagnostics is not None:
+            self.diagnostics = diagnostics
+
+    def live_diagnostics(self) -> dict[str, Any]:
+        """Describe retained in-process state without exposing its authority."""
+        live = self._live_artifacts
+        return {} if live is None else live.diagnostics()
 
     @property
     def field(self) -> Any:

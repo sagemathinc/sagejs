@@ -1136,23 +1136,6 @@ class ExactRelationCollector:
             )
         )
 
-    def _live_relation_payloads(self, token: Any) -> tuple[dict[str, Any], ...]:
-        """Project an uninterrupted producer-owned prefix without a tree walk.
-
-        Relation construction already normalizes every nested proof component
-        to exact JSON containers, and `to_dict()` creates fresh row and
-        archimedean lists.  The returned dictionaries may still share nested
-        normalized containers with their records, so this private boundary is
-        valid only until control can reach a callback.  The analytic
-        certificate immediately canonicalizes the assembled body and then
-        detects any later mutation against those immutable bytes.  Detached or
-        callback-driven paths never receive the module token and continue to
-        make independent structural copies.
-        """
-        if not self._all_records_live_authenticated(token):
-            raise ValueError("the live relation prefix is no longer authenticated")
-        return tuple(record.to_dict() for record in self.records)
-
     def reconstruct_factor_base_ideal(self, row: Iterable[int]) -> Any:
         """Reconstruct one row through this collector's bounded exact cache."""
         return self._reconstructor.reconstruct(row)
