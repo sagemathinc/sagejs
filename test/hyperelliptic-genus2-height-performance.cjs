@@ -1372,6 +1372,66 @@ assert poison_height.rigorous and poison_height.ball.contains(known_height)
 assert poison_pairing.rigorous
 assert poison_pairing.height_results[0].ball.contains(known_height)
 assert poison_regulator.rigorous and poison_regulator.status == "certified-positive"
+
+saved_bound_class = height_module.AutomaticHeightBounds
+saved_bound_zero = height_module._zero_ball
+saved_bound_integer_coefficients = height_module._integer_coefficients
+saved_bound_field_class = height_module.IntervalBallField
+def fake_bound_class(lower, upper, diagnostics):
+    return saved_bound_class(
+        RealBall(100, precision_bits=64),
+        RealBall(100, precision_bits=64),
+        diagnostics,
+    )
+height_module.AutomaticHeightBounds = fake_bound_class
+height_module._zero_ball = lambda precision: RealBall(100, precision_bits=precision)
+height_module._integer_coefficients = lambda value, length: (1, 0, 0, 0, 0, 1)
+height_module.IntervalBallField = FakeField
+theorem_rebindings_rejected = []
+try:
+    for rebound_kind in ("canonical", "pairing", "regulator"):
+        rebound_context = HeightContext(J)
+        try:
+            if rebound_kind == "canonical":
+                canonical_height(
+                    P, precision=64, target_bits=32,
+                    algorithm="local", context=rebound_context,
+                )
+            elif rebound_kind == "pairing":
+                height_pairing(
+                    [P,Q], precision=64, target_bits=32,
+                    algorithm="local", context=rebound_context,
+                )
+            else:
+                regulator(
+                    [P,Q], precision=64, target_bits=32,
+                    algorithm="local", context=rebound_context,
+                )
+        except Genus2HeightCapabilityError as error:
+            theorem_rebindings_rejected.append("dependencies" in str(error))
+finally:
+    height_module.AutomaticHeightBounds = saved_bound_class
+    height_module._zero_ball = saved_bound_zero
+    height_module._integer_coefficients = saved_bound_integer_coefficients
+    height_module.IntervalBallField = saved_bound_field_class
+assert theorem_rebindings_rejected == [True, True, True]
+
+restored_context = HeightContext(J)
+restored_height = canonical_height(
+    P, precision=64, target_bits=32,
+    algorithm="local", context=restored_context,
+)
+restored_pairing = height_pairing(
+    [P,Q], precision=64, target_bits=32,
+    algorithm="local", context=restored_context,
+)
+restored_regulator = regulator(
+    [P,Q], precision=64, target_bits=32,
+    algorithm="local", context=restored_context,
+)
+assert restored_height.ball.contains(known_height)
+assert restored_pairing.height_results[0].ball.contains(known_height)
+assert restored_regulator.rigorous and restored_regulator.status == "certified-positive"
 [
     batch_data["point_count"],
     partial_pairing.height_results[1].diagnostics["batch"]["point_count"],

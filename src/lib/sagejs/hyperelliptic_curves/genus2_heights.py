@@ -3421,6 +3421,34 @@ def _install_height_proof_state(
     rational_pair_function = _rational_pair
     specialized_terms_function = classical_duplication_specialized_terms
     ball_from_data_function = _ball_from_data
+    automatic_dependency_globals = automatic_bounds_function.__globals__
+    automatic_dependency_names = (
+        "AutomaticHeightBounds",
+        "Genus2HeightCapabilityError",
+        "IntervalBallField",
+        "RealBall",
+        "_gcd",
+        "_integer_coefficients",
+        "_mueller_stoll_discriminant_bound",
+        "_zero_ball",
+        "classical_duplication_l1_bound",
+        "exact_model_capability",
+    )
+    automatic_dependency_snapshot = tuple(
+        (name, automatic_dependency_globals.get(name))
+        for name in automatic_dependency_names
+    )
+
+    def validate_automatic_dependencies() -> None:
+        for name, expected in automatic_dependency_snapshot:
+            if automatic_dependency_globals.get(name) is not expected:
+                raise Genus2HeightCapabilityError(
+                    "automatic height-bound theorem dependencies were replaced",
+                    {
+                        "automatic_bound": "rejected-theorem-dependency-rebinding",
+                        "dependency": name,
+                    },
+                )
 
     def encode_primitive(value: Any) -> Any:
         """Encode diagnostics without retaining caller-reachable containers."""
@@ -3569,6 +3597,7 @@ def _install_height_proof_state(
         return payload
 
     def theorem_source(jacobian: Any, precision: int) -> Any:
+        validate_automatic_dependencies()
         binding = model_binding(jacobian)
         record = source_record(binding, precision)
         if record is not None:
