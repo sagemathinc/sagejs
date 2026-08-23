@@ -9,6 +9,7 @@ import sagejs.runtime as runtime
 from sagejs.hyperelliptic_curves.group_structure import (
     GroupOperationBudget,
     JacobianResourceLimitError,
+    _prepared_context,
     basis_from_generators,
     coordinates_in_basis,
     factor_integer_bounded,
@@ -225,6 +226,7 @@ class JacobianAbelianMap:
         self._domain = domain
         self._codomain = codomain
         self._generators = tuple(generators)
+        self._key_context = _prepared_context(codomain, "auto")
         self._inverse_coordinates: dict[Any, tuple[Any, tuple[Any, ...]]] = {}
         if inverse_coordinates is not None:
             items = (
@@ -233,7 +235,9 @@ class JacobianAbelianMap:
                 else inverse_coordinates
             )
             for divisor, coordinates in items:
-                self._inverse_coordinates[group_element_key(divisor)] = (
+                self._inverse_coordinates[
+                    group_element_key(divisor, self._key_context)
+                ] = (
                     divisor,
                     tuple(coordinates),
                 )
@@ -269,7 +273,7 @@ class JacobianAbelianMap:
 
     def preimage(self, divisor: Any) -> FiniteAbelianGroupElement:
         divisor = self._codomain(divisor)
-        key = group_element_key(divisor)
+        key = group_element_key(divisor, self._key_context)
         cached = self._inverse_coordinates.get(key)
         coordinates = None if cached is None else cached[1]
         if cached is not None and cached[0] != divisor:

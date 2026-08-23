@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any, Callable, Iterable
 
 from sagejs.hyperelliptic_curves.genus3_candidate_kernel import (
+    scan_genus3_candidate_progressions,
     scan_genus3_weil_candidates,
     scan_genus3_weil_candidates_batch,
 )
@@ -40,6 +41,11 @@ Candidate = tuple[int, int, int]
 def genus3_candidate_kernel_available() -> bool:
     """Return whether exact Weil lifting has its production native kernel."""
     return is_compiled(scan_genus3_weil_candidates)
+
+
+def genus3_candidate_progression_kernel_available() -> bool:
+    """Return whether packed filtering and progression output is compiled."""
+    return is_compiled(scan_genus3_candidate_progressions)
 
 
 def _host_buffer_length(value: int) -> int:
@@ -585,6 +591,160 @@ def enumerate_genus3_weil_candidates(
         "candidates": scan["candidates"],
         "truncated": False,
         "diagnostics": scan["diagnostics"],
+    }
+
+
+def summarize_genus3_candidate_progressions(
+    prime: int,
+    residues: Iterable[int],
+    *,
+    primary_witnesses: Iterable[int] = (),
+    twist_witnesses: Iterable[int] = (),
+    order_kind: str = "jacobian",
+    max_candidates: int = 100_000,
+    max_combinations: int = 2_000_000,
+) -> dict[str, Any] | None:
+    """Filter candidates and return bounded order progressions, if compiled.
+
+    This deliberately does not publish one Python tuple per Weil candidate.
+    The native scan retains only compact metadata and maximal stride-`p`
+    progressions.  `None` means the production kernel is unavailable, so a
+    caller can retain the exact materialized fallback.
+    """
+    prime, normalized, max_candidates, max_combinations = _checked_inputs(
+        prime, residues, max_candidates, max_combinations
+    )
+    if not genus3_candidate_progression_kernel_available():
+        return None
+    primary = tuple(
+        _checked_exact_integer(value, "primary witness") for value in primary_witnesses
+    )
+    twist = tuple(
+        _checked_exact_integer(value, "twist witness") for value in twist_witnesses
+    )
+    if any(value <= 0 for value in primary + twist):
+        raise ValueError("candidate-filter witnesses must be positive")
+    if order_kind == "jacobian":
+        kind = 0
+    elif order_kind == "twist":
+        kind = 1
+    else:
+        raise ValueError("order_kind must be 'jacobian' or 'twist'")
+
+    primary_source = kernel_integer_buffer(
+        scan_genus3_candidate_progressions, primary if primary else (1,)
+    )
+    twist_source = kernel_integer_buffer(
+        scan_genus3_candidate_progressions, twist if twist else (1,)
+    )
+    capacity = min(64, max_candidates)
+
+    def scan(progression_capacity: int) -> tuple[int, tuple[Any, ...]]:
+        output = kernel_integer_zeros(
+            scan_genus3_candidate_progressions,
+            _host_buffer_length(7 + 2 * progression_capacity),
+        )
+        status = scan_genus3_candidate_progressions(
+            output,
+            prime,
+            normalized[0],
+            normalized[1],
+            normalized[2],
+            primary_source,
+            len(primary),
+            twist_source,
+            len(twist),
+            kind,
+            max_combinations,
+        )
+        return status, integer_buffer_values(output)
+
+    status, values = scan(capacity)
+    candidate_count = int(values[0])
+    survivor_count = int(values[1])
+    combinations_examined = int(values[2])
+    progression_count = int(values[3])
+    diagnostics = {
+        "combinations_examined": combinations_examined,
+        "max_combinations": max_combinations,
+        "max_candidates": max_candidates,
+        "candidate_scan": "native_progression_stream",
+        "progression_count": progression_count,
+    }
+    if status == -1:
+        return {
+            "status": "resource_limit",
+            "prime": prime,
+            "residues": normalized,
+            "candidate_count": candidate_count,
+            "survivor_count": None,
+            "candidate": None,
+            "orders": (),
+            "progressions": (),
+            "diagnostics": {**diagnostics, "reason": "max_combinations exceeded"},
+        }
+    if status == -2:
+        raise RuntimeError("invalid native candidate-progression input")
+    if candidate_count > max_candidates or survivor_count > max_candidates:
+        return {
+            "status": "resource_limit",
+            "prime": prime,
+            "residues": normalized,
+            "candidate_count": candidate_count,
+            "survivor_count": survivor_count,
+            "candidate": None,
+            "orders": (),
+            "progressions": (),
+            "diagnostics": {**diagnostics, "reason": "max_candidates exceeded"},
+        }
+    if status == -3:
+        if progression_count < 0 or progression_count > max_candidates:
+            raise RuntimeError("invalid native candidate-progression count")
+        status, values = scan(progression_count)
+        if status != progression_count:
+            raise RuntimeError(
+                "native candidate-progression scan was not deterministic"
+            )
+        if (
+            int(values[0]) != candidate_count
+            or int(values[1]) != survivor_count
+            or int(values[2]) != combinations_examined
+            or int(values[3]) != progression_count
+        ):
+            raise RuntimeError(
+                "native candidate-progression metadata changed on replay"
+            )
+    elif status != progression_count:
+        raise RuntimeError(
+            "native candidate-progression scan returned an invalid status"
+        )
+
+    progressions = tuple(
+        {
+            "base": int(values[7 + 2 * index]),
+            "stride": prime,
+            "count": int(values[8 + 2 * index]),
+        }
+        for index in range(progression_count)
+    )
+    orders = tuple(
+        progression["base"] + index * prime
+        for progression in progressions
+        for index in range(progression["count"])
+    )
+    candidate = None
+    if survivor_count == 1:
+        candidate = (int(values[4]), int(values[5]), int(values[6]))
+    return {
+        "status": "ok",
+        "prime": prime,
+        "residues": normalized,
+        "candidate_count": candidate_count,
+        "survivor_count": survivor_count,
+        "candidate": candidate,
+        "orders": orders,
+        "progressions": progressions,
+        "diagnostics": diagnostics,
     }
 
 

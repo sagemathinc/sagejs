@@ -1,9 +1,29 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
+const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join } = require("node:path");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
+
+const root = join(__dirname, "..");
+const sagejs = join(root, "bin", "sagejs");
+
+function run(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 300_000,
+    ...options,
+    env: { ...process.env, ...options.env },
+  });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return result.stdout.trim();
+}
 
 test("group consumers reuse prepared scalar, addition, and sum batches", async () => {
   const session = await createSage();
@@ -28,6 +48,8 @@ class InstrumentedPrepared:
         self.scalar_batches = 0
         self.add_batches = 0
         self.sums = 0
+        self.pack_calls = 0
+        self.model_fingerprint = "instrumented-model"
     def scalar_batch(
         self, elements, scalars, algorithm=None, max_group_operations=None
     ):
@@ -50,6 +72,9 @@ class InstrumentedPrepared:
             u, v = J._compose(answer[0], answer[1], element[0], element[1])
             answer = J._element(u, v, False)
         return answer
+    def pack(self, element):
+        self.pack_calls += 1
+        return (3, 1, 2, 3, 4, 5, 6, 7)
 
 prepared = InstrumentedPrepared()
 def prepared_factory(algorithm="auto", max_batch_items=100000):
@@ -83,6 +108,17 @@ assert pair == (
 )
 assert prepared.add_batches == 1
 assert group_element_key(D) == group_element_key(J(D))
+class PackedOnly:
+    def parent(self):
+        return J
+    def uv(self):
+        raise AssertionError("prepared keys must not materialize u,v")
+assert group_element_key(PackedOnly(), prepared) == (
+    "prepared-prime-field-mumford",
+    "instrumented-model",
+    (3, 1, 2, 3, 4, 5, 6, 7),
+)
+assert prepared.pack_calls == 1
 
 prepared.native_available = False
 fallback_budget = GroupOperationBudget(100000, 1000, 1024*1024, "auto")
@@ -97,6 +133,122 @@ True`,
     assert.equal(result.repr, "True");
   } finally {
     await session.close();
+  }
+});
+
+test("packed genus-three candidate filtering matches dynamic exact replay", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-g3-candidate-stream-"));
+  const cache = join(temporary, "cache");
+  const program = join(temporary, "witness.py");
+  const source = join(
+    root,
+    "src",
+    "lib",
+    "sagejs",
+    "hyperelliptic_curves",
+    "genus3_candidate_kernel.py",
+  );
+  const witness = String.raw`
+from sagejs.hyperelliptic_curves.certified_genus3 import _order_progressions
+from sagejs.hyperelliptic_curves.genus3_candidate_kernel import scan_genus3_candidate_progressions
+from sagejs.hyperelliptic_curves.genus3_completion import (
+    enumerate_genus3_weil_candidates,
+    jacobian_order_from_coefficients,
+    summarize_genus3_candidate_progressions,
+    twist_order_from_coefficients,
+)
+from sagejs.native import integer_buffer_values, kernel_integer_buffer, kernel_integer_zeros
+
+p = 101
+residues = (12, 56, 85)
+old = enumerate_genus3_weil_candidates(p, residues)
+
+def direct(primary=(), twist=(), kind=0, capacity=100):
+    output = [0 for _index in range(7 + 2*capacity)]
+    status = scan_genus3_candidate_progressions.__wrapped__(
+        output, p, residues[0], residues[1], residues[2],
+        list(primary) or [1], len(primary), list(twist) or [1], len(twist),
+        kind, 2_000_000,
+    )
+    progressions = tuple(
+        {"base": output[7+2*i], "stride": p, "count": output[8+2*i]}
+        for i in range(output[3])
+    )
+    orders = tuple(
+        progression["base"] + i*p
+        for progression in progressions
+        for i in range(progression["count"])
+    )
+    candidate = None if output[1] != 1 else tuple(output[4:7])
+    return status, output[:4], progressions, orders, candidate
+
+native = summarize_genus3_candidate_progressions(p, residues)
+dynamic = direct()
+old_orders = tuple(jacobian_order_from_coefficients(c, p) for c in old["candidates"])
+assert native["candidate_count"] == old["candidate_count"] == dynamic[1][0] == 50
+assert native["survivor_count"] == dynamic[1][1] == 50
+assert native["progressions"] == dynamic[2] == _order_progressions(old["candidates"], p, "jacobian")
+assert set(native["orders"]) == set(dynamic[3]) == set(old_orders)
+
+primary = summarize_genus3_candidate_progressions(
+    p, residues, primary_witnesses=(149,)
+)
+primary_dynamic = direct(primary=(149,))
+primary_expected = tuple(c for c in old["candidates"] if jacobian_order_from_coefficients(c,p) % 149 == 0)
+assert primary["survivor_count"] == primary_dynamic[1][1] == len(primary_expected) == 1
+assert primary["candidate"] == primary_dynamic[4] == primary_expected[0] == (12,56,186)
+
+twist = summarize_genus3_candidate_progressions(
+    p, residues, twist_witnesses=(17,), order_kind="twist"
+)
+twist_dynamic = direct(twist=(17,), kind=1)
+twist_expected = tuple(c for c in old["candidates"] if twist_order_from_coefficients(c,p) % 17 == 0)
+assert twist["survivor_count"] == twist_dynamic[1][1] == len(twist_expected) == 2
+assert set(twist["orders"]) == set(twist_dynamic[3]) == set(
+    twist_order_from_coefficients(c,p) for c in twist_expected
+)
+
+small = kernel_integer_zeros(scan_genus3_candidate_progressions, 7)
+empty = kernel_integer_buffer(scan_genus3_candidate_progressions, (1,))
+status = scan_genus3_candidate_progressions(
+    small, p, residues[0], residues[1], residues[2],
+    empty, 0, empty, 0, 0, 2_000_000,
+)
+metadata = integer_buffer_values(small)
+assert status == -3 and int(metadata[0]) == 50 and int(metadata[3]) == 4
+limited = summarize_genus3_candidate_progressions(
+    p, residues, max_combinations=10
+)
+assert limited["status"] == "resource_limit"
+assert limited["diagnostics"]["combinations_examined"] == 10
+print("G3_CANDIDATE_STREAM_OK")
+`;
+  try {
+    writeFileSync(program, witness);
+    const explanation = run(process.execPath, [
+      sagejs,
+      "native",
+      "explain",
+      source,
+      "--function",
+      "scan_genus3_candidate_progressions",
+    ]);
+    assert.match(explanation, /host-isolated core: yes/);
+    assert.match(explanation, /0 callbacks inside core/);
+    run(process.execPath, [
+      sagejs,
+      "native",
+      "compile",
+      source,
+      "--cache-root",
+      cache,
+    ]);
+    const output = run(process.execPath, [sagejs, program], {
+      env: { SAGEJS_NATIVE_CACHE_DIR: cache },
+    });
+    assert.match(output, /G3_CANDIDATE_STREAM_OK/);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
   }
 });
 

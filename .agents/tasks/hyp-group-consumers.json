@@ -13,6 +13,7 @@
     "src/lib/sagejs/hyperelliptic_curves/abelian_group.py",
     "src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
     "src/lib/sagejs/hyperelliptic_curves/genus3_completion.py",
+    "src/lib/sagejs/hyperelliptic_curves/genus3_candidate_kernel.py",
     "test/hyperelliptic-group-consumer-performance.cjs",
     "bench/hyperelliptic/benchmark-group-consumers.cjs"
   ],

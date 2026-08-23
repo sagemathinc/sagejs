@@ -74,7 +74,7 @@ def _integer_xgcd(left: int, right: int) -> tuple[int, int, int]:
     return old_r, old_s, old_t
 
 
-def group_element_key(element: Any) -> Any:
+def group_element_key(element: Any, prepared_context: Any = None) -> Any:
     """Return a cheap exact table key for a prime-field Mumford divisor.
 
     `MumfordDivisor.__hash__` deliberately has a completely general fallback,
@@ -84,6 +84,13 @@ def group_element_key(element: Any) -> Any:
     complete and substantially cheaper key over a prime field.  Other group
     elements retain their ordinary exact hash/equality semantics.
     """
+    if prepared_context is not None and hasattr(prepared_context, "pack"):
+        fingerprint = getattr(prepared_context, "model_fingerprint", None)
+        return (
+            "prepared-prime-field-mumford",
+            fingerprint,
+            tuple(int(value) for value in prepared_context.pack(element)),
+        )
     if not hasattr(element, "uv") or not hasattr(element, "parent"):
         return element
     parent = element.parent()
@@ -289,6 +296,12 @@ class GroupOperationBudget:
             "max_baby_steps": self.max_baby_steps,
             "max_memory_bytes": self.max_memory_bytes,
         }
+
+    def element_key(self, element: Any) -> Any:
+        """Return a canonical key without materializing prepared divisors."""
+        parent = element.parent() if hasattr(element, "parent") else None
+        context = None if parent is None else self._context(parent)
+        return group_element_key(element, context)
 
     def _consume(self, count: int) -> None:
         if count < 0 or self.group_operations + count > self.max_group_operations:
@@ -850,7 +863,7 @@ def discrete_log_pgroup(
         left_values = _linear_combinations(left_coordinates, layer, budget)
         table: dict[Any, tuple[int, ...]] = {}
         for coordinates, element in zip(left_coordinates, left_values, strict=True):
-            table[group_element_key(element)] = coordinates
+            table[budget.element_key(element)] = coordinates
         right_coordinates = list(_cartesian_ranges(right_ranges))
         right_values = _linear_combinations(right_coordinates, layer, budget)
         differences = budget.add_batch(
@@ -858,7 +871,7 @@ def discrete_log_pgroup(
             [budget.negate(part) for part in right_values],
         )
         for coordinates, difference in zip(right_coordinates, differences, strict=True):
-            key = group_element_key(difference)
+            key = budget.element_key(difference)
             if key in table:
                 left = table[key]
                 return tuple(
