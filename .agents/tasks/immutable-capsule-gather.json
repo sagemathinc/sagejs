@@ -44,10 +44,57 @@
     "pnpm test:compiler",
     "pnpm test:integration"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 613.962,
+      "started_at": "2026-08-23T13:01:01.321Z",
+      "commit": "5d793d3ff9af19f3d53c73634695e8b9e045d1ca",
+      "workspace_fingerprint": "089c168b1866bf3fc010313c6ec083f2ad28e572b34658fd569afebd7762f4b7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 457.548,
+      "started_at": "2026-08-23T13:11:45.686Z",
+      "commit": "5d793d3ff9af19f3d53c73634695e8b9e045d1ca",
+      "workspace_fingerprint": "089c168b1866bf3fc010313c6ec083f2ad28e572b34658fd569afebd7762f4b7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 48.789,
+      "started_at": "2026-08-23T13:20:38.293Z",
+      "commit": "5d793d3ff9af19f3d53c73634695e8b9e045d1ca",
+      "workspace_fingerprint": "089c168b1866bf3fc010313c6ec083f2ad28e572b34658fd569afebd7762f4b7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/immutable-uint64-capsule.cjs test/runtime-intrinsics.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.102,
+      "started_at": "2026-08-23T13:21:34.704Z",
+      "commit": "5d793d3ff9af19f3d53c73634695e8b9e045d1ca",
+      "workspace_fingerprint": "089c168b1866bf3fc010313c6ec083f2ad28e572b34658fd569afebd7762f4b7",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added an explicit nine-argument authenticated immutable UInt64 capsule gather. It resolves source storage only through the private owner registry, validates exact source and destination bindings plus physical row size, accepts repeated owners, reserves and rolls back destination publication transactionally, enforces a checked 4 GiB ceiling, exposes only an opaque capsule, and retains owned-copy dynamic fallback semantics. The neutral 1000-item/64-unique/8-word benchmark measured 0.1227 ms for gather versus 0.6458 ms for explicit per-source copy plus publication. The clear implementation increased measured core-runtime source size by 922 bytes (673791 to 674713), covered by the authorized smallest round-thousand budget adjustment from 674000 to 675000.",
+    "risks": [
+      "The full integration tier stopped in unrelated test/number-field-om-auto-selector.cjs because the exact precompiled OM worker was unavailable; all four completed batches before that point were otherwise green.",
+      "This lane validated Linux x64 directly; integration should exercise the ordinary runtime fallback on the remaining required platform matrix."
+    ],
+    "next_steps": [
+      "Use immutable_uint64_capsule_gather when publishing freshly prepared packed batches from already authenticated per-item owners.",
+      "Rerun the full integration tier in an environment with the precompiled OM worker available."
+    ]
   }
 }
