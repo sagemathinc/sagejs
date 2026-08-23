@@ -333,6 +333,7 @@ const integration = [
   "test/hyperelliptic-native-kummer.cjs",
   "test/hyperelliptic-oracles.cjs",
   "test/hyperelliptic-periods.cjs",
+  "test/hyperelliptic-rational-performance.cjs",
   "test/hyperelliptic-reference.cjs",
   "test/hyperelliptic-research-tools.cjs",
   "test/hyperelliptic-rforest.cjs",
