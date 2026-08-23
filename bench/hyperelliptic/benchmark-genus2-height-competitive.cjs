@@ -169,25 +169,23 @@ async function sageRows() {
 }
 
 function magmaRows() {
-  const lines = [
-    "Qx<x>:=PolynomialRing(Rationals());",
-    "C:=HyperellipticCurve(x^5-x+1); J:=Jacobian(C);",
-    "P:=J![x,1]; Q:=J![x-1,1];",
-  ];
+  const lines = ["Qx<x>:=PolynomialRing(Rationals());"];
   for (const target of targets) {
     const decimalDigits = Math.ceil(target * Math.LOG10E * Math.log(2)) + 10;
     lines.push(
-      `t:=Realtime(); h:=CanonicalHeight(P : Precision:=${decimalDigits}); cold:=1000*Realtime(t);`,
-      `t:=Realtime(); for i in [1..${repetitions}] do hw:=CanonicalHeight(P : Precision:=${decimalDigits}); end for; warm:=1000*Realtime(t)/${repetitions};`,
+      `C${target}:=HyperellipticCurve(x^5-x+1); J${target}:=Jacobian(C${target}); P${target}:=J${target}![x,1];`,
+      `t:=Realtime(); h:=CanonicalHeight(P${target} : Precision:=${decimalDigits}); cold:=1000*Realtime(t);`,
+      `t:=Realtime(); for i in [1..${repetitions}] do hw:=CanonicalHeight(P${target} : Precision:=${decimalDigits}); end for; warm:=1000*Realtime(t)/${repetitions};`,
       `printf "H|${target}|%o|%o|%.60o\\n",cold,warm,h;`,
     );
   }
   const target = targets[0];
   const decimalDigits = Math.ceil(target * Math.LOG10E * Math.log(2)) + 10;
   lines.push(
-    `t:=Realtime(); pair:=HeightPairingMatrix([P,Q] : Precision:=${decimalDigits}); paircold:=1000*Realtime(t);`,
-    `t:=Realtime(); for i in [1..${repetitions}] do pairw:=HeightPairingMatrix([P,Q] : Precision:=${decimalDigits}); end for; pairwarm:=1000*Realtime(t)/${repetitions};`,
-    `t:=Realtime(); reg:=Regulator([P,Q] : Precision:=${decimalDigits}); regwarm:=1000*Realtime(t);`,
+    "Cb:=HyperellipticCurve(x^5-x+1); Jb:=Jacobian(Cb); Pb:=Jb![x,1]; Qb:=Jb![x-1,1];",
+    `t:=Realtime(); pair:=HeightPairingMatrix([Pb,Qb] : Precision:=${decimalDigits}); paircold:=1000*Realtime(t);`,
+    `t:=Realtime(); for i in [1..${repetitions}] do pairw:=HeightPairingMatrix([Pb,Qb] : Precision:=${decimalDigits}); end for; pairwarm:=1000*Realtime(t)/${repetitions};`,
+    `t:=Realtime(); reg:=Regulator([Pb,Qb] : Precision:=${decimalDigits}); regwarm:=1000*Realtime(t);`,
     `printf "B|${target}|%o|%o|%o|%.60o\\n",paircold,pairwarm,regwarm,reg;`,
     "quit;",
   );
