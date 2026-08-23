@@ -574,16 +574,22 @@ def _evaluate_sparse_quartic(
     coordinates: tuple[Any, Any, Any, Any],
     coefficients: tuple[Any, ...],
     terms: Any,
+    scalar_coerce: Any = None,
+    scalar_compact: Any = None,
 ) -> Any:
-    answer = coefficients[0] * 0
+    answer = coefficients[0] * 0 if scalar_coerce is None else scalar_coerce(0)
     values = coordinates + coefficients
     for term in terms:
-        contribution = term[0]
+        contribution = term[0] if scalar_coerce is None else scalar_coerce(term[0])
         for index in range(10):
             exponent = term[index + 1]
             if exponent:
                 contribution *= values[index] ** exponent
+                if scalar_compact is not None:
+                    contribution = scalar_compact(contribution)
         answer += contribution
+        if scalar_compact is not None:
+            answer = scalar_compact(answer)
     return answer
 
 
@@ -610,6 +616,8 @@ def _evaluate_sparse_quartic_mod(
 def _classical_duplication_values(
     coordinates: tuple[Any, Any, Any, Any],
     coefficients: tuple[Any, ...],
+    scalar_coerce: Any = None,
+    scalar_compact: Any = None,
 ) -> tuple[Any, Any, Any, Any]:
     tables = (
         _CLASSICAL_DELTA_1,
@@ -620,7 +628,13 @@ def _classical_duplication_values(
     return cast(
         tuple[Any, Any, Any, Any],
         tuple(
-            _evaluate_sparse_quartic(coordinates, coefficients, terms)
+            _evaluate_sparse_quartic(
+                coordinates,
+                coefficients,
+                terms,
+                scalar_coerce=scalar_coerce,
+                scalar_compact=scalar_compact,
+            )
             for terms in tables
         ),
     )

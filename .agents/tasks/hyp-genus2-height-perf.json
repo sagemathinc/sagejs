@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-genus2-height-perf",
+  "title": "Hyp Genus2 Height Perf",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate a production modular/local genus-2 Kummer height path and benchmark accuracy-matched heights, pairings, and regulators against Magma.",
+  "base_commit": "76b863adb13c683b265ddc0c987b727fd7291990",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/genus2_kummer.py",
+    "src/lib/sagejs/hyperelliptic_curves/genus2_heights.py",
+    "test/hyperelliptic-genus2-height-performance.cjs",
+    "bench/hyperelliptic/benchmark-genus2-height-competitive.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
