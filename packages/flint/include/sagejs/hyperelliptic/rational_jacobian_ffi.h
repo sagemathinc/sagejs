@@ -60,6 +60,41 @@ static inline size_t sagejs_fmpq_polynomial_pair_allocated_bytes(
         pair->u.retained_bytes, pair->v.retained_bytes);
 }
 
+/*
+ * One immutable, reduced Mumford result moved out of mutable workspace slots.
+ *
+ * Unlike `sagejs_fmpq_polynomial_pair_t`, this owner is an exact semantic
+ * representation rather than a disposable acceleration snapshot.  Its two
+ * components can only be moved and loaded together.  The ordinary typed
+ * Python kernel proves the curve equation; this boundary verifies only the
+ * fixed-degree canonical representation and owns its lifetime.
+ */
+
+typedef struct
+{
+    sagejs_fmpq_polynomial_struct u;
+    sagejs_fmpq_polynomial_struct v;
+    uint64_t genus;
+} sagejs_fmpq_mumford_result_struct;
+
+typedef sagejs_fmpq_mumford_result_struct
+    sagejs_fmpq_mumford_result_t[1];
+
+static inline void sagejs_fmpq_mumford_result_clear(
+    sagejs_fmpq_mumford_result_t result)
+{
+    sagejs_fmpq_polynomial_clear(&result->u);
+    sagejs_fmpq_polynomial_clear(&result->v);
+    result->genus = 0;
+}
+
+static inline size_t sagejs_fmpq_mumford_result_allocated_bytes(
+    const sagejs_fmpq_mumford_result_t result)
+{
+    return sagejs_retained_size_add(
+        result->u.retained_bytes, result->v.retained_bytes);
+}
+
 static inline int sagejs_fmpq_polynomial_workspace_valid_slot(
     const sagejs_fmpq_polynomial_workspace_t workspace, uint64_t slot)
 {
@@ -154,6 +189,64 @@ static inline int sagejs_fmpq_polynomial_workspace_load_pair(
     if (!sagejs_fmpq_polynomial_workspace_valid_slot(workspace, u_output) ||
         !sagejs_fmpq_polynomial_workspace_valid_slot(workspace, v_output) ||
         u_output == v_output || !source->u.sealed || !source->v.sealed)
+        return 0;
+    fmpq_poly_set(workspace->slots + (slong) u_output, source->u.value);
+    fmpq_poly_set(workspace->slots + (slong) v_output, source->v.value);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_workspace_mumford_slots_valid(
+    const sagejs_fmpq_polynomial_workspace_t workspace,
+    uint64_t u_slot, uint64_t v_slot, uint64_t genus)
+{
+    slong u_length;
+    slong v_length;
+    const fmpq_poly_struct *u;
+    const fmpq_poly_struct *v;
+    if (!sagejs_fmpq_polynomial_workspace_valid_slot(workspace, u_slot) ||
+        !sagejs_fmpq_polynomial_workspace_valid_slot(workspace, v_slot) ||
+        u_slot == v_slot || genus < 2 || genus > 3)
+        return 0;
+    u = workspace->slots + (slong) u_slot;
+    v = workspace->slots + (slong) v_slot;
+    u_length = fmpq_poly_length(u);
+    v_length = fmpq_poly_length(v);
+    if (u_length < 1 || u_length > (slong) genus + 1 ||
+        v_length < 0 || v_length >= u_length)
+        return 0;
+    return fmpz_equal(u->coeffs + u_length - 1, u->den);
+}
+
+static inline int sagejs_fmpq_polynomial_workspace_move_mumford_result_out(
+    sagejs_fmpq_mumford_result_t result,
+    sagejs_fmpq_polynomial_workspace_t workspace,
+    uint64_t u_slot, uint64_t v_slot, uint64_t genus)
+{
+    if (!sagejs_fmpq_polynomial_workspace_mumford_slots_valid(
+            workspace, u_slot, v_slot, genus))
+        return 0;
+
+    /* After both validations there are no failing operations.  Swapping into
+       freshly initialized values leaves both workspace slots valid zeros. */
+    fmpq_poly_init(result->u.value);
+    fmpq_poly_init(result->v.value);
+    fmpq_poly_swap(result->u.value, workspace->slots + (slong) u_slot);
+    fmpq_poly_swap(result->v.value, workspace->slots + (slong) v_slot);
+    sagejs_fmpq_polynomial_finish_result(&result->u);
+    sagejs_fmpq_polynomial_finish_result(&result->v);
+    result->genus = genus;
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_workspace_load_mumford_result(
+    sagejs_fmpq_polynomial_workspace_t workspace,
+    uint64_t u_output, uint64_t v_output,
+    const sagejs_fmpq_mumford_result_t source, uint64_t genus)
+{
+    if (!sagejs_fmpq_polynomial_workspace_valid_slot(workspace, u_output) ||
+        !sagejs_fmpq_polynomial_workspace_valid_slot(workspace, v_output) ||
+        u_output == v_output || genus != source->genus ||
+        !source->u.sealed || !source->v.sealed)
         return 0;
     fmpq_poly_set(workspace->slots + (slong) u_output, source->u.value);
     fmpq_poly_set(workspace->slots + (slong) v_output, source->v.value);

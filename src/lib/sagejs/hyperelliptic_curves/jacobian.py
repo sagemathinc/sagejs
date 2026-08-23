@@ -423,6 +423,15 @@ class MumfordDivisor(sage.Element):
         """Add two divisors through the prepared or reference Cantor law."""
         if not isinstance(other, MumfordDivisor) or other._parent is not self._parent:
             raise TypeError("Jacobian divisors must have the same parent")
+        if algorithm == "auto" and not diagnostics:
+            cached = self._parent._prepared_arithmetic_cache.get(("auto", 1_000_000))
+            if (
+                cached is not None
+                and not bool(getattr(cached, "closed", False))
+                and cached.native_available
+                and hasattr(cached, "_add_one")
+            ):
+                return cached._add_one(self, other)
         context = self._parent.prepared_arithmetic(algorithm=algorithm)
         if not diagnostics and not context.native_available:
             left_u, left_v = self.uv()
@@ -454,6 +463,14 @@ class MumfordDivisor(sage.Element):
 
     def __add__(self, other: Any) -> Any:
         if isinstance(other, MumfordDivisor) and other._parent is self._parent:
+            cached = self._parent._prepared_arithmetic_cache.get(("auto", 1_000_000))
+            if (
+                cached is not None
+                and not bool(getattr(cached, "closed", False))
+                and cached.native_available
+                and hasattr(cached, "_add_one")
+            ):
+                return cached._add_one(self, other)
             return self.add(other)
         return runtime.coercion_model.binOp("add", self, other)
 

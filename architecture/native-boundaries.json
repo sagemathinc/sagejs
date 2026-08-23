@@ -14,8 +14,8 @@
   },
   "counts": {
     "classified-native-file": 120,
-    "declared-ffi": 435,
-    "declared-ffi-resource": 31,
+    "declared-ffi": 437,
+    "declared-ffi-resource": 32,
     "napi-export": 320,
     "runtime-intrinsic": 141,
     "wasm-export": 72
@@ -86,6 +86,18 @@
       "close_export": "ffiFmpqMatrixClose",
       "clear_symbol": "sagejs_fmpq_matrix_clear",
       "size_symbol": "sagejs_fmpq_matrix_allocated_bytes",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:flint:fmpq_mumford_result",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "FmpqMumfordResult",
+      "abi_type": "sagejs_fmpq_mumford_result_t",
+      "close_export": "ffiFmpqMumfordResultClose",
+      "clear_symbol": "sagejs_fmpq_mumford_result_clear",
+      "size_symbol": "sagejs_fmpq_mumford_result_allocated_bytes",
       "disposition": "declared-owned-ffi-resource"
     },
     {
@@ -1805,6 +1817,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpq_polynomial_workspace_load_mumford_result",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_load_mumford_result",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceLoadMumfordResult",
+      "symbol": "sagejs_fmpq_polynomial_workspace_load_mumford_result",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpq_polynomial_workspace_load_pair",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -1824,6 +1847,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqPolynomialWorkspaceMonic",
       "symbol": "sagejs_fmpq_polynomial_workspace_monic",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_move_mumford_result_out",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_move_mumford_result_out",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceMoveMumfordResultOut",
+      "symbol": "sagejs_fmpq_polynomial_workspace_move_mumford_result_out",
       "disposition": "declared-safe-ffi"
     },
     {

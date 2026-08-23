@@ -21,6 +21,7 @@ from typing import Any
 
 import sagejs.runtime as runtime
 from sagejs.ffi.flint import (
+    FmpqMumfordResult,
     FmpqPolynomial,
     FmpqPolynomialPair,
     FmpqPolynomialWorkspace,
@@ -37,8 +38,10 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_workspace_is_zero,
     fmpq_polynomial_workspace_length,
     fmpq_polynomial_workspace_load,
+    fmpq_polynomial_workspace_load_mumford_result,
     fmpq_polynomial_workspace_load_pair,
     fmpq_polynomial_workspace_monic,
+    fmpq_polynomial_workspace_move_mumford_result_out,
     fmpq_polynomial_workspace_mul,
     fmpq_polynomial_workspace_neg,
     fmpq_polynomial_workspace_one,
@@ -428,6 +431,209 @@ def rational_cantor_add_pairs(
     return _write_pair(output, workspace, output_u, output_v)
 
 
+@native
+def rational_cantor_add_pair_result(
+    output: IntegerBuffer,
+    workspace: FmpqPolynomialWorkspace,
+    f: FmpqPolynomial,
+    h: FmpqPolynomial,
+    left: FmpqPolynomialPair,
+    right: FmpqPolynomialPair,
+    genus: uint64,
+) -> FmpqPolynomialPair:
+    """Add retained pairs and transfer the exact pair in the same boundary.
+
+    `output` remains the authoritative primitive row.  The returned opaque
+    pair is an acceleration snapshot of the same reduced workspace slots.
+    Invalid internal arithmetic deliberately marks the row malformed so the
+    closure-private publisher rejects it and closes the returned resource.
+    """
+    f_slot: uint64 = 0
+    h_slot: uint64 = 1
+    u1_slot: uint64 = 2
+    v1_slot: uint64 = 3
+    u2_slot: uint64 = 4
+    v2_slot: uint64 = 5
+    output_u: uint64 = 6
+    output_v: uint64 = 7
+    success = len(output) >= 16 and genus >= 2 and genus <= 3
+    if success:
+        success = fmpq_polynomial_workspace_load(workspace, f_slot, f)
+    if success:
+        success = fmpq_polynomial_workspace_load(workspace, h_slot, h)
+    if success:
+        success = fmpq_polynomial_workspace_load_pair(workspace, u1_slot, v1_slot, left)
+    if success:
+        success = fmpq_polynomial_workspace_load_pair(
+            workspace, u2_slot, v2_slot, right
+        )
+    if success:
+        success = _cantor_add_one(
+            workspace,
+            f_slot,
+            h_slot,
+            u1_slot,
+            v1_slot,
+            u2_slot,
+            v2_slot,
+            output_u,
+            output_v,
+            genus,
+        )
+    if success:
+        success = _write_pair(output, workspace, output_u, output_v)
+    if not success and len(output) >= 2:
+        output[0] = 0
+        output[1] = 0
+    return fmpq_polynomial_workspace_copy_pair_out(workspace, output_u, output_v)
+
+
+def _zero_pair(
+    workspace: FmpqPolynomialWorkspace, u_slot: uint64, v_slot: uint64
+) -> bool:
+    """Leave two scratch slots in a valid, deliberately non-Mumford state."""
+    if not fmpq_polynomial_workspace_zero(workspace, u_slot):
+        return False
+    return fmpq_polynomial_workspace_zero(workspace, v_slot)
+
+
+@native
+def rational_mumford_result_from_polynomials(
+    workspace: FmpqPolynomialWorkspace,
+    u: FmpqPolynomial,
+    v: FmpqPolynomial,
+    genus: uint64,
+) -> FmpqMumfordResult:
+    """Move one validated public Mumford pair into an opaque exact owner."""
+    output_u: uint64 = 12
+    output_v: uint64 = 13
+    success = genus >= 2 and genus <= 3
+    if success:
+        success = fmpq_polynomial_workspace_load(workspace, output_u, u)
+    if success:
+        success = fmpq_polynomial_workspace_load(workspace, output_v, v)
+    if not success:
+        success = _zero_pair(workspace, output_u, output_v)
+    return fmpq_polynomial_workspace_move_mumford_result_out(
+        workspace, output_u, output_v, genus
+    )
+
+
+@native
+def rational_cantor_add_mumford_results(
+    workspace: FmpqPolynomialWorkspace,
+    f: FmpqPolynomial,
+    h: FmpqPolynomial,
+    left: FmpqMumfordResult,
+    right: FmpqMumfordResult,
+    genus: uint64,
+) -> FmpqMumfordResult:
+    """Add two opaque exact results without eagerly publishing a host row."""
+    f_slot: uint64 = 0
+    h_slot: uint64 = 1
+    u1_slot: uint64 = 2
+    v1_slot: uint64 = 3
+    u2_slot: uint64 = 4
+    v2_slot: uint64 = 5
+    output_u: uint64 = 6
+    output_v: uint64 = 7
+    success = genus >= 2 and genus <= 3
+    if success:
+        success = fmpq_polynomial_workspace_load(workspace, f_slot, f)
+    if success:
+        success = fmpq_polynomial_workspace_load(workspace, h_slot, h)
+    if success:
+        success = fmpq_polynomial_workspace_load_mumford_result(
+            workspace, u1_slot, v1_slot, left, genus
+        )
+    if success:
+        success = fmpq_polynomial_workspace_load_mumford_result(
+            workspace, u2_slot, v2_slot, right, genus
+        )
+    if success:
+        success = _cantor_add_one(
+            workspace,
+            f_slot,
+            h_slot,
+            u1_slot,
+            v1_slot,
+            u2_slot,
+            v2_slot,
+            output_u,
+            output_v,
+            genus,
+        )
+    if not success:
+        success = _zero_pair(workspace, output_u, output_v)
+    return fmpq_polynomial_workspace_move_mumford_result_out(
+        workspace, output_u, output_v, genus
+    )
+
+
+@native
+def rational_cantor_add_prepared_mumford_results(
+    workspace: FmpqPolynomialWorkspace,
+    left: FmpqMumfordResult,
+    right: FmpqMumfordResult,
+    genus: uint64,
+) -> FmpqMumfordResult:
+    """Add exact results with the prepared model retained in slots 0 and 1."""
+    f_slot: uint64 = 0
+    h_slot: uint64 = 1
+    u1_slot: uint64 = 2
+    v1_slot: uint64 = 3
+    u2_slot: uint64 = 4
+    v2_slot: uint64 = 5
+    output_u: uint64 = 6
+    output_v: uint64 = 7
+    success = genus >= 2 and genus <= 3
+    if success:
+        success = fmpq_polynomial_workspace_load_mumford_result(
+            workspace, u1_slot, v1_slot, left, genus
+        )
+    if success:
+        success = fmpq_polynomial_workspace_load_mumford_result(
+            workspace, u2_slot, v2_slot, right, genus
+        )
+    if success:
+        success = _cantor_add_one(
+            workspace,
+            f_slot,
+            h_slot,
+            u1_slot,
+            v1_slot,
+            u2_slot,
+            v2_slot,
+            output_u,
+            output_v,
+            genus,
+        )
+    if not success:
+        success = _zero_pair(workspace, output_u, output_v)
+    return fmpq_polynomial_workspace_move_mumford_result_out(
+        workspace, output_u, output_v, genus
+    )
+
+
+@native
+def rational_mumford_result_write_row(
+    output: IntegerBuffer,
+    workspace: FmpqPolynomialWorkspace,
+    result: FmpqMumfordResult,
+    genus: uint64,
+) -> bool:
+    """Extract the canonical exact row at the first semantic observation."""
+    output_u: uint64 = 6
+    output_v: uint64 = 7
+    if len(output) < 16 or genus < 2 or genus > 3:
+        return False
+    if not fmpq_polynomial_workspace_load_mumford_result(
+        workspace, output_u, output_v, result, genus
+    ):
+        return False
+    return _write_pair(output, workspace, output_u, output_v)
+
+
 def _cantor_scalar_one(
     workspace: FmpqPolynomialWorkspace,
     f_slot: uint64,
@@ -627,6 +833,62 @@ def rational_cantor_scalar_pair(
     return _write_pair(output, workspace, accumulator_u, accumulator_v)
 
 
+@native
+def rational_cantor_scalar_mumford_result(
+    workspace: FmpqPolynomialWorkspace,
+    f: FmpqPolynomial,
+    h: FmpqPolynomial,
+    divisor: FmpqMumfordResult,
+    scalar: int,
+    genus: uint64,
+    max_group_operations: uint64,
+) -> FmpqMumfordResult:
+    """Multiply one opaque exact result and move out the reduced answer."""
+    f_slot: uint64 = 0
+    h_slot: uint64 = 1
+    accumulator_u: uint64 = 2
+    accumulator_v: uint64 = 3
+    addend_u: uint64 = 4
+    addend_v: uint64 = 5
+    output_u: uint64 = 6
+    output_v: uint64 = 7
+    temporary0: uint64 = 8
+    temporary1: uint64 = 9
+    temporary2: uint64 = 10
+    success = genus >= 2 and genus <= 3
+    if success:
+        success = fmpq_polynomial_workspace_load(workspace, f_slot, f)
+    if success:
+        success = fmpq_polynomial_workspace_load(workspace, h_slot, h)
+    if success:
+        success = fmpq_polynomial_workspace_load_mumford_result(
+            workspace, addend_u, addend_v, divisor, genus
+        )
+    if success:
+        success = _cantor_scalar_one(
+            workspace,
+            f_slot,
+            h_slot,
+            accumulator_u,
+            accumulator_v,
+            addend_u,
+            addend_v,
+            output_u,
+            output_v,
+            temporary0,
+            temporary1,
+            temporary2,
+            scalar,
+            genus,
+            max_group_operations,
+        )
+    if not success:
+        success = _zero_pair(workspace, accumulator_u, accumulator_v)
+    return fmpq_polynomial_workspace_move_mumford_result_out(
+        workspace, accumulator_u, accumulator_v, genus
+    )
+
+
 def _exact_integer(value: Any, name: str) -> int:
     if isinstance(value, bool):
         raise TypeError(name + " must be an integer")
@@ -746,9 +1008,15 @@ class PreparedRationalJacobianArithmetic:
         self._retained_pair_bound = 4096 + 16 * word_capacity * 8
         self._batch_retained_bytes = 0
         self._workspace = fmpq_polynomial_workspace(_WORKSPACE_SLOTS)
+        self._closed = False
         self._busy = False
         self._f_resource = _resource(jacobian.f())
         self._h_resource = _resource(jacobian.h())
+        if not fmpq_polynomial_workspace_load(
+            self._workspace, 0, self._f_resource
+        ) or not fmpq_polynomial_workspace_load(self._workspace, 1, self._h_resource):
+            self._workspace.close()
+            raise ArithmeticError("failed to prepare the rational Jacobian model")
         self._add_output = kernel_integer_zeros(
             rational_cantor_add, _OUTPUT_WORDS, word_capacity
         )
@@ -761,7 +1029,13 @@ class PreparedRationalJacobianArithmetic:
             is_compiled(rational_cantor_add)
             and is_compiled(rational_cantor_scalar)
             and is_compiled(rational_cantor_add_pairs)
+            and is_compiled(rational_cantor_add_pair_result)
+            and is_compiled(rational_mumford_result_from_polynomials)
+            and is_compiled(rational_cantor_add_mumford_results)
+            and is_compiled(rational_cantor_add_prepared_mumford_results)
+            and is_compiled(rational_mumford_result_write_row)
             and is_compiled(rational_cantor_scalar_pair)
+            and is_compiled(rational_cantor_scalar_mumford_result)
         )
         self._capability = PreparedRationalJacobianCapability(
             genus, self.model_fingerprint, compiled, word_capacity
@@ -779,11 +1053,13 @@ class PreparedRationalJacobianArithmetic:
 
     @property
     def closed(self) -> bool:
-        return self._workspace.closed
+        return self._closed
 
     def close(self) -> None:
         """Release the prepared FLINT scratch workspace deterministically."""
-        self._workspace.close()
+        if not self._closed:
+            self._workspace.close()
+            self._closed = True
 
     def __enter__(self) -> PreparedRationalJacobianArithmetic:
         if self.closed:
@@ -1175,9 +1451,10 @@ def _install_retained_rational_mumford_state(context_type: Any) -> None:
 
     A module-private name is not an authentication boundary: callers can
     rebind helpers and can inject arbitrary attributes even on nominally
-    private slots.  The only map from a public divisor to an accelerated FLINT
-    pair therefore lives in this lexical closure.  Its immutable exact row is
-    authoritative; the opaque pair is merely a replaceable acceleration.
+    private slots.  The only map from a public divisor to its indivisible exact
+    FLINT Mumford owner therefore lives in this lexical closure.  The owner is
+    semantic authority until the first public observation extracts, validates,
+    and freezes the canonical primitive tuple; no component resource escapes.
     """
     jacobian_module = __import__(
         "sagejs.hyperelliptic_curves.jacobian", fromlist=["MumfordDivisor"]
@@ -1186,15 +1463,19 @@ def _install_retained_rational_mumford_state(context_type: Any) -> None:
     weak_map = runtime.reflect.construct(
         runtime.reflect.get(runtime.global_object, "WeakMap"), []
     )
+    binding_token = object()
 
     integer_values_function = integer_buffer_values
-    pair_copy_function = fmpq_polynomial_workspace_copy_pair_out
-    workspace_load_function = fmpq_polynomial_workspace_load
-    add_pairs_function = rational_cantor_add_pairs
-    scalar_pair_function = rational_cantor_scalar_pair
+    result_from_polynomials_function = rational_mumford_result_from_polynomials
+    add_results_function = rational_cantor_add_prepared_mumford_results
+    result_write_row_function = rational_mumford_result_write_row
+    scalar_result_function = rational_cantor_scalar_mumford_result
+    result_type = FmpqMumfordResult
+    result_close_function = FmpqMumfordResult.close
     polynomial_data_function = _polynomial_data
     polynomial_resource_function = _resource
     workspace_bytes_function = fmpq_polynomial_workspace_allocated_bytes
+    validate_reduced_function = jacobian_module.HyperellipticJacobian._validate_reduced
     undefined_value = runtime.undefined
     schema = PACKED_RATIONAL_MUMFORD_SCHEMA
     original_materialize = divisor_type._materialize
@@ -1202,6 +1483,8 @@ def _install_retained_rational_mumford_state(context_type: Any) -> None:
     original_is_zero = divisor_type.is_zero
     original_eq = divisor_type._eq_
     original_hash = divisor_type.__hash__
+    original_add_method = divisor_type.add
+    original_public_add = divisor_type.__add__
     original_pack = context_type.pack
 
     def lookup(divisor: Any, context: Any = None) -> Any:
@@ -1209,10 +1492,9 @@ def _install_retained_rational_mumford_state(context_type: Any) -> None:
         if record is undefined_value:
             return None
         if (
-            not isinstance(record, tuple)
-            or len(record) != 6
-            or record[0] is not divisor
+            record[0] is not divisor
             or record[1] is not divisor._parent
+            or record[6] is not binding_token
         ):
             raise ArithmeticError("retained rational Mumford binding is corrupted")
         if context is not None:
@@ -1228,16 +1510,34 @@ def _install_retained_rational_mumford_state(context_type: Any) -> None:
             raise ArithmeticError("native rational Cantor output has the wrong size")
         u_length = int(row[0])
         v_length = int(row[1])
-        if u_length < 1 or u_length > 4 or v_length < 0 or v_length > 3:
+        if (
+            u_length < 1
+            or u_length > 4
+            or v_length < 0
+            or v_length > 3
+            or v_length >= u_length
+        ):
             raise ArithmeticError("native rational Cantor output is malformed")
         if row[2 * u_length] != 1 or row[2 * u_length + 1] != 1:
             raise ArithmeticError("native rational Cantor output is not monic")
-        # `_write_pair` clears all padding and obtains every coefficient from
-        # normalized FLINT storage.  The publisher is closure-private and is
-        # reached only after that exact source kernel succeeds, so repeating
-        # sixteen dynamic integer/padding checks here is neither a security
-        # boundary nor useful mathematical replay.  Untrusted external rows
-        # still take the validating public `unpack` path.
+        index = 0
+        while index < u_length:
+            if row[3 + 2 * index] <= 0:
+                raise ArithmeticError("native rational Cantor denominator is invalid")
+            index += 1
+        while index < 4:
+            if row[2 + 2 * index] != 0 or row[3 + 2 * index] != 0:
+                raise ArithmeticError("native rational Cantor u padding is nonzero")
+            index += 1
+        index = 0
+        while index < v_length:
+            if row[11 + 2 * index] <= 0:
+                raise ArithmeticError("native rational Cantor denominator is invalid")
+            index += 1
+        while index < 3:
+            if row[10 + 2 * index] != 0 or row[11 + 2 * index] != 0:
+                raise ArithmeticError("native rational Cantor v padding is nonzero")
+            index += 1
         return row
 
     def polynomial_row(divisor: Any) -> tuple[int, ...]:
@@ -1270,37 +1570,41 @@ def _install_retained_rational_mumford_state(context_type: Any) -> None:
             ),
         }
 
-    def reserve_pair(context: Any) -> None:
-        next_bytes = context._batch_retained_bytes + context._retained_pair_bound
+    def reserve_result(context: Any) -> None:
         maximum = context._max_memory_bytes
-        if maximum is not None:
-            workspace_bytes = int(workspace_bytes_function(context._workspace))
-            if workspace_bytes + next_bytes > maximum:
-                raise RuntimeError("retained rational pairs exceed max_memory_bytes")
+        if maximum is None:
+            return
+        next_bytes = context._batch_retained_bytes + context._retained_pair_bound
+        workspace_bytes = int(workspace_bytes_function(context._workspace))
+        if workspace_bytes + next_bytes > maximum:
+            raise RuntimeError("retained rational results exceed max_memory_bytes")
         context._batch_retained_bytes = next_bytes
 
-    def bind_new(divisor: Any, context: Any, row: tuple[int, ...], pair: Any) -> Any:
+    def bind_new(divisor: Any, context: Any, row: Any, result: Any) -> Any:
+        fast_context = context
+        if (
+            not context.native_available
+            or context._cancel is not None
+            or context._max_memory_bytes is not None
+        ):
+            fast_context = None
         record = (
             divisor,
             context._jacobian,
             context.model_fingerprint,
             row,
-            pair,
+            result,
             None,
+            binding_token,
+            fast_context,
         )
         weak_map.set(divisor, record)
         return record
 
-    def publish(
-        context: Any,
-        output: Any,
-        u_slot: int,
-        v_slot: int,
-    ) -> Any:
-        row = canonical_kernel_row(output)
-        reserve_pair(context)
-        pair = pair_copy_function(context._workspace, u_slot, v_slot)
+    def publish_result(context: Any, result: Any) -> Any:
         try:
+            if context._max_memory_bytes is not None:
+                reserve_result(context)
             divisor = object.__new__(divisor_type)
             divisor._parent = context._jacobian
             divisor._u = None
@@ -1311,41 +1615,90 @@ def _install_retained_rational_mumford_state(context_type: Any) -> None:
                 "_MumfordDivisor__packed_row_binding",
                 None,
             )
-            bind_new(divisor, context, row, pair)
+            bind_new(divisor, context, None, result)
             return divisor
         except Exception:
-            pair.close()
+            if isinstance(result, result_type):
+                result_close_function(result)
             raise
 
-    def ensure_pair(context: Any, divisor: Any) -> Any:
+    def row_polynomials(parent: Any, row: tuple[int, ...]) -> tuple[Any, Any]:
+        field = parent.base_ring()
+        ring = parent.polynomial_ring()
+        u_data = tuple(
+            (row[2 + 2 * index], row[3 + 2 * index]) for index in range(int(row[0]))
+        )
+        v_data = tuple(
+            (row[10 + 2 * index], row[11 + 2 * index]) for index in range(int(row[1]))
+        )
+        u_value = ring(
+            [field(numerator) / field(denominator) for numerator, denominator in u_data]
+        )
+        v_value = ring(
+            [field(numerator) / field(denominator) for numerator, denominator in v_data]
+        )
+        if (
+            polynomial_data_function(u_value) != u_data
+            or polynomial_data_function(v_value) != v_data
+        ):
+            raise ArithmeticError("native rational Mumford row is not canonical")
+        validate_reduced_function(parent, u_value, v_value)
+        return u_value, v_value
+
+    def extract_row(divisor: Any, context: Any = None) -> tuple[int, ...]:
         record = lookup(divisor, context)
-        if record is not None and not record[4].closed:
-            return record[4]
-        row = record[3] if record is not None else polynomial_row(divisor)
-        u_value, v_value = divisor.uv()
-        context._jacobian._validate_reduced(u_value, v_value)
-        reserve_pair(context)
-        if not workspace_load_function(
-            context._workspace, 12, polynomial_resource_function(u_value)
+        if record is None:
+            return polynomial_row(divisor)
+        row = record[3]
+        if row is not None:
+            return row
+        if context is None:
+            context = record[1].prepared_arithmetic()
+            lookup(divisor, context)
+        if not result_write_row_function(
+            context._add_output,
+            context._workspace,
+            record[4],
+            context._genus,
         ):
-            raise ArithmeticError("failed to retain rational Mumford u")
-        if not workspace_load_function(
-            context._workspace, 13, polynomial_resource_function(v_value)
-        ):
-            raise ArithmeticError("failed to retain rational Mumford v")
-        pair = pair_copy_function(context._workspace, 12, 13)
+            raise ArithmeticError("failed to extract retained rational Mumford row")
+        row = canonical_kernel_row(context._add_output)
+        row_polynomials(record[1], row)
+        replacement = (
+            record[0],
+            record[1],
+            record[2],
+            row,
+            record[4],
+            record[5],
+            binding_token,
+            record[7],
+        )
+        weak_map.set(divisor, replacement)
+        return row
+
+    def ensure_result(context: Any, divisor: Any) -> Any:
+        record = lookup(divisor, context)
         if record is not None:
-            replacement = (
-                divisor,
-                context._jacobian,
-                context.model_fingerprint,
-                row,
-                pair,
-                record[5],
+            return record[4]
+        u_value, v_value = divisor.uv()
+        validate_reduced_function(context._jacobian, u_value, v_value)
+        row = polynomial_row(divisor)
+        reserve_result(context)
+        try:
+            result = result_from_polynomials_function(
+                context._workspace,
+                polynomial_resource_function(u_value),
+                polynomial_resource_function(v_value),
+                context._genus,
             )
-            weak_map.set(divisor, replacement)
-            return pair
-        return bind_new(divisor, context, row, pair)[4]
+        except ValueError as error:
+            raise ArithmeticError("failed to retain rational Mumford result") from error
+        try:
+            return bind_new(divisor, context, row, result)[4]
+        except Exception:
+            result_close_function(result)
+            raise
 
     def retained_materialize(divisor: Any) -> None:
         record = lookup(divisor)
@@ -1354,7 +1707,7 @@ def _install_retained_rational_mumford_state(context_type: Any) -> None:
             return
         if divisor._u is not None:
             return
-        row = record[3]
+        row = extract_row(divisor)
         field = divisor._parent.base_ring()
         ring = divisor._parent.polynomial_ring()
         divisor._u = ring(
@@ -1374,13 +1727,13 @@ def _install_retained_rational_mumford_state(context_type: Any) -> None:
         record = lookup(divisor)
         if record is None:
             return original_degree(divisor)
-        return int(record[3][0]) - 1
+        return int(extract_row(divisor)[0]) - 1
 
     def retained_is_zero(divisor: Any) -> bool:
         record = lookup(divisor)
         if record is None:
             return original_is_zero(divisor)
-        row = record[3]
+        row = extract_row(divisor)
         return int(row[0]) == 1 and row[2] == 1 and row[3] == 1 and int(row[1]) == 0
 
     def retained_eq(divisor: Any, other: Any) -> bool:
@@ -1393,8 +1746,8 @@ def _install_retained_rational_mumford_state(context_type: Any) -> None:
         right = lookup(other)
         if left is None and right is None:
             return original_eq(divisor, other)
-        left_row = left[3] if left is not None else polynomial_row(divisor)
-        right_row = right[3] if right is not None else polynomial_row(other)
+        left_row = extract_row(divisor) if left is not None else polynomial_row(divisor)
+        right_row = extract_row(other) if right is not None else polynomial_row(other)
         return left_row == right_row
 
     def retained_hash(divisor: Any) -> int:
@@ -1402,10 +1755,21 @@ def _install_retained_rational_mumford_state(context_type: Any) -> None:
         if record is not None:
             cached = record[5]
             if cached is None:
-                cached = hash((id(record[1]), schema, record[3]))
+                row = extract_row(divisor)
+                record = lookup(divisor)
+                cached = hash((id(record[1]), schema, row))
                 weak_map.set(
                     divisor,
-                    (record[0], record[1], record[2], record[3], record[4], cached),
+                    (
+                        record[0],
+                        record[1],
+                        record[2],
+                        row,
+                        record[4],
+                        cached,
+                        binding_token,
+                        record[7],
+                    ),
                 )
             return int(cached)
         if record is None and str(divisor.parent().base_ring()) != "Rational Field":
@@ -1419,47 +1783,145 @@ def _install_retained_rational_mumford_state(context_type: Any) -> None:
         record = lookup(divisor, context)
         if record is None:
             return original_pack(context, divisor)
-        return external_row(record[3], record[2])
+        return external_row(extract_row(divisor, context), record[2])
+
+    def add_bound_results(context: Any, left_result: Any, right_result: Any) -> Any:
+        try:
+            result = add_results_function(
+                context._workspace,
+                left_result,
+                right_result,
+                context._genus,
+            )
+        except ValueError as error:
+            raise ArithmeticError(
+                "native rational Cantor addition failed closed"
+            ) from error
+        return publish_result(context, result)
 
     def retained_native_add(context: Any, left: Any, right: Any) -> Any:
-        left_pair = ensure_pair(context, left)
-        right_pair = ensure_pair(context, right)
-        if not add_pairs_function(
-            context._add_output,
-            context._workspace,
-            context._f_resource,
-            context._h_resource,
-            left_pair,
-            right_pair,
-            context._genus,
+        return add_bound_results(
+            context, ensure_result(context, left), ensure_result(context, right)
+        )
+
+    def retained_add_method(
+        divisor: Any,
+        other: Any,
+        *,
+        algorithm: str = "auto",
+        diagnostics: bool = False,
+    ) -> Any:
+        if (
+            algorithm == "auto"
+            and not diagnostics
+            and isinstance(other, divisor_type)
+            and other._parent is divisor._parent
         ):
-            raise ArithmeticError("native rational Cantor addition failed closed")
-        return publish(context, context._add_output, 6, 7)
+            return retained_public_add(divisor, other)
+        return original_add_method(
+            divisor, other, algorithm=algorithm, diagnostics=diagnostics
+        )
+
+    def retained_public_add(divisor: Any, other: Any) -> Any:
+        same_divisor = other is divisor
+        if same_divisor or (
+            isinstance(other, divisor_type) and other._parent is divisor._parent
+        ):
+            left_record = weak_map.get(divisor)
+            right_record = left_record if same_divisor else weak_map.get(other)
+            if (
+                left_record is not undefined_value
+                and right_record is not undefined_value
+            ):
+                if (
+                    left_record[0] is not divisor
+                    or left_record[1] is not divisor._parent
+                    or left_record[6] is not binding_token
+                    or (
+                        not same_divisor
+                        and (
+                            right_record[0] is not other
+                            or right_record[1] is not other._parent
+                            or right_record[6] is not binding_token
+                        )
+                    )
+                ):
+                    raise ArithmeticError(
+                        "retained rational Mumford binding is corrupted"
+                    )
+                context = left_record[7]
+                if context is not None and context is right_record[7]:
+                    try:
+                        result = add_results_function(
+                            context._workspace,
+                            left_record[4],
+                            right_record[4],
+                            context._genus,
+                        )
+                    except ValueError as error:
+                        if context._closed:
+                            return original_add_method(divisor, other)
+                        raise ArithmeticError(
+                            "native rational Cantor addition failed closed"
+                        ) from error
+                    try:
+                        answer = object.__new__(divisor_type)
+                        answer._parent = context._jacobian
+                        answer._u = None
+                        answer._v = None
+                        answer._packed_hash = None
+                        object.__setattr__(
+                            answer,
+                            "_MumfordDivisor__packed_row_binding",
+                            None,
+                        )
+                        weak_map.set(
+                            answer,
+                            (
+                                answer,
+                                context._jacobian,
+                                context.model_fingerprint,
+                                None,
+                                result,
+                                None,
+                                binding_token,
+                                context,
+                            ),
+                        )
+                        return answer
+                    except Exception:
+                        result_close_function(result)
+                        raise
+            return original_add_method(divisor, other)
+        return original_public_add(divisor, other)
 
     def retained_native_scalar(
         context: Any, divisor: Any, scalar: int, maximum: int
     ) -> Any:
-        pair = ensure_pair(context, divisor)
-        if not scalar_pair_function(
-            context._scalar_output,
-            context._workspace,
-            context._f_resource,
-            context._h_resource,
-            pair,
-            scalar,
-            context._genus,
-            maximum,
-        ):
+        result = ensure_result(context, divisor)
+        try:
+            answer = scalar_result_function(
+                context._workspace,
+                context._f_resource,
+                context._h_resource,
+                result,
+                scalar,
+                context._genus,
+                maximum,
+            )
+        except ValueError as error:
             raise RuntimeError(
                 "rational Cantor scalar operation bound exceeded or arithmetic failed"
-            )
-        return publish(context, context._scalar_output, 2, 3)
+            ) from error
+        return publish_result(context, answer)
 
     divisor_type._materialize = retained_materialize
     divisor_type.degree = retained_degree
     divisor_type.is_zero = retained_is_zero
     divisor_type._eq_ = retained_eq
     divisor_type.__hash__ = retained_hash
+    divisor_type.add = retained_add_method
+    divisor_type.__add__ = retained_public_add
     context_type.pack = retained_pack
     context_type._native_add = retained_native_add
     context_type._native_scalar = retained_native_scalar

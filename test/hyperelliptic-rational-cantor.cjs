@@ -37,20 +37,35 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_workspace,
     fmpq_polynomial_workspace_allocated_bytes,
     fmpq_polynomial_workspace_copy_pair_out,
+    fmpq_polynomial_workspace_is_zero,
+    fmpq_polynomial_workspace_length,
+    fmpq_polynomial_workspace_load,
+    fmpq_polynomial_workspace_load_mumford_result,
     fmpq_polynomial_workspace_load_pair,
+    fmpq_polynomial_workspace_move_mumford_result_out,
 )
 from sagejs.hyperelliptic_curves.jacobian_rational_native import (
     PreparedRationalJacobianArithmetic,
     rational_cantor_add,
+    rational_cantor_add_mumford_results,
     rational_cantor_add_pairs,
+    rational_cantor_add_prepared_mumford_results,
     rational_cantor_scalar,
+    rational_cantor_scalar_mumford_result,
     rational_cantor_scalar_pair,
+    rational_mumford_result_from_polynomials,
+    rational_mumford_result_write_row,
 )
 
 compiled = is_compiled(rational_cantor_add)
 assert compiled == is_compiled(rational_cantor_scalar)
 assert compiled == is_compiled(rational_cantor_add_pairs)
 assert compiled == is_compiled(rational_cantor_scalar_pair)
+assert compiled == is_compiled(rational_mumford_result_from_polynomials)
+assert compiled == is_compiled(rational_cantor_add_mumford_results)
+assert compiled == is_compiled(rational_cantor_add_prepared_mumford_results)
+assert compiled == is_compiled(rational_cantor_scalar_mumford_result)
+assert compiled == is_compiled(rational_mumford_result_write_row)
 selected = "native" if compiled else "reference"
 
 
@@ -103,6 +118,99 @@ def check_curve(curve):
         J.genus(),
     )
     assert context._unpack_output(raw_output) == P._scalar_multiple_reference(4)
+    raw_result = fmpq_polynomial_workspace_move_mumford_result_out(
+        raw_workspace, 6, 7, J.genus()
+    )
+    assert not raw_result.closed
+    assert not hasattr(raw_result, "u") and not hasattr(raw_result, "v")
+    assert fmpq_polynomial_workspace_is_zero(raw_workspace, 6) == 1
+    assert fmpq_polynomial_workspace_is_zero(raw_workspace, 7) == 1
+    assert rational_mumford_result_write_row(
+        raw_output, raw_workspace, raw_result, J.genus()
+    )
+    assert context._unpack_output(raw_output) == P._scalar_multiple_reference(4)
+    assert fmpq_polynomial_workspace_load_mumford_result(
+        raw_workspace, 14, 15, raw_result, J.genus()
+    )
+    try:
+        fmpq_polynomial_workspace_move_mumford_result_out(
+            raw_workspace, 14, 14, J.genus()
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("an overlapping Mumford move was accepted")
+    assert rational_mumford_result_write_row(
+        raw_output, raw_workspace, raw_result, J.genus()
+    )
+    try:
+        fmpq_polynomial_workspace_load_mumford_result(
+            raw_workspace, 14, 15, raw_result, 5 - J.genus()
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a wrong-genus Mumford result load was accepted")
+    assert fmpq_polynomial_workspace_load(
+        raw_workspace, 14, J.f()._exact_polynomial_resource()
+    )
+    assert fmpq_polynomial_workspace_load(
+        raw_workspace, 15, P[1]._exact_polynomial_resource()
+    )
+    invalid_u_length = fmpq_polynomial_workspace_length(raw_workspace, 14)
+    invalid_v_length = fmpq_polynomial_workspace_length(raw_workspace, 15)
+    try:
+        fmpq_polynomial_workspace_move_mumford_result_out(
+            raw_workspace, 14, 15, J.genus()
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("an out-of-degree Mumford move was accepted")
+    assert fmpq_polynomial_workspace_length(raw_workspace, 14) == invalid_u_length
+    assert fmpq_polynomial_workspace_length(raw_workspace, 15) == invalid_v_length
+    point_result = rational_mumford_result_from_polynomials(
+        raw_workspace,
+        P[0]._exact_polynomial_resource(),
+        P[1]._exact_polynomial_resource(),
+        J.genus(),
+    )
+    doubled_result = rational_cantor_add_prepared_mumford_results(
+        raw_workspace, point_result, point_result, J.genus()
+    )
+    assert rational_mumford_result_write_row(
+        raw_output, raw_workspace, doubled_result, J.genus()
+    )
+    assert context._unpack_output(raw_output) == P._scalar_multiple_reference(2)
+    general_double = rational_cantor_add_mumford_results(
+        raw_workspace,
+        J.f()._exact_polynomial_resource(),
+        J.h()._exact_polynomial_resource(),
+        point_result,
+        point_result,
+        J.genus(),
+    )
+    assert rational_mumford_result_write_row(
+        raw_output, raw_workspace, general_double, J.genus()
+    )
+    assert context._unpack_output(raw_output) == P._scalar_multiple_reference(2)
+    tripled_result = rational_cantor_scalar_mumford_result(
+        raw_workspace,
+        J.f()._exact_polynomial_resource(),
+        J.h()._exact_polynomial_resource(),
+        point_result,
+        3,
+        J.genus(),
+        32,
+    )
+    assert rational_mumford_result_write_row(
+        raw_output, raw_workspace, tripled_result, J.genus()
+    )
+    assert context._unpack_output(raw_output) == P._scalar_multiple_reference(3)
+    tripled_result.close()
+    general_double.close()
+    doubled_result.close()
+    point_result.close()
     dynamic_scalar_pair = getattr(
         rational_cantor_scalar_pair, "javascript", rational_cantor_scalar_pair
     )
@@ -133,6 +241,17 @@ def check_curve(curve):
         pass
     else:
         raise AssertionError("a closed opaque pair resource was loaded")
+    raw_result.close()
+    raw_result.close()
+    assert raw_result.closed
+    try:
+        fmpq_polynomial_workspace_load_mumford_result(
+            raw_workspace, 14, 15, raw_result, J.genus()
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a closed opaque Mumford result was loaded")
     assert fmpq_polynomial_workspace_allocated_bytes(raw_workspace) > 0
     raw_workspace.close()
     assert raw_workspace.closed
@@ -227,6 +346,30 @@ assert not security_result.is_materialized()
 security_context = security_jacobian.prepared_arithmetic()
 security_row = security_context.pack(security_result)
 security_hash = hash(security_result)
+lazy_observed = security_result + security_point
+assert not lazy_observed.is_materialized()
+lazy_hash = hash(lazy_observed)
+assert not lazy_observed.is_materialized()
+lazy_row = security_context.pack(lazy_observed)
+assert hash(lazy_observed) == lazy_hash
+lazy_u, lazy_v = lazy_observed.uv()
+assert lazy_observed.is_materialized()
+assert security_context.pack(lazy_observed) == lazy_row
+assert hash(lazy_observed) == lazy_hash
+lazy_reconstructor, lazy_arguments = lazy_observed.__reduce__()
+lazy_restored = lazy_reconstructor(*lazy_arguments)
+assert lazy_restored == lazy_observed
+assert lazy_restored.uv() == (lazy_u, lazy_v)
+unobserved_across_close = security_result + security_point
+assert not unobserved_across_close.is_materialized()
+security_context.close()
+security_context = security_jacobian.prepared_arithmetic()
+assert not security_context.closed
+assert (
+    unobserved_across_close + security_point
+    == security_point.scalar_multiple(4, algorithm="reference")
+)
+assert security_context.pack(unobserved_across_close)["u"]
 assert not hasattr(rational_module, "_install_retained_rational_mumford_state")
 for forbidden in (
     "_RationalMumfordBinding",
@@ -240,6 +383,8 @@ for name in (
     "_rational_mumford_binding",
     "_RationalMumfordBinding",
     "_retained_rational_pair",
+    "_retained_rational_result",
+    "_fmpq_mumford_result",
 ):
     try:
         object.__setattr__(security_result, name, (security_point, security_row))
@@ -255,12 +400,20 @@ saved_copy = rational_module.fmpq_polynomial_workspace_copy_pair_out
 saved_load = rational_module.fmpq_polynomial_workspace_load
 saved_resource = rational_module._resource
 saved_add_pairs = rational_module.rational_cantor_add_pairs
+saved_add_results = rational_module.rational_cantor_add_prepared_mumford_results
+saved_result_from_polynomials = rational_module.rational_mumford_result_from_polynomials
+saved_result_write_row = rational_module.rational_mumford_result_write_row
+saved_result_type = rational_module.FmpqMumfordResult
 try:
     rational_module.integer_buffer_values = None
     rational_module.fmpq_polynomial_workspace_copy_pair_out = None
     rational_module.fmpq_polynomial_workspace_load = None
     rational_module._resource = None
     rational_module.rational_cantor_add_pairs = None
+    rational_module.rational_cantor_add_prepared_mumford_results = None
+    rational_module.rational_mumford_result_from_polynomials = None
+    rational_module.rational_mumford_result_write_row = None
+    rational_module.FmpqMumfordResult = None
     guarded = security_result + security_point
     assert guarded == security_point.scalar_multiple(3, algorithm="reference")
 finally:
@@ -269,6 +422,10 @@ finally:
     rational_module.fmpq_polynomial_workspace_load = saved_load
     rational_module._resource = saved_resource
     rational_module.rational_cantor_add_pairs = saved_add_pairs
+    rational_module.rational_cantor_add_prepared_mumford_results = saved_add_results
+    rational_module.rational_mumford_result_from_polynomials = saved_result_from_polynomials
+    rational_module.rational_mumford_result_write_row = saved_result_write_row
+    rational_module.FmpqMumfordResult = saved_result_type
 
 assert security_context.pack(security_result) == security_row
 assert hash(security_result) == security_hash
@@ -432,6 +589,25 @@ test("prepared rational Cantor arithmetic differentially replays genus 2 and 3",
       assert.match(retainedExplanation, /host-isolated core: yes/);
       assert.match(retainedExplanation, /0 callbacks inside core/);
       assert.match(retainedExplanation, /FmpqPolynomialPair/);
+    }
+    for (const functionName of [
+      "rational_mumford_result_from_polynomials",
+      "rational_cantor_add_mumford_results",
+      "rational_cantor_add_prepared_mumford_results",
+      "rational_cantor_scalar_mumford_result",
+      "rational_mumford_result_write_row",
+    ]) {
+      const resultExplanation = run(process.execPath, [
+        sagejs,
+        "native",
+        "explain",
+        source,
+        "--function",
+        functionName,
+      ]);
+      assert.match(resultExplanation, /host-isolated core: yes/);
+      assert.match(resultExplanation, /0 callbacks inside core/);
+      assert.match(resultExplanation, /FmpqMumfordResult/);
     }
     run(process.execPath, [
       sagejs,

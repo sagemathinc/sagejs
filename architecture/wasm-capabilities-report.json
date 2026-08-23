@@ -1,12 +1,12 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "b40b6dc0a14df545185521660a73602e4dcfbc1bbfac3d611bd9bf51e770074b",
+  "source_sha256": "7f74b1f69fbe5c454586c8eaa0778f6e1153c335b1e965899f0bb620a134774b",
   "counts": {
-    "total": 995,
+    "total": 998,
     "by_kind": {
-      "declared-ffi-function": 435,
-      "declared-ffi-resource": 31,
+      "declared-ffi-function": 437,
+      "declared-ffi-resource": 32,
       "napi-export": 320,
       "production-kernel": 43,
       "runtime-intrinsic": 141,
@@ -14,14 +14,14 @@
     },
     "by_disposition": {
       "compiled-source": 43,
-      "desktop-only": 39,
+      "desktop-only": 42,
       "generated-wasm": 302,
       "portable-fallback": 567,
       "shared-core": 44
     },
     "by_status": {
       "available": 525,
-      "desktop-only": 39,
+      "desktop-only": 42,
       "fallback": 431
     }
   },
@@ -396,6 +396,18 @@
         "sagejs.ffi.flint"
       ],
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi-resource:flint:fmpq_mumford_result",
+      "family": "flint",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "explanation": "Rational Jacobian arithmetic remains exact in browsers through canonical tuples and the ordinary Cantor implementation; this owned result is desktop-only."
     },
     {
       "id": "ffi-resource:flint:fmpq_polynomial",
@@ -2198,6 +2210,18 @@
       "explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
     },
     {
+      "id": "ffi:flint:fmpq_polynomial_workspace_load_mumford_result",
+      "family": "flint",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "explanation": "Browser arithmetic uses exact canonical tuples; atomic loading of a retained FLINT Mumford result is only a desktop acceleration."
+    },
+    {
       "id": "ffi:flint:fmpq_polynomial_workspace_load_pair",
       "family": "flint",
       "disposition": "desktop-only",
@@ -2220,6 +2244,18 @@
         "prepared rational genus-2/3 Jacobian arithmetic"
       ],
       "explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_move_mumford_result_out",
+      "family": "flint",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "explanation": "Browser arithmetic publishes exact canonical tuples; atomic FLINT Mumford ownership transfer is only a desktop acceleration."
     },
     {
       "id": "ffi:flint:fmpq_polynomial_workspace_mul",

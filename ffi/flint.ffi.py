@@ -218,6 +218,17 @@ FmpqPolynomialPair = flint.resource(
 )
 
 
+FmpqMumfordResult = flint.resource(
+    id="fmpq_mumford_result",
+    abi=sagejs_fmpq_mumford_result_t,
+    ownership="owned",
+    close="ffiFmpqMumfordResultClose",
+    clear="sagejs_fmpq_mumford_result_clear",
+    size="sagejs_fmpq_mumford_result_allocated_bytes",
+    wasm=False,
+)
+
+
 FmpzModPolynomial = flint.resource(
     id="fmpz_mod_polynomial",
     abi=sagejs_fmpz_mod_polynomial_t,
@@ -1257,6 +1268,71 @@ def fmpq_polynomial_workspace_load_pair(
     u_output: uint64,
     v_output: uint64,
     source: FmpqPolynomialPair,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceMoveMumfordResultOut",
+    symbol="sagejs_fmpq_polynomial_workspace_move_mumford_result_out",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_mumford_result_t),
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("u_slot", uint64_t),
+        in_("v_slot", uint64_t),
+        in_("genus", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["workspace"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational Mumford workspace move",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_move_mumford_result_out(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    u_slot: uint64,
+    v_slot: uint64,
+    genus: uint64,
+) -> FmpqMumfordResult: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceLoadMumfordResult",
+    symbol="sagejs_fmpq_polynomial_workspace_load_mumford_result",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("u_output", uint64_t),
+        in_("v_output", uint64_t),
+        in_("source", sagejs_fmpq_mumford_result_t),
+        in_("genus", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["workspace"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational Mumford workspace load",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_load_mumford_result(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    u_output: uint64,
+    v_output: uint64,
+    source: FmpqMumfordResult,
+    genus: uint64,
 ) -> bool: ...
 
 
