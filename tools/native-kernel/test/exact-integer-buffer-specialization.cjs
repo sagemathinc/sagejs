@@ -48,7 +48,7 @@ function emittedFunction(source, marker) {
   return source.slice(start, next + 3);
 }
 
-test("looped exact helper graphs specialize packed integer loads to GMP", async () => {
+test("looped exact helper graphs select from packed integer value bounds", async () => {
   const ir = await lowerSource(witnessSource, witnessPath);
   assert.deepEqual(ir.callGraph, {
     exact_integer_buffer_batch: ["exact_buffer_helper_chain"],
@@ -60,13 +60,18 @@ test("looped exact helper graphs specialize packed integer loads to GMP", async 
     fn.name === "exact_integer_buffer_batch"
   );
   assert.equal(batch.analysis.execution.integerBufferLoads, 2);
+  assert.deepEqual(
+    batch.analysis.execution.integerBufferLoadParameters,
+    ["rows"],
+  );
   assert.equal(batch.analysis.execution.integerGrowthOperations, 3);
   assert.equal(batch.analysis.execution.nativeCalls, 1);
   assert.equal(batch.analysis.execution.dependencyDepth, 2);
   assert.deepEqual(batch.analysis.backend, {
-    kind: "gmp",
+    kind: "integer-buffer-values",
+    parameters: ["rows"],
     reason:
-      "an amortizable exact loop consumes packed arbitrary-precision values",
+      "an amortizable exact loop selects tagged or GMP from packed input bounds",
   });
   const inlineBatch = ir.functions.find((fn) =>
     fn.name === "exact_integer_buffer_inline_batch"
@@ -112,7 +117,7 @@ test("looped exact helper graphs specialize packed integer loads to GMP", async 
   assert.doesNotMatch(core.source, /\b(?:napi_|PyObject|Py_|JSValue|v8::)/);
 });
 
-test("packed exact helper specialization agrees in every execution mode", async () => {
+test("packed exact value-sensitive specialization agrees in every execution mode", async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-exact-buffer-"));
   const cacheRoot = join(temporary, "cache");
   const executable = join(temporary, "exact_integer_buffer_witness.py");
@@ -131,6 +136,8 @@ for index in range(16):
     rows_data.append((1 << 71) + 18 * index + 3)
 rows = kernel_integer_buffer(exact_integer_buffer_batch, rows_data)
 output = kernel_integer_zeros(exact_integer_buffer_batch, 16, 4)
+if compiled:
+    assert exact_integer_buffer_batch.backendFor(output, rows, 16, 6) == "gmp"
 checksum = exact_integer_buffer_batch(output, rows, 16, 6)
 values = [int(value) for value in integer_buffer_values(output)]
 assert checksum == sum(values)
@@ -145,14 +152,29 @@ four_round_output = kernel_integer_zeros(exact_integer_buffer_batch, 16, 4)
 four_round_checksum = exact_integer_buffer_batch(four_round_output, rows, 16, 4)
 assert inline_checksum == four_round_checksum
 assert inline_values == [int(value) for value in integer_buffer_values(four_round_output)]
+small_rows_data = []
+for index in range(16):
+    small_rows_data.append(10007 + 97 * index)
+    small_rows_data.append(1000000000039 + 18 * index)
+small_rows = kernel_integer_buffer(exact_integer_buffer_batch, small_rows_data)
+small_output = kernel_integer_zeros(exact_integer_buffer_batch, 16, 4)
+if compiled:
+    assert exact_integer_buffer_batch.backendFor(small_output, small_rows, 16, 6) == "tagged"
+small_checksum = exact_integer_buffer_batch(small_output, small_rows, 16, 6)
+assert small_checksum == sum(int(value) for value in integer_buffer_values(small_output))
 print("compiled=" + str(compiled))
 print("EXACT_INTEGER_BUFFER_OK:" + str(checksum))
 print("EXACT_INTEGER_BUFFER_INLINE_OK:" + str(inline_checksum))
+print("EXACT_INTEGER_BUFFER_SMALL_OK:" + str(small_checksum))
 `;
   try {
     writeFileSync(executable, `${witnessSource}\n${checks}`);
     const compiled = await compileKernel({ sourcePath: executable, cacheRoot });
     assert.ok(compiled.addonPath);
+    assert.match(
+      readFileSync(compiled.modulePath, "utf8"),
+      /integerBufferFitsSignedInt64\(sagejs_native_rows\)/,
+    );
     const native = run(process.execPath, [sagejs, executable], {
       env: {
         SAGEJS_NATIVE_CACHE_DIR: cacheRoot,
@@ -174,6 +196,10 @@ print("EXACT_INTEGER_BUFFER_INLINE_OK:" + str(inline_checksum))
     assert.equal(
       native.match(/EXACT_INTEGER_BUFFER_INLINE_OK:\d+/)[0],
       dynamic.match(/EXACT_INTEGER_BUFFER_INLINE_OK:\d+/)[0],
+    );
+    assert.equal(
+      native.match(/EXACT_INTEGER_BUFFER_SMALL_OK:\d+/)[0],
+      dynamic.match(/EXACT_INTEGER_BUFFER_SMALL_OK:\d+/)[0],
     );
 
     const python = process.env.PYTHON ||
@@ -199,8 +225,16 @@ print("EXACT_INTEGER_BUFFER_INLINE_OK:" + str(inline_checksum))
       "four_round_checksum = exact_integer_buffer_batch(four_round_output, rows, 16, 4)",
       "assert inline_checksum == four_round_checksum",
       "assert inline_output == four_round_output",
+      "small_rows = []",
+      "for index in range(16):",
+      "    small_rows.append(10007 + 97 * index)",
+      "    small_rows.append(1000000000039 + 18 * index)",
+      "small_output = [0] * 16",
+      "small_checksum = exact_integer_buffer_batch(small_output, small_rows, 16, 6)",
+      "assert small_checksum == sum(small_output)",
       "print('EXACT_INTEGER_BUFFER_OK:' + str(checksum))",
       "print('EXACT_INTEGER_BUFFER_INLINE_OK:' + str(inline_checksum))",
+      "print('EXACT_INTEGER_BUFFER_SMALL_OK:' + str(small_checksum))",
       "",
     ].join("\n");
     assert.equal(
@@ -208,6 +242,7 @@ print("EXACT_INTEGER_BUFFER_INLINE_OK:" + str(inline_checksum))
       [
         native.match(/EXACT_INTEGER_BUFFER_OK:\d+/)[0],
         native.match(/EXACT_INTEGER_BUFFER_INLINE_OK:\d+/)[0],
+        native.match(/EXACT_INTEGER_BUFFER_SMALL_OK:\d+/)[0],
       ].join("\n"),
     );
   } finally {

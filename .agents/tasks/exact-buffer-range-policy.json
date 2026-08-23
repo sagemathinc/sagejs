@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-buffer-range-policy",
+  "title": "Range-sensitive exact buffer specialization",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "/root/native_compiler",
+  "objective": "Select packed exact IntegerBuffer GMP specialization from actual signed-int64 input bounds so large workloads retain direct GMP loads without regressing small candidate scans",
+  "base_commit": "1a7354d4fc35fd0cb9eb70f6c3dce0d7afb87924",
+  "claims": [
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/js-backend.cjs",
+    "tools/native-kernel/test/exact-integer-buffer-specialization.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "same-source CPython/dynamic/native differential",
+      "small and multiword packed IntegerBuffer backend differential"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

@@ -266,6 +266,12 @@ function constantBits(value) {
 }
 
 function executionProfile(fn) {
+  const integerBufferParameters = new Set(
+    fn.params
+      .filter((param) => param.type === "IntegerBuffer")
+      .map((param) => param.name),
+  );
+  const integerBufferLoadParameters = new Set();
   const profile = {
     arithmeticOperations: 0,
     integerGrowthOperations: 0,
@@ -303,6 +309,9 @@ function executionProfile(fn) {
       }
       if (operation.kind === "integer.buffer.get") {
         profile.integerBufferLoads += 1;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
       }
       if (
         operation.kind === "uint64.binary" &&
@@ -323,6 +332,9 @@ function executionProfile(fn) {
     read() {},
     write() {},
   });
+  profile.integerBufferLoadParameters = Array.from(
+    integerBufferLoadParameters,
+  ).sort();
   return profile;
 }
 
@@ -644,13 +656,15 @@ function backendPolicy(fn, profile, recursive) {
   if (
     profile.integerBufferLoads > 0 &&
     profile.rangeLoops + profile.whileLoops > 0 &&
+    profile.integerBufferLoadParameters.length > 0 &&
     ((profile.nativeCalls > 0 && profile.dependencyDepth >= 2) ||
       profile.integerGrowthOperations >= 16)
   ) {
     return {
-      kind: "gmp",
+      kind: "integer-buffer-values",
+      parameters: profile.integerBufferLoadParameters,
       reason:
-        "an amortizable exact loop consumes packed arbitrary-precision values",
+        "an amortizable exact loop selects tagged or GMP from packed input bounds",
     };
   }
   if (
@@ -758,7 +772,10 @@ function analyzeExactModule(functions) {
       dependencyDepth: dependencyDepth(fn.name),
     };
     let backend = backendPolicy(fn, profile, recursive.has(fn.name));
-    if (profile.rangeLoops > 0 && backend.kind !== "gmp") {
+    if (
+      profile.rangeLoops > 0 &&
+      !["gmp", "integer-buffer-values"].includes(backend.kind)
+    ) {
       backend = {
         kind: "tagged",
         reason: "an exact range loop amortizes tagged native entry",
