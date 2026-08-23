@@ -17,6 +17,7 @@ const unit = [
   "test/math-dispatch-selection.cjs",
   "test/math-dispatch-cache-identity.cjs",
   "test/math-dispatch-benchmark-ingestion.cjs",
+  "test/hyperelliptic-auto-receipt-policy.cjs",
   "test/macos-arm64-math-witness.cjs",
   "test/native-build-order.cjs",
   "test/native-prebuilt-dependencies.cjs",

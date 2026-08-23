@@ -1,0 +1,153 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-auto-receipt-policy",
+  "title": "Hyp Auto Receipt Policy",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Provide a disabled-by-default versioned hyperelliptic auto-receipt policy schema, deterministic source-bundle digest, pure verification/query library, CLI, and adversarial tests without changing mathematical selection",
+  "base_commit": "f0c6f92b7f97d25c99e2dfdecee91a37302ce7da",
+  "claims": [
+    "architecture/hyperelliptic-auto-receipt-policy.schema.json",
+    "architecture/hyperelliptic-auto-receipt-policy.json",
+    "tools/math-dispatch/hyperelliptic-auto-receipt-policy.cjs",
+    "scripts/hyperelliptic-auto-receipt-policy.cjs",
+    "test/hyperelliptic-auto-receipt-policy.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "adversarial Node fixture receipts and deterministic source-bundle digests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.898,
+      "started_at": "2026-08-23T23:27:31.206Z",
+      "commit": "f0c6f92b7f97d25c99e2dfdecee91a37302ce7da",
+      "workspace_fingerprint": "b701fddc8ca9b9e0dc6b7005fe2f93f274b8f5a5e8cbca199ecc2b6fad8ce623",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 14.426,
+      "started_at": "2026-08-23T23:27:43.193Z",
+      "commit": "f0c6f92b7f97d25c99e2dfdecee91a37302ce7da",
+      "workspace_fingerprint": "b701fddc8ca9b9e0dc6b7005fe2f93f274b8f5a5e8cbca199ecc2b6fad8ce623",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 15.502,
+      "started_at": "2026-08-23T23:31:49.381Z",
+      "commit": "f0c6f92b7f97d25c99e2dfdecee91a37302ce7da",
+      "workspace_fingerprint": "b701fddc8ca9b9e0dc6b7005fe2f93f274b8f5a5e8cbca199ecc2b6fad8ce623",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 25.676,
+      "started_at": "2026-08-23T23:32:17.417Z",
+      "commit": "f0c6f92b7f97d25c99e2dfdecee91a37302ce7da",
+      "workspace_fingerprint": "b701fddc8ca9b9e0dc6b7005fe2f93f274b8f5a5e8cbca199ecc2b6fad8ce623",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 26.565,
+      "started_at": "2026-08-23T23:35:29.283Z",
+      "commit": "f0c6f92b7f97d25c99e2dfdecee91a37302ce7da",
+      "workspace_fingerprint": "b701fddc8ca9b9e0dc6b7005fe2f93f274b8f5a5e8cbca199ecc2b6fad8ce623",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 53.56,
+      "started_at": "2026-08-23T23:36:41.995Z",
+      "commit": "f0c6f92b7f97d25c99e2dfdecee91a37302ce7da",
+      "workspace_fingerprint": "b701fddc8ca9b9e0dc6b7005fe2f93f274b8f5a5e8cbca199ecc2b6fad8ce623",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 50.778,
+      "started_at": "2026-08-23T23:38:25.098Z",
+      "commit": "f0c6f92b7f97d25c99e2dfdecee91a37302ce7da",
+      "workspace_fingerprint": "b701fddc8ca9b9e0dc6b7005fe2f93f274b8f5a5e8cbca199ecc2b6fad8ce623",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 53.574,
+      "started_at": "2026-08-23T23:40:17.184Z",
+      "commit": "f0c6f92b7f97d25c99e2dfdecee91a37302ce7da",
+      "workspace_fingerprint": "b701fddc8ca9b9e0dc6b7005fe2f93f274b8f5a5e8cbca199ecc2b6fad8ce623",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 67.924,
+      "started_at": "2026-08-23T23:41:40.588Z",
+      "commit": "f0c6f92b7f97d25c99e2dfdecee91a37302ce7da",
+      "workspace_fingerprint": "b701fddc8ca9b9e0dc6b7005fe2f93f274b8f5a5e8cbca199ecc2b6fad8ce623",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.541,
+      "started_at": "2026-08-23T23:47:09.337Z",
+      "commit": "f0c6f92b7f97d25c99e2dfdecee91a37302ce7da",
+      "workspace_fingerprint": "b701fddc8ca9b9e0dc6b7005fe2f93f274b8f5a5e8cbca199ecc2b6fad8ce623",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a disabled versioned hyperelliptic auto-receipt policy schema, deterministic framed source-bundle hashing, a fail-closed pure verifier/query API, a CLI, and adversarial unit coverage. No mathematical selector imports this policy and the checked-in candidate authorizes no native auto selection.",
+    "risks": [
+      "The candidate is deliberately disabled and has no source bundle or receipts, so activation remains a separately reviewed source-freeze operation.",
+      "Exact-model and broad-domain entries both require authenticated four-platform evidence; incomplete future evidence intentionally leaves auto queries on the dynamic fallback."
+    ],
+    "next_steps": [
+      "After the mathematical source freezes, generate its source bundle and collect authenticated exact receipts on every required platform in a separate lane.",
+      "Wire selectors only after an enabled manifest verifies and selector-level tests demonstrate the unreceipted dynamic fallback."
+    ]
+  }
+}
