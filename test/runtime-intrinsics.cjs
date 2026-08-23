@@ -166,6 +166,26 @@ assert.match(
   /\$ρσ\$py\$restored = ρσ_exact_integer_values_from_packed_bytes\(\$ρσ\$py\$packed, count\)/,
 );
 
+const immutableUInt64Capsules = compile(
+  "import sagejs.runtime as runtime\n" +
+    "capsule = runtime.immutable_uint64_capsule(words, owner, model, format, count)\n" +
+    "lease = runtime.immutable_uint64_capsule_lease(capsule, owner, model, format, count)\n" +
+    "copy = runtime.immutable_uint64_capsule_copy(capsule, owner, model, format, count)\n",
+);
+assert.match(
+  immutableUInt64Capsules,
+  /ρσ_modules\["sagejs\.runtime"\]\.immutable_uint64_capsule\(words, owner, model, format, count\)/,
+);
+assert.match(
+  immutableUInt64Capsules,
+  /ρσ_modules\["sagejs\.runtime"\]\.immutable_uint64_capsule_lease\([^;]+owner, model, format, count\)/,
+);
+assert.match(
+  immutableUInt64Capsules,
+  /ρσ_modules\["sagejs\.runtime"\]\.immutable_uint64_capsule_copy\([^;]+owner, model, format, count\)/,
+);
+assert.doesNotMatch(immutableUInt64Capsules, /\$\u03c1\u03c3\$py\$runtime\s*[.(]/u);
+
 const exactRangeMaterialization = compile(
   "import sagejs.runtime as runtime\n" +
     "values = runtime.exact_integer_range_values(start, step, length)\n" +

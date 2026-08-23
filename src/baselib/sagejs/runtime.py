@@ -161,17 +161,35 @@ def immutable_uint64_capsule(source, owner, model, format, count):
     by identity; `model`, `format`, and `count` are matched exactly whenever a
     consumer requests either a native lease or a dynamic copy.
     """
-    return r"%js globalThis.__sagejs_create_immutable_uint64_capsule__(source, owner, model, format, count)"
+    try:
+        return r"%js globalThis.__sagejs_create_immutable_uint64_capsule__(source, owner, model, format, count)"
+    except:
+        message = r"%js ρσ_last_exception.message"
+        if r"%js ρσ_last_exception instanceof RangeError":
+            raise ValueError(message)
+        raise TypeError(message)
 
 
 def immutable_uint64_capsule_lease(capsule, owner, model, format, count):
     """Authorize a short-lived read-only native lease for `capsule`."""
-    return r"%js globalThis.__sagejs_authorize_immutable_uint64_capsule__(capsule, owner, model, format, count)"
+    try:
+        return r"%js globalThis.__sagejs_authorize_immutable_uint64_capsule__(capsule, owner, model, format, count)"
+    except:
+        message = r"%js ρσ_last_exception.message"
+        if r"%js ρσ_last_exception instanceof RangeError":
+            raise ValueError(message)
+        raise TypeError(message)
 
 
 def immutable_uint64_capsule_copy(capsule, owner, model, format, count):
     """Return an owned mutable copy for source-transparent dynamic fallback."""
-    return r"%js globalThis.__sagejs_copy_immutable_uint64_capsule__(capsule, owner, model, format, count)"
+    try:
+        return r"%js globalThis.__sagejs_copy_immutable_uint64_capsule__(capsule, owner, model, format, count)"
+    except:
+        message = r"%js ρσ_last_exception.message"
+        if r"%js ρσ_last_exception instanceof RangeError":
+            raise ValueError(message)
+        raise TypeError(message)
 
 
 def integer_buffer(source, minimum_word_capacity=1):

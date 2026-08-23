@@ -394,6 +394,48 @@ print("PYTHON_CAPSULE_OPAQUE_OK")
   );
 });
 
+test("mathematical Python catches capsule boundary errors", () => {
+  const source = String.raw`
+import sagejs.runtime as runtime
+
+owner = object()
+capsule = runtime.immutable_uint64_capsule(
+    [11, 17, 23], owner, "catch-model/v1", "catch-row/v1", 3
+)
+caught = []
+try:
+    runtime.immutable_uint64_capsule_copy(
+        capsule, owner, "wrong-model/v1", "catch-row/v1", 3
+    )
+except ValueError:
+    caught.append("binding")
+try:
+    runtime.immutable_uint64_capsule(
+        [29], owner, "catch-model/v1", "catch-row/v1", 1
+    )
+except ValueError:
+    caught.append("duplicate")
+try:
+    runtime.immutable_uint64_capsule(
+        None, object(), "catch-model/v1", "catch-row/v1", 0
+    )
+except TypeError:
+    caught.append("source")
+try:
+    runtime.immutable_uint64_capsule_lease(
+        None, owner, "catch-model/v1", "catch-row/v1", 3
+    )
+except (TypeError, ValueError):
+    caught.append("capsule")
+assert caught == ["binding", "duplicate", "source", "capsule"]
+print("PYTHON_CAPSULE_ERRORS_OK")
+`;
+  assert.match(
+    run(process.execPath, [sagejs, "--python"], { input: source }),
+    /PYTHON_CAPSULE_ERRORS_OK/,
+  );
+});
+
 test("neutral witness remains ordinary CPython", () => {
   const python = process.env.PYTHON ||
     (process.platform === "win32" ? "python" : "python3");

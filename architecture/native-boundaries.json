@@ -17,7 +17,7 @@
     "declared-ffi": 433,
     "declared-ffi-resource": 30,
     "napi-export": 320,
-    "runtime-intrinsic": 137,
+    "runtime-intrinsic": 140,
     "wasm-export": 72
   },
   "boundaries": [
@@ -9655,6 +9655,30 @@
       "path": "tools/python/contract.ts",
       "export": "global_object",
       "symbol": "globalThis",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:immutable_uint64_capsule",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "immutable_uint64_capsule",
+      "symbol": "ρσ_modules[\"sagejs.runtime\"].immutable_uint64_capsule",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:immutable_uint64_capsule_copy",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "immutable_uint64_capsule_copy",
+      "symbol": "ρσ_modules[\"sagejs.runtime\"].immutable_uint64_capsule_copy",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:immutable_uint64_capsule_lease",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "immutable_uint64_capsule_lease",
+      "symbol": "ρσ_modules[\"sagejs.runtime\"].immutable_uint64_capsule_lease",
       "disposition": "runtime-primitive"
     },
     {
