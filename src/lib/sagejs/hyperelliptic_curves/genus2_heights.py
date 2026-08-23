@@ -3394,8 +3394,10 @@ def _install_height_proof_state(
     automatic_bounds_type = AutomaticHeightBounds
     canonical_result_type = CanonicalHeightResult
     pairing_result_type = HeightPairingResult
+    height_context_type = HeightContext
     encoded_frozen_dict_type = _EncodedFrozenDict
     frozen_dict_type = _FrozenDict
+    type_function = type
     rational_pair_function = _rational_pair
     specialized_terms_function = classical_duplication_specialized_terms
     ball_from_data_function = _ball_from_data
@@ -3479,6 +3481,25 @@ def _install_height_proof_state(
                 {"specialized_quartics": "rejected-mutated-height-context"},
             )
         return expected
+
+    def require_exact_context(context: Any) -> None:
+        if type_function(context) is not height_context_type:
+            raise Genus2HeightCapabilityError(
+                "rigorous height proof caches require an exact HeightContext",
+                {"height_proof_context": "rejected-subclass-or-proxy"},
+            )
+
+    def counter_value(context: Any, name: str) -> int:
+        # `require_exact_context` rejects subclasses before this helper is
+        # reachable.  Direct instance-dictionary access therefore cannot
+        # invoke a user-defined counter descriptor or `__setattr__` method.
+        return int(context.__dict__[name])
+
+    def set_counter(context: Any, name: str, value: int) -> None:
+        context.__dict__[name] = int(value)
+
+    def change_counter(context: Any, name: str, increment: int) -> None:
+        set_counter(context, name, counter_value(context, name) + int(increment))
 
     def detached_ball_data(data: Any) -> tuple[Any, Any, int, bool, Any]:
         return (
@@ -3659,7 +3680,7 @@ def _install_height_proof_state(
                             },
                         )
                     if count_hit and published:
-                        cache_context._canonical_height_hits += 1
+                        change_counter(cache_context, "_canonical_height_hits", 1)
                     return restore_canonical(record[6], divisor.parent(), cache_context)
         return None
 
@@ -3697,11 +3718,13 @@ def _install_height_proof_state(
         """Atomically publish already authenticated detached payloads."""
         canonical_records.extend(records)
         for record in records:
-            record[0]._canonical_height_entries += 1
+            change_counter(record[0], "_canonical_height_entries", 1)
         while len(canonical_records) > maximum_records:
             removed = canonical_records.pop(0)
-            removed[0]._canonical_height_entries = max(
-                0, removed[0]._canonical_height_entries - 1
+            set_counter(
+                removed[0],
+                "_canonical_height_entries",
+                max(0, counter_value(removed[0], "_canonical_height_entries") - 1),
             )
 
     def commit_pairing_transaction(
@@ -3720,24 +3743,47 @@ def _install_height_proof_state(
             next_pairing[: max(0, len(next_pairing) - maximum_records)]
         )
         next_pairing = next_pairing[-maximum_records:]
+        counter_updates: list[tuple[Any, str, int]] = []
+        for record in new_canonical_records:
+            counter_updates.append((record[0], "_canonical_height_entries", 1))
+        counter_updates.append((new_pairing_record[0], "_height_pairing_entries", 1))
+        for record in removed_canonical:
+            counter_updates.append((record[0], "_canonical_height_entries", -1))
+        for record in removed_pairing:
+            counter_updates.append((record[0], "_height_pairing_entries", -1))
+        counter_updates.append(
+            (new_pairing_record[0], "_canonical_height_misses", canonical_misses)
+        )
+        counter_updates.append((new_pairing_record[0], "_height_pairing_misses", 1))
+        prepared_counters: list[tuple[Any, str, int]] = []
+        for update_context, update_name, update_delta in counter_updates:
+            for index, prepared in enumerate(prepared_counters):
+                if prepared[0] is update_context and prepared[1] == update_name:
+                    prepared_counters[index] = (
+                        prepared[0],
+                        prepared[1],
+                        max(0, prepared[2] + update_delta),
+                    )
+                    break
+            else:
+                prepared_counters.append(
+                    (
+                        update_context,
+                        update_name,
+                        max(
+                            0,
+                            counter_value(update_context, update_name) + update_delta,
+                        ),
+                    )
+                )
         # Both replacement lists are fully allocated before either hidden
-        # registry changes.  No callback, theorem derivation, or public object
-        # access occurs between these two slice assignments.
+        # registry changes.  Counter values are also fixed integers by this
+        # point.  No callback, theorem derivation, equality/hash operation, or
+        # overridable attribute access occurs after the first slice assignment.
         canonical_records[:] = next_canonical
         pairing_records[:] = next_pairing
-        for record in new_canonical_records:
-            record[0]._canonical_height_entries += 1
-        new_pairing_record[0]._height_pairing_entries += 1
-        for record in removed_canonical:
-            record[0]._canonical_height_entries = max(
-                0, record[0]._canonical_height_entries - 1
-            )
-        for record in removed_pairing:
-            record[0]._height_pairing_entries = max(
-                0, record[0]._height_pairing_entries - 1
-            )
-        new_pairing_record[0]._canonical_height_misses += canonical_misses
-        new_pairing_record[0]._height_pairing_misses += 1
+        for update_context, update_name, update_value in prepared_counters:
+            set_counter(update_context, update_name, update_value)
 
     def wrapped_canonical_height(
         divisor: Any,
@@ -3760,6 +3806,8 @@ def _install_height_proof_state(
             normalized_target,
             normalized_algorithm,
         )
+        if context is not None:
+            require_exact_context(context)
         if context is not None and any(
             callback_context is context
             for callback_context in cancellation_callback_contexts
@@ -3788,7 +3836,7 @@ def _install_height_proof_state(
             )
             if cached is not None:
                 return cached
-            cache_context._canonical_height_misses += 1
+            change_counter(cache_context, "_canonical_height_misses", 1)
         if (
             context is not None
             and height_difference_bound is None
@@ -3894,6 +3942,8 @@ def _install_height_proof_state(
                 or parameters[0] >= 9
             )
         )
+        if context is not None:
+            require_exact_context(context)
         if context is not None and any(
             active_context is context for active_context in active_pairing_contexts
         ):
@@ -3942,16 +3992,16 @@ def _install_height_proof_state(
                             "parameters": parameters,
                         },
                     )
-                cache_context._height_pairing_hits += 1
+                change_counter(cache_context, "_height_pairing_hits", 1)
                 return restore_pairing(record[6], jacobian, cache_context)
 
         counter_snapshot = (
-            cache_context._canonical_height_entries,
-            cache_context._canonical_height_hits,
-            cache_context._canonical_height_misses,
-            cache_context._height_pairing_entries,
-            cache_context._height_pairing_hits,
-            cache_context._height_pairing_misses,
+            counter_value(cache_context, "_canonical_height_entries"),
+            counter_value(cache_context, "_canonical_height_hits"),
+            counter_value(cache_context, "_canonical_height_misses"),
+            counter_value(cache_context, "_height_pairing_entries"),
+            counter_value(cache_context, "_height_pairing_hits"),
+            counter_value(cache_context, "_height_pairing_misses"),
         )
         stage_start = len(staged_canonical_records)
         active_pairing_contexts.append(cache_context)
@@ -4045,14 +4095,18 @@ def _install_height_proof_state(
             active_pairing_contexts.pop()
             del staged_canonical_records[stage_start:]
             if not committed:
-                (
-                    cache_context._canonical_height_entries,
-                    cache_context._canonical_height_hits,
-                    cache_context._canonical_height_misses,
-                    cache_context._height_pairing_entries,
-                    cache_context._height_pairing_hits,
-                    cache_context._height_pairing_misses,
-                ) = counter_snapshot
+                counter_names = (
+                    "_canonical_height_entries",
+                    "_canonical_height_hits",
+                    "_canonical_height_misses",
+                    "_height_pairing_entries",
+                    "_height_pairing_hits",
+                    "_height_pairing_misses",
+                )
+                for counter_name, counter in zip(
+                    counter_names, counter_snapshot, strict=True
+                ):
+                    set_counter(cache_context, counter_name, counter)
 
     return (
         wrapped_automatic_bounds,
