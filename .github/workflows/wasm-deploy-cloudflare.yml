@@ -243,6 +243,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: npm
           wranglerVersion: "4.125.0"
           command: deploy --config build/cloudflare-deploy/wrangler.json
 
