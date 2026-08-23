@@ -158,8 +158,9 @@ print(json.dumps({
     "prime_count": prime_count,
     "prime_divisor_pairs": divisor_count * prime_count,
     "prepare_ns": prepare_ns,
-    "one_crossing_reduction_and_publication_ns": reduction_ns,
+    "one_crossing_qq_to_retained_packed_rows_ns": reduction_ns,
     "finite_factor_strip_witness_ns": witness_ns,
+    "finite_reduction_and_witness_ns": reduction_ns + witness_ns,
     "certificate_construction_and_reference_replay_ns": certificate_replay_ns,
     "packed_output_bytes": diagnostics["packed_output_bytes"],
     "kernel_crossings": diagnostics["kernel_crossings"],
@@ -259,6 +260,8 @@ function runMagma() {
     reduction_and_publication_median_cpu_seconds: median(reduction),
     finite_factor_strip_witness_cpu_seconds: witness,
     finite_factor_strip_witness_median_cpu_seconds: median(witness),
+    finite_construction_and_witness_median_cpu_seconds:
+      median(reduction) + median(witness),
     resident_256_bit_scalar_cpu_seconds: scalar,
     resident_256_bit_scalar_median_cpu_seconds: median(scalar),
     exact_nonzero_checksum: checksum,
@@ -289,7 +292,7 @@ function main() {
     const report = {
       ...sage,
       contract:
-        "prepared QQ basis; one packed reduction crossing for all prime/divisor pairs; retained finite divisors; exact [2] witness; sampled reference construction; certified torsion replay",
+        "prepared QQ basis; one packed reduction crossing for all prime/divisor pairs; lazily retained packed finite rows; exact [2] witness materializes/consumes every row; sampled reference construction; certified torsion replay; compare Sage reduction+witness against Magma construction+witness",
       magma: runMagma(),
     };
     process.stdout.write(`${JSON.stringify(report)}\n`);
