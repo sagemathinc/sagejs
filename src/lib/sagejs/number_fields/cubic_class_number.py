@@ -55,7 +55,12 @@ _CUBIC_RELATION_SIEVE_BOUND = 2
 _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND = 4
 _CUBIC_RELATION_SIEVE_MAX_CANDIDATES = 128
 _CUBIC_RELATION_SIEVE_MAX_PRIME_POWERS = 256
-_CUBIC_PACKED_PREMATERIALIZATION_BOUND = 12
+# At these tiny bounds, producing the packed factors directly is cheaper than
+# first running a complete descriptor-only decomposition to decide whether the
+# live relation seed is small enough.  The LMFDB timing corpus measures the
+# crossover between the six-prime bound-15 base and the ten-prime bound-17
+# base, so larger plans retain the cheap size preflight below.
+_CUBIC_PACKED_PREMATERIALIZATION_BOUND = 16
 _CUBIC_NORM_FORM_INTERPOLATION_POINTS = (
     (1, 0, 0),
     (0, 1, 0),
@@ -2433,10 +2438,10 @@ def bounded_cubic_minkowski_class_number(
         and len(factor_base) > relation_seed_prime_ideal_cap
     ):
         result = incomplete(
-            "the exact Minkowski factor base exceeds the relation-seed size policy",
-            factor_base=factor_base,
+            "the exact Minkowski factor base exceeds the relation-seed size policy"
         )
-        result.diagnostics["factor_base_materialized"] = True
+        result.diagnostics["factor_base_size"] = len(factor_base)
+        result.diagnostics["factor_base_materialized"] = False
         result.diagnostics["relation_seed_size_policy_exceeded"] = True
         return result
 

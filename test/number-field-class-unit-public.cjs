@@ -473,6 +473,7 @@ print("cubic-relation-seed-ok")
 test("cubic fallback retains a packed duplicate pair before unit saturation", () => {
   const output = runPublic(String.raw`
 import sagejs.number_fields.class_unit_analytic as analytic_module
+import sagejs.number_fields.class_group_factor_base as factor_base_module
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -486,16 +487,21 @@ K = NumberField(x**3 - x**2 + 9*x - 21, "a")
 # fundamental here, so neither LLL relation saturation nor the much more
 # expensive bounded p-th-root search should run.
 original_saturate_unit_lattice = analytic_module.saturate_unit_lattice
+original_descriptor_scan = factor_base_module._eligible_descriptors
 unit_root_searches = 0
 def forbidden_unit_root_search(*args, **kwargs):
     global unit_root_searches
     unit_root_searches += 1
     raise AssertionError("unnecessary unit-root saturation search")
 analytic_module.saturate_unit_lattice = forbidden_unit_root_search
+def forbidden_descriptor_scan(*args, **kwargs):
+    raise AssertionError("a tiny packed factor base must not be decomposed twice")
+factor_base_module._eligible_descriptors = forbidden_descriptor_scan
 try:
     assert K.class_number(proof=False) == 7
 finally:
     analytic_module.saturate_unit_lattice = original_saturate_unit_lattice
+    factor_base_module._eligible_descriptors = original_descriptor_scan
 
 assert unit_root_searches == 0
 result = K.class_unit_group(proof=False)
