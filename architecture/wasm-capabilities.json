@@ -88,6 +88,13 @@
           "test/hyperelliptic-native-cantor.cjs"
         ]
       },
+      "hyperelliptic-genus2-height-performance": {
+        "differential": true,
+        "paths": [
+          "test/hyperelliptic-genus2-height-performance.cjs",
+          "test/hyperelliptic-genus2-heights.cjs"
+        ]
+      },
       "graph-components-wasm-differential": {
         "differential": true,
         "paths": [
@@ -10897,6 +10904,36 @@
         "total_functions": 6,
         "production_pack": true,
         "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:genus2-kummer-height-production",
+      "kind": "production-kernel",
+      "family": "genus2-kummer-height",
+      "source": "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_height_kernel.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "genus2-canonical-height",
+        "genus2-height-pairing-and-regulator"
+      ],
+      "tests": [
+        "hyperelliptic-genus2-height-performance",
+        "production-kernel-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "Native and same-source exact differentials cover modular and outward fixed-scale dyadic Flynn recurrences on monic, nonmonic, and large-coefficient models. The current tracked Wasm artifact predates this kernel, so browsers use the exact fallback pending a new authenticated pack.",
+      "public_explanation": "Certified genus-2 finite and archimedean Kummer recurrences use the exact same-source fallback in the current WebAssembly release artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 0,
+        "fallback_functions": 2,
+        "total_functions": 2,
+        "production_pack": false,
+        "fallback_reasons": [
+          "tracked-production-artifact-predates-hyperelliptic-performance-kernels"
+        ]
       }
     },
     {

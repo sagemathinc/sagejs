@@ -2,12 +2,12 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 41,
+    "registered_kernels": 42,
     "production_kernels": 31,
     "compiled_functions": 232,
     "unsupported_production_functions": 0,
-    "non_production_functions": 37,
-    "same_source_fallback_functions": 37
+    "non_production_functions": 39,
+    "same_source_fallback_functions": 39
   },
   "kernels": [
     {
@@ -152,6 +152,17 @@
       "fallback_functions": 0,
       "total_functions": 6,
       "fallback_reasons": []
+    },
+    {
+      "id": "genus2-kummer-height-production",
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 2,
+      "total_functions": 2,
+      "fallback_reasons": [
+        "tracked-production-artifact-predates-hyperelliptic-performance-kernels"
+      ]
     },
     {
       "id": "genus3-weil-candidate-production",

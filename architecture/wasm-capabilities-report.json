@@ -1,19 +1,19 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "b68907ea1510ecd34f12ea272321a9d6b22f3af93cd30e5980e613ab2cf1f22c",
+  "source_sha256": "8223596dd929e2974e8e14b09834473de473c7d225d239366a1867cce7bc190d",
   "counts": {
-    "total": 961,
+    "total": 962,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
       "napi-export": 317,
-      "production-kernel": 41,
+      "production-kernel": 42,
       "runtime-intrinsic": 137,
       "specialist-capability": 25
     },
     "by_disposition": {
-      "compiled-source": 41,
+      "compiled-source": 42,
       "desktop-only": 14,
       "generated-wasm": 302,
       "portable-fallback": 560,
@@ -22,7 +22,7 @@
     "by_status": {
       "available": 516,
       "desktop-only": 14,
-      "fallback": 431
+      "fallback": 432
     }
   },
   "workflow_aliases": {
@@ -5820,6 +5820,19 @@
         "field-analysis-fixed-point-checker"
       ],
       "explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:genus2-kummer-height-production",
+      "family": "genus2-kummer-height",
+      "disposition": "compiled-source",
+      "status": "fallback",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "genus2-canonical-height",
+        "genus2-height-pairing-and-regulator"
+      ],
+      "explanation": "Certified genus-2 finite and archimedean Kummer recurrences use the exact same-source fallback in the current WebAssembly release artifact."
     },
     {
       "id": "kernel:genus3-weil-candidate-production",

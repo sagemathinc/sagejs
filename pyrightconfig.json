@@ -130,6 +130,7 @@
     "src/lib/sagejs/hyperelliptic_curves/genus2_heights.py",
     "src/lib/sagejs/hyperelliptic_curves/genus2_kummer.py",
     "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_formulas.py",
+    "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_height_kernel.py",
     "src/lib/sagejs/hyperelliptic_curves/genus3_heights.py",
     "src/lib/sagejs/hyperelliptic_curves/global_arithmetic.py",
     "src/lib/sagejs/hyperelliptic_curves/gpu_twists.py",
