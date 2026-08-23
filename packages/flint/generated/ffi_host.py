@@ -15,6 +15,7 @@ from sagejs.ffi.flint import (
     FmpqMatrix,
     FmpqPolynomial,
     FmpqPolynomialDivisionResult,
+    FmpqPolynomialPair,
     FmpqPolynomialWorkspace,
     FmpqPolynomialXgcdResult,
     FmpqValue,
@@ -74,6 +75,8 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_from_byte_region as _ffi_fmpz_polynomial_from_byte_region,
     fmpq_polynomial_workspace as _ffi_fmpq_polynomial_workspace,
     fmpq_polynomial_workspace_load as _ffi_fmpq_polynomial_workspace_load,
+    fmpq_polynomial_workspace_copy_pair_out as _ffi_fmpq_polynomial_workspace_copy_pair_out,
+    fmpq_polynomial_workspace_load_pair as _ffi_fmpq_polynomial_workspace_load_pair,
     fmpq_polynomial_workspace_zero as _ffi_fmpq_polynomial_workspace_zero,
     fmpq_polynomial_workspace_one as _ffi_fmpq_polynomial_workspace_one,
     fmpq_polynomial_workspace_copy as _ffi_fmpq_polynomial_workspace_copy,
@@ -828,6 +831,34 @@ def ffiFmpqPolynomialWorkspaceLoad(
     return _ffi_fmpq_polynomial_workspace_load(
         workspace,
         output,
+        source,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceCopyPairOut(
+    workspace: FmpqPolynomialWorkspace,
+    u_slot: uint64,
+    v_slot: uint64,
+) -> FmpqPolynomialPair:
+    return _ffi_fmpq_polynomial_workspace_copy_pair_out(
+        workspace,
+        u_slot,
+        v_slot,
+    )
+
+
+@native
+def ffiFmpqPolynomialWorkspaceLoadPair(
+    workspace: FmpqPolynomialWorkspace,
+    u_output: uint64,
+    v_output: uint64,
+    source: FmpqPolynomialPair,
+) -> bool:
+    return _ffi_fmpq_polynomial_workspace_load_pair(
+        workspace,
+        u_output,
+        v_output,
         source,
     )
 

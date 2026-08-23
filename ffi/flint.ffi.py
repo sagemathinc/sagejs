@@ -207,6 +207,17 @@ FmpqPolynomialWorkspace = flint.resource(
 )
 
 
+FmpqPolynomialPair = flint.resource(
+    id="fmpq_polynomial_pair",
+    abi=sagejs_fmpq_polynomial_pair_t,
+    ownership="owned",
+    close="ffiFmpqPolynomialPairClose",
+    clear="sagejs_fmpq_polynomial_pair_clear",
+    size="sagejs_fmpq_polynomial_pair_allocated_bytes",
+    wasm=False,
+)
+
+
 FmpzModPolynomial = flint.resource(
     id="fmpz_mod_polynomial",
     abi=sagejs_fmpz_mod_polynomial_t,
@@ -1190,6 +1201,62 @@ def fmpq_polynomial_workspace_load(
     workspace: Writable[FmpqPolynomialWorkspace],
     output: uint64,
     source: FmpqPolynomial,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceCopyPairOut",
+    symbol="sagejs_fmpq_polynomial_workspace_copy_pair_out",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_pair_t),
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("u_slot", uint64_t),
+        in_("v_slot", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational polynomial workspace pair copy",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_copy_pair_out(
+    workspace: FmpqPolynomialWorkspace,
+    u_slot: uint64,
+    v_slot: uint64,
+) -> FmpqPolynomialPair: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceLoadPair",
+    symbol="sagejs_fmpq_polynomial_workspace_load_pair",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("u_output", uint64_t),
+        in_("v_output", uint64_t),
+        in_("source", sagejs_fmpq_polynomial_pair_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["workspace"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational polynomial workspace pair load",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_load_pair(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    u_output: uint64,
+    v_output: uint64,
+    source: FmpqPolynomialPair,
 ) -> bool: ...
 
 

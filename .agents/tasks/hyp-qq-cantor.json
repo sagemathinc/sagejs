@@ -151,17 +151,80 @@
       "commit": "ab31e4f3ff8095dcfcdbb34d4d29fb142dc3ae01",
       "workspace_fingerprint": "e02118ad1f806f801978163435a178c4cb7b33272d766997232ce8567e429c93",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-rational-cantor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.756,
+      "started_at": "2026-08-23T11:01:37.648Z",
+      "commit": "cf58dfca74cd9c7f48951ebee8e3fcbcd1c172e6",
+      "workspace_fingerprint": "fa808b9cd0d5e252e2969634a3abdae02e35292d3232ea4babd19f2269bd832e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bin/sagejs ffi check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.767,
+      "started_at": "2026-08-23T11:01:55.027Z",
+      "commit": "cf58dfca74cd9c7f48951ebee8e3fcbcd1c172e6",
+      "workspace_fingerprint": "fa808b9cd0d5e252e2969634a3abdae02e35292d3232ea4babd19f2269bd832e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --project pyrightconfig.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.106,
+      "started_at": "2026-08-23T11:01:57.462Z",
+      "commit": "cf58dfca74cd9c7f48951ebee8e3fcbcd1c172e6",
+      "workspace_fingerprint": "fa808b9cd0d5e252e2969634a3abdae02e35292d3232ea4babd19f2269bd832e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.225,
+      "started_at": "2026-08-23T11:02:24.261Z",
+      "commit": "cf58dfca74cd9c7f48951ebee8e3fcbcd1c172e6",
+      "workspace_fingerprint": "fa808b9cd0d5e252e2969634a3abdae02e35292d3232ea4babd19f2269bd832e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/hyperelliptic/benchmark-rational-cantor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.813,
+      "started_at": "2026-08-23T11:02:27.160Z",
+      "commit": "cf58dfca74cd9c7f48951ebee8e3fcbcd1c172e6",
+      "workspace_fingerprint": "fa808b9cd0d5e252e2969634a3abdae02e35292d3232ea4babd19f2269bd832e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.009,
+      "started_at": "2026-08-23T11:03:43.412Z",
+      "commit": "cf58dfca74cd9c7f48951ebee8e3fcbcd1c172e6",
+      "workspace_fingerprint": "fa808b9cd0d5e252e2969634a3abdae02e35292d3232ea4babd19f2269bd832e",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Prepared FLINT-backed exact QQ Cantor arithmetic now serves the cached public Jacobian boundary: ordinary P+Q, P.double(), -P, P-Q, and n*P dispatch through bounded native genus-2/3 arithmetic when available, while explicit reference selection and every operation certificate replay the ordinary Python Cantor path. Rational negate_batch is implemented exactly as the existing signed scalar boundary and reports its actual selected algorithm. A quiet same-host bench-1 receipt measured the direct 257-bit scalar boundary at 0.632 ms/call versus Magma 2.18-5 at 0.443 ms/call (1.427x); the public operator locally measures 0.711 ms/call and a nontrivial public addition 0.951 ms/call.",
+    "summary": "Exact genus-2/3 QQ Cantor results now retain one opaque owned FLINT `(u,v)` pair plus an authoritative immutable primitive row behind a closure-private WeakMap; ordinary public divisors remain lazy, survive prepared-context close/workspace reuse, and materialize only when `uv()` or serialization reconstruction requires polynomials. Public exact equality, hashing, packing, same-parent addition, scalar chaining, memory/cancellation bounds, and reference certificates preserve their contracts. Module-helper rebinding, plausible attribute injection, owner transplant, hash-cache injection, component/resource inspection, closed pair reuse, and overlapping pair loads fail safely. The 10,000-call local receipt measured 0.215 ms per public 257-bit torsion scalar, 0.170 ms per ordinary public nontrivial addition, 0.131 ms per prepared addition, 0.162 ms per chained retained addition, 0.556 ms including forced `(u,v)` materialization, and 0.205 ms including hashing. Public addition is about 5.6x faster than the previous 0.95 ms path, but still honestly misses the old timer-quantized Magma 0.01 ms/call row by about 17x; no new bench-1 comparison was run without authorization.",
     "risks": [
-      "The native-integration package budget and the 22 new FLINT desktop-only Wasm capability dispositions are shared integration edits outside this lane's claims.",
-      "Windows uses the tested exact reference fallback until the generated FLINT rational-polynomial workspace is available there."
+      "Integration must deliberately raise the hyperelliptic-curves-kernels lazy budget from 175000 bytes to at least the measured 177359 bytes; this lane did not hide the architecture:check failure.",
+      "Integration must classify exactly three new desktop-only WebAssembly capabilities with the existing exact reference fallback: ffi-resource:flint:fmpq_polynomial_pair, ffi:flint:fmpq_polynomial_workspace_copy_pair_out, and ffi:flint:fmpq_polynomial_workspace_load_pair.",
+      "Windows uses the tested exact reference fallback until the generated FLINT rational-polynomial workspace is available there.",
+      "The strict public QQ addition <=2x Magma gate remains open; the prior Magma row is only 0.01-second timer-quantized over 1000 calls, so a new same-host acceptance is required after integration."
     ],
     "next_steps": [
-      "Integration lane must raise the measured native-integration package budget deliberately and classify all new FLINT workspace capabilities as desktop-only with explicit exact fallback.",
-      "Re-run portable/Wasm inventory gates after the shared manifest baseline is reconciled, then benchmark the public operator on bench-1 if a same-host public-versus-Magma receipt is desired."
+      "Apply the package-budget and three WebAssembly capability dispositions in the integration lane, then rerun the complete architecture gate.",
+      "After explicit bench-1 authorization, repeat the equal-contract warmed/cold public P+Q and 257-bit scalar receipt against resident Magma.",
+      "If the public addition gate remains outside 2x, profile a single source-transparent operation that returns the exact primitive row and opaque pair with fewer runtime crossings; do not move Cantor mathematics into a host adapter."
     ]
   }
 }

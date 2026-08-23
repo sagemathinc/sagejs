@@ -200,6 +200,29 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_polynomial_evaluate_rational", "fmpz_polynomial_serialize",
       "fmpz_polynomial_format",
       "fmpz_polynomial_from_byte_region",
+      "fmpq_polynomial_workspace",
+      "fmpq_polynomial_workspace_load",
+      "fmpq_polynomial_workspace_copy_pair_out",
+      "fmpq_polynomial_workspace_load_pair",
+      "fmpq_polynomial_workspace_zero",
+      "fmpq_polynomial_workspace_one",
+      "fmpq_polynomial_workspace_copy",
+      "fmpq_polynomial_workspace_swap",
+      "fmpq_polynomial_workspace_monic",
+      "fmpq_polynomial_workspace_add",
+      "fmpq_polynomial_workspace_sub",
+      "fmpq_polynomial_workspace_neg",
+      "fmpq_polynomial_workspace_mul",
+      "fmpq_polynomial_workspace_divexact",
+      "fmpq_polynomial_workspace_rem",
+      "fmpq_polynomial_workspace_xgcd",
+      "fmpq_polynomial_workspace_length",
+      "fmpq_polynomial_workspace_allocated_bytes",
+      "fmpq_polynomial_workspace_is_zero",
+      "fmpq_polynomial_workspace_is_one",
+      "fmpq_polynomial_workspace_equal",
+      "fmpq_polynomial_workspace_coefficient_numerator",
+      "fmpq_polynomial_workspace_coefficient_denominator",
       "fmpq_polynomial", "fmpq_polynomial_set_coefficient",
       "fmpq_polynomial_seal", "fmpq_polynomial_length",
       "fmpq_polynomial_equal", "fmpq_polynomial_coefficient_numerator",
@@ -384,7 +407,8 @@ test("FFI declarations are strict and generated modules are current", () => {
       "FmpzMatrix", "FmpqMatrix", "FmpzVector", "FmpqVector",
       "NmodMatrix", "FmpqValue", "FlintByteRegion",
       "NumberFieldOrderResource", "NumberFieldAnalysisResource",
-      "FmpzPolynomial", "FmpqPolynomial", "FmpzModPolynomial",
+      "FmpzPolynomial", "FmpqPolynomial", "FmpqPolynomialWorkspace",
+      "FmpqPolynomialPair", "FmpzModPolynomial",
       "FmpzModPolynomialDivisionResult", "FmpzModPolynomialXgcdResult",
       "FmpzModPolynomialFactorization", "FmpzModPolynomialRoots",
       "FqContext", "FqElement", "FqPolynomial",
@@ -454,7 +478,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /412 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /435 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -504,7 +528,7 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(functions.length, {
       fflas: 10,
-      flint: 369,
+      flint: 392,
       igraph: 2,
       m4ri: 26,
     }[declaration.library.id]);
@@ -560,7 +584,7 @@ test("computed resource byte transfers lower to one generated copy", async () =>
 
 test("packages publish every generated host adapter as the canonical export", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 370],
+    ["../packages/flint", 393],
     ["../packages/fflas", 10],
     ["../packages/graph", 2],
   ]) {
@@ -738,8 +762,8 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 412);
-  assert.equal(current.counts["declared-ffi-resource"], 29);
+  assert.equal(current.counts["declared-ffi"], 435);
+  assert.equal(current.counts["declared-ffi-resource"], 31);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
     current.boundaries.filter((item) =>
@@ -762,7 +786,7 @@ test("every N-API export has an exact symbol-level architecture decision", () =>
     JSON.parse(readFileSync(filename, "utf8")), { root },
   );
   assert.equal(inventory.schema, "sagejs.native-export-inventory/v1");
-  assert.equal(inventory.exports.length, 317);
+  assert.equal(inventory.exports.length, 319);
   assert.equal(inventory.exports.filter((item) =>
     item.family.startsWith("dense-matrix")).length, 50);
   assert.equal(inventory.exports.filter((item) =>

@@ -14,8 +14,8 @@
   },
   "counts": {
     "classified-native-file": 120,
-    "declared-ffi": 433,
-    "declared-ffi-resource": 30,
+    "declared-ffi": 435,
+    "declared-ffi-resource": 31,
     "napi-export": 319,
     "runtime-intrinsic": 137,
     "wasm-export": 72
@@ -110,6 +110,18 @@
       "close_export": "ffiFmpqPolynomialDivisionResultClose",
       "clear_symbol": "sagejs_fmpq_polynomial_division_result_clear",
       "size_symbol": "sagejs_fmpq_polynomial_division_result_allocated_bytes",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:flint:fmpq_polynomial_pair",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "FmpqPolynomialPair",
+      "abi_type": "sagejs_fmpq_polynomial_pair_t",
+      "close_export": "ffiFmpqPolynomialPairClose",
+      "clear_symbol": "sagejs_fmpq_polynomial_pair_clear",
+      "size_symbol": "sagejs_fmpq_polynomial_pair_allocated_bytes",
       "disposition": "declared-owned-ffi-resource"
     },
     {
@@ -1716,6 +1728,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpq_polynomial_workspace_copy_pair_out",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_copy_pair_out",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceCopyPairOut",
+      "symbol": "sagejs_fmpq_polynomial_workspace_copy_pair_out",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpq_polynomial_workspace_divexact",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -1779,6 +1802,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqPolynomialWorkspaceLoad",
       "symbol": "sagejs_fmpq_polynomial_workspace_load",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_load_pair",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_workspace_load_pair",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialWorkspaceLoadPair",
+      "symbol": "sagejs_fmpq_polynomial_workspace_load_pair",
       "disposition": "declared-safe-ffi"
     },
     {
