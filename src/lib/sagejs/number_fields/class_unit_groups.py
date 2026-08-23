@@ -1966,7 +1966,12 @@ class ClassUnitGroupEngine:
             coefficient_bound = int(getattr(cubic, "_CUBIC_RELATION_SIEVE_BOUND", 2))
             relations = self.components.relations
             matrix = self.components.matrix
-            trial = relations.ExactRelationCollector(self.order, factor_base)
+            verified_sibling = getattr(collector, "empty_verified_sibling", None)
+            trial: Any = (
+                verified_sibling()
+                if callable(verified_sibling)
+                else relations.ExactRelationCollector(self.order, factor_base)
+            )
             initial_proposals_reader = getattr(
                 relations, "initial_rational_prime_relation_proposals", None
             )

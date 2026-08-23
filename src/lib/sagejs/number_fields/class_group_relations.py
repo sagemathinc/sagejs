@@ -1131,6 +1131,25 @@ class ExactRelationCollector:
         """Return bounded-cache occupancy and reuse counters."""
         return self._reconstructor.diagnostics()
 
+    def empty_verified_sibling(self) -> "ExactRelationCollector":
+        """Return a fresh collector over this authenticated factor base.
+
+        Packed producers use the sibling as a transactional staging area.  Its
+        rank screen, ideal caches, records, and admission receipts are all
+        fresh, while the exact order and factor-base objects have already been
+        validated by this collector.  Detached callers still enter through the
+        public constructor and perform full factor-base validation.
+        """
+        return ExactRelationCollector(
+            self.order,
+            self.factor_base,
+            rank_prime=self.rank_screen.prime,
+            max_reconstructed_ideals=self._reconstructor.max_rows,
+            max_factor_powers=self._reconstructor.max_powers,
+            max_admission_receipts=self.max_admission_receipts,
+            _validated_token=_VALIDATED_FACTOR_BASE_TOKEN,
+        )
+
     def _factor_ideal_over_base(self, ideal: Any) -> tuple[int, ...]:
         row = tuple(int(ideal.valuation(prime)) for prime in self.factor_base)
         if self.reconstruct_factor_base_ideal(row) != ideal:

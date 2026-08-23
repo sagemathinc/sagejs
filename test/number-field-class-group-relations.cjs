@@ -167,6 +167,18 @@ try:
 finally:
     relation_module._validate_factor_base = saved_validate_factor_base
 assert factor_base_validation_calls == 1
+factor_base_validation_calls = 0
+relation_module._validate_factor_base = counted_validate_factor_base
+try:
+    sibling = collector.empty_verified_sibling()
+finally:
+    relation_module._validate_factor_base = saved_validate_factor_base
+assert factor_base_validation_calls == 0
+assert sibling.order is collector.order
+assert sibling.factor_base == collector.factor_base
+assert not sibling.records and not sibling.admissions
+assert sibling.reconstruction_diagnostics()["row_requests"] == 0
+assert sibling.admission_receipt_diagnostics()["entries"] == 0
 order_type = type(O)
 saved_factor_rational_prime = order_type.factor_rational_prime
 def forbidden_refactor(self, rational_prime, *args, **kwargs):
