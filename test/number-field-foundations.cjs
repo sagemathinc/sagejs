@@ -140,3 +140,25 @@ test("prime verification rejects a reducible residue presentation", async () => 
     await session.close();
   }
 });
+
+test("prime verification checks the exact HNF kernel directly", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "R.<x> = QQ[]\n" +
+            "K.<a> = NumberField(x^3 - x^2 - 6*x - 12)\n" +
+            "O = K.maximal_order()\n" +
+            "D = O.factor_rational_prime(2)\n" +
+            "for P in D.prime_ideals():\n" +
+            "    P.residue_coordinates = lambda value: (_ for _ in ()).throw(AssertionError('field-element reduction'))\n" +
+            "D.verify()['certified']",
+        )
+      ).repr,
+      "True",
+    );
+  } finally {
+    await session.close();
+  }
+});

@@ -1130,6 +1130,23 @@ def _residue_presentation_for_prime(
     )
 
 
+def _ideal_basis_maps_to_zero(
+    prime_ideal: NumberFieldPrimeIdeal,
+    presentation: dict[str, Any],
+) -> bool:
+    """Check the exact HNF lattice against its claimed residue quotient map."""
+    prime = prime_ideal._rational_prime
+    quotient_matrix = [list(row) for row in presentation["quotient_matrix"]]
+    # `_ideal_mod_p_subspace` converts the immutable exact HNF basis rows to
+    # maximal-order coordinates.  Testing its row space is equivalent to
+    # reducing every ideal basis element, without constructing field elements
+    # or passing through the polynomial residue presentation.
+    return all(
+        not any(_row_times_matrix(row, quotient_matrix, prime))
+        for row in _ideal_mod_p_subspace(prime_ideal, prime)
+    )
+
+
 def _presentation_modulus_is_irreducible(
     presentation: dict[str, Any], prime: int, residue_degree: int
 ) -> bool:
@@ -1462,10 +1479,8 @@ def verify_prime_decomposition(
                 presentation, p, residue_degree
             ):
                 failures.append("a residue presentation modulus is not irreducible")
-            for basis_element in ideal.basis():
-                if any(ideal.residue_coordinates(basis_element)):
-                    failures.append("a residue-map kernel omits a prime-ideal basis")
-                    break
+            if not _ideal_basis_maps_to_zero(ideal, presentation):
+                failures.append("a residue-map kernel omits a prime-ideal basis")
         except Exception as error:
             failures.append("residue verification failed: " + str(error))
         for previous in seen:
