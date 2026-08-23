@@ -464,8 +464,10 @@ def _height_model_binding(jacobian: Any) -> tuple[Any, ...]:
     h_value = jacobian.h()
     return (
         str(f_value.parent().base_ring()),
-        tuple(_rational_pair(f_value[index]) for index in range(6)),
-        tuple(_rational_pair(h_value[index]) for index in range(4)),
+        int(jacobian.dimension()),
+        max(int(f_value.degree()), 2 * int(h_value.degree())),
+        tuple(_rational_pair(value) for value in f_value.list()),
+        tuple(_rational_pair(value) for value in h_value.list()),
     )
 
 
