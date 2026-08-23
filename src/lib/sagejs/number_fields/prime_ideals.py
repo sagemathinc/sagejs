@@ -1130,6 +1130,20 @@ def _residue_presentation_for_prime(
     )
 
 
+def _presentation_modulus_is_irreducible(
+    presentation: dict[str, Any], prime: int, residue_degree: int
+) -> bool:
+    """Replay irreducibility of one canonical residue presentation."""
+    modular_factors = _om.factor_mod_prime(
+        tuple(int(value) for value in presentation["modulus"]), prime
+    )
+    return bool(
+        len(modular_factors) == 1
+        and int(modular_factors[0].multiplicity) == 1
+        and len(modular_factors[0].polynomial) - 1 == residue_degree
+    )
+
+
 def _dedekind_kummer_prime_candidate(
     order: Any,
     prime: int,
@@ -1199,13 +1213,8 @@ def _dedekind_kummer_prime_candidate(
             raise ArithmeticError(
                 "a packed Dedekind--Kummer ideal has the wrong exact norm"
             )
-        if not _quotient_is_field(
-            order,
-            candidate,
-            prime,
-            residue_degree,
-            table=table,
-            one=one,
+        if not _presentation_modulus_is_irreducible(
+            presentation, prime, residue_degree
         ):
             raise ArithmeticError(
                 "a packed Dedekind--Kummer ideal quotient is not a field"
@@ -1375,52 +1384,10 @@ def primes_above(order: Any, prime: Any) -> tuple[NumberFieldPrimeIdeal, ...]:
     return factor_rational_prime(order, prime).prime_ideals()
 
 
-def _quotient_is_field(
-    order: Any,
-    ideal: NumberFieldPrimeIdeal,
-    prime: int,
-    residue_degree: int,
-    *,
-    table: list[list[list[int]]] | None = None,
-    one: list[int] | None = None,
-) -> bool:
-    degree = order.degree()
-    subspace = _ideal_mod_p_subspace(ideal, prime)
-    coordinate_matrix, lifts = _quotient_map(subspace, degree, prime)
-    if len(lifts) != residue_degree:
-        return False
-    if table is None:
-        table = _modular_table(order, prime)
-    if one is None:
-        one = [value % prime for value in _order_one_coordinates(order)]
-    frobenius_rows = [
-        _row_times_matrix(
-            _modular_power(lift, prime, one, table, prime),
-            coordinate_matrix,
-            prime,
-        )
-        for lift in lifts
-    ]
-    if _rank(frobenius_rows, residue_degree, prime) != residue_degree:
-        return False
-    fixed = [
-        [
-            (frobenius_rows[row][column] - (1 if row == column else 0)) % prime
-            for column in range(residue_degree)
-        ]
-        for row in range(residue_degree)
-    ]
-    # Left fixed vectors form the nullspace of the transpose.
-    fixed_dimension = len(
-        _nullspace(_transpose(fixed, residue_degree), residue_degree, prime)
-    )
-    return fixed_dimension == 1
-
-
 def verify_prime_decomposition(
     order: Any, prime: Any, decomposition: Any
 ) -> dict[str, Any]:
-    """Independently verify quotient fields and exact lattice reconstruction."""
+    """Independently verify residue presentations and exact lattices."""
     failures: list[str] = []
     try:
         p = _normalize_prime(prime)
@@ -1472,15 +1439,6 @@ def verify_prime_decomposition(
         if ideal.norm() != expected_norm:
             failures.append("a prime lattice has the wrong exact norm")
         try:
-            if not _quotient_is_field(
-                order,
-                ideal,
-                p,
-                residue_degree,
-                table=replay_table,
-                one=replay_one,
-            ):
-                failures.append("a prime quotient is not a field")
             presentation = ideal._require_residue_presentation()
             recomputed_presentation = _residue_presentation_for_prime(
                 ideal,
@@ -1500,13 +1458,8 @@ def verify_prime_decomposition(
                         "a residue presentation differs from its canonical recomputation"
                     )
                     break
-            modular_factors = _om.factor_mod_prime(
-                tuple(int(value) for value in presentation["modulus"]), p
-            )
-            if (
-                len(modular_factors) != 1
-                or int(modular_factors[0].multiplicity) != 1
-                or len(modular_factors[0].polynomial) - 1 != residue_degree
+            if not _presentation_modulus_is_irreducible(
+                presentation, p, residue_degree
             ):
                 failures.append("a residue presentation modulus is not irreducible")
             for basis_element in ideal.basis():

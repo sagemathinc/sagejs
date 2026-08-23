@@ -114,3 +114,29 @@ test("immutable ideal norms share their exact determinant", async () => {
     await session.close();
   }
 });
+
+test("prime verification rejects a reducible residue presentation", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "R.<x> = QQ[]\n" +
+            "K.<a> = NumberField(x^3 - x^2 - 6*x - 12)\n" +
+            "O = K.maximal_order()\n" +
+            "D = O.factor_rational_prime(2)\n" +
+            "certified = D.verify()['certified']\n" +
+            "P = [P for P in D.prime_ideals() if P.residue_class_degree() == 2][0]\n" +
+            "saved = P._residue_presentation\n" +
+            "P._residue_presentation = {**saved, 'modulus': (0, 0, 1)}\n" +
+            "rejected = not D.verify()['certified']\n" +
+            "P._residue_presentation = saved\n" +
+            "[certified, rejected, D.verify()['certified']]",
+        )
+      ).repr,
+      "[True, True, True]",
+    );
+  } finally {
+    await session.close();
+  }
+});
