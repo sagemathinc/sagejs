@@ -6,7 +6,7 @@
   "lane": "hyperelliptic-curves",
   "status": "active",
   "owner": "user",
-  "objective": "Provide and execute a reproducible exact-digest Sage.js dynamic/native cross-platform correctness and performance runner for local-factor and prime-Kummer paths on the named acceptance hosts",
+  "objective": "Provide and execute reproducible exact-digest dynamic/native/standalone/Wasm cross-platform correctness and performance receipts for local-factor, Kummer, and Cantor paths on the named Phase 10 hosts",
   "base_commit": "4ff7d15ea8a493ed63fa07ae679b78dbbe2f5ce5",
   "claims": [
     "bench/hyperelliptic/cross-platform/"
@@ -27,7 +27,7 @@
     "exceptions": []
   },
   "platforms": {
-    "linux-x64": "required",
+    "linux-x64": "not-applicable",
     "linux-arm64": "required",
     "windows-x64": "required",
     "macos-arm64": "required"
@@ -37,10 +37,49 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 6.126,
+      "started_at": "2026-08-23T16:38:32.672Z",
+      "commit": "3fe04074a8024429ce2635f02c8b05ce8e433be2",
+      "workspace_fingerprint": "4c9acf30108da99ab524627b3cde794ff481a628b1df265e0e9cbf3eb4c92a8a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 8.915,
+      "started_at": "2026-08-23T16:38:47.858Z",
+      "commit": "3fe04074a8024429ce2635f02c8b05ce8e433be2",
+      "workspace_fingerprint": "4c9acf30108da99ab524627b3cde794ff481a628b1df265e0e9cbf3eb4c92a8a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 308.736,
+      "started_at": "2026-08-23T16:39:01.092Z",
+      "commit": "3fe04074a8024429ce2635f02c8b05ce8e433be2",
+      "workspace_fingerprint": "4c9acf30108da99ab524627b3cde794ff481a628b1df265e0e9cbf3eb4c92a8a",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Pushed complete frozen-source 168f8504 primary and authenticated Wasm receipts for native Windows x64, Linux ARM64, and macOS ARM64. All cross-mode and cross-host exact digests verify. The 08a7383d test-only package overlay passes on all three, Linux ARM64 raw fixed Cantor boundaries are within 4.3%/3.6% of standalone in genera 2/3, resource/cancellation behavior is explicit, and the generated report does not treat unavailable cells as wins.",
+    "risks": [
+      "The lane began at 4ff7d15e while integration advanced substantially. Required local validation records therefore fail on pre-existing lane drift: native export inventory, two strict hyperelliptic lint findings, and packed_integer production-kernel typing. The exact 168f8504 remote builds and focused three-host receipt verifiers pass.",
+      "The checked-in standalone benchmark is unavailable on native Windows and macOS because of POSIX static-archive and GNU/ELF linker contracts respectively; native source-transparent and Wasm rows remain covered.",
+      "macOS timings are descriptive shared-host evidence because transient GUI/system load was observed. Absolute timing comparisons across architectures are intentionally prohibited."
+    ],
+    "next_steps": [
+      "Cherry-pick 3fe04074 onto current integration and rerun architecture, strict, and native validation there, where the unrelated compiler/inventory drift is already resolved.",
+      "If a later source commit replaces the 168f8504 freeze, generate new immutable receipts rather than overwriting this series.",
+      "Make the standalone linker recipe native to Mach-O and Windows before adding per-host standalone boundary gates on those systems."
+    ]
   }
 }
