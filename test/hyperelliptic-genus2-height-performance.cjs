@@ -523,6 +523,55 @@ regulator_after_endpoint_poison = regulator(
 assert pairing_after_endpoint_poison.matrix[0][0].lower == pairing_matrix[0][0].lower
 assert regulator_after_endpoint_poison.rigorous
 assert regulator_after_endpoint_poison.status == "certified-positive"
+# Public record accessors close over the reviewed primitive decoder.  Rebinding
+# the familiar module-private helper after a genuine cache fill must not alter
+# any newly reconstructed rigorous capsule.
+original_ball_decoder = height_module._ball_from_data
+decoder_alias_ignored = False
+try:
+    height_module._ball_from_data = (
+        lambda data: RealBall(999, precision_bits=80, rigorous=True)
+    )
+    decoder_height = canonical_height(
+        P, precision=80, target_bits=16, context=context
+    )
+    decoder_bounds = context.automatic_bounds(80)
+    decoder_pairing = height_pairing(
+        [P, Q],
+        steps=6,
+        precision=80,
+        target_bits=32,
+        algorithm="local",
+        context=context,
+    )
+    decoder_regulator = regulator(
+        [P, Q],
+        steps=6,
+        precision=80,
+        target_bits=32,
+        algorithm="local",
+        context=context,
+    )
+    decoder_finite = context.finite_correction(P, precision=80, steps=2)
+    decoder_arch = context.archimedean_correction(
+        P,
+        precision=80,
+        steps=2,
+        bounds=decoder_bounds,
+        target_bits=None,
+    )
+    decoder_alias_ignored = (
+        decoder_height.ball.lower == height_lower
+        and decoder_bounds.correction_lower.lower != RealBall(999).lower
+        and decoder_pairing.matrix[0][0].lower == pairing_matrix[0][0].lower
+        and decoder_pairing[0][0].lower == pairing_matrix[0][0].lower
+        and decoder_regulator.ball.lower == reg.ball.lower
+        and decoder_finite.ball.lower != RealBall(999).lower
+        and decoder_arch.ball.lower != RealBall(999).lower
+    )
+finally:
+    height_module._ball_from_data = original_ball_decoder
+assert decoder_alias_ignored
 pairing_parameter_misses = context.diagnostics()["height_pairing_cache_misses"]
 pairing_parameter = height_pairing(
     [P, Q],
@@ -645,6 +694,7 @@ assert pairing_cache_tamper_rejected
     pairing_after_egress_poison.rigorous,
     pairing_after_endpoint_poison.rigorous,
     regulator_after_endpoint_poison.rigorous,
+    decoder_alias_ignored,
     pairing_parameter.rigorous,
     mutated_model_alias_rejected,
     unsupported_f_degree_alias_rejected,
@@ -657,7 +707,7 @@ assert pairing_cache_tamper_rejected
     );
     assert.match(
       result.repr,
-      /^\[\d+, True, True, 'certified-positive', True, \d+, \d+, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True\]$/,
+      /^\[\d+, True, True, 'certified-positive', True, \d+, \d+, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True\]$/,
     );
   } finally {
     await session.close();
