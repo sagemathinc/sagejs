@@ -105,6 +105,10 @@ class GlobalCoefficientPrefix:
             int(row.prime): tuple(int(value) for value in row.coefficients)
             for row in curve.global_reduction().local_data
         }
+        self._euler_factors: dict[int, tuple[int, ...]] = dict(self.bad_primes)
+        self._reciprocal_coefficients: dict[int, list[Any]] = {}
+        self._local_prime_bound = 1
+        self._coefficient_stream = "public-local-data"
 
     @staticmethod
     def _smallest_prime_table(bound: int) -> list[int]:
@@ -124,40 +128,86 @@ class GlobalCoefficientPrefix:
             cutoff = 1
         if cutoff < len(self.values):
             return self.values[: cutoff + 1]
+        previous_cutoff = len(self.values) - 1
         smallest = self._smallest_prime_table(cutoff)
-        local: dict[int, tuple[Any, ...]] = {}
-        for record in self.curve.local_data(2, cutoff, algorithm="auto"):
-            prime = int(record.prime)
+        start = max(2, self._local_prime_bound + 1)
+        packed_chunks = None
+        try:
+            from . import frobenius
+
+            packed_function = getattr(
+                frobenius, "rational_local_coefficient_chunks", None
+            )
+            if packed_function is not None:
+                packed_chunks = packed_function(
+                    self.curve,
+                    start,
+                    cutoff,
+                    algorithm="auto",
+                )
+        except NotImplementedError:
+            packed_chunks = None
+        if packed_chunks is not None:
+            self._coefficient_stream = "packed-local-coefficients"
+            rows = (row for chunk in packed_chunks for row in chunk)
+        else:
+            rows = (
+                (
+                    int(record.prime),
+                    None
+                    if record.coefficients is None
+                    else tuple(int(value) for value in record.coefficients),
+                    str(record.backend),
+                )
+                for record in self.curve.local_data(start, cutoff, algorithm="auto")
+                if record.available
+            )
+        for prime_value, coefficient_values, backend_value in rows:
+            prime = int(prime_value)
             if prime in self.bad_primes:
                 coefficients = self.bad_primes[prime]
                 backend = "certified-bad-reduction"
-            elif record.available and record.coefficients is not None:
-                coefficients = tuple(int(value) for value in record.coefficients)
-                backend = record.backend
+            elif coefficient_values is not None:
+                coefficients = tuple(int(value) for value in coefficient_values)
+                backend = str(backend_value)
             else:
                 raise ArithmeticError(
                     "a supposedly good prime has no certified Euler factor: p="
                     + str(prime)
                 )
+            self._euler_factors[prime] = coefficients
             self.backend_counts[backend] = self.backend_counts.get(backend, 0) + 1
-            exponent = 0
+        self._local_prime_bound = cutoff
+        for prime in range(2, cutoff + 1):
+            if smallest[prime] != prime:
+                continue
+            coefficients = self._euler_factors.get(prime)
+            if coefficients is None:
+                raise ArithmeticError(
+                    "a supposedly good prime has no certified Euler factor: p="
+                    + str(prime)
+                )
+            exponent = 1
             power = prime
-            while power <= cutoff:
+            while power <= cutoff // prime:
                 exponent += 1
-                if power > cutoff // prime:
-                    break
                 power *= prime
-            local[prime] = reciprocal_local_coefficients(coefficients, exponent)
-        values = [0, 1]
-        for index in range(2, cutoff + 1):
+            local_values = self._reciprocal_coefficients.get(prime)
+            if local_values is None or len(local_values) <= exponent:
+                self._reciprocal_coefficients[prime] = list(
+                    reciprocal_local_coefficients(coefficients, exponent)
+                )
+        for index in range(previous_cutoff + 1, cutoff + 1):
             prime = smallest[index]
             remaining = index
             exponent = 0
             while remaining % prime == 0:
                 remaining //= prime
                 exponent += 1
-            values.append(int(local[prime][exponent]) * values[remaining])
-        self.values = values
+            self.values.append(
+                int(self._reciprocal_coefficients[prime][exponent])
+                * self.values[remaining]
+            )
         self.extensions += 1
         return self.values
 
@@ -182,6 +232,17 @@ class GlobalCoefficientPrefix:
             for name, count in dict(
                 {} if backend_counts is None else backend_counts
             ).items()
+        }
+
+    def diagnostics(self) -> dict[str, Any]:
+        """Return exact-prefix reuse and local-stream diagnostics."""
+        return {
+            "bound": len(self.values) - 1,
+            "extensions": self.extensions,
+            "local_prime_bound": self._local_prime_bound,
+            "cached_euler_factors": len(self._euler_factors),
+            "coefficient_stream": self._coefficient_stream,
+            "backend_counts": dict(self.backend_counts),
         }
 
 
@@ -305,6 +366,30 @@ def _plan(
     }
 
 
+def _dirichlet_vertical_values(
+    values: list[int], logarithms: list[Any], step: Any, point_count: int
+) -> list[Any]:
+    """Evaluate one vertical Dirichlet-polynomial progression.
+
+    Transposing the term/height loops replaces one transcendental evaluation
+    per `(coefficient, height)` by one phase step per coefficient.  The same
+    precision remains active, and the enclosing coarse/fine refinement is
+    unchanged.
+    """
+    totals = [mp.mpc(0) for _index in range(point_count + 1)]
+    imaginary_unit = mp.mpc(0, 1)
+    for coefficient, logarithm in zip(values, logarithms, strict=True):
+        if coefficient == 0:
+            continue
+        amplitude = coefficient * mp.exp(-2 * logarithm)
+        phase = mp.mpc(1)
+        phase_step = mp.exp(-imaginary_unit * step * logarithm)
+        for index in range(point_count + 1):
+            totals[index] += amplitude * phase
+            phase *= phase_step
+    return totals
+
+
 def _theta_grid(
     coefficients: list[int],
     genus: int,
@@ -318,38 +403,42 @@ def _theta_grid(
     inverse_step = mp.mpf(plan["inverse_mellin_step"])
     inverse_points = int(plan["inverse_mellin_points"])
     contour = mp.mpf(2)
+    dirichlet_values = _dirichlet_vertical_values(
+        values, logarithms, inverse_step, inverse_points
+    )
     q_values = []
     base_values = []
-    coefficient_terms = 0
     for index in range(inverse_points + 1):
         height = inverse_step * index
         q_value = mp.mpc(contour, height)
-        dirichlet = mp.fsum(
-            coefficient * mp.exp(-q_value * logarithm)
-            for coefficient, logarithm in zip(values, logarithms, strict=True)
-            if coefficient != 0
-        )
         base = (
             mp.gamma(q_value) ** genus
             * mp.exp(q_value * mp.mpf(plan["log_a"]))
-            * dirichlet
+            * dirichlet_values[index]
         )
         if index == inverse_points:
             base /= 2
         q_values.append(q_value)
         base_values.append(base)
-        coefficient_terms += len(values)
     outer_step = mp.mpf(plan["outer_step"])
     outer_points = int(plan["outer_points"])
     arguments = [outer_step * index for index in range(outer_points + 1)]
-    theta_values = []
     scale = inverse_step / (2 * mp.pi)
-    for argument in arguments:
-        total = base_values[0] * mp.exp(-q_values[0] * argument)
-        for q_value, base in zip(q_values[1:], base_values[1:], strict=True):
-            total += 2 * mp.re(base * mp.exp(-q_value * argument))
-        theta_values.append(mp.re(scale * total))
-    return arguments, theta_values, coefficient_terms
+    theta_values = [mp.mpf(0) for _argument in arguments]
+    for contour_index, (q_value, base) in enumerate(
+        zip(q_values, base_values, strict=True)
+    ):
+        phase = mp.mpc(1)
+        phase_step = mp.exp(-q_value * outer_step)
+        for argument_index in range(len(arguments)):
+            contribution = base * phase
+            if contour_index:
+                theta_values[argument_index] += 2 * mp.re(contribution)
+            else:
+                theta_values[argument_index] += mp.re(contribution)
+            phase *= phase_step
+    theta_values = [scale * value for value in theta_values]
+    return arguments, theta_values, (inverse_points + 1) * len(values)
 
 
 def _theta_grid_machine(
@@ -392,12 +481,19 @@ def _theta_grid_machine(
     outer_points = int(plan["outer_points"])
     arguments = [outer_step * index for index in range(outer_points + 1)]
     scale = inverse_step / (2 * math.pi)
-    theta_values = []
-    for argument in arguments:
-        total = base_values[0] * cmath.exp(-q_values[0] * argument)
-        for q_value, base in zip(q_values[1:], base_values[1:], strict=True):
-            total += 2 * (base * cmath.exp(-q_value * argument)).real
-        theta_values.append(float((scale * total).real))
+    theta_values = [0.0 for _argument in arguments]
+    for contour_index, (q_value, base) in enumerate(
+        zip(q_values, base_values, strict=True)
+    ):
+        phase = complex(1)
+        phase_step = cmath.exp(-q_value * outer_step)
+        for argument_index in range(len(arguments)):
+            contribution = base * phase
+            theta_values[argument_index] += (
+                2 * contribution.real if contour_index else contribution.real
+            )
+            phase *= phase_step
+    theta_values = [scale * value for value in theta_values]
     return arguments, theta_values, (inverse_points + 1) * len(values)
 
 
@@ -413,27 +509,29 @@ def _completed_derivatives_from_grid(
     answer = []
     for point in points:
         machine_point = complex(float(mp.re(point)), float(mp.im(point)))
-        derivatives = []
-        for order in range(maximum_order + 1):
-            terms = []
-            for index, (argument, theta) in enumerate(
-                zip(arguments, theta_values, strict=True)
-            ):
-                if machine:
-                    weight = 0.5 if index in (0, len(arguments) - 1) else 1.0
-                else:
-                    weight = mp.mpf("0.5") if index in (0, len(arguments) - 1) else 1
-                if machine:
-                    exponential = cmath.exp(machine_point * argument) + root_number * (
-                        -1
-                    ) ** order * cmath.exp((2 - machine_point) * argument)
-                else:
-                    exponential = mp.exp(point * argument) + root_number * (
-                        -1
-                    ) ** order * mp.exp((2 - point) * argument)
-                terms.append(weight * theta * argument**order * exponential)
-            total = sum(terms) if machine else mp.fsum(terms)
-            derivatives.append(outer_step * total)
+        totals = [
+            complex(0) if machine else mp.mpc(0) for _order in range(maximum_order + 1)
+        ]
+        for index, (argument, theta) in enumerate(
+            zip(arguments, theta_values, strict=True)
+        ):
+            if machine:
+                weight = 0.5 if index in (0, len(arguments) - 1) else 1.0
+                forward = cmath.exp(machine_point * argument)
+                reflected = cmath.exp((2 - machine_point) * argument)
+            else:
+                weight = mp.mpf("0.5") if index in (0, len(arguments) - 1) else 1
+                forward = mp.exp(point * argument)
+                reflected = mp.exp((2 - point) * argument)
+            argument_power = 1
+            parity = root_number
+            for order in range(maximum_order + 1):
+                totals[order] += (
+                    weight * theta * argument_power * (forward + parity * reflected)
+                )
+                argument_power *= argument
+                parity = -parity
+        derivatives = [outer_step * total for total in totals]
         answer.append(derivatives)
     return answer
 
@@ -622,18 +720,17 @@ def _central_weight_contour(
     step = mp.mpf(plan["contour_step"])
     contour_points = int(plan["contour_points"])
     log_a = mp.mpf(plan["log_a"])
+    dirichlet_values = _dirichlet_vertical_values(
+        values, logarithms, step, contour_points
+    )
     totals = [mp.mpf(0) for _order in range(maximum_derivative + 1)]
     factorials = [mp.factorial(order) for order in range(maximum_derivative + 1)]
-    coefficient_terms = 0
     for index in range(contour_points + 1):
         height = step * index
         point = mp.mpc(2, height)
-        dirichlet = mp.fsum(
-            coefficient * mp.exp(-point * logarithm)
-            for coefficient, logarithm in zip(values, logarithms, strict=True)
-            if coefficient != 0
+        base = (
+            mp.gamma(point) ** genus * mp.exp(point * log_a) * dirichlet_values[index]
         )
-        base = mp.gamma(point) ** genus * mp.exp(point * log_a) * dirichlet
         endpoint_weight = mp.mpf("0.5") if index in (0, contour_points) else 1
         denominator = point - 1
         denominator_power = denominator
@@ -647,9 +744,8 @@ def _central_weight_contour(
                     * mp.re(base / denominator_power)
                 )
             denominator_power *= denominator
-        coefficient_terms += cutoff
     scale = step / mp.pi
-    return [scale * value for value in totals], coefficient_terms
+    return [scale * value for value in totals], (contour_points + 1) * cutoff
 
 
 def central_weight_values(
@@ -1089,6 +1185,8 @@ class HyperellipticLSeries:
         )
         self._last_diagnostics: Any = None
         self._evaluation_cache: dict[tuple[Any, ...], dict[str, Any]] = {}
+        self._evaluation_cache_hits = 0
+        self._evaluation_cache_subsumption_hits = 0
 
     def __repr__(self) -> str:
         return "L-series of " + repr(self._curve)
@@ -1120,8 +1218,30 @@ class HyperellipticLSeries:
         )
         cached = self._evaluation_cache.get(cache_key)
         if cached is not None:
-            self._last_diagnostics = cached
-            return cached, bits
+            self._evaluation_cache_hits += 1
+            reused = dict(cached)
+            reused["cache_hit"] = True
+            reused["cache_reused_maximum_derivative"] = int(maximum_derivative)
+            self._last_diagnostics = reused
+            return reused, bits
+        for candidate_key, candidate in self._evaluation_cache.items():
+            candidate_pairs, candidate_bits, candidate_order, candidate_algorithm = (
+                candidate_key
+            )
+            if (
+                candidate_pairs == tuple(pairs)
+                and candidate_bits == bits
+                and candidate_algorithm == algorithm
+                and int(candidate_order) > int(maximum_derivative)
+            ):
+                self._evaluation_cache_hits += 1
+                self._evaluation_cache_subsumption_hits += 1
+                reused = dict(candidate)
+                reused["cache_hit"] = True
+                reused["cache_reused_maximum_derivative"] = int(candidate_order)
+                reused["requested_maximum_derivative"] = int(maximum_derivative)
+                self._last_diagnostics = reused
+                return reused, bits
         result = None
         if central and algorithm != "inverse_mellin":
             if algorithm != "reference":
@@ -1166,6 +1286,8 @@ class HyperellipticLSeries:
             raise HyperellipticLseriesNumericalIndeterminacyError(
                 "the hyperelliptic L-series refinement did not stabilize"
             )
+        result["cache_hit"] = False
+        result["requested_maximum_derivative"] = int(maximum_derivative)
         if len(self._evaluation_cache) >= 32:
             first_key = next(iter(self._evaluation_cache))
             del self._evaluation_cache[first_key]
@@ -1321,7 +1443,10 @@ class HyperellipticLSeries:
         result, bits = self._evaluate([1], prec, maximum, algorithm)
         key = "completed_derivatives" if completed else "raw_derivatives"
         return runtime.math_tuple(
-            [self._coerce(value, bits) for value in result["values"][0][key]]
+            [
+                self._coerce(value, bits)
+                for value in result["values"][0][key][: maximum + 1]
+            ]
         )
 
     def value_ball(
@@ -1353,6 +1478,15 @@ class HyperellipticLSeries:
     def last_diagnostics(self) -> Any:
         return self._last_diagnostics
 
+    def cache_diagnostics(self) -> dict[str, Any]:
+        """Return reusable evaluation and exact-coefficient cache statistics."""
+        return {
+            "evaluation_entries": len(self._evaluation_cache),
+            "evaluation_hits": self._evaluation_cache_hits,
+            "evaluation_subsumption_hits": self._evaluation_cache_subsumption_hits,
+            "coefficient_prefix": self._coefficient_prefix.diagnostics(),
+        }
+
 
 class LFunctionInit:
     """Prepared genus-2/3 `L`-function evaluation state.
@@ -1383,6 +1517,14 @@ class LFunctionInit:
             self._maximum_order,
             self._algorithm,
         )
+        raw_values = self._central_result["values"][0]["raw_derivatives"]
+        completed_values = self._central_result["values"][0]["completed_derivatives"]
+        self._central_raw: tuple[Any, ...] = tuple(
+            self._lseries._coerce(value, self._precision) for value in raw_values
+        )
+        self._central_completed: tuple[Any, ...] = tuple(
+            self._lseries._coerce(value, self._precision) for value in completed_values
+        )
         self._point_cache: dict[str, Any] = {}
 
     def __repr__(self) -> str:
@@ -1395,6 +1537,8 @@ class LFunctionInit:
     def close(self) -> None:
         """Release prepared host caches owned by this object."""
         self._point_cache.clear()
+        self._central_raw = ()
+        self._central_completed = ()
         self._closed = True
 
     def __enter__(self) -> Any:
@@ -1411,10 +1555,7 @@ class LFunctionInit:
 
     def central_value(self) -> Any:
         self._check_open()
-        return self._lseries._coerce(
-            self._central_result["values"][0]["raw_derivatives"][0],
-            self._precision,
-        )
+        return self._central_raw[0]
 
     def central_jet(self, max_order: Any = None, *, completed: bool = False) -> Any:
         self._check_open()
@@ -1423,13 +1564,8 @@ class LFunctionInit:
         )
         if maximum > self._maximum_order:
             raise ValueError("the requested order exceeds this initialized jet")
-        key = "completed_derivatives" if completed else "raw_derivatives"
-        return runtime.math_tuple(
-            [
-                self._lseries._coerce(value, self._precision)
-                for value in self._central_result["values"][0][key][: maximum + 1]
-            ]
-        )
+        prepared = self._central_completed if completed else self._central_raw
+        return runtime.math_tuple(list(prepared[: maximum + 1]))
 
     def analytic_rank(self, *, leading_coefficient: bool = False) -> Any:
         self._check_open()
@@ -1462,8 +1598,7 @@ class LFunctionInit:
             )
         if not leading_coefficient:
             return sage.ZZ(rank)
-        raw = self._central_result["values"][0]["raw_derivatives"][rank]
-        return sage.ZZ(rank), self._lseries._coerce(raw, self._precision)
+        return sage.ZZ(rank), self._central_raw[rank]
 
     def leading_derivative(self) -> Any:
         """Return `(rank, L^(rank)(1))` using the prepared jet."""
@@ -1539,6 +1674,8 @@ class LFunctionInit:
             "algorithm": self._central_result["algorithm"],
             "central": self._central_result,
             "cached_points": len(self._point_cache),
+            "prepared_derivatives": len(self._central_raw),
+            "lseries_cache": self._lseries.cache_diagnostics(),
         }
 
 
