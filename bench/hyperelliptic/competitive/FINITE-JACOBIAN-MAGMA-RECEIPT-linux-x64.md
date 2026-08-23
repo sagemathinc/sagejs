@@ -2,20 +2,16 @@
 
 This is the bounded equal-contract receipt for public odd-degree genus-2 and
 genus-3 Jacobian arithmetic over `GF(1009)`.  It was run from revision
-`ce048d403a2efa1ed3482c06d62ad2bb5d734a9e` on 2026-08-23 with the exact
+`d970b023f3d16e3d0c83a20c36b69090289f3989` on 2026-08-23 with the exact
 harness in `finite-jacobian-magma-contract.cjs`.
 
-> **Performance ratios in this first receipt are superseded.** Exactness,
-> timer, source, and host records remain valid, but the measured Sage.js
-> function returned `batch[0]` before stopping its timer. Publishing that one
-> element copied the entire sealed `8*n` batch, while Magma observed its final
-> result outside timing. The corrected harness committed with this note
-> returns the complete batch and performs the same first-result observation
-> after timing. A corrected `bench-1` receipt must replace the table below
-> before it is used for competitiveness claims.
+An earlier receipt, preserved in git history, returned `batch[0]` before
+stopping the Sage.js timer and therefore copied the full sealed batch inside
+the timed interval. This final receipt uses the corrected equal contract:
+both Sage.js and Magma observe their final canonical result only after timing.
 
 The machine was reserved exclusively for this run.  Immediately before the
-timed contract its load averages were `0.07, 0.65, 0.98`, and no competing
+timed contract its load averages were `0.07, 0.50, 0.74`, and no competing
 user process was active.  The host was an 8-core, single-thread-per-core AMD
 EPYC 7B13 Linux x86-64 VM.  Sage.js used Node 22.22.2 and the production
 native-kernel pack; the oracle was Magma 2.18-5.  The raw preflight and
@@ -41,19 +37,21 @@ slower than Magma; a ratio below 1 means Sage.js is faster.
 
 | genus | operation | Sage public | prepared retained | forced materialized | Magma | public / Magma | retained / Magma |
 | ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2 | add | 23.089 us | 18.105 us | 207.319 us | 1.700 us | 13.582x | 10.650x |
-| 2 | double | 22.953 us | 18.046 us | 205.934 us | 1.700 us | 13.502x | 10.615x |
-| 2 | scalar-256 | 693.789 us | 692.413 us | 885.134 us | 490.000 us | 1.416x | 1.413x |
-| 3 | add | 22.928 us | 17.914 us | 218.626 us | 2.700 us | 8.492x | 6.635x |
-| 3 | double | 22.954 us | 17.942 us | 217.938 us | 3.700 us | 6.204x | 4.849x |
-| 3 | scalar-256 | 963.089 us | 957.461 us | 1,165.044 us | 1,280.000 us | 0.752x | 0.748x |
+| 2 | add | 7.655 us | 2.619 us | 211.010 us | 1.700 us | 4.503x | 1.541x |
+| 2 | double | 7.827 us | 2.559 us | 210.007 us | 1.700 us | 4.604x | 1.506x |
+| 2 | scalar-256 | 668.450 us | 665.009 us | 877.494 us | 490.000 us | 1.364x | 1.357x |
+| 3 | add | 7.803 us | 2.550 us | 220.449 us | 2.800 us | 2.787x | 0.911x |
+| 3 | double | 7.955 us | 2.644 us | 220.539 us | 3.700 us | 2.150x | 0.715x |
+| 3 | scalar-256 | 949.102 us | 946.633 us | 1,166.163 us | 1,280.000 us | 0.741x | 0.740x |
 
-Thus the prepared scalar engine is already competitive: it is about 1.41x
-Magma for genus 2 and 1.34x faster than Magma for genus 3 on this model and
-host.  Public addition and doubling are not yet competitive.  Their retained
-rows are 4.85x--10.65x slower than Magma, while forced polynomial
-materialization is much more expensive.  This receipt intentionally leaves
-those gates open.
+The retained genus-3 engine is faster than Magma for all three operations on
+this model and host: about 1.10x for addition, 1.40x for doubling, and 1.35x
+for 256-bit scalar multiplication. Retained genus-2 arithmetic is within
+1.36x--1.54x of Magma. Ordinary registered-public scalar multiplication is
+also competitive, but public addition and doubling remain 2.15x--4.60x
+slower because their contract includes authenticated gathering. Forced
+polynomial materialization remains the largest open public-representation
+cost.
 
 ## Scaling diagnosis
 
@@ -67,9 +65,10 @@ grew:
 | 2 | 3.563 us | 2.784 us | 2.651 us | 1.826 us | 0.722 us |
 | 3 | 3.087 us | 2.779 us | 2.629 us | 1.932 us | 0.693 us |
 
-The discrepancy with the raw 100,000-item table is therefore the timed
-first-element observation, not allocation or chunking in the retained native
-kernel. There is also a separate public API opportunity: demanded indexing
+The discrepancy with the superseded first 100,000-item receipt was therefore
+the timed first-element observation, not allocation or chunking in the
+retained native kernel. There is also a separate public API opportunity:
+demanded indexing
 of one packed result should eventually use an authenticated constant-size row
 copy rather than copying the whole batch. That optimization is not needed to
 make the benchmark contract equal, because result observation belongs outside
@@ -88,8 +87,8 @@ The six result digests are:
 
 The harness, generated Sage.js program, and generated Magma program hashes
 are respectively
-`c09f4b2e8ebc8bada4e393a3eefd88c1cb651fea90372fb420fee807a8b933d1`,
-`962783c8e3f4b77f52c30bb6198ca39edea802f401fb8d6d49e381d11347b418`,
+`03502ece58b2f7fb2f73882b7833be30c6e806d2efc16b9113615bae63880da6`,
+`56c46a7c60157580b59ffd589aec42a9420ab47a25ba3b6742232a1c1580c4b7`,
 and `312047781c0014441f0c356d55c2a2e5715594bcc96c9dba9731d39e112ad36e`.
 The complete sample vectors, canonical rows, backend statuses, timer
 resolution, MADs, and ratios are in

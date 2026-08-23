@@ -1,7 +1,7 @@
-benchmark_preflight_start
-2026-08-23T16:52:10Z
-ce048d403a2efa1ed3482c06d62ad2bb5d734a9e
- 16:52:10 up 1 day,  6:48,  1 user,  load average: 0.07, 0.65, 0.98
+corrected_benchmark_preflight_start
+2026-08-23T17:21:27Z
+d970b023f3d16e3d0c83a20c36b69090289f3989
+ 17:21:27 up 1 day,  7:18,  1 user,  load average: 0.07, 0.50, 0.74
 Linux cocalc-vm-51c5044ca6d3406d983e0f10 6.17.0-1022-gcp #25-Ubuntu SMP Sat Jul 25 01:12:40 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
 Architecture:                            x86_64
 CPU op-mode(s):                          32-bit, 64-bit
@@ -47,20 +47,20 @@ Vulnerability Tsa:                       Mitigation; Clear CPU buffers
 Vulnerability Tsx async abort:           Not affected
 Vulnerability Vmscape:                   Not affected
                total        used        free      shared  buff/cache   available
-Mem:     33649016832  1154883584  2943557632     1105920 30035488768 32494133248
+Mem:     33649016832  1162698752  2923483136     1097728 30047744000 32486318080
 Swap:              0           0           0
     PID %CPU %MEM     ELAPSED COMMAND         COMMAND
- 925958 19.2  0.0       00:00 systemd         /usr/lib/systemd/systemd --user
- 925954  1.4  0.0       00:00 sshd            sshd: user [priv]
- 765567  0.0  0.0       24:57 kworker/u32:5-k [kworker/u32:5-kvfree_rcu_reclaim]
-      1  0.0  0.0  1-06:48:47 systemd         /sbin/init
-     15  0.0  0.0  1-06:48:46 rcu_sched       [rcu_sched]
-    708  0.0  0.1  1-06:48:28 google_osconfig /usr/bin/google_osconfig_agent
-    177  0.0  0.2  1-06:48:44 systemd-journal /usr/lib/systemd/systemd-journald
-    977  0.0  0.0  1-06:48:16 google_guest_ag /usr/bin/google_guest_agent
- 876322  0.0  0.0       19:46 kworker/u32:4-k [kworker/u32:4-kvfree_rcu_reclaim]
-    241  0.0  0.0  1-06:48:44 multipathd      /sbin/multipathd -d -s
-     97  0.0  0.0  1-06:48:46 hwrng           [hwrng]
+ 928272  0.0  0.0       02:19 systemd         /usr/lib/systemd/systemd --user
+      1  0.0  0.0  1-07:18:03 systemd         /sbin/init
+ 765567  0.0  0.0       54:14 kworker/u32:5-i [kworker/u32:5-iou_exit]
+     15  0.0  0.0  1-07:18:03 rcu_sched       [rcu_sched]
+    708  0.0  0.1  1-07:17:44 google_osconfig /usr/bin/google_osconfig_agent
+    177  0.0  0.2  1-07:18:01 systemd-journal /usr/lib/systemd/systemd-journald
+    977  0.0  0.0  1-07:17:33 google_guest_ag /usr/bin/google_guest_agent
+ 926811  0.0  0.0       12:54 kworker/u32:0-e [kworker/u32:0-events_power_efficient]
+    241  0.0  0.0  1-07:18:01 multipathd      /sbin/multipathd -d -s
+     97  0.0  0.0  1-07:18:03 hwrng           [hwrng]
+ 913820  0.0  0.0       44:11 kworker/u32:7-e [kworker/u32:7-events_power_efficient]
 v22.22.2
-c09f4b2e8ebc8bada4e393a3eefd88c1cb651fea90372fb420fee807a8b933d1  bench/hyperelliptic/competitive/finite-jacobian-magma-contract.cjs
-finite-jacobian-magma-contract 765096 2026-08-23T16:26:09Z
+03502ece58b2f7fb2f73882b7833be30c6e806d2efc16b9113615bae63880da6  bench/hyperelliptic/competitive/finite-jacobian-magma-contract.cjs
+finite-jacobian-magma-contract-corrected 928334 2026-08-23T17:19:08Z
