@@ -756,7 +756,10 @@ class ArchimedeanHeightCorrectionResult(_SealedRecord):
 
 
 def automatic_height_bounds(
-    jacobian: Any, *, precision: int = 100
+    jacobian: Any,
+    *,
+    precision: int = 100,
+    _proof_duplication_l1_bound: int | None = None,
 ) -> AutomaticHeightBounds:
     """Return automatic certified bounds for a primitive integral quintic.
 
@@ -869,7 +872,16 @@ def automatic_height_bounds(
         ),
     )
 
-    duplication_l1_bound = classical_duplication_l1_bound(jacobian)
+    duplication_l1_bound = (
+        classical_duplication_l1_bound(jacobian)
+        if _proof_duplication_l1_bound is None
+        else int(_proof_duplication_l1_bound)
+    )
+    if duplication_l1_bound < 1:
+        raise Genus2HeightCapabilityError(
+            "the Flynn duplication L1 bound must be positive",
+            {"automatic_bound": "rejected-invalid-duplication-l1-bound"},
+        )
     lower_magnitude = field.log_integer(duplication_l1_bound) / RealBall(3)
     lower = -lower_magnitude
     diagnostics.update(
@@ -3529,6 +3541,17 @@ def _install_height_proof_state(
             specialized.append(tuple(output))
         return tuple(specialized)
 
+    def frozen_duplication_l1_bound(jacobian: Any) -> int | None:
+        """Compute the exact L1 norm from closure-frozen specialized terms."""
+        f_value = jacobian.f()
+        if not jacobian.h().is_zero() or int(f_value.degree()) != 5:
+            # The captured theorem rejects these models before consulting its
+            # public convenience L1 helper, preserving its precise capability
+            # diagnostics without making that helper proof-authoritative.
+            return None
+        terms = frozen_specialized_terms(jacobian)
+        return max(1, max(sum(abs(term[0]) for term in table) for table in terms))
+
     def encode_primitive(value: Any) -> Any:
         """Encode diagnostics without retaining caller-reachable containers."""
         if isinstance(value, encoded_frozen_dict_type):
@@ -3681,7 +3704,11 @@ def _install_height_proof_state(
         record = source_record(binding, precision)
         if record is not None:
             return record[2]
-        derived = automatic_bounds_function(jacobian, precision=precision)
+        derived = automatic_bounds_function(
+            jacobian,
+            precision=precision,
+            _proof_duplication_l1_bound=frozen_duplication_l1_bound(jacobian),
+        )
         return register_source(derived, jacobian, precision)
 
     def bound_is_certified(bound: AutomaticHeightBounds, jacobian: Any) -> bool:

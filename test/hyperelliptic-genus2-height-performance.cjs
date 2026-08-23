@@ -1465,6 +1465,51 @@ finally:
         setattr(kummer_module, name, table)
 assert flynn_rebindings_rejected == [True, True, True, True, True, True]
 
+# A transitive public helper used by the convenience L1 routine is not a
+# theorem dependency.  Even if it is replaced only while an automatic source
+# is first cached, the proof closure derives the L1 norm from its independent
+# frozen specialization.
+expected_duplication_l1 = kummer_module.classical_duplication_l1_bound(J)
+saved_kummer_rational_pair = kummer_module._rational_pair
+saved_kummer_polynomial_coefficients = kummer_module._polynomial_coefficients
+try:
+    kummer_module._rational_pair = lambda value: (0, 1)
+    kummer_module._polynomial_coefficients = (
+        lambda polynomial, length: ((0,)*length if length == 6 else saved_kummer_polynomial_coefficients(polynomial, length))
+    )
+    transient_bound = height_module.automatic_height_bounds(J, precision=160)
+finally:
+    kummer_module._rational_pair = saved_kummer_rational_pair
+    kummer_module._polynomial_coefficients = saved_kummer_polynomial_coefficients
+assert int(transient_bound.diagnostics["duplication_l1_bound"]) == expected_duplication_l1
+transient_context = HeightContext(J)
+transient_height = canonical_height(
+    P, precision=128, target_bits=128,
+    algorithm="local", context=transient_context,
+)
+transient_height_cached = canonical_height(
+    P, precision=128, target_bits=128,
+    algorithm="local", context=transient_context,
+)
+transient_pairing = height_pairing(
+    [P,Q], precision=128, target_bits=128,
+    algorithm="local", context=transient_context,
+)
+transient_pairing_cached = height_pairing(
+    [P,Q], precision=128, target_bits=128,
+    algorithm="local", context=transient_context,
+)
+transient_regulator = regulator(
+    [P,Q], precision=128, target_bits=128,
+    algorithm="local", context=transient_context,
+)
+independent_height_128 = "0.5517598195213949392531170893335438275950"
+assert transient_height.ball.contains(independent_height_128)
+assert transient_height_cached.ball.contains(independent_height_128)
+assert transient_pairing.height_results[0].ball.contains(independent_height_128)
+assert transient_pairing_cached.height_results[0].ball.contains(independent_height_128)
+assert transient_regulator.rigorous and transient_regulator.status == "certified-positive"
+
 restored_context = HeightContext(J)
 restored_height = canonical_height(
     P, precision=64, target_bits=32,
