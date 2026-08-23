@@ -1937,6 +1937,33 @@ assert conditional_dependencies["relations"] != unconditional_dependencies["rela
 assert set(conditional_dependencies) == {
     "relations", "presentation", "generators", "saturation",
 }
+
+# Generation evidence uses component digests so the terminal proof-progress
+# hashes can reuse the already authenticated relation and presentation bytes.
+evidence = {
+    "schema": "sagejs.number-fields/class-generation-authority-v1",
+    "proof_status": EXACT_UNCONDITIONAL,
+    "theorem": "Minkowski",
+    "assumptions": [],
+    "bound": 3,
+    "factor_base": [{"prime": 2}],
+    "relations": [{"row": [1]}],
+    "presentation": {"order": 1},
+}
+evidence_digest = _generation_evidence_digests(evidence)
+assert all(len(value) == 64 for value in evidence_digest)
+changed = _component_payload(evidence)
+changed["relations"][0]["row"][0] = 2
+changed_digest = _generation_evidence_digests(changed)
+assert changed_digest[0] != evidence_digest[0]
+assert changed_digest[1] != evidence_digest[1]
+assert changed_digest[2] == evidence_digest[2]
+changed["unexpected"] = True
+try:
+    _generation_evidence_digests(changed)
+    raise AssertionError("extra generation evidence retained authority")
+except ValueError:
+    pass
 print("checkpoint-policy-bound")
 `);
   assert.equal(output, "checkpoint-policy-bound");

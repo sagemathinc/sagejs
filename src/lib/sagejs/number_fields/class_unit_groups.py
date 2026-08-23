@@ -130,6 +130,38 @@ def _canonical_payload_hash(payload: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+_GENERATION_EVIDENCE_KEYS = {
+    "schema",
+    "proof_status",
+    "theorem",
+    "assumptions",
+    "bound",
+    "factor_base",
+    "relations",
+    "presentation",
+}
+
+
+def _generation_evidence_digests(evidence: Any) -> tuple[str, str, str]:
+    if (
+        not isinstance(evidence, dict)
+        or set(evidence) != _GENERATION_EVIDENCE_KEYS
+        or evidence.get("schema")
+        != "sagejs.number-fields/class-generation-authority-v1"
+    ):
+        raise ValueError("invalid generation evidence")
+    names = ("factor_base", "relations", "presentation")
+    digests = tuple(_canonical_payload_hash(evidence[name]) for name in names)
+    root = {
+        key: evidence[key]
+        for key in ("proof_status", "theorem", "assumptions", "bound")
+    }
+    root["schema"] = "sagejs.number-fields/class-generation-authority-digest-v1"
+    for name, digest in zip(names, digests, strict=True):
+        root[name + "_sha256"] = digest
+    return _canonical_payload_hash(root), digests[1], digests[2]
+
+
 def _saturation_diagnostic_summary(record: Any) -> dict[str, Any]:
     """Return fixed-shape status without duplicating authenticated proof data."""
     certificate = getattr(record, "_analytic_certificate", None)
@@ -1402,6 +1434,7 @@ class ClassUnitGroupEngine:
         self._automorphism_orbit_plans: list[tuple[tuple[Any, ...], Any]] = []
         self._proof_progress: Any = None
         self._proof_dependency_hashes: dict[str, str] = {}
+        self._generation_dependency_snapshot: tuple[Any, ...] | None = None
         self._saturation_record: Any = None
         self._authenticated_cubic_relation_seed_cache: Any = _CUBIC_RELATION_SEED_UNREAD
 
@@ -2149,27 +2182,39 @@ class ClassUnitGroupEngine:
         self, group: Any, collector: Any, presentation: Any, saturation: Any
     ) -> dict[str, str]:
         """Hash every exact dependency consumed by proof-prime replay."""
+        snapshot = self._generation_dependency_snapshot
+        execution_policy = {
+            "schema": "sagejs.number-fields/class-unit-execution-policy-v1",
+            "requested_proof": self.proof,
+            "algorithm": self.algorithm,
+            "limits": self.limits.to_dict(),
+        }
+        if (
+            snapshot is not None
+            and snapshot[0] is collector
+            and snapshot[1] is presentation
+            and snapshot[2] == tuple(collector.records)
+        ):
+            relations_body = {
+                "schema": "sagejs.number-fields/proof-relations-v2",
+                "records_sha256": str(snapshot[3]),
+            }
+            presentation_dependency = str(snapshot[4])
+        else:
+            relations_body = {
+                "schema": "sagejs.number-fields/proof-relations-v1",
+                "records": [_component_payload(record) for record in collector.records],
+            }
+            presentation_body = {
+                "schema": "sagejs.number-fields/proof-presentation-v1",
+                "presentation": _component_payload(presentation),
+            }
+            presentation_dependency = _canonical_payload_hash(presentation_body)
         return {
             "relations": _canonical_payload_hash(
-                {
-                    "schema": "sagejs.number-fields/proof-relations-v1",
-                    "records": [
-                        _component_payload(record) for record in collector.records
-                    ],
-                    "execution_policy": {
-                        "schema": "sagejs.number-fields/class-unit-execution-policy-v1",
-                        "requested_proof": self.proof,
-                        "algorithm": self.algorithm,
-                        "limits": self.limits.to_dict(),
-                    },
-                }
+                {**relations_body, "execution_policy": execution_policy}
             ),
-            "presentation": _canonical_payload_hash(
-                {
-                    "schema": "sagejs.number-fields/proof-presentation-v1",
-                    "presentation": _component_payload(presentation),
-                }
-            ),
+            "presentation": presentation_dependency,
             "generators": _canonical_payload_hash(
                 {
                     "schema": "sagejs.number-fields/proof-generators-v1",
@@ -3098,7 +3143,18 @@ class ClassUnitGroupEngine:
             "relations": [_component_payload(record) for record in collector.records],
             "presentation": _component_payload(presentation),
         }
-        evidence_sha256 = _canonical_payload_hash(evidence)
+        (
+            evidence_sha256,
+            relations_sha256,
+            presentation_sha256,
+        ) = _generation_evidence_digests(evidence)
+        self._generation_dependency_snapshot = (
+            collector,
+            presentation,
+            tuple(collector.records),
+            relations_sha256,
+            presentation_sha256,
+        )
         cache_key = _canonical_payload_hash(
             {
                 "evidence_sha256": evidence_sha256,
@@ -3144,7 +3200,8 @@ class ClassUnitGroupEngine:
                     ] += 1
                     return True
                 supplied_payload = _component_payload(supplied_evidence)
-                if _canonical_payload_hash(supplied_payload) != evidence_sha256:
+                supplied_sha256, _, _ = _generation_evidence_digests(supplied_payload)
+                if supplied_sha256 != evidence_sha256:
                     return False
                 if (
                     self._generation_verification_cache_active
