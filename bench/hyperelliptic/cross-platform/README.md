@@ -55,6 +55,10 @@ rows, packed-backed public divisors, and forced materialization separately.
 Every full packed digest must agree. A complete tiny `GF(3)` Jacobian supplies
 a separate exact digest independent of those timing checksums.
 
+The ordinary dynamic reference path already constructs polynomial divisors,
+so it records forced materialization as not applicable instead of rerunning an
+identical expensive scalar batch and pretending that it is a distinct tier.
+
 Receipts are immutable evidence. If the commit, compiler, VM image, workload,
 or runner changes, add a new receipt rather than overwriting an old one.
 
