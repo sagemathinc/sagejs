@@ -239,8 +239,8 @@ assert local.diagnostics["asymptotic_state"] == (
 )
 diagnostics = context.diagnostics()
 assert diagnostics["direct_kummer_quartic_doublings"] == 0
-assert diagnostics["finite_correction_cache_entries"] == 1
-assert diagnostics["archimedean_correction_cache_entries"] == 1
+assert diagnostics["finite_correction_cache_entries"] == 0
+assert diagnostics["archimedean_correction_cache_entries"] == 0
 [
     local.ball.contains("0.55175981952139493925311708933354526634108654109670"),
     local.diagnostics["enclosure_width_bits"] >= 9,
@@ -282,6 +282,8 @@ assert not hasattr(height_module, "_HeightPairingCacheEntry")
 assert not hasattr(height_module, "_CANONICAL_HEIGHT_CACHE_PROOF")
 assert not hasattr(height_module, "_HEIGHT_PAIRING_CACHE_PROOF")
 assert not hasattr(height_module, "_AUTOMATIC_HEIGHT_BOUND_PROOF")
+assert not hasattr(height_module, "_automatic_height_bound_is_certified")
+assert not hasattr(height_module, "_copy_automatic_height_bound")
 height_lower = height.ball.lower
 height_upper = height.ball.upper
 fake_height = type(height)(
@@ -308,6 +310,18 @@ height_after_egress_poison = canonical_height(
 )
 assert height_after_egress_poison.ball.lower == height_lower
 assert height_after_egress_poison.ball.upper == height_upper
+# RationalEndpoint is mutable, so the hidden payload must never retain an
+# endpoint object reachable through a public result.
+poisoned_height_ball = height_after_egress_poison.ball
+poisoned_height_ball.lower.numerator = 777
+poisoned_height_ball.lower.denominator = 1
+poisoned_height_ball.upper.numerator = 777
+poisoned_height_ball.upper.denominator = 1
+height_after_endpoint_poison = canonical_height(
+    P, precision=80, target_bits=16, context=context
+)
+assert height_after_endpoint_poison.ball.lower == height_lower
+assert height_after_endpoint_poison.ball.upper == height_upper
 parameter_misses = context.diagnostics()["canonical_height_cache_misses"]
 parameter_height = canonical_height(
     P, steps=7, precision=96, target_bits=32, algorithm="local", context=context
@@ -361,6 +375,42 @@ except (Genus2HeightCapabilityError, Genus2KummerCapabilityError):
 finally:
     context._automatic_bounds[80] = original_cached_automatic
 assert injected_bound_rejected
+# A module-global name, including one injected through a function globals
+# dictionary, is not an authentication boundary.  The rigorous entry path
+# must ignore this familiar-looking replacement.
+height_module._automatic_height_bound_is_certified = lambda bound, jacobian: True
+canonical_globals = getattr(canonical_height, "__globals__", {})
+canonical_globals["_automatic_height_bound_is_certified"] = (
+    lambda bound, jacobian: True
+)
+context._automatic_bounds[80] = fake_automatic
+rebound_verifier_rejected = False
+exact_bound_injection_rejected = False
+try:
+    canonical_height(
+        Q,
+        steps=7,
+        precision=80,
+        target_bits=17,
+        algorithm="local",
+        context=context,
+    )
+except (Genus2HeightCapabilityError, Genus2KummerCapabilityError):
+    rebound_verifier_rejected = True
+try:
+    canonical_height(
+        Q,
+        steps=4,
+        precision=80,
+        algorithm="exact",
+        context=context,
+    )
+except (Genus2HeightCapabilityError, Genus2KummerCapabilityError):
+    exact_bound_injection_rejected = True
+finally:
+    context._automatic_bounds[80] = original_cached_automatic
+assert rebound_verifier_rejected
+assert exact_bound_injection_rejected
 object.__setattr__(
     automatic, "_correction_lower_data", fake_automatic._correction_lower_data
 )
@@ -372,6 +422,40 @@ try:
 except (Genus2HeightCapabilityError, Genus2KummerCapabilityError):
     poisoned_bound_rejected = True
 assert poisoned_bound_rejected
+# Mutating endpoints obtained from a valid public copy must not mutate either
+# the context source or the closed theorem-source payload.
+safe_automatic = context.automatic_bounds(80)
+safe_lower = safe_automatic.correction_lower
+safe_upper = safe_automatic.correction_upper
+safe_lower.lower.numerator = -100
+safe_lower.lower.denominator = 1
+safe_lower.upper.numerator = -100
+safe_lower.upper.denominator = 1
+safe_upper.lower.numerator = -100
+safe_upper.lower.denominator = 1
+safe_upper.upper.numerator = -100
+safe_upper.upper.denominator = 1
+height_after_bound_endpoint_poison = canonical_height(
+    P, steps=7, precision=80, target_bits=18, algorithm="local", context=context
+)
+assert height_after_bound_endpoint_poison.rigorous
+assert height_after_bound_endpoint_poison.ball.contains(
+    "0.55175981952139493925311708933354526634108654109670"
+)
+# Public egress copies never consume source-proof capacity.  Repeating well
+# beyond the bounded registry capacity must leave both memory and proof
+# liveness unchanged.
+automatic_entries_before = len(context._automatic_bounds)
+for _index in range(600):
+    repeated_bounds = context.automatic_bounds(80)
+assert len(context._automatic_bounds) == automatic_entries_before
+assert context.diagnostics()["automatic_bound_proof_source_capacity"] == 512
+assert not context.diagnostics()["automatic_bound_egress_registers_source"]
+height_after_many_bound_copies = canonical_height(
+    Q, steps=7, precision=80, target_bits=19, algorithm="local", context=context
+)
+assert repeated_bounds.diagnostics["automatic_bound"] == "certified"
+assert height_after_many_bound_copies.rigorous
 pairing = height_pairing(
     [P, Q], steps=6, precision=80, target_bits=32, algorithm="local", context=context
 )
@@ -416,6 +500,30 @@ pairing_after_egress_poison = height_pairing(
     context=context,
 )
 assert pairing_after_egress_poison.matrix[0][0].lower == pairing_matrix[0][0].lower
+poisoned_pairing_entry = pairing_after_egress_poison.matrix[0][0]
+poisoned_pairing_entry.lower.numerator = 999
+poisoned_pairing_entry.lower.denominator = 1
+poisoned_pairing_entry.upper.numerator = 999
+poisoned_pairing_entry.upper.denominator = 1
+pairing_after_endpoint_poison = height_pairing(
+    [P, Q],
+    steps=6,
+    precision=80,
+    target_bits=32,
+    algorithm="local",
+    context=context,
+)
+regulator_after_endpoint_poison = regulator(
+    [P, Q],
+    steps=6,
+    precision=80,
+    target_bits=32,
+    algorithm="local",
+    context=context,
+)
+assert pairing_after_endpoint_poison.matrix[0][0].lower == pairing_matrix[0][0].lower
+assert regulator_after_endpoint_poison.rigorous
+assert regulator_after_endpoint_poison.status == "certified-positive"
 pairing_parameter_misses = context.diagnostics()["height_pairing_cache_misses"]
 pairing_parameter = height_pairing(
     [P, Q],
@@ -524,13 +632,20 @@ assert pairing_cache_tamper_rejected
     diagnostics["height_pairing_cache_hits"],
     diagnostics["canonical_height_cache_hits"],
     height_after_egress_poison.rigorous,
+    height_after_endpoint_poison.rigorous,
     parameter_height.rigorous,
     height_model_alias_rejected,
     height_point_alias_rejected,
     forged_bound_rejected,
     injected_bound_rejected,
+    rebound_verifier_rejected,
+    exact_bound_injection_rejected,
     poisoned_bound_rejected,
+    height_after_bound_endpoint_poison.rigorous,
+    height_after_many_bound_copies.rigorous,
     pairing_after_egress_poison.rigorous,
+    pairing_after_endpoint_poison.rigorous,
+    regulator_after_endpoint_poison.rigorous,
     pairing_parameter.rigorous,
     mutated_model_alias_rejected,
     unsupported_f_degree_alias_rejected,
@@ -543,7 +658,7 @@ assert pairing_cache_tamper_rejected
     );
     assert.match(
       result.repr,
-      /^\[\d+, True, True, 'certified-positive', True, 1, \d+, True, True, True, True, True, True, True, True, True, True, True, True, True, True\]$/,
+      /^\[\d+, True, True, 'certified-positive', True, \d+, \d+, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True\]$/,
     );
   } finally {
     await session.close();
