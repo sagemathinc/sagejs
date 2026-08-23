@@ -16,7 +16,7 @@
     "classified-native-file": 120,
     "declared-ffi": 433,
     "declared-ffi-resource": 30,
-    "napi-export": 319,
+    "napi-export": 320,
     "runtime-intrinsic": 137,
     "wasm-export": 72
   },
@@ -6282,6 +6282,16 @@
       "symbol": "sagejs_higher_weight_presentation_reduction",
       "disposition": "migrate-to-typed-python",
       "family": "modular-symbols"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticAbelJacobiBatchArb",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "hyperellipticAbelJacobiBatchArb",
+      "symbol": "sagejs_hyperelliptic_abel_jacobi_batch_arb",
+      "disposition": "retain-host-adapter",
+      "family": "hyperelliptic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:hyperellipticCentralWeights",

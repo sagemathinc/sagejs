@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "e919b13a85361a7f876ce93836e1bc93ac4213a894a65b0b640fca967a60650d",
+  "source_sha256": "71db5ae72025d740e81e76fb453e6b55dd175902f0ac694765ba268c7a667439",
   "counts": {
-    "total": 987,
+    "total": 988,
     "by_kind": {
       "declared-ffi-function": 433,
       "declared-ffi-resource": 30,
-      "napi-export": 319,
+      "napi-export": 320,
       "production-kernel": 43,
       "runtime-intrinsic": 137,
       "specialist-capability": 25
@@ -16,13 +16,13 @@
       "compiled-source": 43,
       "desktop-only": 36,
       "generated-wasm": 302,
-      "portable-fallback": 562,
+      "portable-fallback": 563,
       "shared-core": 44
     },
     "by_status": {
       "available": 521,
       "desktop-only": 36,
-      "fallback": 430
+      "fallback": 431
     }
   },
   "workflow_aliases": {
@@ -7723,6 +7723,18 @@
         "src/baselib/modular.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticAbelJacobiBatchArb",
+      "family": "hyperelliptic",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "strict-python-mpmath-abel-jacobi-batch",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "HyperellipticCurve.abel_jacobi_batch"
+      ],
+      "explanation": "Batched Abel--Jacobi integration remains available in browsers through the tested strict-Python arbitrary-precision implementation."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:hyperellipticCentralWeights",

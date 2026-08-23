@@ -782,6 +782,11 @@
       "decision": "migrate-to-typed-python"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticAbelJacobiBatchArb",
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:hyperellipticCentralWeights",
       "family": "hyperelliptic",
       "decision": "retain-host-adapter"
