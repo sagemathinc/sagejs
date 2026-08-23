@@ -115,6 +115,14 @@ for case in fixture['cases']:
         assert replayed.generator_transforms == presentation.generator_transforms
         assert replayed.verify()
 
+        retained_order = presentation.order
+        presentation.order = (
+            2 if retained_order is None else retained_order + 1
+        )
+        assert not presentation.verify()
+        presentation.order = retained_order
+        assert presentation.verify()
+
         duplicate = extend_relation_presentation_with_duplicate_rows(
             presentation, (rows[0], rows[0])
         )

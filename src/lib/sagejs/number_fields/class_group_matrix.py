@@ -1434,6 +1434,45 @@ class RelationPresentation:
             return False
         if abs(_determinant_exact(smith_right)) != 1:
             return False
+        expected_diagonal = tuple(
+            self.smith[index][index]
+            for index in range(min(self.row_count, self.column_count))
+        )
+        expected_rank = sum(1 for value in expected_diagonal if value != 0)
+        expected_diagonal = expected_diagonal[:expected_rank]
+        expected_positions = tuple(
+            index for index, value in enumerate(expected_diagonal) if value > 1
+        )
+        expected_invariants = tuple(
+            expected_diagonal[index] for index in expected_positions
+        )
+        expected_order = (
+            None if self.column_count - expected_rank else _product(expected_diagonal)
+        )
+        expected_generator_positions = expected_positions + tuple(
+            range(expected_rank, self.column_count)
+        )
+        expected_generator_transforms = tuple(
+            self.smith_right_inverse[position]
+            for position in expected_generator_positions
+        )
+        expected_dependencies = tuple(
+            self.smith_left_transform[index]
+            for index in range(expected_rank, self.row_count)
+        )
+        if (
+            self.rank != expected_rank
+            or self.diagonal != expected_diagonal
+            or self.free_rank != self.column_count - expected_rank
+            or self.invariant_positions != expected_positions
+            or self.invariants != expected_invariants
+            or self.order != expected_order
+            or self.generator_positions != expected_generator_positions
+            or self.generator_transforms != expected_generator_transforms
+            or self.dependency_transforms != expected_dependencies
+            or self.unit_transforms != expected_dependencies
+        ):
+            return False
         diagonal_limit = min(self.row_count, self.column_count)
         previous = 1
         seen_zero = False
