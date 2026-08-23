@@ -4,7 +4,7 @@
   "id": "hyp-rational-perf",
   "title": "Hyp Rational Perf",
   "lane": "hyperelliptic-curves",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Accelerate rational torsion and saturation through batched reductions and exact checks, retaining replayable certificate boundaries.",
   "base_commit": "76b863adb13c683b265ddc0c987b727fd7291990",
@@ -84,6 +84,36 @@
       "started_at": "2026-08-23T03:34:44.632Z",
       "commit": "9817ceab54b10066d12a65daae3ed2bf13befc2a",
       "workspace_fingerprint": "151709b852a763345ade0a39b7781ba48e12a5a467e0a1d16c4ae349addf2fe7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 874.701,
+      "started_at": "2026-08-23T03:36:33.954Z",
+      "commit": "a314f6f7640b81f9eecb39487bc933c37ace3a61",
+      "workspace_fingerprint": "88ce6769a99cbee17e7d0fe36928207b03d72b3a62f584fc6ec887333798f604",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.898,
+      "started_at": "2026-08-23T03:51:12.766Z",
+      "commit": "a314f6f7640b81f9eecb39487bc933c37ace3a61",
+      "workspace_fingerprint": "88ce6769a99cbee17e7d0fe36928207b03d72b3a62f584fc6ec887333798f604",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.998,
+      "started_at": "2026-08-23T03:51:23.104Z",
+      "commit": "a314f6f7640b81f9eecb39487bc933c37ace3a61",
+      "workspace_fingerprint": "88ce6769a99cbee17e7d0fe36928207b03d72b3a62f584fc6ec887333798f604",
       "platform": "linux-x64"
     }
   ],
