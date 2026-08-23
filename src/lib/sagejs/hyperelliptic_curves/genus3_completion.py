@@ -55,6 +55,112 @@ def _host_buffer_length(value: int) -> int:
     return _runtime.number(value)
 
 
+def _candidate_word_capacity(prime: int) -> int:
+    """Return a conservative limb count for coefficients and `L(+-1)`."""
+    return max(1, (3 * prime.bit_length() + 69) // 64)
+
+
+def _merged_progression_intervals(
+    progressions: Iterable[dict[str, int]], prime: int
+) -> tuple[int | None, tuple[tuple[int, int], ...]]:
+    """Return the common residue and merged quotient intervals."""
+    intervals = []
+    residue = None
+    for progression in progressions:
+        base = int(progression["base"])
+        stride = int(progression["stride"])
+        count = int(progression["count"])
+        if stride != prime or count < 1:
+            raise RuntimeError("invalid packed candidate-order progression")
+        base_residue = base % prime
+        if residue is None:
+            residue = base_residue
+        elif residue != base_residue:
+            raise RuntimeError("candidate orders disagree modulo the prime")
+        start = (base - base_residue) // prime
+        intervals.append((start, start + count))
+    if not intervals:
+        return None, ()
+    intervals.sort()
+    merged = []
+    start, stop = intervals[0]
+    for next_start, next_stop in intervals[1:]:
+        if next_start <= stop:
+            if next_stop > stop:
+                stop = next_stop
+        else:
+            merged.append((start, stop))
+            start, stop = next_start, next_stop
+    merged.append((start, stop))
+    return residue, tuple(merged)
+
+
+def _orders_from_progressions(
+    progressions: Iterable[dict[str, int]], prime: int
+) -> tuple[int, ...]:
+    """Expand the union of same-residue stride-`p` intervals exactly once."""
+    residue, merged = _merged_progression_intervals(progressions, prime)
+    if residue is None:
+        return ()
+    return tuple(
+        residue + prime * quotient
+        for start, stop in merged
+        for quotient in range(start, stop)
+    )
+
+
+def _coprime_inverse(value: int, modulus: int) -> int:
+    """Return the inverse of `value` modulo `modulus`, assuming coprimality."""
+    old_remainder, remainder = value, modulus
+    old_coefficient, coefficient = 1, 0
+    while remainder:
+        quotient = old_remainder // remainder
+        old_remainder, remainder = remainder, old_remainder - quotient * remainder
+        old_coefficient, coefficient = (
+            coefficient,
+            old_coefficient - quotient * coefficient,
+        )
+    if old_remainder != 1:
+        raise ArithmeticError("candidate progression modulus is not coprime")
+    return old_coefficient % modulus
+
+
+def progression_order_count(
+    progressions: Iterable[dict[str, int]],
+    prime: int,
+    witnesses: Iterable[int] = (),
+) -> int:
+    """Count distinct progression orders divisible by every witness."""
+    residue, intervals = _merged_progression_intervals(progressions, prime)
+    if residue is None:
+        return 0
+    modulus = 1
+    for witness in witnesses:
+        witness = int(witness)
+        if witness <= 0:
+            raise ValueError("order witnesses must be positive")
+        modulus = modulus * witness // _integer_gcd(modulus, witness)
+    if modulus == 1:
+        return sum(stop - start for start, stop in intervals)
+    common = _integer_gcd(prime, modulus)
+    if residue % common != 0:
+        return 0
+    reduced_modulus = modulus // common
+    if reduced_modulus == 1:
+        quotient_residue = 0
+    else:
+        quotient_residue = (
+            -(residue // common)
+            * _coprime_inverse((prime // common) % reduced_modulus, reduced_modulus)
+        ) % reduced_modulus
+    count = 0
+    for start, stop in intervals:
+        first = start + (quotient_residue - start) % reduced_modulus
+        if first < stop:
+            count += 1 + (stop - 1 - first) // reduced_modulus
+    return count
+
+
 def _integer_gcd(left: int, right: int) -> int:
     """Return a nonnegative gcd without depending on an optional stdlib shim."""
     left = abs(left)
@@ -355,7 +461,11 @@ def _scan_candidate_lifts(
         # resource limit that may be much larger than the actual answer.
         capacity = min(256, max_candidates)
         output_length = _host_buffer_length(2 + 3 * capacity)
-        output = kernel_integer_zeros(scan_genus3_weil_candidates, output_length)
+        output = kernel_integer_zeros(
+            scan_genus3_weil_candidates,
+            output_length,
+            _candidate_word_capacity(prime),
+        )
         stored = scan_genus3_weil_candidates(
             output,
             prime,
@@ -400,7 +510,11 @@ def _scan_candidate_lifts(
         if initial_candidate_count > capacity:
             capacity = initial_candidate_count
             output_length = _host_buffer_length(2 + 3 * capacity)
-            output = kernel_integer_zeros(scan_genus3_weil_candidates, output_length)
+            output = kernel_integer_zeros(
+                scan_genus3_weil_candidates,
+                output_length,
+                _candidate_word_capacity(prime),
+            )
             stored = scan_genus3_weil_candidates(
                 output,
                 prime,
@@ -603,6 +717,7 @@ def summarize_genus3_candidate_progressions(
     order_kind: str = "jacobian",
     max_candidates: int = 100_000,
     max_combinations: int = 2_000_000,
+    materialize_orders: bool = True,
 ) -> dict[str, Any] | None:
     """Filter candidates and return bounded order progressions, if compiled.
 
@@ -614,6 +729,8 @@ def summarize_genus3_candidate_progressions(
     prime, normalized, max_candidates, max_combinations = _checked_inputs(
         prime, residues, max_candidates, max_combinations
     )
+    if not isinstance(materialize_orders, bool):
+        raise TypeError("materialize_orders must be a boolean")
     if not genus3_candidate_progression_kernel_available():
         return None
     primary = tuple(
@@ -643,6 +760,7 @@ def summarize_genus3_candidate_progressions(
         output = kernel_integer_zeros(
             scan_genus3_candidate_progressions,
             _host_buffer_length(7 + 2 * progression_capacity),
+            _candidate_word_capacity(prime),
         )
         status = scan_genus3_candidate_progressions(
             output,
@@ -679,6 +797,7 @@ def summarize_genus3_candidate_progressions(
             "candidate_count": candidate_count,
             "survivor_count": None,
             "candidate": None,
+            "order_count": None,
             "orders": (),
             "progressions": (),
             "diagnostics": {**diagnostics, "reason": "max_combinations exceeded"},
@@ -693,6 +812,7 @@ def summarize_genus3_candidate_progressions(
             "candidate_count": candidate_count,
             "survivor_count": survivor_count,
             "candidate": None,
+            "order_count": None,
             "orders": (),
             "progressions": (),
             "diagnostics": {**diagnostics, "reason": "max_candidates exceeded"},
@@ -727,10 +847,9 @@ def summarize_genus3_candidate_progressions(
         }
         for index in range(progression_count)
     )
-    orders = tuple(
-        progression["base"] + index * prime
-        for progression in progressions
-        for index in range(progression["count"])
+    order_count = progression_order_count(progressions, prime)
+    orders = (
+        _orders_from_progressions(progressions, prime) if materialize_orders else None
     )
     candidate = None
     if survivor_count == 1:
@@ -742,6 +861,7 @@ def summarize_genus3_candidate_progressions(
         "candidate_count": candidate_count,
         "survivor_count": survivor_count,
         "candidate": candidate,
+        "order_count": order_count,
         "orders": orders,
         "progressions": progressions,
         "diagnostics": diagnostics,
@@ -787,6 +907,7 @@ def enumerate_genus3_weil_candidates_batch(
     output = kernel_integer_zeros(
         scan_genus3_weil_candidates_batch,
         stride * len(normalized_rows),
+        max(_candidate_word_capacity(prime) for prime, _residues in normalized_rows),
     )
     source = kernel_integer_buffer(scan_genus3_weil_candidates_batch, packed)
     completed = scan_genus3_weil_candidates_batch(

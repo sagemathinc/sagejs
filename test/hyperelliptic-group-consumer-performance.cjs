@@ -152,8 +152,10 @@ test("packed genus-three candidate filtering matches dynamic exact replay", () =
 from sagejs.hyperelliptic_curves.certified_genus3 import _order_progressions
 from sagejs.hyperelliptic_curves.genus3_candidate_kernel import scan_genus3_candidate_progressions
 from sagejs.hyperelliptic_curves.genus3_completion import (
+    _candidate_word_capacity,
     enumerate_genus3_weil_candidates,
     jacobian_order_from_coefficients,
+    progression_order_count,
     summarize_genus3_candidate_progressions,
     twist_order_from_coefficients,
 )
@@ -189,6 +191,17 @@ assert native["candidate_count"] == old["candidate_count"] == dynamic[1][0] == 5
 assert native["survivor_count"] == dynamic[1][1] == 50
 assert native["progressions"] == dynamic[2] == _order_progressions(old["candidates"], p, "jacobian")
 assert set(native["orders"]) == set(dynamic[3]) == set(old_orders)
+assert native["orders"] == tuple(sorted(set(old_orders)))
+compact = summarize_genus3_candidate_progressions(
+    p, residues, materialize_orders=False
+)
+assert compact["orders"] is None
+assert compact["order_count"] == len(set(old_orders))
+assert progression_order_count(native["progressions"], p, (149,)) == len(
+    set(order for order in old_orders if order % 149 == 0)
+)
+assert _candidate_word_capacity(100000) == 1
+assert _candidate_word_capacity(1 << 21) == 2
 
 primary = summarize_genus3_candidate_progressions(
     p, residues, primary_witnesses=(149,)
@@ -326,6 +339,7 @@ test("prepared genus-three BSGS uses packed progressions and exact factor strip"
       String.raw`
 from sagejs.hyperelliptic_curves.certified_genus3 import (
     _deterministic_elements,
+    _fused_prepared_order_certificates,
     _native_order_certificates,
     _prepared_order_certificates,
 )
@@ -348,8 +362,10 @@ assert legacy["diagnostics"].get("preparedProgressions") is None
 class InstrumentedPrepared:
     def __init__(self):
         self.native_available = True
+        self.search_available = True
         self.scalar_batches = 0
         self.progression_batches = 0
+        self.searches = 0
     def scalar_batch(
         self, elements, scalars, algorithm=None, max_group_operations=None
     ):
@@ -370,6 +386,24 @@ class InstrumentedPrepared:
                 u, v = J._compose(current[0], current[1], step[0], step[1])
                 current = J._element(u, v, False)
         return tuple(values)
+    def search_progression(
+        self, element, base, stride, count, baby_count=None,
+        diagnostics=False, max_group_operations=None,
+    ):
+        self.searches += 1
+        found = None
+        for index in range(count):
+            if element._scalar_multiple_reference(base + index*stride).is_zero():
+                found = index
+                break
+        class Record:
+            group_operations = 18
+            scalar_bits = 12
+            baby_steps = 3
+            giant_steps = 2
+            hash_collisions = 1
+            kernel_ns = 1000
+        return (found, Record()) if diagnostics else found
 
 prepared = InstrumentedPrepared()
 def prepared_factory(algorithm="auto", max_batch_items=100000):
@@ -394,6 +428,13 @@ assert answer["diagnostics"]["groupOperations"] == 43
 assert prepared.progression_batches == 2
 assert prepared.scalar_batches == 2
 assert (55*D).is_zero() and not (11*D).is_zero() and not (5*D).is_zero()
+fused = _fused_prepared_order_certificates(J, D, 41, 7, 5, budgets)
+assert fused["status"] == "found"
+assert fused["annihilating_multiple"] == 55
+assert fused["certificate"]["element_order"] == 55
+assert fused["diagnostics"]["preparedFusedSearches"] == 1
+assert fused["diagnostics"]["groupOperations"] == 38
+assert prepared.searches == 1 and prepared.scalar_batches == 6
 True`,
       { timeout: 120_000 },
     );

@@ -28,6 +28,7 @@ from sagejs.hyperelliptic_curves.genus3_completion import (
     genus3_candidate_kernel_available,
     genus3_candidate_progression_kernel_available,
     jacobian_order_from_coefficients,
+    progression_order_count,
     summarize_genus3_candidate_progressions,
     twist_order_from_coefficients,
 )
@@ -167,6 +168,27 @@ def _prepared_order_certificates(
         return {"status": "not_found", "diagnostics": diagnostics}
 
     annihilating_multiple = base + found_index * stride
+    return _prepared_factor_strip(
+        context,
+        jacobian,
+        divisor,
+        annihilating_multiple,
+        budgets,
+        total_operations,
+        diagnostics,
+    )
+
+
+def _prepared_factor_strip(
+    context: Any,
+    jacobian: Any,
+    divisor: Any,
+    annihilating_multiple: int,
+    budgets: Mapping[str, int],
+    prior_operations: int,
+    diagnostics: dict[str, Any],
+) -> dict[str, Any]:
+    """Prove one prepared annihilator exact with conservative accounting."""
     factors = factor_integer_bounded(
         annihilating_multiple, budgets["max_trial_divisions"]
     )
@@ -185,7 +207,7 @@ def _prepared_order_certificates(
         operations, bits = _scalar_group_operations(value)
         strip_operations += operations
         strip_bits += bits
-    if total_operations + strip_operations > budgets["max_group_operations"]:
+    if prior_operations + strip_operations > budgets["max_group_operations"]:
         return {"status": "resource_limit", "native_status": "group_operations"}
     strip_results = context.scalar_batch(
         tuple(divisor for _value in strip_scalars),
@@ -216,6 +238,79 @@ def _prepared_order_certificates(
         "annihilating_multiple": annihilating_multiple,
         "diagnostics": diagnostics,
     }
+
+
+def _fused_prepared_order_certificates(
+    jacobian: Any,
+    divisor: Any,
+    base: int,
+    stride: int,
+    count: int,
+    budgets: Mapping[str, int],
+) -> Any:
+    """Search one progression in a source-transparent fused BSGS boundary."""
+    if not hasattr(jacobian, "prepared_arithmetic"):
+        return None
+    baby_count = _ceil_sqrt(count)
+    if baby_count > budgets["max_baby_steps"]:
+        return {"status": "resource_limit", "native_status": "baby_steps"}
+    giant_count = 1 + (count - 1) // baby_count
+    maximum_candidate = base + (count - 1) * stride
+    _maximum_operations, maximum_bits = _scalar_group_operations(maximum_candidate)
+    context = jacobian.prepared_arithmetic(
+        algorithm="auto",
+        max_batch_items=max(3, baby_count, maximum_bits + 1),
+    )
+    if (
+        not context.native_available
+        or not hasattr(context, "search_progression")
+        or not bool(getattr(context, "search_available", False))
+    ):
+        return None
+    scalar_operations = 0
+    scalar_bits = 0
+    for value in (base, stride, baby_count):
+        operations, bits = _scalar_group_operations(value)
+        scalar_operations += operations
+        scalar_bits += bits
+    operation_bound = scalar_operations + baby_count + giant_count - 2
+    if operation_bound > budgets["max_group_operations"]:
+        return {"status": "resource_limit", "native_status": "group_operations"}
+    found_index, record = context.search_progression(
+        divisor,
+        base,
+        stride,
+        count,
+        baby_count=baby_count,
+        diagnostics=True,
+        max_group_operations=budgets["max_group_operations"],
+    )
+    diagnostics = {
+        "groupOperations": int(record.group_operations),
+        "scalarBits": int(record.scalar_bits),
+        "babySteps": int(record.baby_steps),
+        "giantSteps": int(record.giant_steps),
+        "hashCollisions": int(record.hash_collisions),
+        "preparedFusedSearches": 1,
+        "kernelNanoseconds": int(record.kernel_ns),
+    }
+    if int(record.group_operations) > operation_bound:
+        raise ArithmeticError("the fused search exceeded its proved operation bound")
+    if found_index is None:
+        return {"status": "not_found", "diagnostics": diagnostics}
+    index = int(found_index)
+    if index < 0 or index >= count:
+        raise ArithmeticError("the fused search returned an index outside its interval")
+    annihilating_multiple = base + index * stride
+    return _prepared_factor_strip(
+        context,
+        jacobian,
+        divisor,
+        annihilating_multiple,
+        budgets,
+        int(record.group_operations),
+        diagnostics,
+    )
 
 
 def _legacy_native_order_certificates(
@@ -358,12 +453,17 @@ def _native_order_certificates(
     kind: str,
     budgets: Mapping[str, int],
 ) -> Any:
-    """Use one-boundary FLINT BSGS, then the portable prepared fallback."""
+    """Use FLINT BSGS, fused prepared search, then the portable fallback."""
     legacy = _legacy_native_order_certificates(
         jacobian, divisor, base, stride, count, kind, budgets
     )
     if legacy is not None:
         return legacy
+    fused = _fused_prepared_order_certificates(
+        jacobian, divisor, base, stride, count, budgets
+    )
+    if fused is not None:
+        return fused
     return _prepared_order_certificates(jacobian, divisor, base, stride, count, budgets)
 
 
@@ -904,6 +1004,121 @@ def _certified_order_witnesses(
     )
 
 
+def _certified_progression_witnesses(
+    jacobian: Any,
+    order_count: int,
+    progressions: tuple[dict[str, int], ...],
+    elements: tuple[Any, ...],
+    kind: str,
+    certificate_provider: OrderCertificateProvider,
+    max_trial_divisions: int,
+    max_baby_steps: int,
+    max_group_operations: int,
+) -> tuple[int, tuple[dict[str, Any], ...], dict[str, Any]]:
+    """Certify compact progressions without publishing every candidate order."""
+    if order_count < 0:
+        raise ValueError("compact order certification needs a nonnegative count")
+    kernel_diagnostics: list[Any] = []
+    witnesses: list[int] = []
+    certificates: list[dict[str, Any]] = []
+    recheck_operations = 0
+    survivor_count = order_count
+    capability_unavailable = not elements
+    for element in elements:
+        found = False
+        for progression in progressions:
+            raw = certificate_provider(
+                jacobian,
+                element,
+                progression["base"],
+                progression["stride"],
+                progression["count"],
+                kind,
+                {
+                    "max_trial_divisions": max_trial_divisions,
+                    "max_baby_steps": max_baby_steps,
+                    "max_group_operations": max_group_operations,
+                },
+            )
+            if raw is None:
+                capability_unavailable = True
+                break
+            if not hasattr(raw, "get"):
+                raise ArithmeticError("the order kernel returned a malformed result")
+            status = raw.get("status")
+            if status == "resource_limit":
+                raise JacobianResourceLimitError(
+                    "the native order search exceeded its resource budget"
+                )
+            if status == "not_found":
+                kernel_diagnostics.append(raw.get("diagnostics"))
+                continue
+            if status != "found" or raw.get("certificate") is None:
+                raise ArithmeticError("the order kernel returned an invalid status")
+            certificate = raw["certificate"]
+            if not hasattr(certificate, "get") or certificate.get("divisor") != element:
+                raise ArithmeticError(
+                    "the order kernel certified a different divisor than requested"
+                )
+            witness, checked_certificate, operations = _check_order_certificate(
+                jacobian,
+                certificate,
+                native_exact=certificate_provider is _native_order_certificates,
+            )
+            recheck_operations += operations
+            if witness not in witnesses:
+                witnesses.append(witness)
+                certificates.append(checked_certificate)
+                survivor_count = progression_order_count(
+                    progressions,
+                    int(jacobian.base_ring().characteristic()),
+                    witnesses,
+                )
+            kernel_diagnostics.append(raw.get("diagnostics"))
+            found = True
+            break
+        if capability_unavailable:
+            break
+        if not found:
+            raise ArithmeticError(
+                "no candidate-order progression annihilates a sampled divisor"
+            )
+        if survivor_count <= 1:
+            break
+
+    if capability_unavailable:
+        orders = _unique_orders(
+            progression["base"] + index * progression["stride"]
+            for progression in progressions
+            for index in range(progression["count"])
+        )
+        survivors, fallback_certificates, diagnostics = _certified_order_witnesses(
+            jacobian,
+            orders,
+            progressions,
+            elements,
+            kind,
+            certificate_provider,
+            max_trial_divisions,
+            max_baby_steps,
+            max_group_operations,
+        )
+        return len(survivors), fallback_certificates, diagnostics
+    return (
+        survivor_count,
+        tuple(certificates),
+        {
+            "backend": "kernel",
+            "certificate_count": len(certificates),
+            "scalar_multiplications": recheck_operations,
+            "derivation_scalar_multiplications": 0,
+            "recheck_scalar_multiplications": recheck_operations,
+            "kernel_diagnostics": tuple(kernel_diagnostics),
+            "progression_count": len(progressions),
+        },
+    )
+
+
 def _quadratic_twist(curve: Any, prime: int) -> Any:
     """Return a deterministic completed-square quadratic twist.
 
@@ -1175,31 +1390,30 @@ def _certify_candidate_summary(
         max_x_values=max_x_values,
         max_elements=1,
     )
-    orders = _unique_orders(summary["orders"])
+    raw_orders = summary["orders"]
+    orders = None if raw_orders is None else _unique_orders(raw_orders)
+    input_order_count = int(summary["order_count"])
     progressions = tuple(summary["progressions"])
     _observe(
         stage_observer,
         "primary_start",
-        {"prime": prime, "orders": len(orders), "elements": len(elements)},
+        {"prime": prime, "orders": input_order_count, "elements": len(elements)},
     )
-    survivors, primary_certificates, primary_diagnostics = _certified_order_witnesses(
-        jacobian,
-        orders,
-        progressions,
-        elements,
-        "jacobian",
-        certificate_provider,
-        max_trial_divisions,
-        max_baby_steps,
-        max_group_operations,
-    )
-    if len(survivors) > 1 and max_elements > 1:
-        elements = _deterministic_elements(
-            jacobian,
-            prime,
-            max_x_values=max_x_values,
-            max_elements=max_elements,
+    if orders is None:
+        surviving_order_count, primary_certificates, primary_diagnostics = (
+            _certified_progression_witnesses(
+                jacobian,
+                input_order_count,
+                progressions,
+                elements,
+                "jacobian",
+                certificate_provider,
+                max_trial_divisions,
+                max_baby_steps,
+                max_group_operations,
+            )
         )
+    else:
         survivors, primary_certificates, primary_diagnostics = (
             _certified_order_witnesses(
                 jacobian,
@@ -1213,6 +1427,43 @@ def _certify_candidate_summary(
                 max_group_operations,
             )
         )
+        surviving_order_count = len(survivors)
+    if surviving_order_count > 1 and max_elements > 1:
+        elements = _deterministic_elements(
+            jacobian,
+            prime,
+            max_x_values=max_x_values,
+            max_elements=max_elements,
+        )
+        if orders is None:
+            surviving_order_count, primary_certificates, primary_diagnostics = (
+                _certified_progression_witnesses(
+                    jacobian,
+                    input_order_count,
+                    progressions,
+                    elements,
+                    "jacobian",
+                    certificate_provider,
+                    max_trial_divisions,
+                    max_baby_steps,
+                    max_group_operations,
+                )
+            )
+        else:
+            survivors, primary_certificates, primary_diagnostics = (
+                _certified_order_witnesses(
+                    jacobian,
+                    orders,
+                    progressions,
+                    elements,
+                    "jacobian",
+                    certificate_provider,
+                    max_trial_divisions,
+                    max_baby_steps,
+                    max_group_operations,
+                )
+            )
+            surviving_order_count = len(survivors)
     primary_witnesses = tuple(
         int(certificate["element_order"]) for certificate in primary_certificates
     )
@@ -1223,6 +1474,7 @@ def _certify_candidate_summary(
         order_kind="twist",
         max_candidates=max_candidates,
         max_combinations=max_combinations,
+        materialize_orders=False,
     )
     if filtered is None or filtered["status"] != "ok":
         raise JacobianResourceLimitError(
@@ -1236,8 +1488,8 @@ def _certify_candidate_summary(
     diagnostics["jacobian"] = {
         **primary_diagnostics,
         "elements": len(elements),
-        "input_orders": len(orders),
-        "surviving_orders": len(survivors),
+        "input_orders": input_order_count,
+        "surviving_orders": surviving_order_count,
         "surviving_candidates": remaining_count,
         "progressions": progressions,
         "certificates": primary_certificates,
@@ -1255,31 +1507,36 @@ def _certify_candidate_summary(
         max_x_values=max_x_values,
         max_elements=1,
     )
-    twist_orders = _unique_orders(filtered["orders"])
+    raw_twist_orders = filtered["orders"]
+    twist_orders = (
+        None if raw_twist_orders is None else _unique_orders(raw_twist_orders)
+    )
+    twist_input_order_count = int(filtered["order_count"])
     twist_progressions = tuple(filtered["progressions"])
     _observe(
         stage_observer,
         "twist_start",
-        {"prime": prime, "orders": len(twist_orders), "elements": len(twist_elements)},
+        {
+            "prime": prime,
+            "orders": twist_input_order_count,
+            "elements": len(twist_elements),
+        },
     )
-    twist_survivors, twist_certificates, twist_diagnostics = _certified_order_witnesses(
-        twist_jacobian,
-        twist_orders,
-        twist_progressions,
-        twist_elements,
-        "twist",
-        certificate_provider,
-        max_trial_divisions,
-        max_baby_steps,
-        max_group_operations,
-    )
-    if len(twist_survivors) > 1 and max_elements > 1:
-        twist_elements = _deterministic_elements(
-            twist_jacobian,
-            prime,
-            max_x_values=max_x_values,
-            max_elements=max_elements,
+    if twist_orders is None:
+        twist_surviving_order_count, twist_certificates, twist_diagnostics = (
+            _certified_progression_witnesses(
+                twist_jacobian,
+                twist_input_order_count,
+                twist_progressions,
+                twist_elements,
+                "twist",
+                certificate_provider,
+                max_trial_divisions,
+                max_baby_steps,
+                max_group_operations,
+            )
         )
+    else:
         twist_survivors, twist_certificates, twist_diagnostics = (
             _certified_order_witnesses(
                 twist_jacobian,
@@ -1293,6 +1550,43 @@ def _certify_candidate_summary(
                 max_group_operations,
             )
         )
+        twist_surviving_order_count = len(twist_survivors)
+    if twist_surviving_order_count > 1 and max_elements > 1:
+        twist_elements = _deterministic_elements(
+            twist_jacobian,
+            prime,
+            max_x_values=max_x_values,
+            max_elements=max_elements,
+        )
+        if twist_orders is None:
+            twist_surviving_order_count, twist_certificates, twist_diagnostics = (
+                _certified_progression_witnesses(
+                    twist_jacobian,
+                    twist_input_order_count,
+                    twist_progressions,
+                    twist_elements,
+                    "twist",
+                    certificate_provider,
+                    max_trial_divisions,
+                    max_baby_steps,
+                    max_group_operations,
+                )
+            )
+        else:
+            twist_survivors, twist_certificates, twist_diagnostics = (
+                _certified_order_witnesses(
+                    twist_jacobian,
+                    twist_orders,
+                    twist_progressions,
+                    twist_elements,
+                    "twist",
+                    certificate_provider,
+                    max_trial_divisions,
+                    max_baby_steps,
+                    max_group_operations,
+                )
+            )
+            twist_surviving_order_count = len(twist_survivors)
     twist_witnesses = tuple(
         int(certificate["element_order"]) for certificate in twist_certificates
     )
@@ -1304,6 +1598,7 @@ def _certify_candidate_summary(
         order_kind="jacobian",
         max_candidates=max_candidates,
         max_combinations=max_combinations,
+        materialize_orders=False,
     )
     if final is None or final["status"] != "ok":
         raise JacobianResourceLimitError(
@@ -1317,8 +1612,8 @@ def _certify_candidate_summary(
     diagnostics["twist"] = {
         **twist_diagnostics,
         "elements": len(twist_elements),
-        "input_orders": len(twist_orders),
-        "surviving_orders": len(twist_survivors),
+        "input_orders": twist_input_order_count,
+        "surviving_orders": twist_surviving_order_count,
         "surviving_candidates": final_count,
         "progressions": twist_progressions,
         "certificates": twist_certificates,
@@ -1413,6 +1708,7 @@ def complete_genus3_residues_with_jacobian(
             normalized,
             max_candidates=max_candidates,
             max_combinations=max_combinations,
+            materialize_orders=False,
         )
         if candidate_summary is None:
             enumeration = enumerate_genus3_weil_candidates(
