@@ -29,13 +29,13 @@ const productionCapabilities = JSON.parse(fs.readFileSync(
 test("all current Wasm-relevant capability kinds are reviewed", () => {
   const result = validateManifest(manifest);
   const counts = Object.groupBy(result.capabilities, (item) => item.kind);
-  assert.equal(counts["napi-export"].length, 318);
+  assert.equal(counts["napi-export"].length, 319);
   assert.equal(counts["declared-ffi-function"].length, 433);
   assert.equal(counts["declared-ffi-resource"].length, 30);
   assert.equal(counts["production-kernel"].length, 43);
   assert.equal(counts["runtime-intrinsic"].length, 137);
   assert.equal(counts["specialist-capability"].length, 25);
-  assert.equal(result.capabilities.length, 986);
+  assert.equal(result.capabilities.length, 987);
   const expectedProductionClosure = Object.values(productionCapabilities.modules)
     .flatMap((module) => module.capabilities)
     .sort();

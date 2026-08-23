@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "38d3953d91df5bf05ece362b710cfe4b5d8d7ff734d12a63935980b9db9eefab",
+  "source_sha256": "e919b13a85361a7f876ce93836e1bc93ac4213a894a65b0b640fca967a60650d",
   "counts": {
-    "total": 986,
+    "total": 987,
     "by_kind": {
       "declared-ffi-function": 433,
       "declared-ffi-resource": 30,
-      "napi-export": 318,
+      "napi-export": 319,
       "production-kernel": 43,
       "runtime-intrinsic": 137,
       "specialist-capability": 25
@@ -16,13 +16,13 @@
       "compiled-source": 43,
       "desktop-only": 36,
       "generated-wasm": 302,
-      "portable-fallback": 561,
+      "portable-fallback": 562,
       "shared-core": 44
     },
     "by_status": {
       "available": 521,
       "desktop-only": 36,
-      "fallback": 429
+      "fallback": 430
     }
   },
   "workflow_aliases": {
@@ -7759,6 +7759,18 @@
         "HyperellipticCurve.period_matrix and Abel--Jacobi integration"
       ],
       "explanation": "Hyperelliptic periods remain available in browsers through the tested strict-Python arbitrary-precision panel implementation."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticRealPeriodArb",
+      "family": "hyperelliptic",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "strict-python-mpmath-complete-periods",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "HyperellipticCurve.period_matrix and Abel--Jacobi integration"
+      ],
+      "explanation": "Complete hyperelliptic periods remain available in browsers through the tested strict-Python arbitrary-precision implementation."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:identity",

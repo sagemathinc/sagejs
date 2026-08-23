@@ -13815,6 +13815,26 @@
       "public_explanation": "Hyperelliptic periods remain available in browsers through the tested strict-Python arbitrary-precision panel implementation."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticRealPeriodArb",
+      "kind": "napi-export",
+      "family": "hyperelliptic",
+      "source": "packages/flint/src/hyperelliptic/period_quadrature.c",
+      "disposition": "portable-fallback",
+      "fallback": "strict-python-mpmath-complete-periods",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "HyperellipticCurve.period_matrix and Abel--Jacobi integration"
+      ],
+      "tests": [
+        "hyperelliptic-period-arb-performance",
+        "hyperelliptic-periods-pari-corpus"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The bounded desktop adapter fuses mature Arb/Acb real-period refinements, while browsers retain the independently refined strict-Python complete-period implementation.",
+      "public_explanation": "Complete hyperelliptic periods remain available in browsers through the tested strict-Python arbitrary-precision implementation."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:identity",
       "kind": "napi-export",
       "family": "metadata",

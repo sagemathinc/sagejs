@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5141,
-      "bytes": 168232,
+      "lines": 5144,
+      "bytes": 168378,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -287,17 +287,18 @@
     },
     {
       "path": "packages/flint/src/hyperelliptic/period_quadrature.c",
-      "lines": 452,
-      "bytes": 16154,
+      "lines": 1939,
+      "bytes": 71048,
       "decision": "retain-bridge",
       "priority": "high",
       "responsibilities": [
         "bounded decimal ingress for complex roots and leading coefficients",
         "batched endpoint-regularized Gauss--Legendre edge evaluation with Arb and Acb",
+        "complete real-period matrix refinement, Riemann-sign selection, conjugation action, and real-lattice extraction",
         "outward ball serialization and accuracy-status transport"
       ],
-      "rationale": "The loop delegates every arbitrary-precision operation to mature Arb and Acb and implements the same bounded panel formula as the ordinary mpmath oracle. A native adapter is warranted because the source-transparent compiler cannot yet own Arb/Acb resources in loops and per-node host crossings were the measured period bottleneck; topology, refinement, symplectic normalization, and acceptance policy remain in ordinary Python.",
-      "fallback": "The ordinary mpmath edge evaluator remains available and is differentially checked against both genera before the Arb result enters public period refinement.",
+      "rationale": "The implementation delegates arbitrary-precision operations to mature Arb and Acb and implements the same bounded panel, matrix, and lattice formulas as the ordinary Python oracle. A native adapter is warranted because the source-transparent compiler cannot yet own Arb/Acb resources in loops and per-node host crossings were the measured period bottleneck; exact input validation, bounded refinement policy, and public certification remain in ordinary Python.",
+      "fallback": "The ordinary mpmath period evaluator remains available and is differentially checked in both genera before the Arb result enters public period publication.",
       "oracles": [
         "CPython",
         "Sage.js JavaScript fallback",

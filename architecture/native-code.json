@@ -512,14 +512,14 @@
       "category": "external-library-bridge",
       "review_status": "audited",
       "lane": "hyperelliptic-curves",
-      "rationale": "Bounded packed adapter that evaluates hyperelliptic edge quadrature with mature Arb/Acb ball arithmetic; ordinary mpmath panels provide an independent same-formula differential oracle."
+      "rationale": "Bounded packed adapter that evaluates hyperelliptic edge quadrature and complete real-period refinements with mature Arb/Acb ball arithmetic; ordinary mpmath panels and pinned PARI periods provide independent differential oracles."
     },
     {
       "path": "packages/flint/src/hyperelliptic/period_quadrature.h",
       "category": "public-abi",
       "review_status": "accepted",
       "lane": "hyperelliptic-curves",
-      "rationale": "Declaration for the bounded hyperelliptic Arb/Acb period-edge batch adapter."
+      "rationale": "Declarations for the bounded hyperelliptic Arb/Acb edge and complete real-period adapters."
     },
     {
       "path": "packages/flint/src/hyperelliptic/smalljac.c",

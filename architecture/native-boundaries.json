@@ -16,7 +16,7 @@
     "classified-native-file": 120,
     "declared-ffi": 433,
     "declared-ffi-resource": 30,
-    "napi-export": 318,
+    "napi-export": 319,
     "runtime-intrinsic": 137,
     "wasm-export": 72
   },
@@ -6310,6 +6310,16 @@
       "package": "@sagemath/sagejs-flint",
       "export": "hyperellipticPeriodEdgeBatchArb",
       "symbol": "sagejs_hyperelliptic_period_edge_batch_arb",
+      "disposition": "retain-host-adapter",
+      "family": "hyperelliptic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticRealPeriodArb",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "hyperellipticRealPeriodArb",
+      "symbol": "sagejs_hyperelliptic_real_period_arb",
       "disposition": "retain-host-adapter",
       "family": "hyperelliptic"
     },
