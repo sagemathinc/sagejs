@@ -102,6 +102,16 @@
       "commit": "74b770d6fcae8c8b5b8ab3356f486fa1936b82ba",
       "workspace_fingerprint": "d7248f5b2518afcad78fd21f3cee2958b960dee129c0be8f241cfb4d5836d20a",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-genus2-height-performance.cjs test/hyperelliptic-genus2-heights.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.804,
+      "started_at": "2026-08-23T05:29:32.234Z",
+      "commit": "1f704a438cf99792c781df18d4e6fa7108ff12a5",
+      "workspace_fingerprint": "3fec5edc3c95cfc94fb1c9dc88604beb9e4b59a5d03cd70f3e028731a73a7b84",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
