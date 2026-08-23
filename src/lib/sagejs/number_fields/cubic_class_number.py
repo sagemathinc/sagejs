@@ -157,11 +157,19 @@ class PackedCubicFactorRecord:
             )
             field = order.number_field()
             target = [list(row) for row in self.subspace]
+            inverse_rows = order._basis_inverse_matrix().rows()
             for row in self.rows:
-                element = prime_module._nf_element_from_row(field, list(row))
-                exact_coordinates = prime_module._field_element_order_coordinates(
-                    order, element
-                )
+                # The packed candidate already carries power-basis rows.  Map
+                # all three coordinates directly through the order's retained
+                # inverse instead of constructing a field element and asking
+                # the generic coordinate converter to rebuild the same row.
+                coordinate_values: list[Any] = []
+                for target_index in range(3):
+                    coordinate: Any = sage.QQ(0)
+                    for source in range(3):
+                        coordinate += row[source] * inverse_rows[source][target_index]
+                    coordinate_values.append(coordinate)
+                exact_coordinates = tuple(coordinate_values)
                 if any(value._denominator != 1 for value in exact_coordinates):
                     continue
                 modular = [
@@ -173,7 +181,7 @@ class PackedCubicFactorRecord:
                     )
                     == target
                 ):
-                    witness = element
+                    witness = prime_module._nf_element_from_row(field, list(row))
                     break
         self.second_generator = witness
         self._power_cache: tuple[tuple[tuple[int, ...], int], ...] = ()
@@ -2294,7 +2302,15 @@ def bounded_cubic_minkowski_class_number(
     )
     relation_started = time.perf_counter()
     engine: Any = None
-    collector = relation_module.ExactRelationCollector(order, factor_base)
+    collector = relation_module.ExactRelationCollector(
+        order,
+        factor_base,
+        _validated_token=(
+            relation_module._VALIDATED_FACTOR_BASE_TOKEN
+            if factor_base and isinstance(factor_base[0], PackedCubicFactorRecord)
+            else None
+        ),
+    )
     prime_module = __import__(
         "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
     )

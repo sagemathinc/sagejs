@@ -184,6 +184,55 @@ test("bounded cubic factorization matches the generic modular oracle", () => {
   run(sagejs, ["--python", "-"], cubicFactorDifferential);
 });
 
+test("packed cubic collector reuses its authenticated factor-base snapshot", () => {
+  const output = run(
+    sagejs,
+    ["--python", "-"],
+    String.raw`
+from sagejs.number_fields import class_group_factor_base as factor_bases
+from sagejs.number_fields import class_group_relations as relations
+from sagejs.number_fields import cubic_class_number as cubic
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+field = NumberField(x**3 - x**2 - 6*x - 12, "a")
+saved = relations._validate_factor_base
+calls = 0
+def forbidden(order, factors):
+    global calls
+    calls += 1
+    values = tuple(factors)
+    if values and isinstance(values[0], cubic.PackedCubicFactorRecord):
+        raise AssertionError("packed factor fingerprints were reconstructed")
+    return saved(order, values)
+relations._validate_factor_base = forbidden
+try:
+    result = cubic.bounded_cubic_minkowski_class_number(field)
+finally:
+    relations._validate_factor_base = saved
+assert result.complete and result.order() == 3
+assert calls == 0
+
+# The private authority still checks retained object identities.  It cannot
+# transfer packed records to another maximal order, while detached replay
+# remains on the ordinary full validation path.
+other = NumberField(x**3 - x**2 - 6*x - 12, "b").maximal_order()
+try:
+    relations.ExactRelationCollector(
+        other,
+        result._packed_factor_records,
+        _validated_token=relations._VALIDATED_FACTOR_BASE_TOKEN,
+    )
+    raise AssertionError("a validated packed base crossed order identities")
+except TypeError:
+    pass
+assert result.certificate.verify()
+print("authenticated-packed-factor-base-ok")
+`,
+  );
+  assert.equal(output, "authenticated-packed-factor-base-ok");
+});
+
 test("cubic class-number obstruction agrees with the readable search", () => {
   const output = run(
     sagejs,

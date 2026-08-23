@@ -1021,9 +1021,25 @@ class ExactRelationCollector:
         max_reconstructed_ideals: int = DEFAULT_RECONSTRUCTION_ROW_CACHE_SIZE,
         max_factor_powers: int = DEFAULT_FACTOR_POWER_CACHE_SIZE,
         max_admission_receipts: int = DEFAULT_ADMISSION_RECEIPT_CACHE_SIZE,
+        _validated_token: Any = None,
     ) -> None:
         self.order = order
-        self.factor_base = _validate_factor_base(order, factor_base)
+        supplied_factors = tuple(factor_base)
+        if _validated_token is _VALIDATED_FACTOR_BASE_TOKEN:
+            # An in-process producer may transfer an already authenticated
+            # factor-base snapshot without rebuilding every basis matrix and
+            # JSON fingerprint.  Retain cheap identity and uniqueness checks;
+            # public and detached callers never receive the private token and
+            # continue through `_validate_factor_base` unchanged.
+            if any(prime_ideal.ring() is not order for prime_ideal in supplied_factors):
+                raise TypeError("a validated factor-base prime has another order")
+            if len({id(prime_ideal) for prime_ideal in supplied_factors}) != len(
+                supplied_factors
+            ):
+                raise ValueError("a validated factor base repeats a prime object")
+            self.factor_base = supplied_factors
+        else:
+            self.factor_base = _validate_factor_base(order, supplied_factors)
         self._factor_base_norms = tuple(
             sage.QQ(prime_ideal.norm()) for prime_ideal in self.factor_base
         )
