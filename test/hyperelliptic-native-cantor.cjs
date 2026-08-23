@@ -124,6 +124,10 @@ def check_curve(curve, exhaustive):
         sample[0], sample[1], 19, algorithm="reference"
     )
     assert progression == progression_reference
+    packed_progression = context.progression_batch(
+        sample[0], sample[1], 19, algorithm=selected, packed=True
+    )
+    assert tuple(context.unpack(row) for row in packed_progression) == progression_reference
     if not compiled:
         raw_output = [0] * (19 * 8)
         raw_status = [0] * 19

@@ -595,9 +595,10 @@ class PreparedJacobianArithmetic:
         *,
         algorithm: str | None = None,
         diagnostics: bool = False,
+        packed: bool = False,
         max_group_operations: Any = None,
     ) -> Any:
-        """Return `(start + i*step for i in range(count))` in one batch."""
+        """Return `(start + i*step)` in one batch, optionally as packed rows."""
         length = _exact_integer(count, "count")
         if length < 0:
             raise ValueError("count must be nonnegative")
@@ -632,7 +633,9 @@ class PreparedJacobianArithmetic:
                 values.append(current)
                 if index + 1 < length:
                     current = self._reference_add(current, step)
-            answer = tuple(values)
+            answer = (
+                tuple(self.pack(value) for value in values) if packed else tuple(values)
+            )
             kernel_ns = time.perf_counter_ns() - started
             unpack_ns = 0
             statuses = tuple(100 for _value in answer)
@@ -657,12 +660,21 @@ class PreparedJacobianArithmetic:
                     "the packed Cantor progression kernel rejected validated input"
                 )
             statuses = tuple(int(status_buffer[index]) for index in range(length))
-            started = time.perf_counter_ns()
-            answer = tuple(
-                self.unpack(tuple(int(output[8 * item + index]) for index in range(8)))
-                for item in range(length)
-            )
-            unpack_ns = time.perf_counter_ns() - started
+            if packed:
+                answer = tuple(
+                    tuple(int(output[8 * item + index]) for index in range(8))
+                    for item in range(length)
+                )
+                unpack_ns = 0
+            else:
+                started = time.perf_counter_ns()
+                answer = tuple(
+                    self.unpack(
+                        tuple(int(output[8 * item + index]) for index in range(8))
+                    )
+                    for item in range(length)
+                )
+                unpack_ns = time.perf_counter_ns() - started
         record = PreparedBatchDiagnostics(
             operation="progression",
             requested=self._algorithm if algorithm is None else algorithm,
