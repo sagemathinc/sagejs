@@ -1199,23 +1199,117 @@ class CubicClassNumberResult:
 def _cubic_relation_seed_snapshot(seed: Any) -> Any:
     """Snapshot every proof-bearing object in one live relation prefix."""
     result = seed._source_result
-    return _freeze_authentication_value(
-        {
-            "schema": AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA,
-            "result": {
-                "complete": result.complete,
-                "reason": result.reason,
-                "minkowski_bound": result.minkowski_bound,
-                "proof_status": result.proof_status,
-                "diagnostics": result.diagnostics,
-            },
-            "plan": seed.plan.to_dict(),
-            "factor_records": [record.to_dict() for record in seed.factor_records],
-            "factor_base": [ideal.to_dict() for ideal in result.factor_base],
-            "relations": [record.to_dict() for record in result.relation_records],
-            "presentation": result.presentation.to_dict(),
-            "search_state": seed.search_state.to_dict(),
-        }
+    plan = seed.plan
+    bound = plan.bound_result
+    presentation = result.presentation
+    search_state = seed.search_state
+    diagnostics = result.diagnostics
+
+    factor_records = []
+    for record in seed.factor_records:
+        prime_ideal = record.prime_ideal
+        current_basis = tuple(
+            tuple((int(value._numerator), int(value._denominator)) for value in row)
+            for row in prime_ideal._basis_rows
+        )
+        factor_records.append(
+            (
+                id(record),
+                id(prime_ideal),
+                int(record.index),
+                int(record.rational_prime),
+                int(record.norm),
+                int(record.ramification_index),
+                int(record.residue_degree),
+                tuple(record.hnf_fingerprint),
+                current_basis,
+                int(prime_ideal.rational_prime()),
+                int(prime_ideal.ramification_index()),
+                int(prime_ideal.residue_class_degree()),
+                _freeze_authentication_value(record.two_generator),
+                _freeze_authentication_value(record.valuation_metadata),
+                tuple(record.residue_modulus),
+                _freeze_authentication_value(record.automorphism_orbit),
+                _freeze_authentication_value(prime_ideal._residue_presentation),
+            )
+        )
+
+    relations = tuple(
+        (
+            id(record),
+            tuple(record.row),
+            tuple(record.quotient_row),
+            tuple(record.source_row),
+            _freeze_authentication_value(record.witness),
+            _freeze_authentication_value(record.norm_smoothness),
+            _freeze_authentication_value(record.archimedean_logs),
+            int(record.log_precision),
+            _freeze_authentication_value(record.provenance),
+        )
+        for record in result.relation_records
+    )
+    presentation_snapshot = (
+        id(presentation),
+        int(presentation.column_count),
+        tuple(row.dense() for row in presentation.relation_rows),
+        tuple(presentation.hnf),
+        tuple(presentation.hnf_left_transform),
+        tuple(presentation.smith),
+        tuple(presentation.smith_left_transform),
+        tuple(presentation.smith_right_transform),
+        tuple(presentation.smith_right_inverse),
+        str(presentation.backend),
+        int(presentation.rank),
+        tuple(presentation.invariants),
+        presentation.order,
+    )
+    proof_diagnostics = (
+        diagnostics.get("algorithm"),
+        diagnostics.get("factor_base_size"),
+        diagnostics.get("relations"),
+        diagnostics.get("presentation_rank"),
+        diagnostics.get("quotient_order"),
+        diagnostics.get("residue_states"),
+        _freeze_authentication_value(diagnostics.get("relation_search")),
+        _freeze_authentication_value(diagnostics.get("caps")),
+        diagnostics.get("factor_base_materialized"),
+        diagnostics.get("relation_seed_size_policy_exceeded"),
+    )
+    return (
+        AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA,
+        id(result),
+        bool(result.complete),
+        str(result.reason),
+        int(result.minkowski_bound),
+        str(result.proof_status),
+        proof_diagnostics,
+        id(plan),
+        id(plan.order),
+        str(bound.theorem),
+        tuple(bound.assumptions),
+        int(bound.bound),
+        int(bound.degree),
+        tuple(bound.signature),
+        int(bound.discriminant),
+        int(bound.precision_bits),
+        _freeze_authentication_value(bound.to_dict()["interval"]),
+        _freeze_authentication_value(bound.details),
+        int(plan.max_bound),
+        int(plan.max_rational_primes),
+        int(plan.max_prime_ideals),
+        int(plan.max_memory_bytes),
+        tuple(plan.degree_filters),
+        bool(plan.fits_caps),
+        tuple(plan.cap_failures),
+        tuple(factor_records),
+        relations,
+        presentation_snapshot,
+        id(search_state),
+        int(search_state.seed),
+        int(search_state.random_state),
+        int(search_state.candidates_tested),
+        int(search_state.ideals_tested),
+        int(search_state.relations_admitted),
     )
 
 
@@ -1314,8 +1408,11 @@ def _issue_cubic_relation_seed(
         presentation,
         search_state,
     )
-    if not seed.certified:
-        raise ArithmeticError("failed to seal a cubic relation prefix")
+    # The private constructor has just captured every proof-bearing object in
+    # one synchronous call; user code cannot interpose between construction
+    # and attachment.  Recomputing the complete snapshot here used to be the
+    # first of several identical serializations.  Every later cache read still
+    # calls `seed.certified` and rejects any intervening mutation.
     result.__dict__["_live_relation_seed"] = seed
     return result
 
