@@ -91,6 +91,14 @@ def check_curve(curve):
     assert actual == expected
     assert diagnostics["selected"] == ("native" if compiled else "reference")
     assert context.double_batch(values) == reference.double_batch(values, algorithm="reference")
+    expected_negatives = tuple(value._negate_reference() for value in values)
+    assert context.negate_batch(values) == expected_negatives
+    public_negative, negative_diagnostics = P.negate(diagnostics=True)
+    assert public_negative == P._negate_reference()
+    assert -P == public_negative
+    assert P - P == J.zero()
+    assert negative_diagnostics["operation"] == "negate_batch"
+    assert negative_diagnostics["selected"] == ("native" if compiled else "reference")
     assert P + P == P.add(P, algorithm="reference")
     assert P.double() == P.double(algorithm="reference")
     public_sum, public_diagnostics = P.add(P, diagnostics=True)
