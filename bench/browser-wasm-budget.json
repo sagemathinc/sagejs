@@ -397,7 +397,7 @@
         },
         "graph-shortest-paths": {
           "warm_ms": {
-            "median": 6075.1
+            "median": 9147.94
           }
         },
         "group-permutation-center": {
@@ -468,7 +468,7 @@
           "warm_median_ratio": 1.201232454339628
         },
         "modular-symbols-level-1000": {
-          "warm_median_ratio": 26.11850477965229
+          "warm_median_ratio": 37.24941840739017
         },
         "analytic-special-value-batches": {
           "warm_median_ratio": 1.3103916004953697
@@ -516,7 +516,7 @@
           "warm_median_ratio": 1.683827849249652
         },
         "elliptic-lseries-value-batch": {
-          "warm_median_ratio": 0.9926942143493054
+          "warm_median_ratio": 1.2885364179618968
         },
         "elliptic-lseries-complex-plot-64": {
           "warm_median_ratio": 1.546371434979543
@@ -562,7 +562,7 @@
           "warm_median_ratio": 2.6043373413339324
         },
         "sparse-integer-right-kernel-192": {
-          "warm_median_ratio": 8.046555506546111
+          "warm_median_ratio": 11.154137290289487
         },
         "matrix-combinatorial-invariants": {
           "warm_median_ratio": 2.585637654222265
@@ -571,10 +571,10 @@
           "warm_median_ratio": 7.771474353569104
         },
         "extension-field-polynomial-5632": {
-          "warm_median_ratio": 6.592344851890565
+          "warm_median_ratio": 9.946110625448139
         },
         "hyperelliptic-local-factors-100000": {
-          "warm_median_ratio": 1.2594396200042188
+          "warm_median_ratio": 1.6220022668628244
         },
         "algebraic-matrix-8": {
           "warm_median_ratio": 13.733605662227834
@@ -593,19 +593,19 @@
           "warm_median_ratio": 0.4746000055518474
         },
         "cubic-number-field-zeta-1000": {
-          "warm_median_ratio": 1.748226858420618
+          "warm_median_ratio": 2.3161651709228153
         },
         "modular-symbols-level-1000": {
-          "warm_median_ratio": 56.912548074044224
+          "warm_median_ratio": 78.7316045852799
         },
         "analytic-special-value-batches": {
-          "warm_median_ratio": 1.5370981958101055
+          "warm_median_ratio": 2.1856055854546756
         },
         "analytic-gamma-xi-batches": {
-          "warm_median_ratio": 0.8400692874538449
+          "warm_median_ratio": 1.0622880182759422
         },
         "numeric-mpfr-symbolic": {
-          "warm_median_ratio": 0.9612865546071266
+          "warm_median_ratio": 1.2625552511390459
         },
         "moebius-range-100000": {
           "warm_median_ratio": 0.3333478101833717
@@ -614,13 +614,13 @@
           "warm_median_ratio": 0.6732773340638815
         },
         "graph-shortest-paths": {
-          "warm_median_ratio": 0.5429709038116258
+          "warm_median_ratio": 0.8960543503195593
         },
         "group-permutation-center": {
           "warm_median_ratio": 0.46892172986597
         },
         "gf2-matrix-384": {
-          "warm_median_ratio": 1.1227094079496645
+          "warm_median_ratio": 1.5152899961063646
         },
         "word-prime-matrix-128": {
           "warm_median_ratio": 1.066027381816898
@@ -644,7 +644,7 @@
           "warm_median_ratio": 1.638069835812303
         },
         "elliptic-lseries-value-batch": {
-          "warm_median_ratio": 1.8908562697124296
+          "warm_median_ratio": 3.20951462338134
         },
         "elliptic-lseries-complex-plot-64": {
           "warm_median_ratio": 1.9173050502823719
