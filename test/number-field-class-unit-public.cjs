@@ -510,11 +510,9 @@ assert resources["cubic_relation_seed_relations"] == 9
 assert resources["saturation_rounds"] == 0
 assert resources["relation_attempts"] == 0
 assert resources["relation_candidates"] == 0
-assert (
-    resources["relation_witness_logarithm_requests"]
-    - resources["relation_witness_logarithm_cache_hits"]
-) == resources["relations"]
-assert resources["dependency_unit_materializations"] == 1
+assert resources["relation_witness_logarithm_requests"] == 0
+assert resources["dependency_unit_eager_candidates"] == 3
+assert resources["dependency_unit_materializations"] == 3
 assert resources["relation_witness_decode_requests"] <= 3 * resources["relations"]
 assert result.saturation_record.attempts == ()
 

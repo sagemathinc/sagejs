@@ -1375,6 +1375,7 @@ class ClassUnitGroupEngine:
             "relation_witness_logarithm_requests": 0,
             "relation_witness_logarithm_cache_hits": 0,
             "dependency_unit_materializations": 0,
+            "dependency_unit_eager_candidates": 0,
             "unit_principal_authority_requests": 0,
             "unit_principal_authority_hits": 0,
             "unit_principal_authority_fallbacks": 0,
@@ -2981,10 +2982,27 @@ class ClassUnitGroupEngine:
         unit_rank: int,
     ) -> tuple[tuple[Any, ...], tuple[tuple[int, ...], ...]]:
         """Select dependency rows by cached logs, then materialize only the basis."""
-        logarithms = [
-            list(self._dependency_logarithms(records, dependency, 80)[:-1])
-            for dependency in dependencies
-        ]
+        # Cubic relation prefixes contain only a handful of dependencies.
+        # Relation-rank steering has already materialized and cached several
+        # of these exact units, so forming the remaining candidates once is
+        # cheaper than decoding and summing every witness logarithm again for
+        # every dependency.  Larger presentations retain the streaming path
+        # to avoid materializing a potentially large family of factored units.
+        eager_units: tuple[Any, ...] = ()
+        if int(self.field.degree()) == 3 and len(dependencies) <= 16:
+            eager_units = tuple(
+                self._combine(records, dependency) for dependency in dependencies
+            )
+            self._resource_usage["dependency_unit_eager_candidates"] += len(eager_units)
+            self._resource_usage["dependency_unit_materializations"] += len(eager_units)
+            logarithms = [
+                list(self._unit_logarithms(unit, 80)[:-1]) for unit in eager_units
+            ]
+        else:
+            logarithms = [
+                list(self._dependency_logarithms(records, dependency, 80)[:-1])
+                for dependency in dependencies
+            ]
         best: tuple[int, ...] = ()
         best_volume: float | None = None
         checked = 0
@@ -3005,10 +3023,16 @@ class ClassUnitGroupEngine:
         selected_dependencies = tuple(
             tuple(int(value) for value in dependencies[index]) for index in best
         )
-        units = tuple(
-            self._combine(records, dependency) for dependency in selected_dependencies
+        units = (
+            tuple(eager_units[index] for index in best)
+            if eager_units
+            else tuple(
+                self._combine(records, dependency)
+                for dependency in selected_dependencies
+            )
         )
-        self._resource_usage["dependency_unit_materializations"] += len(units)
+        if not eager_units:
+            self._resource_usage["dependency_unit_materializations"] += len(units)
         return units, selected_dependencies
 
     def _decode_relation_witness(self, record: Any) -> Any:
