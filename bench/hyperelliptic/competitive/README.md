@@ -131,12 +131,24 @@ The corresponding after-performance artifacts are:
   `FINAL-LOCAL-STREAMS-linux-x64.md` for the exact packed local stream;
 - `finite-jacobian-magma-receipt-linux-x64.json` and
   `FINITE-JACOBIAN-MAGMA-RECEIPT-linux-x64.md` for timer-resolved finite-field
-  public/prepared/materialized Magma comparisons.
+  public/prepared/materialized Magma comparisons;
+- `genus3-height-receipt-linux-x64.json` and
+  `GENUS3-HEIGHT-linux-x64.md` for the exact current/historical radius-6 height
+  comparison and descriptive Magma accuracy row;
+- `../../results/hyperelliptic-genus3-packed-certification-linux-x64-2026-08-23.json`
+  for the bounded genus-3 certification and four-mode local-data
+  materialization receipts.
 
 The final `10^5` stream preserves the Phase-0 digest and records a 1.741-second
 median with 96.8 MB peak RSS.  The receipt source can be later than the
 mathematical acceptance source when the intervening commits change only
 benchmark serialization or checked-in reports; both full commit identities
 remain in the artifacts.
+
+The genus-3 certification receipt records both default-heap diagnostics and
+the accepted `NODE_OPTIONS=--max-old-space-size=256` process envelope. The
+bounded run completes through `10^5` in 142.18 seconds at 338,968 KiB peak RSS
+with the established exact digest; the option neither invokes exposed garbage
+collection nor changes the public mathematical contract.
 
 Run `node bench/hyperelliptic/competitive/validate.cjs` before any measurement.

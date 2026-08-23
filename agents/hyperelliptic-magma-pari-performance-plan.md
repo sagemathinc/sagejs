@@ -19,6 +19,7 @@ The outcome is intentionally workload-specific:
 | Packed Cantor boundary versus identical standalone core | PASS: genus 2 1.049x, genus 3 1.048x overhead (limit 1.15x) |
 | Finite-field arithmetic versus Magma | MIXED: retained prepared add/double/scalar is 1.36x--1.54x in genus 2 and faster in genus 3; ordinary public add/double is 2.15x--4.60x and remains open |
 | Packed local factors through `10^5` | PASS: 1.741 s median, 96.8 MB RSS, frozen exact digest unchanged |
+| Public local-factor materialization through `10^5` | PASS: coefficient streaming 1.56x and public polynomial materialization 1.77x packed traversal; exact digests unchanged |
 | Rational 1024-by-32 many-prime reduction and witness | PASS: 98.54 ms versus Magma 140 ms, 1.42x faster |
 | Public rational addition | MIXED: growing-coefficient row 1.97x Magma (pass); small row 7.81x (open) |
 | Genus-2/3 periods | PASS: 1.73x and 1.47x PARI |
@@ -27,7 +28,8 @@ The outcome is intentionally workload-specific:
 | Certified genus-2 height, accuracy-matched 64-bit single point | PASS: 1.92x cold and 1.45x warm Magma |
 | Authenticated rank-2/rank-4 height reuse | PASS; object-cold construction remains 17.1x/12.4x Magma and is open |
 | Genus-3 order-32 structure/map | Resident object-cold and warm gates pass; a truly process-cold map remains open |
-| Certified genus-3 stream through `10^5` | OPEN: the frozen run exposed a bounded prime-tail factorization fallback and exceeded 512 MiB; the exact factorization failure is fixed, but the final RSS gate requires a clean rerun |
+| Certified genus-3 stream through `10^5` | PASS: 142.18 s, 338,968 KiB RSS, 5.50x speedup, and the frozen exact digest under the documented 256 MiB V8 old-space envelope |
+| Genus-3 radius-6 canonical height | PASS: 55.80 s process-cold versus 406.50 s for the same-host historical direct-theta path, a 7.29x speedup; exact finite replay and refinement stability pass, while rigor remains explicitly false |
 
 Windows x64, Linux ARM64, and macOS ARM64 native receipts agree on exact
 local-factor, Kummer, Cantor, scalar, and progression digests. Their
@@ -569,6 +571,13 @@ Avoid repacking the same divisor or curve for each Sylow component.  Keep
 search budgets in terms of group operations, memory, and wall/cancellation
 status; a faster kernel must not make an unbounded search implicit.
 
+The pinned genus-3 family acceptance runs with
+`NODE_OPTIONS=--max-old-space-size=256`. This is a supported process resource
+envelope, analogous to the explicit mathematical search budgets: it neither
+changes the public API or mathematical result nor exposes or invokes garbage
+collection. Receipts record both this option and the V8-reported total heap
+limit, while retaining default-heap measurements as honest diagnostics.
+
 Exit criteria:
 
 - the existing cyclic structure timings do not regress by more than 20%;
@@ -577,8 +586,9 @@ Exit criteria:
 - genus-3 certification through `10^5` improves by at least 5x from 881.6
   seconds while returning the same digest;
 - the complete public genus-3 stream through `10^5` finishes below 300
-  seconds and 512 MiB on the pinned host, or the receipt identifies the next
-  dominant non-Jacobian stage before changing the automatic envelope.
+  seconds and 512 MiB on the pinned host under the documented 256 MiB V8
+  old-space envelope, or the receipt identifies the next dominant
+  non-Jacobian stage before changing the automatic envelope.
 
 ### Phase 5 — eliminate public local-factor construction overhead
 
