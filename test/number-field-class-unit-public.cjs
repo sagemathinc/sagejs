@@ -565,6 +565,8 @@ assert large_resources["cubic_integral_sieve_relations"] == 5
 assert large_resources["cubic_integral_sieve_dependency_relations"] == 1
 assert large_resources["relation_attempts"] == 0
 assert large_resources["relation_candidates"] == 0
+assert large_resources["class_group_generator_reconstruction_calls"] == 1
+assert large_resources["class_group_generator_power_requests"] >= 1
 assert L.class_number(proof=False) == 6
 assert L._bounded_cubic_class_number_artifact is large_artifact
 
@@ -585,6 +587,8 @@ assert proof_resources["cubic_relation_seed_uses"] == 1
 assert proof_resources["cubic_relation_seed_relations"] == 11
 assert proof_resources["relation_attempts"] == 0
 assert proof_resources["relation_candidates"] == 0
+assert proof_resources["class_group_generator_reconstruction_calls"] == 1
+assert proof_resources["class_group_generator_power_requests"] >= 1
 assert proof_result.saturation_record.complete
 assert proof_result.saturation_record.verify()
 

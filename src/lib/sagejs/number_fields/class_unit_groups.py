@@ -1392,6 +1392,10 @@ class ClassUnitGroupEngine:
             "class_group_live_authentication_requests": 0,
             "class_group_live_authentication_hits": 0,
             "class_group_live_authentication_fallback_replays": 0,
+            "class_group_generator_reconstruction_calls": 0,
+            "class_group_generator_reconstruction_cache_hits": 0,
+            "class_group_generator_power_requests": 0,
+            "class_group_generator_power_cache_hits": 0,
             "cubic_relation_seed_uses": 0,
             "cubic_relation_seed_relations": 0,
             "cubic_factor_base_seed_uses": 0,
@@ -3819,10 +3823,46 @@ class ClassUnitGroupEngine:
             tuple(int(value) for value in presentation.smith_right_inverse[position])
             for position in positions
         )
-        reconstruct = self.components.relations.reconstruct_factor_base_ideal
-        generator_ideals = tuple(
-            reconstruct(self.order, factor_base, row) for row in generator_rows
+        live_reconstruct: Any = getattr(
+            collector, "reconstruct_factor_base_ideal", None
         )
+        cold_reconstruct = self.components.relations.reconstruct_factor_base_ideal
+        reconstruction_diagnostics = getattr(
+            collector, "reconstruction_diagnostics", None
+        )
+        before_reconstruction: Any = (
+            reconstruction_diagnostics()
+            if callable(reconstruction_diagnostics)
+            else None
+        )
+
+        def reconstruct(row: Any) -> Any:
+            if callable(live_reconstruct):
+                return live_reconstruct(row)
+            return cold_reconstruct(self.order, factor_base, row)
+
+        generator_ideals = tuple(reconstruct(row) for row in generator_rows)
+        after_reconstruction: Any = (
+            reconstruction_diagnostics()
+            if callable(reconstruction_diagnostics)
+            else None
+        )
+        if isinstance(before_reconstruction, dict) and isinstance(
+            after_reconstruction, dict
+        ):
+            self._resource_usage["class_group_generator_reconstruction_calls"] += int(
+                after_reconstruction.get("row_requests", 0)
+            ) - int(before_reconstruction.get("row_requests", 0))
+            self._resource_usage["class_group_generator_reconstruction_cache_hits"] += (
+                int(after_reconstruction.get("row_hits", 0))
+                - int(before_reconstruction.get("row_hits", 0))
+            )
+            self._resource_usage["class_group_generator_power_requests"] += int(
+                after_reconstruction.get("power_requests", 0)
+            ) - int(before_reconstruction.get("power_requests", 0))
+            self._resource_usage["class_group_generator_power_cache_hits"] += int(
+                after_reconstruction.get("power_hits", 0)
+            ) - int(before_reconstruction.get("power_hits", 0))
         group = _EngineClassGroup(
             self.order,
             presentation.invariants,
