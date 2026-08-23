@@ -1,31 +1,29 @@
-# Phase-0 workload matrix
+# Integrated hyperelliptic workload matrix
 
-This matrix is part of the benchmark contract.  A missing implementation is
-recorded as unavailable rather than being silently omitted or counted as a
-performance win.
+This matrix records the final contract for the 2026-08-23 performance program.
+A missing implementation remains unavailable, and a missed gate remains open;
+neither is removed from a receipt or counted as a performance win.
 
-| Workload | Corpus/runner status | Principal comparison |
+| Workload | Final status | Principal comparison |
 |---|---|---|
-| Odd-degree genus-2/3 divisor validation, addition, doubling | Exact resident rows, including generalized `h`, shared support, conjugate cancellation, and divisor degrees 0 and `g` | Magma and SageMath |
-| 64-bit explicit native/reference scalar, 256-bit and 1024-bit fallback scalar | Exact resident rows; the Sage.js algorithm is named in the case id/contract | Magma and SageMath |
-| 31-bit genus-2 and 52-bit genus-3 arithmetic | Exact slow-tier rows | Magma and SageMath |
-| Even-degree public group law | Explicit unsupported row; the current odd-degree ABI cannot encode the infinity branch | Magma representation survey only |
-| Group structure | Cyclic 2160/6490, rank two, order-32 rank three, and order-512 rank three exact rows | Magma and SageMath |
-| Local factors | Odd/even genus-2/3 exact rows | PARI, Magma, and SageMath |
-| Packed local stream through `10^4`/`10^5` | Checked exact-digest CPU/wall/RSS receipt and report from `local-streams.cjs`; `10^5` median 1.809 s, peak RSS 97.5 MB | Standalone smalljac receipt |
-| General standalone Cantor/analytic core | Explicit unavailable backend; no such production artifact exists at Phase 0 | Not applicable |
-| General production Wasm artifact | Explicit unavailable backend | Not applicable |
-| Rational Cantor arithmetic | Exact generalized-model addition plus growing rational doubling/scalar slow rows | Magma and SageMath |
-| Canonical height | Certified slow row with precision/status contract | Magma |
-| Periods | Genus-2/3 numerical rows with stable normalization and tolerances | PARI |
-| L-functions | Genus-2 cold `LFunctionInit`, warm central value, and genus-3 conductor-24055 central value | PARI where its genus-2 API applies |
-| Global reduction | Certified conductor/root-number row and explicit wild-prime unsupported row | No same-contract competitor in this runner |
-| Torsion, saturation, height pairing/regulator | Existing Sage.js correctness/oracle suites are referenced by the main plan, but no stable cross-system resident timing row is claimed here | Magma follow-up |
-| `10^6` local stream, public lazy/materialized/certificate/JSONL/resume stages | Deliberately omitted from the default acceptance tier; existing subsystem receipts remain the current evidence | PARI/standalone follow-up |
-| Standalone/Wasm receipts on ARM64, macOS, Windows | Explicitly unavailable until a production artifact exists; Sage.js-only architecture receipts may still be captured | Per-host historical baseline |
+| Odd-degree genus-2/3 validation, addition, doubling, cancellation, and shared support | Exact resident corpus passes. Prepared finite arithmetic uses authenticated packed input and retained results; the same native core is within 1.049x/1.048x of standalone for genus 2/3. Prepared add/double is 1.51x--1.54x Magma in genus 2 and faster in genus 3; ordinary public add/double remains 2.15x--4.60x, dominated by gathering/publication. Truly unregistered first preparation also remains expensive. | Magma, dynamic Python, standalone native core |
+| 64-, 256-, and 1024-bit scalar multiplication | Exact native/dynamic/reference differentials pass. On the resolved 256-bit row, ordinary public Sage.js is 1.36x Magma in genus 2 and 1.35x faster in genus 3. Retained results avoid forced polynomial publication; forced materialization remains separately timed. | Magma and dynamic Python |
+| Rational Cantor arithmetic | Exact retained `FmpqMumfordResult` values survive context closure, workspace reuse, serialization, and adversarial mutation. The growing public addition row is 1.97x Magma; the small row is 7.81x and remains open. | Magma |
+| Many-prime rational reduction and uniform torsion witness | The recurring 1024-by-32 contract is 98.54 ms versus Magma 140 ms, with checksum 28,672 and separate certificate replay. | Magma |
+| Group structure and explicit maps | Cyclic/rank-two/rank-three exact certificates pass. The order-32 resident object-cold and warm gates pass; the truly process-cold map remains open because first native publication is charged separately. | Magma and exhaustive oracle |
+| Genus-2 local factors | Final packed stream through `10^5` is 1.741 s at 96.8 MB, with the frozen digest unchanged. Public lazy/materialized representations remain separate workloads. | PARI, Magma, standalone smalljac |
+| Genus-3 local-factor certification | Dense finite-parent caches were removed and packed progression/factor-strip proofs are exact. The frozen `10^5` run exposed a prime-tail budget fallback and exceeded 512 MiB; the prime-tail proof is fixed, but final completion/RSS acceptance remains open. | rforest plus exact public fallback |
+| Certified genus-2 heights | Accuracy-matched 64-bit single height is within 1.92x cold and 1.45x warm Magma. Reused rank-two/rank-four pairing work is faster than Magma; object-cold batches remain open. | Magma |
+| Genus-3 heights | Exact certificates and oracles remain available, but the several-minute high-precision performance criterion is not closed. | Magma oracle where supported |
+| Period matrices | Resident genus-2/genus-3 calls are 1.73x/1.47x PARI with Arb refinement evidence. | PARI |
+| Abel--Jacobi batch | A 12-point prepared batch is 9.35x faster than twelve prepared Magma calls with exact model and conjugation checks. | Magma |
+| Analytic `L`-functions | A curve-independent universal Arb table gives fresh 64-bit initialization at 1.64x PARI; cold table construction (~2.20 s) is separate. Central values and derivatives preserve direct-Arb differentials. | PARI |
+| Global reduction, conductors, and root numbers | Exact certificate rows pass; unsupported wild-prime cases remain explicit. | PARI where contracts overlap |
+| Standalone and authenticated Wasm | Production native and Wasm packs are authenticated. Windows x64, Linux ARM64, and macOS ARM64 exact digests agree for local factors, Kummer, Cantor, scalar, and progression workloads; portable overhead, bounds, cancellation, recovery, and unavailable standalone contracts are explicit. | Same-source native/standalone/Wasm per host |
+| Native macOS ARM64 | Frozen-source native/dynamic acceptance passes. Native add/scalar/Kummer acceleration is reported descriptively on the shared host; authenticated Wasm passes, while the GNU/ELF-only standalone linker harness is explicitly unavailable on Mach-O. | Same-source native/Wasm on `m1` |
+| Even-degree public Jacobian group law | Explicitly unsupported: the current public odd-degree divisor ABI cannot encode the infinity branch. Even-degree local factors and periods remain supported. | Not applicable |
 
-The repeated warm loop is a serial loop over the public call.  It is not a
-packed batch, because the public competitive arithmetic API does not yet
-provide independent prepared batch operands.  This naming prevents Phase 0
-from presenting cache hits or repeated identical work as Phase-1/2 batch
-throughput.
+The common resident acceptance table is `REPORT-linux-x64.md`. Detailed
+workload-specific receipts live beside the responsible benchmark or under
+`bench/results/`; cross-platform receipts live under
+`bench/hyperelliptic/cross-platform/results/`.

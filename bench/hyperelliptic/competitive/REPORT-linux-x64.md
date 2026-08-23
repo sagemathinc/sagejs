@@ -1,6 +1,6 @@
 # Final integrated competitive hyperelliptic receipt
 
-Generated from `/home/user/sagejs/bench/hyperelliptic/competitive/receipt-linux-x64.json` (2026-08-23T15:57:52.721Z).
+Generated from `bench/hyperelliptic/competitive/receipt-linux-x64.json` (2026-08-23T15:57:52.721Z).
 
 Source commit: `68ab3bc4e5d076defae0bc0f4160696b58b42c0c`. Corpus: `f58ce393bd5070b0606a919a5132af79e4fd4f4cfab893fc6e42c8e5d9defd2a` (28 acceptance cases).
 

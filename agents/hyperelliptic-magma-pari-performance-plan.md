@@ -2,7 +2,41 @@
 
 ## Status
 
-Planned on 2026-08-23.
+Implemented and measured on 2026-08-23.
+
+The program is integrated as ordinary CPython source, source-transparent
+native kernels, and audited FLINT/Arb representation boundaries. The frozen
+Phase-0 corpus and the final Linux acceptance corpus both retain every
+unsupported or unavailable cell, and exact cross-backend digests are checked
+before timings are accepted. The machine-readable final receipt is
+`bench/hyperelliptic/competitive/receipt-linux-x64.json`; the rendered table is
+`bench/hyperelliptic/competitive/REPORT-linux-x64.md`.
+
+The outcome is intentionally workload-specific:
+
+| Gate | Final result |
+|---|---|
+| Packed Cantor boundary versus identical standalone core | PASS: genus 2 1.049x, genus 3 1.048x overhead (limit 1.15x) |
+| Finite-field arithmetic versus Magma | MIXED: retained prepared add/double/scalar is 1.36x--1.54x in genus 2 and faster in genus 3; ordinary public add/double is 2.15x--4.60x and remains open |
+| Packed local factors through `10^5` | PASS: 1.741 s median, 96.8 MB RSS, frozen exact digest unchanged |
+| Rational 1024-by-32 many-prime reduction and witness | PASS: 98.54 ms versus Magma 140 ms, 1.42x faster |
+| Public rational addition | MIXED: growing-coefficient row 1.97x Magma (pass); small row 7.81x (open) |
+| Genus-2/3 periods | PASS: 1.73x and 1.47x PARI |
+| Genus-2 Abel--Jacobi 12-point batch | PASS: 9.35x faster than Magma |
+| Genus-2 fresh `L`-function initialization | PASS: 1.64x PARI after a separately reported 2.20 s cold universal-table build |
+| Certified genus-2 height, accuracy-matched 64-bit single point | PASS: 1.92x cold and 1.45x warm Magma |
+| Authenticated rank-2/rank-4 height reuse | PASS; object-cold construction remains 17.1x/12.4x Magma and is open |
+| Genus-3 order-32 structure/map | Resident object-cold and warm gates pass; a truly process-cold map remains open |
+| Certified genus-3 stream through `10^5` | OPEN: the frozen run exposed a bounded prime-tail factorization fallback and exceeded 512 MiB; the exact factorization failure is fixed, but the final RSS gate requires a clean rerun |
+
+Windows x64, Linux ARM64, and macOS ARM64 native receipts agree on exact
+local-factor, Kummer, Cantor, scalar, and progression digests. Their
+authenticated Wasm receipts keep portable overhead, capability failures,
+cancellation, and recovery visible rather than importing Linux competitor
+timings. Linux ARM64's raw fixed Cantor boundary is 1.043x/1.036x the identical
+genus-2/genus-3 standalone core. Windows has no supported POSIX standalone
+contract, and macOS records the GNU/ELF-only standalone linker harness as
+unavailable rather than inventing a ratio.
 
 The recommended first implementation project is **native public Cantor and
 Kummer arithmetic for genus 2 and 3**.  This is the highest-fan-out performance

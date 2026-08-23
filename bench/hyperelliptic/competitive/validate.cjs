@@ -30,7 +30,12 @@ for (const required of [
   "g2-real-period-64", "g3-real-period-64",
   "g2-central-value-32", "g2-lfunction-init-32-order4", "g3-central-value-16", "unsupported-even-degree-jacobian",
 ]) assert.ok(ids.includes(required), `missing required coverage case ${required}`);
-const source = ["sagejs-resident.cjs", "magma-resident.cjs", "pari-resident.cjs", "sagemath-resident.py", "run.cjs", "render-report.cjs", "local-streams.cjs"];
+const source = [
+  "sagejs-resident.cjs", "magma-resident.cjs", "pari-resident.cjs",
+  "sagemath-resident.py", "run.cjs", "render-report.cjs", "local-streams.cjs",
+  "finite-jacobian-magma-contract.cjs", "genus3-height.cjs",
+  "genus3-height-magma.m",
+];
 for (const name of source) assert.ok(readFileSync(join(directory, name)).length > 200, `${name} is unexpectedly empty`);
 const pariSource = readFileSync(join(directory, "pari-resident.cjs"), "utf8");
 assert.match(pariSource, /default\(realbitprecision,/);

@@ -1,11 +1,15 @@
 "use strict";
 
 const { createHash } = require("node:crypto");
+const { spawnSync } = require("node:child_process");
+const { writeFileSync } = require("node:fs");
 const { arch, hostname, platform, release } = require("node:os");
-const { join } = require("node:path");
+const { join, resolve } = require("node:path");
 const { performance } = require("node:perf_hooks");
 
 const { createSage } = require("../../dist/tools/kernel.js");
+
+const repository = resolve(__dirname, "../..");
 
 const addon = require(join(
   __dirname,
@@ -19,7 +23,12 @@ const addon = require(join(
 ));
 
 function options(argv) {
-  const result = { limits: [10_000, 100_000], repeat: 3, chunkSize: 4096 };
+  const result = {
+    limits: [10_000, 100_000],
+    repeat: 3,
+    chunkSize: 4096,
+    output: null,
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--limits") {
@@ -28,6 +37,8 @@ function options(argv) {
       result.repeat = Number(argv[++index]);
     } else if (argument === "--chunk-size") {
       result.chunkSize = Number(argv[++index]);
+    } else if (argument === "--output") {
+      result.output = resolve(argv[++index]);
     } else {
       throw new Error(`unknown argument ${argument}`);
     }
@@ -44,6 +55,16 @@ function options(argv) {
     throw new Error("invalid limits, repeat count, or chunk size");
   }
   return result;
+}
+
+function git(...arguments_) {
+  const result = spawnSync("git", arguments_, {
+    cwd: repository,
+    encoding: "utf8",
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(result.stderr || result.stdout);
+  return result.stdout.trim();
 }
 
 function packedDigest(batch) {
@@ -139,6 +160,8 @@ async function main() {
   const receipt = {
     schema: "sagejs.hyperelliptic-local-materialization-benchmark.v1",
     generated_at_utc: new Date().toISOString(),
+    source_commit: git("rev-parse", "HEAD"),
+    source_status: git("status", "--short"),
     host: {
       hostname: hostname(),
       platform: platform(),
@@ -205,7 +228,9 @@ async function main() {
   } finally {
     await session.close();
   }
-  process.stdout.write(`${JSON.stringify(receipt, null, 2)}\n`);
+  const serialized = `${JSON.stringify(receipt, null, 2)}\n`;
+  if (config.output) writeFileSync(config.output, serialized);
+  else process.stdout.write(serialized);
 }
 
 main().catch((error) => {

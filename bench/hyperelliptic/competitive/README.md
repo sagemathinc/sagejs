@@ -123,4 +123,20 @@ The checked Phase-0 result is summarized in
 baseline; rerun the same command and require the same exact digests at the
 final integrated implementation commit.
 
+The corresponding after-performance artifacts are:
+
+- `receipt-linux-x64.json` and `REPORT-linux-x64.md` for the complete resident
+  Sage.js/Magma/PARI corpus;
+- `final-local-streams-linux-x64.json` and
+  `FINAL-LOCAL-STREAMS-linux-x64.md` for the exact packed local stream;
+- `finite-jacobian-magma-receipt-linux-x64.json` and
+  `FINITE-JACOBIAN-MAGMA-RECEIPT-linux-x64.md` for timer-resolved finite-field
+  public/prepared/materialized Magma comparisons.
+
+The final `10^5` stream preserves the Phase-0 digest and records a 1.741-second
+median with 96.8 MB peak RSS.  The receipt source can be later than the
+mathematical acceptance source when the intervening commits change only
+benchmark serialization or checked-in reports; both full commit identities
+remain in the artifacts.
+
 Run `node bench/hyperelliptic/competitive/validate.cjs` before any measurement.

@@ -2,7 +2,7 @@
 "use strict";
 
 const { readFileSync, writeFileSync } = require("node:fs");
-const { resolve } = require("node:path");
+const { relative, resolve } = require("node:path");
 
 function display(value) { return value === null || value === undefined ? "—" : Number(value).toFixed(value < 1 ? 4 : 2); }
 function displayStats(value) {
@@ -28,11 +28,12 @@ function main() {
   const output = outputArgument ? resolve(outputArgument) : null;
   const finalReport = process.argv.includes("--final");
   const receipt = JSON.parse(readFileSync(input, "utf8"));
+  const displayedInput = relative(process.cwd(), input) || input;
   const lines = [
     finalReport
       ? "# Final integrated competitive hyperelliptic receipt"
       : "# Frozen Phase-0 competitive hyperelliptic baseline", "",
-    `Generated from \`${input}\` (${receipt.generated_at_utc}).`, "",
+    `Generated from \`${displayedInput}\` (${receipt.generated_at_utc}).`, "",
     `Source commit: \`${receipt.source_commit}\`. Corpus: \`${receipt.corpus.sha256}\` (${receipt.corpus.cases} ${receipt.corpus.tier} cases).`, "",
     finalReport
       ? "> This is the after-performance acceptance receipt. Workload-specific gates and unsupported cells remain explicit; it is not a claim that one system is universally faster."
