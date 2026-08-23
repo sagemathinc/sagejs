@@ -53,6 +53,9 @@ def check_curve(curve):
     P = J((0, 1))
     context = PreparedRationalJacobianArithmetic(J)
     reference = PreparedRationalJacobianArithmetic(J, algorithm="reference")
+    public_context = J.prepared_arithmetic()
+    assert public_context is J.prepared_arithmetic()
+    assert public_context.native_available == compiled
     assert context.capability().schema == "sagejs.hyperelliptic.rational-mumford.v1"
     assert context.capability().model_kind == "odd-degree-one-infinity"
     assert context.unpack(context.pack(P)) == P
@@ -82,6 +85,11 @@ def check_curve(curve):
     assert actual == expected
     assert diagnostics["selected"] == ("native" if compiled else "reference")
     assert context.double_batch(values) == reference.double_batch(values, algorithm="reference")
+    assert P + P == P.add(P, algorithm="reference")
+    assert P.double() == P.double(algorithm="reference")
+    public_sum, public_diagnostics = P.add(P, diagnostics=True)
+    assert public_sum == P + P
+    assert public_diagnostics["selected"] == ("native" if compiled else "reference")
     scalars = (-17, -3, -1, 0, 1, 2, 7, 19)
     points = tuple(values[index] for index in range(len(scalars)))
     products = context.scalar_batch(points, scalars)
@@ -90,6 +98,7 @@ def check_curve(curve):
         for point, scalar in zip(points, scalars)
     )
     assert products == expected_products
+    assert P.scalar_multiple(19) == P.scalar_multiple(19, algorithm="reference")
     assert context.sum(values) == reference.sum(values, algorithm="reference")
     certificate = context.operation_certificate("add", P, P)
     assert context.verify_operation_certificate(certificate)
@@ -139,6 +148,8 @@ check_rational_two_torsion(x**7 - x)
 huge = 2**256 + 1
 assert torsion_context.scalar_batch((T,), (huge,))[0] == T
 assert torsion_context.scalar_batch((T,), (-huge,))[0] == T
+assert huge * T == T
+assert T.scalar_multiple(huge, algorithm="reference") == T
 scalar_certificate = torsion_context.operation_certificate("scalar", T, huge)
 assert torsion_context.verify_operation_certificate(scalar_certificate)
 try:

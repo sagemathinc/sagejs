@@ -699,9 +699,9 @@ class HyperellipticJacobian(sage.Parent):
     ) -> Any:
         """Return the immutable cached packed-arithmetic context.
 
-        The v1 native domain is deliberately restricted to odd-degree
-        one-point-at-infinity genus-2/3 models over supported odd prime
-        fields. `auto` has an exact ordinary-Cantor fallback.
+        Native contexts cover odd-degree one-point-at-infinity genus-2/3
+        models over `QQ` or a supported odd prime field. `auto` has an exact
+        ordinary-Cantor fallback when the relevant native capability is absent.
         """
         if isinstance(max_batch_items, bool):
             raise TypeError("max_batch_items must be an integer")
@@ -714,15 +714,31 @@ class HyperellipticJacobian(sage.Parent):
         key = (algorithm, maximum)
         context = self._prepared_arithmetic_cache.get(key)
         if context is None:
-            native = __import__(
-                "sagejs.hyperelliptic_curves.jacobian_native",
-                fromlist=["PreparedJacobianArithmetic"],
-            )
-            context = native.PreparedJacobianArithmetic(
-                self,
-                algorithm=algorithm,
-                max_batch_items=maximum,
-            )
+            context = None
+            if algorithm != "reference" and str(self.base_ring()) == "Rational Field":
+                rational_native = __import__(
+                    "sagejs.hyperelliptic_curves.jacobian_rational_native",
+                    fromlist=["PreparedRationalJacobianArithmetic"],
+                )
+                try:
+                    context = rational_native.PreparedRationalJacobianArithmetic(
+                        self,
+                        algorithm=algorithm,
+                        max_batch_items=maximum,
+                    )
+                except (NotImplementedError, RuntimeError):
+                    if algorithm == "native":
+                        raise
+            if context is None:
+                native = __import__(
+                    "sagejs.hyperelliptic_curves.jacobian_native",
+                    fromlist=["PreparedJacobianArithmetic"],
+                )
+                context = native.PreparedJacobianArithmetic(
+                    self,
+                    algorithm=algorithm,
+                    max_batch_items=maximum,
+                )
             self._prepared_arithmetic_cache[key] = context
         return context
 
