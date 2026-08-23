@@ -444,6 +444,8 @@ class _LiveClassUnitArtifacts:
         self.order = order
         self.reusable = bool(reusable)
         self.factor_base: tuple[Any, ...] = ()
+        self.factor_base_bound = False
+        self.factor_base_validation_available = False
         self.collector: Any = None
         self.relations: tuple[Any, ...] = ()
         self.presentation: Any = None
@@ -463,6 +465,26 @@ class _LiveClassUnitArtifacts:
         self.unit_group: Any = None
         self.sealed = False
 
+    def bind_factor_base(self, factor_base: Iterable[Any], *, validated: bool) -> None:
+        if self.sealed:
+            raise ValueError("a sealed class/unit context cannot accept a factor base")
+        self.factor_base = tuple(factor_base)
+        self.factor_base_bound = True
+        self.factor_base_validation_available = bool(self.reusable and validated)
+
+    def factor_base_validated(self, factor_base: Iterable[Any]) -> bool:
+        supplied = tuple(factor_base)
+        return bool(
+            not self.sealed
+            and self.reusable
+            and self.factor_base_validation_available
+            and len(supplied) == len(self.factor_base)
+            and all(
+                retained is current
+                for retained, current in zip(self.factor_base, supplied, strict=True)
+            )
+        )
+
     def bind_relations(
         self,
         factor_base: Iterable[Any],
@@ -473,6 +495,14 @@ class _LiveClassUnitArtifacts:
         if self.sealed:
             return False
         factors = tuple(factor_base)
+        if self.factor_base_bound and (
+            len(factors) != len(self.factor_base)
+            or any(
+                retained is not supplied
+                for retained, supplied in zip(self.factor_base, factors, strict=True)
+            )
+        ):
+            return False
         retained_factors = tuple(getattr(collector, "factor_base", ()))
         if getattr(collector, "order", None) is not self.order or len(
             retained_factors
@@ -492,6 +522,7 @@ class _LiveClassUnitArtifacts:
         if len(tuple(getattr(presentation, "relation_rows", ()))) != len(records):
             return False
         self.factor_base = factors
+        self.factor_base_bound = True
         self.collector = collector
         self.relations = records
         self.presentation = presentation
@@ -778,6 +809,8 @@ class _LiveClassUnitArtifacts:
             "reusable": self.reusable,
             "sealed": self.sealed,
             "factor_base_size": len(self.factor_base),
+            "has_factor_base": self.factor_base_bound,
+            "factor_base_validation_available": (self.factor_base_validation_available),
             "relation_count": len(self.relations),
             "has_presentation": self.presentation is not None,
             "unit_count": len(self.factored_units),
@@ -906,6 +939,23 @@ class ClassUnitGroupContext:
                 relation_authentication_token,
             )
         )
+
+    def _bind_live_factor_base(
+        self, token: Any, factor_base: Iterable[Any], *, validated: bool
+    ) -> None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live factor-base state is engine-owned")
+        live = self._live_artifacts
+        if live is not None:
+            live.bind_factor_base(factor_base, validated=validated)
+
+    def _live_factor_base_validated(
+        self, token: Any, factor_base: Iterable[Any]
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live factor-base state is engine-owned")
+        live = self._live_artifacts
+        return bool(live is not None and live.factor_base_validated(factor_base))
 
     def _live_relation_payloads(
         self, token: Any, collector: Any, presentation: Any

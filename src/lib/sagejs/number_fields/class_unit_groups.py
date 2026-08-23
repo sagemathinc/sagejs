@@ -1310,7 +1310,6 @@ class ClassUnitGroupEngine:
         self._automorphism_orbit_plans: list[tuple[tuple[Any, ...], Any]] = []
         self._proof_progress: Any = None
         self._proof_dependency_hashes: dict[str, str] = {}
-        self._live_verified_factor_base: tuple[Any, ...] | None = None
         self._authenticated_cubic_relation_seed_cache: Any = _CUBIC_RELATION_SEED_UNREAD
 
     def _stage(self, name: str, state: str, **details: Any) -> None:
@@ -1419,6 +1418,25 @@ class ClassUnitGroupEngine:
                 presentation,
                 relation_token,
             )
+        )
+
+    def _bind_context_factor_base(
+        self, factor_base: Iterable[Any], *, validated: bool
+    ) -> None:
+        bind = getattr(self.context, "_bind_live_factor_base", None)
+        if callable(bind) and self._live_context_token is not None:
+            bind(
+                self._live_context_token,
+                factor_base,
+                validated=validated,
+            )
+
+    def _context_factor_base_validated(self, factor_base: Iterable[Any]) -> bool:
+        validated = getattr(self.context, "_live_factor_base_validated", None)
+        return bool(
+            callable(validated)
+            and self._live_context_token is not None
+            and validated(self._live_context_token, factor_base)
         )
 
     def _bind_context_analytic_proof(self, proof: Iterable[Any]) -> None:
@@ -1822,8 +1840,9 @@ class ClassUnitGroupEngine:
                 packed_factor_base_verified = False
             else:
                 self._checkpoint_capture({"factor_base": primes})
-        self._live_verified_factor_base = (
-            primes if packed_factor_base_verified else None
+        self._bind_context_factor_base(
+            primes,
+            validated=packed_factor_base_verified,
         )
         if record_stage:
             self._phase_finish("factor-base", started)
@@ -2508,7 +2527,7 @@ class ClassUnitGroupEngine:
         restored_state = self._relation_search_state
         if collector is None:
             collector_options: dict[str, Any] = {}
-            if factor_base is self._live_verified_factor_base:
+            if self._context_factor_base_validated(factor_base):
                 validated_token = getattr(
                     relations, "_VALIDATED_FACTOR_BASE_TOKEN", None
                 )
