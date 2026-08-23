@@ -134,10 +134,32 @@ for (const { path, value } of receipts) {
   for (const mode of ["dynamic", "native"]) {
     for (const entry of value.modes[mode].cantor.cases) {
       assert.equal(
+        entry.add_exact_sha256,
+        entry.add_materialized_exact_sha256,
+        `${path}: genus-${entry.genus} ${mode} retained/materialized add digest`,
+      );
+      assert.equal(
+        entry.scalar_exact_sha256,
+        entry.scalar_materialized_exact_sha256,
+        `${path}: genus-${entry.genus} ${mode} retained/materialized scalar digest`,
+      );
+      assert.equal(
+        entry.progression_exact_sha256,
+        entry.progression_retained_exact_sha256,
+        `${path}: genus-${entry.genus} ${mode} packed/retained progression digest`,
+      );
+      assert.equal(
         entry.progression_exact_sha256,
         entry.progression_materialized_exact_sha256,
         `${path}: genus-${entry.genus} ${mode} packed/materialized progression digest`,
       );
+      if (mode === "native") {
+        assert.equal(
+          entry.representation_state,
+          `(0, 1000, 0, ${entry.scalar_batch_items}, 0, 1000)`,
+          `${path}: genus-${entry.genus} native representation retention`,
+        );
+      }
     }
   }
 }
@@ -172,11 +194,25 @@ const rows = receipts.map(({ path, value }) => ({
       add_speedup:
         dynamicCase.add_batch.arithmetic_ms.median /
         nativeCase.add_batch.arithmetic_ms.median,
+      add_1000_materialized_dynamic_ms:
+        dynamicCase.add_materialized_batch.arithmetic_ms.median,
+      add_1000_materialized_native_ms:
+        nativeCase.add_materialized_batch.arithmetic_ms.median,
+      native_add_materialization_overhead:
+        nativeCase.add_materialized_batch.arithmetic_ms.median /
+        nativeCase.add_batch.arithmetic_ms.median,
       scalar_batch_items: nativeCase.scalar_batch_items,
       scalar_dynamic_ms: dynamicCase.scalar_batch.arithmetic_ms.median,
       scalar_native_ms: nativeCase.scalar_batch.arithmetic_ms.median,
       scalar_speedup:
         dynamicCase.scalar_batch.arithmetic_ms.median /
+        nativeCase.scalar_batch.arithmetic_ms.median,
+      scalar_materialized_dynamic_ms:
+        dynamicCase.scalar_materialized_batch.arithmetic_ms.median,
+      scalar_materialized_native_ms:
+        nativeCase.scalar_materialized_batch.arithmetic_ms.median,
+      native_scalar_materialization_overhead:
+        nativeCase.scalar_materialized_batch.arithmetic_ms.median /
         nativeCase.scalar_batch.arithmetic_ms.median,
       progression_1000_dynamic_ms:
         dynamicCase.progression_batch.arithmetic_ms.median,
@@ -185,6 +221,10 @@ const rows = receipts.map(({ path, value }) => ({
       progression_speedup:
         dynamicCase.progression_batch.arithmetic_ms.median /
         nativeCase.progression_batch.arithmetic_ms.median,
+      progression_1000_retained_dynamic_ms:
+        dynamicCase.progression_retained_batch.arithmetic_ms.median,
+      progression_1000_retained_native_ms:
+        nativeCase.progression_retained_batch.arithmetic_ms.median,
       progression_1000_materialized_dynamic_ms:
         dynamicCase.progression_materialized_batch.arithmetic_ms.median,
       progression_1000_materialized_native_ms:

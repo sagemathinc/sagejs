@@ -522,17 +522,24 @@ async function workerMain(config) {
         [
           `cantor_genus,cantor_context,basis,left,right,scalars=cantor_cases[${caseIndex}]`,
           "cantor_add=cantor_context.add_batch(left,right)",
-          `cantor_scalar=cantor_context.scalar_batch(left[:${config.cantorScalarItems}],scalars)`,
+          "cantor_add_materialized=cantor_context.add_batch(left,right,materialize=True)",
+          "cantor_scalar=cantor_context.scalar_batch(left[:1],scalars[:1])",
+          "cantor_scalar_materialized=cantor_context.scalar_batch(left[:1],scalars[:1],materialize=True)",
           "cantor_progression=cantor_context.progression_batch(basis[0],basis[1],1000,packed=True)",
-          "cantor_progression_materialized=cantor_context.progression_batch(basis[0],basis[1],1000)",
+          "cantor_progression_retained=cantor_context.progression_batch(basis[0],basis[1],1000)",
+          "cantor_progression_materialized=cantor_context.progression_batch(basis[0],basis[1],1000,materialize=True)",
+          "assert cantor_progression==tuple(cantor_context.pack(v) for v in cantor_progression_retained)",
           "assert cantor_progression==tuple(cantor_context.pack(v) for v in cantor_progression_materialized)",
           "len(cantor_add)",
         ].join("\n"),
       );
       const addSamples = [];
+      const materializedAddSamples = [];
       const progressionSamples = [];
+      const retainedProgressionSamples = [];
       const materializedProgressionSamples = [];
       const scalarSamples = [];
+      const materializedScalarSamples = [];
       for (let repetition = 0; repetition < config.repeat; repetition += 1) {
         const addMeasured = await sampleAsync(() =>
           sageEvaluation(
@@ -552,6 +559,24 @@ async function workerMain(config) {
           rss_bytes: addMeasured.rss_bytes,
           ...parseTimedSageTuple(addMeasured.value),
         });
+        const materializedAddMeasured = await sampleAsync(() =>
+          sageEvaluation(
+            session,
+            [
+              "started=time.perf_counter()",
+              "cantor_add_materialized=cantor_context.add_batch(left,right,materialize=True)",
+              "arithmetic_ms=1000*(time.perf_counter()-started)",
+              "(arithmetic_ms,len(cantor_add_materialized),cantor_context.fingerprint(cantor_context.sum(cantor_add_materialized)))",
+            ].join("\n"),
+          ),
+        );
+        materializedAddSamples.push({
+          wall_ms: materializedAddMeasured.wall_ms,
+          cpu_user_ms: materializedAddMeasured.cpu_user_ms,
+          cpu_system_ms: materializedAddMeasured.cpu_system_ms,
+          rss_bytes: materializedAddMeasured.rss_bytes,
+          ...parseTimedSageTuple(materializedAddMeasured.value),
+        });
         const progressionMeasured = await sampleAsync(() =>
           sageEvaluation(
             session,
@@ -570,12 +595,30 @@ async function workerMain(config) {
           rss_bytes: progressionMeasured.rss_bytes,
           ...parseTimedSageTuple(progressionMeasured.value),
         });
+        const retainedProgressionMeasured = await sampleAsync(() =>
+          sageEvaluation(
+            session,
+            [
+              "started=time.perf_counter()",
+              "cantor_progression_retained=cantor_context.progression_batch(basis[0],basis[1],1000)",
+              "arithmetic_ms=1000*(time.perf_counter()-started)",
+              "(arithmetic_ms,len(cantor_progression_retained),cantor_context.pack(cantor_progression_retained[-1]))",
+            ].join("\n"),
+          ),
+        );
+        retainedProgressionSamples.push({
+          wall_ms: retainedProgressionMeasured.wall_ms,
+          cpu_user_ms: retainedProgressionMeasured.cpu_user_ms,
+          cpu_system_ms: retainedProgressionMeasured.cpu_system_ms,
+          rss_bytes: retainedProgressionMeasured.rss_bytes,
+          ...parseTimedSageTuple(retainedProgressionMeasured.value),
+        });
         const materializedProgressionMeasured = await sampleAsync(() =>
           sageEvaluation(
             session,
             [
               "started=time.perf_counter()",
-              "cantor_progression_materialized=cantor_context.progression_batch(basis[0],basis[1],1000)",
+              "cantor_progression_materialized=cantor_context.progression_batch(basis[0],basis[1],1000,materialize=True)",
               "arithmetic_ms=1000*(time.perf_counter()-started)",
               "(arithmetic_ms,len(cantor_progression_materialized),cantor_context.pack(cantor_progression_materialized[-1]))",
             ].join("\n"),
@@ -612,12 +655,33 @@ async function workerMain(config) {
           rss_bytes: scalarMeasured.rss_bytes,
           ...parseTimedSageTuple(scalarMeasured.value),
         });
+        const materializedScalarMeasured = await sampleAsync(() =>
+          sageEvaluation(
+            session,
+            [
+              "started=time.perf_counter()",
+              `cantor_scalar_materialized=cantor_context.scalar_batch(left[:${config.cantorScalarItems}],scalars,materialize=True)`,
+              "arithmetic_ms=1000*(time.perf_counter()-started)",
+              "(arithmetic_ms,len(cantor_scalar_materialized),cantor_context.fingerprint(cantor_context.sum(cantor_scalar_materialized)))",
+            ].join("\n"),
+          ),
+        );
+        materializedScalarSamples.push({
+          wall_ms: materializedScalarMeasured.wall_ms,
+          cpu_user_ms: materializedScalarMeasured.cpu_user_ms,
+          cpu_system_ms: materializedScalarMeasured.cpu_system_ms,
+          rss_bytes: materializedScalarMeasured.rss_bytes,
+          ...parseTimedSageTuple(materializedScalarMeasured.value),
+        });
       }
       for (const samples of [
         addSamples,
+        materializedAddSamples,
         progressionSamples,
+        retainedProgressionSamples,
         materializedProgressionSamples,
         scalarSamples,
+        materializedScalarSamples,
       ]) {
         assert(
           samples.every(
@@ -629,9 +693,17 @@ async function workerMain(config) {
         session,
         "tuple(cantor_context.pack(v) for v in cantor_add)",
       );
+      const exactMaterializedAdd = await sageEvaluation(
+        session,
+        "tuple(cantor_context.pack(v) for v in cantor_add_materialized)",
+      );
       const exactScalar = await sageEvaluation(
         session,
         "tuple(cantor_context.pack(v) for v in cantor_scalar)",
+      );
+      const exactMaterializedScalar = await sageEvaluation(
+        session,
+        "tuple(cantor_context.pack(v) for v in cantor_scalar_materialized)",
       );
       const exactProgression = await sageEvaluation(
         session,
@@ -641,7 +713,24 @@ async function workerMain(config) {
         session,
         "tuple(cantor_context.pack(v) for v in cantor_progression_materialized)",
       );
+      const exactRetainedProgression = await sageEvaluation(
+        session,
+        "tuple(cantor_context.pack(v) for v in cantor_progression_retained)",
+      );
+      assert.equal(exactMaterializedAdd, exactAdd);
+      assert.equal(exactMaterializedScalar, exactScalar);
+      assert.equal(exactRetainedProgression, exactProgression);
       assert.equal(exactMaterializedProgression, exactProgression);
+      const representationState = await sageEvaluation(
+        session,
+        "(sum(1 for v in cantor_add if v.is_materialized()),sum(1 for v in cantor_add_materialized if v.is_materialized()),sum(1 for v in cantor_scalar if v.is_materialized()),sum(1 for v in cantor_scalar_materialized if v.is_materialized()),sum(1 for v in cantor_progression_retained if v.is_materialized()),sum(1 for v in cantor_progression_materialized if v.is_materialized()))",
+      );
+      if (config.workerMode === "native") {
+        assert.equal(
+          representationState,
+          `(0, 1000, 0, ${config.cantorScalarItems}, 0, 1000)`,
+        );
+      }
       cantorCases.push({
         genus: caseIndex + 2,
         prime: 1009,
@@ -650,16 +739,28 @@ async function workerMain(config) {
         add_exact_sha256: sha256(exactAdd),
         add_exact_checksum: addSamples[0].exact_checksum,
         add_batch: summarise(addSamples),
+        add_materialized_exact_sha256: sha256(exactMaterializedAdd),
+        add_materialized_exact_checksum:
+          materializedAddSamples[0].exact_checksum,
+        add_materialized_batch: summarise(materializedAddSamples),
         scalar_batch_items: config.cantorScalarItems,
         scalar_bits: 256,
         scalar_exact_sha256: sha256(exactScalar),
         scalar_exact_checksum: scalarSamples[0].exact_checksum,
         scalar_batch: summarise(scalarSamples),
+        scalar_materialized_exact_sha256: sha256(exactMaterializedScalar),
+        scalar_materialized_exact_checksum:
+          materializedScalarSamples[0].exact_checksum,
+        scalar_materialized_batch: summarise(materializedScalarSamples),
         progression_items: 1000,
         progression_packed: true,
         progression_exact_sha256: sha256(exactProgression),
         progression_exact_checksum: progressionSamples[0].exact_checksum,
         progression_batch: summarise(progressionSamples),
+        progression_retained_exact_sha256: sha256(exactRetainedProgression),
+        progression_retained_exact_checksum:
+          retainedProgressionSamples[0].exact_checksum,
+        progression_retained_batch: summarise(retainedProgressionSamples),
         progression_materialized_exact_sha256: sha256(
           exactMaterializedProgression,
         ),
@@ -668,6 +769,7 @@ async function workerMain(config) {
         progression_materialized_batch: summarise(
           materializedProgressionSamples,
         ),
+        representation_state: representationState,
       });
     }
     receipt.cantor = {
@@ -823,7 +925,7 @@ async function coordinatorMain(config) {
         "`pnpm build` first",
     );
   }
-  const { compile } = require("@sagemath/sagejs/native");
+  const { compile } = require(join(root, "tools", "native-kernel.cjs"));
   const compilationStarted = performance.now();
   const compiled = await compile({
     sourcePath: kummerSource,
