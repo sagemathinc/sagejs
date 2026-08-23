@@ -108,7 +108,7 @@ function runBackend(id, executable, runner, request, corpus, unavailableReason =
     const caseData = corpus.cases.find((item) => item.id === row.id);
     const check = validate(caseData, row);
     const divisor = row.repeated_warm_loop_size ?? 1;
-    return { ...row, validation: check, statistics: { object_cold: summarize(row.object_cold_samples_ms), object_cold_cpu: summarize(row.object_cold_cpu_samples_ms), warm: summarize(row.warm_samples_ms), warm_cpu: summarize(row.warm_cpu_samples_ms), repeated_warm_loop: summarize(row.repeated_warm_loop_samples_ms), repeated_warm_per_item: summarize(row.repeated_warm_loop_samples_ms, divisor) }, exact_result_sha256: row.result_mode === "exact" && check.passed ? sha256(stable(normalizeResult(caseData, row))) : null };
+    return { ...row, validation: check, statistics: { object_cold: summarize(row.object_cold_samples_ms), object_cold_cpu: summarize(row.object_cold_cpu_samples_ms), warm: summarize(row.warm_samples_ms), warm_cpu: summarize(row.warm_cpu_samples_ms), repeated_warm_loop: summarize(row.repeated_warm_loop_samples_ms), repeated_warm_loop_cpu: summarize(row.repeated_warm_loop_cpu_samples_ms), repeated_warm_per_item: summarize(row.repeated_warm_loop_samples_ms, divisor), repeated_warm_cpu_per_item: summarize(row.repeated_warm_loop_cpu_samples_ms, divisor) }, exact_result_sha256: row.result_mode === "exact" && check.passed ? sha256(stable(normalizeResult(caseData, row))) : null };
   });
   return output;
 }
