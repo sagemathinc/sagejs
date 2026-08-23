@@ -591,9 +591,10 @@
       "source": "src/lib/sagejs/hyperelliptic_curves/genus3_candidate_kernel.py",
       "functions": [
         "scan_genus3_weil_candidates",
-        "scan_genus3_weil_candidates_batch"
+        "scan_genus3_weil_candidates_batch",
+        "scan_genus3_candidate_progressions"
       ],
-      "semantic_domain": "bounded exact single-row and windowed enumeration of all genus-3 p-Weil coefficient lifts from Hasse--Witt residues using arbitrary-precision integer arithmetic",
+      "semantic_domain": "bounded exact single-row, windowed, and compact progression enumeration of genus-3 p-Weil coefficient lifts from Hasse--Witt residues, including supplied primary/twist divisibility witness filters, using arbitrary-precision integer arithmetic",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "sage", "magma", "pari", "exact-sturm"],

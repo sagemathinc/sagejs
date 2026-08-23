@@ -3,11 +3,11 @@
   "source_registry": "architecture/native-kernels.json",
   "totals": {
     "registered_kernels": 42,
-    "production_kernels": 31,
-    "compiled_functions": 232,
+    "production_kernels": 30,
+    "compiled_functions": 230,
     "unsupported_production_functions": 0,
-    "non_production_functions": 39,
-    "same_source_fallback_functions": 39
+    "non_production_functions": 42,
+    "same_source_fallback_functions": 42
   },
   "kernels": [
     {
@@ -166,12 +166,14 @@
     },
     {
       "id": "genus3-weil-candidate-production",
-      "production": true,
-      "status": "available",
-      "compiled_functions": 2,
-      "fallback_functions": 0,
-      "total_functions": 2,
-      "fallback_reasons": []
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 3,
+      "total_functions": 3,
+      "fallback_reasons": [
+        "tracked-production-artifact-predates-compact-genus3-candidate-scanner"
+      ]
     },
     {
       "id": "hyperelliptic-cantor-production",

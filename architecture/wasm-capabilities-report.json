@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "8223596dd929e2974e8e14b09834473de473c7d225d239366a1867cce7bc190d",
+  "source_sha256": "5d7e2616929678e164b81ffaae9af8c0436a6e9f01b5c6ce410ff9c51ed36858",
   "counts": {
     "total": 962,
     "by_kind": {
@@ -20,9 +20,9 @@
       "shared-core": 44
     },
     "by_status": {
-      "available": 516,
+      "available": 515,
       "desktop-only": 14,
-      "fallback": 432
+      "fallback": 433
     }
   },
   "workflow_aliases": {
@@ -5838,13 +5838,13 @@
       "id": "kernel:genus3-weil-candidate-production",
       "family": "genus3-weil-candidate",
       "disposition": "compiled-source",
-      "status": "available",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "kernel-gmp",
       "public_consumers": [
         "genus3-weil-candidate"
       ],
-      "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "Genus-3 Weil-candidate scans, including compact witness-filtered progressions, use the exact same-source fallback in the current WebAssembly release artifact."
     },
     {
       "id": "kernel:hyperelliptic-cantor-production",

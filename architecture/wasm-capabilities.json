@@ -11038,16 +11038,18 @@
       "tests": [
         "production-kernel-differential"
       ],
-      "status": "available",
+      "status": "fallback",
       "reviewed": true,
-      "review_note": "The receipt-authenticated production pack compiles all 2 registered functions in this source-transparent kernel family.",
-      "public_explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "review_note": "The tracked production artifact predates the compact progression scanner and therefore cannot authenticate the changed source family. All three functions retain their tested same-source fallback until the next artifact rebuild.",
+      "public_explanation": "Genus-3 Weil-candidate scans, including compact witness-filtered progressions, use the exact same-source fallback in the current WebAssembly release artifact.",
       "compiled_coverage": {
-        "compiled_functions": 2,
-        "fallback_functions": 0,
-        "total_functions": 2,
-        "production_pack": true,
-        "fallback_reasons": []
+        "compiled_functions": 0,
+        "fallback_functions": 3,
+        "total_functions": 3,
+        "production_pack": false,
+        "fallback_reasons": [
+          "tracked-production-artifact-predates-compact-genus3-candidate-scanner"
+        ]
       }
     },
     {
