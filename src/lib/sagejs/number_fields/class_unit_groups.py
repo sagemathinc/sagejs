@@ -2439,23 +2439,35 @@ class ClassUnitGroupEngine:
             restored_state = relations.RelationSearchState.from_dict(restored_state)
 
         accumulator_type = getattr(matrix_module, "RelationMatrixAccumulator", None)
-        if self._relation_matrix_accumulator is None and callable(accumulator_type):
-            accumulator: Any = accumulator_type(len(factor_base))
-            for record in collector.records:
-                accumulator.add_relation(record.row)
-            self._relation_matrix_accumulator = accumulator
-
         policy_type = getattr(matrix_module, "DeferredPresentationPolicy", None)
-        if (
-            self._relation_presentation_policy is None
-            and self._relation_matrix_accumulator is not None
-            and callable(policy_type)
-        ):
-            self._relation_presentation_policy = policy_type(
-                len(factor_base),
-                batch_size=self.limits.exact_presentation_batch_size,
-            )
-        policy = self._relation_presentation_policy
+        accumulator: Any = self._relation_matrix_accumulator
+        policy: Any = self._relation_presentation_policy
+
+        def initialize_relation_matrix_tracking() -> None:
+            """Build deferred matrix state only when relation search needs it."""
+            nonlocal accumulator, policy
+            if accumulator is None and callable(accumulator_type):
+                accumulator = accumulator_type(len(factor_base))
+                for retained_record in collector.records:
+                    accumulator.add_relation(retained_record.row)
+                self._relation_matrix_accumulator = accumulator
+            if policy is None and accumulator is not None and callable(policy_type):
+                policy = policy_type(
+                    len(factor_base),
+                    batch_size=self.limits.exact_presentation_batch_size,
+                )
+                self._relation_presentation_policy = policy
+                if (
+                    presentation is not None
+                    and self._relation_presentation_record_count
+                    == len(collector.records)
+                    and int(presentation.rank) == len(factor_base)
+                ):
+                    policy.note_exact_presentation(
+                        accumulator,
+                        presentation,
+                        extracted_level="snf",
+                    )
 
         def accept_presentation(answer: Any, *, policy_recorded: bool = False) -> Any:
             self._relation_presentation_record_count = len(collector.records)
@@ -2548,6 +2560,12 @@ class ClassUnitGroupEngine:
                 "unit_rank_target": unit_rank,
             }
         )
+        if (
+            presentation.rank < len(factor_base)
+            or len(presentation.dependency_transforms) < dependency_target
+            or unit_log_rank < unit_rank
+        ):
+            initialize_relation_matrix_tracking()
         factor_norms = [int(prime.norm()._numerator) for prime in factor_base]
         largest_factor_norm = max(factor_norms) if factor_norms else 2
         large_prime_bound = (
