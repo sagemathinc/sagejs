@@ -67,6 +67,20 @@ def timed(function, repetitions=7):
     return median(samples), value
 
 
+def timed_resident(function, warmups=10, samples=9, repeats=50):
+    """Match the standalone core's warmup and repeated-call sample contract."""
+    value = None
+    for _index in range(warmups):
+        value = function()
+    timings = []
+    for _sample in range(samples):
+        started = time.perf_counter_ns()
+        for _repeat in range(repeats):
+            value = function()
+        timings.append((time.perf_counter_ns() - started) // repeats)
+    return median(timings), value
+
+
 def deterministic_basis(curve, context, count):
     field = curve.base_ring()
     f, h = curve.hyperelliptic_polynomials()
@@ -301,7 +315,7 @@ for genus, curve in [
     raw_copy_ns, raw_copy_result = timed(raw_copy)
     full_copy_boundary_ns, full_copy_result = timed(full_copy_boundary)
     raw_add_ns, raw_add_result = timed(raw_add)
-    raw_fixed_add_ns, raw_fixed_add_result = timed(raw_fixed_add)
+    raw_fixed_add_ns, raw_fixed_add_result = timed_resident(raw_fixed_add)
     native_add_materialized_ns, native_add_materialized_result = timed(
         native_add_materialized
     )
@@ -388,6 +402,11 @@ for genus, curve in [
         "raw_add_boundary_median_ns": raw_add_ns,
         "raw_fixed_add_boundary_median_ns": raw_fixed_add_ns,
         "raw_fixed_digest": str(raw_fixed_digest),
+        "raw_fixed_timing": {
+            "warmups": 10,
+            "samples": 9,
+            "calls_per_sample": 50,
+        },
         "retained_to_raw_add_ratio": retained_add_ns / raw_add_ns,
         "native_sum_median_ns": native_sum_ns,
         "reference_sum_median_ns": reference_sum_ns,
@@ -581,7 +600,9 @@ try {
   const flintPrefix = join(root, "packages", "flint", ".native", "prefix");
   run("cc", [
     "-O3",
+    "-DSAGEJS_NATIVE_SOURCE_BOUNDS_CHECK=1",
     "-fPIC",
+    "-fno-omit-frame-pointer",
     "-ffunction-sections",
     "-fdata-sections",
     "-std=c11",
@@ -606,8 +627,9 @@ try {
   const standaloneResult = JSON.parse(run(standalone, []));
   const benchmark = JSON.parse(output);
   benchmark.standalone = {
-    compiler: "cc -O3 -fPIC with the native artifact section/link flags",
+    compiler: "cc -O3 -fPIC with native bounds-check, frame, section, and link flags",
     contract: "same full compiled source-transparent core; 1000 repeated fixed degree-one pairs",
+    timing: { warmups: 10, samples: 9, callsPerSample: 50 },
     rows: standaloneResult.rows,
   };
   for (const row of benchmark.rows) {

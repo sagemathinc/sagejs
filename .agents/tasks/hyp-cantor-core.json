@@ -38,8 +38,18 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implements ordinary-Python, source-transparent prepared Cantor arithmetic for odd-degree one-infinity genus-2/3 Jacobians over supported odd prime fields. The public context provides exact canonical row packing/fingerprints, dynamic/native add, double, scalar, negate, subtract, sum, progression and fused BSGS batches, exact fallback/status diagnostics, resource limits, lazy Kummer composition, and immutable sealed packed results that preserve equality/hash/serialization semantics until explicit materialization. Exhaustive small-field, collision/general-h, current-kernel, CPython, compiled, scalar, fused-search, mutation-isolation, and public Jacobian differentials pass. Local p=1009 batches of 1,000 take about 2.9/3.9ms retained add, 18-20ms ordinary public add, 0.67/0.96s retained 256-bit scalar, and 0.88/1.17s after forced scalar materialization for genus 2/3. The benchmark separates fresh public packing, kernel, immutable publication, materialization, same-ABI traversal, and the exact full compiled standalone core with a shared output digest. With production bounds checks, frame/section/link flags, and matched 10-warmup plus 9-by-50-call samples, the raw addon is 1.053x/1.044x the standalone genus-2/3 core, closing the 1.15x boundary gate.",
+    "risks": [
+      "The exact v1 domain is deliberately limited to odd-degree one-infinity models, odd prime fields, genus 2/3, and p <= 2^32-1. Even-degree divisors need a versioned weight/infinity coordinate and an additional v slot and are rejected rather than misencoded.",
+      "The plan's fresh pack/unpack boundary criterion remains open: preparing 1,000 cached public divisors costs about 8.3-8.6ms, versus 0.02-0.03ms for a preallocated same-ABI traversal and 0.83-0.84ms for a full immutable no-op boundary. Retained canonical batches are a separate explicit API and do not close this fresh-input gate.",
+      "Same-host Magma 1,000-element 256-bit scalar parity, quiet bench-1 acceptance, Windows x64, Linux arm64, and macOS arm64 receipts remain integration work; no competitiveness claim is made from the noisy local host alone.",
+      "The combined integration tree currently exceeds the shared hyperelliptic algorithm package budget, and production native registry/package wiring is owned by integration rather than this claimed lane."
+    ],
+    "next_steps": [
+      "Integrate the compiler prerequisite commits first, then the complete implementation and benchmark receipt from this branch, retaining the production registrations and strict/native package split maintained by integration.",
+      "Design a generic opaque immutable native UInt64 buffer only if profiling justifies it; it could cache retained input buffers without exposing mutable split-brain state and reduce the remaining packed publication/conversion costs.",
+      "Run quiet same-contract Magma and Sage.js add/scalar receipts on bench-1 only after authorization, then validate the exact digest and dynamic fallback across Windows x64, Linux arm64, and macOS arm64.",
+      "Keep legacy in-core FLINT BSGS first for genus-3 certification until the fused source-transparent progression wins an end-to-end consumer benchmark; the exact fused kernel remains a fallback/challenger."
+    ]
   }
 }
