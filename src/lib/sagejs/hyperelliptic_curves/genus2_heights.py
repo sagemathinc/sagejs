@@ -577,9 +577,10 @@ class AutomaticHeightBounds(_SealedRecord):
         correction_lower: RealBall,
         correction_upper: RealBall,
         diagnostics: dict[str, Any],
+        _ball_encoder: Any = _ball_data,
     ) -> None:
-        self._correction_lower_data = _ball_data(correction_lower)
-        self._correction_upper_data = _ball_data(correction_upper)
+        self._correction_lower_data = _ball_encoder(correction_lower)
+        self._correction_upper_data = _ball_encoder(correction_upper)
         self._diagnostics = _freeze_data(diagnostics)
         self._seal()
 
@@ -637,10 +638,11 @@ class FiniteHeightCorrectionResult(_SealedRecord):
         tail_bound: RealBall,
         steps: int,
         diagnostics: dict[str, Any],
+        _ball_encoder: Any = _ball_data,
     ) -> None:
-        self._ball_data = _ball_data(ball)
-        self._partial_sum_data = _ball_data(partial_sum)
-        self._tail_bound_data = _ball_data(tail_bound)
+        self._ball_data = _ball_encoder(ball)
+        self._partial_sum_data = _ball_encoder(partial_sum)
+        self._tail_bound_data = _ball_encoder(tail_bound)
         self._steps = int(steps)
         self._diagnostics = _freeze_data(diagnostics)
         self._rigorous = True
@@ -706,10 +708,11 @@ class ArchimedeanHeightCorrectionResult(_SealedRecord):
         tail_bound: RealBall,
         steps: int,
         diagnostics: dict[str, Any],
+        _ball_encoder: Any = _ball_data,
     ) -> None:
-        self._ball_data = _ball_data(ball)
-        self._partial_sum_data = _ball_data(partial_sum)
-        self._tail_bound_data = _ball_data(tail_bound)
+        self._ball_data = _ball_encoder(ball)
+        self._partial_sum_data = _ball_encoder(partial_sum)
+        self._tail_bound_data = _ball_encoder(tail_bound)
         self._steps = int(steps)
         self._diagnostics = _freeze_data(diagnostics)
         self._seal()
@@ -1686,8 +1689,9 @@ class CanonicalHeightResult(_SealedRecord):
         bounds: AutomaticHeightBounds | None,
         diagnostics: dict[str, Any],
         _encoded_diagnostics: Any = None,
+        _ball_encoder: Any = _ball_data,
     ) -> None:
-        self._ball_data = _ball_data(ball)
+        self._ball_data = _ball_encoder(ball)
         self._status = str(status)
         self._steps = int(steps)
         self._provenance = _freeze_data(provenance)
@@ -2385,9 +2389,10 @@ class HeightPairingResult(_SealedRecord):
         height_results: tuple[CanonicalHeightResult, ...],
         diagnostics: dict[str, Any],
         _encoded_diagnostics: Any = None,
+        _ball_encoder: Any = _ball_data,
     ) -> None:
         self._matrix_data = tuple(
-            tuple(_ball_data(entry) for entry in row) for row in matrix
+            tuple(_ball_encoder(entry) for entry in row) for row in matrix
         )
         self._height_results = tuple(height_results)
         self._diagnostics = (
@@ -3188,8 +3193,9 @@ class RegulatorResult(_SealedRecord):
         pairing: HeightPairingResult,
         status: str,
         diagnostics: dict[str, Any],
+        _ball_encoder: Any = _ball_data,
     ) -> None:
-        self._ball_data = _ball_data(ball)
+        self._ball_data = _ball_encoder(ball)
         self._pairing = pairing
         self._status = str(status)
         self._diagnostics = _freeze_data(diagnostics)
