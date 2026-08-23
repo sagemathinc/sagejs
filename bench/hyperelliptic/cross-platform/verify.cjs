@@ -27,6 +27,16 @@ for (const { path, value } of receipts) {
     `${path}: schema`,
   );
   assert.equal(value.repository.status, "", `${path}: repository is dirty`);
+  assert.equal(
+    value.repository.commit,
+    reference.repository.commit,
+    `${path}: repository commit`,
+  );
+  assert.deepEqual(
+    value.repository.source_sha256,
+    reference.repository.source_sha256,
+    `${path}: mathematical source hashes`,
+  );
   assert.deepEqual(
     value.configuration.limits,
     reference.configuration.limits,
@@ -42,6 +52,19 @@ for (const { path, value } of receipts) {
     reference.configuration.repeat,
     `${path}: repetition count`,
   );
+  for (const name of [
+    "cantor_add_batch",
+    "cantor_scalar_batch",
+    "cantor_scalar_bits",
+    "cantor_progression_batch",
+    "cantor_scalar_repeat",
+  ]) {
+    assert.equal(
+      value.configuration[name],
+      reference.configuration[name],
+      `${path}: ${name}`,
+    );
+  }
   assert.deepEqual(
     value.cross_mode_exact,
     reference.cross_mode_exact,
@@ -80,6 +103,43 @@ for (const { path, value } of receipts) {
     /^\(True, 'native/,
     `${path}: required native capability`,
   );
+  assert.match(
+    value.modes.dynamic.cantor.capability,
+    /^\(False,/,
+    `${path}: forced dynamic Cantor capability`,
+  );
+  assert.match(
+    value.modes.native.cantor.capability,
+    /^\(True,/,
+    `${path}: required native Cantor capability`,
+  );
+  assert.equal(
+    value.modes.dynamic.cantor.tiny_exact_sha256,
+    value.modes.native.cantor.tiny_exact_sha256,
+    `${path}: tiny Cantor dynamic/native digest`,
+  );
+  assert.deepEqual(
+    value.modes.dynamic.cantor.cases.map((entry) => ({
+      add: entry.add_exact_sha256,
+      scalar: entry.scalar_exact_sha256,
+      progression: entry.progression_exact_sha256,
+    })),
+    value.modes.native.cantor.cases.map((entry) => ({
+      add: entry.add_exact_sha256,
+      scalar: entry.scalar_exact_sha256,
+      progression: entry.progression_exact_sha256,
+    })),
+    `${path}: Cantor dynamic/native digests`,
+  );
+  for (const mode of ["dynamic", "native"]) {
+    for (const entry of value.modes[mode].cantor.cases) {
+      assert.equal(
+        entry.progression_exact_sha256,
+        entry.progression_materialized_exact_sha256,
+        `${path}: genus-${entry.genus} ${mode} packed/materialized progression digest`,
+      );
+    }
+  }
 }
 
 const rows = receipts.map(({ path, value }) => ({
@@ -103,6 +163,37 @@ const rows = receipts.map(({ path, value }) => ({
     value.modes.dynamic.process_end_rss_bytes,
     value.modes.native.process_end_rss_bytes,
   ),
+  cantor: value.modes.native.cantor.cases.map((nativeCase, index) => {
+    const dynamicCase = value.modes.dynamic.cantor.cases[index];
+    return {
+      genus: nativeCase.genus,
+      add_1000_dynamic_ms: dynamicCase.add_batch.arithmetic_ms.median,
+      add_1000_native_ms: nativeCase.add_batch.arithmetic_ms.median,
+      add_speedup:
+        dynamicCase.add_batch.arithmetic_ms.median /
+        nativeCase.add_batch.arithmetic_ms.median,
+      scalar_batch_items: nativeCase.scalar_batch_items,
+      scalar_dynamic_ms: dynamicCase.scalar_batch.arithmetic_ms.median,
+      scalar_native_ms: nativeCase.scalar_batch.arithmetic_ms.median,
+      scalar_speedup:
+        dynamicCase.scalar_batch.arithmetic_ms.median /
+        nativeCase.scalar_batch.arithmetic_ms.median,
+      progression_1000_dynamic_ms:
+        dynamicCase.progression_batch.arithmetic_ms.median,
+      progression_1000_native_ms:
+        nativeCase.progression_batch.arithmetic_ms.median,
+      progression_speedup:
+        dynamicCase.progression_batch.arithmetic_ms.median /
+        nativeCase.progression_batch.arithmetic_ms.median,
+      progression_1000_materialized_dynamic_ms:
+        dynamicCase.progression_materialized_batch.arithmetic_ms.median,
+      progression_1000_materialized_native_ms:
+        nativeCase.progression_materialized_batch.arithmetic_ms.median,
+      native_materialization_overhead:
+        nativeCase.progression_materialized_batch.arithmetic_ms.median /
+        nativeCase.progression_batch.arithmetic_ms.median,
+    };
+  }),
 }));
 
 process.stdout.write(`${JSON.stringify({ exact: reference.cross_mode_exact, rows }, null, 2)}\n`);
