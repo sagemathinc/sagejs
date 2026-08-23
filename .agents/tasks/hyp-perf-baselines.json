@@ -62,6 +62,26 @@
       "commit": "4cf4e9ddec8b900a4c0868635859d63c3a36d71f",
       "workspace_fingerprint": "d5198957f14ccd0bd8364d8fb770e9a9f71b7ecc6e2b55a9b68f0e8567415f1f",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/hyperelliptic/competitive/local-streams.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.029,
+      "started_at": "2026-08-23T06:35:13.686Z",
+      "commit": "7a80e98da36e2d05895719707c2eee64bc63e725",
+      "workspace_fingerprint": "4dcedb63321e0f947dd096b6e158c84dacfa44013311e67e3f788ee29576c5da",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/hyperelliptic/competitive/validate.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.034,
+      "started_at": "2026-08-23T06:35:14.339Z",
+      "commit": "7a80e98da36e2d05895719707c2eee64bc63e725",
+      "workspace_fingerprint": "4dcedb63321e0f947dd096b6e158c84dacfa44013311e67e3f788ee29576c5da",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
