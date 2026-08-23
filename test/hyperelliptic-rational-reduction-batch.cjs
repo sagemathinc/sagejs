@@ -59,6 +59,26 @@ from sagejs.hyperelliptic_curves.saturation import (
 )
 
 assert is_compiled(reduce_rational_mumford_many_primes)
+dynamic_reduction = getattr(
+    reduce_rational_mumford_many_primes,
+    "javascript",
+    reduce_rational_mumford_many_primes,
+)
+dynamic_output = [0] * 16
+dynamic_statuses = [0] * 2
+assert dynamic_reduction(
+    dynamic_output,
+    dynamic_statuses,
+    [1],
+    [1, 1, 0, 0, 0, 0, 0],
+    [5, 1, 1, 1, 1, 1, 1],
+    [5, 7],
+    1,
+    2,
+)
+assert dynamic_statuses == [0, 1]
+assert dynamic_output[:8] == [1, 0, 1, 0, 0, 0, 0, 0]
+assert dynamic_output[8:] == [1, 3, 1, 0, 0, 0, 0, 0]
 
 
 def packed_rows(rows):
