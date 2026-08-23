@@ -428,6 +428,33 @@ except Genus2HeightCapabilityError:
     cross_model_rejected = True
 
 context = HeightContext(J)
+context.archimedean_correction(
+    P, precision=96, steps=4, bounds=valid, target_bits=None
+)
+cache_hits_before_forgery = context.diagnostics()[
+    "archimedean_correction_cache_hits"
+]
+same_endpoints_without_proof = AutomaticHeightBounds(
+    valid.correction_lower,
+    valid.correction_upper,
+    {"automatic_bound": "certified"},
+)
+cached_bound_forgery_rejected = False
+try:
+    context.archimedean_correction(
+        P,
+        precision=96,
+        steps=4,
+        bounds=same_endpoints_without_proof,
+        target_bits=None,
+    )
+except Genus2HeightCapabilityError:
+    cached_bound_forgery_rejected = True
+assert (
+    context.diagnostics()["archimedean_correction_cache_hits"]
+    == cache_hits_before_forgery
+)
+canonical_height(P, precision=96, steps=9, algorithm="local", context=context)
 tables = [list(table) for table in context._classical_duplication_terms]
 term = tables[0][0]
 tables[0][0] = (term[0] + 1,) + term[1:]
@@ -461,6 +488,7 @@ assert (
     and cross_model_rejected
     and finite_rejected
     and arch_rejected
+    and cached_bound_forgery_rejected
     and context_rejected
 )
 [
@@ -468,12 +496,13 @@ assert (
     cross_model_rejected,
     finite_rejected,
     arch_rejected,
+    cached_bound_forgery_rejected,
     context_rejected,
 ]
 `,
       { timeout: 120_000 },
     );
-    assert.equal(result.repr, "[True, True, True, True, True]");
+    assert.equal(result.repr, "[True, True, True, True, True, True]");
   } finally {
     await session.close();
   }
