@@ -7,7 +7,6 @@ explicit exact-completion diagnostic, never a public local-factor backend.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Mapping
 
 import sagejs as sage
@@ -21,29 +20,74 @@ _SIGNED64_MIN = -(2**63)
 _SIGNED64_MAX = 2**63 - 1
 
 
-@dataclass(frozen=True)
 class _RforestPackedBatch:
     """Validated compact rforest rows retained in their native buffers."""
 
-    normalization: str
-    backend_version: str
-    genus: int
-    excluded_denominator: int
-    truncated: bool
-    required_rows: int
-    row_count: int
-    start: int
-    stop: int
-    primes: Any
-    good: Any
-    coefficient_counts: Any
-    coefficients: Any
-    row_status: Any
-    forest_status: int
-    direct_status: int
-    singular_status: int
-    unsupported_characteristic_status: int
-    resource_limit_status: int
+    __slots__ = (
+        "normalization",
+        "backend_version",
+        "genus",
+        "excluded_denominator",
+        "truncated",
+        "required_rows",
+        "row_count",
+        "start",
+        "stop",
+        "primes",
+        "good",
+        "coefficient_counts",
+        "coefficients",
+        "row_status",
+        "forest_status",
+        "direct_status",
+        "singular_status",
+        "unsupported_characteristic_status",
+        "resource_limit_status",
+    )
+
+    def __init__(
+        self,
+        *,
+        normalization: str,
+        backend_version: str,
+        genus: int,
+        excluded_denominator: int,
+        truncated: bool,
+        required_rows: int,
+        row_count: int,
+        start: int,
+        stop: int,
+        primes: Any,
+        good: Any,
+        coefficient_counts: Any,
+        coefficients: Any,
+        row_status: Any,
+        forest_status: int,
+        direct_status: int,
+        singular_status: int,
+        unsupported_characteristic_status: int,
+        resource_limit_status: int,
+    ) -> None:
+        self.normalization = normalization
+        self.backend_version = backend_version
+        self.genus = genus
+        self.excluded_denominator = excluded_denominator
+        self.truncated = truncated
+        self.required_rows = required_rows
+        self.row_count = row_count
+        self.start = start
+        self.stop = stop
+        self.primes = primes
+        self.good = good
+        self.coefficient_counts = coefficient_counts
+        self.coefficients = coefficients
+        self.row_status = row_status
+        self.forest_status = forest_status
+        self.direct_status = direct_status
+        self.singular_status = singular_status
+        self.unsupported_characteristic_status = unsupported_characteristic_status
+        self.resource_limit_status = resource_limit_status
+        runtime.object.freeze(self)
 
 
 def _property(value: Any, name: str) -> Any:
