@@ -372,6 +372,89 @@ True`,
   }
 });
 
+test("packed genus-three witnesses match public reductions and detach certificates", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      String.raw`
+from sagejs.hyperelliptic_curves.certified_genus3 import (
+    _deterministic_elements,
+    _deterministic_packed_divisor,
+    _least_nonsquare,
+    _packed_cantor_kernels,
+    _packed_completed_square_model,
+    _packed_progression_certificate,
+    _rational_completed_square_data,
+    _rational_completed_square_reduction,
+)
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+h = x**3 + 1
+C = HyperellipticCurve((x**7 + x + 1 - h**2)/4, h)
+data = _rational_completed_square_data(C)
+for prime in (3, 5, 13, 19):
+    packed_model = _packed_completed_square_model(data, prime)
+    reduced = _rational_completed_square_reduction(C, prime, data)
+    reduced_f, reduced_h = reduced.hyperelliptic_polynomials()
+    expected_model = tuple(int(reduced_f[index]) for index in range(8))
+    expected_model += tuple(int(reduced_h[index]) for index in range(4))
+    assert packed_model == expected_model
+    packed_divisor = _deterministic_packed_divisor(packed_model, prime, prime)
+    J = reduced.jacobian()
+    public_divisor = _deterministic_elements(
+        J, prime, max_x_values=prime, max_elements=1)[0]
+    u, v = public_divisor.uv()
+    expected_divisor = (int(u.degree()),)
+    expected_divisor += tuple(int(u[index]) for index in range(4))
+    expected_divisor += tuple(int(v[index]) for index in range(3))
+    assert packed_divisor == expected_divisor
+    nonsquare = _least_nonsquare(prime)
+    twist_model = _packed_completed_square_model(data, prime, nonsquare)
+    assert twist_model[:8] == tuple(
+        nonsquare*value % prime for value in packed_model[:8])
+
+try:
+    _packed_completed_square_model((((QQ(1)/3),), "x", 1), 3)
+    raise AssertionError("a denominator prime was accepted")
+except ArithmeticError:
+    pass
+
+if _packed_cantor_kernels() is not None:
+    prime = 5
+    model = _packed_completed_square_model(data, prime)
+    divisor = _deterministic_packed_divisor(model, prime, prime)
+    raw = _packed_progression_certificate(
+        model,
+        divisor,
+        prime,
+        ({"base":41, "stride":7, "count":5},),
+        {
+            "max_trial_divisions":1000,
+            "max_baby_steps":1000,
+            "max_group_operations":1000,
+        },
+    )
+    assert raw["status"] == "found"
+    certificate = raw["certificate"]
+    assert certificate["element_order"] == 55
+    assert certificate["prime_factors"] == ((5,1),(11,1))
+    assert certificate["verification"] == "native_exact_factor_and_strip"
+    assert certificate["witness_representation"] == "packed-mumford-v1"
+    assert "divisor" not in certificate
+    payload = certificate["packed_divisor"]
+    assert payload == ("packed-mumford-v1", prime, model, divisor)
+    mutable_model = list(model)
+    mutable_model[0] += 1
+    assert payload[2] == model and isinstance(payload[2], tuple)
+True`,
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "True");
+  } finally {
+    await session.close();
+  }
+});
+
 test("prepared genus-three BSGS uses packed progressions and exact factor strip", async () => {
   const session = await createSage();
   try {
