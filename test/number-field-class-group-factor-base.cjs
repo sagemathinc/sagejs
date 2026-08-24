@@ -79,6 +79,18 @@ packed_field = NumberField(x**3 - x**2 + 7*x + 8, "packed")
 packed_bound = factor_bases.bdf_bound(packed_field.maximal_order())
 factor_bases._bdf_interval_kernel_override = saved
 assert packed_bound.to_dict() == scalar_bound.to_dict()
+
+# A floating search hint is never accepted as evidence.  Deliberately wrong
+# low and high hints must reproduce the same exact interval certificate.
+saved_hint = factor_bases._bdf_search_hint_override
+for hint in (2, 11, 100):
+    factor_bases._bdf_search_hint_override = hint
+    hinted_field = NumberField(x**3 - x**2 + 7*x + 8, "hint" + str(hint))
+    hinted_bound = factor_bases.bdf_bound(
+        hinted_field.maximal_order(), max_bound=100
+    )
+    assert hinted_bound.to_dict() == scalar_bound.to_dict()
+factor_bases._bdf_search_hint_override = saved_hint
 assert packed_bound.bound == 11
 assert packed_bound.interval.to_dyadic_dict(64) == {
     "scale_bits": 64,

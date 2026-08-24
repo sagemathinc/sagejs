@@ -16,6 +16,7 @@ above the requested bound.
 from __future__ import annotations
 
 import json
+import math
 from typing import Any, Iterator
 
 import sagejs.runtime as runtime
@@ -46,6 +47,7 @@ _catalan_cache: dict[int, _Interval] = {}
 _scalar_log_two_cache: dict[int, _Interval] = {}
 _bound_cache: list[tuple[Any, str, Any]] = []
 _bdf_interval_kernel_override: Any = None
+_bdf_search_hint_override: Any = None
 
 
 def _gcd(left: int, right: int) -> int:
@@ -947,6 +949,83 @@ class _BDFEvaluator:
         )
         return term_count, right_side, left_side
 
+    def approximate_decision(
+        self,
+        x_value: int,
+        degree: int,
+        r1: int,
+        discriminant: int,
+    ) -> bool:
+        """Estimate the BDF inequality solely to choose an exact-search hint.
+
+        This binary-floating computation never supplies mathematical evidence.
+        `bdf_bound` verifies a false/true bracket with exact rational intervals
+        before it uses the ordinary monotone bisection below.
+        """
+        if x_value < 2:
+            return False
+        self.scan_to(x_value)
+        log_x = math.log(x_value)
+        total = 0.0
+        for prime in sorted(self.records):
+            if prime >= x_value:
+                break
+            for _ramification, residue_degree in self.records[prime]:
+                norm = prime**residue_degree
+                if norm >= x_value:
+                    continue
+                log_norm = math.log(norm)
+                power = norm
+                exponent = 1
+                while power < x_value:
+                    total += (
+                        log_norm
+                        / math.sqrt(power)
+                        * (1.0 - exponent * log_norm / log_x)
+                    )
+                    exponent += 1
+                    power *= norm
+        # These constants select a likely bracket only.  Exact interval
+        # enclosures for all four constants are recomputed by `inequality`.
+        euler_gamma = 0.5772156649015329
+        catalan = 0.915965594177219
+        right_side = (
+            2.0 * total
+            - (degree * math.pi * math.pi / 2.0 + 4.0 * r1 * catalan) / log_x
+        )
+        left_side = (
+            math.log(discriminant)
+            - degree * (euler_gamma + math.log(8.0 * math.pi))
+            - r1 * math.pi / 2.0
+        )
+        return right_side > left_side
+
+
+def _bdf_search_hint(
+    evaluator: _BDFEvaluator,
+    degree: int,
+    r1: int,
+    discriminant: int,
+    max_bound: int,
+) -> int:
+    """Return an untrusted numerical hint for the exact BDF search."""
+    if type(_bdf_search_hint_override) is int:
+        return max(2, min(max_bound, _bdf_search_hint_override))
+    lower = 1
+    upper = 2
+    while not evaluator.approximate_decision(upper, degree, r1, discriminant):
+        if upper >= max_bound:
+            return max_bound
+        lower = upper
+        upper = min(max_bound, 2 * upper)
+    while upper - lower > 1:
+        middle = (lower + upper) // 2
+        if evaluator.approximate_decision(middle, degree, r1, discriminant):
+            upper = middle
+        else:
+            lower = middle
+    return upper
+
 
 def bdf_bound(value: Any, *, max_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBound:
     """Return a rigorously rounded BDF GRH factor-base bound.
@@ -982,13 +1061,35 @@ def bdf_bound(value: Any, *, max_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBo
             "BDF inequality is numerically inseparable at x=" + str(candidate)
         )
 
-    lower = 1
-    upper = 2
-    while not decision(upper):
+    try:
+        upper = _bdf_search_hint(evaluator, degree, r1, discriminant, max_bound)
+    except (ArithmeticError, TypeError, ValueError):
+        # An approximate accelerator must not narrow the exact algorithm's
+        # domain.  Candidate 2 recovers a conservative upward exact search.
+        upper = 2
+    if decision(upper):
+        if upper == 2:
+            lower = 1
+        elif not decision(upper - 1):
+            lower = upper - 1
+        else:
+            upper -= 1
+            lower = max(1, upper // 2)
+            while lower >= 2 and decision(lower):
+                upper = lower
+                if lower == 2:
+                    lower = 1
+                    break
+                lower = max(1, lower // 2)
+    else:
         lower = upper
-        if upper >= max_bound:
-            raise ValueError("BDF search exceeded max_bound=" + str(max_bound))
-        upper = min(max_bound, 2 * upper)
+        if upper < max_bound:
+            upper += 1
+        while not decision(upper):
+            lower = upper
+            if upper >= max_bound:
+                raise ValueError("BDF search exceeded max_bound=" + str(max_bound))
+            upper = min(max_bound, 2 * upper)
     while upper - lower > 1:
         middle = (lower + upper) // 2
         if decision(middle):
