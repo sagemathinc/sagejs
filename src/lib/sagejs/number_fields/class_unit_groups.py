@@ -1004,6 +1004,141 @@ class ClassUnitComputation:
         return "Incomplete class/unit computation (" + self.reason + ")"
 
 
+_CLASS_NUMBER_PROJECTION_TOKEN = object()
+
+
+class _ClassNumberProjection:
+    """One live rigorous scalar projection with a resumable engine suffix."""
+
+    def __init__(
+        self,
+        token: object,
+        engine: Any,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        units: tuple[Any, ...],
+        torsion: Any,
+        regulator: Any,
+        index: Any,
+        unit_rank: int,
+        proof_status: str,
+    ) -> None:
+        if token is not _CLASS_NUMBER_PROJECTION_TOKEN:
+            raise TypeError("class-number projections are engine-issued")
+        if proof_status not in (
+            EXACT_UNCONDITIONAL,
+            EXACT_RELATIONS_CONDITIONAL_GRH,
+        ):
+            raise ValueError("a class-number projection needs an exact proof status")
+        if (
+            int(getattr(presentation, "rank", -1)) != len(factor_base)
+            or getattr(presentation, "order", None) is None
+            or not bool(getattr(index, "rigorous", False))
+            or not bool(getattr(index, "index_one", False))
+            or int(getattr(index, "lower_index", 0)) != 1
+            or int(getattr(index, "upper_index", 0)) != 1
+            or len(units) != int(unit_rank)
+            or getattr(plan, "order", None) is not engine.order
+            or not engine._context_relation_stage_authenticated(collector, presentation)
+        ):
+            raise ArithmeticError(
+                "a class-number projection needs a live exact index-one stage"
+            )
+        live_proof = engine._context_analytic_proof()
+        if (
+            live_proof is None
+            or len(live_proof) != 6
+            or any(
+                retained is not supplied
+                for retained, supplied in zip(live_proof[0], units, strict=True)
+            )
+            or int(live_proof[1]) != int(presentation.order)
+            or int(live_proof[2]) != int(getattr(torsion, "order", 0))
+            or live_proof[3] is not regulator
+            or live_proof[5] is not index
+        ):
+            raise ArithmeticError(
+                "a class-number projection lost its live analytic authority"
+            )
+        self.field = engine.field
+        self.order = engine.order
+        self.class_number = int(presentation.order)
+        self.proof_status = str(proof_status)
+        self._engine = engine
+        self._continuation = (
+            plan,
+            tuple(factor_base),
+            collector,
+            presentation,
+            tuple(units),
+            torsion,
+            regulator,
+            index,
+            int(unit_rank),
+            str(proof_status),
+        )
+        self._completed: ClassUnitComputation | None = None
+        self.__dict__["_authentication_snapshot"] = (
+            id(self.field),
+            id(self.order),
+            self.class_number,
+            self.proof_status,
+            id(self._engine),
+            tuple(id(value) for value in self._continuation),
+        )
+        self.__dict__["_frozen"] = True
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if self.__dict__.get("_frozen", False):
+            raise AttributeError("class-number projections are immutable")
+        self.__dict__[name] = value
+
+    def _authentication_matches(self) -> bool:
+        try:
+            return self.__dict__.get("_authentication_snapshot") == (
+                id(self.field),
+                id(self.order),
+                self.class_number,
+                self.proof_status,
+                id(self._engine),
+                tuple(id(value) for value in self._continuation),
+            )
+        except (AttributeError, TypeError, ValueError):
+            return False
+
+    def matches(self, field: Any, proof: bool) -> bool:
+        return bool(
+            self._authentication_matches()
+            and self.field is field
+            and self.order is field.maximal_order()
+            and (not proof or self.proof_status == EXACT_UNCONDITIONAL)
+            and self._engine.context is not None
+        )
+
+    def finish(self) -> ClassUnitComputation:
+        completed = self._completed
+        if completed is not None:
+            return completed
+        paused_ns = getattr(self._engine, "_projection_pause_started_ns", None)
+        if isinstance(paused_ns, int):
+            self._engine._started_ns += time.perf_counter_ns() - paused_ns
+            self._engine._projection_pause_started_ns = None
+        try:
+            completed = self._engine._finish_class_unit_computation(*self._continuation)
+        except RuntimeError as error:
+            if not _is_cancellation(error):
+                raise
+            completed = self._engine._incomplete("class/unit computation cancelled")
+        except (ImportError, TypeError, ValueError, ArithmeticError) as error:
+            completed = self._engine._incomplete(str(error))
+        if not isinstance(completed, ClassUnitComputation):
+            raise ArithmeticError("a class-number continuation returned no computation")
+        self.__dict__["_completed"] = completed
+        return completed
+
+
 class _Components:
     def __init__(self) -> None:
         self.context = _optional_module("sagejs.number_fields.class_unit_context")
@@ -1374,6 +1509,7 @@ class ClassUnitGroupEngine:
         self._proof_progress: Any = None
         self._proof_dependency_hashes: dict[str, str] = {}
         self._authenticated_cubic_relation_seed_cache: Any = _CUBIC_RELATION_SEED_UNREAD
+        self._projection_pause_started_ns: int | None = None
 
     def _stage(self, name: str, state: str, **details: Any) -> None:
         if name in self._phase_timings and "elapsed_seconds" not in details:
@@ -4432,7 +4568,169 @@ class ClassUnitGroupEngine:
         except (AttributeError, ImportError, TypeError, ValueError, ArithmeticError):
             return None
 
-    def run(self) -> ClassUnitComputation:
+    def _finish_class_unit_computation(
+        self,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        units: tuple[Any, ...],
+        torsion: Any,
+        regulator: Any,
+        index: Any,
+        unit_rank: int,
+        initial_proof_status: str,
+    ) -> ClassUnitComputation:
+        """Finish the proof objects and maps after one rigorous `hR` stage."""
+        (
+            collector,
+            presentation,
+            units,
+            torsion,
+            regulator,
+            index,
+            saturation_record,
+        ) = self._adaptive_saturation(
+            factor_base,
+            collector,
+            presentation,
+            units,
+            torsion,
+            regulator,
+            index,
+            unit_rank,
+            plan=plan,
+            proof_status=initial_proof_status,
+        )
+        unit_group = UnitGroupComputation(
+            torsion,
+            units,
+            unit_rank,
+            complete=bool(index.index_one),
+            regulator=regulator,
+            reason="rigorous hR index-one validation",
+            proof_status=initial_proof_status,
+        )
+        try:
+            self._resource_usage["saturation_live_authentication_requests"] += 1
+            live_saturation = self._consume_context_saturation_record(saturation_record)
+            if live_saturation:
+                self._resource_usage["saturation_live_authentication_hits"] += 1
+            else:
+                self._resource_usage[
+                    "saturation_live_authentication_fallback_replays"
+                ] += 1
+            saturation_replayed = bool(
+                saturation_record.complete
+                and (
+                    live_saturation or saturation_record.verify(self.field, self.order)
+                )
+            )
+        finally:
+            # Proof objects used after the computation must replay their
+            # detached evidence instead of inheriting this live-work memo.
+            self._deactivate_context_generation_verification()
+        if not index.index_one or not saturation_replayed:
+            return self._incomplete(
+                (
+                    "bounded saturation did not isolate class/unit index one"
+                    if not index.index_one
+                    else "class/unit index one failed authenticated analytic replay"
+                ),
+                invariants=presentation.invariants,
+                unit_group=unit_group,
+                diagnostics={
+                    "saturation": _saturation_diagnostic_summary(saturation_record),
+                },
+            )
+        group = self._class_group(
+            factor_base,
+            collector,
+            presentation,
+            initial_proof_status,
+            str(plan.theorem),
+        )
+        self._proof_dependency_hashes = self._proof_dependencies(
+            group, collector, presentation, saturation_record
+        )
+        proof_records: tuple[Any, ...] = ()
+        proof_status = initial_proof_status
+        if _needs_unconditional_upgrade(self.proof, initial_proof_status):
+            proof_records = self._unconditional_proof_pass(group)
+            proof_status = EXACT_UNCONDITIONAL
+            group.proof_status = proof_status
+            group.factor_base_theorem = "Minkowski ideal-class theorem"
+            unit_group.proof_status = proof_status
+        self._stage(
+            "proof",
+            "complete",
+            proof_status=proof_status,
+            minkowski_primes=len(proof_records),
+            exact_relations=len(collector.records),
+        )
+        self._phase_finish("total", self._started_ns)
+        self._stage("terminal", "complete", class_number=group.order())
+        self._checkpoint_capture(
+            {
+                "matrix_state": presentation,
+                "proof_progress": self._proof_progress,
+                "diagnostics": self._diagnostics(),
+            }
+        )
+        self._checkpoint_save(force=True)
+        terminal_diagnostics = self._diagnostics(
+            {
+                "factor_base_bound": int(plan.bound),
+                "factor_base_size": len(factor_base),
+                "relations": len(collector.records),
+                "unconditional_prime_records": proof_records,
+                "saturation": _saturation_diagnostic_summary(saturation_record),
+                "proof_dependency_hashes": dict(self._proof_dependency_hashes),
+                "proof_progress": (
+                    None
+                    if self._proof_progress is None
+                    else self._proof_progress.to_dict()
+                ),
+            }
+        )
+        self._retain_context_terminal(
+            proof_status,
+            "exact relations and rigorous class/unit index one",
+            theorem=str(group.factor_base_theorem),
+            bound=(
+                int(plan.bound)
+                if proof_status == EXACT_RELATIONS_CONDITIONAL_GRH or not proof_records
+                else None
+            ),
+            assumptions=(
+                tuple(plan.assumptions)
+                if proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+                else ()
+            ),
+            units=units,
+            saturation_record=saturation_record,
+            class_group=group,
+            unit_group=unit_group,
+            diagnostics=terminal_diagnostics,
+        )
+        return ClassUnitComputation(
+            self.field,
+            proof_status=proof_status,
+            complete=True,
+            reason="exact relations and rigorous class/unit index one",
+            algorithm="buchmann-hecke",
+            stages=self.stages,
+            class_group=group,
+            unit_group=unit_group,
+            tentative_invariants=presentation.invariants,
+            context=self.context,
+            diagnostics=terminal_diagnostics,
+            saturation_record=saturation_record,
+            proof_progress=self._proof_progress,
+            proof_dependency_hashes=self._proof_dependency_hashes,
+        )
+
+    def run(self, *, class_number_only: bool = False) -> Any:
         self._check_cancelled()
         specialized = self._specialized()
         if specialized is not None:
@@ -4520,15 +4818,36 @@ class ClassUnitGroupEngine:
                 presentation, units, unit_rank
             )
             initial_proof_status = _factor_base_proof_status(plan)
-            (
-                collector,
-                presentation,
-                units,
-                torsion,
-                regulator,
-                index,
-                saturation_record,
-            ) = self._adaptive_saturation(
+            if (
+                class_number_only
+                and index.index_one
+                and (not self.proof or initial_proof_status == EXACT_UNCONDITIONAL)
+            ):
+                self._phase_finish("class-number-total", self._started_ns)
+                self._stage(
+                    "class-number-projection",
+                    "complete",
+                    class_number=int(presentation.order),
+                    proof_status=initial_proof_status,
+                    rigorous=True,
+                )
+                self._projection_pause_started_ns = time.perf_counter_ns()
+                return _ClassNumberProjection(
+                    _CLASS_NUMBER_PROJECTION_TOKEN,
+                    self,
+                    plan,
+                    factor_base,
+                    collector,
+                    presentation,
+                    units,
+                    torsion,
+                    regulator,
+                    index,
+                    unit_rank,
+                    initial_proof_status,
+                )
+            return self._finish_class_unit_computation(
+                plan,
                 factor_base,
                 collector,
                 presentation,
@@ -4537,141 +4856,8 @@ class ClassUnitGroupEngine:
                 regulator,
                 index,
                 unit_rank,
-                plan=plan,
-                proof_status=initial_proof_status,
-            )
-            unit_group = UnitGroupComputation(
-                torsion,
-                units,
-                unit_rank,
-                complete=bool(index.index_one),
-                regulator=regulator,
-                reason="rigorous hR index-one validation",
-                proof_status=initial_proof_status,
-            )
-            try:
-                self._resource_usage["saturation_live_authentication_requests"] += 1
-                live_saturation = self._consume_context_saturation_record(
-                    saturation_record
-                )
-                if live_saturation:
-                    self._resource_usage["saturation_live_authentication_hits"] += 1
-                else:
-                    self._resource_usage[
-                        "saturation_live_authentication_fallback_replays"
-                    ] += 1
-                saturation_replayed = bool(
-                    saturation_record.complete
-                    and (
-                        live_saturation
-                        or saturation_record.verify(self.field, self.order)
-                    )
-                )
-            finally:
-                # Proof objects used after the computation must replay their
-                # detached evidence instead of inheriting this live-work memo.
-                self._deactivate_context_generation_verification()
-            if not index.index_one or not saturation_replayed:
-                return self._incomplete(
-                    (
-                        "bounded saturation did not isolate class/unit index one"
-                        if not index.index_one
-                        else "class/unit index one failed authenticated analytic replay"
-                    ),
-                    invariants=presentation.invariants,
-                    unit_group=unit_group,
-                    diagnostics={
-                        "saturation": _saturation_diagnostic_summary(saturation_record),
-                    },
-                )
-            group = self._class_group(
-                factor_base,
-                collector,
-                presentation,
                 initial_proof_status,
-                str(plan.theorem),
             )
-            self._proof_dependency_hashes = self._proof_dependencies(
-                group, collector, presentation, saturation_record
-            )
-            proof_records: tuple[Any, ...] = ()
-            proof_status = initial_proof_status
-            if _needs_unconditional_upgrade(self.proof, initial_proof_status):
-                proof_records = self._unconditional_proof_pass(group)
-                proof_status = EXACT_UNCONDITIONAL
-                group.proof_status = proof_status
-                group.factor_base_theorem = "Minkowski ideal-class theorem"
-                unit_group.proof_status = proof_status
-            self._stage(
-                "proof",
-                "complete",
-                proof_status=proof_status,
-                minkowski_primes=len(proof_records),
-                exact_relations=len(collector.records),
-            )
-            self._phase_finish("total", self._started_ns)
-            self._stage("terminal", "complete", class_number=group.order())
-            self._checkpoint_capture(
-                {
-                    "matrix_state": presentation,
-                    "proof_progress": self._proof_progress,
-                    "diagnostics": self._diagnostics(),
-                }
-            )
-            self._checkpoint_save(force=True)
-            terminal_diagnostics = self._diagnostics(
-                {
-                    "factor_base_bound": int(plan.bound),
-                    "factor_base_size": len(factor_base),
-                    "relations": len(collector.records),
-                    "unconditional_prime_records": proof_records,
-                    "saturation": _saturation_diagnostic_summary(saturation_record),
-                    "proof_dependency_hashes": dict(self._proof_dependency_hashes),
-                    "proof_progress": (
-                        None
-                        if self._proof_progress is None
-                        else self._proof_progress.to_dict()
-                    ),
-                }
-            )
-            self._retain_context_terminal(
-                proof_status,
-                "exact relations and rigorous class/unit index one",
-                theorem=str(group.factor_base_theorem),
-                bound=(
-                    int(plan.bound)
-                    if proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
-                    or not proof_records
-                    else None
-                ),
-                assumptions=(
-                    tuple(plan.assumptions)
-                    if proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
-                    else ()
-                ),
-                units=units,
-                saturation_record=saturation_record,
-                class_group=group,
-                unit_group=unit_group,
-                diagnostics=terminal_diagnostics,
-            )
-            result = ClassUnitComputation(
-                self.field,
-                proof_status=proof_status,
-                complete=True,
-                reason="exact relations and rigorous class/unit index one",
-                algorithm="buchmann-hecke",
-                stages=self.stages,
-                class_group=group,
-                unit_group=unit_group,
-                tentative_invariants=presentation.invariants,
-                context=self.context,
-                diagnostics=terminal_diagnostics,
-                saturation_record=saturation_record,
-                proof_progress=self._proof_progress,
-                proof_dependency_hashes=self._proof_dependency_hashes,
-            )
-            return result
         except RuntimeError as error:
             if _is_cancellation(error):
                 return self._incomplete(
@@ -4814,6 +5000,46 @@ def compute_class_unit_group(
 class_unit_group = compute_class_unit_group
 
 
+def _class_number_projection_cache_key(
+    proof: bool, limits: ClassUnitEngineLimits
+) -> tuple[Any, ...]:
+    return (
+        bool(proof),
+        "auto",
+        0,
+        tuple(sorted(limits.to_dict().items())),
+    )
+
+
+def _cached_class_number_projection(
+    field: Any, cache_key: tuple[Any, ...], proof: bool
+) -> _ClassNumberProjection | None:
+    cache = getattr(field, "_class_number_projection_cache", None)
+    if not isinstance(cache, dict):
+        return None
+    projection = cache.get(cache_key)
+    return (
+        projection
+        if isinstance(projection, _ClassNumberProjection)
+        and projection.matches(field, proof)
+        else None
+    )
+
+
+def _retain_class_number_projection(
+    field: Any,
+    projection: _ClassNumberProjection,
+    limits: ClassUnitEngineLimits,
+) -> None:
+    cache = getattr(field, "_class_number_projection_cache", None)
+    if not isinstance(cache, dict):
+        cache = {}
+        field._class_number_projection_cache = cache
+    cache[_class_number_projection_cache_key(False, limits)] = projection
+    if projection.proof_status == EXACT_UNCONDITIONAL:
+        cache[_class_number_projection_cache_key(True, limits)] = projection
+
+
 def class_unit_context(
     field: Any,
     *,
@@ -4856,6 +5082,21 @@ def class_unit_context(
     cache = getattr(field, "_class_unit_engine_cache", None)
     if use_cache and isinstance(cache, dict) and cache_key in cache:
         return cache[cache_key]
+    if (
+        use_cache
+        and int(field.degree()) == 3
+        and algorithm == "auto"
+        and seed == 0
+        and selected_limits.to_dict() == ClassUnitEngineLimits().to_dict()
+    ):
+        projection = _cached_class_number_projection(field, cache_key, proof_value)
+        if projection is not None:
+            result = projection.finish()
+            if not isinstance(cache, dict):
+                cache = {}
+                field._class_unit_engine_cache = cache
+            cache[cache_key] = result
+            return result
     result = compute_class_unit_group(
         field,
         proof=proof_value,
@@ -4921,14 +5162,24 @@ def cubic_class_number_projection(field: Any, proof: bool | None = None) -> int:
 
     A bounded class-only producer may finish immediately.  If it instead
     obtains an exact relation prefix, its synchronous receiver constructs the
-    coupled engine and binds those live objects directly into the engine's
-    `ClassUnitGroupContext`.  No serialized seed snapshot is needed between
-    the two stages; detached or later cached artifacts retain the ordinary
-    authenticated replay route.
+    coupled engine and binds those live objects directly into its
+    `ClassUnitGroupContext`.  Once the exact relation presentation and rigorous
+    `hR` index prove the scalar, the engine retains a sealed continuation rather
+    than eagerly constructing saturation certificates and group maps.  A later
+    class- or unit-group request resumes that same context.  No serialized seed
+    snapshot is needed between the stages; detached artifacts retain the
+    ordinary authenticated replay route.
     """
     if int(field.degree()) != 3:
         raise ValueError("the cubic class-number projection requires degree three")
     proof_value = True if proof is None else bool(proof)
+    default_limits = ClassUnitEngineLimits()
+    projection_key = _class_number_projection_cache_key(proof_value, default_limits)
+    cached_projection = _cached_class_number_projection(
+        field, projection_key, proof_value
+    )
+    if cached_projection is not None:
+        return int(cached_projection.class_number)
     cubic = __import__(
         "sagejs.number_fields.cubic_class_number", fromlist=["cubic_class_number"]
     )
@@ -5004,7 +5255,14 @@ def cubic_class_number_projection(field: Any, proof: bool | None = None) -> int:
         return class_number(field, proof=proof_value, algorithm="auto")
 
     engine = engine_holder[0]
-    result = engine.run()
+    result = engine.run(class_number_only=True)
+    if isinstance(result, _ClassNumberProjection):
+        if not result.matches(field, proof_value):
+            raise ArithmeticError("the cubic class-number projection lost authority")
+        if retain_artifact:
+            field._bounded_cubic_class_number_artifact = artifact
+        _retain_class_number_projection(field, result, default_limits)
+        return int(result.class_number)
     answer = result.class_number()
     if retain_artifact:
         # A context-bound prefix is useful only for the uninterrupted run.

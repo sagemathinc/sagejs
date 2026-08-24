@@ -523,7 +523,16 @@ assert artifact_search["integral_sieve_dependency_relations"] == 1
 assert artifact.relation_records[-1].provenance["algorithm"] == (
     "packed-cubic-unit-dependency-seed"
 )
-result = list(K._class_unit_engine_cache.values())[-1]
+assert len(K._class_unit_engine_cache) == 0
+projection = list(K._class_number_projection_cache.values())[-1]
+assert projection.class_number == 2
+try:
+    projection.class_number = 99
+    raise AssertionError("a cached class-number projection was mutable")
+except AttributeError:
+    pass
+result = K.class_unit_group(proof=True)
+assert projection._completed is result
 resources = result.diagnostics["resources"]
 assert result.proof_status == "exact-unconditional"
 assert result.diagnostics["factor_base_bound"] == 4
@@ -841,7 +850,10 @@ assert K.class_number(proof=False) == 5
 artifact = K._bounded_cubic_class_number_artifact
 assert len(artifact.factor_base) == 7
 assert len(artifact.relation_records) == 8
-result = list(K._class_unit_engine_cache.values())[-1]
+assert len(K._class_unit_engine_cache) == 0
+projection = list(K._class_number_projection_cache.values())[-1]
+result = K.class_unit_group(proof=False)
+assert projection._completed is result
 resources = result.diagnostics["resources"]
 assert result.proof_status == "exact-unconditional"
 assert result.diagnostics["factor_base_bound"] == 11
@@ -889,7 +901,11 @@ assert L._bounded_cubic_class_number_artifact is large_artifact
 P = L
 assert P.class_number(proof=True) == 6
 assert P._bounded_cubic_class_number_artifact is not large_artifact
-proof_result = list(P._class_unit_engine_cache.values())[-1]
+proof_projection = P._class_number_projection_cache[
+    next(key for key in P._class_number_projection_cache if key[0] is True)
+]
+proof_result = P.class_unit_group(proof=True)
+assert proof_projection._completed is proof_result
 proof_resources = proof_result.diagnostics["resources"]
 assert proof_result.proof_status == "exact-unconditional"
 assert proof_result.diagnostics["factor_base_bound"] == 17
@@ -916,7 +932,9 @@ assert widened_search["integral_sieve_dependency_candidates"] == 2
 assert widened_search["integral_sieve_dependency_relations"] == 2
 assert widened_search["integral_sieve_dependency_coefficient_bound"] == 4
 assert len(widened_artifact.relation_records) == 9
-widened_result = list(W._class_unit_engine_cache.values())[-1]
+widened_projection = list(W._class_number_projection_cache.values())[-1]
+widened_result = W.class_unit_group(proof=False)
+assert widened_projection._completed is widened_result
 widened_resources = widened_result.diagnostics["resources"]
 assert widened_result.proof_status == "exact-unconditional"
 assert widened_resources["cubic_relation_seed_relations"] == 9
