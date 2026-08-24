@@ -135,35 +135,6 @@ def _json_value(value: Any, path: str = "$") -> Any:
     raise TypeError(path + " is not JSON-safe")
 
 
-def _json_identity_key(value: Any) -> tuple[Any, ...]:
-    """Freeze exact JSON evidence into a hashable live identity.
-
-    Relation collectors need content-sensitive deduplication and mutation-safe
-    admission receipts, but they do not need to serialize those live checks to
-    UTF-8 and immediately hash the bytes.  Type tags preserve the distinctions
-    made by canonical JSON (in particular `bool` versus `int`), while detached
-    certificates continue to use `_canonical_json` unchanged.
-    """
-    if value is None:
-        return ("none",)
-    if isinstance(value, bool):
-        return ("bool", value)
-    if isinstance(value, int):
-        return ("int", value)
-    if isinstance(value, float):
-        return ("float", repr(value))
-    if isinstance(value, str):
-        return ("str", value)
-    if isinstance(value, (list, tuple)):
-        return ("list", tuple(_json_identity_key(item) for item in value))
-    if isinstance(value, dict):
-        return (
-            "dict",
-            tuple((key, _json_identity_key(value[key])) for key in sorted(value)),
-        )
-    raise TypeError("live relation identity requires exact JSON evidence")
-
-
 def _canonical_json(value: Any) -> str:
     return json.dumps(
         value,
@@ -1000,19 +971,9 @@ class RelationRecord:
     def canonical_key(self) -> str:
         return json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
 
-    def live_identity_key(self) -> tuple[Any, ...]:
-        """Return a mutation-sensitive key without serializing live evidence."""
-        return (
-            "sagejs.number-fields/class-relation-live-identity-v1",
-            self.row,
-            self.quotient_row,
-            self.source_row,
-            _json_identity_key(self.witness),
-            _json_identity_key(self.norm_smoothness),
-            _json_identity_key(self.archimedean_logs),
-            self.log_precision,
-            _json_identity_key(self.provenance),
-        )
+    def live_identity_key(self) -> str:
+        """Return the mutation-sensitive canonical record identity."""
+        return self.canonical_key()
 
 
 def verify_relation_record(
@@ -1164,11 +1125,11 @@ class ExactRelationCollector:
         self.context = context
         self._order_basis: tuple[Any, ...] | None = None
         self._order_basis_coefficients: tuple[tuple[Any, ...], ...] | None = None
-        self._keys: set[tuple[Any, ...]] = set()
+        self._keys: set[str] = set()
         self.max_admission_receipts = _checked_nonnegative(
             max_admission_receipts, "admission receipt cache size"
         )
-        self._admission_receipts: dict[tuple[Any, ...], None] = {}
+        self._admission_receipts: dict[str, None] = {}
         self._admission_receipt_statistics = {
             "requests": 0,
             "hits": 0,
@@ -1183,12 +1144,12 @@ class ExactRelationCollector:
 
     @staticmethod
     def _admission_receipt_key(
-        relation: RelationRecord, identity_key: tuple[Any, ...] | None = None
-    ) -> tuple[Any, ...]:
+        relation: RelationRecord, identity_key: str | None = None
+    ) -> str:
         return relation.live_identity_key() if identity_key is None else identity_key
 
     def _remember_admission_receipt(
-        self, relation: RelationRecord, *, identity_key: tuple[Any, ...] | None = None
+        self, relation: RelationRecord, *, identity_key: str | None = None
     ) -> None:
         if self.max_admission_receipts == 0:
             return
@@ -1335,7 +1296,7 @@ class ExactRelationCollector:
         return self._store_verified(relation)
 
     def _store_verified(
-        self, relation: RelationRecord, *, identity_key: tuple[Any, ...] | None = None
+        self, relation: RelationRecord, *, identity_key: str | None = None
     ) -> RelationAdmission:
         """Store a relation whose exact objects were verified by its producer."""
         key = relation.live_identity_key() if identity_key is None else identity_key
@@ -1778,7 +1739,7 @@ class ExactRelationCollector:
             )
             for _values, row, provenance, witness_payload, norm in normalized
         )
-        new_keys: dict[tuple[Any, ...], bool] = {}
+        new_keys: dict[str, bool] = {}
         for record in records:
             key = record.live_identity_key()
             if key in self._keys or new_keys.get(key, False):

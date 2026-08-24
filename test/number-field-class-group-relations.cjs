@@ -276,7 +276,7 @@ finally:
     RelationRecord.canonical_key = saved_canonical_key
     RelationRecord.live_identity_key = saved_live_identity_key
 assert batch is not None and len(batch) == 1
-assert canonical_key_calls == 0
+assert canonical_key_calls == 1
 assert live_identity_calls == 1
 assert batch[0].record.to_dict() == initial[0].record.to_dict()
 assert batch_collector.admission_receipt_diagnostics()[
