@@ -37,6 +37,9 @@ assert(primary.length > 0, "at least one primary receipt is required");
 const commit = primary[0].repository.commit;
 assert(primary.every((value) => value.repository.commit === commit));
 assert([...extras.values()].every((value) => value.repository.commit === commit));
+const includesPrimaryLinux = primary.some(
+  (value) => platform(value) === "linux-x64",
+);
 const smokeOverlay = [...extras.values()][0]?.repository.package_smoke_overlay;
 assert(
   [...extras.values()].every(
@@ -93,9 +96,14 @@ const lines = [
       "mathematical source commit and clean status."
     : "No test-only package-smoke overlay was recorded.",
   "",
-  "Magma, PARI/GP, and SageMath competitor rows are **not measured** in this " +
-    "platform matrix: the instructed Phase 10 run excluded `bench-1`, the only " +
-    "host with Magma. Missing competitor cells are not counted as Sage.js wins.",
+  includesPrimaryLinux
+    ? "This matrix includes the quiet `bench-1` Linux-x64 Sage.js receipt, but " +
+      "does not duplicate Magma, PARI/GP, or SageMath measurements from their " +
+      "separate equal-contract receipts. Missing competitor cells are not " +
+      "counted as Sage.js wins."
+    : "Magma, PARI/GP, and SageMath competitor rows are **not measured** in " +
+      "this platform matrix. Missing competitor cells are not counted as " +
+      "Sage.js wins.",
   "",
   "## Host and package matrix",
   "",
