@@ -1025,9 +1025,9 @@ def arange(
         stop = start
         start = 0
     dtype_name = _dtype_name(dtype)
-    if dtype_name is None and all(
-        isinstance(value, int) for value in (start, stop, step)
-    ):
+    # Use the private predicate: this module's public `all` function shadows
+    # Python's builtin after module initialization.
+    if dtype_name is None and _all_integral((start, stop, step)):
         dtype_name = "int64"
     call_args = [
         runtime.number(start),
