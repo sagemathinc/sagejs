@@ -1830,8 +1830,24 @@ def exact_relation_hnf_support(
     used by a nonzero canonical HNF row.
     """
     columns = _nonnegative_integer(column_count, "column_count")
-    sparse_rows = tuple(SparseRelationRow(columns, row) for row in rows)
-    source = [row.dense() for row in sparse_rows]
+    source: list[list[int]] = []
+    for raw_row in rows:
+        if isinstance(raw_row, SparseRelationRow):
+            if raw_row.column_count != columns:
+                raise RelationMatrixError("relation row has the wrong column count")
+            source.append(raw_row.dense())
+            continue
+        if isinstance(raw_row, (list, tuple)):
+            row = list(raw_row)
+            if len(row) != columns or any(
+                not isinstance(value, int) or isinstance(value, bool) for value in row
+            ):
+                raise RelationMatrixError(
+                    "dense relation rows require exact integer entries"
+                )
+            source.append(row)
+            continue
+        source.append(SparseRelationRow(columns, raw_row).dense())
     if not source:
         return (), ()
     native_replayed = False

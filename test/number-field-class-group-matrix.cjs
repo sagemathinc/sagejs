@@ -70,6 +70,10 @@ def normalized_coordinates(presentation, coordinates):
 for case in fixture['cases']:
     rows = case['rows']
     columns = len(rows[0])
+    dense_support = matrix_module.exact_relation_hnf_support(rows, columns)
+    assert dense_support == matrix_module.exact_relation_hnf_support(
+        [SparseRelationRow(columns, row) for row in rows], columns
+    )
     accumulator = RelationMatrixAccumulator(columns)
     for index, row in enumerate(rows):
         insertion = accumulator.add_relation(

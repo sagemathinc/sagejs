@@ -1157,9 +1157,9 @@ def _select_cubic_relation_candidates(
 ) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
     """Select original rows supporting the exact HNF lattice basis.
 
-    The provisional packed rows are not proof evidence.  We extract their
+    The provisional packed rows are not proof evidence. We extract their
     canonical HNF, retain every original row used by its nonzero left-transform
-    rows, and recompute the HNF from that subset.  Only when the canonical
+    rows, and recompute the HNF from that subset. Only when the canonical
     nonzero HNF basis is identical do the selected proposals proceed to the
     independent ideal-containment admission boundary.
     """
@@ -1207,9 +1207,9 @@ def _select_cubic_relation_candidates(
             else:
                 cursor += 1
         # `exact_relation_hnf_support()` has replayed its unimodular left
-        # transform.  The HNF basis therefore lies in the lattice of these
+        # transform. The HNF basis therefore lies in the lattice of these
         # selected source rows, while those rows are a subset of the original
-        # lattice.  The deletion pass keeps that basis identical while
+        # lattice. The deletion pass keeps that basis identical while
         # removing individually redundant proposals.
         return tuple(candidates[index] for index in selected_indices)
     except (ArithmeticError, TypeError, ValueError):
