@@ -14,7 +14,7 @@ function runCPython(source) {
     encoding: "utf8",
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  return result.stdout.trim();
+  return result.stdout.replaceAll("\r\n", "\n").trim();
 }
 
 test("integral binary64 values retain Python float identity", async (t) => {
