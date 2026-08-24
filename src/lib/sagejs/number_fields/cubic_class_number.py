@@ -710,15 +710,15 @@ def _cubic_relative_basis_rows(
 ) -> tuple[tuple[int, ...], ...] | None:
     if len(rows) != 3 or any(len(row) != 3 for row in rows):
         return None
-    inverse = order._basis_inverse_matrix()
-    prime_module = __import__(
-        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
-    )
+    inverse_rows = order._basis_inverse_matrix().rows()
     answer: list[tuple[int, ...]] = []
     for row in rows:
-        coordinates = list(
-            prime_module._nf_global("vector")(sage.QQ, list(row)) * inverse
-        )
+        coordinates: list[Any] = []
+        for target in range(3):
+            coordinate: Any = sage.QQ(0)
+            for source in range(3):
+                coordinate += row[source] * inverse_rows[source][target]
+            coordinates.append(coordinate)
         if any(value._denominator != 1 for value in coordinates):
             return None
         answer.append(tuple(int(value._numerator) for value in coordinates))
@@ -866,12 +866,10 @@ def _find_packed_cubic_norm_obstruction(
     if coordinates is None:
         return None
     coefficients = _cubic_norm_form_coefficients_from_relative_rows(order, coordinates)
-    prime_module = __import__(
-        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
-    )
-    determinant = prime_module._nf_global("matrix")(
-        sage.ZZ, [list(basis_row) for basis_row in coordinates]
-    ).determinant()
+    a, b, c = coordinates[0]
+    d, e, f = coordinates[1]
+    g, h, i = coordinates[2]
+    determinant = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
     norm = abs(int(determinant))
     if norm != expected_norm:
         raise ArithmeticError("a packed factor-base product has the wrong exact norm")
