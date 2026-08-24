@@ -103,6 +103,9 @@ static int exercise_scalar_and_progression(uint64_t genus) {
           (sagejs_source_u64_buffer){(uint64_t *) step, 8},
           COUNT, genus, 1009) ||
       accepted != 1 || status.code != SAGEJS_NATIVE_OK) {
+    fprintf(stderr, "progression failed genus=%" PRIu64
+            " called/accepted/status=%d/%d/%d\n",
+            genus, status.code == SAGEJS_NATIVE_OK, accepted, status.code);
     free(statuses);
     free(progression);
     return 0;
@@ -118,8 +121,16 @@ static int exercise_scalar_and_progression(uint64_t genus) {
           (sagejs_source_u64_buffer){scalar_words, 1},
           (sagejs_source_u64_buffer){scalar_signs, 1},
           1, 1, genus, 1009) ||
-      accepted != 1 || status.code != SAGEJS_NATIVE_OK ||
-      memcmp(scalar_output, progression + 257 * 8, 8 * sizeof(uint64_t)) != 0) {
+      accepted != 1 || status.code != SAGEJS_NATIVE_OK) {
+    fprintf(stderr, "scalar failed genus=%" PRIu64
+            " called/accepted/status=%d/%d/%d\n",
+            genus, status.code == SAGEJS_NATIVE_OK, accepted, status.code);
+    free(statuses);
+    free(progression);
+    return 0;
+  }
+  if (memcmp(scalar_output, progression + 257 * 8, 8 * sizeof(uint64_t)) != 0) {
+    fprintf(stderr, "scalar/progression mismatch genus=%" PRIu64 "\n", genus);
     free(statuses);
     free(progression);
     return 0;
