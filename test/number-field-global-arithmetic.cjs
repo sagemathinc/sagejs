@@ -368,7 +368,13 @@ assert classes1083.diagnostics["residue_states"] <= 500000
 assert classes1083.diagnostics["relation_search"]["relation_attempts"] == 0
 assert classes1083.diagnostics["relation_search"]["ideals_tested"] == 0
 assert classes1083.diagnostics["relation_search"]["relation_candidates"] == 0
-assert classes1083.diagnostics["relation_search"]["integral_sieve_candidates"] == 21
+assert classes1083.diagnostics["relation_search"]["integral_sieve_candidates"] == 8
+assert classes1083.diagnostics["relation_search"][
+    "integral_sieve_valuation_limit"
+] == 8
+assert classes1083.diagnostics["relation_search"][
+    "integral_sieve_prefix_proved"
+] == 1
 assert classes1083.diagnostics["relation_search"]["integral_sieve_selected"] == 3
 assert classes1083.diagnostics["relation_search"]["integral_sieve_relations"] == 3
 assert classes1083.diagnostics["relation_search"]["integral_sieve_fallback"] == 0

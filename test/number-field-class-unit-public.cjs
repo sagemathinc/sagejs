@@ -332,7 +332,7 @@ assert all(
     for record in seed.factor_base
 )
 assert len(artifact._packed_factor_records) == 5
-assert len(seed.relation_candidates) == 21
+assert len(seed.relation_candidates) == 8
 assert len(seed.selected_relation_candidates) == 3
 
 # The bounded linear selector preserves canonical first-occurrence ordering

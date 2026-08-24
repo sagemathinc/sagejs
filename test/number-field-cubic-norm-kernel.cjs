@@ -697,7 +697,9 @@ assert inert_prime == prime_ideals.factor_rational_prime(
 
 packed = cubic.bounded_cubic_minkowski_class_number(packed_field)
 assert packed.complete and packed.order() == 3 and packed.certificate.verify()
-assert packed.diagnostics["relation_search"]["integral_sieve_candidates"] == 21
+assert packed.diagnostics["relation_search"]["integral_sieve_candidates"] == 8
+assert packed.diagnostics["relation_search"]["integral_sieve_valuation_limit"] == 8
+assert packed.diagnostics["relation_search"]["integral_sieve_prefix_proved"] == 1
 assert packed.diagnostics["relation_search"]["integral_sieve_selected"] == 3
 assert packed.diagnostics["relation_search"]["integral_sieve_relations"] == 3
 assert packed.diagnostics["relation_search"]["integral_sieve_fallback"] == 0
@@ -711,6 +713,65 @@ assert packed._factor_base == ()
 assert [record.to_dict() for record in packed_factor_records] == (
     packed.certificate.factor_base
 )
+
+# The low-norm prefix may become proof evidence only after exact batch
+# admission reproduces every planned row.  Its modular obstruction is computed
+# once and retained across that authority boundary.  Supplying a cancellation
+# callback keeps the probe on the cancellable readable route.
+saved_packed_obstruction = cubic._find_packed_cubic_norm_obstruction
+planned_obstruction_calls = 0
+cancellation_calls = 0
+def not_cancelled():
+    global cancellation_calls
+    cancellation_calls += 1
+    return False
+def counted_packed_obstruction(*args, **kwargs):
+    global planned_obstruction_calls
+    planned_obstruction_calls += 1
+    assert kwargs["cancelled"] is not_cancelled
+    return saved_packed_obstruction(*args, **kwargs)
+cubic._find_packed_cubic_norm_obstruction = counted_packed_obstruction
+try:
+    planned_field = NumberField(x**3 - x**2 - 6*x - 12, "planned")
+    planned_result = cubic.bounded_cubic_minkowski_class_number(
+        planned_field, cancelled=not_cancelled
+    )
+finally:
+    cubic._find_packed_cubic_norm_obstruction = saved_packed_obstruction
+assert planned_result.complete and planned_result.order() == 3
+assert planned_result.certificate.verify()
+assert planned_obstruction_calls == 1
+assert cancellation_calls > 0
+assert planned_result.diagnostics["relation_search"][
+    "integral_sieve_prefix_proved"
+] == 1
+
+# If the bounded prefix cannot establish every required lower-bound
+# obstruction, it is discarded before admission.  The producer widens to the
+# unchanged complete candidate batch and runs the authoritative obstruction
+# search after exact admission.
+widening_obstruction_calls = 0
+def decline_prefix_obstruction(*args, **kwargs):
+    global widening_obstruction_calls
+    widening_obstruction_calls += 1
+    if widening_obstruction_calls == 1:
+        return (None, 0)
+    return saved_packed_obstruction(*args, **kwargs)
+cubic._find_packed_cubic_norm_obstruction = decline_prefix_obstruction
+try:
+    widened_field = NumberField(x**3 - x**2 - 6*x - 12, "widened")
+    widened_result = cubic.bounded_cubic_minkowski_class_number(widened_field)
+finally:
+    cubic._find_packed_cubic_norm_obstruction = saved_packed_obstruction
+assert widened_result.complete and widened_result.order() == 3
+assert widened_result.certificate.verify()
+assert widening_obstruction_calls == 2
+assert widened_result.diagnostics["relation_search"][
+    "integral_sieve_candidates"
+] == 21
+assert widened_result.diagnostics["relation_search"][
+    "integral_sieve_prefix_proved"
+] == 0
 
 # Positive prime powers and signed products whose denominator can be cleared
 # by a complete rational-prime relation stay in the packed HNF representation
@@ -800,6 +861,15 @@ norm_collector = ExactRelationCollector(order, packed.factor_base)
 element_type = type(packed_field.gen())
 saved_element_norm = element_type.norm
 saved_element_decoder = relation_module._element_from_payload
+packed_sieve_record = next(
+    record
+    for record in packed.relation_records
+    if record.provenance.get("algorithm")
+    == "packed-cubic-integral-relation-sieve"
+)
+packed_sieve_coordinates = tuple(
+    packed_sieve_record.provenance["order_basis_coordinates"]
+)
 def forbidden_element_norm(self):
     raise AssertionError("cubic batch admission recomputed an element resultant")
 def forbidden_element_decoder(*args, **kwargs):
@@ -808,15 +878,15 @@ element_type.norm = forbidden_element_norm
 relation_module._element_from_payload = forbidden_element_decoder
 try:
     norm_batch = norm_collector.admit_integral_order_basis_rows(((
-        (0, 1, -1),
-        packed.relation_records[2].row,
-        packed.relation_records[2].provenance,
+        packed_sieve_coordinates,
+        packed_sieve_record.row,
+        packed_sieve_record.provenance,
     ),))
 finally:
     element_type.norm = saved_element_norm
     relation_module._element_from_payload = saved_element_decoder
 assert norm_batch is not None and len(norm_batch) == 1
-assert norm_batch[0].record.to_dict() == packed.relation_records[2].to_dict()
+assert norm_batch[0].record.to_dict() == packed_sieve_record.to_dict()
 
 # Producer-owned records may skip a second recursive JSON validation only after
 # batch admission.  Caller-owned provenance must nevertheless be copied before
@@ -827,8 +897,8 @@ owned_provenance = {
 }
 ownership_collector = ExactRelationCollector(order, packed.factor_base)
 ownership_batch = ownership_collector.admit_integral_order_basis_rows(((
-    (0, 1, -1),
-    packed.relation_records[2].row,
+    packed_sieve_coordinates,
+    packed_sieve_record.row,
     owned_provenance,
 ),))
 assert ownership_batch is not None and len(ownership_batch) == 1

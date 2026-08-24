@@ -1419,6 +1419,7 @@ def _packed_cubic_relation_candidates(
     coefficient_bound: int = _CUBIC_RELATION_SIEVE_BOUND,
     duplicate_row_norms: Iterable[int] | None = None,
     power_factor_base: tuple[Any, ...] | None = None,
+    valuation_candidate_limit: int | None = None,
     cancelled: Callable[[], bool] | None,
 ) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
     """Propose small integral relations through two packed exact kernels.
@@ -1533,6 +1534,25 @@ def _packed_cubic_relation_candidates(
             candidate_count = len(retained)
             if candidate_count == 0:
                 return ()
+        if valuation_candidate_limit is not None:
+            valuation_limit = max(1, int(valuation_candidate_limit))
+            if candidate_count > valuation_limit:
+                retained = tuple(
+                    sorted(
+                        range(candidate_count),
+                        key=lambda index: (
+                            absolute_norms[index],
+                            coefficient_vectors[3 * index : 3 * index + 3],
+                        ),
+                    )[:valuation_limit]
+                )
+                coefficient_vectors = tuple(
+                    coefficient_vectors[3 * index + offset]
+                    for index in retained
+                    for offset in range(3)
+                )
+                absolute_norms = tuple(absolute_norms[index] for index in retained)
+                candidate_count = len(retained)
 
         factor_norms = tuple(
             _integer_rational(prime_ideal.norm(), "a factor-base norm")
@@ -3601,17 +3621,26 @@ def bounded_cubic_minkowski_class_number(
         else checked_caps["max_relations"] - len(initial_proposals)
     )
     sieve_candidates: Any = None
+    valuation_candidate_limit = max(8, len(factor_base) + 2)
     if sieve_capacity > 0:
         sieve_candidates = _packed_cubic_relation_candidates(
             order,
             factor_base,
             maximum_candidates=sieve_capacity,
+            valuation_candidate_limit=valuation_candidate_limit,
             cancelled=cancelled,
         )
     elif trivial_quotient:
         sieve_candidates = ()
     raw_sieve_count = 0 if sieve_candidates is None else len(sieve_candidates)
     selected_sieve_candidates: Any = None
+    planned_presentation: Any = None
+    planned_line_specs: tuple[dict[str, Any], ...] | None = None
+    planned_obstructions: tuple[dict[str, Any], ...] | None = None
+    planned_residue_states = 0
+    planned_obstruction_seconds = 0.0
+    planned_factor_snapshot: Any = None
+    planned_validated_batch: Any = None
     if sieve_candidates is not None:
         selected_sieve_candidates = _select_cubic_relation_candidates(
             matrix_module,
@@ -3619,6 +3648,103 @@ def bounded_cubic_minkowski_class_number(
             sieve_candidates,
             len(factor_base),
         )
+        # Valuating every norm-smooth coefficient vector can force large
+        # prime-power ideal chains which the exact HNF selector immediately
+        # discards.  First try the deterministic low-norm prefix above.  Its
+        # rows are still only proposals: validate their exact norms and
+        # prime-ideal support before retaining the presentation and modular
+        # norm obstructions.  Only exact collector admission publishes those
+        # rows.  If the prefix cannot finish, widen before admission so the
+        # coupled class/unit fallback receives the unchanged full relation
+        # seed.
+        if selected_sieve_candidates is not None and not trivial_quotient:
+            try:
+                proposed_rows = tuple(proposal[1] for proposal in initial_proposals)
+                proposed_rows += tuple(
+                    candidate[0] for candidate in selected_sieve_candidates
+                )
+                candidate_presentation = matrix_module.extract_relation_presentation(
+                    proposed_rows,
+                    len(factor_base),
+                    require_full_rank=False,
+                )
+                if (
+                    candidate_presentation.rank == len(factor_base)
+                    and candidate_presentation.order is not None
+                    and int(candidate_presentation.order)
+                    <= checked_caps["max_quotient_order"]
+                ):
+                    candidate_validated_batch = (
+                        _validated_cubic_integral_relation_batch(
+                            relation_module,
+                            order,
+                            factor_base,
+                            initial_proposals,
+                            selected_sieve_candidates,
+                        )
+                    )
+                    if candidate_validated_batch is None:
+                        raise ValueError(
+                            "the bounded cubic relation prefix failed exact validation"
+                        )
+                    candidate_lines = _projective_line_specs(
+                        candidate_presentation,
+                        max_lines=checked_caps["max_projective_lines"],
+                    )
+                    candidate_obstructions: list[dict[str, Any]] = []
+                    candidate_states = 0
+                    obstruction_probe_started = time.perf_counter()
+                    for line in candidate_lines:
+                        packed_search = _find_packed_cubic_norm_obstruction(
+                            factor_base,
+                            line,
+                            max_modulus=checked_caps["max_modulus"],
+                            remaining_states=(
+                                checked_caps["max_residue_states"] - candidate_states
+                            ),
+                            cancelled=cancelled,
+                        )
+                        if packed_search is None or packed_search[0] is None:
+                            candidate_obstructions = []
+                            break
+                        obstruction, used = packed_search
+                        if obstruction is None:
+                            candidate_obstructions = []
+                            break
+                        candidate_states += used
+                        candidate_obstructions.append(obstruction)
+                    candidate_obstruction_seconds = (
+                        time.perf_counter() - obstruction_probe_started
+                    )
+                    if len(candidate_obstructions) == len(candidate_lines):
+                        planned_presentation = candidate_presentation
+                        planned_line_specs = tuple(candidate_lines)
+                        planned_obstructions = tuple(candidate_obstructions)
+                        planned_residue_states = candidate_states
+                        planned_obstruction_seconds = candidate_obstruction_seconds
+                        planned_factor_snapshot = _freeze_authentication_value(
+                            [record.to_dict() for record in factor_records]
+                        )
+                        planned_validated_batch = candidate_validated_batch
+            except (ArithmeticError, TypeError, ValueError):
+                planned_presentation = None
+                planned_validated_batch = None
+        if planned_presentation is None:
+            widened_candidates = _packed_cubic_relation_candidates(
+                order,
+                factor_base,
+                maximum_candidates=sieve_capacity,
+                cancelled=cancelled,
+            )
+            if widened_candidates is not None:
+                sieve_candidates = widened_candidates
+                raw_sieve_count = len(sieve_candidates)
+                selected_sieve_candidates = _select_cubic_relation_candidates(
+                    matrix_module,
+                    tuple(proposal[1] for proposal in initial_proposals),
+                    sieve_candidates,
+                    len(factor_base),
+                )
     sieve_admitted = 0
     validated_sieve_batch_used = False
     if selected_sieve_candidates is not None:
@@ -3635,12 +3761,16 @@ def bounded_cubic_minkowski_class_number(
                 )
                 for row, coordinates, _expected_norm in selected_sieve_candidates
             )
-            validated_batch = _validated_cubic_integral_relation_batch(
-                relation_module,
-                order,
-                factor_base,
-                initial_proposals,
-                selected_sieve_candidates,
+            validated_batch = (
+                planned_validated_batch
+                if planned_presentation is not None
+                else _validated_cubic_integral_relation_batch(
+                    relation_module,
+                    order,
+                    factor_base,
+                    initial_proposals,
+                    selected_sieve_candidates,
+                )
             )
             batch_admit = getattr(collector, "admit_integral_order_basis_rows", None)
             validated_admit = getattr(
@@ -3676,6 +3806,18 @@ def bounded_cubic_minkowski_class_number(
                         "a packed cubic relation batch returned the wrong row count"
                     )
                 sieve_admitted = len(proposals)
+            expected_planned_rows = tuple(
+                row for _coordinates, row, _provenance in initial_proposals
+            ) + tuple(candidate[0] for candidate in selected_sieve_candidates)
+            if (
+                planned_presentation is not None
+                and tuple(record.row for record in collector.records)
+                != expected_planned_rows
+            ):
+                planned_presentation = None
+                planned_line_specs = None
+                planned_obstructions = None
+                planned_validated_batch = None
         except (ArithmeticError, TypeError, ValueError):
             # A packed proposal is never proof evidence by itself.  Discard
             # every proposed row if its independent containment replay fails;
@@ -3684,6 +3826,10 @@ def bounded_cubic_minkowski_class_number(
             relation_module.initial_rational_prime_relations(collector)
             selected_sieve_candidates = None
             sieve_admitted = 0
+            planned_presentation = None
+            planned_line_specs = None
+            planned_obstructions = None
+            planned_validated_batch = None
     if not collector.records:
         initial_batch_method = getattr(
             collector, "admit_integral_order_basis_rows", None
@@ -3701,6 +3847,10 @@ def bounded_cubic_minkowski_class_number(
                 collector = relation_module.ExactRelationCollector(order, factor_base)
             relation_module.initial_rational_prime_relations(collector)
     relation_metrics["integral_sieve_candidates"] = raw_sieve_count
+    relation_metrics["integral_sieve_valuation_limit"] = valuation_candidate_limit
+    relation_metrics["integral_sieve_prefix_proved"] = int(
+        planned_presentation is not None
+    )
     relation_metrics["integral_sieve_selected"] = (
         0 if selected_sieve_candidates is None else len(selected_sieve_candidates)
     )
@@ -3716,7 +3866,11 @@ def bounded_cubic_minkowski_class_number(
         # logarithmic unit dependencies.  One exact row per searched ideal is
         # sufficient; the loop continues until the exact presentation reaches
         # full rank, and the detached certificate replays every retained row.
-        presentation = _single_unit_relation_presentation(matrix_module, collector)
+        presentation = (
+            planned_presentation
+            if planned_presentation is not None
+            else _single_unit_relation_presentation(matrix_module, collector)
+        )
         if presentation is None:
             presentation = matrix_module.extract_relation_presentation(
                 tuple(record.row for record in collector.records),
@@ -3809,7 +3963,11 @@ def bounded_cubic_minkowski_class_number(
             "bounded exact relation search exhausted: " + str(error),
             factor_base=factor_base,
         )
-    phase_timings["relations"] = time.perf_counter() - relation_started
+    phase_timings["relations"] = (
+        time.perf_counter()
+        - relation_started
+        - (planned_obstruction_seconds if planned_presentation is not None else 0.0)
+    )
     relation_records = tuple(collector.records)
     live_factor_records = tuple(factor_records)
     live_collector = collector
@@ -3992,49 +4150,65 @@ def bounded_cubic_minkowski_class_number(
             relation_records=relation_records,
             presentation=presentation,
         )
-    obstruction_started = time.perf_counter()
-    obstructions: list[dict[str, Any]] = []
-    residue_states = 0
-    for line in line_specs:
-        _check_cubic_cancelled(cancelled)
-        packed_search = _find_packed_cubic_norm_obstruction(
-            factor_base,
-            line,
-            max_modulus=checked_caps["max_modulus"],
-            remaining_states=checked_caps["max_residue_states"] - residue_states,
-            cancelled=cancelled,
-        )
-        if packed_search is None:
-            _ordinary_records, ordinary_factor_base = (
-                _materialize_packed_cubic_factor_records(tuple(factor_records))
-            )
-            representative = relation_module.reconstruct_factor_base_ideal(
-                field.maximal_order(), ordinary_factor_base, line["ambient_row"]
-            )
-            obstruction, used = _find_cubic_norm_obstruction(
-                representative,
+    _check_cubic_cancelled(cancelled)
+    reuse_planned_obstructions = bool(
+        planned_presentation is presentation
+        and planned_line_specs == tuple(line_specs)
+        and planned_obstructions is not None
+        and planned_factor_snapshot
+        == _freeze_authentication_value([record.to_dict() for record in factor_records])
+    )
+    if reuse_planned_obstructions:
+        assert planned_obstructions is not None
+        obstructions = list(planned_obstructions)
+        residue_states = planned_residue_states
+        phase_timings["norm_obstructions"] = planned_obstruction_seconds
+    else:
+        obstruction_started = time.perf_counter()
+        obstructions = []
+        residue_states = 0
+        for line in line_specs:
+            _check_cubic_cancelled(cancelled)
+            packed_search = _find_packed_cubic_norm_obstruction(
+                factor_base,
                 line,
                 max_modulus=checked_caps["max_modulus"],
                 remaining_states=checked_caps["max_residue_states"] - residue_states,
                 cancelled=cancelled,
             )
-        else:
-            obstruction, used = packed_search
-        residue_states += used
-        if obstruction is None:
-            phase_timings["norm_obstructions"] = (
-                time.perf_counter() - obstruction_started
-            )
-            enrich_incomplete_unit_seed()
-            return incomplete(
-                "bounded modular norm-form search found no obstruction for a p-line",
-                factor_base=factor_base,
-                relation_records=relation_records,
-                presentation=presentation,
-                residue_states=residue_states,
-            )
-        obstructions.append(obstruction)
-    phase_timings["norm_obstructions"] = time.perf_counter() - obstruction_started
+            if packed_search is None:
+                _ordinary_records, ordinary_factor_base = (
+                    _materialize_packed_cubic_factor_records(tuple(factor_records))
+                )
+                representative = relation_module.reconstruct_factor_base_ideal(
+                    field.maximal_order(), ordinary_factor_base, line["ambient_row"]
+                )
+                obstruction, used = _find_cubic_norm_obstruction(
+                    representative,
+                    line,
+                    max_modulus=checked_caps["max_modulus"],
+                    remaining_states=(
+                        checked_caps["max_residue_states"] - residue_states
+                    ),
+                    cancelled=cancelled,
+                )
+            else:
+                obstruction, used = packed_search
+            residue_states += used
+            if obstruction is None:
+                phase_timings["norm_obstructions"] = (
+                    time.perf_counter() - obstruction_started
+                )
+                enrich_incomplete_unit_seed()
+                return incomplete(
+                    "bounded modular norm-form search found no obstruction for a p-line",
+                    factor_base=factor_base,
+                    relation_records=relation_records,
+                    presentation=presentation,
+                    residue_states=residue_states,
+                )
+            obstructions.append(obstruction)
+        phase_timings["norm_obstructions"] = time.perf_counter() - obstruction_started
     encoding_started = time.perf_counter()
     certificate = CubicMinkowskiClassNumberCertificate(
         field,
