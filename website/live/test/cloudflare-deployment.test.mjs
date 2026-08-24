@@ -208,6 +208,7 @@ async function stagedFixture(root) {
   const contents = new Map([
     ["index.html", "<!doctype html><title>Sage.js</title>"],
     ["app.mjs", "export const answer = 42;\n"],
+    ["codemirror-license.txt", "CodeMirror license\n"],
     [`${assetDirectory}/runtime.wasm`, Buffer.from([0, 97, 115, 109, 1, 0, 0, 0])],
   ]);
   for (const [relative, value] of contents) {
@@ -258,6 +259,10 @@ test("Cloudflare release preparation produces authenticated Brotli and identity 
     assert.match(wasm.br.key, /^public\/br\/assets\/sha256-/);
     const index = deployment.records.find((record) => record.logicalPath === "index.html");
     assert.equal(index.identity.key, `releases/${release}/identity/index.html`);
+    const license = deployment.records.find(
+      (record) => record.logicalPath === "codemirror-license.txt",
+    );
+    assert.equal(license.contentType, "text/plain; charset=utf-8");
     assert.deepEqual(
       await decompressBrotli(await readFile(path.join(output, index.br.file))),
       await readFile(path.join(output, index.identity.file)),
