@@ -78,6 +78,8 @@ loss deterministic.
 
 - Shift+Enter runs the current `# %%` or blank-line cell.
 - Ctrl/Command+Enter runs all source.
+- CodeMirror 6 provides Sage/Python highlighting, four-space indentation,
+  bracket completion, search, line numbers and undo without a remote CDN.
 - Selection, cell and all-source buttons are explicit and keyboard accessible.
 - Text streams while a run is active. Plotly displays stay outside the worker.
 - Interrupt, reset, timeout and output overflow replace the worker and clear

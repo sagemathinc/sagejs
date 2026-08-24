@@ -18,11 +18,11 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 20rem; }
-button, input, select, textarea { font: inherit; }
+button, input, select { font: inherit; }
 button, select, input { min-height: 2.5rem; }
 button { border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); color: var(--ink); cursor: pointer; padding: .48rem .78rem; }
 button:hover:not(:disabled) { border-color: var(--accent); }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid #65b995; outline-offset: 2px; }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid #65b995; outline-offset: 2px; }
 button:disabled { cursor: not-allowed; opacity: .48; }
 button.primary { background: var(--accent); border-color: var(--accent); color: white; font-weight: 700; }
 button.primary:hover:not(:disabled) { background: var(--accent-dark); }
@@ -60,7 +60,8 @@ main { display: grid; gap: 1.25rem; grid-template-columns: minmax(22rem, 1.1fr) 
 .example-bar select { flex: 0 1 21rem; }
 #example-description { color: var(--muted); flex: 1 1 12rem; font-size: .82rem; }
 .editor-label { display: block; padding: 1rem 1rem .45rem; }
-#source { background: var(--code); border: 0; border-radius: 0; color: #e9f2ed; font: 500 .91rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; min-height: 24rem; padding: 1rem 1.15rem; resize: vertical; tab-size: 4; width: 100%; }
+.source-editor { background: var(--code); height: 24rem; min-height: 16rem; overflow: hidden; resize: vertical; width: 100%; }
+.source-editor .cm-editor { height: 100%; }
 .editor-help { color: var(--muted); font-size: .78rem; margin: .55rem 1rem 0; }
 kbd { background: #eef1ed; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: .25rem; font: .74rem ui-monospace, monospace; padding: .1rem .27rem; }
 .controls { justify-content: space-between; }
@@ -123,7 +124,7 @@ dialog dt { color: var(--muted); font-weight: 700; }
   .kernel-status { margin-left: auto; }
   main { padding: .7rem; }
   .workspace-bar #sessions { max-width: none; width: 100%; }
-  #source { font-size: .83rem; min-height: 20rem; }
+  .source-editor { height: 20rem; }
   .run-controls, .kernel-controls { width: 100%; }
   .run-controls button { flex: 1; }
 }
