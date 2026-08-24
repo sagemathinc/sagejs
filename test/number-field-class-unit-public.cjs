@@ -433,6 +433,23 @@ assert cubic_module.authenticated_cubic_relation_seed(forged, T) is None
 forged_seed.__dict__["relation_candidates"] = retained_candidates
 assert cubic_module.authenticated_cubic_relation_seed(forged, T) is not None
 
+# Engine consumption validates the canonical live prefix once.  The internal
+# materializer receives that same authority instead of serializing it again.
+A = NumberField(x**3 - x**2 - 6*x - 12, "auth")
+assert A.class_number(proof=False) == 3
+snapshot_calls = 0
+original_snapshot = cubic_module._cubic_relation_seed_snapshot
+def counted_snapshot(*args, **kwargs):
+    global snapshot_calls
+    snapshot_calls += 1
+    return original_snapshot(*args, **kwargs)
+cubic_module._cubic_relation_seed_snapshot = counted_snapshot
+try:
+    assert A.class_unit_group(proof=False).complete
+finally:
+    cubic_module._cubic_relation_seed_snapshot = original_snapshot
+assert snapshot_calls == 1
+
 print("completed-cubic-context-seed-ok")
 `, 180_000);
   assert.equal(output, "completed-cubic-context-seed-ok");

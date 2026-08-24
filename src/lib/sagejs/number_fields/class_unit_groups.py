@@ -4264,12 +4264,11 @@ class ClassUnitGroupEngine:
                 "sagejs.number_fields.cubic_class_number",
                 fromlist=["cubic_class_number"],
             )
-            reader = getattr(module, "authenticated_cubic_relation_seed", None)
-            seed: Any = reader(artifact, self.field) if callable(reader) else None
             materialize = getattr(
-                module, "materialize_authenticated_cubic_relation_seed", None
+                module, "materialize_authenticated_cubic_relation_result", None
             )
-            if seed is not None and callable(materialize):
+            seed: Any = None
+            if callable(materialize):
                 default_policy = bool(
                     self.algorithm == "auto"
                     and self.seed == 0
@@ -4277,7 +4276,7 @@ class ClassUnitGroupEngine:
                     and self.limits.to_dict() == ClassUnitEngineLimits().to_dict()
                 )
                 seed = materialize(
-                    seed,
+                    artifact,
                     self.field,
                     include_unit_dependencies=default_policy,
                     cancelled=self.cancelled,

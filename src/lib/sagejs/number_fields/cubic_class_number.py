@@ -2023,10 +2023,48 @@ def _cubic_relation_seed_snapshot(seed: Any) -> Any:
     """Snapshot every proof-bearing object in one live relation prefix."""
     result = seed._source_result
     plan = seed.plan
-    bound = plan.bound_result
     presentation = result.presentation
     search_state = seed.search_state
     diagnostics = result.diagnostics
+    collector = seed.collector
+    certificate = result.certificate
+
+    if result.complete and isinstance(
+        certificate, CubicMinkowskiClassNumberCertificate
+    ):
+        return (
+            AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA,
+            id(result),
+            str(result.reason),
+            int(result.minkowski_bound),
+            str(result.proof_status),
+            certificate.stable_hash(),
+            id(plan),
+            id(plan.order),
+            _canonical_json(plan.to_dict()),
+            tuple(id(record) for record in seed.factor_records),
+            _canonical_json([record.to_dict() for record in seed.factor_records]),
+            tuple(id(record) for record in collector.records),
+            _canonical_json([record.to_dict() for record in collector.records]),
+            id(presentation),
+            _canonical_json(presentation.to_dict()),
+            _canonical_json(diagnostics.get("caps")),
+            id(collector),
+            tuple(id(factor) for factor in collector.factor_base),
+            tuple(sorted(collector.rank_screen._pivots.items())),
+            tuple(sorted(collector._keys)),
+            tuple(collector._admission_receipts),
+            id(seed.relation_candidates),
+            id(seed.selected_relation_candidates),
+            id(search_state),
+            int(search_state.seed),
+            int(search_state.random_state),
+            int(search_state.candidates_tested),
+            int(search_state.ideals_tested),
+            int(search_state.relations_admitted),
+        )
+
+    bound = plan.bound_result
 
     factor_records = []
     for record in seed.factor_records:
@@ -2075,7 +2113,6 @@ def _cubic_relation_seed_snapshot(seed: Any) -> Any:
         tuple(presentation.invariants),
         presentation.order,
     )
-    collector = seed.collector
     collector_snapshot = (
         id(collector),
         tuple(id(record) for record in collector.records),
@@ -2397,20 +2434,14 @@ def _extend_packed_cubic_relation_seed_for_units(
     )
 
 
-def materialize_authenticated_cubic_relation_seed(
+def _materialize_validated_cubic_relation_seed(
     seed: Any,
     field: Any,
     *,
     include_unit_dependencies: bool = False,
     cancelled: Callable[[], bool] | None = None,
 ) -> Any:
-    """Decode a live packed prefix only when the coupled engine consumes it."""
-    if (
-        type(seed) is not _AuthenticatedCubicRelationSeed
-        or seed.field is not field
-        or not seed.certified
-    ):
-        return None
+    """Decode one already authenticated live packed prefix."""
     if not seed.factor_records or not isinstance(
         seed.factor_records[0], PackedCubicFactorRecord
     ):
@@ -2462,6 +2493,47 @@ def materialize_authenticated_cubic_relation_seed(
         )
     except (AttributeError, ArithmeticError, TypeError, ValueError):
         return None
+
+
+def materialize_authenticated_cubic_relation_seed(
+    seed: Any,
+    field: Any,
+    *,
+    include_unit_dependencies: bool = False,
+    cancelled: Callable[[], bool] | None = None,
+) -> Any:
+    """Authenticate and decode one live packed relation prefix."""
+    if (
+        type(seed) is not _AuthenticatedCubicRelationSeed
+        or seed.field is not field
+        or not seed.certified
+    ):
+        return None
+    return _materialize_validated_cubic_relation_seed(
+        seed,
+        field,
+        include_unit_dependencies=include_unit_dependencies,
+        cancelled=cancelled,
+    )
+
+
+def materialize_authenticated_cubic_relation_result(
+    result: Any,
+    field: Any,
+    *,
+    include_unit_dependencies: bool = False,
+    cancelled: Callable[[], bool] | None = None,
+) -> Any:
+    """Validate and consume a result's live relation prefix exactly once."""
+    seed = authenticated_cubic_relation_seed(result, field)
+    if seed is None:
+        return None
+    return _materialize_validated_cubic_relation_seed(
+        seed,
+        field,
+        include_unit_dependencies=include_unit_dependencies,
+        cancelled=cancelled,
+    )
 
 
 class _AuthenticatedCubicClassNumberResult:
