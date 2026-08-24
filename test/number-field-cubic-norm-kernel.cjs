@@ -274,6 +274,7 @@ test("cubic class-number obstruction agrees with the readable search", () => {
     String.raw`
 import sagejs.number_fields.cubic_class_number as cubic
 from sagejs.number_fields import class_group_factor_base as factor_bases
+from sagejs.number_fields import class_group_relations as relation_module
 from sagejs.number_fields import maximal_order
 from sagejs.number_fields import prime_ideals
 from sagejs.number_fields.class_group_relations import reconstruct_factor_base_ideal
@@ -485,9 +486,13 @@ for packed_record, prime_ideal in zip(
 norm_collector = ExactRelationCollector(order, packed.factor_base)
 element_type = type(packed_field.gen())
 saved_element_norm = element_type.norm
+saved_element_decoder = relation_module._element_from_payload
 def forbidden_element_norm(self):
     raise AssertionError("cubic batch admission recomputed an element resultant")
+def forbidden_element_decoder(*args, **kwargs):
+    raise AssertionError("cubic batch admission rebuilt a serialized field element")
 element_type.norm = forbidden_element_norm
+relation_module._element_from_payload = forbidden_element_decoder
 try:
     norm_batch = norm_collector.admit_integral_order_basis_rows(((
         (0, 1, -1),
@@ -496,6 +501,7 @@ try:
     ),))
 finally:
     element_type.norm = saved_element_norm
+    relation_module._element_from_payload = saved_element_decoder
 assert norm_batch is not None and len(norm_batch) == 1
 assert norm_batch[0].record.to_dict() == packed.relation_records[2].to_dict()
 

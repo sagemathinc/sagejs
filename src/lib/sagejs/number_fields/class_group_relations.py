@@ -243,6 +243,33 @@ def _element_payload(field: Any, value: Any) -> list[list[int]]:
     return [_rational_pair(coefficient) for coefficient in element.list()]
 
 
+def _order_basis_coordinate_payload(
+    basis_coefficients: tuple[tuple[Any, ...], ...],
+    coordinates: tuple[int, ...],
+) -> list[list[int]]:
+    """Encode one exact order-basis vector in the field power basis.
+
+    Packed relation admission already authenticates the supplied vector as
+    maximal-order coordinates.  Converting it to a number-field element and
+    immediately asking that object for the same power-basis coefficients is
+    unnecessary allocation on this hot path.  This exact linear combination
+    produces the identical canonical witness payload; detached replay still
+    reconstructs the element and its principal ideal independently.
+    """
+    degree = len(basis_coefficients)
+    if len(coordinates) != degree or any(
+        len(row) != degree for row in basis_coefficients
+    ):
+        raise ValueError("an order-basis witness has the wrong dimension")
+    payload: list[list[int]] = []
+    for column in range(degree):
+        coefficient = sage.QQ(0)
+        for row in range(degree):
+            coefficient += coordinates[row] * basis_coefficients[row][column]
+        payload.append(_rational_pair(coefficient))
+    return payload
+
+
 def _field_element_from_coefficients(field: Any, coefficients: Iterable[Any]) -> Any:
     answer = field(0)
     power = field(1)
@@ -1056,6 +1083,7 @@ class ExactRelationCollector:
         self.admissions: list[RelationAdmission] = []
         self.context = context
         self._order_basis: tuple[Any, ...] | None = None
+        self._order_basis_coefficients: tuple[tuple[Any, ...], ...] | None = None
         self._keys: set[str] = set()
         self.max_admission_receipts = _checked_nonnegative(
             max_admission_receipts, "admission receipt cache size"
@@ -1201,6 +1229,7 @@ class ExactRelationCollector:
         answer._admission_receipts = dict(self._admission_receipts)
         answer._admission_receipt_statistics = dict(self._admission_receipt_statistics)
         answer._order_basis = self._order_basis
+        answer._order_basis_coefficients = self._order_basis_coefficients
         return answer
 
     def _factor_ideal_over_base(self, ideal: Any) -> tuple[int, ...]:
@@ -1416,6 +1445,10 @@ class ExactRelationCollector:
             raise ValueError("an integral generator has the wrong coordinate width")
         if self._order_basis is None:
             self._order_basis = tuple(self.order.basis())
+        if self._order_basis_coefficients is None:
+            self._order_basis_coefficients = tuple(
+                tuple(element.list()) for element in self._order_basis
+            )
         field = self.order.number_field()
         element = field(0)
         for coefficient, basis_element in zip(values, self._order_basis, strict=True):
@@ -1486,6 +1519,10 @@ class ExactRelationCollector:
             return None
         if self._order_basis is None:
             self._order_basis = tuple(self.order.basis())
+        if self._order_basis_coefficients is None:
+            self._order_basis_coefficients = tuple(
+                tuple(element.list()) for element in self._order_basis
+            )
         field = self.order.number_field()
         cubic_multiplication_table: tuple[tuple[tuple[int, ...], ...], ...] | None = (
             None
@@ -1521,7 +1558,13 @@ class ExactRelationCollector:
             ):
                 cubic_multiplication_table = None
         normalized: list[
-            tuple[tuple[int, ...], tuple[int, ...], dict[str, Any] | None, Any, Any]
+            tuple[
+                tuple[int, ...],
+                tuple[int, ...],
+                dict[str, Any] | None,
+                list[list[int]],
+                Any,
+            ]
         ] = []
         maxima = [0] * width
         for coordinates, principal_row, provenance in raw_proposals:
@@ -1543,15 +1586,13 @@ class ExactRelationCollector:
                 )
             if any(value > MAX_INTEGRAL_RELATION_BATCH_PRIME_POWERS for value in row):
                 raise ValueError("a sieved integral relation exponent is too large")
-            element = field(0)
-            for coefficient, basis_element in zip(
-                values, self._order_basis, strict=True
-            ):
-                element += coefficient * basis_element
-            if element.is_zero():
+            if not any(values):
                 raise ValueError("a sieved relation generator must be nonzero")
+            witness_payload = _order_basis_coordinate_payload(
+                self._order_basis_coefficients, values
+            )
             witness_norm = sage.QQ(
-                element.norm()
+                _element_from_payload(field, witness_payload).norm()
                 if cubic_multiplication_table is None
                 else _cubic_order_basis_element_norm(cubic_multiplication_table, values)
             )
@@ -1568,7 +1609,7 @@ class ExactRelationCollector:
                 )
             for index, exponent in enumerate(row):
                 maxima[index] = max(maxima[index], exponent)
-            normalized.append((values, row, provenance, element, witness_norm))
+            normalized.append((values, row, provenance, witness_payload, witness_norm))
 
         if sum(maxima) > MAX_INTEGRAL_RELATION_BATCH_PRIME_POWERS:
             raise ValueError(
@@ -1600,7 +1641,7 @@ class ExactRelationCollector:
                 raise ArithmeticError("a factor-base norm is not integral")
             factor_norms.append(int(norm._numerator))
         absolute_norms = []
-        for _values, _row, _provenance, _element, norm in normalized:
+        for _values, _row, _provenance, _witness_payload, norm in normalized:
             if int(norm._denominator) != 1:
                 raise ArithmeticError("an integral element norm is not integral")
             absolute_norms.append(int(norm._numerator))
@@ -1643,7 +1684,7 @@ class ExactRelationCollector:
             raise RelationNotSmoothError(
                 "packed relation replay did not certify every proposed row"
             )
-        for index, (_values, row, _provenance, _element, _norm) in enumerate(
+        for index, (_values, row, _provenance, _witness_payload, _norm) in enumerate(
             normalized
         ):
             start = index * width
@@ -1653,8 +1694,10 @@ class ExactRelationCollector:
                 )
 
         records = tuple(
-            self._integral_generator_record(element, row, norm, provenance)
-            for _values, row, provenance, element, norm in normalized
+            self._integral_generator_record_from_payload(
+                witness_payload, row, norm, provenance
+            )
+            for _values, row, provenance, witness_payload, norm in normalized
         )
         new_keys: dict[str, bool] = {}
         for record in records:
@@ -1681,12 +1724,30 @@ class ExactRelationCollector:
     ) -> RelationRecord:
         """Construct the compact record after exact integral-row validation."""
         factored = FactoredPrincipalWitness.from_element(element)
+        return self._integral_generator_record_from_payload(
+            factored.to_dict()["factors"][0]["element"],
+            row,
+            witness_norm,
+            provenance,
+        )
+
+    def _integral_generator_record_from_payload(
+        self,
+        element_payload: list[list[int]],
+        row: tuple[int, ...],
+        witness_norm: Any,
+        provenance: dict[str, Any] | None,
+    ) -> RelationRecord:
+        """Construct one compact singleton witness from canonical coefficients."""
         zero_row = (0,) * len(row)
         return RelationRecord(
             row=row,
             quotient_row=row,
             source_row=zero_row,
-            witness=factored.to_dict(),
+            witness={
+                "schema": WITNESS_SCHEMA,
+                "factors": [{"element": element_payload, "exponent": 1}],
+            },
             norm_smoothness=_norm_smoothness_from_norms(
                 witness_norm,
                 row,
