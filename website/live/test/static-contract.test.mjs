@@ -15,6 +15,7 @@ test("public shell exposes accessible execution and file controls", async () => 
   for (const mode of ["selection", "cell", "all"]) assert.match(html, new RegExp(`data-run=["']${mode}["']`));
   assert.match(html, /aria-live="polite"/);
   assert.match(html, /Skip to the Sage editor/);
+  assert.match(html, /class="brand" href="https:\/\/sagejs\.org\/"/);
   assert.doesNotMatch(html, /https?:\/\/[^"']+\.(?:js|css|woff2?)/i, "runtime UI must not load a CDN");
   const app = await read("app.mjs");
   assert.match(app, /wasm-capabilities-report\.json/);
@@ -22,6 +23,9 @@ test("public shell exposes accessible execution and file controls", async () => 
   assert.match(app, /Fallback:/);
   assert.match(app, /value\.on\("error"/);
   assert.match(app, /Ready — recovered session/);
+  assert.match(app, /result-input/);
+  assert.match(app, /Copy input/);
+  assert.match(app, /navigator\.clipboard\.writeText\(input\)/);
 });
 
 test("Cloudflare policy isolates a deliberately dynamic, credential-free origin", async () => {

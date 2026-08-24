@@ -3,7 +3,13 @@ import {
   createBrowserDynamicCompiler,
 } from "./dynamic-compiler.mjs";
 
-function outputJavaScript(compiler, ast, baselib, includeBaselib) {
+function outputJavaScript(
+  compiler,
+  ast,
+  baselib,
+  includeBaselib,
+  language = "sage",
+) {
   const output = new compiler.OutputStream({
     omit_baselib: !includeBaselib,
     write_name: false,
@@ -11,7 +17,7 @@ function outputJavaScript(compiler, ast, baselib, includeBaselib) {
     beautify: true,
     keep_docstrings: true,
     exact_integers: true,
-    rational_division: true,
+    rational_division: language === "sage",
     python_tuples: true,
     python_truthiness: true,
     python_attributes: true,
@@ -47,12 +53,19 @@ async function fetchBytes(url) {
 }
 
 let compiler;
-let frontend;
+let sageFrontend;
+let pythonFrontend;
 let dynamicCompiler;
 let baselib;
 let toplevel;
+let foreignFrontendUrl;
+let treeSitterRuntimeUrl;
+let foreignGrammarUrls;
+let foreignFrontendModulePromise;
+const configuredForeignGrammars = new Set();
+const foreignFrontends = new Map();
 
-function compile(source, filename) {
+function compileWithFrontend(source, filename, frontend, language) {
   const classes = toplevel?.classes;
   const scopedFlags = toplevel?.scoped_flags ?? {
     dict_literals: true,
@@ -68,11 +81,17 @@ function compile(source, filename) {
     precompiled_module_cache_dir: "__module_cache__",
     classes,
     scoped_flags: scopedFlags,
-    jsage: true,
+    jsage: language === "sage",
     exact_integer_literals: true,
     strict_python_scopes: true,
   });
-  const javascript = outputJavaScript(compiler, toplevel, baselib, false);
+  const javascript = outputJavaScript(
+    compiler,
+    toplevel,
+    baselib,
+    false,
+    language,
+  );
 
   if (classes) {
     const exported = new Set(toplevel.exports);
@@ -92,6 +111,59 @@ function compile(source, filename) {
     .filter((module) => module?.dynamic === true)
     .map((module) => module.module_id);
   return { javascript, dynamicImports, moduleImports };
+}
+
+async function foreignModule() {
+  if (!foreignFrontendUrl) {
+    throw new Error("Sage.js browser foreign frontends are not configured");
+  }
+  foreignFrontendModulePromise ??= import(foreignFrontendUrl);
+  return foreignFrontendModulePromise;
+}
+
+async function configureForeignGrammar(language, module) {
+  if (configuredForeignGrammars.has(language)) return;
+  const grammarUrl = foreignGrammarUrls?.[language];
+  if (typeof grammarUrl !== "string") {
+    throw new Error(`Sage.js browser grammar ${language} is not configured`);
+  }
+  const [treeSitterRuntime, grammar] = await Promise.all([
+    fetchBytes(treeSitterRuntimeUrl),
+    fetchBytes(grammarUrl),
+  ]);
+  module.configureBrowserForeignResources({
+    treeSitterRuntime,
+    grammar,
+    grammarFilename: `tree-sitter-${language}.wasm`,
+  });
+  configuredForeignGrammars.add(language);
+}
+
+async function compile(source, filename) {
+  if (!/^[\t ]*%%[A-Za-z]/.test(source)) {
+    return compileWithFrontend(source, filename, sageFrontend, "sage");
+  }
+  const module = await foreignModule();
+  const cell = module.prepareSubmittedPolyglotCell(
+    module.parsePolyglotCell(source),
+  );
+  if (cell.language === "sage") {
+    return compileWithFrontend(cell.source, filename, sageFrontend, "sage");
+  }
+  if (cell.language === "python") {
+    return compileWithFrontend(cell.source, filename, pythonFrontend, "python");
+  }
+  await configureForeignGrammar(cell.language, module);
+  let frontend = foreignFrontends.get(cell.language);
+  if (!frontend) {
+    frontend = await module.createForeignFrontend(cell.language);
+    foreignFrontends.set(cell.language, frontend);
+  }
+  const lowering = frontend.lower(cell.source, {
+    filename,
+    captureResult: true,
+  });
+  return compileWithFrontend(lowering.source, filename, sageFrontend, "sage");
 }
 
 function sendResponse(data, response) {
@@ -121,10 +193,17 @@ self.onmessage = async ({ data }) => {
     let result;
     if (data.type === "initialize") {
       compiler = undefined;
-      frontend = undefined;
+      sageFrontend = undefined;
+      pythonFrontend = undefined;
       dynamicCompiler = undefined;
       baselib = undefined;
       toplevel = undefined;
+      foreignFrontendModulePromise = undefined;
+      configuredForeignGrammars.clear();
+      foreignFrontends.clear();
+      foreignFrontendUrl = data.foreignFrontend;
+      treeSitterRuntimeUrl = data.treeSitterRuntime;
+      foreignGrammarUrls = data.foreignGrammars;
       const [
         compilerSource,
         baselibSource,
@@ -184,7 +263,8 @@ self.onmessage = async ({ data }) => {
       result = `void 0;\n${bootstrap}`;
       compiler = nextCompiler;
       baselib = baselibSource;
-      frontend = nextFrontend;
+      sageFrontend = nextFrontend;
+      pythonFrontend = nextDynamicFrontend;
       dynamicCompiler = createBrowserDynamicCompiler(
         nextCompiler,
         nextDynamicFrontend,
@@ -193,7 +273,7 @@ self.onmessage = async ({ data }) => {
       if (!compiler) {
         throw new Error("Sage.js browser compiler is not initialized");
       }
-      result = compile(data.source, data.filename);
+      result = await compile(data.source, data.filename);
     } else if (data.type === "compileDynamic") {
       if (!dynamicCompiler) {
         throw new Error("Sage.js browser compiler is not initialized");
@@ -215,7 +295,8 @@ self.onmessage = async ({ data }) => {
   } catch (error) {
     if (data.type === "initialize") {
       compiler = undefined;
-      frontend = undefined;
+      sageFrontend = undefined;
+      pythonFrontend = undefined;
       dynamicCompiler = undefined;
       baselib = undefined;
       toplevel = undefined;

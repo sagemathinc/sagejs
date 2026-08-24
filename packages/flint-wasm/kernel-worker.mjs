@@ -35,9 +35,11 @@ async function initialize(message) {
     symbolic: message.symbolic,
     compilerWorker: message.compilerWorker,
     compilerFrontend: message.compilerFrontend,
+    foreignFrontend: message.foreignFrontend,
     treeSitterRuntime: message.treeSitterRuntime,
     pythonGrammar: message.pythonGrammar,
     sageGrammar: message.sageGrammar,
+    foreignGrammars: message.foreignGrammars,
     capabilityReport: message.capabilityReport,
   });
   await evaluatorPromise;

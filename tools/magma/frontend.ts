@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { Node as SyntaxNode, Tree } from "web-tree-sitter";
 import {
@@ -27,6 +25,11 @@ import {
   UnaryExpression,
   WhileStatement,
 } from "./ast";
+import {
+  currentWorkingDirectory,
+  homeDirectory,
+  readMagmaSource,
+} from "./environment";
 
 const MAGMA_WASM = "tree-sitter-magma.wasm";
 
@@ -784,7 +787,7 @@ export function createMagmaFrontend(): Promise<MagmaFrontend> {
       for (const statement of statements) {
         if (statement.kind === "load" || statement.kind === "attach") {
           const requestedFilename = statement.filename.startsWith("~/")
-            ? resolve(homedir(), statement.filename.slice(2))
+            ? resolve(homeDirectory(), statement.filename.slice(2))
             : statement.filename;
           const filename = resolve(baseDirectory, requestedFilename);
           if (activeFiles.has(filename)) {
@@ -795,7 +798,7 @@ export function createMagmaFrontend(): Promise<MagmaFrontend> {
           }
           let fileSource: string;
           try {
-            fileSource = readFileSync(filename, "utf8");
+            fileSource = readMagmaSource(filename);
           } catch (error) {
             const detail = error instanceof Error
               ? error.message
@@ -882,7 +885,7 @@ export function createMagmaFrontend(): Promise<MagmaFrontend> {
         const baseDirectory = options.filename &&
             !options.filename.startsWith("<")
           ? dirname(resolve(options.filename))
-          : process.cwd();
+          : currentWorkingDirectory();
         const loadedFiles: string[] = [];
         const attachedFiles: string[] = [];
         const expandedAst: MagmaProgram = {

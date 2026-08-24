@@ -350,6 +350,19 @@ async function main() {
     assert.deepEqual(listed.display?.data.data[0].x, [0, 1, 2]);
     assert.deepEqual(listed.display?.data.data[0].y, [1, 4, 9]);
 
+    const textbookPoints = await session.evaluate(
+      "list_plot([power_mod(17, x, 31) for x in range(30)])",
+    );
+    assert.deepEqual(
+      textbookPoints.display?.data.data[0].x,
+      Array.from({ length: 30 }, (_, index) => index),
+    );
+    assert.deepEqual(textbookPoints.display?.data.data[0].y.slice(0, 6), [
+      1, 17, 10, 15, 7, 26,
+    ]);
+    assert.equal(textbookPoints.display?.data.data[0].marker.size, 10);
+    assert.equal(textbookPoints.display?.data.data[0].opacity, 1);
+
     const shown = await session.evaluate(
       "show(plot(sin(x^2), (x, 0, pi)))",
     );

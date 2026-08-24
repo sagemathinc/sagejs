@@ -50,6 +50,24 @@ export function configureBrowserCompilerResources({
   }
 }
 
+export function configureBrowserForeignResources({
+  treeSitterRuntime,
+  grammar,
+  grammarFilename,
+}: {
+  treeSitterRuntime: Uint8Array;
+  grammar: Uint8Array;
+  grammarFilename: string;
+}): void {
+  if (!/^tree-sitter-(?:magma|macaulay2|maple|matlab|wolfram)\.wasm$/.test(
+    grammarFilename,
+  )) {
+    throw new TypeError(`unsupported browser grammar ${grammarFilename}`);
+  }
+  binaryResources.set("web-tree-sitter.wasm", treeSitterRuntime);
+  binaryResources.set(grammarFilename, grammar);
+}
+
 export function vendorResourcePath(filename: string): string {
   return filename;
 }
