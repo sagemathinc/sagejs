@@ -456,6 +456,9 @@
       "napi:@sagemath/sagejs-flint:complexEi",
       "napi:@sagemath/sagejs-flint:complexBesselI"
     ],
+    "python-float-underscore-separators": [
+      "specialist:capability-report-api"
+    ],
     "numpy-vertical-slice": [
       "specialist:numpy-ts"
     ],

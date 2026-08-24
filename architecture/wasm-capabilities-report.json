@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "225c515ec2b592480f6fa328518d1ac3342eacbba291a6c07481cf3a9a363dda",
+  "source_sha256": "3eb66825c70c8bc898eb10c5137efe2219ec2590ff729e981d61938bbe13cc49",
   "counts": {
     "total": 965,
     "by_kind": {
@@ -144,6 +144,9 @@
     ],
     "numpy-vertical-slice": [
       "specialist:numpy-ts"
+    ],
+    "python-float-underscore-separators": [
+      "specialist:capability-report-api"
     ],
     "quadratic-dedekind-zeta-batch": [
       "analytic:riemann-zeta-batch",

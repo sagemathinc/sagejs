@@ -14,7 +14,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | --- | ---: | ---: |
 | `wasm-library` | 90 | 0 |
 | `wasm-compiled-source` | 14 | 0 |
-| `portable-orchestration` | 4 | 0 |
+| `portable-orchestration` | 5 | 0 |
 | `portable-computation` | 0 | 0 |
 
 ## Families
@@ -38,6 +38,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | number-fields | 4 | 2 | 0 | 2 | 0 | 2 |
 | numerical | 5 | 5 | 0 | 5 | 0 | 0 |
 | plotting | 2 | 2 | 0 | 2 | 0 | 0 |
+| python-compatibility | 1 | 0 | 0 | 0 | 0 | 1 |
 | runtime | 1 | 0 | 0 | 0 | 0 | 1 |
 | serialization | 1 | 0 | 0 | 0 | 0 | 1 |
 | sparse-exact-linear-algebra | 2 | 2 | 0 | 2 | 0 | 0 |
@@ -48,6 +49,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | --- | --- | --- | --- | --- | --- |
 | `parity:exact-big-integer` | exact-arithmetic | no | unmeasured | `wasm-library` | — |
 | `parity:capability-report-api` | runtime | no | unmeasured | `portable-orchestration` | — |
+| `parity:python-float-underscore-separators` | python-compatibility | no | unmeasured | `portable-orchestration` | — |
 | `parity:exact-matrix-and-finite-field-polynomial` | exact-arithmetic | no | unmeasured | `wasm-library` | — |
 | `parity:sagepack-exact-roundtrip` | serialization | no | unmeasured | `portable-orchestration` | — |
 | `parity:exact-algebraic-roots` | algebraic-numbers | no | unmeasured | `wasm-library` | — |
