@@ -298,9 +298,12 @@ def incomplete(field, **kwargs):
         field, False, "forced bounded exhaustion", 1
     )
 cubic_module.bounded_cubic_minkowski_class_number = incomplete
-class_unit_module.class_number = lambda *args, **kwargs: 7
 K_fallback = NumberField(x**3 + 3*x + 1, "f")
-assert K_fallback.class_number(proof=False) == 7
+try:
+    K_fallback.class_number(proof=False)
+    raise AssertionError("bounded noncompletion was accepted as a class number")
+except AssertionError as error:
+    assert "coupled class/unit path" in str(error)
 assert K_fallback._bounded_cubic_class_number_artifact is None
 print("cubic-class-number-fast-ok")
 `, 180_000);
@@ -643,7 +646,9 @@ assert cubic_module.authenticated_cubic_relation_seed(forged, T) is not None
 forged.diagnostics["quotient_order"] = 99
 T._bounded_cubic_class_number_artifact = forged
 assert T.class_number(proof=False) == 2
-cold_result = list(T._class_unit_engine_cache.values())[-1]
+cold_projection = list(T._class_number_projection_cache.values())[-1]
+cold_result = T.class_unit_group(proof=False)
+assert cold_projection._completed is cold_result
 assert cold_result.diagnostics["resources"]["cubic_relation_seed_uses"] == 0
 assert cold_result.diagnostics["resources"]["cubic_factor_base_seed_uses"] == 0
 assert cold_result.diagnostics["resources"]["cubic_specialized_seed_skips"] == 0
@@ -879,7 +884,10 @@ assert len(large_artifact.relation_records) == 0
 assert large_artifact.diagnostics["factor_base_size"] == 10
 assert not large_artifact.diagnostics["factor_base_materialized"]
 assert large_artifact.diagnostics["relation_seed_size_policy_exceeded"]
-large_result = list(L._class_unit_engine_cache.values())[-1]
+assert len(L._class_unit_engine_cache) == 0
+large_projection = list(L._class_number_projection_cache.values())[-1]
+large_result = L.class_unit_group(proof=False)
+assert large_projection._completed is large_result
 large_resources = large_result.diagnostics["resources"]
 assert large_result.proof_status == "exact-relations-conditional-grh"
 assert large_resources["cubic_factor_base_seed_uses"] == 0
@@ -912,7 +920,9 @@ try:
     assert Q.class_number(proof=False) == 6
 finally:
     cubic_module._validated_cubic_integral_relation_batch = saved_validate_batch
-fallback_result = list(Q._class_unit_engine_cache.values())[-1]
+fallback_projection = list(Q._class_number_projection_cache.values())[-1]
+fallback_result = Q.class_unit_group(proof=False)
+assert fallback_projection._completed is fallback_result
 assert fallback_result.complete
 assert fallback_result.proof_status == "exact-relations-conditional-grh"
 assert fallback_result.diagnostics["resources"][

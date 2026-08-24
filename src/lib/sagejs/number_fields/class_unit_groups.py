@@ -5369,7 +5369,15 @@ def cubic_class_number_projection(field: Any, proof: bool | None = None) -> int:
     if retain_artifact and not engine_holder:
         field._bounded_cubic_class_number_artifact = artifact
     if not engine_holder:
-        return class_number(field, proof=proof_value, algorithm="auto")
+        # A declined cubic prefix still belongs to the scalar projection
+        # workflow.  Entering the public coupled API here used to call
+        # `run()` without `class_number_only=True`, eagerly constructing the
+        # saturation certificate and class maps that a scalar caller did not
+        # request.  Keep the same live context and stop at the rigorous hR
+        # index-one boundary; a later class/unit request resumes `finish()`.
+        engine_holder.append(
+            ClassUnitGroupEngine(field, proof=proof_value, algorithm="auto")
+        )
 
     engine = engine_holder[0]
     result = engine.run(class_number_only=True)
