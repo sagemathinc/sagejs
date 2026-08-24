@@ -4,6 +4,7 @@ import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promi
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
+import { build } from "esbuild";
 import { validateCapabilityReport } from "../capability-report.mjs";
 
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -157,6 +158,18 @@ export async function stageRelease({
   await rm(target, { recursive: true, force: true });
   await mkdir(target, { recursive: true });
   await copyTree(appRoot, target, SHELL_EXCLUDED);
+  await build({
+    entryPoints: [path.join(appRoot, "codemirror-editor.mjs")],
+    outfile: path.join(target, "codemirror-editor.mjs"),
+    bundle: true,
+    format: "esm",
+    legalComments: "none",
+    logLevel: "silent",
+    minify: true,
+    platform: "browser",
+    sourcemap: false,
+    target: ["es2022"],
+  });
 
   for (const entry of manifest.assets) {
     const relative = safeRelative(entry.path);

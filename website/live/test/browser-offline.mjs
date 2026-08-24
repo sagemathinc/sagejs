@@ -82,6 +82,48 @@ try {
   await command("Page.navigate", { url: `http://127.0.0.1:${port}/` });
   await waitFor(`document.querySelector('#kernel-status')?.dataset.state === 'ready'`);
   assert.equal(await evaluate("crossOriginIsolated"), true);
+  assert.equal(
+    await evaluate("document.querySelector('#source')?.dataset.editor"),
+    "codemirror6",
+  );
+  await evaluate(`(() => {
+    const source = document.querySelector('#source');
+    source.value = 'def square(x):';
+    source.setSelectionRange(source.value.length);
+    source.querySelector('.cm-content').focus();
+    return true;
+  })()`);
+  await command("Input.dispatchKeyEvent", {
+    type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13,
+  });
+  await command("Input.dispatchKeyEvent", {
+    type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13,
+  });
+  assert.equal(
+    await evaluate("document.querySelector('#source').value"),
+    "def square(x):\n    ",
+  );
+  assert.ok(
+    await evaluate("document.querySelectorAll('#source .cm-line span').length > 0"),
+    "Python syntax should be highlighted",
+  );
+  await command("Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: "(",
+    code: "Digit9",
+    modifiers: 8,
+    text: "(",
+    unmodifiedText: "9",
+    windowsVirtualKeyCode: 57,
+  });
+  await command("Input.dispatchKeyEvent", {
+    type: "keyUp", key: "(", code: "Digit9", modifiers: 8,
+    windowsVirtualKeyCode: 57,
+  });
+  assert.equal(
+    await evaluate("document.querySelector('#source').value"),
+    "def square(x):\n    ()",
+  );
   await runFactor();
   await evaluate("navigator.serviceWorker.ready.then(() => true)");
   await command("Network.emulateNetworkConditions", { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 });

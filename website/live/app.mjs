@@ -1,4 +1,5 @@
 import { loadSageRuntime, requestCredentials } from "./runtime-api.mjs";
+import { createSourceEditor } from "./codemirror-editor.mjs";
 import { executionSource } from "./execution-source.mjs";
 import { EXAMPLES } from "./examples.mjs";
 import { capabilityFamilies, filterCapabilities, validateCapabilityReport } from "./capability-report.mjs";
@@ -146,6 +147,8 @@ function scheduleSave() {
   clearTimeout(autosaveTimer);
   autosaveTimer = setTimeout(saveWorkspace, 450);
 }
+
+createSourceEditor(elements.source, { onRun: (mode) => void run(mode) });
 
 function download(bytes, filename, type) {
   const blob = new Blob([bytes], { type });
@@ -461,6 +464,7 @@ elements.sessions.addEventListener("change", () => {
 elements.source.addEventListener("input", scheduleSave);
 elements.title.addEventListener("input", scheduleSave);
 elements.source.addEventListener("keydown", (event) => {
+  if (event.defaultPrevented) return;
   if (event.key !== "Enter" || event.altKey) return;
   if (event.shiftKey) { event.preventDefault(); void run("cell"); }
   else if (event.ctrlKey || event.metaKey) { event.preventDefault(); void run("all"); }
