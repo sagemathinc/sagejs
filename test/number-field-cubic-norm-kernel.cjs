@@ -305,6 +305,7 @@ saved_generic_factor = prime_ideals._om.factor_mod_prime
 saved_p_maximal = maximal_order.equation_order_is_p_maximal
 saved_modular_table = prime_ideals._modular_table
 saved_one_coordinates = prime_ideals._order_one_coordinates
+saved_nf_element_from_row = prime_ideals._nf_element_from_row
 def counted_generic_factor(*args, **kwargs):
     global generic_factor_calls
     generic_factor_calls += 1
@@ -321,10 +322,15 @@ def counted_one_coordinates(*args, **kwargs):
     global one_coordinate_calls
     one_coordinate_calls += 1
     return saved_one_coordinates(*args, **kwargs)
+def forbidden_nf_element_from_row(*args, **kwargs):
+    raise AssertionError(
+        "packed factor-record construction eagerly materialized a field element"
+    )
 prime_ideals._om.factor_mod_prime = counted_generic_factor
 maximal_order.equation_order_is_p_maximal = counted_p_maximal
 prime_ideals._modular_table = counted_modular_table
 prime_ideals._order_one_coordinates = counted_one_coordinates
+prime_ideals._nf_element_from_row = forbidden_nf_element_from_row
 try:
     packed_plan = factor_bases.factor_base_plan(
         packed_field.maximal_order(), proof=True, theorem="minkowski"
@@ -335,6 +341,7 @@ finally:
     maximal_order.equation_order_is_p_maximal = saved_p_maximal
     prime_ideals._modular_table = saved_modular_table
     prime_ideals._order_one_coordinates = saved_one_coordinates
+    prime_ideals._nf_element_from_row = saved_nf_element_from_row
 assert direct_packed_factors is not None and len(direct_packed_factors) == 5
 # The packed reduced-algebra kernel handles p=2 without the generic modular
 # factorizer.  The irreducible p=7 cubic uses the bounded cubic factorizer
@@ -343,6 +350,16 @@ assert generic_factor_calls == 0
 assert legacy_p_maximal_calls == 0
 assert modular_table_calls == 3
 assert one_coordinate_calls == 1
+# Authentication serializes the retained rational coefficient triples without
+# constructing any NumberFieldElement.  General ideal materialization remains
+# lazy and fills this cache only when explicitly requested below.
+assert all(record._second_generator_payload is not None for record in direct_packed_factors)
+assert all(record._second_generator_cache is None for record in direct_packed_factors)
+direct_payloads = [record.to_dict() for record in direct_packed_factors]
+assert all(record._second_generator_cache is None for record in direct_packed_factors)
+assert direct_packed_factors[0].second_generator is not None
+assert direct_packed_factors[0]._second_generator_cache is not None
+assert [record.to_dict() for record in direct_packed_factors] == direct_payloads
 # The p=2 index-prime factor requires the complete finite-algebra replay and
 # therefore deliberately declines the selective live materializer.
 assert cubic.materialize_verified_packed_cubic_factor_records(

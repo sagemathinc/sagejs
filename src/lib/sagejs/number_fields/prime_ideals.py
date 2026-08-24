@@ -1481,8 +1481,7 @@ def packed_dedekind_kummer_candidates(
         maximal = bool(p_maximal)
     if not maximal:
         return None
-    scale = runtime.integer_bigint(field._integral_equation_scale_cache)
-    beta = field.gen() * scale
+    scale = int(runtime.integer_bigint(field._integral_equation_scale_cache))
     degree = order.degree()
     table = _modular_table(order, prime) if modular_table is None else modular_table
     one = (
@@ -1503,10 +1502,29 @@ def packed_dedekind_kummer_candidates(
         residue_degree = len(factor.polynomial) - 1
         if residue_degrees is not None and residue_degree not in residue_degrees:
             continue
-        second_generator = field.zero()
-        for coefficient in reversed(factor.polynomial):
-            second_generator = second_generator * beta + int(coefficient)
-        exact_coordinates = _field_element_order_coordinates(order, second_generator)
+        power_coordinates = [sage.QQ(0)] * degree
+        for index, coefficient in enumerate(factor.polynomial):
+            scaled = sage.QQ(int(coefficient) * scale**index)
+            if index < degree:
+                power_coordinates[index] += scaled
+                continue
+            if index != degree:
+                raise ArithmeticError(
+                    "a Dedekind--Kummer generator exceeds the field degree"
+                )
+            defining = tuple(field.defining_polynomial().coefficients())
+            leading = sage.QQ(defining[degree])
+            for target in range(degree):
+                power_coordinates[target] -= (
+                    scaled * sage.QQ(defining[target]) / leading
+                )
+        inverse_rows = order._basis_inverse_matrix().rows()
+        exact_coordinates: list[Any] = []
+        for target in range(degree):
+            coordinate: Any = sage.QQ(0)
+            for source in range(degree):
+                coordinate += power_coordinates[source] * inverse_rows[source][target]
+            exact_coordinates.append(coordinate)
         if any(value._denominator != 1 for value in exact_coordinates):
             raise ArithmeticError("a Dedekind--Kummer generator is not integral")
         modular_coordinates = [
@@ -1536,7 +1554,10 @@ def packed_dedekind_kummer_candidates(
                 "e": int(factor.multiplicity),
                 "f": residue_degree,
                 "presentation": presentation,
-                "second_generator": second_generator,
+                "second_generator_payload": [
+                    [int(value._numerator), int(value._denominator)]
+                    for value in power_coordinates
+                ],
                 "table": table,
                 "one": one,
             }

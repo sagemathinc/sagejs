@@ -127,7 +127,7 @@ class PackedCubicFactorRecord:
         rows: list[list[Any]],
         subspace: list[list[int]],
         presentation: dict[str, Any],
-        second_generator: Any,
+        second_generator_payload: Any,
         table: list[list[list[int]]],
         one_coordinates: list[int],
         dedekind_kummer: bool,
@@ -157,12 +157,11 @@ class PackedCubicFactorRecord:
                 numerators.append(int(scaled._numerator))
         self.basis_numerators = tuple(numerators)
         self.basis_denominator = denominator
-        witness = second_generator
-        if witness is None:
+        witness_payload = second_generator_payload
+        if witness_payload is None:
             prime_module = __import__(
                 "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
             )
-            field = order.number_field()
             target = [list(row) for row in self.subspace]
             inverse_rows = order._basis_inverse_matrix().rows()
             for row in self.rows:
@@ -188,9 +187,27 @@ class PackedCubicFactorRecord:
                     )
                     == target
                 ):
-                    witness = prime_module._nf_element_from_row(field, list(row))
+                    witness_payload = [
+                        [int(value._numerator), int(value._denominator)]
+                        for value in row
+                    ]
                     break
-        self.second_generator = witness
+        normalized_witness_payload: list[tuple[int, int]] | None = None
+        if witness_payload is not None:
+            if len(witness_payload) != 3:
+                raise ValueError("a packed cubic second generator has the wrong width")
+            normalized_witness_payload = []
+            for value in witness_payload:
+                rational = sage.QQ(value[0]) / sage.QQ(value[1])
+                normalized_witness_payload.append(
+                    (int(rational._numerator), int(rational._denominator))
+                )
+        self._second_generator_payload = (
+            None
+            if normalized_witness_payload is None
+            else tuple(normalized_witness_payload)
+        )
+        self._second_generator_cache: Any = None
         self.modular_table = tuple(
             tuple(tuple(int(value) for value in product) for product in left)
             for left in table
@@ -222,6 +239,24 @@ class PackedCubicFactorRecord:
     def norm(self) -> int:
         return self.norm_value
 
+    @property
+    def second_generator(self) -> Any:
+        """Materialize the retained exact witness only when an ideal needs it."""
+        if self._second_generator_payload is None:
+            return None
+        if self._second_generator_cache is None:
+            prime_module = __import__(
+                "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+            )
+            coordinates = [
+                sage.QQ(numerator) / sage.QQ(denominator)
+                for numerator, denominator in self._second_generator_payload
+            ]
+            self._second_generator_cache = prime_module._nf_element_from_row(
+                self.order.number_field(), coordinates
+            )
+        return self._second_generator_cache
+
     def packed_power_bases(
         self, maximum: int
     ) -> tuple[tuple[tuple[int, ...], int], ...]:
@@ -243,14 +278,13 @@ class PackedCubicFactorRecord:
         return self._power_cache[:count]
 
     def to_dict(self) -> dict[str, Any]:
-        second_generator = self.second_generator
         encoded_generator = None
-        if second_generator is not None:
+        if self._second_generator_payload is not None:
             encoded_generator = {
                 "rational_prime": self.prime,
                 "second_generator": [
-                    [int(value._numerator), int(value._denominator)]
-                    for value in second_generator.list()
+                    [numerator, denominator]
+                    for numerator, denominator in self._second_generator_payload
                 ],
             }
         return {
@@ -362,7 +396,7 @@ def packed_cubic_factor_records(
             record["rows"],
             record["subspace"],
             record["presentation"],
-            record["second_generator"],
+            record.get("second_generator_payload"),
             record["table"],
             record["one"],
             record["dedekind_kummer"],
