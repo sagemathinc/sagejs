@@ -6,6 +6,7 @@ import {
   executablePathFor,
   parseEngineList,
 } from "./browser-wasm-support.mjs";
+import { EXAMPLES } from "../../../website/live/examples.mjs";
 
 const engines = parseEngineList(
   process.env.SAGEJS_BROWSER_ENGINES ?? "chromium",
@@ -14,21 +15,13 @@ const required = new Set(parseEngineList(
   process.env.SAGEJS_REQUIRED_BROWSER_ENGINES ?? engines.join(","),
 ));
 const browserTypes = { chromium, firefox, webkit };
-const source = [
-  "import numpy as np",
-  "a = np.arange(1, 13, dtype=np.float64).reshape(3, 4)",
-  "print(np.mean(a, axis=1).tolist())",
-  "print(np.linalg.solve(np.array([[4., 7.], [2., 6.]]), np.array([1., 0.])).tolist())",
-  "spectrum = np.fft.fft(np.array([0., 1., 0., -1.]))",
-  "print([[round(z.real, 12), round(z.imag, 12)] for z in spectrum])",
-  "np.random.seed(2026)",
-  "print(np.random.randint(0, 100, size=(2, 4)).tolist())",
-].join("\n");
+const example = EXAMPLES.find(({ id }) => id === "numpy-signal-recovery");
+assert.ok(example, "missing live NumPy signal-recovery example");
+const source = example.source;
 const expected = [
-  "[2.5, 6.5, 10.5]",
-  "[0.6000000000000001, -0.2]",
-  "[[0.0, 0.0], [0.0, -2.0], [0.0, 0.0], [0.0, 2.0]]",
-  "[[1, 6, 26, 56], [77, 77, 29, 28]]",
+  "dominant frequency bins: [19, 7]",
+  "recovered coefficients: [1.721, -0.011, -0.007, 0.892]",
+  "fit RMSE: 0.018268",
   "",
 ].join("\n");
 
@@ -64,6 +57,14 @@ try {
         [source, 120_000],
       );
       assert.equal(result.stdout, expected, `${engine} NumPy output`);
+      assert.ok(
+        result.instrumentation.routes.some(
+          (route) =>
+            route.capability_id === "specialist:numpy-ts" &&
+            route.selected === true,
+        ),
+        `${engine} did not select the authenticated numpy-ts specialist`,
+      );
       assert.deepEqual(pageErrors, [], `${engine} page errors`);
       console.log(`${engine}: broad NumPy browser workflow passed`);
     } finally {

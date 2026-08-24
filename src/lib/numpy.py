@@ -1461,11 +1461,7 @@ def cumprod(a: Any, axis: Any = None, dtype: Any = None, out: Any = None) -> nda
 
 
 def add(left: Any, right: Any) -> Any:
-    if isinstance(left, ndarray):
-        return left + right
-    if isinstance(right, ndarray):
-        return right + left
-    return _wrap(_call("add", [_native_array(left), _native(right)]))
+    return _wrap(_call("add", [_native_array(left), _native_operand(right)]))
 
 
 def subtract(left: Any, right: Any) -> ndarray:
@@ -1473,11 +1469,7 @@ def subtract(left: Any, right: Any) -> ndarray:
 
 
 def multiply(left: Any, right: Any) -> Any:
-    if isinstance(left, ndarray):
-        return left * right
-    if isinstance(right, ndarray):
-        return right * left
-    return _wrap(_call("multiply", [_native_array(left), _native(right)]))
+    return _wrap(_call("multiply", [_native_array(left), _native_operand(right)]))
 
 
 def matmul(left: Any, right: Any) -> ndarray:

@@ -39,6 +39,43 @@ B = matrix(QQ, [[1/2, 1/3], [2/5, 3/7]])
 B.inverse()`,
   },
   {
+    id: "numpy-signal-recovery",
+    title: "NumPy spectral signal recovery",
+    description: "Recover two noisy frequencies with vectorized arrays, a real FFT, and a least-squares linear solve.",
+    source: `import numpy as np
+
+np.random.seed(2026)
+n = 256
+t = np.linspace(0.0, 1.0, n, endpoint=False)
+
+# A noisy signal with frequencies 7 Hz and 19 Hz.
+wave7 = np.sin(np.multiply(t, 43.982297150257104))
+wave19 = np.cos(np.multiply(t, 119.38052083641213))
+clean = np.add(np.multiply(wave7, 1.7), np.multiply(wave19, 0.9))
+noisy = np.add(clean, np.random.normal(0.0, 0.35, size=n))
+
+# Find its two dominant frequencies with a real FFT.
+spectrum = np.fft.rfft(noisy)
+power = np.abs(spectrum)
+peak_bins = np.argsort(power)[-2:].tolist()
+print("dominant frequency bins:", peak_bins)
+
+# Recover all sine/cosine coefficients by solving the normal equations.
+basis = np.column_stack((
+    wave7, np.cos(np.multiply(t, 43.982297150257104)),
+    np.sin(np.multiply(t, 119.38052083641213)), wave19,
+))
+normal_matrix = np.matmul(basis.T, basis)
+normal_rhs = np.matmul(basis.T, noisy)
+coefficients = np.linalg.solve(normal_matrix, normal_rhs)
+fit = np.matmul(basis, coefficients)
+residual = np.subtract(fit, clean)
+rmse = np.sqrt(np.mean(np.multiply(residual, residual))).item()
+
+print("recovered coefficients:", np.round(coefficients, 3).tolist())
+print("fit RMSE:", round(rmse, 6))`,
+  },
+  {
     id: "modular-symbols",
     title: "Modular symbols",
     description: "Compute a weight-two modular-symbol space and its cuspidal subspace.",
