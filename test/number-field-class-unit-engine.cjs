@@ -377,6 +377,13 @@ O = K.maximal_order()
 P2 = O.factor_rational_prime(2)[0][0]
 
 unit = factored.FactoredNumberFieldElement.from_element(K, K(2))
+unit_hash = unit.stable_hash()
+assert unit.stable_hash() == unit_hash
+assert len(unit._stable_hash_cache) == 1
+mutated_unit_payload = unit.to_dict()
+mutated_unit_payload["factors"][0]["exponent"] = 2
+assert unit.to_dict()["factors"][0]["exponent"] == 1
+assert unit.stable_hash() == unit_hash
 first = unit.principal_ideal(O)
 second = unit.principal_ideal(O)
 assert first == second and first is second
@@ -426,14 +433,21 @@ class UnitAuthorityProbe:
     def principal_ideal(self, order):
         principal_calls[0] += 1
         return order.ideal(1)
-engine.context._live_artifacts.authenticated_dependency_unit_hashes.add("trusted-unit")
-engine._verify_exact_units(
-    (UnitAuthorityProbe("trusted-unit"), UnitAuthorityProbe("cold-unit"))
+trusted_unit = UnitAuthorityProbe("trusted-unit")
+engine.context._live_artifacts.authenticated_dependency_units.append(
+    (trusted_unit, "trusted-unit")
 )
-assert principal_calls[0] == 1
-assert engine._resource_usage["unit_principal_authority_requests"] == 2
+engine._verify_exact_units(
+    (
+        trusted_unit,
+        UnitAuthorityProbe("trusted-unit"),
+        UnitAuthorityProbe("cold-unit"),
+    )
+)
+assert principal_calls[0] == 2
+assert engine._resource_usage["unit_principal_authority_requests"] == 3
 assert engine._resource_usage["unit_principal_authority_hits"] == 1
-assert engine._resource_usage["unit_principal_authority_fallbacks"] == 1
+assert engine._resource_usage["unit_principal_authority_fallbacks"] == 2
 
 collector = relations.ExactRelationCollector(O, (P2,))
 admission = collector.admit_witness(
@@ -1086,7 +1100,7 @@ class OrbitProbe(ClassUnitGroupEngine):
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-K = NumberField(x - 1, "a")
+K = NumberField(x**2 - 5, "a")
 factor_base = (FakePrime(), FakePrime())
 limits = ClassUnitEngineLimits(
     max_relation_attempts=4,
@@ -1110,6 +1124,26 @@ assert [record.provenance["algorithm"] for record in collector.records] == [
     "quadratic-conjugation-orbit",
 ]
 assert plan_builds == 1 and orbit_calls == 1
+
+# The production orbit planner currently supports exact quadratic
+# conjugation only. Cubic relation contexts must not pay to construct a
+# deterministic unavailable plan.
+real_relations = __import__(
+    "sagejs.number_fields.class_group_relations",
+    fromlist=["class_group_relations"],
+)
+original_planner = real_relations.plan_automorphism_orbits
+unexpected_cubic_plans = []
+def forbidden_cubic_plan(field, factors):
+    unexpected_cubic_plans.append((field, tuple(factors)))
+    raise AssertionError("a cubic field entered the quadratic orbit planner")
+real_relations.plan_automorphism_orbits = forbidden_cubic_plan
+C = NumberField(x**3 + x + 1, "c")
+cubic_engine = ClassUnitGroupEngine(C, algorithm="buchmann-hecke")
+assert cubic_engine._automorphism_plan_for_factor_base(real_relations, ()) is None
+assert unexpected_cubic_plans == []
+assert cubic_engine._resource_usage["automorphism_orbit_plans"] == 1
+real_relations.plan_automorphism_orbits = original_planner
 assert accelerated._resource_usage["automorphism_orbit_plans"] == 1
 assert accelerated._resource_usage["automorphism_orbit_relations"] == 1
 assert accelerated._relation_matrix_accumulator.row_count == 2

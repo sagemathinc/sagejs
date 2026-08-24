@@ -150,6 +150,9 @@ class FactoredNumberFieldElement:
         # this cache object-local and tiny: the factored element is immutable,
         # while order identity prevents reuse in an unrelated order.
         self._principal_ideal_cache: list[tuple[Any, Any]] = []
+        # Immutable factors make their canonical digest safely reusable.
+        # `to_dict()` still returns a fresh body.
+        self._stable_hash_cache: list[str] = []
         runtime.object.freeze(self)
 
     @classmethod
@@ -310,7 +313,12 @@ class FactoredNumberFieldElement:
     def to_dict(self) -> dict[str, Any]:
         """Return a canonical, pointer-independent authenticated payload."""
         body = self._body_dict()
-        body["content_sha256"] = _content_hash(body)
+        if self._stable_hash_cache:
+            content_hash = self._stable_hash_cache[0]
+        else:
+            content_hash = _content_hash(body)
+            self._stable_hash_cache.append(content_hash)
+        body["content_sha256"] = content_hash
         return body
 
     @classmethod
@@ -347,6 +355,8 @@ class FactoredNumberFieldElement:
         return answer
 
     def stable_hash(self) -> str:
+        if self._stable_hash_cache:
+            return self._stable_hash_cache[0]
         return self.to_dict()["content_sha256"]
 
     def __eq__(self, other: object) -> bool:

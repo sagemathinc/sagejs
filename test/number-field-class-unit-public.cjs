@@ -940,6 +940,9 @@ assert widened_result.proof_status == "exact-unconditional"
 assert widened_resources["cubic_relation_seed_relations"] == 9
 assert widened_resources["relation_attempts"] == 0
 assert widened_resources["relation_candidates"] == 0
+assert widened_resources["unit_principal_authority_hits"] == 1
+assert widened_resources["unit_principal_authority_fallbacks"] == 0
+assert widened_result.context.live_diagnostics()["authenticated_dependency_units"] == 1
 print("cubic-relation-seed-policy-ok")
 `, 180_000);
   assert.equal(output, "cubic-relation-seed-policy-ok");

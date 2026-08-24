@@ -1692,6 +1692,7 @@ class ClassUnitGroupEngine:
         presentation: Any,
         dependencies: Iterable[Iterable[int]],
         units: Iterable[Any],
+        unit_hashes: Iterable[str],
     ) -> bool:
         retain = getattr(self.context, "_retain_live_dependency_units", None)
         return bool(
@@ -1703,6 +1704,7 @@ class ClassUnitGroupEngine:
                 presentation,
                 dependencies,
                 units,
+                unit_hashes,
             )
         )
 
@@ -2690,7 +2692,11 @@ class ClassUnitGroupEngine:
             ):
                 return plan
         planner = getattr(relations, "plan_automorphism_orbits", None)
-        plan = planner(self.field, factor_base) if callable(planner) else None
+        plan = (
+            planner(self.field, factor_base)
+            if callable(planner) and int(self.field.degree()) == 2
+            else None
+        )
         self._automorphism_orbit_plans.append((factor_base, plan))
         self._resource_usage["automorphism_orbit_plans"] += 1
         if plan is not None:
@@ -3554,8 +3560,30 @@ class ClassUnitGroupEngine:
         units, selected_dependencies = self._select_dependency_unit_basis(
             records, dependencies, unit_rank
         )
+        selected_unit_hashes: list[str] = []
+        for dependency, unit in zip(selected_dependencies, units, strict=True):
+            normalized = [int(value) for value in dependency]
+            while normalized and normalized[-1] == 0:
+                normalized.pop()
+            dependency_key = tuple(normalized)
+            unit_hash = (
+                self._relation_dependency_unit_hashes.get(dependency_key)
+                if self._relation_dependency_units.get(dependency_key) is unit
+                else None
+            )
+            if unit_hash is None:
+                stable_hash = getattr(unit, "stable_hash", None)
+                if not callable(stable_hash):
+                    live_relations_authenticated = False
+                    break
+                unit_hash = str(stable_hash())
+            selected_unit_hashes.append(unit_hash)
         if live_relations_authenticated and not self._retain_context_dependency_units(
-            collector, presentation, selected_dependencies, units
+            collector,
+            presentation,
+            selected_dependencies,
+            units,
+            selected_unit_hashes,
         ):
             live_relations_authenticated = False
             if (
@@ -3615,13 +3643,15 @@ class ClassUnitGroupEngine:
         return tuple(candidates[index] for index in best)
 
     def _verify_exact_units(self, units: Sequence[Any]) -> None:
-        one = self.order.ideal(1)
+        one: Any = None
         for unit in units:
             self._resource_usage["unit_principal_authority_requests"] += 1
             if self._context_dependency_unit_authenticated(unit):
                 self._resource_usage["unit_principal_authority_hits"] += 1
                 continue
             self._resource_usage["unit_principal_authority_fallbacks"] += 1
+            if one is None:
+                one = self.order.ideal(1)
             if unit.principal_ideal(self.order) != one:
                 raise ArithmeticError("a relation dependency is not an exact unit")
 

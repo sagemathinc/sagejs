@@ -588,7 +588,7 @@ class _LiveClassUnitArtifacts:
         self.generation_verification_active = True
         self.saturation_record: Any = None
         self.saturation_live_authority_available = False
-        self.authenticated_dependency_unit_hashes: set[str] = set()
+        self.authenticated_dependency_units: list[tuple[Any, str]] = []
         self.class_group: Any = None
         self.unit_group: Any = None
         self.sealed = False
@@ -853,12 +853,10 @@ class _LiveClassUnitArtifacts:
         presentation: Any,
         dependencies: Iterable[Iterable[int]],
         units: Iterable[Any],
+        unit_hashes: Iterable[str],
     ) -> bool:
-        """Retain principality authority derived from exact relation kernels."""
-        # The engine calls this immediately after
-        # `relation_stage_authenticated()` and has no callback boundary in a
-        # reusable context.  Recheck the exact stage objects, but do not walk
-        # the same factor/record identity vectors a second time.
+        """Retain live units issued from this exact relation presentation."""
+        # No callback separates this exact presentation from its live units.
         if (
             self.sealed
             or not self.reusable
@@ -867,35 +865,47 @@ class _LiveClassUnitArtifacts:
         ):
             return False
         relations = self.relations
-        factor_base_width = len(self.factor_base)
-        hashes: list[str] = []
-        for dependency, unit in zip(dependencies, units, strict=True):
-            coefficients = tuple(int(value) for value in dependency)
-            if len(coefficients) != len(relations) or not any(coefficients):
+        dependency_values = tuple(
+            tuple(int(value) for value in dependency) for dependency in dependencies
+        )
+        unit_values = tuple(units)
+        hash_values = tuple(str(value) for value in unit_hashes)
+        if not (len(dependency_values) == len(unit_values) == len(hash_values)):
+            return False
+        exact_dependencies = tuple(
+            tuple(int(value) for value in dependency)
+            for dependency in getattr(presentation, "dependency_transforms", ())
+        )
+        retained: list[tuple[Any, str]] = []
+        for coefficients, unit, unit_hash in zip(
+            dependency_values, unit_values, hash_values, strict=True
+        ):
+            if (
+                len(coefficients) != len(relations)
+                or not any(coefficients)
+                or coefficients not in exact_dependencies
+                or len(unit_hash) != 64
+                or any(character not in "0123456789abcdef" for character in unit_hash)
+            ):
                 return False
-            relation_row = [0] * factor_base_width
-            for coefficient, record in zip(coefficients, relations, strict=True):
-                row = tuple(record.row)
-                if len(row) != factor_base_width:
-                    return False
-                for index, value in enumerate(row):
-                    relation_row[index] += coefficient * int(value)
-            stable_hash = getattr(unit, "stable_hash", None)
-            if not any(relation_row) and callable(stable_hash):
-                hashes.append(str(stable_hash()))
-        for value in hashes:
-            if len(self.authenticated_dependency_unit_hashes) >= 1024:
-                self.authenticated_dependency_unit_hashes.pop()
-            self.authenticated_dependency_unit_hashes.add(value)
+            retained.append((unit, unit_hash))
+        for unit, unit_hash in retained:
+            if any(
+                current is unit
+                for current, _hash in self.authenticated_dependency_units
+            ):
+                continue
+            if len(self.authenticated_dependency_units) >= 1024:
+                self.authenticated_dependency_units.pop(0)
+            self.authenticated_dependency_units.append((unit, unit_hash))
         return True
 
     def dependency_unit_authenticated(self, unit: Any) -> bool:
         if self.sealed or not self.reusable:
             return False
-        stable_hash = getattr(unit, "stable_hash", None)
-        return bool(
-            callable(stable_hash)
-            and str(stable_hash()) in self.authenticated_dependency_unit_hashes
+        return any(
+            retained is unit
+            for retained, _unit_hash in self.authenticated_dependency_units
         )
 
     def bind_saturation_record(self, record: Any, *, authenticated: bool) -> None:
@@ -1057,9 +1067,7 @@ class _LiveClassUnitArtifacts:
             "saturation_live_authority_available": (
                 self.saturation_live_authority_available
             ),
-            "authenticated_dependency_units": len(
-                self.authenticated_dependency_unit_hashes
-            ),
+            "authenticated_dependency_units": len(self.authenticated_dependency_units),
             "has_class_group": self.class_group is not None,
             "has_unit_group": self.unit_group is not None,
         }
@@ -1248,6 +1256,7 @@ class ClassUnitGroupContext:
         presentation: Any,
         dependencies: Iterable[Iterable[int]],
         units: Iterable[Any],
+        unit_hashes: Iterable[str],
     ) -> bool:
         if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
             raise TypeError("live dependency-unit state is engine-owned")
@@ -1255,7 +1264,7 @@ class ClassUnitGroupContext:
         return bool(
             live is not None
             and live.retain_dependency_units(
-                collector, presentation, dependencies, units
+                collector, presentation, dependencies, units, unit_hashes
             )
         )
 
