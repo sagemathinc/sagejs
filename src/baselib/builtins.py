@@ -1291,9 +1291,20 @@ def _builtins_repeat_string(text: str, count: Any) -> str:
     return runtime.reflect.apply(runtime.string_class.prototype.repeat, text, [count])
 
 
+def _builtins_integral_bool(value: Any) -> Any:
+    """Return `1` or `0` for a boolean, since Python's `bool` is an `int`."""
+    return 1 if value else 0
+
+
 def ρσ_operator_mul(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
+    if runtime.strict_equal(left_type, "boolean"):
+        left = _builtins_integral_bool(left)
+        left_type = "number"
+    if runtime.strict_equal(right_type, "boolean"):
+        right = _builtins_integral_bool(right)
+        right_type = "number"
     if runtime.strict_equal(left_type, right_type) and (
         runtime.strict_equal(left_type, "number")
         or runtime.strict_equal(left_type, "bigint")
@@ -1341,6 +1352,12 @@ def ρσ_operator_mul(left: Any, right: Any) -> Any:
 def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
+    if runtime.strict_equal(left_type, "boolean"):
+        left = _builtins_integral_bool(left)
+        left_type = "number"
+    if runtime.strict_equal(right_type, "boolean"):
+        right = _builtins_integral_bool(right)
+        right_type = "number"
     if runtime.strict_equal(left_type, right_type) and (
         runtime.strict_equal(left_type, "number")
         or runtime.strict_equal(left_type, "bigint")
