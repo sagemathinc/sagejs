@@ -8590,6 +8590,63 @@
       },
       {
         "schema_version": 1,
+        "name": "number_of_partitions",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "number_of_partitions(size: Any) -> Any",
+        "summary": "Return the number of partitions of a nonnegative integer.",
+        "doc": "Return the number of partitions of a nonnegative integer.\n\nThe value comes from Euler's pentagonal number recurrence, which is exact\nand fast far past the point where listing partitions is possible.\n\n### Input\n\n- `size` -- a nonnegative integer\n\n### Examples\n\n```sage\n    sage: number_of_partitions(10)\n    42\n    sage: number_of_partitions(100)\n    190569292\n    sage: number_of_partitions(1000)\n    24061467864032622473692149727991\n    sage: number_of_partitions(4) == Partitions(4).cardinality()\n    True\n```\n\nThis API and documentation are adapted from\n`sage.combinat.partition.number_of_partitions` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "enumerative combinatorics",
+          "partitions",
+          "integer sequences"
+        ],
+        "backends": [
+          "Sage.js exact enumeration",
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT `arith_number_of_partitions`",
+            "url": "https://flintlib.org/doc/arith.html",
+            "license": "LGPL-3.0-or-later"
+          },
+          {
+            "kind": "literature-implemented",
+            "source": "Euler's pentagonal number theorem recurrence for `p(n)`, the portable path when FLINT is unavailable"
+          }
+        ],
+        "references": [
+          {
+            "id": "andrews-theory-of-partitions",
+            "title": "The Theory of Partitions",
+            "type": "book",
+            "authors": [
+              "George E. Andrews"
+            ],
+            "year": 1976
+          }
+        ],
+        "limitations": [
+          "Counting uses FLINT's Hardy-Ramanujan-Rademacher implementation where it is available, and the pentagonal recurrence otherwise.  The recurrence computes every partition number below its argument, so a host without FLINT answers large arguments far more slowly; both paths are exact.  The first count in a process also pays about 150 ms to bind the native routine, after which a count costs a few milliseconds at any argument.  See `bench/compare-partitions.cjs`."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "NumberField",
         "aliases": [],
         "kind": "function",
@@ -8948,6 +9005,656 @@
         "implementation": {
           "algorithm": "Semantic 3D primitives with Plotly rendering"
         },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition",
+        "aliases": [],
+        "kind": "class",
+        "module": "sage.combinat",
+        "signature": "Partition(entries: Any, parent: Any=None) -> None",
+        "summary": "A partition of a nonnegative integer.",
+        "doc": "A partition of a nonnegative integer.\n\nA partition is a weakly decreasing list of positive integers.  Its parts\nare ordinary Sage.js integers, so a partition interoperates with the rest\nof the library without a conversion step.\n\n### Input\n\n- `entries` -- a list or tuple of weakly decreasing positive integers\n- `parent` -- optional owning combinatorial class\n\n### Examples\n\n```sage\n    sage: Partition([3, 1])\n    [3, 1]\n    sage: Partition([3, 1]).size()\n    4\n    sage: Partition([3, 1]).conjugate()\n    [2, 1, 1]\n```\n\nParts must be weakly decreasing, exactly as in Sage; `Partition([1, 3])`\nraises `ValueError`.\n\nThis API and documentation are adapted from\n`sage.combinat.partition.Partition` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "enumerative combinatorics",
+          "partitions",
+          "integer sequences"
+        ],
+        "backends": [
+          "Sage.js exact enumeration",
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.cells",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.cells()",
+        "summary": "Return the coordinates of the cells of the Ferrers diagram.",
+        "doc": "Return the coordinates of the cells of the Ferrers diagram.\n\n### Examples\n\n```sage\n    sage: Partition([2, 1]).cells()\n    [(0, 0), (0, 1), (1, 0)]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.conjugate",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.conjugate()",
+        "summary": "Return the conjugate partition, the transpose of the Ferrers diagram.",
+        "doc": "Return the conjugate partition, the transpose of the Ferrers diagram.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).conjugate()\n    [3, 2, 1, 1]\n    sage: Partition([4, 2, 1]).conjugate().conjugate()\n    [4, 2, 1]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.dominates",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.dominates()",
+        "summary": "Return whether `self` dominates `other` in the dominance order.",
+        "doc": "Return whether `self` dominates `other` in the dominance order.\n\n### Examples\n\n```sage\n    sage: Partition([3, 1]).dominates([2, 2])\n    True\n    sage: Partition([2, 2]).dominates([3, 1])\n    False\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.ferrers_diagram",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.ferrers_diagram()",
+        "summary": "Return the Ferrers diagram as text, one row of asterisks per part.",
+        "doc": "Return the Ferrers diagram as text, one row of asterisks per part.\n\n### Examples\n\n```sage\n    sage: print(Partition([3, 1]).ferrers_diagram())\n    ***\n    *\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.hook_length",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.hook_length()",
+        "summary": "Return the hook length of the cell in the given row and column.",
+        "doc": "Return the hook length of the cell in the given row and column.\n\n### Examples\n\n```sage\n    sage: Partition([3, 2, 1]).hook_length(0, 0)\n    5\n    sage: Partition([3, 2, 1]).hook_length(1, 1)\n    1\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.hook_lengths",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.hook_lengths()",
+        "summary": "Return the hook lengths of every cell, row by row.",
+        "doc": "Return the hook lengths of every cell, row by row.\n\n### Examples\n\n```sage\n    sage: Partition([3, 2, 1]).hook_lengths()\n    [[5, 3, 1], [3, 1], [1]]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.length",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.length()",
+        "summary": "Return the number of parts.",
+        "doc": "Return the number of parts.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).length()\n    3\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.size",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.size()",
+        "summary": "Return the integer partitioned by `self`.",
+        "doc": "Return the integer partitioned by `self`.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).size()\n    7\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.to_exp",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.to_exp()",
+        "summary": "Return part multiplicities, where entry `i` counts the parts equal to",
+        "doc": "Return part multiplicities, where entry `i` counts the parts equal to\n`i + 1`.\n\n### Input\n\n- `minimum_length` -- pad the result to at least this length\n\n### Examples\n\n```sage\n    sage: Partition([3, 2, 2, 1]).to_exp()\n    [1, 2, 1]\n    sage: Partition([3, 2, 2, 1]).to_exp(5)\n    [1, 2, 1, 0, 0]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.to_list",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.to_list()",
+        "summary": "Return the parts as an ordinary list.",
+        "doc": "Return the parts as an ordinary list.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).to_list()\n    [4, 2, 1]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "Partitions(size: Any=None, **constraints: Any) -> Any",
+        "summary": "Return the combinatorial class of partitions described by the arguments.",
+        "doc": "Return the combinatorial class of partitions described by the arguments.\n\nWith no argument this is the class of all partitions of all nonnegative\nintegers.  With an integer argument it is the class of partitions of that\ninteger, optionally restricted by the supported keyword constraints.\n\n### Input\n\n- `size` -- optional nonnegative integer to partition\n- `min_part` -- smallest allowed part\n- `max_part` -- largest allowed part\n- `length` -- exact number of parts\n- `min_length` -- smallest allowed number of parts\n- `max_length` -- largest allowed number of parts\n- `parts_in` -- restrict parts to the given collection of integers\n\n### Examples\n\n```sage\n    sage: Partitions(4).list()\n    [[4], [3, 1], [2, 2], [2, 1, 1], [1, 1, 1, 1]]\n    sage: Partitions(5, max_part=3).list()\n    [[3, 2], [3, 1, 1], [2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n    sage: Partitions(5, length=2).list()\n    [[4, 1], [3, 2]]\n    sage: Partitions(5, min_part=2).list()\n    [[5], [3, 2]]\n    sage: Partitions(5, parts_in=[1, 2]).list()\n    [[2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n```\n\nCounting never enumerates:\n\n```sage\n    sage: Partitions(1000).cardinality()\n    24061467864032622473692149727991\n```\n\n### Limitations\n\nThe `inner`, `outer`, `regular`, and `restricted` keyword constraints of\nSage are not implemented yet and raise `NotImplementedError`.\n\nThis API and documentation are adapted from\n`sage.combinat.partition.Partitions` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "enumerative combinatorics",
+          "partitions",
+          "integer sequences"
+        ],
+        "backends": [
+          "Sage.js exact enumeration",
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT `arith_number_of_partitions`",
+            "url": "https://flintlib.org/doc/arith.html",
+            "license": "LGPL-3.0-or-later"
+          },
+          {
+            "kind": "literature-implemented",
+            "source": "Euler's pentagonal number theorem recurrence for `p(n)`, the portable path when FLINT is unavailable"
+          },
+          {
+            "kind": "literature-implemented",
+            "source": "Counting-driven ranking, unranking, and uniform random selection over a recursively counted set"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "One memoized recursion over the largest remaining part serves cardinality, rank, unrank, and random_element, so the four agree by construction rather than by separate implementation"
+          }
+        ],
+        "references": [
+          {
+            "id": "andrews-theory-of-partitions",
+            "title": "The Theory of Partitions",
+            "type": "book",
+            "authors": [
+              "George E. Andrews"
+            ],
+            "year": 1976
+          },
+          {
+            "id": "kreher-stinson-combinatorial-algorithms",
+            "title": "Combinatorial Algorithms: Generation, Enumeration, and Search",
+            "type": "book",
+            "authors": [
+              "Donald L. Kreher",
+              "Douglas R. Stinson"
+            ],
+            "year": 1999
+          },
+          {
+            "id": "nijenhuis-wilf-combinatorial-algorithms",
+            "title": "Combinatorial Algorithms for Computers and Calculators",
+            "type": "book",
+            "authors": [
+              "Albert Nijenhuis",
+              "Herbert S. Wilf"
+            ],
+            "year": 1978
+          }
+        ],
+        "limitations": [
+          "Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration.",
+          "Counting uses FLINT's Hardy-Ramanujan-Rademacher implementation where it is available, and the pentagonal recurrence otherwise.  The recurrence computes every partition number below its argument, so a host without FLINT answers large arguments far more slowly; both paths are exact.  The first count in a process also pays about 150 ms to bind the native routine, after which a count costs a few milliseconds at any argument.  See `bench/compare-partitions.cjs`."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions.cardinality",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partitions.cardinality()",
+        "summary": "Return the exact number of partitions in this class.",
+        "doc": "Return the exact number of partitions in this class.\n\nThe unconstrained count uses Euler's pentagonal number recurrence, so\nit stays exact and fast well beyond the range where listing the\npartitions is practical.\n\n### Examples\n\n```sage\n    sage: Partitions(4).cardinality()\n    5\n    sage: Partitions(100).cardinality()\n    190569292\n    sage: Partitions(5, max_part=3).cardinality()\n    5\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions.first",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partitions.first()",
+        "summary": "Return the first partition in the enumeration order.",
+        "doc": "Return the first partition in the enumeration order.\n\n### Examples\n\n```sage\n    sage: Partitions(5).first()\n    [5]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions.last",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partitions.last()",
+        "summary": "Return the last partition in the enumeration order.",
+        "doc": "Return the last partition in the enumeration order.\n\n### Examples\n\n```sage\n    sage: Partitions(5).last()\n    [1, 1, 1, 1, 1]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions.list",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partitions.list()",
+        "summary": "Return every member of a finite combinatorial class.",
+        "doc": "Return every member of a finite combinatorial class.\n\n### Examples\n\n```sage\n    sage: Partitions(3).list()\n    [[3], [2, 1], [1, 1, 1]]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions.random_element",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partitions.random_element()",
+        "summary": "Return a uniformly random member of this class.",
+        "doc": "Return a uniformly random member of this class.\n\nThe part sizes are chosen one at a time with probability proportional\nto the exact number of completions, so every partition is equally\nlikely without enumerating the class.\n\n### Examples\n\n```sage\n    sage: Partitions(6).random_element() in Partitions(6)\n    True\n    sage: Partitions(6, max_part=2).random_element().to_list()[0] <= 2\n    True\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions.rank",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partitions.rank()",
+        "summary": "Return the position of `value` in the enumeration.",
+        "doc": "Return the position of `value` in the enumeration.\n\n### Examples\n\n```sage\n    sage: Partitions(5).rank([3, 1, 1])\n    3\n    sage: Partitions(5).unrank(Partitions(5).rank([2, 2, 1]))\n    [2, 2, 1]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions.unrank",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partitions.unrank()",
+        "summary": "Return the partition at position `index` of the enumeration.",
+        "doc": "Return the partition at position `index` of the enumeration.\n\n### Examples\n\n```sage\n    sage: Partitions(5).unrank(0)\n    [5]\n    sage: Partitions(5).unrank(3)\n    [3, 1, 1]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
         "limitations": []
       },
       {
@@ -21028,12 +21735,12 @@
       ],
       "source": {
         "name": "cardinality",
-        "qualified": "VectorSubspaceParent.cardinality",
-        "path": "src/baselib/matrix.py",
-        "line": 2337,
+        "qualified": "Partitions_all.cardinality",
+        "path": "src/baselib/combinat.py",
+        "line": 573,
         "excerpt": {
-          "start_line": 2325,
-          "text": "\n    def _finite_field_order(self) -> int:\n        if getattr(self.base_ring(), \"_kind\", None) not in [\"GF\", \"GF_EXTENSION\"]:\n            raise TypeError(\"vector-space enumeration requires a finite base field\")\n        return int(_untyped(self.base_ring()).order())\n\n    def _finite_field_elements(self) -> list[Any]:\n        self._finite_field_order()\n        if self._enumeration_elements is None:\n            self._enumeration_elements = list(_untyped(self.base_ring()))\n        return self._enumeration_elements\n\n    def cardinality(self) -> int:\n        return self._finite_field_order() ** self.dimension()\n\n    order = cardinality\n\n    def __len__(self) -> int:\n        return self.cardinality()\n\n    def _finite_element(self, index: int) -> Vector:\n        if not runtime.is_exact_integer(index):\n            raise TypeError(\"vector-space indices must be integers or slices\")\n        index = int(index)\n        size = self.cardinality()"
+          "start_line": 561,
+          "text": "        sage: Partitions()\n        Partitions\n        sage: Partitions().cardinality()\n        +Infinity\n        sage: Partitions().unrank(6)\n        [1, 1, 1]\n    ```\n    \"\"\"\n\n    def __repr__(self) -> str:\n        return \"Partitions\"\n\n    def cardinality(self) -> Any:\n        \"\"\"Return `+Infinity`; the class of all partitions is infinite.\"\"\"\n        return _combinat_infinity\n\n    def __contains__(self, value: object) -> bool:\n        if isinstance(value, Partition):\n            return True\n        if not isinstance(value, (list, tuple)):\n            return False\n        entries = []\n        for part in value:\n            if not runtime.is_exact_integer(part):\n                return False"
         }
       },
       "examples": [
@@ -27603,6 +28310,139 @@
     },
     {
       "schema_version": 1,
+      "name": "number_of_partitions",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "number_of_partitions(size: Any) -> Any",
+      "summary": "Return the number of partitions of a nonnegative integer.",
+      "doc": "Return the number of partitions of a nonnegative integer.\n\nThe value comes from Euler's pentagonal number recurrence, which is exact\nand fast far past the point where listing partitions is possible.\n\n### Input\n\n- `size` -- a nonnegative integer\n\n### Examples\n\n```sage\n    sage: number_of_partitions(10)\n    42\n    sage: number_of_partitions(100)\n    190569292\n    sage: number_of_partitions(1000)\n    24061467864032622473692149727991\n    sage: number_of_partitions(4) == Partitions(4).cardinality()\n    True\n```\n\nThis API and documentation are adapted from\n`sage.combinat.partition.number_of_partitions` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "enumerative combinatorics",
+        "partitions",
+        "integer sequences"
+      ],
+      "backends": [
+        "Sage.js exact enumeration",
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT `arith_number_of_partitions`",
+          "url": "https://flintlib.org/doc/arith.html",
+          "license": "LGPL-3.0-or-later"
+        },
+        {
+          "kind": "literature-implemented",
+          "source": "Euler's pentagonal number theorem recurrence for `p(n)`, the portable path when FLINT is unavailable"
+        }
+      ],
+      "references": [
+        {
+          "id": "andrews-theory-of-partitions",
+          "title": "The Theory of Partitions",
+          "type": "book",
+          "authors": [
+            "George E. Andrews"
+          ],
+          "year": 1976
+        }
+      ],
+      "limitations": [
+        "Counting uses FLINT's Hardy-Ramanujan-Rademacher implementation where it is available, and the pentagonal recurrence otherwise.  The recurrence computes every partition number below its argument, so a host without FLINT answers large arguments far more slowly; both paths are exact.  The first count in a process also pays about 150 ms to bind the native routine, after which a count costs a few milliseconds at any argument.  See `bench/compare-partitions.cjs`."
+      ],
+      "source": {
+        "name": "number_of_partitions",
+        "qualified": "number_of_partitions",
+        "path": "src/baselib/combinat.py",
+        "line": 1260,
+        "excerpt": {
+          "start_line": 1248,
+          "text": "            _combinat_state.partitions_by_size[key] = Partitions_n(value)\n        return _combinat_state.partitions_by_size[key]\n    return Partitions_n(\n        value,\n        min_part,\n        max_part,\n        min_length,\n        max_length,\n        parts_in,\n    )\n\n\ndef number_of_partitions(size: Any) -> Any:\n    r\"\"\"\n    Return the number of partitions of a nonnegative integer.\n\n    The value comes from Euler's pentagonal number recurrence, which is exact\n    and fast far past the point where listing partitions is possible.\n\n    ### Input\n\n    - `size` -- a nonnegative integer\n\n    ### Examples\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#caacab55d28ddb22-73475cb40a568e8d",
+          "line": 1274,
+          "source": "number_of_partitions(10)",
+          "want": "42\n",
+          "tags": [],
+          "owner": "number_of_partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#caacab55d28ddb22-73475cb40a568e8d",
+            "status": "pass",
+            "actual": "42\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#3e7cfccf2a61051a-50de17d47bcec0fd",
+          "line": 1276,
+          "source": "number_of_partitions(100)",
+          "want": "190569292\n",
+          "tags": [],
+          "owner": "number_of_partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#3e7cfccf2a61051a-50de17d47bcec0fd",
+            "status": "pass",
+            "actual": "190569292\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#cc36a8ee0a524f64-734a7c05b5614ca1",
+          "line": 1278,
+          "source": "number_of_partitions(1000)",
+          "want": "24061467864032622473692149727991\n",
+          "tags": [],
+          "owner": "number_of_partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#cc36a8ee0a524f64-734a7c05b5614ca1",
+            "status": "pass",
+            "actual": "24061467864032622473692149727991\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#864ab09b92162a32-3cbc87c7681f34db",
+          "line": 1280,
+          "source": "number_of_partitions(4) == Partitions(4).cardinality()",
+          "want": "True\n",
+          "tags": [],
+          "owner": "number_of_partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#864ab09b92162a32-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "NumberField",
       "aliases": [],
       "kind": "function",
@@ -28132,6 +28972,1476 @@
         }
       },
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition",
+      "aliases": [],
+      "kind": "class",
+      "module": "sage.combinat",
+      "signature": "Partition(entries: Any, parent: Any=None) -> None",
+      "summary": "A partition of a nonnegative integer.",
+      "doc": "A partition of a nonnegative integer.\n\nA partition is a weakly decreasing list of positive integers.  Its parts\nare ordinary Sage.js integers, so a partition interoperates with the rest\nof the library without a conversion step.\n\n### Input\n\n- `entries` -- a list or tuple of weakly decreasing positive integers\n- `parent` -- optional owning combinatorial class\n\n### Examples\n\n```sage\n    sage: Partition([3, 1])\n    [3, 1]\n    sage: Partition([3, 1]).size()\n    4\n    sage: Partition([3, 1]).conjugate()\n    [2, 1, 1]\n```\n\nParts must be weakly decreasing, exactly as in Sage; `Partition([1, 3])`\nraises `ValueError`.\n\nThis API and documentation are adapted from\n`sage.combinat.partition.Partition` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "enumerative combinatorics",
+        "partitions",
+        "integer sequences"
+      ],
+      "backends": [
+        "Sage.js exact enumeration",
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration."
+      ],
+      "source": {
+        "name": "partition",
+        "qualified": "SageBytes.partition",
+        "path": "src/baselib/byte_strings.py",
+        "line": 613,
+        "excerpt": {
+          "start_line": 601,
+          "text": "        return answer\n\n    def center(self, width: Any, fillbyte: Any = runtime.undefined) -> SageBytes:\n        width = _coerce_index(width)\n        fill = SageBytes([32]) if fillbyte is runtime.undefined else fillbyte\n        if not isinstance(fill, SageBytes) or len(fill) != 1:\n            raise TypeError(\"center() argument 2 must be a byte string of length 1\")\n        padding = max(width - len(self), 0)\n        left = padding // 2\n        right = padding - left\n        return fill * left + self + fill * right\n\n    def partition(self, separator: Any) -> Any:\n        if not isinstance(separator, SageBytes):\n            raise TypeError(\"a bytes-like object is required\")\n        if len(separator) == 0:\n            raise ValueError(\"empty separator\")\n        index = self.find(separator)\n        if index < 0:\n            return runtime.math_tuple([self, SageBytes([]), SageBytes([])])\n        return runtime.math_tuple(\n            [\n                self.slice(0, index),\n                separator,\n                self.slice(index + len(separator)),"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#56e645c462a93421-2799b28117f4e249",
+          "line": 248,
+          "source": "Partition([3, 1])",
+          "want": "[3, 1]\n",
+          "tags": [],
+          "owner": "Partition",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#56e645c462a93421-2799b28117f4e249",
+            "status": "pass",
+            "actual": "[3, 1]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#3b24eab1d7c02967-4b227777d4dd1fc6",
+          "line": 250,
+          "source": "Partition([3, 1]).size()",
+          "want": "4\n",
+          "tags": [],
+          "owner": "Partition",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#3b24eab1d7c02967-4b227777d4dd1fc6",
+            "status": "pass",
+            "actual": "4\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#e195a0622aa208ed-672981554b806ef2",
+          "line": 252,
+          "source": "Partition([3, 1]).conjugate()",
+          "want": "[2, 1, 1]\n",
+          "tags": [],
+          "owner": "Partition",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#e195a0622aa208ed-672981554b806ef2",
+            "status": "pass",
+            "actual": "[2, 1, 1]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.cells",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.cells()",
+      "summary": "Return the coordinates of the cells of the Ferrers diagram.",
+      "doc": "Return the coordinates of the cells of the Ferrers diagram.\n\n### Examples\n\n```sage\n    sage: Partition([2, 1]).cells()\n    [(0, 0), (0, 1), (1, 0)]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "cells",
+        "qualified": "Partition.cells",
+        "path": "src/baselib/combinat.py",
+        "line": 391,
+        "excerpt": {
+          "start_line": 379,
+          "text": "            [1, 2, 1]\n            sage: Partition([3, 2, 2, 1]).to_exp(5)\n            [1, 2, 1, 0, 0]\n        ```\n        \"\"\"\n        largest = self._entries[0] if self._entries else 0\n        width = largest if largest > minimum_length else minimum_length\n        counts = [0] * width\n        for part in self._entries:\n            counts[part - 1] += 1\n        return counts\n\n    def cells(self) -> list[tuple[int, int]]:\n        \"\"\"\n        Return the coordinates of the cells of the Ferrers diagram.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([2, 1]).cells()\n            [(0, 0), (0, 1), (1, 0)]\n        ```\n        \"\"\"\n        coordinates = []\n        for row in range(len(self._entries)):"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#2388bae5fef95e77-ed293429f50edc29",
+          "line": 398,
+          "source": "Partition([2, 1]).cells()",
+          "want": "[(0, 0), (0, 1), (1, 0)]\n",
+          "tags": [],
+          "owner": "Partition.cells",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#2388bae5fef95e77-ed293429f50edc29",
+            "status": "pass",
+            "actual": "[(0, 0), (0, 1), (1, 0)]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.conjugate",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.conjugate()",
+      "summary": "Return the conjugate partition, the transpose of the Ferrers diagram.",
+      "doc": "Return the conjugate partition, the transpose of the Ferrers diagram.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).conjugate()\n    [3, 2, 1, 1]\n    sage: Partition([4, 2, 1]).conjugate().conjugate()\n    [4, 2, 1]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "conjugate",
+        "qualified": "Partition.conjugate",
+        "path": "src/baselib/combinat.py",
+        "line": 342,
+        "excerpt": {
+          "start_line": 330,
+          "text": "        \"\"\"\n        Return the parts as an ordinary list.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).to_list()\n            [4, 2, 1]\n        ```\n        \"\"\"\n        return self._entries[:]\n\n    def conjugate(self) -> Partition:\n        \"\"\"\n        Return the conjugate partition, the transpose of the Ferrers diagram.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).conjugate()\n            [3, 2, 1, 1]\n            sage: Partition([4, 2, 1]).conjugate().conjugate()\n            [4, 2, 1]\n        ```\n        \"\"\""
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#1d703c2450be82e5-83df4668f684ac56",
+          "line": 349,
+          "source": "Partition([4, 2, 1]).conjugate()",
+          "want": "[3, 2, 1, 1]\n",
+          "tags": [],
+          "owner": "Partition.conjugate",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#1d703c2450be82e5-83df4668f684ac56",
+            "status": "pass",
+            "actual": "[3, 2, 1, 1]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#b07803690950edd3-57f422a516aa0883",
+          "line": 351,
+          "source": "Partition([4, 2, 1]).conjugate().conjugate()",
+          "want": "[4, 2, 1]\n",
+          "tags": [],
+          "owner": "Partition.conjugate",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#b07803690950edd3-57f422a516aa0883",
+            "status": "pass",
+            "actual": "[4, 2, 1]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.dominates",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.dominates()",
+      "summary": "Return whether `self` dominates `other` in the dominance order.",
+      "doc": "Return whether `self` dominates `other` in the dominance order.\n\n### Examples\n\n```sage\n    sage: Partition([3, 1]).dominates([2, 2])\n    True\n    sage: Partition([2, 2]).dominates([3, 1])\n    False\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "dominates",
+        "qualified": "Partition.dominates",
+        "path": "src/baselib/combinat.py",
+        "line": 456,
+        "excerpt": {
+          "start_line": 444,
+          "text": "            sage: Partition([3, 2, 1]).hook_lengths()\n            [[5, 3, 1], [3, 1], [1]]\n        ```\n        \"\"\"\n        rows = []\n        for row in range(len(self._entries)):\n            lengths = []\n            for column in range(self._entries[row]):\n                lengths.append(self.hook_length(row, column))\n            rows.append(lengths)\n        return rows\n\n    def dominates(self, other: Any) -> bool:\n        \"\"\"\n        Return whether `self` dominates `other` in the dominance order.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 1]).dominates([2, 2])\n            True\n            sage: Partition([2, 2]).dominates([3, 1])\n            False\n        ```\n        \"\"\""
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#931beec9b2aeccc4-3cbc87c7681f34db",
+          "line": 463,
+          "source": "Partition([3, 1]).dominates([2, 2])",
+          "want": "True\n",
+          "tags": [],
+          "owner": "Partition.dominates",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#931beec9b2aeccc4-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#8f446272f474972f-60a33e6cf5151f2d",
+          "line": 465,
+          "source": "Partition([2, 2]).dominates([3, 1])",
+          "want": "False\n",
+          "tags": [],
+          "owner": "Partition.dominates",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#8f446272f474972f-60a33e6cf5151f2d",
+            "status": "pass",
+            "actual": "False\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.ferrers_diagram",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.ferrers_diagram()",
+      "summary": "Return the Ferrers diagram as text, one row of asterisks per part.",
+      "doc": "Return the Ferrers diagram as text, one row of asterisks per part.\n\n### Examples\n\n```sage\n    sage: print(Partition([3, 1]).ferrers_diagram())\n    ***\n    *\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "ferrers_diagram",
+        "qualified": "Partition.ferrers_diagram",
+        "path": "src/baselib/combinat.py",
+        "line": 485,
+        "excerpt": {
+          "start_line": 473,
+          "text": "            width = len(entries)\n        left = 0\n        right = 0\n        for index in range(width):\n            if index < len(self._entries):\n                left += self._entries[index]\n            if index < len(entries):\n                right += entries[index]\n            if left < right:\n                return False\n        return True\n\n    def ferrers_diagram(self) -> str:\n        \"\"\"\n        Return the Ferrers diagram as text, one row of asterisks per part.\n\n        ### Examples\n\n        ```sage\n            sage: print(Partition([3, 1]).ferrers_diagram())\n            ***\n            *\n        ```\n        \"\"\"\n        return \"\\n\".join([\"*\" * part for part in self._entries])"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#9011106e3dfb7c06-a3de3ed412b0f630",
+          "line": 492,
+          "source": "print(Partition([3, 1]).ferrers_diagram())",
+          "want": "***\n*\n",
+          "tags": [],
+          "owner": "Partition.ferrers_diagram",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#9011106e3dfb7c06-a3de3ed412b0f630",
+            "status": "pass",
+            "actual": "***\n*\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.hook_length",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.hook_length()",
+      "summary": "Return the hook length of the cell in the given row and column.",
+      "doc": "Return the hook length of the cell in the given row and column.\n\n### Examples\n\n```sage\n    sage: Partition([3, 2, 1]).hook_length(0, 0)\n    5\n    sage: Partition([3, 2, 1]).hook_length(1, 1)\n    1\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "hook_length",
+        "qualified": "Partition.hook_length",
+        "path": "src/baselib/combinat.py",
+        "line": 408,
+        "excerpt": {
+          "start_line": 396,
+          "text": "\n        ```sage\n            sage: Partition([2, 1]).cells()\n            [(0, 0), (0, 1), (1, 0)]\n        ```\n        \"\"\"\n        coordinates = []\n        for row in range(len(self._entries)):\n            for column in range(self._entries[row]):\n                coordinates.append(runtime.math_tuple([row, column]))\n        return coordinates\n\n    def hook_length(self, row: int, column: int) -> int:\n        \"\"\"\n        Return the hook length of the cell in the given row and column.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 1]).hook_length(0, 0)\n            5\n            sage: Partition([3, 2, 1]).hook_length(1, 1)\n            1\n        ```\n        \"\"\""
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#6ff416d9c55f0beb-ef2d127de37b942b",
+          "line": 415,
+          "source": "Partition([3, 2, 1]).hook_length(0, 0)",
+          "want": "5\n",
+          "tags": [],
+          "owner": "Partition.hook_length",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#6ff416d9c55f0beb-ef2d127de37b942b",
+            "status": "pass",
+            "actual": "5\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#eabf7794040ccb13-6b86b273ff34fce1",
+          "line": 417,
+          "source": "Partition([3, 2, 1]).hook_length(1, 1)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "Partition.hook_length",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#eabf7794040ccb13-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.hook_lengths",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.hook_lengths()",
+      "summary": "Return the hook lengths of every cell, row by row.",
+      "doc": "Return the hook lengths of every cell, row by row.\n\n### Examples\n\n```sage\n    sage: Partition([3, 2, 1]).hook_lengths()\n    [[5, 3, 1], [3, 1], [1]]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "hook_lengths",
+        "qualified": "Partition.hook_lengths",
+        "path": "src/baselib/combinat.py",
+        "line": 437,
+        "excerpt": {
+          "start_line": 425,
+          "text": "            or index_row >= len(self._entries)\n            or index_column < 0\n            or index_column >= self._entries[index_row]\n        ):\n            raise IndexError(\"the cell is outside the Ferrers diagram\")\n        arm = self._entries[index_row] - index_column - 1\n        leg = 0\n        for part in self._entries[index_row + 1 :]:\n            if part > index_column:\n                leg += 1\n        return arm + leg + 1\n\n    def hook_lengths(self) -> list[list[int]]:\n        \"\"\"\n        Return the hook lengths of every cell, row by row.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 1]).hook_lengths()\n            [[5, 3, 1], [3, 1], [1]]\n        ```\n        \"\"\"\n        rows = []\n        for row in range(len(self._entries)):"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#b67464ae2fae701e-8855a7ca0b4b034c",
+          "line": 444,
+          "source": "Partition([3, 2, 1]).hook_lengths()",
+          "want": "[[5, 3, 1], [3, 1], [1]]\n",
+          "tags": [],
+          "owner": "Partition.hook_lengths",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#b67464ae2fae701e-8855a7ca0b4b034c",
+            "status": "pass",
+            "actual": "[[5, 3, 1], [3, 1], [1]]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.length",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.length()",
+      "summary": "Return the number of parts.",
+      "doc": "Return the number of parts.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).length()\n    3\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "length",
+        "qualified": "Partition.length",
+        "path": "src/baselib/combinat.py",
+        "line": 316,
+        "excerpt": {
+          "start_line": 304,
+          "text": "        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).size()\n            7\n        ```\n        \"\"\"\n        total = 0\n        for part in self._entries:\n            total += part\n        return total\n\n    def length(self) -> int:\n        \"\"\"\n        Return the number of parts.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).length()\n            3\n        ```\n        \"\"\"\n        return len(self._entries)\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#f72a6b7ed0a0fa54-4e07408562bedb8b",
+          "line": 323,
+          "source": "Partition([4, 2, 1]).length()",
+          "want": "3\n",
+          "tags": [],
+          "owner": "Partition.length",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#f72a6b7ed0a0fa54-4e07408562bedb8b",
+            "status": "pass",
+            "actual": "3\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.size",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.size()",
+      "summary": "Return the integer partitioned by `self`.",
+      "doc": "Return the integer partitioned by `self`.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).size()\n    7\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "size",
+        "qualified": "Partition.size",
+        "path": "src/baselib/combinat.py",
+        "line": 300,
+        "excerpt": {
+          "start_line": 288,
+          "text": "    def __len__(self) -> int:\n        return len(self._entries)\n\n    def __iter__(self) -> Iterator[int]:\n        return iter(self._entries)\n\n    def __getitem__(self, index: Any) -> Any:\n        return self._entries[index]\n\n    def __contains__(self, part: object) -> bool:\n        return part in self._entries\n\n    def size(self) -> int:\n        \"\"\"\n        Return the integer partitioned by `self`.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).size()\n            7\n        ```\n        \"\"\"\n        total = 0\n        for part in self._entries:"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#9a8541771bb37eca-7902699be42c8a8e",
+          "line": 307,
+          "source": "Partition([4, 2, 1]).size()",
+          "want": "7\n",
+          "tags": [],
+          "owner": "Partition.size",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#9a8541771bb37eca-7902699be42c8a8e",
+            "status": "pass",
+            "actual": "7\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.to_exp",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.to_exp()",
+      "summary": "Return part multiplicities, where entry `i` counts the parts equal to",
+      "doc": "Return part multiplicities, where entry `i` counts the parts equal to\n`i + 1`.\n\n### Input\n\n- `minimum_length` -- pad the result to at least this length\n\n### Examples\n\n```sage\n    sage: Partition([3, 2, 2, 1]).to_exp()\n    [1, 2, 1]\n    sage: Partition([3, 2, 2, 1]).to_exp(5)\n    [1, 2, 1, 0, 0]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "to_exp",
+        "qualified": "Partition.to_exp",
+        "path": "src/baselib/combinat.py",
+        "line": 366,
+        "excerpt": {
+          "start_line": 354,
+          "text": "        \"\"\"\n        if not self._entries:\n            return Partition([], self._parent)\n        columns = []\n        for index in range(self._entries[0]):\n            height = 0\n            for part in self._entries:\n                if part > index:\n                    height += 1\n            columns.append(height)\n        return Partition(columns, self._parent)\n\n    def to_exp(self, minimum_length: int = 0) -> list[int]:\n        \"\"\"\n        Return part multiplicities, where entry `i` counts the parts equal to\n        `i + 1`.\n\n        ### Input\n\n        - `minimum_length` -- pad the result to at least this length\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 2, 1]).to_exp()"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#1c6a76c077e2ef9c-792c6e54fa859586",
+          "line": 378,
+          "source": "Partition([3, 2, 2, 1]).to_exp()",
+          "want": "[1, 2, 1]\n",
+          "tags": [],
+          "owner": "Partition.to_exp",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#1c6a76c077e2ef9c-792c6e54fa859586",
+            "status": "pass",
+            "actual": "[1, 2, 1]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#834d5d09e66e6728-d068002bae854b23",
+          "line": 380,
+          "source": "Partition([3, 2, 2, 1]).to_exp(5)",
+          "want": "[1, 2, 1, 0, 0]\n",
+          "tags": [],
+          "owner": "Partition.to_exp",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#834d5d09e66e6728-d068002bae854b23",
+            "status": "pass",
+            "actual": "[1, 2, 1, 0, 0]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.to_list",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.to_list()",
+      "summary": "Return the parts as an ordinary list.",
+      "doc": "Return the parts as an ordinary list.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).to_list()\n    [4, 2, 1]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "to_list",
+        "qualified": "Partition.to_list",
+        "path": "src/baselib/combinat.py",
+        "line": 329,
+        "excerpt": {
+          "start_line": 317,
+          "text": "        \"\"\"\n        Return the number of parts.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).length()\n            3\n        ```\n        \"\"\"\n        return len(self._entries)\n\n    def to_list(self) -> list[int]:\n        \"\"\"\n        Return the parts as an ordinary list.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).to_list()\n            [4, 2, 1]\n        ```\n        \"\"\"\n        return self._entries[:]\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#fcd7a04bacbc65f5-57f422a516aa0883",
+          "line": 336,
+          "source": "Partition([4, 2, 1]).to_list()",
+          "want": "[4, 2, 1]\n",
+          "tags": [],
+          "owner": "Partition.to_list",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#fcd7a04bacbc65f5-57f422a516aa0883",
+            "status": "pass",
+            "actual": "[4, 2, 1]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "Partitions(size: Any=None, **constraints: Any) -> Any",
+      "summary": "Return the combinatorial class of partitions described by the arguments.",
+      "doc": "Return the combinatorial class of partitions described by the arguments.\n\nWith no argument this is the class of all partitions of all nonnegative\nintegers.  With an integer argument it is the class of partitions of that\ninteger, optionally restricted by the supported keyword constraints.\n\n### Input\n\n- `size` -- optional nonnegative integer to partition\n- `min_part` -- smallest allowed part\n- `max_part` -- largest allowed part\n- `length` -- exact number of parts\n- `min_length` -- smallest allowed number of parts\n- `max_length` -- largest allowed number of parts\n- `parts_in` -- restrict parts to the given collection of integers\n\n### Examples\n\n```sage\n    sage: Partitions(4).list()\n    [[4], [3, 1], [2, 2], [2, 1, 1], [1, 1, 1, 1]]\n    sage: Partitions(5, max_part=3).list()\n    [[3, 2], [3, 1, 1], [2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n    sage: Partitions(5, length=2).list()\n    [[4, 1], [3, 2]]\n    sage: Partitions(5, min_part=2).list()\n    [[5], [3, 2]]\n    sage: Partitions(5, parts_in=[1, 2]).list()\n    [[2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n```\n\nCounting never enumerates:\n\n```sage\n    sage: Partitions(1000).cardinality()\n    24061467864032622473692149727991\n```\n\n### Limitations\n\nThe `inner`, `outer`, `regular`, and `restricted` keyword constraints of\nSage are not implemented yet and raise `NotImplementedError`.\n\nThis API and documentation are adapted from\n`sage.combinat.partition.Partitions` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "enumerative combinatorics",
+        "partitions",
+        "integer sequences"
+      ],
+      "backends": [
+        "Sage.js exact enumeration",
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT `arith_number_of_partitions`",
+          "url": "https://flintlib.org/doc/arith.html",
+          "license": "LGPL-3.0-or-later"
+        },
+        {
+          "kind": "literature-implemented",
+          "source": "Euler's pentagonal number theorem recurrence for `p(n)`, the portable path when FLINT is unavailable"
+        },
+        {
+          "kind": "literature-implemented",
+          "source": "Counting-driven ranking, unranking, and uniform random selection over a recursively counted set"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "One memoized recursion over the largest remaining part serves cardinality, rank, unrank, and random_element, so the four agree by construction rather than by separate implementation"
+        }
+      ],
+      "references": [
+        {
+          "id": "andrews-theory-of-partitions",
+          "title": "The Theory of Partitions",
+          "type": "book",
+          "authors": [
+            "George E. Andrews"
+          ],
+          "year": 1976
+        },
+        {
+          "id": "kreher-stinson-combinatorial-algorithms",
+          "title": "Combinatorial Algorithms: Generation, Enumeration, and Search",
+          "type": "book",
+          "authors": [
+            "Donald L. Kreher",
+            "Douglas R. Stinson"
+          ],
+          "year": 1999
+        },
+        {
+          "id": "nijenhuis-wilf-combinatorial-algorithms",
+          "title": "Combinatorial Algorithms for Computers and Calculators",
+          "type": "book",
+          "authors": [
+            "Albert Nijenhuis",
+            "Herbert S. Wilf"
+          ],
+          "year": 1978
+        }
+      ],
+      "limitations": [
+        "Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration.",
+        "Counting uses FLINT's Hardy-Ramanujan-Rademacher implementation where it is available, and the pentagonal recurrence otherwise.  The recurrence computes every partition number below its argument, so a host without FLINT answers large arguments far more slowly; both paths are exact.  The first count in a process also pays about 150 ms to bind the native routine, after which a count costs a few milliseconds at any argument.  See `bench/compare-partitions.cjs`."
+      ],
+      "source": {
+        "name": "Partitions",
+        "qualified": "Partitions",
+        "path": "src/baselib/combinat.py",
+        "line": 1128,
+        "excerpt": {
+          "start_line": 1116,
+          "text": "    entries = []\n    if not isinstance(value, (list, tuple)):\n        raise TypeError(\"parts_in must be a list or tuple of positive integers\")\n    for part in value:\n        if not runtime.is_exact_integer(part):\n            raise TypeError(\"parts_in must contain integers\")\n        if int(part) <= 0:\n            raise ValueError(\"parts_in must contain positive integers\")\n        entries.append(int(part))\n    return entries\n\n\ndef Partitions(size: Any = None, **constraints: Any) -> Any:\n    r\"\"\"\n    Return the combinatorial class of partitions described by the arguments.\n\n    With no argument this is the class of all partitions of all nonnegative\n    integers.  With an integer argument it is the class of partitions of that\n    integer, optionally restricted by the supported keyword constraints.\n\n    ### Input\n\n    - `size` -- optional nonnegative integer to partition\n    - `min_part` -- smallest allowed part\n    - `max_part` -- largest allowed part"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#1271fca89dd13ea8-0e5cda42d87c5802~2",
+          "line": 1149,
+          "source": "Partitions(4).list()",
+          "want": "[[4], [3, 1], [2, 2], [2, 1, 1], [1, 1, 1, 1]]\n",
+          "tags": [],
+          "owner": "Partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#1271fca89dd13ea8-0e5cda42d87c5802~2",
+            "status": "pass",
+            "actual": "[[4], [3, 1], [2, 2], [2, 1, 1], [1, 1, 1, 1]]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#d45f8a2533dfcfef-f663ecece38e365a",
+          "line": 1151,
+          "source": "Partitions(5, max_part=3).list()",
+          "want": "[[3, 2], [3, 1, 1], [2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n",
+          "tags": [],
+          "owner": "Partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#d45f8a2533dfcfef-f663ecece38e365a",
+            "status": "pass",
+            "actual": "[[3, 2], [3, 1, 1], [2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#a21ce899f51f9b8d-0dcbe9ad9baa89df",
+          "line": 1153,
+          "source": "Partitions(5, length=2).list()",
+          "want": "[[4, 1], [3, 2]]\n",
+          "tags": [],
+          "owner": "Partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#a21ce899f51f9b8d-0dcbe9ad9baa89df",
+            "status": "pass",
+            "actual": "[[4, 1], [3, 2]]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#15989ff1c8c08bc7-7fb8e374d1ac6c90",
+          "line": 1155,
+          "source": "Partitions(5, min_part=2).list()",
+          "want": "[[5], [3, 2]]\n",
+          "tags": [],
+          "owner": "Partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#15989ff1c8c08bc7-7fb8e374d1ac6c90",
+            "status": "pass",
+            "actual": "[[5], [3, 2]]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#5b11ef3f7bc3e1eb-9825836aa684ee0a",
+          "line": 1157,
+          "source": "Partitions(5, parts_in=[1, 2]).list()",
+          "want": "[[2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n",
+          "tags": [],
+          "owner": "Partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#5b11ef3f7bc3e1eb-9825836aa684ee0a",
+            "status": "pass",
+            "actual": "[[2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#45d6cd3cd4e3c21a-734a7c05b5614ca1",
+          "line": 1164,
+          "source": "Partitions(1000).cardinality()",
+          "want": "24061467864032622473692149727991\n",
+          "tags": [],
+          "owner": "Partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#45d6cd3cd4e3c21a-734a7c05b5614ca1",
+            "status": "pass",
+            "actual": "24061467864032622473692149727991\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions.cardinality",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partitions.cardinality()",
+      "summary": "Return the exact number of partitions in this class.",
+      "doc": "Return the exact number of partitions in this class.\n\nThe unconstrained count uses Euler's pentagonal number recurrence, so\nit stays exact and fast well beyond the range where listing the\npartitions is practical.\n\n### Examples\n\n```sage\n    sage: Partitions(4).cardinality()\n    5\n    sage: Partitions(100).cardinality()\n    190569292\n    sage: Partitions(5, max_part=3).cardinality()\n    5\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "cardinality",
+        "qualified": "Partitions_all.cardinality",
+        "path": "src/baselib/combinat.py",
+        "line": 573,
+        "excerpt": {
+          "start_line": 561,
+          "text": "        sage: Partitions()\n        Partitions\n        sage: Partitions().cardinality()\n        +Infinity\n        sage: Partitions().unrank(6)\n        [1, 1, 1]\n    ```\n    \"\"\"\n\n    def __repr__(self) -> str:\n        return \"Partitions\"\n\n    def cardinality(self) -> Any:\n        \"\"\"Return `+Infinity`; the class of all partitions is infinite.\"\"\"\n        return _combinat_infinity\n\n    def __contains__(self, value: object) -> bool:\n        if isinstance(value, Partition):\n            return True\n        if not isinstance(value, (list, tuple)):\n            return False\n        entries = []\n        for part in value:\n            if not runtime.is_exact_integer(part):\n                return False"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#07fb375274b810f6-ef2d127de37b942b~2",
+          "line": 883,
+          "source": "Partitions(4).cardinality()",
+          "want": "5\n",
+          "tags": [],
+          "owner": "Partitions_n.cardinality",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#07fb375274b810f6-ef2d127de37b942b~2",
+            "status": "pass",
+            "actual": "5\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#9be2d535b381270d-50de17d47bcec0fd",
+          "line": 885,
+          "source": "Partitions(100).cardinality()",
+          "want": "190569292\n",
+          "tags": [],
+          "owner": "Partitions_n.cardinality",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#9be2d535b381270d-50de17d47bcec0fd",
+            "status": "pass",
+            "actual": "190569292\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#a7934eaaf9e925ad-ef2d127de37b942b",
+          "line": 887,
+          "source": "Partitions(5, max_part=3).cardinality()",
+          "want": "5\n",
+          "tags": [],
+          "owner": "Partitions_n.cardinality",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#a7934eaaf9e925ad-ef2d127de37b942b",
+            "status": "pass",
+            "actual": "5\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions.first",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partitions.first()",
+      "summary": "Return the first partition in the enumeration order.",
+      "doc": "Return the first partition in the enumeration order.\n\n### Examples\n\n```sage\n    sage: Partitions(5).first()\n    [5]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "first",
+        "qualified": "Partitions_all.first",
+        "path": "src/baselib/combinat.py",
+        "line": 596,
+        "excerpt": {
+          "start_line": 584,
+          "text": "            if not runtime.is_exact_integer(part):\n                return False\n            entries.append(int(part))\n        return _partition_is_weakly_decreasing(entries)\n\n    def __iter__(self) -> Iterator[Partition]:\n        size = 0\n        while True:\n            for entry in Partitions(size):\n                yield Partition(entry.to_list(), self)\n            size += 1\n\n    def first(self) -> Partition:\n        \"\"\"Return the empty partition, the first in the enumeration order.\"\"\"\n        return self._element([])\n\n    def unrank(self, index: Any) -> Partition:\n        \"\"\"\n        Return the partition at position `index` of the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: [Partitions().unrank(index) for index in range(5)]\n            [[], [1], [2], [1, 1], [3]]"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#ab28f07b012dc982-1ae3592f8248c3f8",
+          "line": 949,
+          "source": "Partitions(5).first()",
+          "want": "[5]\n",
+          "tags": [],
+          "owner": "Partitions_n.first",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#ab28f07b012dc982-1ae3592f8248c3f8",
+            "status": "pass",
+            "actual": "[5]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions.last",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partitions.last()",
+      "summary": "Return the last partition in the enumeration order.",
+      "doc": "Return the last partition in the enumeration order.\n\n### Examples\n\n```sage\n    sage: Partitions(5).last()\n    [1, 1, 1, 1, 1]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "last",
+        "qualified": "Partitions_n.last",
+        "path": "src/baselib/combinat.py",
+        "line": 955,
+        "excerpt": {
+          "start_line": 943,
+          "text": "        \"\"\"\n        Return the first partition in the enumeration order.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(5).first()\n            [5]\n        ```\n        \"\"\"\n        return self.unrank(0)\n\n    def last(self) -> Partition:\n        \"\"\"\n        Return the last partition in the enumeration order.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(5).last()\n            [1, 1, 1, 1, 1]\n        ```\n        \"\"\"\n        count = self._count(\n            self._size,"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#6b4a3dc70e15c2a0-15d67f715f212612",
+          "line": 962,
+          "source": "Partitions(5).last()",
+          "want": "[1, 1, 1, 1, 1]\n",
+          "tags": [],
+          "owner": "Partitions_n.last",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#6b4a3dc70e15c2a0-15d67f715f212612",
+            "status": "pass",
+            "actual": "[1, 1, 1, 1, 1]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions.list",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partitions.list()",
+      "summary": "Return every member of a finite combinatorial class.",
+      "doc": "Return every member of a finite combinatorial class.\n\n### Examples\n\n```sage\n    sage: Partitions(3).list()\n    [[3], [2, 1], [1, 1, 1]]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "list",
+        "qualified": "_PartitionsBase.list",
+        "path": "src/baselib/combinat.py",
+        "line": 534,
+        "excerpt": {
+          "start_line": 522,
+          "text": "    def __iter__(self) -> Iterator[Partition]:\n        raise NotImplementedError(\"enumeration is defined by each partition class\")\n\n    def __call__(self, entries: Any = None) -> Partition:\n        if entries is None:\n            raise TypeError(\"a partition is built from a list or tuple of parts\")\n        candidate = _partition_entries(entries)\n        _partition_validate(candidate)\n        if candidate not in self:\n            raise ValueError(\"the partition is not a member of \" + repr(self))\n        return self._element(candidate)\n\n    def list(self) -> list[Partition]:\n        \"\"\"\n        Return every member of a finite combinatorial class.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(3).list()\n            [[3], [2, 1], [1, 1, 1]]\n        ```\n        \"\"\"\n        return [entry for entry in self]\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#1ca07fb9de45b0e9-64dc3d027c3bb6a9",
+          "line": 541,
+          "source": "Partitions(3).list()",
+          "want": "[[3], [2, 1], [1, 1, 1]]\n",
+          "tags": [],
+          "owner": "_PartitionsBase.list",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#1ca07fb9de45b0e9-64dc3d027c3bb6a9",
+            "status": "pass",
+            "actual": "[[3], [2, 1], [1, 1, 1]]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions.random_element",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partitions.random_element()",
+      "summary": "Return a uniformly random member of this class.",
+      "doc": "Return a uniformly random member of this class.\n\nThe part sizes are chosen one at a time with probability proportional\nto the exact number of completions, so every partition is equally\nlikely without enumerating the class.\n\n### Examples\n\n```sage\n    sage: Partitions(6).random_element() in Partitions(6)\n    True\n    sage: Partitions(6, max_part=2).random_element().to_list()[0] <= 2\n    True\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "random_element",
+        "qualified": "Partitions_n.random_element",
+        "path": "src/baselib/combinat.py",
+        "line": 1074,
+        "excerpt": {
+          "start_line": 1062,
+          "text": "                            remaining - first,\n                            first,\n                            min_length - 1,\n                            max_length - 1,\n                        ),\n                    )\n            remaining -= part\n            max_part = part\n            min_length -= 1\n            max_length -= 1\n        return runtime.normalize_integer(position)\n\n    def random_element(self) -> Partition:\n        \"\"\"\n        Return a uniformly random member of this class.\n\n        The part sizes are chosen one at a time with probability proportional\n        to the exact number of completions, so every partition is equally\n        likely without enumerating the class.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(6).random_element() in Partitions(6)\n            True"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#c6114ee4d762a06b-3cbc87c7681f34db",
+          "line": 1085,
+          "source": "Partitions(6).random_element() in Partitions(6)",
+          "want": "True\n",
+          "tags": [],
+          "owner": "Partitions_n.random_element",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#c6114ee4d762a06b-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#46cf4cb9bdfdcac2-3cbc87c7681f34db",
+          "line": 1087,
+          "source": "Partitions(6, max_part=2).random_element().to_list()[0] <= 2",
+          "want": "True\n",
+          "tags": [],
+          "owner": "Partitions_n.random_element",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#46cf4cb9bdfdcac2-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions.rank",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partitions.rank()",
+      "summary": "Return the position of `value` in the enumeration.",
+      "doc": "Return the position of `value` in the enumeration.\n\n### Examples\n\n```sage\n    sage: Partitions(5).rank([3, 1, 1])\n    3\n    sage: Partitions(5).unrank(Partitions(5).rank([2, 2, 1]))\n    [2, 2, 1]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "rank",
+        "qualified": "Partitions_all.rank",
+        "path": "src/baselib/combinat.py",
+        "line": 623,
+        "excerpt": {
+          "start_line": 611,
+          "text": "        position = int(index)\n        if position < 0:\n            raise ValueError(\"a rank must be nonnegative\")\n        size = 0\n        while True:\n            available = Partitions(size)\n            count = int(available.cardinality())\n            if position < count:\n                return Partition(available.unrank(position).to_list(), self)\n            position -= count\n            size += 1\n\n    def rank(self, value: Any) -> Any:\n        \"\"\"\n        Return the position of `value` in the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions().rank([2, 1])\n            5\n        ```\n        \"\"\"\n        entries = _partition_entries(value)\n        _partition_validate(entries)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#1ce443a75fccb628-ef2d127de37b942b",
+          "line": 630,
+          "source": "Partitions().rank([2, 1])",
+          "want": "5\n",
+          "tags": [],
+          "owner": "Partitions_all.rank",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#1ce443a75fccb628-ef2d127de37b942b",
+            "status": "pass",
+            "actual": "5\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#61484fa7860e9cef-4e07408562bedb8b",
+          "line": 1041,
+          "source": "Partitions(5).rank([3, 1, 1])",
+          "want": "3\n",
+          "tags": [],
+          "owner": "Partitions_n.rank",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#61484fa7860e9cef-4e07408562bedb8b",
+            "status": "pass",
+            "actual": "3\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#127abb9a1536a345-507a6faf94abad26",
+          "line": 1043,
+          "source": "Partitions(5).unrank(Partitions(5).rank([2, 2, 1]))",
+          "want": "[2, 2, 1]\n",
+          "tags": [],
+          "owner": "Partitions_n.rank",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#127abb9a1536a345-507a6faf94abad26",
+            "status": "pass",
+            "actual": "[2, 2, 1]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions.unrank",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partitions.unrank()",
+      "summary": "Return the partition at position `index` of the enumeration.",
+      "doc": "Return the partition at position `index` of the enumeration.\n\n### Examples\n\n```sage\n    sage: Partitions(5).unrank(0)\n    [5]\n    sage: Partitions(5).unrank(3)\n    [3, 1, 1]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "unrank",
+        "qualified": "Partitions_all.unrank",
+        "path": "src/baselib/combinat.py",
+        "line": 600,
+        "excerpt": {
+          "start_line": 588,
+          "text": "\n    def __iter__(self) -> Iterator[Partition]:\n        size = 0\n        while True:\n            for entry in Partitions(size):\n                yield Partition(entry.to_list(), self)\n            size += 1\n\n    def first(self) -> Partition:\n        \"\"\"Return the empty partition, the first in the enumeration order.\"\"\"\n        return self._element([])\n\n    def unrank(self, index: Any) -> Partition:\n        \"\"\"\n        Return the partition at position `index` of the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: [Partitions().unrank(index) for index in range(5)]\n            [[], [1], [2], [1, 1], [3]]\n        ```\n        \"\"\"\n        position = int(index)\n        if position < 0:"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#6cd3a27c73b88e67-511963b215a747ff",
+          "line": 607,
+          "source": "[Partitions().unrank(index) for index in range(5)]",
+          "want": "[[], [1], [2], [1, 1], [3]]\n",
+          "tags": [],
+          "owner": "Partitions_all.unrank",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#6cd3a27c73b88e67-511963b215a747ff",
+            "status": "pass",
+            "actual": "[[], [1], [2], [1, 1], [3]]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#8b49d6272120b0e7-1ae3592f8248c3f8",
+          "line": 1015,
+          "source": "Partitions(5).unrank(0)",
+          "want": "[5]\n",
+          "tags": [],
+          "owner": "Partitions_n.unrank",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#8b49d6272120b0e7-1ae3592f8248c3f8",
+            "status": "pass",
+            "actual": "[5]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#25379a031a768146-c9f4320c86359dc6",
+          "line": 1017,
+          "source": "Partitions(5).unrank(3)",
+          "want": "[3, 1, 1]\n",
+          "tags": [],
+          "owner": "Partitions_n.unrank",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#25379a031a768146-c9f4320c86359dc6",
+            "status": "pass",
+            "actual": "[3, 1, 1]\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -29808,9 +32118,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 8018,
+        "line": 7986,
         "excerpt": {
-          "start_line": 8006,
+          "start_line": 7974,
           "text": "arraylike = ρσ_arraylike\nprint = ρσ_print\nid = ρσ_id\nget_module = ρσ_get_module\npow = ρσ_pow\ndivmod = ρσ_divmod\ndir = ρσ_dir\nvars = ρσ_vars\nhelp = ρσ_help\nsearch_doc = ρσ_search_doc\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
@@ -31161,23 +33471,23 @@
     },
     "documentation": {
       "schema_version": 1,
-      "registry_entries": 269,
-      "with_docstring": 269,
-      "with_summary": 269,
-      "with_tags": 269,
-      "with_backend": 269,
-      "with_provenance": 269,
-      "with_compatibility_notes": 269,
-      "with_references": 86,
-      "markdown_docstrings": 269,
+      "registry_entries": 289,
+      "with_docstring": 289,
+      "with_summary": 289,
+      "with_tags": 289,
+      "with_backend": 289,
+      "with_provenance": 289,
+      "with_compatibility_notes": 289,
+      "with_references": 88,
+      "markdown_docstrings": 289,
       "invalid_markdown_entries": [],
       "incomplete_entries": []
     },
     "examples": {
-      "entries_with_examples": 174,
+      "entries_with_examples": 194,
       "entries_without_examples": 95,
-      "documented": 136,
-      "verified": 130,
+      "documented": 177,
+      "verified": 171,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,
