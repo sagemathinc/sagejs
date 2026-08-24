@@ -2252,6 +2252,7 @@ def bounded_cubic_minkowski_class_number(
     max_residue_states: int = DEFAULT_CUBIC_CLASS_NUMBER_MAX_RESIDUE_STATES,
     max_relation_seed_prime_ideals: int | None = None,
     cancelled: Callable[[], bool] | None = None,
+    _relation_prefix_receiver: Callable[..., bool] | None = None,
 ) -> CubicClassNumberResult:
     """Prove a cubic class number without computing units or a regulator.
 
@@ -2267,6 +2268,10 @@ def bounded_cubic_minkowski_class_number(
     """
     if int(field.degree()) != 3:
         raise ValueError("the bounded Minkowski class-number path requires a cubic")
+    if _relation_prefix_receiver is not None and not callable(
+        _relation_prefix_receiver
+    ):
+        raise TypeError("the internal relation-prefix receiver must be callable")
     checked_caps = {
         "max_relation_attempts": _positive_integer(
             max_relation_attempts, "maximum relation attempts"
@@ -2381,6 +2386,15 @@ def bounded_cubic_minkowski_class_number(
             and live_search_state is not None
             and not live_has_partials
         ):
+            if _relation_prefix_receiver is not None and _relation_prefix_receiver(
+                plan,
+                output_factor_base,
+                seed_collector,
+                presentation,
+                live_search_state,
+            ):
+                result.diagnostics["context_relation_prefix_bound"] = True
+                return result
             return _issue_cubic_relation_seed(
                 result,
                 plan,

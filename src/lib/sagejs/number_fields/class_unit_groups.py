@@ -1420,6 +1420,39 @@ class ClassUnitGroupEngine:
             )
         )
 
+    def _receive_cubic_relation_prefix(
+        self,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        search_state: Any,
+    ) -> bool:
+        """Bind a just-produced cubic prefix directly into this context."""
+        bind = getattr(self.context, "_bind_live_cubic_relation_prefix", None)
+        relation_token = getattr(
+            self.components.relations,
+            "_LIVE_VERIFIED_RELATION_PREFIX_TOKEN",
+            None,
+        )
+        if (
+            not callable(bind)
+            or self._live_context_token is None
+            or relation_token is None
+        ):
+            return False
+        return bool(
+            bind(
+                self._live_context_token,
+                plan,
+                factor_base,
+                collector,
+                presentation,
+                search_state,
+                relation_token,
+            )
+        )
+
     def _bind_context_factor_base(
         self, factor_base: Iterable[Any], *, validated: bool
     ) -> None:
@@ -4093,6 +4126,12 @@ class ClassUnitGroupEngine:
             is not _CUBIC_RELATION_SEED_UNREAD
         ):
             return self._authenticated_cubic_relation_seed_cache
+        context_reader = getattr(self.context, "_live_cubic_relation_prefix", None)
+        if callable(context_reader) and self._live_context_token is not None:
+            context_prefix = context_reader(self._live_context_token)
+            if context_prefix is not None:
+                self._authenticated_cubic_relation_seed_cache = context_prefix
+                return context_prefix
         artifact = getattr(self.field, "_bounded_cubic_class_number_artifact", None)
         if artifact is None:
             self._authenticated_cubic_relation_seed_cache = None
@@ -4648,6 +4687,116 @@ def class_group(
     return adapter(result)
 
 
+def cubic_class_number_projection(field: Any, proof: bool | None = None) -> int:
+    """Run the default cubic scalar projection through one shared context.
+
+    A bounded class-only producer may finish immediately.  If it instead
+    obtains an exact relation prefix, its synchronous receiver constructs the
+    coupled engine and binds those live objects directly into the engine's
+    `ClassUnitGroupContext`.  No serialized seed snapshot is needed between
+    the two stages; detached or later cached artifacts retain the ordinary
+    authenticated replay route.
+    """
+    if int(field.degree()) != 3:
+        raise ValueError("the cubic class-number projection requires degree three")
+    proof_value = True if proof is None else bool(proof)
+    cubic = __import__(
+        "sagejs.number_fields.cubic_class_number", fromlist=["cubic_class_number"]
+    )
+    artifact = field._bounded_cubic_class_number_artifact
+    uncached = artifact is None
+    conditional_decline = bool(
+        not uncached
+        and not artifact.complete
+        and artifact.diagnostics.get("relation_seed_size_policy_exceeded", False)
+    )
+    producer_ran = uncached or (proof_value and conditional_decline)
+    engine_holder: list[ClassUnitGroupEngine] = []
+
+    def receive_prefix(
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        search_state: Any,
+    ) -> bool:
+        if engine_holder:
+            return False
+        engine = ClassUnitGroupEngine(field, proof=proof_value, algorithm="auto")
+        if not engine._receive_cubic_relation_prefix(
+            plan,
+            factor_base,
+            collector,
+            presentation,
+            search_state,
+        ):
+            return False
+        engine_holder.append(engine)
+        return True
+
+    if producer_ran:
+        artifact = cubic.bounded_cubic_minkowski_class_number(
+            field,
+            max_relation_seed_prime_ideals=(None if proof_value else 7),
+            _relation_prefix_receiver=receive_prefix,
+        )
+    if artifact is None:
+        raise ArithmeticError(
+            "the bounded cubic class-number producer returned no result"
+        )
+    if artifact.complete:
+        authority_reader = getattr(cubic, "authenticated_cubic_class_number", None)
+        certified_order = (
+            authority_reader(artifact, field) if callable(authority_reader) else None
+        )
+        if certified_order is None:
+            raise ArithmeticError(
+                "cached cubic class-number evidence lost authentication"
+            )
+        if producer_ran:
+            field._bounded_cubic_class_number_artifact = artifact
+        return _integer(certified_order, "certified cubic class number")
+
+    seed_reader = getattr(cubic, "authenticated_cubic_relation_seed", None)
+    has_detached_seed = bool(
+        callable(seed_reader) and seed_reader(artifact, field) is not None
+    )
+    retain_artifact = bool(
+        producer_ran
+        and (
+            engine_holder
+            or has_detached_seed
+            or artifact.diagnostics.get("relation_seed_size_policy_exceeded", False)
+        )
+    )
+    if retain_artifact and not engine_holder:
+        field._bounded_cubic_class_number_artifact = artifact
+    if not engine_holder:
+        return class_number(field, proof=proof_value, algorithm="auto")
+
+    engine = engine_holder[0]
+    result = engine.run()
+    answer = result.class_number()
+    if retain_artifact:
+        # A context-bound prefix is useful only for the uninterrupted run.
+        # Publish its diagnostic artifact after the coupled computation has
+        # actually completed, so an exceptional run cannot leave behind a
+        # non-resumable cache entry with no detached seed.
+        field._bounded_cubic_class_number_artifact = artifact
+    cache = getattr(field, "_class_unit_engine_cache", None)
+    if not isinstance(cache, dict):
+        cache = {}
+        field._class_unit_engine_cache = cache
+    cache_key = (
+        proof_value,
+        "auto",
+        0,
+        tuple(sorted(engine.limits.to_dict().items())),
+    )
+    cache[cache_key] = result
+    return answer
+
+
 def class_number(
     field: Any,
     proof: bool | None = None,
@@ -4798,6 +4947,7 @@ __all__ = [
     "UnitGroupComputation",
     "class_group",
     "class_number",
+    "cubic_class_number_projection",
     "class_unit_context",
     "class_unit_group",
     "compute_class_unit_group",

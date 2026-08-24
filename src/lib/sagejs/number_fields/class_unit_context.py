@@ -420,6 +420,25 @@ def _checked_precision_history(values: Iterable[Any]) -> tuple[int, ...]:
     return tuple(answer)
 
 
+class _LiveCubicRelationPrefix:
+    """Identity-bound cubic relation state for one uninterrupted request."""
+
+    def __init__(
+        self,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        search_state: Any,
+    ) -> None:
+        self.plan = plan
+        self.factor_base = factor_base
+        self.collector = collector
+        self.presentation = presentation
+        self.search_state = search_state
+        runtime.object.freeze(self)
+
+
 class _LiveClassUnitArtifacts:
     """Producer-owned algebraic state excluded from detached checkpoints.
 
@@ -449,6 +468,7 @@ class _LiveClassUnitArtifacts:
         self.collector: Any = None
         self.relations: tuple[Any, ...] = ()
         self.presentation: Any = None
+        self.cubic_relation_prefix: Any = None
         self.factored_units: tuple[Any, ...] = ()
         self.analytic_workspace = analytic_workspace
         self.factored_logarithm_workspace = factored_logarithm_workspace
@@ -527,6 +547,52 @@ class _LiveClassUnitArtifacts:
         self.relations = records
         self.presentation = presentation
         return self.reusable
+
+    def bind_cubic_relation_prefix(
+        self,
+        plan: Any,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        search_state: Any,
+        relation_authentication_token: Any,
+    ) -> bool:
+        """Retain a synchronous cubic producer prefix without serializing it."""
+        factors = tuple(factor_base)
+        if (
+            self.sealed
+            or not self.reusable
+            or getattr(plan, "order", None) is not self.order
+            or getattr(search_state, "seed", None) is None
+            or not self.bind_relations(
+                factors,
+                collector,
+                presentation,
+                relation_authentication_token,
+            )
+        ):
+            return False
+        self.factor_base_validation_available = True
+        self.cubic_relation_prefix = _LiveCubicRelationPrefix(
+            plan,
+            factors,
+            collector,
+            presentation,
+            search_state,
+        )
+        return True
+
+    def live_cubic_relation_prefix(self) -> Any:
+        prefix = self.cubic_relation_prefix
+        if (
+            prefix is None
+            or self.sealed
+            or not self.relation_stage_authenticated(
+                prefix.collector, prefix.presentation
+            )
+        ):
+            return None
+        return prefix
 
     def relation_stage_authenticated(self, collector: Any, presentation: Any) -> bool:
         if (
@@ -939,6 +1005,37 @@ class ClassUnitGroupContext:
                 relation_authentication_token,
             )
         )
+
+    def _bind_live_cubic_relation_prefix(
+        self,
+        token: Any,
+        plan: Any,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        search_state: Any,
+        relation_authentication_token: Any,
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live cubic relation state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.bind_cubic_relation_prefix(
+                plan,
+                factor_base,
+                collector,
+                presentation,
+                search_state,
+                relation_authentication_token,
+            )
+        )
+
+    def _live_cubic_relation_prefix(self, token: Any) -> Any:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live cubic relation state is engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.live_cubic_relation_prefix()
 
     def _bind_live_factor_base(
         self, token: Any, factor_base: Iterable[Any], *, validated: bool

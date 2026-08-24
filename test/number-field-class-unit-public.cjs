@@ -258,14 +258,16 @@ assert not cubic_module.authenticated_cubic_class_number_result_matches(
     forged_result, K_forged
 )
 original_producer = cubic_module.bounded_cubic_minkowski_class_number
-cubic_module.bounded_cubic_minkowski_class_number = lambda field: forged_result
+cubic_module.bounded_cubic_minkowski_class_number = (
+    lambda field, **kwargs: forged_result
+)
 try:
     K_forged.class_number(proof=True)
     raise AssertionError("a directly constructed cubic result entered the cache")
 except ArithmeticError as error:
     assert "invalid exact evidence" in str(error) or "lost authentication" in str(error)
 cubic_module.bounded_cubic_minkowski_class_number = original_producer
-assert not hasattr(K_forged, "_bounded_cubic_class_number_artifact")
+assert K_forged._bounded_cubic_class_number_artifact is None
 
 # Cache reads consume the scalar sealed at the exact producer boundary.  The
 # public result wrapper is diagnostic data, so mutating it cannot alter or
@@ -291,7 +293,7 @@ for options in ({"algorithm": "minkowski"}, {"max_relations": 1}):
 
 # Bounded noncompletion is only a routing hint: it falls through rather than
 # supplying an upper bound as a class number.
-def incomplete(field):
+def incomplete(field, **kwargs):
     return cubic_module.CubicClassNumberResult(
         field, False, "forced bounded exhaustion", 1
     )
@@ -299,7 +301,7 @@ cubic_module.bounded_cubic_minkowski_class_number = incomplete
 class_unit_module.class_number = lambda *args, **kwargs: 7
 K_fallback = NumberField(x**3 + 3*x + 1, "f")
 assert K_fallback.class_number(proof=False) == 7
-assert not hasattr(K_fallback, "_bounded_cubic_class_number_artifact")
+assert K_fallback._bounded_cubic_class_number_artifact is None
 print("cubic-class-number-fast-ok")
 `, 180_000);
   assert.equal(output, "cubic-class-number-fast-ok");
@@ -326,6 +328,10 @@ K = NumberField(x**3 + 4*x - 1, "s")
 assert K.class_number(proof=True) == 2
 artifact = K._bounded_cubic_class_number_artifact
 assert not artifact.complete
+assert artifact.diagnostics["context_relation_prefix_bound"] is True
+# The uninterrupted public request transfers the exact live collector into
+# its ClassUnitGroupContext.  It must not also serialize the old cubic seed.
+assert cubic_module.authenticated_cubic_relation_seed(artifact, K) is None
 assert len(artifact.relation_records) == 4
 artifact_search = artifact.diagnostics["relation_search"]
 assert artifact_search["integral_sieve_dependency_candidates"] == 1
@@ -391,6 +397,8 @@ assert not record.verify(K, K.maximal_order())
 # the engine, and the independent exact computation still returns the answer.
 T = NumberField(x**3 + 4*x - 1, "t")
 forged = cubic_module.bounded_cubic_minkowski_class_number(T)
+# A standalone producer has no receiving context.  It retains the fully
+# authenticated replay seed used by detached and later cached consumers.
 assert cubic_module.authenticated_cubic_relation_seed(forged, T) is not None
 
 # Timing diagnostics are not proof state and do not invalidate the prefix.

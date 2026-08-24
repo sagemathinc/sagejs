@@ -106,13 +106,6 @@ def _nf_class_groups_module() -> Any:
     )
 
 
-def _nf_cubic_class_number_module() -> Any:
-    return _nf_lazy_import(
-        "__sagejs_nf_cubic_class_number_module__",
-        "sagejs.number_fields.cubic_class_number",
-    )
-
-
 def _nf_class_unit_groups_module() -> Any:
     return _nf_lazy_import(
         "__sagejs_nf_class_unit_groups_module__",
@@ -2078,7 +2071,10 @@ class NumberFieldParent(sage.Parent):
         self._real_quadratic_backend_cache = runtime.undefined
         self._real_quadratic_class_number_cache = runtime.undefined
         self._real_quadratic_narrow_class_number_cache = runtime.undefined
-        self._bounded_cubic_class_number_artifact = runtime.undefined
+        # This cache is consumed by an independently compiled lazy module.
+        # JavaScript `undefined` is treated as a missing Python attribute at
+        # that boundary, so use an ordinary optional value here.
+        self._bounded_cubic_class_number_artifact = None
         self._class_group_cache = runtime.undefined
         self._narrow_class_group_cache = runtime.undefined
         self._zeta_function_cache = runtime.map()
@@ -2924,54 +2920,9 @@ class NumberFieldParent(sage.Parent):
         if self._is_tutorial_cubic():
             return 1
         if self.degree() == 3 and algorithm == "auto" and len(limits) == 0:
-            cubic_class_numbers = _nf_cubic_class_number_module()
-            artifact = self._bounded_cubic_class_number_artifact
-            uncached = artifact is runtime.undefined
-            requested_proof = True if proof is None else bool(proof)
-            conditional_decline = bool(
-                not uncached
-                and not artifact.complete
-                and artifact.diagnostics.get(
-                    "relation_seed_size_policy_exceeded", False
-                )
+            return _nf_class_unit_groups_module().cubic_class_number_projection(
+                self, proof=proof
             )
-            producer_ran = uncached or (requested_proof and conditional_decline)
-            if producer_ran:
-                artifact = cubic_class_numbers.bounded_cubic_minkowski_class_number(
-                    self,
-                    max_relation_seed_prime_ideals=(None if requested_proof else 7),
-                )
-            if artifact.complete:
-                authority_reader = getattr(
-                    cubic_class_numbers,
-                    "authenticated_cubic_class_number",
-                    None,
-                )
-                certified_order = (
-                    authority_reader(artifact, self)
-                    if callable(authority_reader)
-                    else None
-                )
-                if certified_order is None:
-                    raise ArithmeticError(
-                        "cached cubic class-number evidence lost authentication"
-                    )
-                if producer_ran:
-                    self._bounded_cubic_class_number_artifact = artifact
-                return int(_untyped(certified_order))
-            seed_reader = getattr(
-                cubic_class_numbers, "authenticated_cubic_relation_seed", None
-            )
-            if (
-                producer_ran
-                and callable(seed_reader)
-                and seed_reader(artifact, self) is not None
-            ):
-                self._bounded_cubic_class_number_artifact = artifact
-            elif producer_ran and artifact.diagnostics.get(
-                "relation_seed_size_policy_exceeded", False
-            ):
-                self._bounded_cubic_class_number_artifact = artifact
         if self.degree() == 2:
             routing = self.quadratic_class_group_plan(algorithm, **limits)
             if routing.backend == "minkowski-triviality":
