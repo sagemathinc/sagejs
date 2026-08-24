@@ -1,11 +1,11 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "3eb66825c70c8bc898eb10c5137efe2219ec2590ff729e981d61938bbe13cc49",
+  "source_sha256": "0d460e04c7bd4aaef5fcb81b3634f263dedbdc72b77a6237123c00c5275b7a7f",
   "counts": {
-    "total": 965,
+    "total": 966,
     "by_kind": {
-      "declared-ffi-function": 414,
+      "declared-ffi-function": 415,
       "declared-ffi-resource": 29,
       "napi-export": 317,
       "production-kernel": 41,
@@ -14,14 +14,14 @@
     },
     "by_disposition": {
       "compiled-source": 41,
-      "desktop-only": 14,
+      "desktop-only": 15,
       "generated-wasm": 320,
       "portable-fallback": 545,
       "shared-core": 45
     },
     "by_status": {
       "available": 539,
-      "desktop-only": 14,
+      "desktop-only": 15,
       "fallback": 412
     }
   },
@@ -822,6 +822,18 @@
         "sagejs.ffi.fflas"
       ],
       "explanation": "This optional desktop accelerator is intentionally absent from Wasm and retains its exact source kernel."
+    },
+    {
+      "id": "ffi:flint:arith_number_of_partitions",
+      "family": "flint",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "source-transparent-mathematical-kernel",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Partition counting uses FLINT where it is available and an exact pentagonal recurrence otherwise; both answers are identical."
     },
     {
       "id": "ffi:flint:dirichlet_group_init",
