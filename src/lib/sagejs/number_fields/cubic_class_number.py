@@ -379,14 +379,14 @@ class PackedCubicFactorRecord:
         }
 
 
-def _packed_power_basis_linear_candidates(
+def _packed_power_basis_dedekind_kummer_candidates(
     order: Any,
     prime: int,
     requested: set[int],
     modular_factors: tuple[Any, ...],
 ) -> list[dict[str, Any]] | None:
-    """Construct degree-one Dedekind--Kummer data without an order table."""
-    if requested != {1} or not _is_integral_cubic_power_basis(order):
+    """Construct cubic power-basis Dedekind--Kummer data directly."""
+    if not requested or not _is_integral_cubic_power_basis(order):
         return None
     if (
         sum(
@@ -402,20 +402,46 @@ def _packed_power_basis_linear_candidates(
     answer: list[dict[str, Any]] = []
     for factor in modular_factors:
         polynomial = tuple(int(value) % prime for value in factor.polynomial)
-        if len(polynomial) != 2:
+        residue_degree = len(polynomial) - 1
+        if residue_degree not in requested:
             continue
-        if polynomial[1] != 1:
+        if residue_degree < 1 or residue_degree > 3 or polynomial[-1] != 1:
             return None
-        root = (-polynomial[0]) % prime
-        quotient_coordinates = [1, root, (root * root) % prime]
-        subspace = prime_module._row_basis(
-            [
-                [(-root) % prime, 1, 0],
-                [(-(root * root)) % prime, 0, 1],
-            ],
-            3,
-            prime,
-        )
+        if residue_degree == 1:
+            root = (-polynomial[0]) % prime
+            quotient_matrix = [[1], [root], [(root * root) % prime]]
+            subspace = prime_module._row_basis(
+                [
+                    [(-root) % prime, 1, 0],
+                    [(-(root * root)) % prime, 0, 1],
+                ],
+                3,
+                prime,
+            )
+            primitive = [1, 0, 0]
+            power_inverse = [[1]]
+            residue_modulus = [(-1) % prime, 1]
+            second_generator = [polynomial[0], polynomial[1], 0]
+        elif residue_degree == 2:
+            subspace = prime_module._row_basis(
+                [[polynomial[0], polynomial[1], 1]], 3, prime
+            )
+            quotient_matrix = [
+                [1, 0],
+                [0, 1],
+                [(-polynomial[0]) % prime, (-polynomial[1]) % prime],
+            ]
+            primitive = [0, 1, 0]
+            power_inverse = [[1, 0], [0, 1]]
+            residue_modulus = list(polynomial)
+            second_generator = [polynomial[0], polynomial[1], 1]
+        else:
+            subspace = []
+            quotient_matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+            primitive = [0, 1, 0]
+            power_inverse = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+            residue_modulus = list(polynomial)
+            second_generator = [0, 0, 0]
         rows = prime_module._packed_candidate_rows(order, subspace, prime)
         if rows is None:
             return None
@@ -424,17 +450,15 @@ def _packed_power_basis_linear_candidates(
                 "rows": rows,
                 "subspace": subspace,
                 "e": int(factor.multiplicity),
-                "f": 1,
+                "f": residue_degree,
                 "presentation": {
-                    "primitive": [1, 0, 0],
-                    "quotient_matrix": [[value] for value in quotient_coordinates],
-                    "power_inverse": [[1]],
-                    "modulus": [(-1) % prime, 1],
+                    "primitive": primitive,
+                    "quotient_matrix": quotient_matrix,
+                    "power_inverse": power_inverse,
+                    "modulus": residue_modulus,
                 },
                 "second_generator_payload": [
-                    [polynomial[0], 1],
-                    [polynomial[1], 1],
-                    [0, 1],
+                    [coefficient, 1] for coefficient in second_generator
                 ],
                 "table": None,
                 "one": [1, 0, 0],
@@ -492,7 +516,7 @@ def packed_cubic_factor_records(
         ):
             continue
         local = (
-            _packed_power_basis_linear_candidates(
+            _packed_power_basis_dedekind_kummer_candidates(
                 order, prime, requested, modular_factors
             )
             if p_maximal
@@ -637,10 +661,32 @@ def materialize_verified_packed_cubic_factor_records(
         fromlist=["class_group_factor_base"],
     )
     order = factor_records[0].order
-    order_basis = tuple(order.basis())
-    rational_prime_bases: dict[int, tuple[Any, ...]] = {}
+    inverse_rows = order._basis_inverse_matrix().rows()
+    verified_modular_tables: dict[int, tuple[Any, Any]] = {}
+
+    def order_coordinates(row: Any) -> tuple[int, ...]:
+        coordinates: list[int] = []
+        for target in range(3):
+            value: Any = sage.QQ(0)
+            for source in range(3):
+                value += row[source] * inverse_rows[source][target]
+            if value._denominator != 1:
+                raise ArithmeticError(
+                    "a packed Dedekind--Kummer lattice left the maximal order"
+                )
+            coordinates.append(int(value._numerator))
+        return tuple(coordinates)
+
+    def determinant(rows: tuple[tuple[int, ...], ...]) -> int:
+        a, b, c = rows[0]
+        d, e, f = rows[1]
+        g, h, i = rows[2]
+        return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
+
     restored: list[Any] = []
     for packed in factor_records:
+        if packed.order is not order:
+            raise TypeError("a packed factor base crossed maximal-order identities")
         prime_ideal = prime_module.NumberFieldPrimeIdeal(
             packed.order,
             [list(row) for row in packed.rows],
@@ -651,31 +697,115 @@ def materialize_verified_packed_cubic_factor_records(
             _candidate_token=prime_module._PACKED_CANDIDATE_TOKEN,
         )
         rational_prime = packed.prime
-        p_basis = rational_prime_bases.get(rational_prime)
-        if p_basis is None:
-            p_basis = tuple(order.ideal(rational_prime).basis())
-            rational_prime_bases[rational_prime] = p_basis
-        # Dedekind--Kummer identifies the target as
-        # `p*O + g(beta)*O`, of norm `p^f`.  Checking every order-basis
-        # multiple of `g(beta)` proves that this retained lattice contains the
-        # whole target ideal, not merely its two displayed generators.  Equal
-        # exact norm then forces lattice equality, so there is no need to
-        # recompute the canonical HNF rows that the packed producer retained.
-        generator_products = tuple(
-            packed.second_generator * basis_element for basis_element in order_basis
+        modular_data = verified_modular_tables.get(rational_prime)
+        if modular_data is None:
+            table = prime_module._modular_table(order, rational_prime)
+            one = [
+                int(value) % rational_prime
+                for value in prime_module._order_one_coordinates(order)
+            ]
+            modular_data = (table, one)
+            verified_modular_tables[rational_prime] = modular_data
+        table, one = modular_data
+
+        # Independently bind the retained HNF to the exact modular ideal.
+        # Mapping its power-basis rows back through the maximal-order basis
+        # must give an integral lattice whose reduction is precisely the
+        # producer's modular subspace.  Its determinant then proves that this
+        # is the full preimage, including `p*O`, without rebuilding field
+        # elements and multiplying the displayed generator by every basis
+        # element.
+        lattice_rows = tuple(order_coordinates(row) for row in packed.rows)
+        reduced_rows = prime_module._row_basis(
+            [[value % rational_prime for value in row] for row in lattice_rows],
+            3,
+            rational_prime,
         )
-        if not prime_module._ideal_arithmetic.ideal_contains_elements(
-            prime_ideal, p_basis + generator_products
-        ):
+        target_subspace = [list(row) for row in packed.subspace]
+        if reduced_rows != target_subspace:
             raise ArithmeticError(
-                "a packed Dedekind--Kummer lattice omits p*O or g(beta)*O"
+                "a packed Dedekind--Kummer lattice has the wrong modular image"
             )
-        if prime_ideal.norm() != rational_prime**packed.residue_degree:
+        expected_norm = rational_prime**packed.residue_degree
+        if abs(determinant(lattice_rows)) != expected_norm:
             raise ArithmeticError(
                 "a packed Dedekind--Kummer ideal has the wrong exact norm"
             )
+
+        witness_payload = packed._second_generator_payload
+        if witness_payload is None:
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer ideal lacks a two-generator witness"
+            )
+        witness_row = tuple(
+            sage.QQ(numerator) / sage.QQ(denominator)
+            for numerator, denominator in witness_payload
+        )
+        witness_coordinates = order_coordinates(witness_row)
+        generated_subspace = prime_module._subspace_ideal_generated_by(
+            [[value % rational_prime for value in witness_coordinates]],
+            3,
+            table,
+            rational_prime,
+        )
+        if generated_subspace != target_subspace:
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer witness generates the wrong ideal"
+            )
+        presentation = packed.presentation
+        residue_degree = packed.residue_degree
+        primitive = [int(value) % rational_prime for value in presentation["primitive"]]
+        quotient_matrix = [
+            [int(value) % rational_prime for value in row]
+            for row in presentation["quotient_matrix"]
+        ]
+        power_inverse = [
+            [int(value) % rational_prime for value in row]
+            for row in presentation["power_inverse"]
+        ]
+        if (
+            len(primitive) != 3
+            or len(quotient_matrix) != 3
+            or any(len(row) != residue_degree for row in quotient_matrix)
+            or len(power_inverse) != residue_degree
+            or any(len(row) != residue_degree for row in power_inverse)
+            or prime_module._rank(quotient_matrix, residue_degree, rational_prime)
+            != residue_degree
+            or any(
+                any(
+                    prime_module._row_times_matrix(row, quotient_matrix, rational_prime)
+                )
+                for row in target_subspace
+            )
+        ):
+            raise ArithmeticError("a packed Dedekind--Kummer quotient map changed")
+        powers: list[list[int]] = []
+        power = list(one)
+        for _exponent in range(residue_degree):
+            powers.append(
+                prime_module._row_times_matrix(power, quotient_matrix, rational_prime)
+            )
+            power = prime_module._modular_product(
+                power, primitive, table, rational_prime
+            )
+        if prime_module._matrix_inverse(powers, rational_prime) != power_inverse:
+            raise ArithmeticError("a packed Dedekind--Kummer power basis changed")
+        next_image = prime_module._row_times_matrix(
+            power, quotient_matrix, rational_prime
+        )
+        coefficients = prime_module._row_times_matrix(
+            next_image, power_inverse, rational_prime
+        )
+        expected_modulus = tuple(
+            [(-value) % rational_prime for value in coefficients] + [1]
+        )
+        if (
+            tuple(int(value) % rational_prime for value in presentation["modulus"])
+            != expected_modulus
+        ):
+            raise ArithmeticError("a packed Dedekind--Kummer residue modulus changed")
         if not prime_module._presentation_modulus_is_irreducible(
-            packed.presentation, rational_prime, packed.residue_degree
+            presentation, rational_prime, residue_degree
         ):
             raise ArithmeticError(
                 "a packed Dedekind--Kummer ideal quotient is not a field"
@@ -683,8 +813,8 @@ def materialize_verified_packed_cubic_factor_records(
         prime_ideal._packed_candidate_pending_replay = False
         prime_ideal._verified_modular_algebra = (
             rational_prime,
-            [[list(product) for product in left] for left in packed.modular_table],
-            list(packed.modular_one),
+            [[list(product) for product in left] for left in table],
+            list(one),
         )
         record = factor_module.FactorBasePrimeRecord(
             packed.index,

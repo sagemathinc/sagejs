@@ -515,6 +515,80 @@ try:
 finally:
     verified_packed[0].rows = saved_verified_rows
 
+saved_verified_subspace = verified_packed[0].subspace
+mutated_subspace = [list(row) for row in saved_verified_subspace]
+mutated_subspace[0][0] = (
+    mutated_subspace[0][0] + 1
+) % verified_packed[0].prime
+verified_packed[0].subspace = tuple(tuple(row) for row in mutated_subspace)
+try:
+    try:
+        cubic.materialize_verified_packed_cubic_factor_records(verified_packed)
+        raise AssertionError("a mutated packed modular subspace was accepted")
+    except ArithmeticError:
+        pass
+finally:
+    verified_packed[0].subspace = saved_verified_subspace
+
+saved_verified_witness = verified_packed[0]._second_generator_payload
+mutated_witness = list(saved_verified_witness)
+mutated_witness[0] = (mutated_witness[0][0] + 1, mutated_witness[0][1])
+verified_packed[0]._second_generator_payload = tuple(mutated_witness)
+try:
+    try:
+        cubic.materialize_verified_packed_cubic_factor_records(verified_packed)
+        raise AssertionError("a mutated packed two-generator witness was accepted")
+    except ArithmeticError:
+        pass
+finally:
+    verified_packed[0]._second_generator_payload = saved_verified_witness
+
+saved_verified_presentation = dict(verified_packed[0].presentation)
+mutated_presentation = dict(saved_verified_presentation)
+mutated_presentation["primitive"] = [0, 1, 0]
+verified_packed[0].presentation = mutated_presentation
+try:
+    try:
+        cubic.materialize_verified_packed_cubic_factor_records(verified_packed)
+        raise AssertionError("a mutated packed quotient presentation was accepted")
+    except ArithmeticError:
+        pass
+finally:
+    verified_packed[0].presentation = saved_verified_presentation
+
+# The direct power-basis constructor also covers an inert cubic factor.  Its
+# zero second generator represents (2, 0) = 2*O; the independent modular
+# materializer must recover the same norm-eight prime as the generic oracle.
+inert_field = NumberField(x**3 - x - 1, "i")
+class InertPlan:
+    pass
+inert_plan = InertPlan()
+inert_plan.order = inert_field.maximal_order()
+inert_plan.bound = 8
+inert_plan.max_rational_primes = 64
+inert_plan.max_prime_ideals = 64
+inert_packed = cubic.packed_cubic_factor_records(inert_plan)
+assert inert_packed is not None
+inert_record = next(
+    record
+    for record in inert_packed
+    if record.prime == 2 and record.residue_degree == 3
+)
+assert inert_record._second_generator_payload == ((0, 1), (0, 1), (0, 1))
+inert_materialization = cubic.materialize_verified_packed_cubic_factor_records(
+    inert_packed
+)
+assert inert_materialization is not None
+inert_prime = next(
+    prime
+    for prime in inert_materialization[1]
+    if int(prime.rational_prime()) == 2
+)
+assert inert_prime.norm() == 8
+assert inert_prime == prime_ideals.factor_rational_prime(
+    inert_plan.order, 2
+).prime_ideals()[0]
+
 packed = cubic.bounded_cubic_minkowski_class_number(packed_field)
 assert packed.complete and packed.order() == 3 and packed.certificate.verify()
 assert packed.diagnostics["relation_search"]["integral_sieve_candidates"] == 21
