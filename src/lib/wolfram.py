@@ -121,6 +121,7 @@ Table = table
 
 _optimization_module_cache = runtime.undefined
 _findminimum_module_cache = runtime.undefined
+_fit_module_cache = runtime.undefined
 
 _INFEASIBLE = ":infeasible"
 """The `flag` suffix `nminimize` appends when its answer stays infeasible."""
@@ -163,6 +164,26 @@ def _findminimum_module() -> Any:
             fromlist=["findminimum"],
         )
     return _findminimum_module_cache
+
+
+def _fit_module() -> Any:
+    """Load the lazy least-squares fitting engine on first use.
+
+    Kept separate from `_optimization_module` (`NMinimize`'s family) and
+    `_findminimum_module` (`FindMinimum`'s family) for the same reason those
+    two are kept apart from each other: `sagejs.optimization.sage_api` pulls
+    in `levenberg_marquardt.leastsq` and its own copy of the constrained and
+    unconstrained local solvers, so a notebook calling only `FindFit` should
+    not pay to import the population methods, and one calling only
+    `NMinimize`/`FindMinimum` should not pay to import this module either.
+    """
+    global _fit_module_cache
+    if _fit_module_cache is runtime.undefined:
+        _fit_module_cache = __import__(
+            "sagejs.optimization.sage_api",
+            fromlist=["sage_api"],
+        )
+    return _fit_module_cache
 
 
 def _is_symbolic(value: Any) -> bool:
@@ -814,6 +835,155 @@ def find_arg_max(
     return [value for value in answer[0].x]
 
 
+def _fit_data_table(data: Any) -> Any:
+    """Rewrite Wolfram `FindFit`'s bare-values data shape into a table.
+
+    `FindFit` documents three shapes for `data`: pairs `{{x1,y1},...}`,
+    rows `{{x1,...,xk,f},...}` for several independent variables, and a flat
+    list of dependent values `{y1,y2,...}` whose independent variable is
+    implicit, `1, 2, 3, ...`. The first two are already the "list of rows"
+    table `sage_api.find_fit` expects and are passed through untouched; the
+    third is not a list of rows at all -- its first element is a bare
+    number, not a `List` -- so it is rewritten here into
+    `{{1,y1},{2,y2},...}` before it ever reaches `find_fit`, using Wolfram's
+    own one-based indexing for the implicit abscissae. Anything that is not
+    a nonempty `List` is passed through as well, so `sage_api.find_fit`'s
+    own "data has to be a two dimensional table" error fires with its usual
+    wording instead of a second, differently worded one from here.
+    """
+    if not isinstance(data, (list, tuple)) or not data:
+        return data
+    if _is_number(data[0]):
+        return [[float(index + 1), float(value)] for index, value in enumerate(data)]
+    return data
+
+
+def _fit_parameter_entries(pars: Any) -> list[Any]:
+    """Split `FindFit`'s `pars` into one entry per fit parameter.
+
+    Wolfram documents three shapes: a bare parameter, a `List` of
+    parameters, and a `List` of `{a, a0}` pairs giving each parameter its
+    own starting value. The single-parameter case `{a, a0}` collides at the
+    top level with the two-bare-parameters case `{a, b}`, exactly the
+    ambiguity `_find_variable_entries` already resolves for `FindMinimum`'s
+    variable specifications; it is resolved the same way here, by checking
+    whether the second element is a number rather than another parameter.
+    """
+    if not isinstance(pars, (list, tuple)):
+        return [pars]
+    entries = list(pars)
+    if len(entries) == 2 and _is_symbolic(entries[0]) and _is_number(entries[1]):
+        return [entries]
+    return entries
+
+
+def _fit_parameter_spec(entry: Any, index: int) -> tuple[Any, float | None]:
+    """Read one `_fit_parameter_entries` entry into `(symbol, start)`."""
+    if not isinstance(entry, (list, tuple)):
+        return entry, None
+    values = list(entry)
+    if len(values) == 1:
+        return values[0], None
+    if len(values) == 2:
+        return values[0], float(values[1])
+    raise ValueError(
+        "FindFit parameter %d has %d elements; expected a bare parameter "
+        "or {parameter, start}" % (index, len(values))
+    )
+
+
+def _fit_variable_entries(variables: Any) -> list[Any]:
+    """Split `FindFit`'s `vars` into one entry per independent variable.
+
+    A bare symbol names one variable and a `List` names several; unlike
+    `pars`, `vars` carries no starting values, so there is no ambiguity to
+    resolve here.
+    """
+    if not isinstance(variables, (list, tuple)):
+        return [variables]
+    return list(variables)
+
+
+def find_fit(data: Any, expr: Any, pars: Any, vars: Any) -> list[Any]:
+    r"""Fit `expr` to `data` by nonlinear least squares, Wolfram `FindFit`.
+
+    `data` accepts all three shapes Wolfram documents -- pairs
+    `{{x1,y1},...}`, rows `{{x1,...,xk,f},...}` for several independent
+    variables, and a flat list of dependent values `{y1,y2,...}` against
+    the implicit abscissae `1, 2, 3, ...` -- normalized by
+    `_fit_data_table`. `pars` is a bare parameter, a `List` of parameters,
+    or a `List` of `{a, a0}` pairs giving each an explicit starting value
+    (`sage_api.find_fit`'s own default start, `1`, is used for a parameter
+    given without one, matching Wolfram's documented default). `vars` is a
+    bare independent variable or a `List` of them.
+
+    Returns Wolfram's own answer shape for this one head, unlike every
+    other head in this module: a bare `List` of rules `{a -> value, ...}`,
+    not the `{fmin, {rules}}` pair `NMinimize` and `FindMinimum` return --
+    `FindFit` never reports the residual, only the fitted parameters. Each
+    rule is carried as a two-element list, exactly as `_rules` already
+    carries one everywhere else here. `sage_api.find_fit` itself returns a
+    list of symbolic equations `a == value` (or, with `solution_dict=True`,
+    a `{symbol: value}` mapping); this reshapes that mapping, in the order
+    `pars` named its parameters, into the two-element-list rules the rest
+    of this module already uses.
+
+    `pars` and `vars` are always read explicitly here -- Wolfram source
+    supplies both -- so `sage_api.find_fit`'s own deduction from a symbolic
+    model's free variables, used when `parameters`/`variables` are omitted,
+    is never exercised through this entry point. Every parameter named in
+    `pars` must actually occur in `expr`: one that does not has no way to
+    be constrained by the data (its residual derivative is zero
+    everywhere), so it is refused by name up front rather than silently fit
+    with `leastsq` reporting back whatever the starting value happened to
+    be.
+
+    **The Wolfram frontend does not lower `Rule` expressions into keyword
+    arguments**, so `Method -> ...` cannot be written in Wolfram source
+    today, the same limitation already recorded for `NMinimize` and
+    `FindMinimum`. Unlike those two, there is no Python-side `method=`
+    escape hatch to offer here: `FindFit` has exactly one engine,
+    Levenberg-Marquardt, so there is no method to select. `NormFunction ->`
+    and `Weights ->` have no workaround either, for a different reason --
+    `sage_api.find_fit` always minimizes the plain sum of squared
+    residuals and has no norm or weighting parameter to expose, so
+    supporting either would mean adding that capability to the fitting
+    engine itself, out of scope here.
+    """
+    module = _fit_module()
+    table = _fit_data_table(data)
+
+    parameter_entries = _fit_parameter_entries(pars)
+    parameter_specs = [
+        _fit_parameter_spec(entry, index)
+        for index, entry in enumerate(parameter_entries)
+    ]
+    parameters = [spec[0] for spec in parameter_specs]
+    parameter_names = [str(symbol) for symbol in parameters]
+    initial_guess = [1.0 if spec[1] is None else spec[1] for spec in parameter_specs]
+
+    variables = _fit_variable_entries(vars)
+
+    if _is_symbolic(expr):
+        available = {str(symbol) for symbol in expr.variables()}
+        for name in parameter_names:
+            if name not in available:
+                raise ValueError(
+                    "FindFit parameter %r does not occur in the model" % (name,)
+                )
+
+    fitted = module.find_fit(
+        table,
+        expr,
+        initial_guess=initial_guess,
+        parameters=parameters,
+        variables=variables,
+        solution_dict=True,
+    )
+    values = [fitted[symbol] for symbol in parameters]
+    return _rules(parameter_names, values)
+
+
 def opacity(value: Any) -> _GraphicsDirective:
     return _GraphicsDirective({"opacity": float(value), "alpha": float(value)})
 
@@ -1415,3 +1585,4 @@ FindMinValue = find_min_value
 FindMaxValue = find_max_value
 FindArgMin = find_arg_min
 FindArgMax = find_arg_max
+FindFit = find_fit

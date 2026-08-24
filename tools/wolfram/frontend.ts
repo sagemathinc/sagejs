@@ -212,6 +212,14 @@ const PYTHON_KEYWORDS = new Set([
  * differently (`{x, a, b}` is a region to `NMinimize` and `{x, x0}` a
  * starting point to `FindMinimum`), but only the Python side has to care:
  * the symbols to declare are in the same places either way.
+ *
+ * `FindFit` is deliberately not in this set. Every other head here is
+ * `head[objective, variables]`, two arguments in the same two places;
+ * `FindFit` is `FindFit[data, expr, pars, vars]`, four arguments with two
+ * different symbol-bearing positions (`pars` and `vars`) and no objective
+ * at all. Folding it into `optimizationCall`'s two-argument shape would
+ * mean special-casing one head inside a helper built for a shape it does
+ * not have, so it gets its own `findFitCall` below instead.
  */
 const OPTIMIZATION_HEADS = new Set([
   "FindArgMax",
@@ -403,6 +411,9 @@ class SageLowerer {
     if (head === "Show") return this.showCall(expression);
     if (OPTIMIZATION_HEADS.has(head)) {
       return this.optimizationCall(expression, head);
+    }
+    if (head === "FindFit") {
+      return this.findFitCall(expression);
     }
     const graphicsHeads: Record<string, string> = {
       Arrow: "Arrow",
@@ -749,6 +760,47 @@ class SageLowerer {
     return `_wolfram.${head}(${
       this.expression(expression.arguments[0])
     }, ${this.expression(expression.arguments[1])})`;
+  }
+
+  /**
+   * Lower `FindFit[data, expr, pars, vars]`, Wolfram's four-argument curve
+   * fitting head. Not handled by `optimizationCall`: see the comment above
+   * `OPTIMIZATION_HEADS`. `pars` and `vars` each carry symbols that need
+   * declaring, in the same two shapes `optimizationVariables` already
+   * reads for `NMinimize`'s and `FindMinimum`'s variable arguments -- a
+   * bare symbol, a `List` of symbols, or a `List` of `{symbol, ...}` pairs
+   * -- so that one helper collects both instead of a second copy of it.
+   */
+  private findFitCall(expression: CallExpression): string {
+    const head = "FindFit";
+    if (expression.arguments.length < 4) {
+      throw new WolframSyntaxError(
+        `${head} requires data, a model, the fit parameters, and the ` +
+          `independent variables`,
+        expression.span,
+      );
+    }
+    if (expression.arguments.length > 4) {
+      // Same refusal `optimizationCall` gives the N*/Find* heads: Rule
+      // expressions (Method ->, NormFunction ->, Weights ->) do not lower
+      // to keyword arguments outside plot options.
+      throw new WolframSyntaxError(
+        `${head} options are not supported yet: Rule expressions do not ` +
+          `lower to keyword arguments outside plot options`,
+        expression.span,
+      );
+    }
+    const [data, model, pars, vars_] = expression.arguments;
+    for (const symbol of this.optimizationVariables(pars)) {
+      this.plotVariables.add(this.name(symbol));
+    }
+    for (const symbol of this.optimizationVariables(vars_)) {
+      this.plotVariables.add(this.name(symbol));
+    }
+    return `_wolfram.${head}(${
+      [data, model, pars, vars_].map((argument) => this.expression(argument))
+        .join(", ")
+    })`;
   }
 
   private showCall(expression: CallExpression): string {
