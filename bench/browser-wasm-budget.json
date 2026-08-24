@@ -412,7 +412,7 @@
         },
         "word-prime-matrix-128": {
           "warm_ms": {
-            "median": 146.94000000000005
+            "median": 209.26000000000022
           }
         },
         "sparse-integer-right-kernel-192": {
@@ -623,7 +623,7 @@
           "warm_median_ratio": 2.3403802181702726
         },
         "word-prime-matrix-128": {
-          "warm_median_ratio": 1.269028256698338
+          "warm_median_ratio": 1.7475258408728709
         },
         "sparse-integer-right-kernel-192": {
           "warm_median_ratio": 1.979964452539736
