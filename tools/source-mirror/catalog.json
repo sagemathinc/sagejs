@@ -113,10 +113,10 @@
     },
     {
       "id": "native-rforest",
-      "filename": "3103d396c67cb1685131b1e84975cca335bdf.tar.gz",
+      "filename": "3103d396c67cb1685131b1f11e84975cca335bdf.tar.gz",
       "sha256": "3e94db94c2cc518fa86633d136607ea2af1f4d327f0f5cbcc9920d474ce55754",
       "archiveEnvironment": "SAGEJS_RFOREST_TARBALL",
-      "upstreamUrls": ["https://github.com/edgarcosta/rforest/archive/3103d396c67cb1685131b1e84975cca335bdf.tar.gz"]
+      "upstreamUrls": ["https://github.com/edgarcosta/rforest/archive/3103d396c67cb1685131b1f11e84975cca335bdf.tar.gz"]
     }
   ]
 }
