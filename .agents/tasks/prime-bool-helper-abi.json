@@ -32,10 +32,57 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/prime-bool-helper-abi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.637,
+      "started_at": "2026-08-24T00:18:25.409Z",
+      "commit": "b4d34e2a32caf4a5f3ed91f43f9fa90e57f51536",
+      "workspace_fingerprint": "85679cdcbb2c90ec0edb1aa830a9efd08ada491ba1a280713ef74e79aeda41fc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/native-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 70.854,
+      "started_at": "2026-08-24T00:18:33.161Z",
+      "commit": "b4d34e2a32caf4a5f3ed91f43f9fa90e57f51536",
+      "workspace_fingerprint": "85679cdcbb2c90ec0edb1aa830a9efd08ada491ba1a280713ef74e79aeda41fc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.781,
+      "started_at": "2026-08-24T00:19:47.881Z",
+      "commit": "b4d34e2a32caf4a5f3ed91f43f9fa90e57f51536",
+      "workspace_fingerprint": "85679cdcbb2c90ec0edb1aa830a9efd08ada491ba1a280713ef74e79aeda41fc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.591,
+      "started_at": "2026-08-24T00:20:31.831Z",
+      "commit": "b4d34e2a32caf4a5f3ed91f43f9fa90e57f51536",
+      "workspace_fingerprint": "85679cdcbb2c90ec0edb1aa830a9efd08ada491ba1a280713ef74e79aeda41fc",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Corrected the generic prime-source bool result ABI: generated core/header result slots and Node adapter locals now use C int consistently with bool IR locals instead of mixing int callers with uint64_t pointer callees. Added a neutral bool-returning, UInt64Buffer-mutating helper under PrimeFieldModulus with zero-callback emitted-core/header/adapter assertions and CPython, dynamic Sage.js, and native differentials. A temporary restoration of the original bool-returning production Jacobian helper compiled all 32 native functions after the fix.",
+    "risks": [
+      "The branch-base architecture check is blocked before native architecture checks by an unrelated existing package budget: hyperelliptic-curves-heights is 534848 bytes against a 510000-byte budget.",
+      "The focused compiler and complete native-kernel harness passed, but the repository-wide pnpm test:native tier remains for integration because it rebuilds and exercises every optional native package."
+    ],
+    "next_steps": [
+      "Cherry-pick b4d34e2a and rebuild the production native-kernel pack.",
+      "After integration validates the restored bool shape, the hyperelliptic consumer may replace its temporary uint64 0/1 helper workaround with the semantically direct bool return in a separate math commit."
+    ]
   }
 }
