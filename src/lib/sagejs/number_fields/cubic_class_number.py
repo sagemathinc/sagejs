@@ -673,6 +673,16 @@ def packed_cubic_factor_records(
             if p_maximal
             else None
         )
+        if local is None and p_maximal:
+            local = prime_module.packed_cubic_linear_dedekind_kummer_candidates(
+                order,
+                prime,
+                requested,
+                modular_factors,
+                p_maximal=True,
+                packed_order_basis=packed_order_basis,
+                one_coordinates=one_coordinates,
+            )
         modular_table: Any = None
         modular_one: Any = None
         if local is None:

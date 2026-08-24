@@ -1702,6 +1702,155 @@ def packed_dedekind_kummer_candidates(
     return answer
 
 
+def packed_cubic_linear_dedekind_kummer_candidates(
+    order: Any,
+    prime: int,
+    residue_degrees: set[int],
+    modular_factors: tuple[Any, ...],
+    *,
+    p_maximal: bool,
+    packed_order_basis: tuple[tuple[int, ...], int] | None = None,
+    one_coordinates: list[int] | None = None,
+) -> list[dict[str, Any]] | None:
+    """Build requested linear cubic factors from their evaluation maps.
+
+    When the equation order is `p`-maximal, a linear factor gives an exact
+    homomorphism from `O/pO` to `F_p`: evaluate the retained maximal-order
+    basis at its root.  Its kernel is the corresponding prime ideal.  The
+    generic Dedekind--Kummer path rediscovers this kernel by closing a
+    generator under a full multiplication table; the fixed cubic formula
+    produces the identical canonical subspace and residue presentation
+    without constructing that table.
+
+    The helper declines unless every requested factor is linear.  Higher
+    residue degrees and noninvertible basis scales continue through the
+    complete generic implementation.
+    """
+    if order.degree() != 3 or p_maximal is not True or 1 not in residue_degrees:
+        return None
+    if (
+        sum(
+            int(factor.multiplicity) * (len(factor.polynomial) - 1)
+            for factor in modular_factors
+        )
+        != 3
+    ):
+        raise ArithmeticError("Dedekind--Kummer factors have the wrong local degree")
+    eligible = tuple(
+        factor
+        for factor in modular_factors
+        if len(factor.polynomial) - 1 in residue_degrees
+    )
+    if any(len(factor.polynomial) - 1 != 1 for factor in eligible):
+        return None
+    selected = eligible
+    if not selected:
+        return []
+    packed_basis = (
+        _packed_candidate_order_basis(order)
+        if packed_order_basis is None
+        else packed_order_basis
+    )
+    if packed_basis is None:
+        return None
+    basis_numerators, basis_denominator = packed_basis
+    field = order.number_field()
+    scale = int(runtime.integer_bigint(field._integral_equation_scale_cache))
+    if (
+        len(basis_numerators) != 9
+        or basis_denominator <= 0
+        or scale % prime == 0
+        or basis_denominator % prime == 0
+    ):
+        return None
+    one = (
+        [value % prime for value in _order_one_coordinates(order)]
+        if one_coordinates is None
+        else [int(value) % prime for value in one_coordinates]
+    )
+    if len(one) != 3:
+        return None
+    denominator_inverse = _mod_inverse(basis_denominator % prime, prime)
+    scale_inverse = _mod_inverse(scale % prime, prime)
+    answer: list[dict[str, Any]] = []
+    for factor in selected:
+        polynomial = tuple(int(value) % prime for value in factor.polynomial)
+        if len(polynomial) != 2 or polynomial[1] == 0:
+            return None
+        root = -polynomial[0] * _mod_inverse(polynomial[1], prime) % prime
+        generator_image = root * scale_inverse % prime
+        powers = (1, generator_image, generator_image * generator_image % prime)
+        quotient_column = [
+            sum(
+                basis_numerators[row * 3 + column] * powers[column]
+                for column in range(3)
+            )
+            * denominator_inverse
+            % prime
+            for row in range(3)
+        ]
+        free_column = 2
+        while free_column >= 0 and quotient_column[free_column] == 0:
+            free_column -= 1
+        if free_column < 0:
+            return None
+        normalization = _mod_inverse(quotient_column[free_column], prime)
+        quotient_column = [value * normalization % prime for value in quotient_column]
+        subspace: list[list[int]] = []
+        for pivot in range(3):
+            if pivot == free_column:
+                continue
+            row = [0, 0, 0]
+            row[pivot] = 1
+            row[free_column] = -quotient_column[pivot] % prime
+            subspace.append(row)
+        one_image = (
+            sum(one[index] * quotient_column[index] for index in range(3)) % prime
+        )
+        if one_image == 0:
+            return None
+        power_inverse = _mod_inverse(one_image, prime)
+        presentation = {
+            "primitive": (1, 0, 0),
+            "quotient_matrix": tuple((value,) for value in quotient_column),
+            "power_inverse": ((power_inverse,),),
+            "modulus": (-quotient_column[0] * power_inverse % prime, 1),
+        }
+        rows = _packed_candidate_rows(
+            order,
+            subspace,
+            prime,
+            packed_order_basis=packed_basis,
+        )
+        if rows is None:
+            return None
+        answer.append(
+            {
+                "rows": rows,
+                "subspace": subspace,
+                "e": int(factor.multiplicity),
+                "f": 1,
+                "presentation": presentation,
+                "second_generator_payload": [
+                    [polynomial[0], 1],
+                    [polynomial[1] * scale, 1],
+                    [0, 1],
+                ],
+                "table": None,
+                "one": one,
+            }
+        )
+    answer.sort(
+        key=lambda record: tuple(
+            value
+            for row in _encode_rows(record["rows"])
+            for pair in row
+            for value in pair
+        )
+    )
+    return answer
+
+
 def packed_finite_algebra_candidates(
     order: Any,
     prime: int,

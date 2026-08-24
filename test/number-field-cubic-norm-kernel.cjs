@@ -424,7 +424,11 @@ saved_modular_table = prime_ideals._modular_table
 saved_one_coordinates = prime_ideals._order_one_coordinates
 saved_nf_element_from_row = prime_ideals._nf_element_from_row
 saved_packed_order_basis = prime_ideals._packed_candidate_order_basis
+saved_linear_dedekind_kummer = (
+    prime_ideals.packed_cubic_linear_dedekind_kummer_candidates
+)
 packed_order_basis_calls = 0
+linear_dedekind_kummer_calls = 0
 def counted_generic_factor(*args, **kwargs):
     global generic_factor_calls
     generic_factor_calls += 1
@@ -449,12 +453,19 @@ def counted_packed_order_basis(*args, **kwargs):
     global packed_order_basis_calls
     packed_order_basis_calls += 1
     return saved_packed_order_basis(*args, **kwargs)
+def counted_linear_dedekind_kummer(*args, **kwargs):
+    global linear_dedekind_kummer_calls
+    linear_dedekind_kummer_calls += 1
+    return saved_linear_dedekind_kummer(*args, **kwargs)
 prime_ideals._om.factor_mod_prime = counted_generic_factor
 maximal_order.equation_order_is_p_maximal = counted_p_maximal
 prime_ideals._modular_table = counted_modular_table
 prime_ideals._order_one_coordinates = counted_one_coordinates
 prime_ideals._nf_element_from_row = forbidden_nf_element_from_row
 prime_ideals._packed_candidate_order_basis = counted_packed_order_basis
+prime_ideals.packed_cubic_linear_dedekind_kummer_candidates = (
+    counted_linear_dedekind_kummer
+)
 try:
     packed_plan = factor_bases.factor_base_plan(
         packed_field.maximal_order(), proof=True, theorem="minkowski"
@@ -467,15 +478,19 @@ finally:
     prime_ideals._order_one_coordinates = saved_one_coordinates
     prime_ideals._nf_element_from_row = saved_nf_element_from_row
     prime_ideals._packed_candidate_order_basis = saved_packed_order_basis
+    prime_ideals.packed_cubic_linear_dedekind_kummer_candidates = (
+        saved_linear_dedekind_kummer
+    )
 assert direct_packed_factors is not None and len(direct_packed_factors) == 5
 # The packed reduced-algebra kernel handles p=2 without the generic modular
 # factorizer.  The irreducible p=7 cubic uses the bounded cubic factorizer
 # while authenticating its (unselected) degree-three residue presentation.
 assert generic_factor_calls == 0
 assert legacy_p_maximal_calls == 0
-assert modular_table_calls == 3
+assert modular_table_calls == 1
 assert one_coordinate_calls == 1
 assert packed_order_basis_calls == 1
+assert linear_dedekind_kummer_calls == 2
 # Authentication serializes the retained rational coefficient triples without
 # constructing any NumberFieldElement.  General ideal materialization remains
 # lazy and fills this cache only when explicitly requested below.
