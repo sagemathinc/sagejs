@@ -198,19 +198,55 @@ function exactQuery(bundleSha = null) {
   };
 }
 
-test("the checked-in candidate policy is valid, immutable, and disabled", () => {
-  const policy = verifyPolicy(
-    readJson(path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json")),
-    { root: ROOT },
+test("the checked-in release policy is valid, immutable, and narrow", () => {
+  const raw = readJson(
+    path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
-  assert.equal(policy.enabled, false);
-  assert.deepEqual(policy.entries, []);
-  assert.equal(policy.source_bundle, null);
-  assert(Object.isFrozen(policy));
-  assert.deepEqual(queryAutoReceiptPolicy(policy, {}), {
-    selected: false,
-    reason: "policy-disabled",
+  const policy = verifyPolicy(raw, {
+    root: ROOT,
+    sourceCommit: raw.source_bundle.source_commit,
   });
+  assert.equal(policy.enabled, true);
+  assert.equal(policy.entries.length, 6);
+  assert.equal(policy.verified_receipts.length, 24);
+  assert.equal(
+    policy.source_bundle.sha256,
+    "4e35043ffea8c3818639eaccc500de3c054c882806080aca7db34402f1e38f46",
+  );
+  assert(Object.isFrozen(policy));
+  assert.equal(
+    queryAutoReceiptPolicy(policy, {
+      platform: "linux-x64",
+      backend: "prime-cantor",
+      operation: "add",
+      source_bundle_sha256: policy.source_bundle.sha256,
+      model: {
+        kind: "exact-fingerprint",
+        fingerprint:
+          "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234",
+      },
+      workload: {
+        prime: 1009,
+        interval_start: 1009,
+        interval_stop: 1009,
+        batch_items: 1000,
+        scalar_bits: 0,
+        resource_bytes: 200096,
+      },
+    }).selected,
+    true,
+  );
+  assert.deepEqual(
+    policy.entries.map((entry) => [entry.backend, entry.operation]),
+    [
+      ["prime-cantor", "add"],
+      ["prime-cantor", "scalar"],
+      ["prime-cantor", "progression"],
+      ["prime-cantor", "add"],
+      ["prime-cantor", "scalar"],
+      ["prime-cantor", "progression"],
+    ],
+  );
 });
 
 test("source bundles are deterministic, framed, and path safe", (context) => {

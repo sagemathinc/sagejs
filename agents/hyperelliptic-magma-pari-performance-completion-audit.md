@@ -1,42 +1,84 @@
-# Hyperelliptic performance completion audit
+# Hyperelliptic release-candidate scorecard
 
-This audit applies the literal exit criteria in
-`agents/hyperelliptic-magma-pari-performance-plan.md` to the integrated
-`higher-genus` source through `28edd8cb`. An implementation or local diagnostic
-does not count as an accepted phase when the plan requires a durable
-equal-contract receipt.
+This scorecard applies the literal exit criteria in
+`agents/hyperelliptic-magma-pari-performance-plan.md` to mathematical source
+commit `b1a059358d8a4325ef5be9998feb55a7a27db0fa`. Its framed source-bundle
+digest is
+`4e35043ffea8c3818639eaccc500de3c054c882806080aca7db34402f1e38f46`.
+Later commits in the release-candidate tree change only receipt, sanitizer,
+report, and policy packaging; the authenticated source bundle is unchanged.
+
+## Release decision
+
+**Defensible release candidate with restricted automatic native selection.**
+The release policy enables only six exact, four-platform-receipted Cantor
+envelopes. Every other hyperelliptic `auto` request remains on the existing
+exact dynamic/reference path. Explicit `algorithm="native"` remains available
+for development and receipt collection, subject to the ordinary capability,
+exactness, and resource checks.
+
+This is not a declaration that the entire Magma/PARI performance program is
+complete. Open competitor and cold-path gates remain visible below, and no
+cross-architecture timing is treated as a direct speed comparison.
 
 ## Phase status
 
 | Phase | Status | Accepted evidence and remaining work |
 |---|---|---|
-| 0 — exact baselines | PASS | The versioned corpus, resident Sage.js/Magma/PARI drivers, Linux receipt/report, explicit unsupported cells, and three-platform native/Wasm receipts are checked in. |
-| 1 — packed divisor ABI | LOCAL PASS; RECEIPT PENDING | Authenticated packed divisors, retained results, canonical digests, and prepared contexts are integrated. The new fail-atomic `unpack_batch` validates and seals 1,000 canonical rows in 69.6/68.8 ms for genus 2/3, 22.6--24.8x faster than scalar reference ingress, without taxing ordinary constructors. Cached preparation is 22--26 microseconds. The final pinned-host receipt must reproduce these corrected ingress/reuse gates. |
-| 2 — public Cantor arithmetic | RECEIPT PENDING | Source-transparent genus-2/3 Cantor kernels and exact differentials pass; the packed boundary is 1.049x/1.048x the same standalone core. Authenticated public batch add/double now measures 2.83--3.27 microseconds per item locally, projecting to 0.77--1.92x the pinned Magma medians. A same-host final-source receipt is still required; singleton public operators remain a separate 0.35--0.44 ms publication path. |
-| 3 — scalar and Kummer arithmetic | PASS | Native/dynamic/reference scalar and Kummer differentials pass. The accepted 256-bit finite-field receipt is 1.36x Magma in genus 2 and faster than Magma in genus 3; retained batch operation avoids forced polynomial construction. |
-| 4 — high-fan-out consumers | RECEIPT PENDING | Genus-3 certification through `10^5` passes the exact digest, 5x time, 300-second, and 512-MiB gates under the documented 256-MiB V8 old-space envelope. A dedicated fresh-process rank-three harness now measures 0.48--0.58 s locally against the 0.8103-second target with exact structure, inverse map, and verification. The pinned Node 22 same-host receipt remains outstanding. |
-| 5 — local-factor materialization | PASS | At `10^5`, coefficient streaming is 1.56x and public polynomial materialization is 1.77x the packed traversal; exact digests agree and bounded memory passes. |
-| 6 — rational arithmetic | MIXED | The recurring 1,024-by-32 many-prime workload is 1.42x faster than Magma and exact certificates replay. Growing-coefficient public addition is 1.97x Magma, but the small row is 7.81x. The scalar contract now correctly separates bounded-output non-torsion rows from an explicitly torsion 256-bit row: exact non-torsion `2^256` multiplication over `QQ` has an astronomically large output and is not a meaningful finite benchmark. The source-current equal-contract Magma scalar receipt remains pending. |
-| 7 — genus-2 heights | MIXED | The accuracy-matched 64-bit single-height cold/warm gate passes, and authenticated reused rank-2/rank-4 pairing work beats Magma. Compact authenticated proof payloads and direct polarization improve local object-cold rank-2 from about 632 to 322--335 ms and the four-vector case from about 1,690 to 738--777 ms, with independent correctness review passing. These still miss the 180/500 ms prototype floors and the final 80/380 ms targets. Sage.js has rigorous 128/256-bit rows, but no matching demonstrated competitor contract. |
-| 8 — periods and genus-3 heights | PASS | Genus-2/3 periods are within 2x PARI, the 12-point Abel--Jacobi batch beats separate Magma calls, and the radius-6 genus-3 height is 7.29x faster than the exact historical path while preserving finite replay and refinement stability. Its `rigorous=false` label remains explicit. |
-| 9 — analytic `L`-functions | RECEIPT PENDING | A source-current acceptance harness now covers true fresh initialization bracketed by PARI, warm reuse, genus-2/3 derivatives, universal/direct Arb differentials, exact coefficient/sign digests, worker equality, and refinement stability. A full local diagnostic passes (fresh 1.613x PARI, warm/fresh 233x, derivative minima 31.7x/937.9x); the required five-sample pinned-host durable receipt remains outstanding. |
-| 10 — auto selection and platforms | FOUNDATION ONLY | Windows x64, Linux ARM64, and macOS ARM64 frozen-source native/Wasm receipts pass exact digests, capability, bounds, cancellation, and recovery checks, but their mathematical source is `168f8504`. A disabled v1 receipt-policy manifest, framed source-bundle digest, fail-closed verifier/query library, and adversarial tests are integrated. No selector is wired and no policy entry is enabled until the final-source platform receipts exist. |
+| 0 — exact baselines | PASS | The versioned corpora, resident Sage.js/Magma/PARI drivers, explicit unavailable cells, and exact result digests are checked in. |
+| 1 — packed divisor ABI | LOCAL PASS; PINNED RECEIPT OPEN | Fail-atomic `unpack_batch` validates and seals 1,000 canonical rows in 69.6/68.8 ms for genus 2/3, 22.6--24.8x faster than scalar reference ingress, without taxing ordinary constructors. Cached preparation is 22--26 microseconds. First authenticated ingress is real relation validation and is not relabeled as a no-op packing win. |
+| 2 — public Cantor arithmetic | PLATFORM PASS; COMPETITOR MIXED | The exact frozen-source dynamic/native add digests agree on Linux x64, Linux ARM64, macOS ARM64, and Windows x64. Retained prepared arithmetic is competitive with the accepted Magma rows, but singleton publication and some ordinary public rows remain slower; no universal Magma win is claimed. |
+| 3 — scalar and Kummer arithmetic | PASS | Four-platform exact scalar/Kummer differentials pass. On Linux x64 the fixed Kummer batch is 19.1x faster end-to-end and 26.5x faster in arithmetic-only timing than the dynamic source; the accepted 256-bit finite-field Magma receipt is within 1.36x in genus 2 and faster in genus 3. |
+| 4 — high-fan-out consumers | MIXED | Genus-3 certification through `10^5` passes exactness, time, and memory under the documented 256 MiB V8 old-space envelope. Resident/object-cold rank-three map rows pass, but the final pinned process-cold map receipt remains open. |
+| 5 — local-factor materialization | PASS | Frozen-source packed and coefficient streams agree through `10^5` on all four hosts; bounded coefficient streaming avoids public polynomial materialization. Public polynomial construction remains separately visible rather than hidden in packed timings. |
+| 6 — rational arithmetic | MIXED | The 1,024-by-32 many-prime workload is 1.42x faster than Magma. Growing-coefficient public addition is 1.97x Magma, but the small row is 7.81x. Bounded-output non-torsion scalar rows are kept separate from the explicitly torsion 256-bit row because exact non-torsion `2^256` multiplication over `QQ` has astronomically large output. |
+| 7 — genus-2 heights | MIXED | Accuracy-matched single-height and warm reuse gates pass, exact proof/cancellation/cache review passes, and the optimized object-cold paths improve by about 2x. Rank-2 remains 322--335 ms and the four-vector case 738--777 ms, above the 80/380 ms final targets. |
+| 8 — periods and genus-3 heights | PASS | Genus-2/3 periods are within 2x PARI, the 12-point Abel--Jacobi batch beats separate Magma calls, and the genus-3 height is 7.29x faster than the exact historical path while preserving finite replay and refinement stability. Its `rigorous=false` label remains explicit. |
+| 9 — analytic `L`-functions | LOCAL PASS; PINNED RECEIPT OPEN | The source-current harness covers true fresh initialization bracketed by PARI, warm reuse, derivatives, Arb differentials, exact coefficient/sign digests, worker equality, and refinement stability. The full local diagnostic passes; the required five-sample quiet-host receipt is still outstanding. |
+| 10 — auto selection and platforms | RESTRICTED PASS | Exact frozen-source native/dynamic and authenticated Wasm receipts pass on Linux x64, Linux ARM64, macOS ARM64, and Windows x64. Failure, cancellation, recovery, cache-corruption, ASAN, UBSAN, and LSAN evidence is authenticated. The generated policy enables six exact entries and verifies 24 platform receipts; unmatched requests fail closed to the exact fallback. |
 
-## Execution order
+## Enabled automatic-selection envelope
 
-1. Collapse the gap between ordinary public finite arithmetic and the already
-   competitive retained prepared core; this also addresses the Phase-1 fresh
-   packing boundary and has the widest consumer fan-out.
-2. Record the final-source pinned-host process-cold rank-three map receipt.
-3. Produce the Phase-9 durable acceptance receipt and the corrected Phase-6
-   bounded-output rational-scalar receipt, even if they record an honest
-   failure.
-4. Reassess the rational small-row and genus-2 object-cold height floors only
-   through representation or shared-proof improvements; do not duplicate the
-   mathematics in opaque handwritten native code merely to meet a ratio.
-5. Freeze the resulting source and rerun the minimal affected Phase-10
-   cross-platform matrix.
+Both exact model fingerprints are authorized only at `GF(1009)`:
 
-The phase status may be promoted only by updating the corresponding durable
-receipt and the integrated workload matrix. Open or unavailable competitor
-contracts remain visible.
+- genus 2:
+  `9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234`;
+- genus 3:
+  `4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279`.
+
+| Operation | Exact batch | Scalar bound | Resource bound |
+|---|---:|---:|---:|
+| add | 1,000 | 0 bits | 200,096 bytes |
+| scalar | 64 | 256 bits | 11,360 bytes |
+| progression | 1,000 | 0 bits | 72,224 bytes |
+
+The policy does not authorize a neighboring prime, a different curve, a
+smaller or larger batch, a broader model class, Kummer, Frobenius, group
+structure, rational arithmetic, or height arithmetic. Those cells remain
+exact fallbacks until a future source freeze supplies their own receipts.
+
+## Durable release evidence
+
+- four-platform human report:
+  `bench/hyperelliptic/cross-platform/results/report-b1a05935.md`;
+- raw primary and portable JSON receipts:
+  `bench/hyperelliptic/cross-platform/results/*-b1a05935*.json`;
+- normalized evidence and 24 receipt documents:
+  `bench/hyperelliptic/cross-platform/results/policy-b1a05935/`;
+- generated release allowlist:
+  `architecture/hyperelliptic-auto-receipt-policy.json`.
+
+The macOS timing remains descriptive shared-host evidence and records its
+preflight load. Windows and macOS explicitly report the unsupported standalone
+linker contracts rather than inventing ratios. Linux x64 is the only row used
+for Magma/PARI comparisons, which remain in their separate equal-contract
+receipts.
+
+## Post-candidate priorities
+
+1. Record the pinned Phase-9 analytic receipt and process-cold rank-three map
+   receipt without widening the current policy.
+2. Address rational small-row publication and genus-2 cold proof assembly only
+   through measured representation or shared-proof improvements.
+3. Add future automatic-selection entries only by freezing a new source bundle
+   and reproducing the same exact four-platform evidence contract.

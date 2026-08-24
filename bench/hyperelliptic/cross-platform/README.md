@@ -115,3 +115,23 @@ The updater obtains the one test file from Git, runs it under a temporary name
 beside the frozen test, restores a clean checkout, and records the frozen test
 hash, overlay commit/hash, updater hash, command output, and status in the
 receipt. It rejects a dirty checkout or a failing corrected smoke test.
+
+## Release policy generation
+
+Cross-platform receipts do not authorize `algorithm="auto"` merely by being
+present. After one mathematical source bundle has passed the four-platform
+matrix, the release-specific generator validates the raw receipts, failure
+evidence, and sanitizer evidence and emits exact normalized policy receipts:
+
+```sh
+node bench/hyperelliptic/cross-platform/release-policy.cjs --write
+node bench/hyperelliptic/cross-platform/release-policy.cjs --check
+node scripts/hyperelliptic-auto-receipt-policy.cjs verify
+```
+
+The generated policy is intentionally an allowlist of exact model and workload
+envelopes. It is not permission to widen an entry to a neighboring prime,
+larger batch, broader model class, or different operation. A release without a
+matching verified entry uses the existing exact dynamic/reference path;
+`algorithm="native"` remains an explicit developer or receipt-collection
+choice subject to the ordinary capability and resource checks.

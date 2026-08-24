@@ -149,6 +149,22 @@ decision = auto_receipt_decision(
     batch_items=1,
     resource_bytes=352,
 )
+matched_decision = auto_receipt_decision(
+    algorithm="auto",
+    backend="prime-cantor",
+    operation="add",
+    fingerprint="9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234",
+    domain_id="prime-cantor-odd-v1",
+    genus=2,
+    field_kind="prime-field",
+    model_kind="odd-degree-one-infinity",
+    h_kind="zero",
+    prime=1009,
+    interval_start=1009,
+    interval_stop=1009,
+    batch_items=1000,
+    resource_bytes=200096,
+)
 
 prepared = PreparedJacobianArithmetic.__new__(PreparedJacobianArithmetic)
 prepared._algorithm = "auto"
@@ -285,6 +301,7 @@ kummer_exact = (
 )
 print(json.dumps({
     "decision": decision.to_dict(),
+    "matched_decision": matched_decision.to_dict(),
     "prepared": prepared_selected,
     "explicit": explicit_selected,
     "rational_auto": rational_auto,
@@ -349,6 +366,8 @@ test("an enabled empty policy gates auto while explicit accelerators remain coll
   const observed = parseSageJson(output);
   assert.equal(observed.decision.allowed, false);
   assert.equal(observed.decision.reason, "unreceipted-fallback");
+  assert.equal(observed.matched_decision.allowed, false);
+  assert.equal(observed.matched_decision.reason, "unreceipted-fallback");
   assert.deepEqual(observed.prepared, ["reference", "unreceipted-fallback"]);
   assert.deepEqual(observed.explicit, ["native", "explicit-native-receipt-collection"]);
   assert.equal(observed.rational_auto, "exhaustive");
@@ -363,7 +382,7 @@ test("an enabled empty policy gates auto while explicit accelerators remain coll
   assert.equal(observed.group_explicit, "smalljac");
 });
 
-test("absent and verified disabled policies preserve development auto selection", (context) => {
+test("absent policy preserves development auto while release policy gates misses", (context) => {
   const item = enabledEmptyPolicy();
   context.after(() => fs.rmSync(item.root, { recursive: true, force: true }));
   const absent = parseSageJson(runSage(selectorWitness, {
@@ -371,18 +390,26 @@ test("absent and verified disabled policies preserve development auto selection"
   }));
   assert.equal(absent.decision.allowed, true);
   assert.equal(absent.decision.reason, "development-auto-policy-absent");
+  assert.equal(absent.matched_decision.allowed, true);
+  assert.equal(absent.matched_decision.reason, "development-auto-policy-absent");
   assert.equal(absent.prepared[0], "native");
   assert.equal(absent.rational_auto, "smalljac");
   assert.equal(absent.kummer_selected, absent.kummer_compiled);
   assert.equal(absent.group_auto, "smalljac");
 
-  const disabled = parseSageJson(runSage(selectorWitness));
-  assert.equal(disabled.decision.allowed, true);
-  assert.equal(disabled.decision.reason, "policy-disabled");
-  assert.equal(disabled.prepared[0], "native");
-  assert.equal(disabled.rational_auto, "smalljac");
-  assert.equal(disabled.kummer_selected, disabled.kummer_compiled);
-  assert.equal(disabled.group_auto, "smalljac");
+  const release = parseSageJson(runSage(selectorWitness));
+  assert.equal(release.decision.allowed, false);
+  assert.equal(release.decision.reason, "unreceipted-fallback");
+  assert.equal(release.matched_decision.allowed, true);
+  assert.equal(release.matched_decision.reason, "exact-receipt-policy-match");
+  assert.equal(
+    release.matched_decision.entry_id,
+    "prime-cantor-g2-add-b1-v1",
+  );
+  assert.deepEqual(release.prepared, ["reference", "unreceipted-fallback"]);
+  assert.equal(release.rational_auto, "exhaustive");
+  assert.equal(release.kummer_selected, false);
+  assert.equal(release.group_auto, "squarefree-order");
 });
 
 test("the isolated task runtime installs the checked policy before callables", (context) => {
@@ -438,12 +465,25 @@ test("trusted startup rejects a provider installed before Sage.js", (context) =>
   assert.match(result.stderr, /existed before trusted startup/);
 });
 
-test("the candidate remains disabled and binds the selector/provider source", () => {
+test("the release policy enables only six exact Cantor envelopes", () => {
   const candidate = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
-  assert.equal(candidate.enabled, false);
-  assert.deepEqual(candidate.entries, []);
+  assert.equal(candidate.enabled, true);
+  assert.equal(candidate.entries.length, 6);
+  assert(candidate.entries.every((entry) => entry.enabled));
+  assert.equal(
+    candidate.source_bundle.sha256,
+    "4e35043ffea8c3818639eaccc500de3c054c882806080aca7db34402f1e38f46",
+  );
+  assert.deepEqual(
+    [...new Set(candidate.entries.map((entry) => entry.backend))],
+    ["prime-cantor"],
+  );
+  assert.deepEqual(
+    [...new Set(candidate.entries.map((entry) => entry.operation))],
+    ["add", "scalar", "progression"],
+  );
   assert(candidate.source_bundle_contract.paths.includes(
     "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",
   ));
