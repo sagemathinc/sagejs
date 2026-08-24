@@ -907,7 +907,9 @@ function emitStatement(operation, indent, context) {
 function primeSourceCoreSignature(fn, prototype = false) {
   const output = fn.returnType === "PrimeFieldMatrix"
     ? "nmod_mat_struct **sagejs_native_output"
-    : "uint64_t *sagejs_native_output";
+    : fn.returnType === "bool"
+      ? "int *sagejs_native_output"
+      : "uint64_t *sagejs_native_output";
   const params = fn.params.map((param) => {
     if (param.type === "PrimeFieldMatrix") {
       return `const nmod_mat_struct *${cName(param.name)}`;
@@ -1098,7 +1100,9 @@ function emitPrimeSourceNodeAdapter(fn) {
   }
   const outputDeclaration = fn.returnType === "PrimeFieldMatrix"
     ? "    nmod_mat_struct *output = NULL;"
-    : "    uint64_t output = 0;";
+    : fn.returnType === "bool"
+      ? "    int output = 0;"
+      : "    uint64_t output = 0;";
   const result = fn.returnType === "PrimeFieldMatrix"
     ? [
       "    result = sagejs_source_wrap_matrix(env, output);",
