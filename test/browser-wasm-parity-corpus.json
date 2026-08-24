@@ -33,6 +33,21 @@
       }
     },
     {
+      "id": "python-float-underscore-separators",
+      "family": "python-compatibility",
+      "workflow": "python-float-underscore-separators",
+      "tier": "routine",
+      "requires": [
+        { "id": "specialist:capability-report-api", "route": "shared-runtime-js" }
+      ],
+      "source": "sagejs_capabilities('runtime')\nprint(1_000_000.0 == 1000000.0, float('1_00_00.5e5') == 10000.5e5, float(b'.1_4') == .14)\ninvalid = 0\nfor text in ['1__0', '1_.0', '1._0', '1e_1', '_inf', 'nan_']:\n    try:\n        float(text)\n    except ValueError:\n        invalid += 1\nprint(invalid)",
+      "timeout_ms": 15000,
+      "expect": {
+        "stdout": "True True True\n6\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "exact-matrix-and-finite-field-polynomial",
       "family": "exact-arithmetic",
       "workflow": "exact-matrices-and-finite-field-polynomials",

@@ -150,6 +150,59 @@ test("float() accepts real protocols and rejects complex values", async (t) => {
   ].join("\n"));
 });
 
+test("float literals and float() underscore placement agree with CPython", async (t) => {
+  // Adapted from CPython Lib/test/support/numbers.py and
+  // Lib/test/test_float.py::FormatFunctionsTestCase.test_underscores.
+  const source = String.raw`
+import math
+
+def capture(value):
+    try:
+        answer = float(value)
+        if isinstance(value, str):
+            plain = value.replace('_', '')
+        else:
+            plain = value.replace(b'_', b'')
+        expected = float(plain)
+        return ('ok', answer == expected,
+                math.copysign(1.0, answer) == math.copysign(1.0, expected))
+    except Exception as error:
+        return (type(error).__name__,)
+
+literal_values = [
+    (1_000_000.0, 1000000.0),
+    (1_00_00.5, 10000.5),
+    (1_00_00.5e5, 10000.5e5),
+    (1_00_00e5_1, 10000e51),
+    (1e1_0, 1e10),
+    (.1_4, .14),
+]
+print([(value == expected, type(value) is float)
+       for value, expected in literal_values])
+
+valid = [
+    '0_0_0', '4_2', '1_0000_0000', '1_00_00.5',
+    '1_00_00.5e5', '1_00_00e5_1', '1e1_0', '.1_4',
+    '0_7', '09_99', '  +1_0.5e-1_0  ', '-0_0.0',
+    b'1_0.5', bytearray(b'.1_4'),
+]
+print([capture(value) for value in valid])
+
+invalid = [
+    '0_', '42_', '4_______2', '0.1__4', '1e1__0',
+    '1_.4', '1._4', '._5', '1.0e+_1', '1_e1', '1.4_e1',
+    '1e_1', '1.4e_1', '_NaN', 'Na_N', 'IN_F', '-_INF', '-INF_',
+    b'1__0', bytearray(b'1._0'),
+]
+print([capture(value) for value in invalid])
+`;
+  const expected = runCPython(source);
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate(source);
+  assert.equal(result.stdout.trim(), expected);
+});
+
 test("large integer binary64 boundaries agree exactly with CPython", async (t) => {
   const source = String.raw`
 import math
