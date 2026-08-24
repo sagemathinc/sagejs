@@ -46,7 +46,8 @@ test("every live dropdown example executes verbatim in production Node-Wasm", as
             result.instrumentation.routes.some(
               (route) =>
                 route.capability_id === "specialist:numpy-ts" &&
-                route.selected === true,
+                route.selected_route === "receipt-backed-wasm-artifact" &&
+                route.execution_target === "wasm-artifact",
             ),
             JSON.stringify(result.instrumentation),
           );

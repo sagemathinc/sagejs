@@ -61,7 +61,8 @@ try {
         result.instrumentation.routes.some(
           (route) =>
             route.capability_id === "specialist:numpy-ts" &&
-            route.selected === true,
+            route.selected_route === "receipt-backed-wasm-artifact" &&
+            route.execution_target === "wasm-artifact",
         ),
         `${engine} did not select the authenticated numpy-ts specialist`,
       );
