@@ -264,7 +264,6 @@ lines.push(
     "cell fails, that does not erase its authenticated direct Cantor/Kummer " +
     "receipt; the failure remains a visible release blocker with complete " +
     "output in the corresponding JSON.",
-  "",
 );
 
 const report = `${lines.join("\n")}\n`;

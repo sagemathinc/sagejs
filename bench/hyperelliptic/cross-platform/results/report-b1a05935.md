@@ -81,4 +81,3 @@ Every primary receipt has a clean source status and matching dynamic/native dige
 | win32-x64 | `f6e7dc0bad7e98b7ccfcbb31c1491e77320e3646a71743c32e82a31555464df8` | false; unchanged=true | exit 124; recovery=42 | passed (exit 0, stdout `1403d133315d569fcc2a336c1bb7b6e1aa521b7c36f7d9e9e27b0d99d8f79f99`) |
 
 The package-smoke status is an independent all-family test. If a future cell fails, that does not erase its authenticated direct Cantor/Kummer receipt; the failure remains a visible release blocker with complete output in the corresponding JSON.
-
