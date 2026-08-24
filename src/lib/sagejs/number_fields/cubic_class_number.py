@@ -1114,6 +1114,7 @@ def _packed_cubic_relation_candidates(
     *,
     maximum_candidates: int,
     coefficient_bound: int = _CUBIC_RELATION_SIEVE_BOUND,
+    duplicate_row_norms: Iterable[int] | None = None,
     cancelled: Callable[[], bool] | None,
 ) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
     """Propose small integral relations through two packed exact kernels.
@@ -1195,6 +1196,25 @@ def _packed_cubic_relation_candidates(
         absolute_norms = packed_norms[:candidate_count]
         if any(value <= 1 for value in absolute_norms):
             return None
+        if duplicate_row_norms is not None:
+            selected_norms = {abs(int(value)) for value in duplicate_row_norms}
+            multiplicities: dict[int, int] = {}
+            for norm in absolute_norms:
+                multiplicities[norm] = multiplicities.get(norm, 0) + 1
+            retained = tuple(
+                index
+                for index, norm in enumerate(absolute_norms)
+                if norm in selected_norms or multiplicities[norm] > 1
+            )
+            coefficient_vectors = tuple(
+                coefficient_vectors[3 * index + offset]
+                for index in retained
+                for offset in range(3)
+            )
+            absolute_norms = tuple(absolute_norms[index] for index in retained)
+            candidate_count = len(retained)
+            if candidate_count == 0:
+                return ()
 
         factor_norms = tuple(
             _integer_rational(prime_ideal.norm(), "a factor-base norm")
@@ -1670,6 +1690,7 @@ def _bounded_cubic_dependency_candidates(
             factor_base,
             maximum_candidates=maximum_candidates,
             coefficient_bound=_CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND,
+            duplicate_row_norms=(norm for _row, _coordinates, norm in selected),
             cancelled=cancelled,
         )
         if widened is not None:
@@ -3546,8 +3567,29 @@ def bounded_cubic_minkowski_class_number(
             for row, coordinates, _expected_norm in dependency_candidates
         )
         batch_admit = getattr(collector, "admit_integral_order_basis_rows", None)
+        validated_admit = getattr(
+            collector, "_admit_validated_integral_order_basis_rows", None
+        )
         batch: Any = None
-        if callable(batch_admit):
+        validated_batch = _validated_cubic_integral_relation_batch(
+            relation_module,
+            order,
+            factor_base,
+            (),
+            dependency_candidates,
+        )
+        if validated_batch is not None and callable(validated_admit):
+            try:
+                batch = validated_admit(
+                    validated_batch,
+                    dependency_proposals,
+                    _validated_token=(
+                        relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
+                    ),
+                )
+            except (ArithmeticError, TypeError, ValueError):
+                batch = None
+        elif callable(batch_admit):
             try:
                 batch = batch_admit(dependency_proposals)
             except (ArithmeticError, TypeError, ValueError):
@@ -3569,6 +3611,9 @@ def bounded_cubic_minkowski_class_number(
                     # admitted earlier rows remain independently authenticated.
                     continue
         relation_metrics["integral_sieve_dependency_relations"] = admitted
+        relation_metrics["integral_sieve_dependency_validated_batch"] = int(
+            validated_batch is not None and batch is not None
+        )
         if admitted:
             relation_records = tuple(collector.records)
             extend_duplicates = getattr(

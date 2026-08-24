@@ -769,6 +769,7 @@ assert detached_context["matrix_state"] == (
 assert "_live_artifacts" not in detached_context
 assert artifact_search["integral_sieve_dependency_candidates"] == 2
 assert artifact_search["integral_sieve_dependency_relations"] == 2
+assert artifact_search["integral_sieve_dependency_validated_batch"] == 1
 assert artifact_search["integral_sieve_dependency_coefficient_bound"] == 2
 assert artifact.relation_records[-1].provenance["coefficient_bound"] == 2
 assert resources["cubic_relation_seed_uses"] == 1
@@ -839,6 +840,8 @@ print("cubic-packed-fundamental-unit-ok")
 
 test("default cubic fallback reuses only measured-size Minkowski prefixes", () => {
   const output = runPublic(String.raw`
+import sagejs.number_fields.cubic_class_number as cubic_module
+
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 
@@ -930,6 +933,7 @@ widened_artifact = W._bounded_cubic_class_number_artifact
 widened_search = widened_artifact.diagnostics["relation_search"]
 assert widened_search["integral_sieve_dependency_candidates"] == 2
 assert widened_search["integral_sieve_dependency_relations"] == 2
+assert widened_search["integral_sieve_dependency_validated_batch"] == 1
 assert widened_search["integral_sieve_dependency_coefficient_bound"] == 4
 assert len(widened_artifact.relation_records) == 9
 widened_projection = list(W._class_number_projection_cache.values())[-1]
@@ -943,6 +947,33 @@ assert widened_resources["relation_candidates"] == 0
 assert widened_resources["unit_principal_authority_hits"] == 1
 assert widened_resources["unit_principal_authority_fallbacks"] == 0
 assert widened_result.context.live_diagnostics()["authenticated_dependency_units"] == 1
+
+# Filtering the widened box by repeated absolute norm changes only the amount
+# of packed valuation work: it retains exactly every candidate that could
+# share a factor-base row, plus explicitly requested selected-row norms.
+wide = cubic_module._packed_cubic_relation_candidates(
+    W.maximal_order(),
+    widened_result.conditional_factor_base,
+    maximum_candidates=128,
+    coefficient_bound=4,
+    cancelled=None,
+)
+assert wide is not None
+counts = {}
+for _row, _coordinates, norm in wide:
+    counts[norm] = counts.get(norm, 0) + 1
+unique_norm = next(norm for norm in counts if counts[norm] == 1)
+filtered = cubic_module._packed_cubic_relation_candidates(
+    W.maximal_order(),
+    widened_result.conditional_factor_base,
+    maximum_candidates=128,
+    coefficient_bound=4,
+    duplicate_row_norms=(unique_norm,),
+    cancelled=None,
+)
+assert filtered == tuple(
+    entry for entry in wide if counts[entry[2]] > 1 or entry[2] == unique_norm
+)
 print("cubic-relation-seed-policy-ok")
 `, 180_000);
   assert.equal(output, "cubic-relation-seed-policy-ok");
