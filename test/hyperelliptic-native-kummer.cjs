@@ -148,8 +148,15 @@ print(context.power_of_two_batch(points, 3))
 
 test("specialized quartic plans match the immutable Flynn oracle in CPython", () => {
   const program = String.raw`
+import hashlib
 import sys
+import types
 sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})
+# The arithmetic source is deliberately CPython-executable, while automatic
+# receipt selection is a Sage.js host concern.  Keep CPython's stdlib hashlib
+# loaded ahead of the Sage.js stdlib overlay and provide the inert runtime
+# namespace that the policy module imports but this oracle never queries.
+sys.modules["sagejs.runtime"] = types.ModuleType("sagejs.runtime")
 from sagejs.hyperelliptic_curves.jacobian_kummer_native import Genus2PrimeKummerContext
 from sagejs.hyperelliptic_curves.genus2_kummer import (
     _CLASSICAL_DELTA_1, _CLASSICAL_DELTA_2,
