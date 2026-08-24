@@ -42,6 +42,14 @@ then uses CoWasm to provide:
 - build recipes for GMP, MPFR, MPC, FLINT/Arb, and M4RI;
 - standalone compile/run probes for those libraries.
 
+This boundary is already narrower than the directory ownership suggests. The
+pinned checkout's current standalone recipes build these libraries with the
+official WASI SDK 33, not with the legacy Zig compiler. They still invoke the
+large `cowasm-cc`/`cowasm-c++` compatibility driver, use CoWasm-owned recipe and
+probe files, and resolve CoWasm-shaped prefixes. The implementation work is
+therefore an extraction and hardening of a demonstrated direct-WASI-SDK path,
+not a speculative port from an unrelated compiler.
+
 Sage.js already owns the ffpoly and smalljac portability transformation and
 their Wasm build. Sage.js also already owns final module linking, generated FFI
 adapters, kernel packs, production manifests, and browser runtime selection.
@@ -121,22 +129,34 @@ optional and is not part of dependency removal.
    production directories, or fail the existing reproducibility gate.
 3. Production release builds can operate entirely from the authenticated
    source mirror without contacting upstream hosts.
-4. The generated `.wasm` modules expose exactly the registered Sage.js ABI and
-   do not accidentally export toolchain symbols.
+4. Every generated `.wasm` module matches an exact reviewed per-module export
+   allowlist. The allowlist includes legitimate reactor/runtime exports such as
+   `memory`, `_initialize`, allocator hooks, and result-buffer accessors; it
+   rejects accidental toolchain symbols.
 5. Existing dynamic fallbacks, source-transparent native provenance, and
    capability reporting remain unchanged.
 6. The browser filesystem remains private to an evaluator and enforces the
    current ceilings: 16 MiB per file, 64 MiB total, and 256 files.
-7. Filesystem usage accounting remains correct after overwrite, truncate,
-   unlink, failed writes, descriptor close, and evaluator disposal.
-8. The runtime supplies cryptographically strong random bytes, monotonic clock
-   behavior, deterministic argument/environment policy, bounded stdout/stderr,
-   and an exception rather than host termination for `proc_exit`.
+7. Filesystem usage accounting tracks allocated file objects, not merely linked
+   directory entries, and remains correct after overwrite, truncate, unlink of
+   an open file, failed writes, final descriptor close, and evaluator disposal.
+8. The runtime supplies the services required by the generated production
+   import inventory: monotonic clock behavior, deterministic
+   argument/environment policy, bounded stdout/stderr, and an exception rather
+   than host termination for `proc_exit`. Cryptographically strong
+   `random_get` is required if and only if a checked production module or
+   explicit conformance probe imports it; an unimported JavaScript binding is
+   not evidence of production support.
 9. Node, Chromium, Firefox, WebKit, mobile WebKit, and Windows prebuilt-artifact
    paths continue to consume one authenticated production artifact.
 10. Linux x86-64, Linux arm64, macOS arm64, and Windows x86-64 remain supported
     release platforms. Windows need not build the POSIX toolchain locally, but
     must validate and run the resulting artifacts.
+11. Linux x86-64 is the canonical publication builder. Two clean canonical
+    builds must be byte-identical. Linux arm64 and macOS arm64 must independently
+    prepare the toolchain and pass the same source, ABI, and mathematical
+    probes; cross-host byte identity is a release goal and any difference must
+    be explained by a checked receipt rather than silently accepted.
 
 ## Phase 0: freeze the oracle and define completion
 
@@ -150,6 +170,12 @@ Before changing a build recipe, record a baseline at one exact Git revision.
 - Record the exact compiler, configure, make, and link commands actually used
   by the pinned CoWasm recipes, including environment variables and generated
   configuration headers.
+- Record every transformation performed by the current compatibility drivers,
+  including response-file expansion, host sysroot/path removal, ELF-only linker
+  flag removal, `-fvisibility-main`, injected target macros, emulated WASI
+  libraries, PIC/side-module handling, startup objects, stripping, and archive
+  selection. Convert the transformations needed by a Sage.js build into checked
+  command-policy fixtures rather than relying on prose or wrapper line counts.
 - Identify every CoWasm compatibility file that reaches a compiled object.
   Preserve its license and provenance if adapted; prefer a new small
   Sage.js-owned implementation when copying would bring unrelated machinery.
@@ -168,7 +194,11 @@ CoWasm runtime package, and a release can be built without a CoWasm Git object.
 ## Phase 1: introduce a Sage.js-owned toolchain contract
 
 Create a private first-party toolchain package, preferably
-`packages/wasm-toolchain`, with no browser runtime dependencies.
+`packages/wasm-toolchain`, with no browser runtime dependencies. Keep the
+authenticated source catalog neutral because it also contains native eclib,
+GMP, OpenBLAS, and rforest inputs; either retain it under a neutral `tools/`
+owner or create a repository-wide source-catalog package consumed by both
+native and Wasm preparation.
 
 The package owns:
 
@@ -178,10 +208,12 @@ packages/wasm-toolchain/
   lock.schema.json
   scripts/prepare.cjs
   scripts/resolve.cjs
-  scripts/source-mirror.mjs
   recipes/
   patches/
   probes/
+tools/source-mirror/
+  catalog.json
+  scripts/{stage,upload,fetch}.mjs
 ```
 
 The exact layout may be refined, but consumers must resolve a semantic
@@ -226,9 +258,30 @@ During development, the resolver may select either the new or old toolchain
 only through an explicit test-only comparison option. Do not add a public or
 permanent fallback environment variable.
 
-## Phase 2: port the mathematical-library build recipes
+## Phase 1.5: establish the independent WASI oracle
 
-Port recipes incrementally so every library can be compared with the frozen
+Before selecting any new library recipe as the default, implement the minimal
+first-party WASI host needed to compile and execute ABI probes. This early host
+may initially omit FLINT's complete temporary-filesystem behavior, but it must
+already own checked memory access, errno/rights constants, descriptor setup,
+clock behavior, `proc_exit`, import allowlisting, and deterministic lifecycle.
+
+Run the same compiled probes against:
+
+- the new host;
+- the old `wasi-js` host while it remains an explicit migration oracle; and
+- an independent standards-oriented WASI Preview 1 implementation such as
+  Wasmtime.
+
+The old host is a behavioral oracle, not the normative definition of WASI. A
+disagreement must be resolved against the Preview 1 contract and the actual
+mathematical caller before compatibility is encoded.
+
+## Phase 2: extract and harden the mathematical-library build recipes
+
+Extract the already demonstrated official-WASI-SDK standalone recipes from the
+pinned checkout, remove their dependency on CoWasm paths and drivers, and
+harden them incrementally so every library can be compared with the frozen
 oracle before moving to the next one.
 
 ### 2.1 WASI SDK
@@ -239,6 +292,10 @@ oracle before moving to the next one.
 - Centralize the required compile policy, including reactor execution,
   visibility, sysroot, emulated signal/process-clock support, and deterministic
   archive flags.
+- Implement only the compatibility-driver transformations observed in the
+  Phase 0 command-policy fixtures. Reject unknown host paths, response-file
+  recursion, unsupported ELF/PIC flags, and undeclared libraries instead of
+  becoming a general compiler-driver compatibility layer.
 - Test the driver with a minimal C and C++ compile/link/run probe.
 
 Do not port CoWasm's Zig path, dynamic linker, side-module machinery, CPython
@@ -296,10 +353,11 @@ undeclared archives.
 
 ## Phase 3: replace the browser WASI runtime
 
-Implement a small first-party WASI Preview 1 host specialized to Sage.js's
-static modules. It should expose the current internal `createWasiHost()`
-capability until all consumers have migrated, but its implementation must not
-present a general Node `fs` emulation layer unless a real caller needs one.
+Complete the small first-party WASI Preview 1 host established in Phase 1.5 so
+it supports the full observed FLINT temporary-filesystem workload. It may keep
+the descriptive internal `createWasiHost()` interface; that Sage.js-owned name
+is not a compatibility shim. Its implementation must not present a general
+Node `fs` emulation layer unless a real caller needs one.
 
 ### 3.1 Import contract
 
@@ -316,12 +374,17 @@ present a general Node `fs` emulation layer unless a real caller needs one.
 Implement only the semantics needed by the production modules:
 
 - a preopened `/` directory and `/tmp`;
-- regular files and directories;
+- regular files plus the precreated `/` and `/tmp` directories; directory
+  creation is out of scope while `path_create_directory` remains absent from
+  the generated import inventory;
 - descriptor allocation, cursor state, read, write, seek, close, and fdstat;
 - relative `path_open` with creation/truncation flags and rights checks;
 - unlink and empty-directory removal;
 - sparse-seek behavior or an explicit checked rejection consistent with WASI;
 - exact file-count and byte accounting;
+- allocated-object accounting after unlink: an unlinked file with an open
+  descriptor continues to consume its file and byte quota until the last
+  descriptor closes;
 - evaluator-local lifetime with deterministic disposal.
 
 Prevent `..` traversal, NUL-bearing paths, escape from the preopen, descriptor
@@ -331,7 +394,9 @@ consistent.
 
 ### 3.3 Host services
 
-- Use `crypto.getRandomValues` for randomness.
+- Implement `random_get` with `crypto.getRandomValues` when the generated import
+  contract or an explicit production conformance probe requires it; do not
+  carry an otherwise unreachable random binding.
 - Use a monotonic high-resolution clock for supported clock IDs.
 - route stdout and stderr through bounded, UTF-8-safe sinks rather than
   unbounded string accumulation;
@@ -341,8 +406,9 @@ consistent.
 
 ### 3.4 Differential and adversarial tests
 
-Run the same compiled syscall probes against the current `wasi-js` host and
-the new host while the oracle remains available. Cover:
+Run the same compiled syscall probes against the current `wasi-js` host, the
+new host, and the independent Preview 1 oracle selected in Phase 1.5 while the
+migration oracle remains available. Cover:
 
 - empty and partial reads/writes;
 - overlapping iovecs and invalid guest pointers;
@@ -357,8 +423,11 @@ the new host while the oracle remains available. Cover:
 - worker interruption, serialization, and browser offline-cache flows.
 
 Once parity and security tests pass, remove `wasi-js`, `@cowasm/memfs`, and any
-transitive browser shims no longer used from `packages/flint-wasm/package.json`
-and `pnpm-lock.yaml`.
+direct or transitive browser shims no longer used from
+`packages/flint-wasm/package.json` and `pnpm-lock.yaml`. Audit the direct
+`assert`, `buffer`, `events`, `path-browserify`, `process`,
+`stream-browserify`, and `util` dependencies individually; preserve one only
+when a production bundle has a checked remaining consumer.
 
 ## Phase 4: cut all consumers over and remove CoWasm
 
@@ -401,8 +470,12 @@ the repository itself proves independence.
 ### Reproducibility gates
 
 - Build twice from separate clean directories using only the authenticated
-  source mirror.
+  source mirror on the canonical Linux x86-64 builder.
 - Compare the complete production directories byte for byte.
+- On Linux arm64 and macOS arm64, build independently and compare semantic
+  toolchain receipts, import/export inventories, and mathematical outputs. Also
+  compare bytes; if they differ, record and review the precise deterministic
+  cause before release.
 - Record SDK, compiler, archive, recipe, and output identities in the release
   receipt.
 - Prove that deleting every local CoWasm checkout, Git bundle, npm cache entry,
@@ -441,14 +514,15 @@ Keep the work bisectable even if it occurs on one feature branch:
 
 1. baseline receipts, import inventory, and forbidden-reference audit;
 2. semantic toolchain resolver and v2 lock schema;
-3. direct WASI SDK and GMP recipes;
-4. direct MPFR and MPC recipes;
-5. direct FLINT/Arb and M4RI recipes;
-6. ffpoly/smalljac migration and complete toolchain cutover;
-7. first-party WASI ABI and filesystem implementation;
-8. browser runtime cutover and npm dependency removal;
-9. CI/source-mirror/documentation cleanup;
-10. final four-platform, browser, reproducibility, and performance receipts.
+3. minimal first-party WASI ABI host and three-way conformance probes;
+4. extracted direct WASI SDK and GMP recipes;
+5. extracted direct MPFR and MPC recipes;
+6. extracted direct FLINT/Arb and M4RI recipes;
+7. ffpoly/smalljac migration and complete toolchain cutover;
+8. complete bounded filesystem and browser runtime cutover;
+9. npm/polyfill dependency removal and production-bundle audit;
+10. CI/source-mirror/documentation cleanup;
+11. final four-platform, browser, reproducibility, and performance receipts.
 
 Each intermediate commit should either preserve the current default or be a
 complete working cutover. Do not leave the main branch selecting a half-built
@@ -505,14 +579,16 @@ dynamic linker, CPython, POSIX process model, shell, or package ecosystem.
 - [ ] No CoWasm checkout, Git bundle, workspace lock, wrapper, recipe, package,
       cache key, or environment variable participates in a build.
 - [ ] `wasi-js` and `@cowasm/memfs` are absent from package manifests,
-      `pnpm-lock.yaml`, and production bundles.
+      `pnpm-lock.yaml`, and production bundles; `pnpm why` and bundle inspection
+      show that no obsolete Node/browser filesystem shim remains reachable.
 - [ ] A mirror-only clean build succeeds on Linux x86-64, Linux arm64, and
       macOS arm64.
 - [ ] Windows consumes and validates the same authenticated artifact.
-- [ ] Two clean production directories are byte-identical.
+- [ ] Two clean canonical Linux x86-64 production directories are
+      byte-identical; arm64 Linux and macOS receipts are semantically identical,
+      with any byte difference explicitly reviewed.
 - [ ] Node and all required browser parity/security suites pass.
 - [ ] Mathematical oracles and source-transparent fallback tests pass.
 - [ ] Artifact size, startup, operation, memory, and filesystem budgets pass.
 - [ ] Documentation describes only the Sage.js-owned toolchain and runtime.
 - [ ] The old oracle and every permanent compatibility shim are deleted.
-
