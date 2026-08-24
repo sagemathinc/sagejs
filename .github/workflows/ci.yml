@@ -55,7 +55,7 @@ jobs:
           node-version: 22.22.2
 
       - name: Verify minimum-runtime SQLite compatibility
-        run: node --test test/sqlite3.cjs test/graphs.cjs
+        run: node --test test/sqlite-minimum-node.cjs
 
   platform-smoke:
     name: Platform smoke (${{ matrix.target }})
