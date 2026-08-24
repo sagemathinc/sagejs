@@ -67,6 +67,7 @@ from sagejs.hyperelliptic_curves.jacobian_kernels import (
     packed_cantor_progression_batch,
     packed_cantor_scalar_batch,
     packed_cantor_search_progression,
+    packed_cantor_validate_batch,
 )
 from sagejs.hyperelliptic_curves.jacobian_kummer_native import (
     genus2_kummer_degenerate_pseudo_add_batch,
@@ -109,6 +110,14 @@ def integer_values(buffer):
 
 model_values = [1, 1, 0, 0, 0, 1, 0, 0] + [0] * 4
 identity_values = [0, 1, 0, 0, 0, 0, 0, 0]
+
+validate_output = uz(packed_cantor_validate_batch, 16)
+validate_status = uz(packed_cantor_validate_batch, 2)
+assert packed_cantor_validate_batch(
+    validate_output, validate_status,
+    u(packed_cantor_validate_batch, model_values),
+    u(packed_cantor_validate_batch, identity_values * 2), 2, 2, 3,
+)
 
 add_output = uz(packed_cantor_add_batch, 16)
 add_status = uz(packed_cantor_add_batch, 2)
@@ -227,6 +236,7 @@ progression_candidate_result = scan_genus3_candidate_progressions(
 
 record = {
     "cantor": {
+        "validate": [unsigned_values(validate_output), unsigned_values(validate_status)],
         "add": [unsigned_values(add_output), unsigned_values(add_status)],
         "progression": [unsigned_values(progression_output), unsigned_values(progression_status)],
         "scalar": [unsigned_values(scalar_output), unsigned_values(scalar_status)],
@@ -256,6 +266,7 @@ record = {
         is_compiled(packed_cantor_progression_batch),
         is_compiled(packed_cantor_search_progression),
         is_compiled(packed_cantor_scalar_batch),
+        is_compiled(packed_cantor_validate_batch),
         is_compiled(genus2_kummer_project_batch),
         is_compiled(genus2_kummer_double_batch),
         is_compiled(genus2_kummer_degenerate_pseudo_add_batch),
@@ -333,7 +344,7 @@ test("authenticated production packs execute every hyperelliptic source family",
   const expectedFunctions = new Map([
     ["genus2-kummer-height-production", 6],
     ["genus3-weil-candidate-production", 3],
-    ["hyperelliptic-cantor-production", 7],
+    ["hyperelliptic-cantor-production", 8],
     ["hyperelliptic-kummer-production", 3],
     ["hyperelliptic-period-edge-batch-production", 3],
   ]);
@@ -357,6 +368,27 @@ test("authenticated production packs execute every hyperelliptic source family",
   ), true);
   assert.deepEqual(Array.from(addOutput, Number), expected.cantor.add[0]);
   assert.deepEqual(Array.from(addStatus, Number), expected.cantor.add[1]);
+
+  const validate = runtime.function(
+    cantorSource,
+    "packed_cantor_validate_batch",
+  );
+  const validateOutput = new BigUint64Array(16);
+  const validateStatus = new BigUint64Array(2);
+  assert.equal(validate(
+    validateOutput, validateStatus,
+    new BigUint64Array([1n, 1n, 0n, 0n, 0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n]),
+    new BigUint64Array([0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n]),
+    2n, 2n, 3n,
+  ), true);
+  assert.deepEqual(
+    Array.from(validateOutput, Number),
+    expected.cantor.validate[0],
+  );
+  assert.deepEqual(
+    Array.from(validateStatus, Number),
+    expected.cantor.validate[1],
+  );
 
   const kummer = runtime.function(
     "sagejs/hyperelliptic_curves/jacobian_kummer_native.py",

@@ -68,7 +68,7 @@ function cFunction(source, signature) {
 }
 
 const witness = String.raw`
-from sagejs.native import is_compiled
+from sagejs.native import is_compiled, kernel_uint64_buffer
 import sagejs.runtime as runtime
 import pickle
 from sagejs.hyperelliptic_curves.jacobian_kernels import (
@@ -78,6 +78,7 @@ from sagejs.hyperelliptic_curves.jacobian_kernels import (
     packed_cantor_search_progression,
     packed_cantor_search_progressions,
     packed_cantor_scalar_batch,
+    packed_cantor_validate_batch,
 )
 from sagejs.hyperelliptic_curves.jacobian_native import PreparedDivisorBatch
 
@@ -88,6 +89,7 @@ assert compiled == is_compiled(packed_cantor_copy_batch)
 assert compiled == is_compiled(packed_cantor_progression_batch)
 assert compiled == is_compiled(packed_cantor_search_progression)
 assert compiled == is_compiled(packed_cantor_search_progressions)
+assert compiled == is_compiled(packed_cantor_validate_batch)
 selected = "native" if compiled else "reference"
 
 
@@ -110,6 +112,7 @@ def check_curve(curve, exhaustive):
     assert capability.schema == "sagejs.hyperelliptic.packed-mumford.odd.v1"
     assert capability.model_kind == "odd-degree-one-infinity"
     assert capability.selected == selected
+    assert capability.validation_available == compiled
     assert capability.search_available == compiled
     assert capability.multi_search_available == compiled
     points = J.points(max_elements=10000, max_candidates=100000)
@@ -121,6 +124,21 @@ def check_curve(curve, exhaustive):
         assert context.fingerprint(point) == context.fingerprint(point)
 
     sample = points if exhaustive else points[:min(48, len(points))]
+    serialized_rows = [context.pack(point) for point in sample]
+    authenticated = context.unpack_batch(serialized_rows, algorithm=selected)
+    reference_authenticated = context.unpack_batch(
+        serialized_rows, algorithm="reference"
+    )
+    assert isinstance(authenticated, PreparedDivisorBatch)
+    assert authenticated.published_count == 0
+    assert authenticated == tuple(sample)
+    assert reference_authenticated == tuple(sample)
+    assert context.prepare_batch(authenticated) is authenticated
+    if serialized_rows:
+        mutable_rows = [list(row) for row in serialized_rows]
+        isolated = context.unpack_batch(mutable_rows, algorithm=selected)
+        mutable_rows[0][0] = 99
+        assert isolated == tuple(sample)
     if exhaustive:
         left = [a for a in sample for _b in sample]
         right = [b for _a in sample for b in sample]
@@ -574,10 +592,63 @@ else:
     raise AssertionError("public unpack accepted a row outside the curve relation")
 attack_points = J0.points(max_elements=10000, max_candidates=100000)
 attack_context = J0.prepared_arithmetic()
+valid_row = attack_context.pack(attack_points[0])
+invalid_relation_row = (1, 0, 1, 0, 0, 0, 0, 0)
+for invalid_rows, expected_error in (
+    ((valid_row[:-1],), ValueError),
+    (((True,) + valid_row[1:],), TypeError),
+    (((1.5,) + valid_row[1:],), ValueError),
+    (((-1,) + valid_row[1:],), ValueError),
+    ((((1 << 64),) + valid_row[1:],), OverflowError),
+    ((invalid_relation_row,), ValueError),
+):
+    try:
+        attack_context.unpack_batch(invalid_rows, algorithm=selected)
+    except expected_error:
+        pass
+    else:
+        raise AssertionError("authenticated batch ingress accepted invalid input")
+
+# Directly check the source/native kernel's fail-atomic output contract.  A
+# valid first row followed by an invalid relation may update diagnostic
+# statuses, but may not copy even the first output row.
+atomic_rows = list(valid_row + invalid_relation_row)
+atomic_output = kernel_uint64_buffer(packed_cantor_validate_batch, [99] * 16)
+atomic_status = kernel_uint64_buffer(packed_cantor_validate_batch, [7, 7])
+atomic_model = kernel_uint64_buffer(
+    packed_cantor_validate_batch, attack_context.model_coefficients
+)
+atomic_input = kernel_uint64_buffer(packed_cantor_validate_batch, atomic_rows)
+assert not packed_cantor_validate_batch(
+    atomic_output,
+    atomic_status,
+    atomic_model,
+    atomic_input,
+    2,
+    attack_context.genus,
+    attack_context.prime,
+)
+assert tuple(int(value) for value in atomic_output) == (99,) * 16
 P = attack_context.unpack(attack_context.pack(attack_points[1]))
 Q = attack_context.unpack(attack_context.pack(attack_points[2]))
 foreign_context = J1.prepared_arithmetic()
 foreign_zero = foreign_context.unpack(foreign_context.pack(J1.zero()))
+foreign_invalid_row = None
+for foreign_point in J1.points(max_elements=10000, max_candidates=100000):
+    candidate = foreign_context.pack(foreign_point)
+    try:
+        attack_context.unpack_batch((candidate,), algorithm="reference")
+    except ValueError:
+        foreign_invalid_row = candidate
+        break
+assert foreign_invalid_row is not None
+for attack_algorithm in (selected, "reference"):
+    try:
+        attack_context.unpack_batch((foreign_invalid_row,), algorithm=attack_algorithm)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("authenticated ingress accepted a foreign-model row")
 for attack_algorithm in (selected, "reference"):
     try:
         attack_context.add_batch(
@@ -850,7 +921,7 @@ test("packed Cantor kernels retain an ordinary CPython fallback", () => {
   const program = [
     "import sys",
     `sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})`,
-    "from sagejs.hyperelliptic_curves.jacobian_kernels import packed_cantor_add_batch, packed_cantor_copy_batch, packed_cantor_progression_batch, packed_cantor_search_progression, packed_cantor_search_progressions, packed_cantor_scalar_batch",
+    "from sagejs.hyperelliptic_curves.jacobian_kernels import packed_cantor_add_batch, packed_cantor_copy_batch, packed_cantor_progression_batch, packed_cantor_search_progression, packed_cantor_search_progressions, packed_cantor_scalar_batch, packed_cantor_validate_batch",
     "model = [1,1,0,0,0,1,0,0] + [0]*4",
     "identity = [0,1,0,0,0,0,0,0]",
     "out = [99]*16; status = [0,0]",
@@ -859,6 +930,13 @@ test("packed Cantor kernels retain an ordinary CPython fallback", () => {
     "copy_out = [99]*16; copy_status = [0,0]",
     "assert packed_cantor_copy_batch(copy_out,copy_status,model,identity*2,identity*2,2,2,3)",
     "assert copy_out == identity*2 and copy_status == [1,1]",
+    "validate_out = [99]*16; validate_status = [7,7]",
+    "assert packed_cantor_validate_batch(validate_out,validate_status,model,identity*2,2,2,3)",
+    "assert validate_out == identity*2 and validate_status == [1,1]",
+    "invalid = [1,0,1,0,0,0,0,0]",
+    "validate_out = [99]*16; validate_status = [7,7]",
+    "assert not packed_cantor_validate_batch(validate_out,validate_status,model,identity+invalid,2,2,3)",
+    "assert validate_out == [99]*16 and validate_status == [1,0]",
     "progression_out = [99]*16; progression_status = [0,0]",
     "assert packed_cantor_progression_batch(progression_out,progression_status,model,identity,identity,2,2,3)",
     "assert progression_out == identity*2 and progression_status == [5,5]",

@@ -37,6 +37,7 @@ class PreparedJacobianCapability:
         genus: int,
         prime: int | None,
         model_fingerprint: str,
+        validation_available: bool = False,
         search_available: bool = False,
         multi_search_available: bool = False,
     ) -> None:
@@ -48,6 +49,7 @@ class PreparedJacobianCapability:
         self.model_kind = "odd-degree-one-infinity"
         self.schema = PACKED_MUMFORD_SCHEMA
         self.model_fingerprint = str(model_fingerprint)
+        self.validation_available = bool(validation_available)
         self.search_available = bool(search_available)
         self.multi_search_available = bool(multi_search_available)
 
@@ -61,6 +63,7 @@ class PreparedJacobianCapability:
             "model_kind": self.model_kind,
             "schema": self.schema,
             "model_fingerprint": self.model_fingerprint,
+            "validation_available": self.validation_available,
             "search_available": self.search_available,
             "multi_search_available": self.multi_search_available,
         }
@@ -634,9 +637,11 @@ class PreparedJacobianArithmetic:
             packed_cantor_scalar_batch,
             packed_cantor_search_progression,
             packed_cantor_search_progressions,
+            packed_cantor_validate_batch,
         )
 
         self._add_kernel = packed_cantor_add_batch
+        self._validate_kernel = packed_cantor_validate_batch
         self._progression_kernel = packed_cantor_progression_batch
         self._search_kernel = packed_cantor_search_progression
         self._multi_search_kernel = packed_cantor_search_progressions
@@ -649,6 +654,9 @@ class PreparedJacobianArithmetic:
         )
         self._search_available = self._native_available and is_compiled(
             self._search_kernel
+        )
+        self._validation_available = self.prime is not None and is_compiled(
+            self._validate_kernel
         )
         self._multi_search_available = self._native_available and is_compiled(
             self._multi_search_kernel
@@ -674,6 +682,11 @@ class PreparedJacobianArithmetic:
     def search_available(self) -> bool:
         """Return whether the fused one-boundary BSGS kernel is compiled."""
         return self._search_available
+
+    @property
+    def validation_available(self) -> bool:
+        """Return whether authenticated serialized ingress is compiled."""
+        return self._validation_available
 
     @property
     def multi_search_available(self) -> bool:
@@ -745,6 +758,7 @@ class PreparedJacobianArithmetic:
             genus=self.genus,
             prime=self.prime,
             model_fingerprint=self.model_fingerprint,
+            validation_available=self._validation_available,
             search_available=self._search_available,
             multi_search_available=self._multi_search_available,
         )
@@ -784,6 +798,25 @@ class PreparedJacobianArithmetic:
         if algorithm == "native":
             raise NotImplementedError(
                 "prepared native Cantor progression search is unavailable: " + reason
+            )
+        return "reference", reason
+
+    def _validation_selection(self, requested: str | None) -> tuple[str, str]:
+        algorithm = self._algorithm if requested is None else requested
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown prepared Jacobian algorithm " + repr(algorithm))
+        if algorithm == "reference":
+            return "reference", "explicit-reference"
+        if self._validation_available:
+            return "native", "supported-source-transparent-validation-kernel"
+        reason = (
+            self._domain_reason
+            if self.prime is None
+            else "source-transparent-validation-artifact-unavailable"
+        )
+        if algorithm == "native":
+            raise NotImplementedError(
+                "prepared native canonical ingress is unavailable: " + reason
             )
         return "reference", reason
 
@@ -1072,6 +1105,88 @@ class PreparedJacobianArithmetic:
         self._jacobian._validate_reduced(divisor[0], divisor[1])
         self._bind_packed_row(divisor, values)
         return divisor
+
+    def unpack_batch(
+        self,
+        rows: Any,
+        *,
+        algorithm: str | None = None,
+    ) -> PreparedDivisorBatch:
+        """Authenticate serialized rows and publish one sealed lazy batch.
+
+        Each input row is the canonical eight-word odd-degree v1 encoding.
+        Native execution validates every row against this exact curve before
+        it copies the first output word, so an invalid item cannot publish a
+        partial batch.  The reference path replays the same public Mumford
+        checks before sealing any result.
+        """
+        if self.prime is None:
+            raise NotImplementedError(
+                "packed Mumford v1 is unavailable: " + self._domain_reason
+            )
+        values = tuple(rows)
+        count = len(values)
+        self._check_batch_size(count)
+        flattened: list[int] = []
+        for row_index, row in enumerate(values):
+            try:
+                words = tuple(row)
+            except TypeError as error:
+                raise TypeError(
+                    "serialized Mumford row "
+                    + str(row_index)
+                    + " must be an iterable of eight integers"
+                ) from error
+            if len(words) != _PACKED_ROW_WORDS:
+                raise ValueError(
+                    "serialized Mumford row "
+                    + str(row_index)
+                    + " must have eight words"
+                )
+            for word_index, word in enumerate(words):
+                exact = _exact_integer(
+                    word,
+                    "serialized Mumford row "
+                    + str(row_index)
+                    + " word "
+                    + str(word_index),
+                )
+                if exact < 0:
+                    raise ValueError("serialized Mumford words must be nonnegative")
+                if exact >= 1 << 64:
+                    raise OverflowError(
+                        "serialized Mumford words must fit in unsigned 64 bits"
+                    )
+                flattened.append(exact)
+
+        selected, _reason = self._validation_selection(algorithm)
+        if selected == "reference":
+            # Validate the whole input before publishing the batch.  The
+            # temporary divisors remain unreachable if any later row fails.
+            for offset in range(count):
+                start = offset * _PACKED_ROW_WORDS
+                self.unpack(tuple(flattened[start : start + _PACKED_ROW_WORDS]))
+            return self._publish_frozen_batch(tuple(flattened), count)
+
+        assert self.prime is not None
+        packed_rows = kernel_uint64_buffer(self._validate_kernel, flattened)
+        output = kernel_uint64_zeros(self._validate_kernel, count * _PACKED_ROW_WORDS)
+        statuses = kernel_uint64_zeros(self._validate_kernel, count)
+        model = kernel_uint64_buffer(self._validate_kernel, self._model)
+        accepted = self._validate_kernel(
+            output,
+            statuses,
+            model,
+            packed_rows,
+            count,
+            self.genus,
+            self.prime,
+        )
+        if not accepted:
+            raise ValueError(
+                "serialized Mumford batch failed canonical curve validation"
+            )
+        return self._publish_kernel_batch(output, count)
 
     def fingerprint(self, divisor: Any) -> str:
         digest = hashlib.sha256()
