@@ -332,6 +332,33 @@ assert len(artifact._packed_factor_records) == 5
 assert len(seed.relation_candidates) == 21
 assert len(seed.selected_relation_candidates) == 3
 
+# The bounded linear selector preserves canonical first-occurrence ordering
+# for retained rows, repeated coordinates, and a previously unseen row pair.
+selector = cubic_module._select_cubic_dependency_candidates
+selected_fixture = (
+    ((1, 0), (1, 0, 0), 2),
+    ((2, 0), (0, 1, 0), 3),
+)
+candidate_fixture = (
+    ((1, 0), (1, 0, 0), 2),
+    ((9, 0), (1, 1, 0), 5),
+    ((1, 0), (2, 0, 0), 2),
+    ((9, 0), (2, 1, 0), 5),
+    ((9, 0), (2, 1, 0), 5),
+    ((2, 0), (0, 2, 0), 3),
+)
+assert selector(selected_fixture, candidate_fixture, 0) == ()
+assert selector(selected_fixture, candidate_fixture, 1) == candidate_fixture[2:3]
+assert selector(selected_fixture, candidate_fixture, 2) == (
+    candidate_fixture[2], candidate_fixture[5]
+)
+assert selector(selected_fixture, candidate_fixture, 3) == (
+    candidate_fixture[2],
+    candidate_fixture[5],
+    candidate_fixture[1],
+    candidate_fixture[3],
+)
+
 # The lazy continuation itself remains an exact admission boundary.  Every
 # retained record replays over the materialized prime ideals, and a corrupted
 # proposal merely removes the optimization instead of entering the context.

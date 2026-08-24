@@ -1287,50 +1287,40 @@ def _select_cubic_dependency_candidates(
     limit = max(0, int(maximum))
     if limit == 0 or not selected:
         return ()
-    selected_rows = tuple(tuple(int(value) for value in entry[0]) for entry in selected)
-    retained_coordinates_by_row: dict[tuple[int, ...], dict[tuple[int, ...], bool]] = {}
-    for row, coordinates, _norm in selected:
-        normalized_row = tuple(int(value) for value in row)
-        normalized_coordinates = tuple(int(value) for value in coordinates)
-        retained_coordinates_by_row.setdefault(normalized_row, {})[
-            normalized_coordinates
-        ] = True
-    candidates_by_row: dict[
-        tuple[int, ...],
-        list[
-            tuple[
-                tuple[int, ...],
-                tuple[tuple[int, ...], tuple[int, ...], int],
-            ]
-        ],
-    ] = {}
-    indexed_coordinates_by_row: dict[tuple[int, ...], dict[tuple[int, ...], bool]] = {}
-    for candidate in candidates:
-        row, coordinates, _norm = candidate
-        normalized_row = tuple(int(value) for value in row)
-        normalized_coordinates = tuple(int(value) for value in coordinates)
-        indexed_coordinates = indexed_coordinates_by_row.setdefault(normalized_row, {})
-        if indexed_coordinates.get(normalized_coordinates, False):
-            continue
-        indexed_coordinates[normalized_coordinates] = True
-        candidates_by_row.setdefault(normalized_row, []).append(
-            (normalized_coordinates, candidate)
+    normalized_selected = tuple(
+        (
+            tuple(int(value) for value in row),
+            tuple(int(value) for value in coordinates),
+            norm,
         )
-
+        for row, coordinates, norm in selected
+    )
+    normalized_candidates = tuple(
+        (
+            tuple(int(value) for value in row),
+            tuple(int(value) for value in coordinates),
+            norm,
+        )
+        for row, coordinates, norm in candidates
+    )
+    retained = [(row, coordinates) for row, coordinates, _norm in normalized_selected]
     answer: list[tuple[tuple[int, ...], tuple[int, ...], int]] = []
-    for selected_row in selected_rows:
-        retained_coordinates = retained_coordinates_by_row.setdefault(selected_row, {})
-        for coordinates, candidate in candidates_by_row.get(selected_row, ()):
-            if retained_coordinates.get(coordinates, False):
+    for selected_row, _selected_coordinates, _norm in normalized_selected:
+        for candidate in normalized_candidates:
+            row, coordinates, _candidate_norm = candidate
+            if row != selected_row:
                 continue
-            retained_coordinates[coordinates] = True
+            if any(
+                old_row == row and old_coordinates == coordinates
+                for old_row, old_coordinates in retained
+            ):
+                continue
+            retained.append((row, coordinates))
             answer.append(candidate)
             break
         if len(answer) >= limit:
-            break
+            return tuple(answer)
     dependencies = len(answer)
-    if dependencies >= limit:
-        return tuple(answer)
 
     # A wider fallback box can expose a useful duplicate row that was not part
     # of the minimal class-presentation support.  Retain both generators of
@@ -1338,20 +1328,26 @@ def _select_cubic_dependency_candidates(
     # every row is independently admitted before the incomplete seed is
     # issued, and the coupled engine recomputes the presentation from the
     # resulting authenticated prefix.
-    grouped: dict[
-        tuple[int, ...],
-        list[tuple[tuple[int, ...], tuple[int, ...], int]],
-    ] = {}
-    selected_row_set = {row: True for row in selected_rows}
-    for row, indexed_candidates in candidates_by_row.items():
-        if selected_row_set.get(row, False):
+    selected_rows = tuple(entry[0] for entry in normalized_selected)
+    handled_rows: list[tuple[int, ...]] = []
+    for index, candidate in enumerate(normalized_candidates):
+        row, coordinates, _norm = candidate
+        if row in selected_rows or row in handled_rows:
             continue
-        for _coordinates, candidate in indexed_candidates:
-            grouped.setdefault(row, []).append(candidate)
-    for duplicate_candidates in grouped.values():
-        if len(duplicate_candidates) < 2:
+        if any(
+            prior[0] == row and prior[1] == coordinates
+            for prior in normalized_candidates[:index]
+        ):
             continue
-        answer.extend(duplicate_candidates[:2])
+        second = None
+        for other in normalized_candidates[index + 1 :]:
+            if other[0] == row and other[1] != coordinates:
+                second = other
+                break
+        if second is None:
+            continue
+        answer.extend((candidate, second))
+        handled_rows.append(row)
         dependencies += 1
         if dependencies >= limit:
             break
