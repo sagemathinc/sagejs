@@ -3042,12 +3042,23 @@ def regulator_from_factored_units(
     maximum_precision_bits: int = 4096,
     maximum_determinant_states: int = 65_536,
     cancelled: Callable[[], Any] | None = None,
+    logarithm_workspace: Any = None,
 ) -> RegulatorEnclosure:
     """Use factored elements' weighted archimedean-logarithm provider."""
 
     def logarithms(precision: int) -> Sequence[Sequence[Any]]:
         rows = []
         for unit in units:
+            regulator_provider = getattr(unit, "regulator_logarithms", None)
+            if callable(regulator_provider):
+                rows.append(
+                    regulator_provider(
+                        precision,
+                        unit_rank,
+                        workspace=logarithm_workspace,
+                    )
+                )
+                continue
             provider = getattr(unit, "archimedean_logarithms", None)
             if not callable(provider):
                 raise TypeError("a factored unit needs archimedean_logarithms(prec)")
@@ -3579,6 +3590,7 @@ class ZetaLogResidueWorkspace:
         splitting_provider: Callable[[int, int], Iterable[Any]],
         *,
         share_across_isomorphic_fields: bool = False,
+        factored_logarithm_workspace: Any = None,
     ) -> None:
         discriminant = int(discriminant)
         degree = int(degree)
@@ -3591,6 +3603,7 @@ class ZetaLogResidueWorkspace:
         self.discriminant = discriminant
         self.degree = degree
         self.splitting_provider = splitting_provider
+        self.factored_logarithm_workspace = factored_logarithm_workspace
         self.covered_stop = 2
         self.provider_calls = 0
         self.records_decoded = 0
@@ -3777,7 +3790,23 @@ class ZetaLogResidueWorkspace:
         try:
             if callable(cancelled) and cancelled():
                 raise AnalyticResourceError("regulator computation was cancelled")
-            unit_payload = [_element_payload(_ordinary_unit(unit)) for unit in units]
+            factored_module = None
+            try:
+                factored_module = __import__(
+                    "sagejs.number_fields.factored_elements",
+                    fromlist=["factored_elements"],
+                )
+            except ImportError:
+                pass
+            factored_type = getattr(factored_module, "FactoredNumberFieldElement", None)
+            unit_payload = [
+                (
+                    ["factored", unit.regulator_cache_key()]
+                    if factored_type is not None and isinstance(unit, factored_type)
+                    else ["ordinary", _element_payload(_ordinary_unit(unit))]
+                )
+                for unit in units
+            ]
             key = (
                 _canonical_json(unit_payload),
                 int(unit_rank),
@@ -3803,6 +3832,7 @@ class ZetaLogResidueWorkspace:
                 maximum_precision_bits=maximum_precision_bits,
                 maximum_determinant_states=maximum_determinant_states,
                 cancelled=cancelled,
+                logarithm_workspace=self.factored_logarithm_workspace,
             )
             self._regulators[key] = (
                 regulator,

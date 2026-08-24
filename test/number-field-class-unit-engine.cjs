@@ -384,6 +384,11 @@ mutated_unit_payload = unit.to_dict()
 mutated_unit_payload["factors"][0]["exponent"] = 2
 assert unit.to_dict()["factors"][0]["exponent"] == 1
 assert unit.stable_hash() == unit_hash
+unit_regulator_key = unit.regulator_cache_key()
+assert unit_regulator_key == ((((2, 1),), 1),)
+unit._stable_hash_cache[0] = "0" * 64
+assert unit.regulator_cache_key() == unit_regulator_key
+unit._stable_hash_cache[0] = unit_hash
 first = unit.principal_ideal(O)
 second = unit.principal_ideal(O)
 assert first == second and first is second
@@ -403,6 +408,18 @@ factored.FactoredNumberFieldElement.from_element(K, K(3)).archimedean_logarithms
 )
 assert factor_workspace.diagnostics()["entries"] == 1
 assert factor_workspace.diagnostics()["evictions"] == 1
+
+S = NumberField(x**3 + 4*x - 1, "s")
+rank_one_unit = factored.FactoredNumberFieldElement.from_element(S, S.gen())
+rank_one_workspace = factored.FactoredLogarithmWorkspace(S)
+full_rank_one_logs = rank_one_unit.archimedean_logarithms(96)
+regulator_rank_one_logs = rank_one_unit.regulator_logarithms(
+    96, 1, workspace=rank_one_workspace
+)
+assert len(full_rank_one_logs) == 2
+assert len(regulator_rank_one_logs) == 1
+assert regulator_rank_one_logs[0].to_dict() == full_rank_one_logs[0].to_dict()
+assert rank_one_workspace.diagnostics()["entries"] == 1
 
 engine = ClassUnitGroupEngine(K, algorithm="buchmann-hecke")
 log_calls = [0]

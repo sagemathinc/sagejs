@@ -1259,6 +1259,9 @@ class ClassUnitGroupEngine:
             workspace_options: dict[str, Any] = {}
             if components is None:
                 workspace_options["share_across_isomorphic_fields"] = True
+                workspace_options["factored_logarithm_workspace"] = (
+                    self._factored_logarithm_workspace
+                )
             self._analytic_workspace = workspace_type(
                 int(self.order.discriminant()),
                 int(self.field.degree()),
