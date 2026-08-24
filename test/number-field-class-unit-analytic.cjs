@@ -743,7 +743,7 @@ warm_zeta = zeta_log_residue_bound(
 )
 assert len(provider_calls) == calls_after_cold
 assert warm_zeta.diagnostics["provider_calls"] == 0
-assert warm_zeta.diagnostics["splitting_cache_hits"] == 1
+assert warm_zeta.diagnostics["splitting_cache_hits"] == 0
 assert warm_zeta.diagnostics["prime_enumeration_cache_hits"] == 1
 assert warm_zeta.diagnostics["prime_power_plan_cache_hits"] == 1
 assert warm_zeta.diagnostics["threshold_cache_hits"] == 1

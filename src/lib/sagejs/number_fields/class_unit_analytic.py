@@ -3900,6 +3900,23 @@ class ZetaLogResidueWorkspace:
         finally:
             self.prime_power_plan_nanoseconds += time.perf_counter_ns() - started
 
+    def cached_prime_power_plan(self, threshold: int) -> _BFPrimePowerPlan | None:
+        """Return an already authenticated plan for the exact cutoff.
+
+        Plans enter this workspace only after complete splitting coverage and
+        local-degree validation, or through the module-issued shared snapshot
+        bound to the exact field and maximal order.  A cache miss deliberately
+        returns `None`; callers must then rebuild splitting data normally.
+        """
+        started = time.perf_counter_ns()
+        try:
+            cached = self._plans.get(int(threshold))
+            if cached is not None:
+                self.plan_cache_hits += 1
+            return cached
+        finally:
+            self.prime_power_plan_nanoseconds += time.perf_counter_ns() - started
+
     def threshold(
         self,
         target: RationalEndpoint,
@@ -4680,10 +4697,14 @@ def zeta_log_residue_bound(
         )
         threshold_evaluations += evaluations
         primes = selected_workspace.rational_primes_below(threshold)
-        splitting = selected_workspace.splitting_types(
-            primes, resource_limits.splitting_block_size
-        )
-        plan = selected_workspace.prime_power_plan(threshold, splitting)
+        cached_plan = selected_workspace.cached_prime_power_plan(threshold)
+        if cached_plan is None:
+            splitting = selected_workspace.splitting_types(
+                primes, resource_limits.splitting_block_size
+            )
+            plan = selected_workspace.prime_power_plan(threshold, splitting)
+        else:
+            plan = cached_plan
         finite, interval_diagnostics = selected_workspace.finite_term(plan, precision)
         answer = finite.add_error(tail.upper)
         accumulated = (
