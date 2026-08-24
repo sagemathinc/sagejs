@@ -39,15 +39,22 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
   assert.match(workflow, /\.github\/workflows\/wasm-candidate\.yml/);
   assert.match(workflow, /git merge-base --is-ancestor "\$SOURCE_SHA" origin\/main/);
   assert.match(workflow, /gh run download "\$SOURCE_RUN_ID"[\s\S]+--name wasm-clean-build-a/);
+  const install = workflow.indexOf("pnpm install --frozen-lockfile");
   const receipt = workflow.indexOf("production-receipt.cjs validate");
   const stage = workflow.indexOf("website/live/scripts/stage.mjs");
   const prepare = workflow.indexOf("prepare-release.mjs");
   const upload = workflow.indexOf("upload-r2.mjs");
   const deploy = workflow.indexOf("cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd");
   assert.ok(
-    receipt >= 0 && receipt < stage && stage < prepare && prepare < upload && upload < deploy,
-    "receipt validation, staging, preparation, and R2 upload must precede Worker activation",
+    install >= 0 &&
+      install < receipt &&
+      receipt < stage &&
+      stage < prepare &&
+      prepare < upload &&
+      upload < deploy,
+    "dependency installation, receipt validation, staging, preparation, and R2 upload must precede Worker activation",
   );
+  assert.match(workflow, /cache: pnpm/);
   assert.match(workflow, /node --test website\/live\/test\/\*\.test\.mjs/);
   assert.match(workflow, /node --test test\/wasm-deployment-workflow\.cjs/);
   assert.match(workflow, /website\/live\/cloudflare\n/);
