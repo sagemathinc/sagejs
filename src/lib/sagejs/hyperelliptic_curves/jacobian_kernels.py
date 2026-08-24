@@ -934,6 +934,149 @@ def _cantor_add_one(
     return branch
 
 
+def _validate_packed_row(
+    rows: UInt64Buffer,
+    row_offset: uint64,
+    model: UInt64Buffer,
+    genus: uint64,
+    modulus: PrimeFieldModulus,
+    store: UInt64Buffer,
+) -> uint64:
+    """Check one canonical reduced row against its exact curve equation."""
+    u: uint64 = 0
+    v: uint64 = 16
+    f: uint64 = 32
+    h: uint64 = 48
+    square: uint64 = 64
+    product: uint64 = 80
+    total: uint64 = 96
+    relation: uint64 = 112
+    quotient: uint64 = 128
+    remainder: uint64 = 144
+    packed: uint64 = _unpack_row(store, u, v, rows, row_offset, genus, modulus)
+    if packed == 0:
+        return 0
+    u_length: uint64 = packed % 32
+    v_length: uint64 = packed // 32
+    f_length: uint64 = 2 * genus + 2
+    h_length: uint64 = genus + 1
+    _cleared = _poly_clear(store, f)
+    _cleared = _poly_clear(store, h)
+    index: uint64 = 0
+    while index < f_length:
+        store[f + index] = model[index]
+        index += 1
+    index = 0
+    while index < h_length:
+        store[h + index] = model[8 + index]
+        index += 1
+    while f_length > 0 and store[f + f_length - 1] == 0:
+        f_length -= 1
+    while h_length > 0 and store[h + h_length - 1] == 0:
+        h_length -= 1
+    square_length: uint64 = _poly_mul(store, square, v, v_length, v, v_length, modulus)
+    product_length: uint64 = _poly_mul(
+        store, product, h, h_length, v, v_length, modulus
+    )
+    relation_length: uint64 = _poly_add(
+        store,
+        total,
+        square,
+        square_length,
+        product,
+        product_length,
+        modulus,
+    )
+    relation_length = _poly_sub(
+        store,
+        relation,
+        total,
+        relation_length,
+        f,
+        f_length,
+        modulus,
+    )
+    encoded: uint64 = _poly_divrem(
+        store,
+        quotient,
+        remainder,
+        relation,
+        relation_length,
+        u,
+        u_length,
+        modulus,
+    )
+    if encoded % 32 == 0:
+        return 1
+    return 0
+
+
+@native
+def packed_cantor_validate_batch(
+    output: UInt64Buffer,
+    statuses: UInt64Buffer,
+    model: UInt64Buffer,
+    rows: UInt64Buffer,
+    count: uint64,
+    genus: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Authenticate canonical serialized rows before copying any output."""
+    checked_modulus = modulus + 0
+    if (
+        checked_modulus <= 2
+        or (genus != 2 and genus != 3)
+        or len(model) != 12
+        or len(rows) != count * 8
+        or len(output) != count * 8
+        or len(statuses) != count
+    ):
+        return False
+    index: uint64 = 0
+    while index < 12:
+        if model[index] >= checked_modulus:
+            return False
+        index += 1
+    index = 2 * genus + 2
+    while index < 8:
+        if model[index] != 0:
+            return False
+        index += 1
+    index = genus + 1
+    while index < 4:
+        if model[8 + index] != 0:
+            return False
+        index += 1
+    if model[2 * genus + 1] == 0:
+        return False
+    store = prime_zeros(16 * 10)
+    item: uint64 = 0
+    while item < count:
+        valid: uint64 = _validate_packed_row(
+            rows,
+            item * 8,
+            model,
+            genus,
+            modulus,
+            store,
+        )
+        if valid == 0:
+            statuses[item] = 0
+            return False
+        statuses[item] = 1
+        item += 1
+    # The validation pass must finish before the first output word changes.
+    # This makes a failed call atomic even when callers reuse output storage.
+    item = 0
+    while item < count:
+        index = 0
+        while index < 8:
+            output[item * 8 + index] = rows[item * 8 + index]
+            index += 1
+        item += 1
+    return True
+
+
 @native
 def packed_cantor_copy_batch(
     output: UInt64Buffer,
@@ -2445,4 +2588,5 @@ __all__ = [
     "packed_cantor_search_progression",
     "packed_cantor_search_progressions",
     "packed_cantor_scalar_batch",
+    "packed_cantor_validate_batch",
 ]

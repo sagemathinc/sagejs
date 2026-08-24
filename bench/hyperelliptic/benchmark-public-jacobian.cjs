@@ -213,8 +213,18 @@ for genus, curve in [
     native_sum = lambda: context.sum(retained_input, algorithm="native")
     retained_left_rows = retained_left._rows_for(context)
     retained_right_rows = retained_right._rows_for(context)
+    serialized_rows = tuple(
+        tuple(retained_left_rows[8 * index:8 * index + 8])
+        for index in range(len(retained_left))
+    )
     prepare_public = lambda: context.prepare_batch(left)
     prepare_cached = lambda: context.prepare_batch(retained_left)
+    authenticated_unpack = lambda: context.unpack_batch(
+        serialized_rows, algorithm="native"
+    )
+    reference_unpack = lambda: context.unpack_batch(
+        serialized_rows, algorithm="reference"
+    )
     construction_u, construction_v = basis[0].uv()
     construct_public = lambda: tuple(
         type(basis[0])(J, construction_u, construction_v) for _index in range(1000)
@@ -349,6 +359,11 @@ for genus, curve in [
     retained_add_ns, retained_add_result = timed(retained_add)
     prepare_public_ns, prepared_result = timed(prepare_public)
     prepare_cached_ns, cached_result = timed(prepare_cached)
+    authenticated_unpack_ns, authenticated_result = timed(authenticated_unpack)
+    reference_unpack_ns, reference_unpack_result = timed(reference_unpack, 1)
+    authenticated_prepare_ns, authenticated_cached_result = timed(
+        lambda: context.prepare_batch(authenticated_result)
+    )
     construct_public_ns, constructed_result = timed(construct_public)
     construct_and_prepare_ns, constructed_prepared_result = timed(
         construct_and_prepare_public, 3
@@ -410,6 +425,10 @@ for genus, curve in [
     assert prepared_result == retained_left
     assert prepared_result.published_count == 0
     assert cached_result is retained_left
+    assert authenticated_result == retained_left
+    assert authenticated_result.published_count == 0
+    assert reference_unpack_result == retained_left
+    assert authenticated_cached_result is authenticated_result
     assert all(value == basis[0] for value in constructed_result)
     assert len(constructed_prepared_result) == 1000
     assert constructed_prepared_result[0] == basis[0]
@@ -469,6 +488,9 @@ for genus, curve in [
         "prepare_public_batch_median_ns": prepare_public_ns,
         "prepare_fresh_unregistered_batch_median_ns": fresh_prepare_ns,
         "prepare_cached_batch_median_ns": prepare_cached_ns,
+        "authenticated_unpack_batch_median_ns": authenticated_unpack_ns,
+        "reference_unpack_batch_median_ns": reference_unpack_ns,
+        "authenticated_unpack_cached_prepare_median_ns": authenticated_prepare_ns,
         "validated_public_construction_median_ns": construct_public_ns,
         "validated_public_construct_and_prepare_median_ns": construct_and_prepare_ns,
         "publish_frozen_batch_median_ns": publish_frozen_ns,
