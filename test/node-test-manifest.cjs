@@ -243,6 +243,7 @@ const integration = [
   "test/serialization.cjs",
   "test/conway-polynomials.cjs",
   "test/numpy-module.cjs",
+  "test/numpy-broad-coverage.cjs",
   "test/kernel.cjs",
   "test/dashboard-examples.cjs",
   "test/jupyter-kernelspec.cjs",

@@ -885,18 +885,20 @@ to mean a Python module and never silently falls back to npm. Browser or
 restricted evaluators may omit JavaScript module loading, which callers can
 detect with `sagejs.javascript.is_available()`.
 
-### Experimental NumPy facade
+### NumPy facade
 
-Sage.js includes an initial Python-facing `numpy` module backed by
+Sage.js includes a Python-facing `numpy` module backed by
 [`numpy-ts`](https://www.npmjs.com/package/numpy-ts). The facade, rather than
 the backend, owns the compatibility contract: raw JavaScript arrays do not
 escape, Python slicing creates shared-storage views, and Python-visible dtype,
 scalar, mutation, operator, and representation behavior can be corrected
 independently of `numpy-ts`.
 
-The first vertical slice supports dense array construction, dtypes, reshape,
-basic slicing and mutation, element-wise operators, reductions, matrix
-multiplication, and `numpy.linalg.det`:
+The browser tier exposes more than 225 top-level names, 39 array methods,
+47 random APIs, 23 linear-algebra APIs, and all 18 `numpy-ts` FFT APIs. It
+covers dense array construction, dtypes, views and mutation, ufuncs,
+reductions and statistics, shape manipulation, sorting and selection, seeded
+random distributions, matrix decompositions, and complex FFTs:
 
 ```py
 import numpy as np
@@ -906,14 +908,18 @@ view = a[:, 1:]
 view[0, 0] = 99
 print(a)
 print(a.sum(axis=0))
-print(np.linalg.det(np.array([[1.5, 2.0], [3.0, 4.5]])))
+q, r = np.linalg.qr(np.array([[1.5, 2.0], [3.0, 4.5]]))
+print(q @ r)
+print(np.fft.fft(np.array([0.0, 1.0, 0.0, -1.0])))
 ```
 
-This is a compatibility experiment, not yet a claim to implement NumPy. The
-same ordinary `.py` fixture runs under Sage.js and CPython/NumPy, and
-`test/numpy-module.cjs` requires their output to agree when NumPy is available.
-That differential corpus is intended to grow into selected upstream NumPy
-tests without making CPython's extension ABI a Sage.js goal.
+This is a deliberately bounded compatibility layer, not a claim to implement
+all of NumPy. Filesystem I/O, object and structured dtypes, memory mapping,
+and CPython extension protocols are outside the browser contract. Ordinary
+`.py` fixtures run under both Sage.js and CPython/NumPy; the differential suite
+checks values, shapes, dtypes, views, decompositions, seeded random results,
+and complex transforms. Unsupported options fail explicitly instead of being
+silently ignored.
 
 ## Graphs, exact symmetry, and interactive layouts
 
