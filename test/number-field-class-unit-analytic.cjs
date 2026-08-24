@@ -441,6 +441,25 @@ certificate = UnitSaturationIndexCertificate(
     "exact-relations-conditional-grh",
 )
 assert certificate._authenticated_body_matches()
+assert certificate._consume_live_parent_payload(
+    module._LIVE_UNIT_INDEX_PARENT_TOKEN
+) is None
+live_certificate = UnitSaturationIndexCertificate(
+    {"field": "focused-live-parent-test"},
+    [],
+    {},
+    1,
+    {"finite_term": new_finite.to_dict()},
+    {"generation": "focused-live-parent-test"},
+    "exact-relations-conditional-grh",
+    _live_parent_token=module._LIVE_UNIT_INDEX_PARENT_TOKEN,
+)
+assert live_certificate._consume_live_parent_payload(
+    module._LIVE_UNIT_INDEX_PARENT_TOKEN
+) == live_certificate.to_dict()
+assert live_certificate._consume_live_parent_payload(
+    module._LIVE_UNIT_INDEX_PARENT_TOKEN
+) is None
 original_certificate_payload = certificate.to_dict()
 mutated = certificate.to_dict()
 mutated["analytic_proof"]["finite_term"]["source"] = "forged-provenance"

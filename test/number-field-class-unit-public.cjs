@@ -315,12 +315,23 @@ import sagejs.number_fields.class_unit_context as context_module
 import sagejs.number_fields.class_unit_analytic as analytic_module
 
 analytic_replays = 0
+analytic_body_replays = 0
 original_compute_unit_index_proof = analytic_module._compute_unit_index_proof
+original_authenticated_body_matches = (
+    analytic_module.UnitSaturationIndexCertificate._authenticated_body_matches
+)
 def counted_compute_unit_index_proof(*args, **kwargs):
     global analytic_replays
     analytic_replays += 1
     return original_compute_unit_index_proof(*args, **kwargs)
+def counted_authenticated_body_matches(self):
+    global analytic_body_replays
+    analytic_body_replays += 1
+    return original_authenticated_body_matches(self)
 analytic_module._compute_unit_index_proof = counted_compute_unit_index_proof
+analytic_module.UnitSaturationIndexCertificate._authenticated_body_matches = (
+    counted_authenticated_body_matches
+)
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -376,9 +387,14 @@ assert not result.context.live_diagnostics()[
     "saturation_live_authority_available"
 ]
 assert analytic_replays == 0
+assert analytic_body_replays == 0
 assert record.verify(K, K.maximal_order())
 assert analytic_replays == 1
+assert analytic_body_replays == 1
 analytic_module._compute_unit_index_proof = original_compute_unit_index_proof
+analytic_module.UnitSaturationIndexCertificate._authenticated_body_matches = (
+    original_authenticated_body_matches
+)
 
 # Serialized record payloads remain isolated even though the live producer
 # avoids an eager second copy of the nested analytic certificate.
@@ -481,6 +497,7 @@ try:
     assert replay_resources["saturation_live_authentication_hits"] == 0
     assert replay_resources["saturation_live_authentication_fallback_replays"] == 1
     assert replayed.class_group().verify()
+    assert not replayed.saturation_record._live_authentication_available
 finally:
     context_module.ClassUnitGroupContext._verify_live_class_group_construction = (
         original_live_verifier

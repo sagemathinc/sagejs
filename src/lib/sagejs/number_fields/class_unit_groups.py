@@ -139,6 +139,8 @@ _GENERATION_EVIDENCE_KEYS = {
     "presentation",
 }
 
+_LIVE_SATURATION_RECORD_TOKEN = object()
+
 
 def _generation_evidence_digests(evidence: Any) -> tuple[str, str, str]:
     if (
@@ -364,18 +366,35 @@ class ClassUnitSaturationRecord:
         standard_certificate_type = getattr(
             analytic_module, "UnitSaturationIndexCertificate", None
         )
+        live_parent_payload_consumed = False
         if (
             standard_certificate_type is not None
             and type(analytic_certificate) is standard_certificate_type
         ):
-            trusted_payload = getattr(
-                analytic_certificate, "_trusted_parent_payload_view", None
+            consume_payload = getattr(
+                analytic_certificate, "_consume_live_parent_payload", None
             )
-            if not callable(trusted_payload):
+            live_parent_token = getattr(
+                analytic_module, "_LIVE_UNIT_INDEX_PARENT_TOKEN", None
+            )
+            trusted_payload = (
+                consume_payload(live_parent_token)
+                if callable(consume_payload) and live_parent_token is not None
+                else None
+            )
+            live_parent_payload_consumed = trusted_payload is not None
+            if trusted_payload is None:
+                detached_payload = getattr(
+                    analytic_certificate, "_trusted_parent_payload_view", None
+                )
+                trusted_payload = (
+                    detached_payload() if callable(detached_payload) else None
+                )
+            if trusted_payload is None:
                 raise TypeError(
                     "the standard analytic certificate has no parent payload view"
                 )
-            self._analytic_certificate_payload = trusted_payload()
+            self._analytic_certificate_payload = trusted_payload
         else:
             self._analytic_certificate_payload = _component_payload(
                 analytic_certificate
@@ -399,6 +418,9 @@ class ClassUnitSaturationRecord:
         self.reason = str(reason)
         self._field = field
         self._order = order
+        self._live_authentication_available = bool(
+            live_parent_payload_consumed and analytic_workspace is not None
+        )
         body = self._body_dict()
         self.content_sha256 = _canonical_payload_hash(body)
 
@@ -415,6 +437,17 @@ class ClassUnitSaturationRecord:
         ]
 
     def _body_dict(self) -> dict[str, Any]:
+        original_payloads = [self._unit_payload(unit) for unit in self.original_units]
+        same_units = len(self.original_units) == len(self.units)
+        if same_units:
+            for index in range(len(self.original_units)):
+                if self.original_units[index] is not self.units[index]:
+                    same_units = False
+                    break
+        if same_units:
+            unit_payloads = list(original_payloads)
+        else:
+            unit_payloads = [self._unit_payload(unit) for unit in self.units]
         return {
             "schema": "sagejs.number-fields/class-unit-saturation-v1",
             "index_bound": self.index_bound,
@@ -423,15 +456,34 @@ class ClassUnitSaturationRecord:
             "attempts": list(self.attempts),
             "analytic_validation": self.analytic_validation,
             "analytic_certificate": self._analytic_certificate_payload,
-            "original_units": [
-                self._unit_payload(unit) for unit in self.original_units
-            ],
-            "units": [self._unit_payload(unit) for unit in self.units],
+            "original_units": original_payloads,
+            "units": unit_payloads,
             "rigorous": self.rigorous,
             "complete": self.complete,
             "saturated": self.saturated,
             "reason": self.reason,
         }
+
+    def _consume_live_authentication(self, token: Any, field: Any, order: Any) -> bool:
+        """Consume the uninterrupted constructor-to-context authority once."""
+        accepted = bool(
+            token is _LIVE_SATURATION_RECORD_TOKEN
+            and self._live_authentication_available
+            and field is self._field
+            and order is self._order
+            and self.complete
+            and self.rigorous
+            and self.saturated
+            and self.remaining_index_bound == 1
+        )
+        self._live_authentication_available = False
+        return accepted
+
+    def _discard_live_authentication(self, token: Any) -> None:
+        """Revoke unused live authority before the record can escape."""
+        if token is not _LIVE_SATURATION_RECORD_TOKEN:
+            raise TypeError("live saturation authentication is engine-owned")
+        self._live_authentication_available = False
 
     def to_dict(self) -> dict[str, Any]:
         payload = self._body_dict()
@@ -530,9 +582,7 @@ def _standard_live_saturation_record_is_valid(
         certificate_type = getattr(analytic, "UnitSaturationIndexCertificate", None)
         workspace_type = getattr(analytic, "ZetaLogResidueWorkspace", None)
         certificate = record._analytic_certificate
-        authenticated_body_matches = getattr(
-            certificate, "_authenticated_body_matches", None
-        )
+        consume_live = getattr(record, "_consume_live_authentication", None)
         return bool(
             record._analytic_module is analytic
             and record._field is field
@@ -545,8 +595,12 @@ def _standard_live_saturation_record_is_valid(
             and record.remaining_index_bound == 1
             and int(certificate._index_bound) == record.remaining_index_bound
             and callable(record._analytic_generation_verifier)
-            and callable(authenticated_body_matches)
-            and authenticated_body_matches()
+            and callable(consume_live)
+            and consume_live(
+                _LIVE_SATURATION_RECORD_TOKEN,
+                field,
+                order,
+            )
         )
     except (AttributeError, TypeError, ValueError, ArithmeticError):
         return False
@@ -1581,16 +1635,23 @@ class ClassUnitGroupEngine:
                 and not self._cancelled_callback_supplied
                 and self.checkpoint_controller is None
             )
-            bind(
-                self._live_context_token,
-                record,
-                authenticated=bool(
-                    uninterrupted
-                    and _standard_live_saturation_record_is_valid(
-                        record, self.field, self.order
-                    )
-                ),
+            authenticated = bool(
+                uninterrupted
+                and _standard_live_saturation_record_is_valid(
+                    record, self.field, self.order
+                )
             )
+            try:
+                bind(
+                    self._live_context_token,
+                    record,
+                    authenticated=authenticated,
+                )
+            finally:
+                if not authenticated:
+                    discard = getattr(record, "_discard_live_authentication", None)
+                    if callable(discard):
+                        discard(_LIVE_SATURATION_RECORD_TOKEN)
 
     def _consume_context_saturation_record(self, record: Any) -> bool:
         consume = getattr(self.context, "_consume_live_saturation_record", None)
@@ -3770,6 +3831,18 @@ class ClassUnitGroupEngine:
         }
         live_proof = self._context_analytic_proof()
         standard_analytic = _optional_module("sagejs.number_fields.class_unit_analytic")
+        if (
+            self.components.analytic is standard_analytic
+            and certificate_factory
+            is getattr(standard_analytic, "certify_unit_saturation_index", None)
+            and self._live_context_token is not None
+            and self.progress is None
+            and not self._cancelled_callback_supplied
+            and self.checkpoint_controller is None
+        ):
+            options["_live_parent_token"] = getattr(
+                standard_analytic, "_LIVE_UNIT_INDEX_PARENT_TOKEN", None
+            )
         if (
             live_proof is not None
             and self.components.analytic is standard_analytic

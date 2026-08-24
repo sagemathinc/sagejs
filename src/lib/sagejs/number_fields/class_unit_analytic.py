@@ -4972,6 +4972,9 @@ def _compute_unit_index_proof(
     return int(index.unique_index), _unit_index_proof_payload(regulator, zeta, index)
 
 
+_LIVE_UNIT_INDEX_PARENT_TOKEN = object()
+
+
 class UnitSaturationIndexCertificate:
     """Hash-bound analytic proof of the initial missing class/unit index."""
 
@@ -4986,6 +4989,7 @@ class UnitSaturationIndexCertificate:
         proof_status: str,
         generation_verifier: Callable[..., Any] | None = None,
         workspace: ZetaLogResidueWorkspace | None = None,
+        _live_parent_token: Any = None,
     ) -> None:
         selected_index_bound = int(index_bound)
         selected_proof_status = str(proof_status)
@@ -5027,6 +5031,9 @@ class UnitSaturationIndexCertificate:
         ).hexdigest()
         self._generation_verifier = generation_verifier
         self._workspace = workspace
+        self._live_parent_authority_available = bool(
+            _live_parent_token is _LIVE_UNIT_INDEX_PARENT_TOKEN
+        )
 
     def _authenticated_body_matches(self) -> bool:
         """Fail closed if any retained input changed after construction."""
@@ -5052,6 +5059,18 @@ class UnitSaturationIndexCertificate:
             raise AnalyticCertificationError(
                 "global unit-index certificate body changed after construction"
             )
+        payload = dict(self._body_snapshot)
+        payload["content_sha256"] = self._content_sha256
+        return payload
+
+    def _consume_live_parent_payload(self, token: Any) -> dict[str, Any] | None:
+        """Transfer the just-built canonical body to its live parent once."""
+        if (
+            token is not _LIVE_UNIT_INDEX_PARENT_TOKEN
+            or not self._live_parent_authority_available
+        ):
+            return None
+        self._live_parent_authority_available = False
         payload = dict(self._body_snapshot)
         payload["content_sha256"] = self._content_sha256
         return payload
@@ -5234,6 +5253,7 @@ def certify_unit_saturation_index(
     _precomputed_regulator: Any = None,
     _precomputed_zeta_log_residue: Any = None,
     _precomputed_index: Any = None,
+    _live_parent_token: Any = None,
 ) -> UnitSaturationIndexCertificate:
     """Construct a replayable analytic index certificate for exact units.
 
@@ -5352,6 +5372,7 @@ def certify_unit_saturation_index(
         proof_status,
         generation_verifier,
         selected_workspace,
+        _live_parent_token=_live_parent_token,
     )
 
 
