@@ -336,6 +336,16 @@ packed_field = NumberField(x**3 - x**2 - 6*x - 12, "a")
 # modular oracle, including repeated factors at the index prime 2.
 equation = maximal_order.integral_equation_polynomial(packed_field)
 coefficients = tuple(int(value) for value in equation.list())
+equation_index = maximal_order.equation_order_index(packed_field.maximal_order())
+assert equation_index == 2
+assert tuple(equation_index % prime != 0 for prime in (2, 3, 5, 7)) == tuple(
+    prime_ideals._equation_order_is_p_maximal_from_factors(
+        coefficients,
+        prime,
+        prime_ideals._om.factor_cubic_mod_prime(coefficients, prime),
+    )
+    for prime in (2, 3, 5, 7)
+)
 # The fixed-size cubic quotient map is byte-for-byte identical to the generic
 # row-basis/nullspace/lift construction, including redundant input rows.
 for prime, subspaces in (

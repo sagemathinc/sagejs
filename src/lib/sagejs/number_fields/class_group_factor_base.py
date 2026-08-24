@@ -1524,7 +1524,7 @@ def _selective_dedekind_kummer(
     """
     field = order.number_field()
     maximal = _prime_ideals._maximal
-    if not maximal.equation_order_is_p_maximal(field, prime):
+    if maximal.equation_order_index(order) % prime == 0:
         return None
     polynomial = maximal.integral_equation_polynomial(field)
     coefficients = tuple(int(value) for value in polynomial.list())

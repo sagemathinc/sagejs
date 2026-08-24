@@ -23,6 +23,54 @@ MAX_ORDER_MULTIPLICATION_TABLE_CACHE_ENTRIES = 64
 _order_multiplication_table_cache: list[
     tuple[Any, tuple[tuple[tuple[Any, ...], ...], ...]]
 ] = []
+_equation_order_index_cache: list[tuple[Any, int]] = []
+
+
+def _integer_square_root(value: int) -> int:
+    if value < 0:
+        raise ValueError("integer square root needs a nonnegative value")
+    if value < 2:
+        return value
+    estimate = 1 << ((value.bit_length() + 1) // 2)
+    while True:
+        next_estimate = (estimate + value // estimate) // 2
+        if next_estimate >= estimate:
+            return estimate
+        estimate = next_estimate
+
+
+def equation_order_index(order: Any) -> int:
+    """Return the exact index of the integral equation order in `order`.
+
+    For the maximal order `O` and integral equation order `A = ZZ[beta]`,
+    `disc(A) = disc(O) * [O:A]^2`.  Computing this invariant once is enough
+    to decide whether `A` is `p`-maximal for every rational prime: precisely
+    the primes dividing the index need the presentation-independent finite
+    algebra route.
+    """
+    for index, (cached_order, cached_index) in enumerate(_equation_order_index_cache):
+        if cached_order is order:
+            if index:
+                _equation_order_index_cache.append(
+                    _equation_order_index_cache.pop(index)
+                )
+            return cached_index
+    if not order.is_maximal():
+        raise ValueError("an equation-order index requires a certified maximal order")
+    equation_discriminant = abs(
+        int(integral_equation_polynomial(order.number_field()).discriminant())
+    )
+    order_discriminant = abs(int(order.discriminant()))
+    if order_discriminant < 1 or equation_discriminant % order_discriminant:
+        raise ArithmeticError("order discriminants do not give an integral index")
+    index_squared = equation_discriminant // order_discriminant
+    index = _integer_square_root(index_squared)
+    if index < 1 or index * index != index_squared:
+        raise ArithmeticError("order discriminants do not give a square index")
+    if len(_equation_order_index_cache) >= 64:
+        _equation_order_index_cache.pop(0)
+    _equation_order_index_cache.append((order, index))
+    return index
 
 
 def _copy_order_multiplication_table(

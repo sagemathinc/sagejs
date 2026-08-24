@@ -2046,7 +2046,7 @@ def _dedekind_kummer_prime_candidate(
 
 def _dedekind_kummer(order: Any, prime: int) -> list[NumberFieldPrimeIdeal] | None:
     field = order.number_field()
-    if not _maximal.equation_order_is_p_maximal(field, prime):
+    if _maximal.equation_order_index(order) % prime == 0:
         return None
     polynomial = _maximal.integral_equation_polynomial(field)
     coefficients = tuple(int(value) for value in polynomial.list())

@@ -330,6 +330,7 @@ def packed_cubic_factor_records(
         order.number_field()
     )
     equation_coefficients = tuple(int(value) for value in equation_polynomial.list())
+    equation_order_index = prime_module._maximal.equation_order_index(order)
     one_coordinates = prime_module._order_one_coordinates(order)
     for prime in rational_primes:
         requested = {
@@ -340,9 +341,10 @@ def packed_cubic_factor_records(
         modular_factors = prime_module._om.factor_cubic_mod_prime(
             equation_coefficients, prime
         )
-        p_maximal = prime_module._equation_order_is_p_maximal_from_factors(
-            equation_coefficients, prime, modular_factors
-        )
+        # The discriminant/index identity decides all local maximality queries
+        # at once.  Dedekind's polynomial criterion remains the independent
+        # public decomposition route and the differential oracle in tests.
+        p_maximal = equation_order_index % prime != 0
         if p_maximal and not any(
             len(factor.polynomial) - 1 in requested for factor in modular_factors
         ):
