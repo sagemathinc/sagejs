@@ -117,6 +117,13 @@ test("portable identities are deterministic and independent of Node cache keys",
   }
   assert.equal(module.identity.moduleIdentity.length, 16);
   assert.doesNotMatch(module.identity.canonicalCore.source, /\bnapi_/);
+  assert.doesNotMatch(module.identity.canonicalCore.source, new RegExp(
+    root.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+  ));
+  assert.match(
+    module.identity.canonicalCore.source,
+    /sagejs\/number_fields\/zeta_coefficient_kernel\.py/,
+  );
 });
 
 test("generated runtime manifests expose bridges and exact unsupported reasons", async () => {

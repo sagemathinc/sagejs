@@ -108,7 +108,11 @@ async function inventoryProductionKernels({ root, manifestPath }) {
     const logicalSource = sourceKey(kernel.source);
     const source = readFileSync(sourcePath, "utf8");
     const sourceHash = sha256(source);
-    const ir = await lowerSource(source, sourcePath, {
+    // The production ABI and generated C provenance must not depend on the
+    // builder's checkout directory. `lowerSource` already receives the source
+    // contents directly, so use the authenticated repository-relative logical
+    // name for diagnostics and #line directives.
+    const ir = await lowerSource(source, logicalSource, {
       functions: kernel.functions,
     });
     const identity = portableKernelIdentity({ ir, sourceHash, logicalSource });
