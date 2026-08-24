@@ -11223,9 +11223,9 @@
         "name": "animate",
         "qualified": "animate",
         "path": "src/baselib/graphics.py",
-        "line": 4054,
+        "line": 4062,
         "excerpt": {
-          "start_line": 4042,
+          "start_line": 4050,
           "text": "        \"\"\"Save an animated HTML/JSON file through the host graphics hook.\"\"\"\n        hook = runtime.reflect.get(\n            runtime.global_object, \"__sagejs_graphics_save_hook__\"\n        )\n        if hook is runtime.undefined:\n            raise NotImplementedError(\n                \"graphics file export is not available in this host\"\n            )\n        runtime.reflect.apply(hook, runtime.undefined, [self, filename, options])\n        return self\n\n\ndef animate(frames: Any, **options: Any) -> Animation:\n    r\"\"\"\n    Animate an iterable of Sage graphics or plottable symbolic objects.\n\n    The optional `delay` is measured in hundredths of a second, matching\n    SageMath.  `iterations=0` denotes unrestricted interactive replay.\n    \"\"\"\n    return Animation(frames, **options)\n\n\n@runtime.sequence_class\nclass GraphicsArray:\n    \"\"\"A rectangular array of independently rendered graphics objects.\"\"\""
         }
       },
@@ -11283,9 +11283,9 @@
         "name": "arc",
         "qualified": "arc",
         "path": "src/baselib/graphics.py",
-        "line": 3104,
+        "line": 3112,
         "excerpt": {
-          "start_line": 3092,
+          "start_line": 3100,
           "text": "    fill = bool(_option_pop(options, \"fill\", False))\n    if _option_has(options, \"rgbcolor\"):\n        options[\"color\"] = _option_get(options, \"rgbcolor\")\n    elif fill and _option_has(options, \"facecolor\"):\n        options[\"color\"] = _option_pop(options, \"facecolor\")\n    elif not fill and _option_has(options, \"edgecolor\"):\n        options[\"color\"] = _option_pop(options, \"edgecolor\")\n    if fill:\n        return polygon(points[:-1], **options)\n    return line(points, **options)\n\n\ndef arc(\n    center: Any,\n    r1: Any,\n    r2: Any = None,\n    angle: Any = 0.0,\n    sector: Any = None,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Return a circular or elliptical arc over an angular sector.\"\"\"\n    options = _copy_options(options)\n    if not _option_has(options, \"aspect_ratio\"):\n        options[\"aspect_ratio\"] = 1.0\n    if r2 is None:"
         }
       },
@@ -11343,9 +11343,9 @@
         "name": "arrow",
         "qualified": "arrow",
         "path": "src/baselib/graphics.py",
-        "line": 3427,
+        "line": 3435,
         "excerpt": {
-          "start_line": 3415,
+          "start_line": 3423,
           "text": "        ) / denominator_norm\n        vertices.append(\n            runtime.math_tuple(\n                [\n                    center_point[0] + center_point[1] * real_part,\n                    center_point[1] * imaginary_part,\n                ]\n            )\n        )\n    return hyperbolic_polygon(vertices, model=\"UHP\", **options)\n\n\ndef arrow(\n    tailpoint: Any,\n    headpoint: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Return a directed line segment from `tailpoint` to `headpoint`.\"\"\"\n    options = _copy_options(options)\n    tail = _point_pair(tailpoint)\n    head = _point_pair(headpoint)\n    defaults = {\n        \"rgbcolor\": [0, 0, 1],\n        \"width\": 2,\n        \"zorder\": 2,"
         }
       },
@@ -11499,9 +11499,9 @@
         "name": "axes",
         "qualified": "Graphics.axes",
         "path": "src/baselib/graphics.py",
-        "line": 2122,
+        "line": 2130,
         "excerpt": {
-          "start_line": 2110,
+          "start_line": 2118,
           "text": "    def set_aspect_ratio(self, ratio: Any) -> None:\n        if ratio in (\"auto\", \"automatic\"):\n            self._extra_kwds[\"aspect_ratio\"] = \"automatic\"\n            return\n        numeric_ratio = float(ratio)\n        if numeric_ratio <= 0:\n            raise ValueError(\"the aspect ratio must be positive or 'automatic'\")\n        self._extra_kwds[\"aspect_ratio\"] = numeric_ratio\n\n    def aspect_ratio(self) -> Any:\n        return _option_get(self._extra_kwds, \"aspect_ratio\", \"automatic\")\n\n    def axes(self, show: Any = runtime.undefined) -> bool:\n        if show is runtime.undefined:\n            return bool(_option_get(self._extra_kwds, \"axes\", True))\n        self._extra_kwds[\"axes\"] = bool(show)\n        return bool(show)\n\n    def _axis_bound(self, name: str, value: Any) -> Any:\n        if value is not runtime.undefined:\n            self._extra_kwds[name] = float(value)\n            return float(value)\n        if _option_has(self._extra_kwds, name):\n            return _option_get(self._extra_kwds, name)\n        axis = \"xdata\" if name[0] == \"x\" else \"ydata\""
         }
       },
@@ -11559,9 +11559,9 @@
         "name": "bar_chart",
         "qualified": "bar_chart",
         "path": "src/baselib/graphics.py",
-        "line": 3498,
+        "line": 3506,
         "excerpt": {
-          "start_line": 3486,
+          "start_line": 3494,
           "text": "        Point(\n            [value[0] for value in normalized],\n            [value[1] for value in normalized],\n            defaults,\n        )\n    )\n    return graphic\n\n\npoints = point\n\n\ndef bar_chart(values: Any, **options: Any) -> Graphics:\n    \"\"\"Return a graphics object containing a vertical bar chart.\"\"\"\n    options = _copy_options(options)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"width\": 0.8,\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):\n        options[\"rgbcolor\"] = _option_pop(options, \"color\")\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()"
         }
       },
@@ -11619,9 +11619,9 @@
         "name": "bezier_path",
         "qualified": "bezier_path",
         "path": "src/baselib/graphics.py",
-        "line": 3176,
+        "line": 3184,
         "excerpt": {
-          "start_line": 3164,
+          "start_line": 3172,
           "text": "            next_points.append(\n                (\n                    (1.0 - parameter) * points[index][0]\n                    + parameter * points[index + 1][0],\n                    (1.0 - parameter) * points[index][1]\n                    + parameter * points[index + 1][1],\n                )\n            )\n        points = next_points\n    return points[0]\n\n\ndef bezier_path(path: Any, **options: Any) -> Graphics:\n    r\"\"\"\n    Return the Bézier path described by Sage's list-of-curves format.\n\n    The first curve contains both endpoints. Each later curve inherits its\n    first endpoint from the preceding curve and supplies zero, one, or two\n    control points followed by its new endpoint.\n    \"\"\"\n    curves = [list(curve) for curve in path]\n    if len(curves) == 0 or len(curves[0]) < 2:\n        raise ValueError(\"a Bezier path needs an initial curve and endpoints\")\n    count = int(_option_pop(options, \"plot_points\", 25))\n    if count < 2:"
         }
       },
@@ -11765,9 +11765,9 @@
         "name": "circle",
         "qualified": "circle",
         "path": "src/baselib/graphics.py",
-        "line": 3012,
+        "line": 3020,
         "excerpt": {
-          "start_line": 3000,
+          "start_line": 3008,
           "text": "        \"#00ff00\",\n        \"#00ffff\",\n        \"#0000ff\",\n        \"#ff00ff\",\n        \"#ff0000\",\n    ],\n}\ncolormaps = Colormaps(_COLORMAP_VALUES)\nfor _colormap_name in _COLORMAP_VALUES:\n    colormaps[_colormap_name] = _option_get(_COLORMAP_VALUES, _colormap_name)\n\n\ndef circle(\n    center: Any,\n    radius: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Return a circle centered at `center` with the given radius.\"\"\"\n    options = _copy_options(options)\n    if not _option_has(options, \"aspect_ratio\"):\n        options[\"aspect_ratio\"] = 1.0\n    coordinates = _point_pair(center)\n    numeric_radius = float(radius)\n    if numeric_radius < 0:\n        raise ValueError(\"circle radius must be nonnegative\")"
         }
       },
@@ -11878,16 +11878,16 @@
         "name": "complex_plot",
         "qualified": "complex_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5691,
+        "line": 5699,
         "excerpt": {
-          "start_line": 5679,
+          "start_line": 5687,
           "text": "        \"interpolation\": \"catrom\",\n        \"colorbar\": False,\n        \"alpha\": 1,\n    }\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Density(xvalues, yvalues, zvalues, defaults))\n    return graphic\n\n\ndef complex_plot(\n    function_value: Any,\n    x_range: Any,\n    y_range: Any,\n    contoured: bool = False,\n    tiled: bool = False,\n    cmap: Any = None,\n    contour_type: str = \"logarithmic\",\n    contour_base: Any = None,\n    dark_rate: float = 0.5,\n    nphases: int = 10,\n    **options: Any,\n) -> Graphics:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#f39e2c7290ff6bae-441459f59cccc537",
-          "line": 5720,
+          "line": 5728,
           "source": "complex_plot(lambda z: z^5 + z - 1 + 1/z,\n             (-3, 3), (-3, 3))",
           "want": "Graphics object consisting of 1 graphics primitive\n",
           "tags": [],
@@ -11957,16 +11957,16 @@
         "name": "complex_to_cmap_rgb",
         "qualified": "complex_to_cmap_rgb",
         "path": "src/baselib/graphics.py",
-        "line": 4789,
+        "line": 4797,
         "excerpt": {
-          "start_line": 4777,
+          "start_line": 4785,
           "text": "    dark_rate: float,\n) -> list[float]:\n    \"\"\"Apply Sage's smooth or HLS contour lightness adjustment.\"\"\"\n    if contoured or tiled:\n        hue_value, lightness, saturation = Color(rgb).hls()\n        lightness = max(0.0, min(1.0, lightness + float(dark_rate) * delta))\n        return list(_hls_to_rgb(hue_value, lightness, saturation))\n    if delta >= 0:\n        return [(1.0 - delta) * float(component) + delta for component in rgb]\n    return [(1.0 + delta) * float(component) for component in rgb]\n\n\ndef complex_to_cmap_rgb(\n    z_values: Any,\n    cmap: Any = \"turbo\",\n    contoured: bool = False,\n    tiled: bool = False,\n    contour_type: str = \"logarithmic\",\n    contour_base: Any = None,\n    dark_rate: float = 0.5,\n    nphases: int = 10,\n) -> list[list[list[float]]]:\n    r\"\"\"Convert complex values to RGB using a Sage-compatible colormap.\n\n    The argument selects a point in the colormap and the magnitude controls"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#46152e6532be6dff-f73279a4a86d135a",
-          "line": 4810,
+          "line": 4818,
           "source": "complex_to_cmap_rgb([[0, 1]], cmap='viridis')[0][0]",
           "want": "[0.0, 0.0, 0.0]\n",
           "tags": [],
@@ -11982,7 +11982,7 @@
         },
         {
           "id": "src/baselib/graphics.py#4d2343fcf039e18a-4e07408562bedb8b",
-          "line": 4812,
+          "line": 4820,
           "source": "len(complex_to_cmap_rgb([[1 + I]], cmap='plasma')[0][0])",
           "want": "3\n",
           "tags": [],
@@ -12051,16 +12051,16 @@
         "name": "complex_to_rgb",
         "qualified": "complex_to_rgb",
         "path": "src/baselib/graphics.py",
-        "line": 4627,
+        "line": 4635,
         "excerpt": {
-          "start_line": 4615,
+          "start_line": 4623,
           "text": "        return [\n            bottom + (hue_value - 4.0) * (top - bottom),\n            bottom,\n            top,\n        ]\n    return [\n        top,\n        bottom,\n        bottom + (6.0 - hue_value) * (top - bottom),\n    ]\n\n\ndef complex_to_rgb(\n    z_values: Any,\n    contoured: bool = False,\n    tiled: bool = False,\n    contour_type: str = \"logarithmic\",\n    contour_base: Any = None,\n    dark_rate: float = 0.5,\n    nphases: int = 10,\n) -> list[list[list[float]]]:\n    r\"\"\"\n    Convert a rectangular grid of complex values to Sage domain colors.\n\n    Argument determines hue. Magnitude determines lightness, either smoothly"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#9289b0a4b0fd8aa0-e3b0c44298fc1c14",
-          "line": 4645,
+          "line": 4653,
           "source": "colors = complex_to_rgb([[0, 1, 10]])[0]",
           "want": "",
           "tags": [],
@@ -12076,7 +12076,7 @@
         },
         {
           "id": "src/baselib/graphics.py#890cc4163e199259-739ef7d6d304c0a4",
-          "line": 4646,
+          "line": 4654,
           "source": "len(colors), colors[0], len(colors[1])",
           "want": "(3, [0.0, 0.0, 0], 3)\n",
           "tags": [],
@@ -12144,9 +12144,9 @@
         "name": "contour_plot",
         "qualified": "contour_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5639,
+        "line": 5647,
         "excerpt": {
-          "start_line": 5627,
+          "start_line": 5635,
           "text": "        for index in range(len(primitive.xdata)):\n            theta = primitive.xdata[index]\n            radius = primitive.ydata[index]\n            points.append(\n                (radius * runtime.math.cos(theta), radius * runtime.math.sin(theta))\n            )\n        primitive_options = primitive.options()\n        answer = answer + line(points, **primitive_options)\n    answer.set_extra_kwds(radial.get_extra_kwds())\n    return answer\n\n\ndef contour_plot(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a sampled scalar function as a filled contour grid.\"\"\"\n    options = _copy_options(options)\n    plot_points = _option_pop(options, \"plot_points\", 50)\n    xvalues, yvalues, zvalues = _sample_grid_2d(\n        function_value, xrange, yrange, plot_points\n    )\n    defaults = {"
         }
       },
@@ -12411,9 +12411,9 @@
         "name": "density_plot",
         "qualified": "density_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5665,
+        "line": 5673,
         "excerpt": {
-          "start_line": 5653,
+          "start_line": 5661,
           "text": "        \"colorbar\": True,\n        \"cmap\": \"Viridis\",\n        \"alpha\": 1,\n    }\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Contour(xvalues, yvalues, zvalues, defaults))\n    return graphic\n\n\ndef density_plot(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the values of a function of two variables as a color density.\"\"\"\n    options = _copy_options(options)\n    plot_points = _option_pop(options, \"plot_points\", 25)\n    xvalues, yvalues, zvalues = _sample_grid_2d(\n        function_value, xrange, yrange, plot_points\n    )\n    defaults = {"
         }
       },
@@ -13411,9 +13411,9 @@
         "name": "disk",
         "qualified": "disk",
         "path": "src/baselib/graphics.py",
-        "line": 3129,
+        "line": 3137,
         "excerpt": {
-          "start_line": 3117,
+          "start_line": 3125,
           "text": "        r2 = r1\n    if sector is None:\n        sector = (0.0, 2.0 * runtime.math.PI)\n    count = int(_option_pop(options, \"plot_points\", 75))\n    if count < 2:\n        raise ValueError(\"arc plot_points must be at least 2\")\n    return line(\n        _ellipse_points(center, r1, r2, angle, sector, count),\n        **options,\n    )\n\n\ndef disk(\n    center: Any,\n    radius: Any,\n    angle: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Return a filled or outlined circular/elliptical sector.\"\"\"\n    options = _copy_options(options)\n    coordinates = _point_pair(center)\n    if isinstance(radius, (list, tuple)):\n        if len(radius) != 2:\n            raise ValueError(\"disk radius must be a number or a pair\")\n        r1 = radius[0]"
         }
       },
@@ -13813,9 +13813,9 @@
         "name": "ellipse",
         "qualified": "ellipse",
         "path": "src/baselib/graphics.py",
-        "line": 3077,
+        "line": 3085,
         "excerpt": {
-          "start_line": 3065,
+          "start_line": 3073,
           "text": "        parameter = start + (end - start) * index / count\n        local_x = radius1 * runtime.math.cos(parameter)\n        local_y = radius2 * runtime.math.sin(parameter)\n        points.append(\n            (\n                coordinates[0] + local_x * cosine_rotation - local_y * sine_rotation,\n                coordinates[1] + local_x * sine_rotation + local_y * cosine_rotation,\n            )\n        )\n    return points\n\n\ndef ellipse(\n    center: Any,\n    r1: Any,\n    r2: Any,\n    angle: Any = 0,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Return an optionally rotated ellipse centered at `(x, y)`.\"\"\"\n    options = _copy_options(options)\n    if not _option_has(options, \"aspect_ratio\"):\n        options[\"aspect_ratio\"] = 1.0\n    count = int(_option_pop(options, \"plot_points\", 100))\n    if count < 4:"
         }
       },
@@ -19342,7 +19342,7 @@
       "examples": [
         {
           "id": "src/baselib/graphics.py#e95372572f18dc14-e3b0c44298fc1c14",
-          "line": 5310,
+          "line": 5318,
           "source": "g = plot(sin(x), (x, 0, 2*pi), color='navy')",
           "want": "",
           "tags": [],
@@ -19358,7 +19358,7 @@
         },
         {
           "id": "src/baselib/graphics.py#130e66d323a7c490-6b86b273ff34fce1",
-          "line": 5311,
+          "line": 5319,
           "source": "len(g)",
           "want": "1\n",
           "tags": [],
@@ -21579,16 +21579,16 @@
         "name": "graphics_array",
         "qualified": "graphics_array",
         "path": "src/baselib/graphics.py",
-        "line": 4172,
+        "line": 4180,
         "excerpt": {
-          "start_line": 4160,
+          "start_line": 4168,
           "text": "        if hook is runtime.undefined:\n            raise NotImplementedError(\n                \"graphics file export is not available in this host\"\n            )\n        runtime.reflect.apply(\n            hook,\n            runtime.undefined,\n            [self, filename, options],\n        )\n        return self\n\n\ndef graphics_array(\n    graphics: Any,\n    rows: Any = None,\n    columns: Any = None,\n) -> GraphicsArray:\n    r\"\"\"\n    Arrange several two-dimensional graphics objects in a rectangular grid.\n\n    The input may already be a nested list of rows. For a flat list, specify\n    either `rows` or `columns`; omitting both creates one horizontal row.\n\n    ### Examples\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#55d251b726925a2a-e3b0c44298fc1c14",
-          "line": 4186,
+          "line": 4194,
           "source": "G = graphics_array([plot(sin(x), (x, 0, 2*pi)), circle((0, 0), 1)])",
           "want": "",
           "tags": [],
@@ -21604,7 +21604,7 @@
         },
         {
           "id": "src/baselib/graphics.py#b4bac3d2ef3ddf50-cf4dabed2ce0f4fc",
-          "line": 4187,
+          "line": 4195,
           "source": "G.nrows(), G.ncols()",
           "want": "(1, 2)\n",
           "tags": [],
@@ -21666,7 +21666,7 @@
       "examples": [
         {
           "id": "src/baselib/graphics.py#e95372572f18dc14-e3b0c44298fc1c14",
-          "line": 5310,
+          "line": 5318,
           "source": "g = plot(sin(x), (x, 0, 2*pi), color='navy')",
           "want": "",
           "tags": [],
@@ -21682,7 +21682,7 @@
         },
         {
           "id": "src/baselib/graphics.py#130e66d323a7c490-6b86b273ff34fce1",
-          "line": 5311,
+          "line": 5319,
           "source": "len(g)",
           "want": "1\n",
           "tags": [],
@@ -24480,16 +24480,16 @@
         "name": "histogram",
         "qualified": "histogram",
         "path": "src/baselib/graphics.py",
-        "line": 3516,
+        "line": 3524,
         "excerpt": {
-          "start_line": 3504,
+          "start_line": 3512,
           "text": "        \"width\": 0.8,\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):\n        options[\"rgbcolor\"] = _option_pop(options, \"color\")\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Bar([float(value) for value in values], defaults))\n    return graphic\n\n\ndef histogram(datalist: Any, **options: Any) -> Graphics:\n    r\"\"\"\n    Compute and draw a histogram of numerical data.\n\n    Common Sage options include `bins`, `range`, `density`, `cumulative`,\n    `color`, `edgecolor`, `alpha`, and `label`.\n\n    ### Examples\n\n    ```sage\n    sage: histogram([1, 1, 2, 3], bins=3)\n    Graphics object consisting of 1 graphics primitive\n    ```"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#17671abe261ba66e-441459f59cccc537",
-          "line": 3526,
+          "line": 3534,
           "source": "histogram([1, 1, 2, 3], bins=3)",
           "want": "Graphics object consisting of 1 graphics primitive\n",
           "tags": [],
@@ -24557,9 +24557,9 @@
         "name": "hue",
         "qualified": "hue",
         "path": "src/baselib/graphics.py",
-        "line": 2667,
+        "line": 2675,
         "excerpt": {
-          "start_line": 2655,
+          "start_line": 2663,
           "text": "    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(\n        Line(\n            [value[0] for value in normalized],\n            [value[1] for value in normalized],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef hue(\n    value: Any,\n    saturation: Any = 1,\n    brightness: Any = 1,\n) -> tuple[float, float, float]:\n    \"\"\"Return an RGB triple from hue, saturation, and brightness.\"\"\"\n    h = float(value) % 1.0\n    s = max(0.0, min(1.0, float(saturation)))\n    v = max(0.0, min(1.0, float(brightness)))\n    scaled = h * 6.0\n    sector = int(runtime.math.floor(scaled))\n    fraction = scaled - sector\n    p = v * (1.0 - s)"
         }
       },
@@ -24617,9 +24617,9 @@
         "name": "hyperbolic_arc",
         "qualified": "hyperbolic_arc",
         "path": "src/baselib/graphics.py",
-        "line": 3302,
+        "line": 3310,
         "excerpt": {
-          "start_line": 3290,
+          "start_line": 3298,
           "text": "        angle = start_angle + delta * index / float(resolution)\n        points.append(\n            runtime.math_tuple(\n                [\n                    center_x + radius * runtime.math.cos(angle),\n                    center_y + radius * runtime.math.sin(angle),\n                ]\n            )\n        )\n    return points\n\n\ndef hyperbolic_arc(\n    a: Any,\n    b: Any,\n    model: str = \"UHP\",\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the hyperbolic geodesic from `a` to `b`.\"\"\"\n    options = _copy_options(options)\n    resolution = int(_option_pop(options, \"resolution\", 100))\n    points = _hyperbolic_geodesic_points(a, b, model, resolution)\n    answer = line(points, **options)\n    if str(model).upper() in (\"PD\", \"KM\"):\n        answer = answer + circle((0, 0), 1, axes=False, color=\"black\")"
         }
       },
@@ -24677,9 +24677,9 @@
         "name": "hyperbolic_polygon",
         "qualified": "hyperbolic_polygon",
         "path": "src/baselib/graphics.py",
-        "line": 3319,
+        "line": 3327,
         "excerpt": {
-          "start_line": 3307,
+          "start_line": 3315,
           "text": ") -> Graphics:\n    r\"\"\"Plot the hyperbolic geodesic from `a` to `b`.\"\"\"\n    options = _copy_options(options)\n    resolution = int(_option_pop(options, \"resolution\", 100))\n    points = _hyperbolic_geodesic_points(a, b, model, resolution)\n    answer = line(points, **options)\n    if str(model).upper() in (\"PD\", \"KM\"):\n        answer = answer + circle((0, 0), 1, axes=False, color=\"black\")\n        answer.set_aspect_ratio(1)\n    return answer\n\n\ndef hyperbolic_polygon(\n    points: Any,\n    model: str = \"UHP\",\n    resolution: int = 100,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot a polygon whose sides are hyperbolic geodesics.\"\"\"\n    vertices = list(points)\n    if len(vertices) == 0:\n        raise ValueError(\"cannot plot the empty polygon\")\n    if len(vertices) < 2:\n        raise ValueError(\"a hyperbolic polygon needs at least two vertices\")\n    sampled = []"
         }
       },
@@ -24737,9 +24737,9 @@
         "name": "hyperbolic_regular_polygon",
         "qualified": "hyperbolic_regular_polygon",
         "path": "src/baselib/graphics.py",
-        "line": 3366,
+        "line": 3374,
         "excerpt": {
-          "start_line": 3354,
+          "start_line": 3362,
           "text": "\ndef hyperbolic_triangle(\n    a: Any,\n    b: Any,\n    c: Any,\n    model: str = \"UHP\",\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a hyperbolic triangle with vertices `a`, `b`, and `c`.\"\"\"\n    return hyperbolic_polygon([a, b, c], model=model, **options)\n\n\ndef hyperbolic_regular_polygon(\n    sides: int,\n    i_angle: Any,\n    center: Any = None,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot a regular hyperbolic polygon in the upper-half-plane model.\"\"\"\n    count = int(sides)\n    angle = float(i_angle)\n    if count <= 2:\n        raise ValueError(\"degenerated polygons (sides<=2) are not supported\")\n    if angle <= 0 or angle >= _PI:\n        raise ValueError(\"interior angle must be in the interval (0, pi)\")"
         }
       },
@@ -24797,9 +24797,9 @@
         "name": "hyperbolic_triangle",
         "qualified": "hyperbolic_triangle",
         "path": "src/baselib/graphics.py",
-        "line": 3355,
+        "line": 3363,
         "excerpt": {
-          "start_line": 3343,
+          "start_line": 3351,
           "text": "    options = _copy_options(options)\n    fill = bool(_option_pop(options, \"fill\", False))\n    if fill:\n        answer = polygon(sampled, **options)\n    else:\n        answer = line(sampled, **options)\n    if str(model).upper() in (\"PD\", \"KM\"):\n        answer = answer + circle((0, 0), 1, color=\"black\")\n        answer.set_aspect_ratio(1)\n    return answer\n\n\ndef hyperbolic_triangle(\n    a: Any,\n    b: Any,\n    c: Any,\n    model: str = \"UHP\",\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a hyperbolic triangle with vertices `a`, `b`, and `c`.\"\"\"\n    return hyperbolic_polygon([a, b, c], model=model, **options)\n\n\ndef hyperbolic_regular_polygon(\n    sides: int,"
         }
       },
@@ -25005,9 +25005,9 @@
         "name": "implicit_plot",
         "qualified": "implicit_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5967,
+        "line": 5975,
         "excerpt": {
-          "start_line": 5955,
+          "start_line": 5963,
           "text": "    graphics_options[\"xmin\"] = xmin\n    graphics_options[\"xmax\"] = xmax\n    graphics_options[\"ymin\"] = ymin\n    graphics_options[\"ymax\"] = ymax\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(ComplexPlot(rgb_data, (xmin, xmax), (ymin, ymax), defaults))\n    if plot_diagnostics is not None:\n        graphic._plot_spec_diagnostics.append(plot_diagnostics)\n    return graphic\n\n\ndef implicit_plot(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot the plane curve where a function is zero or an equality holds.\n    \"\"\"\n    if hasattr(function_value, \"_plot_zero_set_expression\"):\n        function_value = function_value._plot_zero_set_expression()\n    options = _copy_options(options)\n    options[\"contours\"] = [0]"
         }
       },
@@ -25306,9 +25306,9 @@
         "name": "line",
         "qualified": "line",
         "path": "src/baselib/graphics.py",
-        "line": 2638,
+        "line": 2646,
         "excerpt": {
-          "start_line": 2626,
+          "start_line": 2634,
           "text": "\ndef _graphics_options(options: dict[str, Any]) -> dict[str, Any]:\n    answer = {}\n    for name in _GRAPHICS_OPTION_NAMES:\n        if _option_has(options, name):\n            answer[name] = _option_pop(options, name)\n    for name in list(runtime.object.keys(options)):\n        if name[:7] == \"legend_\" and name not in (\"legend_label\", \"legend_color\"):\n            answer[name] = _option_pop(options, name)\n    return answer\n\n\ndef line(points: Any, **options: Any) -> Graphics:\n    \"\"\"Return a graphics object containing a line through `points`.\"\"\"\n    options = _copy_options(options)\n    normalized = _normalize_points(points)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"thickness\": 1,\n        \"legend_label\": None,\n        \"legend_color\": None,\n        \"linestyle\": \"-\",\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):"
         }
       },
@@ -25469,9 +25469,9 @@
         "name": "list_plot",
         "qualified": "list_plot",
         "path": "src/baselib/graphics.py",
-        "line": 6313,
+        "line": 6321,
         "excerpt": {
-          "start_line": 6301,
+          "start_line": 6309,
           "text": "    returned semantic object using Plotly-compatible HTML/data, without\n    requiring a Jupyter extension.\n    \"\"\"\n\n    answer = value\n    for other in others:\n        answer = answer + other\n    if len(options) and hasattr(answer, \"set_extra_kwds\"):\n        answer.set_extra_kwds(options)\n    return answer\n\n\ndef list_plot(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a sequence of y-values or a sequence of `(x, y)` pairs.\"\"\"\n    options = _copy_options(options)\n    values = list(data)\n    if len(values) == 0:\n        return Graphics()\n    if isinstance(values[0], (list, tuple)):\n        points = [_point_pair(value) for value in values]\n    else:"
         }
       },
@@ -25529,9 +25529,9 @@
         "name": "list_plot_loglog",
         "qualified": "list_plot_loglog",
         "path": "src/baselib/graphics.py",
-        "line": 6387,
+        "line": 6395,
         "excerpt": {
-          "start_line": 6375,
+          "start_line": 6383,
           "text": "\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return plot(funcs, *range_args, **options)\n\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -25589,9 +25589,9 @@
         "name": "list_plot_semilogx",
         "qualified": "list_plot_semilogx",
         "path": "src/baselib/graphics.py",
-        "line": 6397,
+        "line": 6405,
         "excerpt": {
-          "start_line": 6385,
+          "start_line": 6393,
           "text": "\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogy(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -25649,9 +25649,9 @@
         "name": "list_plot_semilogy",
         "qualified": "list_plot_semilogy",
         "path": "src/baselib/graphics.py",
-        "line": 6407,
+        "line": 6415,
         "excerpt": {
-          "start_line": 6395,
+          "start_line": 6403,
           "text": "\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogy(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\nline2d = line\narrow2d = arrow\npoint2d = point"
         }
       },
@@ -26030,9 +26030,9 @@
         "name": "matrix_plot",
         "qualified": "matrix_plot",
         "path": "src/baselib/graphics.py",
-        "line": 6055,
+        "line": 6063,
         "excerpt": {
-          "start_line": 6043,
+          "start_line": 6051,
           "text": "        \"colorbar\": False,\n        \"alpha\": 1,\n        \"aspect_ratio\": 1,\n    }\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Density(xvalues, yvalues, zvalues, defaults))\n    return graphic\n\n\ndef matrix_plot(\n    matrix_value: Any,\n    xrange: Any = None,\n    yrange: Any = None,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot a matrix or rectangular array as a color-valued grid.\"\"\"\n    if hasattr(matrix_value, \"nrows\") and hasattr(matrix_value, \"ncols\"):\n        row_count = int(matrix_value.nrows())\n        column_count = int(matrix_value.ncols())\n        values = [\n            [float(matrix_value[row, column]) for column in range(column_count)]\n            for row in range(row_count)"
         }
       },
@@ -27493,16 +27493,16 @@
         "name": "multi_graphics",
         "qualified": "multi_graphics",
         "path": "src/baselib/graphics.py",
-        "line": 3792,
+        "line": 3800,
         "excerpt": {
-          "start_line": 3780,
+          "start_line": 3788,
           "text": "        \"\"\"Save through the host graphics hook when one is installed.\"\"\"\n        hook = runtime.reflect.get(\n            runtime.global_object, \"__sagejs_graphics_save_hook__\"\n        )\n        if hook is runtime.undefined:\n            raise NotImplementedError(\n                \"graphics file export is not available in this host\"\n            )\n        runtime.reflect.apply(hook, runtime.undefined, [self, filename, options])\n        return self\n\n\ndef multi_graphics(graphics_list: Any) -> MultiGraphics:\n    r\"\"\"\n    Draw graphics at arbitrary positions on one common canvas.\n\n    Each entry is either a `Graphics` object at Sage's default full-canvas\n    position or `(graphic, (left, bottom, width, height))`, with coordinates\n    expressed as fractions of the canvas.\n\n    ### Examples\n\n    ```sage\n    sage: g1 = plot(sin(x), (x, -pi, pi))\n    sage: g2 = circle((0, 0), 1, color='red')"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#e56965e227de7acb-e3b0c44298fc1c14",
-          "line": 3803,
+          "line": 3811,
           "source": "g1 = plot(sin(x), (x, -pi, pi))",
           "want": "",
           "tags": [],
@@ -27518,7 +27518,7 @@
         },
         {
           "id": "src/baselib/graphics.py#6cdbefe97dc33336-e3b0c44298fc1c14",
-          "line": 3804,
+          "line": 3812,
           "source": "g2 = circle((0, 0), 1, color='red')",
           "want": "",
           "tags": [],
@@ -27534,7 +27534,7 @@
         },
         {
           "id": "src/baselib/graphics.py#4b2c03786228dcdb-5568d4645dfaeadc",
-          "line": 3805,
+          "line": 3813,
           "source": "multi_graphics([g1, (g2, (0.2, 0.55, 0.3, 0.3))])",
           "want": "Multigraphics with 2 elements\n",
           "tags": [],
@@ -28073,9 +28073,9 @@
         "name": "parametric_plot",
         "qualified": "parametric_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5564,
+        "line": 5572,
         "excerpt": {
-          "start_line": 5552,
+          "start_line": 5560,
           "text": "        \"constructor\": \"plot\",\n        \"source\": {\"expressions\": [str(value) for value in functions]},\n        \"ranges\": [[xmin, xmax]],\n        \"sampling\": {} if sampling_context is None else sampling_context,\n    }\n    return answer.with_plot_spec_context(\n        provenance=provenance,\n        source_intent={\"frontend_constructor\": \"plot\"},\n        diagnostics=_curve_diagnostics(all_diagnostics),\n    )\n\n\ndef parametric_plot(\n    functions: Sequence[Any],\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a two-component parametric plane curve.\"\"\"\n    components = list(functions)\n    if len(components) != 2:\n        raise ValueError(\"parametric_plot() requires exactly two components\")\n    minimum, maximum = _plot_range(range_args)\n    variable = _plot_variable(range_args)\n    count = int(_option_pop(options, \"plot_points\", 200))\n    if count < 2:"
         }
       },
@@ -28289,7 +28289,7 @@
       "examples": [
         {
           "id": "src/baselib/graphics.py#e95372572f18dc14-e3b0c44298fc1c14",
-          "line": 5310,
+          "line": 5318,
           "source": "g = plot(sin(x), (x, 0, 2*pi), color='navy')",
           "want": "",
           "tags": [],
@@ -28305,7 +28305,7 @@
         },
         {
           "id": "src/baselib/graphics.py#130e66d323a7c490-6b86b273ff34fce1",
-          "line": 5311,
+          "line": 5319,
           "source": "len(g)",
           "want": "1\n",
           "tags": [],
@@ -28373,9 +28373,9 @@
         "name": "plot_loglog",
         "qualified": "plot_loglog",
         "path": "src/baselib/graphics.py",
-        "line": 6357,
+        "line": 6365,
         "excerpt": {
-          "start_line": 6345,
+          "start_line": 6353,
           "text": "            if index + 1 < len(points):\n                path.append((points[index + 1][0], points[index][1]))\n        return line(path, **options)\n    answer = Graphics()\n    for index in range(len(points) - 1):\n        answer = answer + line(\n            [points[index], (points[index + 1][0], points[index][1])],\n            **options,\n        )\n    return answer\n\n\ndef plot_loglog(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,"
         }
       },
@@ -28433,9 +28433,9 @@
         "name": "plot_semilogx",
         "qualified": "plot_semilogx",
         "path": "src/baselib/graphics.py",
-        "line": 6367,
+        "line": 6375,
         "excerpt": {
-          "start_line": 6355,
+          "start_line": 6363,
           "text": "\n\ndef plot_loglog(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,"
         }
       },
@@ -28493,9 +28493,9 @@
         "name": "plot_semilogy",
         "qualified": "plot_semilogy",
         "path": "src/baselib/graphics.py",
-        "line": 6377,
+        "line": 6385,
         "excerpt": {
-          "start_line": 6365,
+          "start_line": 6373,
           "text": "\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return plot(funcs, *range_args, **options)\n\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -28553,9 +28553,9 @@
         "name": "plot_slope_field",
         "qualified": "plot_slope_field",
         "path": "src/baselib/graphics.py",
-        "line": 6148,
+        "line": 6156,
         "excerpt": {
-          "start_line": 6136,
+          "start_line": 6144,
           "text": "        PlotField(\n            sampled[0],\n            sampled[1],\n            sampled[2],\n            sampled[3],\n            sampled[4],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef plot_slope_field(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot short normalized line segments with slope `function_value`.\n    \"\"\"\n    xvariable = _plot_variable([xrange])\n    yvariable = _plot_variable([yrange])\n    slope = _plot_callable_2d(function_value, xvariable, yvariable)\n"
         }
       },
@@ -28613,9 +28613,9 @@
         "name": "plot_step_function",
         "qualified": "plot_step_function",
         "path": "src/baselib/graphics.py",
-        "line": 6332,
+        "line": 6340,
         "excerpt": {
-          "start_line": 6320,
+          "start_line": 6328,
           "text": "    values = list(data)\n    if len(values) == 0:\n        return Graphics()\n    if isinstance(values[0], (list, tuple)):\n        points = [_point_pair(value) for value in values]\n    else:\n        points = [(float(index), float(values[index])) for index in range(len(values))]\n    if plotjoined:\n        return line(points, **options)\n    return point(points, **options)\n\n\ndef plot_step_function(\n    values: Any,\n    vertical_lines: bool = True,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the step function defined by a sequence of `(x, y)` pairs.\"\"\"\n    points = sorted([_point_pair(value) for value in values])\n    if len(points) <= 1:\n        return line([], **options)\n    if vertical_lines:\n        path = []\n        for index in range(len(points)):\n            path.append(points[index])"
         }
       },
@@ -28673,9 +28673,9 @@
         "name": "plot_vector_field",
         "qualified": "plot_vector_field",
         "path": "src/baselib/graphics.py",
-        "line": 6107,
+        "line": 6115,
         "excerpt": {
-          "start_line": 6095,
+          "start_line": 6103,
           "text": "        \"flip_y\": True,\n        \"ticks_integer\": True,\n        \"aspect_ratio\": 1,\n    }\n    _option_update(defaults, _copy_options(options))\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Density(xvalues, yvalues, values, defaults))\n    return graphic\n\n\ndef plot_vector_field(\n    functions: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot a two-dimensional vector field on a rectangular sample grid.\n\n    The two components may be symbolic expressions or callables.  Invalid\n    values are omitted, matching Sage's masked-vector behavior.\n    \"\"\"\n    defaults = {"
         }
       },
@@ -28870,9 +28870,9 @@
         "name": "point",
         "qualified": "point",
         "path": "src/baselib/graphics.py",
-        "line": 3462,
+        "line": 3470,
         "excerpt": {
-          "start_line": 3450,
+          "start_line": 3458,
           "text": "    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(\n        Arrow(\n            [tail[0], head[0]],\n            [tail[1], head[1]],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef point(points: Any, **options: Any) -> Graphics:\n    \"\"\"Return a graphics object containing one or more points.\"\"\"\n    options = _copy_options(options)\n    normalized = _normalize_points(points)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"size\": 10,\n        \"faceted\": False,\n        \"legend_label\": None,\n        \"legend_color\": None,\n        \"marker\": \"o\",\n        \"markeredgecolor\": None,"
         }
       },
@@ -29093,9 +29093,9 @@
         "name": "polar_plot",
         "qualified": "polar_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5610,
+        "line": 5618,
         "excerpt": {
-          "start_line": 5598,
+          "start_line": 5606,
           "text": "\n            callables.append(constant)\n    step = (maximum - minimum) / float(count - 1)\n    points = []\n    for index in range(count):\n        value = maximum if index == count - 1 else minimum + index * step\n        points.append(\n            (_finite_value(callables[0](value)), _finite_value(callables[1](value)))\n        )\n    return line(points, **options)\n\n\ndef polar_plot(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot one or more functions in polar coordinates.\n\n    The input function gives the radius `r` as a function of angle `theta`.\n    All adaptive sampling and line options accepted by `plot` are supported.\n    \"\"\"\n    radial = plot(funcs, *range_args, **options)\n    answer = Graphics()"
         }
       },
@@ -29153,9 +29153,9 @@
         "name": "polygon",
         "qualified": "polygon",
         "path": "src/baselib/graphics.py",
-        "line": 3567,
+        "line": 3575,
         "excerpt": {
-          "start_line": 3555,
+          "start_line": 3563,
           "text": "    options = _copy_options(options)\n    if _option_has(options, \"markersize\") and not _option_has(options, \"size\"):\n        options[\"size\"] = _option_pop(options, \"markersize\")\n    if _option_has(options, \"facecolor\") and not _option_has(options, \"color\"):\n        options[\"color\"] = _option_pop(options, \"facecolor\")\n    if _option_has(options, \"edgecolor\") and not _option_has(\n        options, \"markeredgecolor\"\n    ):\n        options[\"markeredgecolor\"] = _option_pop(options, \"edgecolor\")\n    return point(datalist, **options)\n\n\ndef polygon(points: Any, **options: Any) -> Graphics:\n    \"\"\"Return a filled polygon through `points`.\"\"\"\n    options = _copy_options(options)\n    normalized = _normalize_points(points)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"edgecolor\": None,\n        \"fill\": True,\n        \"thickness\": None,\n        \"legend_label\": None,\n        \"legend_color\": None,\n        \"linestyle\": \"-\","
         }
       },
@@ -29868,9 +29868,9 @@
         "name": "rainbow",
         "qualified": "rainbow",
         "path": "src/baselib/graphics.py",
-        "line": 2960,
+        "line": 2968,
         "excerpt": {
-          "start_line": 2948,
+          "start_line": 2956,
           "text": "        raise AttributeError(\"unknown color '\" + name + \"'\")\n\n\n_color_values = {}\nfor _color_name in _NAMED_COLORS:\n    _color_values[_color_name] = Color(_option_get(_NAMED_COLORS, _color_name))\ncolors = ColorsDict(_color_values)\nfor _color_name in _NAMED_COLORS:\n    colors[_color_name] = _option_get(_color_values, _color_name)\n    runtime.reflect.set(runtime.global_object, _color_name, colors[_color_name])\n\n\ndef rainbow(count: int, format: str = \"hex\") -> list[Any]:\n    \"\"\"Return `count` evenly spaced hues as hex strings or RGB tuples.\"\"\"\n    size = int(count)\n    values = [hue(index / float(size)) for index in range(size)]\n    if format == \"rgbtuple\":\n        return values\n    if format == \"hex\":\n        return [Color(value).html_color() for value in values]\n    raise ValueError(\"format must be 'hex' or 'rgbtuple'\")\n\n\nclass Colormaps(dict):  # pyright: ignore[reportMissingTypeArgument]\n    \"\"\"Small portable collection of common Plotly-compatible colormaps.\"\"\""
         }
       },
@@ -30044,9 +30044,9 @@
         "name": "region_plot",
         "qualified": "region_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5989,
+        "line": 5997,
         "excerpt": {
-          "start_line": 5977,
+          "start_line": 5985,
           "text": "        function_value = function_value._plot_zero_set_expression()\n    options = _copy_options(options)\n    options[\"contours\"] = [0]\n    options[\"colorbar\"] = False\n    if not _option_has(options, \"fill\"):\n        options[\"fill\"] = False\n    if _option_has(options, \"fillcolor\") and not _option_has(options, \"cmap\"):\n        fillcolor = _option_get(options, \"fillcolor\")\n        options[\"cmap\"] = [fillcolor, fillcolor]\n    return contour_plot(function_value, xrange, yrange, **options)\n\n\ndef region_plot(\n    functions: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the region where one or more boolean functions are true.\"\"\"\n    options = _copy_options(options)\n    plot_points = _option_pop(options, \"plot_points\", 100)\n    xminimum, xmaximum = _plot_range([xrange])\n    yminimum, ymaximum = _plot_range([yrange])\n    xvariable = _plot_variable([xrange])\n    yvariable = _plot_variable([yrange])"
         }
       },
@@ -30157,9 +30157,9 @@
         "name": "rgbcolor",
         "qualified": "rgbcolor",
         "path": "src/baselib/graphics.py",
-        "line": 2808,
+        "line": 2816,
         "excerpt": {
-          "start_line": 2796,
+          "start_line": 2804,
           "text": "            return minimum + (maximum - minimum) * position * 6.0\n        if position < 0.5:\n            return maximum\n        if position < 2.0 / 3.0:\n            return minimum + (maximum - minimum) * (2.0 / 3.0 - position) * 6.0\n        return minimum\n\n    return runtime.math_tuple(\n        [component(1.0 / 3.0), component(0), component(-1.0 / 3.0)]\n    )\n\n\ndef rgbcolor(value: Any, space: str = \"rgb\") -> tuple[float, float, float]:\n    \"\"\"Convert a Sage color specification to an RGB triple.\"\"\"\n    if hasattr(value, \"rgb\"):\n        return value.rgb()\n    if runtime.jstype(value) == \"string\":\n        return _html_rgb(value)\n    values = list(value)\n    if len(values) != 3:\n        raise ValueError(\"a color must contain exactly three components\")\n    components = [_color_mod_one(component) for component in values]\n    normalized_space = runtime.reflect.apply(\n        runtime.reflect.get(runtime.string_class.prototype, \"toLowerCase\"),\n        space,"
         }
       },
@@ -30323,9 +30323,9 @@
         "name": "scatter_plot",
         "qualified": "scatter_plot",
         "path": "src/baselib/graphics.py",
-        "line": 3553,
+        "line": 3561,
         "excerpt": {
-          "start_line": 3541,
+          "start_line": 3549,
           "text": "        \"bins\": 10,\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):\n        options[\"rgbcolor\"] = _option_pop(options, \"color\")\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Histogram([float(value) for value in values], defaults))\n    return graphic\n\n\ndef scatter_plot(datalist: Any, **options: Any) -> Graphics:\n    r\"\"\"Return a Sage-compatible scatter plot of `(x, y)` points.\"\"\"\n    options = _copy_options(options)\n    if _option_has(options, \"markersize\") and not _option_has(options, \"size\"):\n        options[\"size\"] = _option_pop(options, \"markersize\")\n    if _option_has(options, \"facecolor\") and not _option_has(options, \"color\"):\n        options[\"color\"] = _option_pop(options, \"facecolor\")\n    if _option_has(options, \"edgecolor\") and not _option_has(\n        options, \"markeredgecolor\"\n    ):\n        options[\"markeredgecolor\"] = _option_pop(options, \"edgecolor\")\n    return point(datalist, **options)\n"
         }
       },
@@ -30414,9 +30414,9 @@
         "name": "show",
         "qualified": "Graphics.show",
         "path": "src/baselib/graphics.py",
-        "line": 2598,
+        "line": 2606,
         "excerpt": {
-          "start_line": 2586,
+          "start_line": 2594,
           "text": "        )\n        if hook is runtime.undefined:\n            raise NotImplementedError(\n                \"graphics file export is not available in this host\"\n            )\n        runtime.reflect.apply(\n            hook,\n            runtime.undefined,\n            [self, filename, options],\n        )\n        return self\n\n    def show(self, **options: Any) -> Graphics:\n        if len(options):\n            self.set_extra_kwds(options)\n        return self\n\n\ndef _graphics_from_plotly(figure: Any) -> Graphics:\n    \"\"\"Convert a renderer-neutral Plotly figure to composable `Graphics`.\"\"\"\n    answer = Graphics()\n    data = runtime.reflect.get(figure, \"data\")\n    if data is not runtime.undefined:\n        for trace in data:\n            answer.add_primitive(_PlotlyPrimitive(trace))"
         }
       },
@@ -30721,9 +30721,9 @@
         "name": "streamline_plot",
         "qualified": "streamline_plot",
         "path": "src/baselib/graphics.py",
-        "line": 6178,
+        "line": 6186,
         "excerpt": {
-          "start_line": 6166,
+          "start_line": 6174,
           "text": "        current = float(slope(xvalue, yvalue))\n        return current / runtime.math.sqrt(current * current + 1.0)\n\n    slope_options = {\n        \"headaxislength\": 0,\n        \"headlength\": 1e-9,\n        \"pivot\": \"middle\",\n    }\n    _option_update(slope_options, _copy_options(options))\n    return plot_vector_field((horizontal, vertical), xrange, yrange, **slope_options)\n\n\ndef streamline_plot(\n    functions: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot integral curves of a vector field or first-order slope field.\n\n    Streamlines are integrated in both directions with a deterministic\n    midpoint method.  `density` controls seed count and integration step;\n    `start_points` supplies explicit seeds.\n    \"\"\""
         }
       },
@@ -30931,9 +30931,9 @@
         "name": "text",
         "qualified": "text",
         "path": "src/baselib/graphics.py",
-        "line": 3607,
+        "line": 3615,
         "excerpt": {
-          "start_line": 3595,
+          "start_line": 3603,
           "text": "    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(\n        Polygon(\n            [value[0] for value in normalized],\n            [value[1] for value in normalized],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef text(\n    string: Any,\n    position: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Return a graphics object containing a positioned text label.\"\"\"\n    options = _copy_options(options)\n    normalized_position = _point_pair(position)\n    defaults = {\n        \"fontsize\": 10,\n        \"rgbcolor\": [0, 0, 1],\n        \"horizontal_alignment\": \"center\",\n        \"vertical_alignment\": \"center\","
         }
       },
