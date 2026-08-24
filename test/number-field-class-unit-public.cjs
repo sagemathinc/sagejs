@@ -362,6 +362,9 @@ assert resources["cubic_specialized_seed_skips"] == 1
 assert resources["relation_attempts"] == 0
 assert resources["relation_candidates"] == 0
 assert resources["presentation_extractions"] == 0
+assert resources["generation_verification_calls"] == 1
+assert resources["generation_verification_live_authentication_hits"] == 1
+assert resources["generation_context_artifact_reuses"] == 0
 assert resources["saturation_live_authentication_requests"] == 1
 assert resources["saturation_live_authentication_hits"] == 1
 assert resources["saturation_live_authentication_fallback_replays"] == 0
@@ -567,6 +570,7 @@ assert live_context["has_presentation"]
 assert live_context["has_analytic_workspace"]
 assert live_context["has_analytic_proof"]
 assert live_context["has_generation_authority"]
+assert live_context["generation_artifact_producer_authenticated"]
 assert not live_context["generation_verification_active"]
 assert live_context["generation_verification_entries"] >= 1
 assert live_context["has_saturation_record"]

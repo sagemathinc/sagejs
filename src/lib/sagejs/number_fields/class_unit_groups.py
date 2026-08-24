@@ -1312,6 +1312,7 @@ class ClassUnitGroupEngine:
             "generation_verification_cache_hits": 0,
             "generation_verification_live_authentication_hits": 0,
             "generation_verification_full_replays": 0,
+            "generation_context_artifact_reuses": 0,
             "generation_live_relation_payload_hits": 0,
             "generation_reconstruction_calls": 0,
             "generation_reconstruction_cache_hits": 0,
@@ -1606,6 +1607,30 @@ class ClassUnitGroupEngine:
             and self._live_context_token is not None
             and consume(self._live_context_token, cache_key, evidence)
         )
+
+    def _context_generation_artifact(
+        self,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        proof_status: str,
+    ) -> tuple[Any, tuple[str, str, str]] | None:
+        retained = getattr(self.context, "_live_generation_artifact", None)
+        if not callable(retained) or self._live_context_token is None:
+            return None
+        value: Any = retained(
+            self._live_context_token,
+            plan,
+            factor_base,
+            collector,
+            presentation,
+            proof_status,
+        )
+        if value is None:
+            return None
+        evidence, hashes = value
+        return evidence, (str(hashes[0]), str(hashes[1]), str(hashes[2]))
 
     def _context_generation_verification_cached(self, cache_key: str) -> bool:
         cached = getattr(self.context, "_live_generation_verification_cached", None)
@@ -3478,47 +3503,69 @@ class ClassUnitGroupEngine:
         _defer_live_authentication: bool = False,
     ) -> tuple[dict[str, Any], Any]:
         """Bind the exact class-generation theorem consumed by `h*R`."""
-        relation_payloads: Any = None
-        context_relation_payloads = getattr(
-            self.context, "_live_relation_payloads", None
+        retained_artifact = self._context_generation_artifact(
+            plan, factor_base, collector, presentation, proof_status
         )
-        if callable(context_relation_payloads) and self._live_context_token is not None:
-            try:
-                live_values: Any = context_relation_payloads(
-                    self._live_context_token, collector, presentation
-                )
-                if live_values is not None:
-                    relation_payloads = list(live_values)
-            except (AttributeError, TypeError, ValueError, ArithmeticError):
-                relation_payloads = None
-        if relation_payloads is None:
-            relation_payloads = [
-                _component_payload(record) for record in collector.records
-            ]
+        if retained_artifact is not None:
+            evidence, retained_hashes = retained_artifact
+            (
+                evidence_sha256,
+                relations_sha256,
+                presentation_sha256,
+            ) = retained_hashes
+            self._resource_usage["generation_context_artifact_reuses"] += 1
         else:
-            self._resource_usage["generation_live_relation_payload_hits"] += 1
-        evidence = {
-            "schema": "sagejs.number-fields/class-generation-authority-v1",
-            "proof_status": proof_status,
-            "theorem": str(plan.theorem),
-            "assumptions": list(plan.assumptions),
-            "bound": int(plan.bound),
-            "factor_base": [_component_payload(prime) for prime in factor_base],
-            "relations": relation_payloads,
-            "presentation": _component_payload(presentation),
-        }
-        (
-            evidence_sha256,
-            relations_sha256,
-            presentation_sha256,
-        ) = _generation_evidence_digests(evidence)
-        bind_generation = getattr(self.context, "_bind_live_generation_evidence", None)
-        if callable(bind_generation) and self._live_context_token is not None:
-            bind_generation(
-                self._live_context_token,
-                evidence,
-                (evidence_sha256, relations_sha256, presentation_sha256),
+            relation_payloads: Any = None
+            context_relation_payloads = getattr(
+                self.context, "_live_relation_payloads", None
             )
+            if (
+                callable(context_relation_payloads)
+                and self._live_context_token is not None
+            ):
+                try:
+                    live_values: Any = context_relation_payloads(
+                        self._live_context_token, collector, presentation
+                    )
+                    if live_values is not None:
+                        relation_payloads = list(live_values)
+                except (AttributeError, TypeError, ValueError, ArithmeticError):
+                    relation_payloads = None
+            if relation_payloads is None:
+                relation_payloads = [
+                    _component_payload(record) for record in collector.records
+                ]
+            else:
+                self._resource_usage["generation_live_relation_payload_hits"] += 1
+            evidence = {
+                "schema": "sagejs.number-fields/class-generation-authority-v1",
+                "proof_status": proof_status,
+                "theorem": str(plan.theorem),
+                "assumptions": list(plan.assumptions),
+                "bound": int(plan.bound),
+                "factor_base": [_component_payload(prime) for prime in factor_base],
+                "relations": relation_payloads,
+                "presentation": _component_payload(presentation),
+            }
+            (
+                evidence_sha256,
+                relations_sha256,
+                presentation_sha256,
+            ) = _generation_evidence_digests(evidence)
+            bind_generation = getattr(
+                self.context, "_bind_live_generation_evidence", None
+            )
+            if callable(bind_generation) and self._live_context_token is not None:
+                bind_generation(
+                    self._live_context_token,
+                    plan,
+                    factor_base,
+                    collector,
+                    presentation,
+                    proof_status,
+                    evidence,
+                    (evidence_sha256, relations_sha256, presentation_sha256),
+                )
         cache_key = _canonical_payload_hash(
             {
                 "evidence_sha256": evidence_sha256,

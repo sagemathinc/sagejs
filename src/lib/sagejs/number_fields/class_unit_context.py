@@ -45,6 +45,20 @@ ALGORITHMS = (
 
 _LIVE_CLASS_UNIT_CONTEXT_TOKEN = object()
 
+_CLASS_GENERATION_AUTHORITY_SCHEMA = (
+    "sagejs.number-fields/class-generation-authority-v1"
+)
+_CLASS_GENERATION_AUTHORITY_KEYS = {
+    "schema",
+    "proof_status",
+    "theorem",
+    "assumptions",
+    "bound",
+    "factor_base",
+    "relations",
+    "presentation",
+}
+
 _SEQUENCE_COMPONENTS = ("factor_base", "relations", "saturation_history")
 _SINGLE_COMPONENTS = (
     "search_state",
@@ -439,6 +453,103 @@ class _LiveCubicRelationPrefix:
         runtime.object.freeze(self)
 
 
+class _LiveClassGenerationArtifact:
+    """Canonical generation state for one uninterrupted engine transaction.
+
+    The cryptographic component digests remain the portable certificate
+    identity.  This live companion additionally binds those bytes to the exact
+    plan, factor-base, collector, and presentation objects which produced
+    them.  A reusable context has no callback, cancellation, or checkpoint
+    boundary between publication and consumption, so exact live object
+    identity is sufficient there.  Detached contexts never receive this
+    object and continue through cryptographic payload replay.
+    """
+
+    def __init__(
+        self,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        proof_status: str,
+        evidence: Any,
+        hashes: tuple[str, str, str],
+        *,
+        producer_authenticated: bool,
+    ) -> None:
+        if (
+            not isinstance(evidence, dict)
+            or set(evidence) != _CLASS_GENERATION_AUTHORITY_KEYS
+            or evidence.get("schema") != _CLASS_GENERATION_AUTHORITY_SCHEMA
+            or str(evidence.get("proof_status")) != str(proof_status)
+            or str(evidence.get("theorem")) != str(plan.theorem)
+            or tuple(evidence.get("assumptions", ())) != tuple(plan.assumptions)
+            or int(evidence.get("bound", 0)) != int(plan.bound)
+        ):
+            raise ValueError("live class-generation evidence is inconsistent")
+        if len(hashes) != 3 or any(
+            not isinstance(value, str) or len(value) != 64 for value in hashes
+        ):
+            raise ValueError("live class-generation hashes are malformed")
+        self.plan = plan
+        self.factor_base = factor_base
+        self.collector = collector
+        self.presentation = presentation
+        self.proof_status = str(proof_status)
+        self.evidence = evidence
+        self.hashes: tuple[str, str, str] = (
+            str(hashes[0]),
+            str(hashes[1]),
+            str(hashes[2]),
+        )
+        self.producer_authenticated = bool(producer_authenticated)
+        self.live_authority_available = bool(producer_authenticated)
+        self.verification_cache: dict[str, bool] = {}
+
+    def matches_stage(
+        self,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        proof_status: str,
+    ) -> bool:
+        return bool(
+            plan is self.plan
+            and collector is self.collector
+            and presentation is self.presentation
+            and str(proof_status) == self.proof_status
+            and len(factor_base) == len(self.factor_base)
+            and all(
+                retained is supplied
+                for retained, supplied in zip(
+                    self.factor_base, factor_base, strict=True
+                )
+            )
+        )
+
+    def consume(self, cache_key: str, evidence: Any) -> bool:
+        if not self.live_authority_available or evidence is not self.evidence:
+            return False
+        self.live_authority_available = False
+        self.verification_cache[str(cache_key)] = True
+        return True
+
+    def cached(self, cache_key: str) -> bool:
+        return self.verification_cache.get(str(cache_key)) is True
+
+    def retain(self, cache_key: str) -> None:
+        self.verification_cache[str(cache_key)] = True
+
+    def renew_authority(self) -> None:
+        if not self.producer_authenticated or self.live_authority_available:
+            raise ValueError("live class-generation authority cannot be renewed")
+        self.live_authority_available = True
+
+    def deactivate(self) -> None:
+        self.live_authority_available = False
+
+
 class _LiveClassUnitArtifacts:
     """Producer-owned algebraic state excluded from detached checkpoints.
 
@@ -473,10 +584,7 @@ class _LiveClassUnitArtifacts:
         self.analytic_workspace = analytic_workspace
         self.factored_logarithm_workspace = factored_logarithm_workspace
         self.analytic_proof: tuple[Any, ...] | None = None
-        self.generation_evidence: Any = None
-        self.generation_hashes: tuple[str, str, str] | None = None
-        self.generation_verification_cache: dict[str, bool] = {}
-        self.generation_live_authority_available = False
+        self.generation_artifact: _LiveClassGenerationArtifact | None = None
         self.generation_verification_active = True
         self.saturation_record: Any = None
         self.saturation_live_authority_available = False
@@ -632,43 +740,94 @@ class _LiveClassUnitArtifacts:
         return tuple(record.to_dict() for record in self.relations)
 
     def bind_generation_evidence(
-        self, evidence: Any, hashes: tuple[str, str, str]
+        self,
+        plan: Any,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        proof_status: str,
+        evidence: Any,
+        hashes: tuple[str, str, str],
     ) -> None:
         if self.sealed:
             raise ValueError("a sealed class/unit context cannot accept evidence")
-        self.generation_evidence = evidence
-        self.generation_hashes = (
-            str(hashes[0]),
-            str(hashes[1]),
-            str(hashes[2]),
+        factors = tuple(factor_base)
+        plan_order = getattr(plan, "order", None)
+        factor_identity_matches = bool(
+            self.factor_base_bound
+            and len(factors) == len(self.factor_base)
+            and all(
+                retained is supplied
+                for retained, supplied in zip(self.factor_base, factors, strict=True)
+            )
         )
-        self.generation_live_authority_available = self.reusable
+        producer_authenticated = bool(
+            self.reusable
+            and plan_order is self.order
+            and factor_identity_matches
+            and self.relation_stage_authenticated(collector, presentation)
+        )
+        self.generation_artifact = _LiveClassGenerationArtifact(
+            plan,
+            factors,
+            collector,
+            presentation,
+            proof_status,
+            evidence,
+            hashes,
+            producer_authenticated=producer_authenticated,
+        )
 
     def consume_generation_authority(self, cache_key: str, evidence: Any) -> bool:
+        artifact = self.generation_artifact
+        if self.sealed or not self.generation_verification_active or artifact is None:
+            return False
+        return artifact.consume(cache_key, evidence)
+
+    def retained_generation_artifact(
+        self,
+        plan: Any,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        proof_status: str,
+    ) -> tuple[Any, tuple[str, str, str]] | None:
+        artifact = self.generation_artifact
+        factors = tuple(factor_base)
         if (
             self.sealed
+            or not self.reusable
             or not self.generation_verification_active
-            or not self.generation_live_authority_available
-            or evidence is not self.generation_evidence
+            or artifact is None
+            or not artifact.producer_authenticated
+            or artifact.live_authority_available
+            or not artifact.matches_stage(
+                plan, factors, collector, presentation, proof_status
+            )
+            or not self.relation_stage_authenticated(collector, presentation)
         ):
-            return False
-        self.generation_live_authority_available = False
-        self.generation_verification_cache[str(cache_key)] = True
-        return True
+            return None
+        artifact.renew_authority()
+        return artifact.evidence, artifact.hashes
 
     def generation_verification_cached(self, cache_key: str) -> bool:
+        artifact = self.generation_artifact
         return bool(
             self.generation_verification_active
-            and self.generation_verification_cache.get(str(cache_key)) is True
+            and artifact is not None
+            and artifact.cached(cache_key)
         )
 
     def retain_generation_verification(self, cache_key: str) -> None:
-        if self.generation_verification_active:
-            self.generation_verification_cache[str(cache_key)] = True
+        artifact = self.generation_artifact
+        if self.generation_verification_active and artifact is not None:
+            artifact.retain(cache_key)
 
     def deactivate_generation_verification(self) -> None:
         self.generation_verification_active = False
-        self.generation_live_authority_available = False
+        artifact = self.generation_artifact
+        if artifact is not None:
+            artifact.deactivate()
 
     def bind_analytic_proof(self, proof: Iterable[Any]) -> None:
         if self.sealed:
@@ -681,11 +840,12 @@ class _LiveClassUnitArtifacts:
     def dependency_hashes(
         self, collector: Any, presentation: Any
     ) -> tuple[str, str] | None:
-        if self.generation_hashes is None or not self.relation_stage_authenticated(
+        artifact = self.generation_artifact
+        if artifact is None or not self.relation_stage_authenticated(
             collector, presentation
         ):
             return None
-        return self.generation_hashes[1], self.generation_hashes[2]
+        return artifact.hashes[1], artifact.hashes[2]
 
     def retain_dependency_units(
         self,
@@ -882,9 +1042,17 @@ class _LiveClassUnitArtifacts:
             "unit_count": len(self.factored_units),
             "has_analytic_workspace": self.analytic_workspace is not None,
             "has_analytic_proof": self.analytic_proof is not None,
-            "has_generation_authority": self.generation_hashes is not None,
+            "has_generation_authority": self.generation_artifact is not None,
+            "generation_artifact_producer_authenticated": bool(
+                self.generation_artifact is not None
+                and self.generation_artifact.producer_authenticated
+            ),
             "generation_verification_active": self.generation_verification_active,
-            "generation_verification_entries": len(self.generation_verification_cache),
+            "generation_verification_entries": (
+                0
+                if self.generation_artifact is None
+                else len(self.generation_artifact.verification_cache)
+            ),
             "has_saturation_record": self.saturation_record is not None,
             "saturation_live_authority_available": (
                 self.saturation_live_authority_available
@@ -1100,6 +1268,11 @@ class ClassUnitGroupContext:
     def _bind_live_generation_evidence(
         self,
         token: Any,
+        plan: Any,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        proof_status: str,
         evidence: Any,
         hashes: tuple[str, str, str],
     ) -> None:
@@ -1107,7 +1280,15 @@ class ClassUnitGroupContext:
             raise TypeError("live generation evidence is engine-owned")
         live = self._live_artifacts
         if live is not None:
-            live.bind_generation_evidence(evidence, hashes)
+            live.bind_generation_evidence(
+                plan,
+                factor_base,
+                collector,
+                presentation,
+                proof_status,
+                evidence,
+                hashes,
+            )
 
     def _consume_live_generation_authority(
         self, token: Any, cache_key: str, evidence: Any
@@ -1117,6 +1298,24 @@ class ClassUnitGroupContext:
         live = self._live_artifacts
         return bool(
             live is not None and live.consume_generation_authority(cache_key, evidence)
+        )
+
+    def _live_generation_artifact(
+        self,
+        token: Any,
+        plan: Any,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        proof_status: str,
+    ) -> tuple[Any, tuple[str, str, str]] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live generation artifact is engine-owned")
+        live = self._live_artifacts
+        if live is None:
+            return None
+        return live.retained_generation_artifact(
+            plan, factor_base, collector, presentation, proof_status
         )
 
     def _live_generation_verification_cached(self, token: Any, cache_key: str) -> bool:

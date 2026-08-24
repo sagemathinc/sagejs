@@ -1205,7 +1205,9 @@ class FakeRelation:
         return {"certified": tuple(factor_base) == (prime,)}
 
 class FakeCollector:
-    def __init__(self):
+    def __init__(self, order, factor_base):
+        self.order = order
+        self.factor_base = tuple(factor_base)
         self.records = (FakeRelation(),)
         self._rows = {}
         self._row_requests = 0
@@ -1224,9 +1226,12 @@ class FakeCollector:
             "row_requests": self._row_requests,
             "row_hits": self._row_hits,
         }
+    def _all_records_live_authenticated(self, token):
+        return token is relation_module._LIVE_VERIFIED_RELATION_PREFIX_TOKEN
 
 class FakePresentation:
     order = 1
+    relation_rows = (object(),)
     def to_dict(self):
         return {"schema": "fake-presentation-v1", "order": 1}
     def verify(self):
@@ -1234,15 +1239,21 @@ class FakePresentation:
         return True
 
 class FakePlan:
-    theorem = "BDF factor-base theorem"
-    assumptions = ("GRH",)
-    bound = 17
+    def __init__(self, order):
+        self.order = order
+        self.theorem = "BDF factor-base theorem"
+        self.assumptions = ("GRH",)
+        self.bound = 17
 
+relation_module = __import__(
+    "sagejs.number_fields.class_group_relations",
+    fromlist=["class_group_relations"],
+)
 class Components:
     context = None
     factored = object()
     factor_base = FakeFactorBase
-    relations = object()
+    relations = relation_module
     matrix = object()
     analytic = object()
     def missing(self):
@@ -1254,9 +1265,13 @@ K = NumberField(x - 1, "a")
 engine = ClassUnitGroupEngine(
     K, algorithm="buchmann-hecke", components=Components()
 )
-collector = FakeCollector()
+collector = FakeCollector(engine.order, (prime,))
+plan = FakePlan(engine.order)
+presentation = FakePresentation()
+engine._bind_context_factor_base((prime,), validated=True)
+assert engine._bind_context_relations((prime,), collector, presentation)
 evidence, verifier = engine._generation_authority(
-    FakePlan(), (prime,), collector, FakePresentation(),
+    plan, (prime,), collector, presentation,
     EXACT_RELATIONS_CONDITIONAL_GRH,
 )
 assert counts == {
@@ -1270,12 +1285,26 @@ assert engine._resource_usage["generation_reconstruction_cache_hits"] == 0
 assert engine._resource_usage[
     "generation_verification_live_authentication_hits"
 ] == 1
+assert engine._resource_usage["generation_verification_full_replays"] == 0
 evidence["bound"] = 19
 assert not verifier(
     K, K.maximal_order(), (), 1, evidence,
     EXACT_RELATIONS_CONDITIONAL_GRH,
 )
 evidence["bound"] = 17
+retained_records = collector.records
+collector.records = retained_records + (FakeRelation(),)
+assert engine._context_generation_artifact(
+    plan, (prime,), collector, presentation,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+) is None
+collector.records = retained_records
+evidence["factor_base"][0]["prime"] = 3
+assert not verifier(
+    K, K.maximal_order(), (), 1, evidence,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+)
+evidence["factor_base"][0]["prime"] = 2
 for _index in range(2):
     assert verifier(
         K, K.maximal_order(), (), 1, evidence,
@@ -1289,7 +1318,16 @@ assert counts == {
 }
 assert engine._resource_usage["generation_reconstruction_calls"] == 0
 assert engine._resource_usage["generation_reconstruction_cache_hits"] == 0
+retained_evidence, retained_verifier = engine._generation_authority(
+    plan, (prime,), collector, presentation,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+)
+assert retained_evidence is evidence
+assert engine._resource_usage["generation_context_artifact_reuses"] == 1
 assert engine._resource_usage["generation_verification_cache_hits"] == 2
+assert engine._resource_usage[
+    "generation_verification_live_authentication_hits"
+] == 2
 assert engine.context.live_diagnostics()["generation_verification_active"]
 assert engine.context.live_diagnostics()["generation_verification_entries"] == 1
 engine._deactivate_context_generation_verification()
