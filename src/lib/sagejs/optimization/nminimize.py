@@ -306,6 +306,7 @@ def nminimize(
     seed: int = 0,
     penalty_scale: float = 1.0,
     maximize: bool = False,
+    head: str = "NMinimize",
 ) -> GlobalResult:
     """Search for a global minimum of `objective`, Wolfram `NMinimize`-style.
 
@@ -348,6 +349,14 @@ def nminimize(
             `penalty_scale / tolerance ** 2`; see the module docstring.
         maximize: When `True`, minimize `-objective` and report the original
             objective's value — this is exactly what `NMaximize` is.
+        head: The actual Wolfram head the caller is implementing --
+            `wolfram.py`'s `_optimize` passes `"NMaximize"`, `"NMinValue"`,
+            `"NMaxValue"`, `"NArgMin"` or `"NArgMax"` here for the other
+            five global heads it shares this one engine with, so the
+            unknown-method and rejected-method messages below name the
+            head actually called rather than always saying `NMinimize`.
+            Defaults to `"NMinimize"` for a caller reaching this function
+            directly, as this module's own name suggests.
 
     Returns:
         A `GlobalResult` whose `x` is the best point found (with integer
@@ -403,11 +412,11 @@ def nminimize(
         extra = 0
     elif method in _REJECTED_METHODS:
         raise NotImplementedError(
-            "NMinimize method %r is a third-party or convex-only solver that "
-            "Sage.js does not link" % (method,)
+            "%s method %r is a third-party or convex-only solver that "
+            "Sage.js does not link" % (head, method)
         )
     else:
-        raise ValueError("unknown NMinimize method %r" % (method,))
+        raise ValueError("unknown %s method %r" % (head, method))
 
     if polish:
         outcome = _post_process(

@@ -327,8 +327,16 @@ def _optimize(
     tolerance: float,
     seed: int,
     penalty_scale: float,
+    head: str,
 ) -> Any:
-    """Run the engine and return `[result, variable_names]`."""
+    """Run the engine and return `[result, variable_names]`.
+
+    `head` is the actual Wolfram head the caller is implementing --
+    `"NMinimize"`, `"NMaximize"`, `"NMinValue"`, `"NMaxValue"`, `"NArgMin"`
+    or `"NArgMax"` -- so the malformed-`{f, cons}` and bad-constraint
+    messages below name the head the caller actually invoked, not always
+    `NMinimize` regardless of who called in.
+    """
     module = _optimization_module()
     entries = _variable_entries(variables)
     symbols = [_entry_variable(entry) for entry in entries]
@@ -339,7 +347,7 @@ def _optimize(
         parts = list(problem)
         if len(parts) != 2:
             raise ValueError(
-                "NMinimize takes either an objective or the pair {f, cons}"
+                "%s takes either an objective or the pair {f, cons}" % (head,)
             )
         objective_value = parts[0]
         if isinstance(parts[1], (list, tuple)):
@@ -348,7 +356,7 @@ def _optimize(
             constraint_values = [parts[1]]
 
     constraints = [
-        _constraint(value, symbols, module, "NMinimize") for value in constraint_values
+        _constraint(value, symbols, module, head) for value in constraint_values
     ]
     result = module.nminimize(
         _objective_function(objective_value, symbols),
@@ -361,6 +369,7 @@ def _optimize(
         seed=seed,
         penalty_scale=penalty_scale,
         maximize=maximize,
+        head=head,
     )
     return [result, [str(symbol) for symbol in symbols]]
 
@@ -435,6 +444,7 @@ def n_minimize(
         tolerance,
         seed,
         penalty_scale,
+        "NMinimize",
     )
     return _extremum(answer[0], answer[1], False)
 
@@ -470,6 +480,7 @@ def n_maximize(
         tolerance,
         seed,
         penalty_scale,
+        "NMaximize",
     )
     return _extremum(answer[0], answer[1], True)
 
@@ -499,6 +510,7 @@ def n_arg_min(
         tolerance,
         seed,
         penalty_scale,
+        "NArgMin",
     )
     return _arguments(answer[0], answer[1])
 
@@ -524,6 +536,7 @@ def n_arg_max(
         tolerance,
         seed,
         penalty_scale,
+        "NArgMax",
     )
     return _arguments(answer[0], answer[1])
 
@@ -556,6 +569,7 @@ def n_min_value(
         tolerance,
         seed,
         penalty_scale,
+        "NMinValue",
     )
     if _infeasible(answer[0]):
         return float("inf")
@@ -583,6 +597,7 @@ def n_max_value(
         tolerance,
         seed,
         penalty_scale,
+        "NMaxValue",
     )
     if _infeasible(answer[0]):
         return float("-inf")
@@ -691,8 +706,16 @@ def _find_optimize(
     method: str,
     max_iterations: int | None,
     tolerance: float,
+    head: str,
 ) -> Any:
-    """Run the local engine and return `[result, variable_names]`."""
+    """Run the local engine and return `[result, variable_names]`.
+
+    `head` is the actual Wolfram head the caller is implementing --
+    `"FindMinimum"`, `"FindMaximum"`, `"FindMinValue"`, `"FindMaxValue"`,
+    `"FindArgMin"` or `"FindArgMax"` -- so the malformed-`{f, cons}` and
+    bad-constraint messages below name the head the caller actually
+    invoked, not always `FindMinimum` regardless of who called in.
+    """
     module = _findminimum_module()
     entries = _find_variable_entries(variables)
     specs = [_find_spec(entries[index], index, module) for index in range(len(entries))]
@@ -704,7 +727,7 @@ def _find_optimize(
         parts = list(problem)
         if len(parts) != 2:
             raise ValueError(
-                "FindMinimum takes either an objective or the pair {f, cons}"
+                "%s takes either an objective or the pair {f, cons}" % (head,)
             )
         objective_value = parts[0]
         if isinstance(parts[1], (list, tuple)):
@@ -713,8 +736,7 @@ def _find_optimize(
             constraint_values = [parts[1]]
 
     constraints = [
-        _constraint(value, symbols, module, "FindMinimum")
-        for value in constraint_values
+        _constraint(value, symbols, module, head) for value in constraint_values
     ]
     result = module.findminimum(
         _objective_function(objective_value, symbols),
@@ -766,7 +788,7 @@ def find_minimum(
     head and its five siblings by name rather than dropping them.
     """
     answer = _find_optimize(
-        problem, variables, False, method, max_iterations, tolerance
+        problem, variables, False, method, max_iterations, tolerance, "FindMinimum"
     )
     return [answer[0].fun, _rules(answer[1], answer[0].x)]
 
@@ -784,7 +806,9 @@ def find_maximum(
     minimizing `-objective`; see that docstring for the constrained `{f,
     cons}` form, the variable forms, and the `method` vocabulary.
     """
-    answer = _find_optimize(problem, variables, True, method, max_iterations, tolerance)
+    answer = _find_optimize(
+        problem, variables, True, method, max_iterations, tolerance, "FindMaximum"
+    )
     return [answer[0].fun, _rules(answer[1], answer[0].x)]
 
 
@@ -797,7 +821,7 @@ def find_min_value(
 ) -> Any:
     """Return just the local minimum value, Wolfram `FindMinValue`."""
     answer = _find_optimize(
-        problem, variables, False, method, max_iterations, tolerance
+        problem, variables, False, method, max_iterations, tolerance, "FindMinValue"
     )
     return answer[0].fun
 
@@ -810,7 +834,9 @@ def find_max_value(
     tolerance: float = 1e-6,
 ) -> Any:
     """Return just the local maximum value, Wolfram `FindMaxValue`."""
-    answer = _find_optimize(problem, variables, True, method, max_iterations, tolerance)
+    answer = _find_optimize(
+        problem, variables, True, method, max_iterations, tolerance, "FindMaxValue"
+    )
     return answer[0].fun
 
 
@@ -823,7 +849,7 @@ def find_arg_min(
 ) -> list[Any]:
     """Return just the minimizing variable values, Wolfram `FindArgMin`."""
     answer = _find_optimize(
-        problem, variables, False, method, max_iterations, tolerance
+        problem, variables, False, method, max_iterations, tolerance, "FindArgMin"
     )
     return [value for value in answer[0].x]
 
@@ -836,7 +862,9 @@ def find_arg_max(
     tolerance: float = 1e-6,
 ) -> list[Any]:
     """Return just the maximizing variable values, Wolfram `FindArgMax`."""
-    answer = _find_optimize(problem, variables, True, method, max_iterations, tolerance)
+    answer = _find_optimize(
+        problem, variables, True, method, max_iterations, tolerance, "FindArgMax"
+    )
     return [value for value in answer[0].x]
 
 
