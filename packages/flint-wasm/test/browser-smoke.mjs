@@ -262,6 +262,36 @@ try {
     await runSourceWithShortcut("factor(42)", "shift", "2 * 3 * 7");
     await runSourceWithShortcut("factor(66)", "ctrl", "2 * 3 * 11");
     await runSource("import math\nmath.sin(math.pi/2)", "1.0");
+    await runSource(
+      "%%magma\nn := 2026;\nFactorization(n);\nIsPrime(101);",
+      "2 * 1013\nTrue",
+    );
+    await runSource(
+      "%%mathematica\nf[x_] := x^2 + 1;\nTable[f[n], {n, 1, 5}]",
+      "[2, 5, 10, 17, 26]",
+    );
+    await runSource(
+      "list_plot([power_mod(17, x, 31) for x in range(30)])",
+      "Graphics object consisting of 1 graphics primitive",
+    );
+    const pointTrace = await command("Runtime.evaluate", {
+      expression: `({
+        x: document.querySelector('#display')?.data?.[0]?.x,
+        y: document.querySelector('#display')?.data?.[0]?.y,
+        size: document.querySelector('#display')?.data?.[0]?.marker?.size,
+        opacity: document.querySelector('#display')?.data?.[0]?.opacity
+      })`,
+      returnByValue: true,
+    });
+    assert.deepEqual(pointTrace.result.value.x, Array.from(
+      { length: 30 },
+      (_, index) => index,
+    ));
+    assert.deepEqual(pointTrace.result.value.y.slice(0, 6), [
+      1, 17, 10, 15, 7, 26,
+    ]);
+    assert.equal(pointTrace.result.value.size, 10);
+    assert.equal(pointTrace.result.value.opacity, 1);
     await runSource("prime_pi(10)", "4");
     await runSource(
       "x = var('x')\nf = sin(x^2)\nf.derivative(x)",

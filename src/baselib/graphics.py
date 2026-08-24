@@ -778,7 +778,7 @@ def _plot_spec_2d_trace(payload: dict[str, Any]) -> Any:
     if kind == "point":
         marker = _native_record(
             color=style["color"],
-            size=style["size"],
+            size=runtime.number(float(style["size"])),
             symbol=style["symbol"],
         )
         edge = style["edge"]
@@ -791,10 +791,18 @@ def _plot_spec_2d_trace(payload: dict[str, Any]) -> Any:
         trace = _native_record(
             type="scatter",
             mode="markers",
-            x=data["x"],
-            y=data["y"],
+            # Plotly consumes native JavaScript numbers.  In the browser,
+            # Sage numeric wrappers otherwise serialize as empty records.
+            x=[
+                None if coordinate is None else runtime.number(float(coordinate))
+                for coordinate in data["x"]
+            ],
+            y=[
+                None if coordinate is None else runtime.number(float(coordinate))
+                for coordinate in data["y"]
+            ],
             marker=marker,
-            opacity=style["opacity"],
+            opacity=runtime.number(float(style["opacity"])),
             showlegend=legend["show"],
         )
         if legend["label"] is not None:

@@ -11,6 +11,12 @@ test("every live dropdown example executes verbatim in production Node-Wasm", as
     "complex-plot",
     "exact-matrices",
     "modular-symbols",
+    "python-language",
+    "magma-language",
+    "mathematica-language",
+    "matlab-language",
+    "maple-language",
+    "macaulay2-language",
     "random-graph-plot",
     "graph-automorphisms",
   ]);

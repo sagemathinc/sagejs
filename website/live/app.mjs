@@ -162,15 +162,46 @@ function safeFilename(value, extension) {
   return `${base.slice(0, 80)}.${extension}`;
 }
 
-function renderMessage(kind, title, text = "") {
+function renderMessage(kind, title, text = "", input = "") {
   const article = document.createElement("article");
   article.className = `result result-${kind}`;
   const heading = document.createElement("h3");
   heading.textContent = title;
+  const outputLabel = document.createElement("strong");
+  outputLabel.className = "result-output-label";
+  outputLabel.textContent = "Output";
   const pre = document.createElement("pre");
+  pre.className = "result-output";
   pre.textContent = text;
   pre.tabIndex = 0;
-  article.append(heading, pre);
+  article.append(heading);
+  if (input) {
+    const inputHeading = document.createElement("div");
+    inputHeading.className = "result-input-heading";
+    const inputLabel = document.createElement("strong");
+    inputLabel.textContent = "Input";
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "quiet-button result-copy-input";
+    copy.textContent = "Copy input";
+    copy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(input);
+        copy.textContent = "Copied";
+        setTimeout(() => { copy.textContent = "Copy input"; }, 1200);
+        setLive("The input for this result was copied.");
+      } catch (error) {
+        setLive(`Could not copy input: ${error.message}`);
+      }
+    });
+    inputHeading.append(inputLabel, copy);
+    const inputSource = document.createElement("pre");
+    inputSource.className = "result-input";
+    inputSource.textContent = input;
+    inputSource.tabIndex = 0;
+    article.append(inputHeading, inputSource);
+  }
+  article.append(outputLabel, pre);
   elements.output.prepend(article);
   return { article, pre };
 }
@@ -195,7 +226,12 @@ async function run(mode) {
   saveWorkspace();
   const currentRun = ++runCounter;
   const collector = new OutputCollector();
-  const { article, pre } = renderMessage("running", `Run ${currentRun} · ${mode}`, "Starting…");
+  const { article, pre } = renderMessage(
+    "running",
+    `Run ${currentRun} · ${mode}`,
+    "Starting…",
+    source,
+  );
   const plot = document.createElement("div");
   plot.className = "plot";
   article.append(plot);

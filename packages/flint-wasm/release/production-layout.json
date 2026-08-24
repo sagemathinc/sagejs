@@ -202,6 +202,23 @@
         }
       },
       {
+        "id": "polyglot-frontends",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": [
+          "foreign-frontend.mjs",
+          "tree-sitter-macaulay2.wasm",
+          "tree-sitter-magma.wasm",
+          "tree-sitter-maple.wasm",
+          "tree-sitter-matlab.wasm",
+          "tree-sitter-wolfram.wasm"
+        ],
+        "maximumCompressedDelta": {
+          "gzipBytes": 1000000,
+          "brotliBytes": 800000
+        }
+      },
+      {
         "id": "numpy",
         "kind": "specialist",
         "dependencies": ["eager-core"],
@@ -219,7 +236,12 @@
       "provider": "web-tree-sitter.wasm",
       "consumers": [
         "tree-sitter-python.wasm",
-        "tree-sitter-sage.wasm"
+        "tree-sitter-sage.wasm",
+        "tree-sitter-macaulay2.wasm",
+        "tree-sitter-magma.wasm",
+        "tree-sitter-maple.wasm",
+        "tree-sitter-matlab.wasm",
+        "tree-sitter-wolfram.wasm"
       ],
       "memory": {
         "pageBytes": 65536,
@@ -232,6 +254,7 @@
     "conway-polynomials.json",
     "compiler.js",
     "compiler-frontend.mjs",
+    "foreign-frontend.mjs",
     "baselib.js",
     "stdlib.json",
     "lazy-modules.json",
@@ -248,6 +271,11 @@
     "web-tree-sitter.wasm",
     "tree-sitter-python.wasm",
     "tree-sitter-sage.wasm",
+    "tree-sitter-macaulay2.wasm",
+    "tree-sitter-magma.wasm",
+    "tree-sitter-maple.wasm",
+    "tree-sitter-matlab.wasm",
+    "tree-sitter-wolfram.wasm",
     "wasm-capability-api.mjs",
     "wasm-capabilities-report.json"
   ],

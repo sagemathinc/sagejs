@@ -25,7 +25,7 @@ list(zip(range(30), values))`,
     description: "Plot the phase and magnitude of L(E,s); sampling is automatically batched.",
     source: `E = EllipticCurve([1, 2, 3, 4, 999])
 L = E.lseries()
-complex_plot(L, (0, 2), (-4, 4), plot_points=100,
+complex_plot(L, (0, 2), (-4, 4), plot_points=50,
              interpolation='nearest')`,
   },
   {
@@ -46,6 +46,60 @@ B.inverse()`,
 print(M)
 print(M.dimension())
 M.cuspidal_subspace()`,
+  },
+  {
+    id: "python-language",
+    title: "Python · NumPy arrays",
+    description: "Run ordinary Python syntax and the browser-native NumPy compatibility layer.",
+    source: `%%python
+import numpy as np
+A = np.array([[1, 2], [3, 4]])
+(A.shape, A.sum(), A @ A)`,
+  },
+  {
+    id: "magma-language",
+    title: "Magma · factorization",
+    description: "Translate a useful subset of Magma syntax locally into Sage.js.",
+    source: `%%magma
+n := 2026;
+Factorization(n);
+IsPrime(101);`,
+  },
+  {
+    id: "mathematica-language",
+    title: "Mathematica · tables and primes",
+    description: "Use the experimental Wolfram Language / Mathematica parser.",
+    source: `%%mathematica
+f[x_] := x^2 + 1;
+Table[f[n], {n, 1, 5}]
+FactorInteger[2025]
+PrimePi[100]`,
+  },
+  {
+    id: "matlab-language",
+    title: "MATLAB · matrix arithmetic",
+    description: "Parse MATLAB matrix literals, powers, indexing, and functions.",
+    source: `%%matlab
+A = [1 2; 3 4];
+A^2
+x = 1:2:7;
+sum(x)`,
+  },
+  {
+    id: "maple-language",
+    title: "Maple · sequences",
+    description: "Parse Maple assignments, procedures, ranges, and library calls.",
+    source: `%%maple
+f := x -> x^2 + 1:
+seq(f(n), n=1..5);
+ithprime(10);`,
+  },
+  {
+    id: "macaulay2-language",
+    title: "Macaulay2 · arithmetic",
+    description: "Parse and locally execute a Macaulay2 arithmetic expression.",
+    source: `%%macaulay2
+factor 2026`,
   },
   {
     id: "random-graph-plot",

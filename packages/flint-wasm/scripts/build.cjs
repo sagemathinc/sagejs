@@ -115,6 +115,16 @@ const compilerFrontendMetafile = path.join(
   outputDirectory,
   "compiler-frontend.metafile.json",
 );
+const foreignFrontendOutput = path.join(outputDirectory, "foreign-frontend.mjs");
+const foreignFrontendBuildHelper = path.join(
+  packageRoot,
+  "scripts",
+  "build-foreign-frontend.cjs",
+);
+const foreignFrontendMetafile = path.join(
+  outputDirectory,
+  "foreign-frontend.metafile.json",
+);
 const baselibOutput = path.join(outputDirectory, "baselib.js");
 const standardLibraryOutput = path.join(outputDirectory, "stdlib.json");
 const lazyModulesOutput = path.join(outputDirectory, "lazy-modules.json");
@@ -205,6 +215,21 @@ const compilerResourceShim = path.join(
   "src",
   "compiler-resources.ts",
 );
+const browserMagmaEnvironmentShim = path.join(
+  packageRoot,
+  "src",
+  "browser-magma-environment.ts",
+);
+const treeSitterAssets = [
+  "web-tree-sitter.wasm",
+  "tree-sitter-python.wasm",
+  "tree-sitter-sage.wasm",
+  "tree-sitter-magma.wasm",
+  "tree-sitter-macaulay2.wasm",
+  "tree-sitter-maple.wasm",
+  "tree-sitter-matlab.wasm",
+  "tree-sitter-wolfram.wasm",
+];
 const adapterInputsFilename = path.join(
   packageRoot,
   "toolchain",
@@ -277,11 +302,7 @@ requirePath(
   baselibSource,
 );
 requirePath("pinned numpy-ts browser bundle", numpyBackendSource);
-for (const filename of [
-  "web-tree-sitter.wasm",
-  "tree-sitter-python.wasm",
-  "tree-sitter-sage.wasm",
-]) {
+for (const filename of treeSitterAssets) {
   requirePath(
     `built ${filename} (run \`pnpm build\` first)`,
     path.join(vendorDirectory, filename),
@@ -767,14 +788,22 @@ run(process.execPath, [
 const compilerFrontendBuild = {
   metafile: JSON.parse(fs.readFileSync(compilerFrontendMetafile, "utf8")),
 };
+run(process.execPath, [
+  foreignFrontendBuildHelper,
+  path.join(packageRoot, "src", "foreign-frontend-entry.ts"),
+  foreignFrontendOutput,
+  compilerResourceShim,
+  browserMagmaEnvironmentShim,
+  require.resolve("path-browserify", { paths: [packageRoot] }),
+  foreignFrontendMetafile,
+]);
+const foreignFrontendBuild = {
+  metafile: JSON.parse(fs.readFileSync(foreignFrontendMetafile, "utf8")),
+};
 fs.copyFileSync(compilerSource, compilerOutput);
 fs.copyFileSync(baselibSource, baselibOutput);
 fs.copyFileSync(numpyBackendSource, numpyBackendOutput);
-for (const filename of [
-  "web-tree-sitter.wasm",
-  "tree-sitter-python.wasm",
-  "tree-sitter-sage.wasm",
-]) {
+for (const filename of treeSitterAssets) {
   fs.copyFileSync(
     path.join(vendorDirectory, filename),
     path.join(outputDirectory, filename),
@@ -939,13 +968,15 @@ const receipt = writeProductionReceipt({
       symbolicBackendBuild,
       serializationBuild,
       compilerFrontendBuild,
+      foreignFrontendBuild,
     ]),
     compilerSource,
     baselibSource,
     numpyBackendSource,
     compilerFrontendBuildHelper,
-    ...["web-tree-sitter.wasm", "tree-sitter-python.wasm", "tree-sitter-sage.wasm"]
-      .map((name) => path.join(vendorDirectory, name)),
+    foreignFrontendBuildHelper,
+    browserMagmaEnvironmentShim,
+    ...treeSitterAssets.map((name) => path.join(vendorDirectory, name)),
     ...runtimeHostClosure.map(({ source }) => source),
     ...standardLibraryReceiptInputs,
     ...dynamicProgramInputs,
