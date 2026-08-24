@@ -77,7 +77,7 @@ function standaloneHarness() {
   assert(match, "the public Jacobian benchmark has no standalone core harness");
   const exercise = String.raw`
 static int exercise_scalar_and_progression(uint64_t genus) {
-  static const uint64_t identity[8] = {1, 0, 1, 0, 0, 1, 0, 0};
+  static const uint64_t identity[8] = {0, 1, 0, 0, 0, 0, 0, 0};
   static const uint64_t genus2_step[8] = {1, 1008, 1, 0, 0, 149, 0, 0};
   static const uint64_t genus3_step[8] = {1, 1008, 1, 0, 0, 1007, 0, 0};
   const uint64_t *step = genus == 2 ? genus2_step : genus3_step;
