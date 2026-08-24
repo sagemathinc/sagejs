@@ -648,6 +648,7 @@ def packed_cubic_factor_records(
     equation_coefficients = tuple(int(value) for value in equation_polynomial.list())
     equation_order_index = prime_module._maximal.equation_order_index(order)
     one_coordinates = prime_module._order_one_coordinates(order)
+    packed_order_basis = prime_module._packed_candidate_order_basis(order)
     for prime in rational_primes:
         requested = {
             residue_degree
@@ -686,6 +687,7 @@ def packed_cubic_factor_records(
                 p_maximal=True,
                 modular_table=modular_table,
                 one_coordinates=modular_one,
+                packed_order_basis=packed_order_basis,
             )
         if local is None:
             local = prime_module.packed_finite_algebra_candidates(
@@ -695,6 +697,7 @@ def packed_cubic_factor_records(
                 requested,
                 modular_table=modular_table,
                 one_coordinates=modular_one,
+                packed_order_basis=packed_order_basis,
             )
         if local is None:
             return None
@@ -1575,9 +1578,16 @@ def _packed_cubic_relation_candidates(
                 prime_power_numerators.extend(packed_basis)
                 prime_power_denominators.append(int(denominator))
             offsets.append(len(prime_power_denominators))
-        unit_numerators, unit_denominator = ideal_module._packed_ideal_basis(
-            order.ideal(1)
+        prime_module = __import__(
+            "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
         )
+        packed_order_basis = prime_module._packed_candidate_order_basis(order)
+        if packed_order_basis is None:
+            unit_numerators, unit_denominator = ideal_module._packed_ideal_basis(
+                order.ideal(1)
+            )
+        else:
+            unit_numerators, unit_denominator = packed_order_basis
         row_metadata = native_module.kernel_integer_zeros(row_kernel, 3, 1)
         row_output = native_module.kernel_integer_zeros(
             row_kernel, candidate_count * len(factor_base), 16

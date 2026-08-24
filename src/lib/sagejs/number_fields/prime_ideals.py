@@ -1063,13 +1063,9 @@ def _ideal_from_modular_subspace(
     return NumberFieldIdeal(order, rows)
 
 
-def _packed_candidate_rows(
-    order: Any, subspace: list[list[int]], prime: int
-) -> list[list[Any]] | None:
-    """Return canonical HNF rows through the bounded candidate kernel."""
+def _packed_candidate_order_basis(order: Any) -> tuple[tuple[int, ...], int] | None:
+    """Pack one exact maximal-order basis for repeated candidate kernels."""
     degree = order.degree()
-    if len(subspace) > degree or any(len(row) != degree for row in subspace):
-        return None
     denominator = runtime.bigint(1)
     for row in order._basis_rows:
         for value in row:
@@ -1083,6 +1079,41 @@ def _packed_candidate_rows(
             if scaled._denominator != 1:
                 return None
             basis_numerators.append(int(scaled._numerator))
+    if len(basis_numerators) != degree * degree:
+        return None
+    return tuple(basis_numerators), int(denominator)
+
+
+def _packed_candidate_rows(
+    order: Any,
+    subspace: list[list[int]],
+    prime: int,
+    *,
+    packed_order_basis: tuple[tuple[int, ...], int] | None = None,
+) -> list[list[Any]] | None:
+    """Return canonical HNF rows through the bounded candidate kernel."""
+    degree = order.degree()
+    if len(subspace) > degree or any(len(row) != degree for row in subspace):
+        return None
+    selected_basis = (
+        _packed_candidate_order_basis(order)
+        if packed_order_basis is None
+        else packed_order_basis
+    )
+    if selected_basis is None:
+        return None
+    basis_numerators, denominator = selected_basis
+    if (
+        len(basis_numerators) != degree * degree
+        or isinstance(denominator, bool)
+        or not isinstance(denominator, int)
+        or denominator <= 0
+        or any(
+            isinstance(value, bool) or not isinstance(value, int)
+            for value in basis_numerators
+        )
+    ):
+        return None
     modular = [int(value) for row in subspace for value in row]
     maximum_bits = max(
         [
@@ -1541,6 +1572,7 @@ def packed_dedekind_kummer_candidates(
     p_maximal: bool | None = None,
     modular_table: list[list[list[int]]] | None = None,
     one_coordinates: list[int] | None = None,
+    packed_order_basis: tuple[tuple[int, ...], int] | None = None,
 ) -> list[dict[str, Any]] | None:
     """Return exact Dedekind--Kummer data without constructing ideal objects.
 
@@ -1573,6 +1605,11 @@ def packed_dedekind_kummer_candidates(
         return None
     scale = int(runtime.integer_bigint(field._integral_equation_scale_cache))
     degree = order.degree()
+    defining = tuple(field._defining_coefficients)
+    if len(defining) != degree + 1:
+        raise ArithmeticError("a defining polynomial has the wrong degree")
+    leading = sage.QQ(defining[degree])
+    inverse_rows = order._basis_inverse_matrix().rows()
     table = _modular_table(order, prime) if modular_table is None else modular_table
     one = (
         [value % prime for value in _order_one_coordinates(order)]
@@ -1602,13 +1639,10 @@ def packed_dedekind_kummer_candidates(
                 raise ArithmeticError(
                     "a Dedekind--Kummer generator exceeds the field degree"
                 )
-            defining = tuple(field.defining_polynomial().coefficients())
-            leading = sage.QQ(defining[degree])
             for target in range(degree):
                 power_coordinates[target] -= (
                     scaled * sage.QQ(defining[target]) / leading
                 )
-        inverse_rows = order._basis_inverse_matrix().rows()
         exact_coordinates: list[Any] = []
         for target in range(degree):
             coordinate: Any = sage.QQ(0)
@@ -1631,7 +1665,12 @@ def packed_dedekind_kummer_candidates(
             subspace,
             DEFAULT_MAX_PRIMITIVE_CANDIDATES,
         )
-        rows = _packed_candidate_rows(order, subspace, prime)
+        rows = _packed_candidate_rows(
+            order,
+            subspace,
+            prime,
+            packed_order_basis=packed_order_basis,
+        )
         if rows is None:
             # This helper is an optimization boundary.  The readable public
             # decomposition remains the authoritative fallback when the
@@ -1671,6 +1710,7 @@ def packed_finite_algebra_candidates(
     *,
     modular_table: list[list[list[int]]] | None = None,
     one_coordinates: list[int] | None = None,
+    packed_order_basis: tuple[tuple[int, ...], int] | None = None,
 ) -> list[dict[str, Any]] | None:
     """Return exact finite-algebra prime data without ordinary ideal objects."""
     degree = order.degree()
@@ -1687,6 +1727,7 @@ def packed_finite_algebra_candidates(
             table,
             one,
             residue_degrees=residue_degrees,
+            packed_order_basis=packed_order_basis,
         )
         if packed is not None:
             return packed
@@ -1740,7 +1781,12 @@ def packed_finite_algebra_candidates(
         local_degree_sum += ramification * residue_degree
         if residue_degrees is not None and residue_degree not in residue_degrees:
             continue
-        rows = _packed_candidate_rows(order, maximal_subspace, prime)
+        rows = _packed_candidate_rows(
+            order,
+            maximal_subspace,
+            prime,
+            packed_order_basis=packed_order_basis,
+        )
         if rows is None:
             return None
         answer.append(
@@ -1775,6 +1821,7 @@ def _packed_cubic_reduced_algebra_candidates(
     one: list[int],
     *,
     residue_degrees: set[int] | None,
+    packed_order_basis: tuple[tuple[int, ...], int] | None = None,
 ) -> list[dict[str, Any]] | None:
     """Use the fixed-shape reduced cubic kernel, or decline cleanly.
 
@@ -1936,7 +1983,12 @@ def _packed_cubic_reduced_algebra_candidates(
         local_degree_sum += residue_degree
         if residue_degrees is not None and residue_degree not in residue_degrees:
             continue
-        rows = _packed_candidate_rows(order, subspace, prime)
+        rows = _packed_candidate_rows(
+            order,
+            subspace,
+            prime,
+            packed_order_basis=packed_order_basis,
+        )
         if rows is None:
             return None
         answer.append(

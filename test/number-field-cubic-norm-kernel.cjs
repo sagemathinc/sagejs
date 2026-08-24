@@ -423,6 +423,8 @@ saved_p_maximal = maximal_order.equation_order_is_p_maximal
 saved_modular_table = prime_ideals._modular_table
 saved_one_coordinates = prime_ideals._order_one_coordinates
 saved_nf_element_from_row = prime_ideals._nf_element_from_row
+saved_packed_order_basis = prime_ideals._packed_candidate_order_basis
+packed_order_basis_calls = 0
 def counted_generic_factor(*args, **kwargs):
     global generic_factor_calls
     generic_factor_calls += 1
@@ -443,11 +445,16 @@ def forbidden_nf_element_from_row(*args, **kwargs):
     raise AssertionError(
         "packed factor-record construction eagerly materialized a field element"
     )
+def counted_packed_order_basis(*args, **kwargs):
+    global packed_order_basis_calls
+    packed_order_basis_calls += 1
+    return saved_packed_order_basis(*args, **kwargs)
 prime_ideals._om.factor_mod_prime = counted_generic_factor
 maximal_order.equation_order_is_p_maximal = counted_p_maximal
 prime_ideals._modular_table = counted_modular_table
 prime_ideals._order_one_coordinates = counted_one_coordinates
 prime_ideals._nf_element_from_row = forbidden_nf_element_from_row
+prime_ideals._packed_candidate_order_basis = counted_packed_order_basis
 try:
     packed_plan = factor_bases.factor_base_plan(
         packed_field.maximal_order(), proof=True, theorem="minkowski"
@@ -459,6 +466,7 @@ finally:
     prime_ideals._modular_table = saved_modular_table
     prime_ideals._order_one_coordinates = saved_one_coordinates
     prime_ideals._nf_element_from_row = saved_nf_element_from_row
+    prime_ideals._packed_candidate_order_basis = saved_packed_order_basis
 assert direct_packed_factors is not None and len(direct_packed_factors) == 5
 # The packed reduced-algebra kernel handles p=2 without the generic modular
 # factorizer.  The irreducible p=7 cubic uses the bounded cubic factorizer
@@ -467,6 +475,7 @@ assert generic_factor_calls == 0
 assert legacy_p_maximal_calls == 0
 assert modular_table_calls == 3
 assert one_coordinate_calls == 1
+assert packed_order_basis_calls == 1
 # Authentication serializes the retained rational coefficient triples without
 # constructing any NumberFieldElement.  General ideal materialization remains
 # lazy and fills this cache only when explicitly requested below.
