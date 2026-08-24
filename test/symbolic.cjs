@@ -19,6 +19,7 @@ async function main() {
     assert.equal((await session.evaluate("cos(ZZ(1))")).repr, "cos(1)");
     assert.equal((await session.evaluate("cos(QQ(1,2))")).repr, "cos(1/2)");
     assert.equal((await session.evaluate("cos(x)")).repr, "cos(x)");
+    assert.equal((await session.evaluate("SR(float(1))")).repr, "1.0");
     assert.ok(
       Math.abs(
         Number((await session.evaluate("cos(float(1))")).repr) - Math.cos(1),

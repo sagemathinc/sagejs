@@ -59,6 +59,13 @@ def _number_record_value(value: Any) -> Any:
     return runtime.undefined
 
 
+def _machine_real_tree(value: float) -> Any:
+    """Preserve Python float identity in a MathJSON numeric record."""
+    record = runtime.object.create(None)
+    runtime.reflect.set(record, "num", str(value))
+    return record
+
+
 def _join_text(separator: str, values: Sequence[str]) -> str:
     text = ""
     for index in range(len(values)):
@@ -212,6 +219,8 @@ def _format_expression(value: Any, surrounding: int = 0) -> str:
 def _expression_tree(value: Any) -> Any:
     if isinstance(value, Expression):
         return value._tree
+    if isinstance(value, float):
+        return _machine_real_tree(value)
     if runtime.jstype(value) in ("object", "function"):
         value_parent = runtime.reflect.get(value, "_parent")
         if runtime.jstype(value_parent) in ("object", "function"):
