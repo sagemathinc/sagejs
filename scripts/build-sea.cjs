@@ -431,6 +431,11 @@ function buildExecutable(name, withFlint, seaNode) {
   }
   const output = join(outputDirectory, name);
   const assets = {
+    "architecture/wasm-capabilities-report.json": join(
+      root,
+      "architecture",
+      "wasm-capabilities-report.json",
+    ),
     "compiler/compiler.js": join(root, "dist", "compiler", "compiler.js"),
     "compiler/baselib-plain-pretty.js": join(
       root,
