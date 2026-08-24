@@ -1423,6 +1423,7 @@ class ClassUnitGroupEngine:
             "unit_logarithm_requests": 0,
             "unit_logarithm_cache_hits": 0,
             "relation_log_rank_calls": 0,
+            "relation_exact_rank_one_units": 0,
             "relation_dependency_unit_requests": 0,
             "relation_dependency_unit_cache_hits": 0,
             "relation_dependency_unit_object_cache_hits": 0,
@@ -1495,6 +1496,7 @@ class ClassUnitGroupEngine:
         self._relation_seen_dependency_units: set[str] = set()
         self._relation_independent_logarithms: list[tuple[Any, ...]] = []
         self._relation_independent_dependency_keys: list[tuple[int, ...]] = []
+        self._relation_exact_rank_one_dependency_key: tuple[int, ...] | None = None
         self._relation_initial_basis_selected = False
         self._relation_witness_cache: dict[int, tuple[Any, str, Any]] = {}
         self._relation_witness_logarithm_cache: dict[
@@ -3232,6 +3234,9 @@ class ClassUnitGroupEngine:
             )
         self._relation_log_record_prefix = record_prefix
         logarithms = self._relation_independent_logarithms
+        if unit_rank == 1 and self._relation_exact_rank_one_dependency_key is not None:
+            self._resource_usage["relation_independent_log_units"] = 1
+            return 1
         current_rank = len(logarithms)
         for dependency in presentation.dependency_transforms:
             if current_rank >= unit_rank:
@@ -3276,6 +3281,23 @@ class ClassUnitGroupEngine:
             self._relation_seen_dependency_units.add(unit_hash)
             if unit is None:
                 unit = self._combine(record_prefix, dependency)
+            # A cubic field has no roots of unity beyond +/-1: every
+            # cyclotomic subfield of larger torsion degree has even degree,
+            # which cannot divide three. In signature (1, 1), where the
+            # Dirichlet rank is one, exact comparison with +/-1 therefore
+            # proves full unit rank without evaluating archimedean logs merely
+            # to steer relation collection. The retained factored unit still
+            # enters the rigorous regulator and hR computation normally.
+            evaluator = getattr(unit, "evaluate", None)
+            if unit_rank == 1 and int(self.field.degree()) == 3 and callable(evaluator):
+                value = evaluator()
+                one = self.field.one()
+                if value != one and value != -one:
+                    self._relation_exact_rank_one_dependency_key = dependency_key
+                    self._relation_independent_dependency_keys.append(dependency_key)
+                    self._resource_usage["relation_exact_rank_one_units"] += 1
+                    current_rank = 1
+                    break
             row = tuple(self._unit_logarithms(unit, 80)[:-1])
             candidate = [*logarithms, row]
             candidate_rank = _floating_matrix_rank(candidate)
@@ -3289,7 +3311,10 @@ class ClassUnitGroupEngine:
         self._resource_usage["relation_dependency_units_seen"] = len(
             self._relation_seen_dependency_units
         )
-        self._resource_usage["relation_independent_log_units"] = len(logarithms)
+        self._resource_usage["relation_independent_log_units"] = max(
+            len(logarithms),
+            1 if self._relation_exact_rank_one_dependency_key is not None else 0,
+        )
         return min(unit_rank, current_rank)
 
     def _reset_relation_log_steering(self) -> None:
@@ -3301,6 +3326,7 @@ class ClassUnitGroupEngine:
             or self._relation_seen_dependency_units
             or self._relation_independent_logarithms
             or self._relation_independent_dependency_keys
+            or self._relation_exact_rank_one_dependency_key is not None
         ):
             self._resource_usage["relation_log_steering_resets"] += 1
         self._relation_log_record_prefix = ()
@@ -3309,6 +3335,7 @@ class ClassUnitGroupEngine:
         self._relation_seen_dependency_units.clear()
         self._relation_independent_logarithms.clear()
         self._relation_independent_dependency_keys.clear()
+        self._relation_exact_rank_one_dependency_key = None
         self._relation_initial_basis_selected = False
 
     def _uncached_unit_logarithmic_rank(

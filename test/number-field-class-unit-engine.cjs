@@ -824,6 +824,36 @@ assert fresh._unit_logarithmic_rank(
     2,
 ) == 2
 assert len(fresh.combinations) == 3
+
+# In a complex cubic the exact nontorsion test may replace steering logs, but
+# it must reject both torsion units.  The final regulator still consumes the
+# retained factored nontorsion unit through the ordinary rigorous path.
+from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
+class CubicRankOneProbe(ClassUnitGroupEngine):
+    def __init__(self, field, value):
+        super().__init__(field, algorithm="buchmann-hecke")
+        self.value = value
+        self.logs = 0
+    def _combine(self, records, coefficients):
+        return FactoredNumberFieldElement.from_element(self.field, self.value)
+    def _unit_logarithms(self, unit, precision):
+        self.logs += 1
+        return (0.0, 0.0)
+
+C = NumberField(x**3 - x - 1, "c")
+cubic_record = FakeRecord()
+torsion_probe = CubicRankOneProbe(C, -C.one())
+assert torsion_probe._unit_logarithmic_rank(
+    (cubic_record,), FakePresentation(((1,),)), 1
+) == 0
+assert torsion_probe.logs == 1
+assert torsion_probe._resource_usage["relation_exact_rank_one_units"] == 0
+nontorsion_probe = CubicRankOneProbe(C, C.gen())
+assert nontorsion_probe._unit_logarithmic_rank(
+    (cubic_record,), FakePresentation(((1,),)), 1
+) == 1
+assert nontorsion_probe.logs == 0
+assert nontorsion_probe._resource_usage["relation_exact_rank_one_units"] == 1
 print("monotone-log-steering")
 `);
   assert.equal(output, "monotone-log-steering");

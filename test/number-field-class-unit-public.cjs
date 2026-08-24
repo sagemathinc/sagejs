@@ -892,6 +892,8 @@ assert large_resources["cubic_integral_sieve_candidates"] == 27
 assert large_resources["cubic_integral_sieve_relations"] == 5
 assert large_resources["cubic_integral_sieve_dependency_relations"] == 1
 assert large_resources["cubic_integral_sieve_validated_batch_uses"] == 1
+assert large_resources["relation_exact_rank_one_units"] == 1
+assert large_resources["unit_logarithm_requests"] == 0
 assert large_resources["relation_attempts"] == 0
 assert large_resources["relation_candidates"] == 0
 assert large_resources["class_group_generator_reconstruction_calls"] == 1
