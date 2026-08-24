@@ -75,7 +75,69 @@ function standaloneHarness() {
     /const standaloneHarness = String\.raw`([\s\S]*?)`;\n\nconst temporary/,
   );
   assert(match, "the public Jacobian benchmark has no standalone core harness");
-  return match[1];
+  const exercise = String.raw`
+static int exercise_scalar_and_progression(uint64_t genus) {
+  static const uint64_t identity[8] = {1, 0, 1, 0, 0, 1, 0, 0};
+  static const uint64_t genus2_step[8] = {1, 1008, 1, 0, 0, 149, 0, 0};
+  static const uint64_t genus3_step[8] = {1, 1008, 1, 0, 0, 1007, 0, 0};
+  const uint64_t *step = genus == 2 ? genus2_step : genus3_step;
+  uint64_t model[12] = {0};
+  uint64_t scalar_words[1] = {257};
+  uint64_t scalar_signs[1] = {0};
+  uint64_t scalar_statuses[1] = {0};
+  uint64_t scalar_output[8] = {0};
+  uint64_t *progression = calloc(COUNT * 8, sizeof(uint64_t));
+  uint64_t *statuses = calloc(COUNT, sizeof(uint64_t));
+  sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
+  int accepted = 0;
+  if (progression == NULL || statuses == NULL) return 0;
+  model[0] = 1;
+  model[1] = genus == 2 ? 1 : 2;
+  model[genus == 2 ? 5 : 7] = 1;
+  if (!sagejs_kernel_packed_cantor_progression_batch(
+          &status, &accepted,
+          (sagejs_source_u64_buffer){progression, COUNT * 8},
+          (sagejs_source_u64_buffer){statuses, COUNT},
+          (sagejs_source_u64_buffer){model, 12},
+          (sagejs_source_u64_buffer){(uint64_t *) identity, 8},
+          (sagejs_source_u64_buffer){(uint64_t *) step, 8},
+          COUNT, genus, 1009) ||
+      accepted != 1 || status.code != SAGEJS_NATIVE_OK) {
+    free(statuses);
+    free(progression);
+    return 0;
+  }
+  status = (sagejs_native_status){SAGEJS_NATIVE_OK, NULL};
+  accepted = 0;
+  if (!sagejs_kernel_packed_cantor_scalar_batch(
+          &status, &accepted,
+          (sagejs_source_u64_buffer){scalar_output, 8},
+          (sagejs_source_u64_buffer){scalar_statuses, 1},
+          (sagejs_source_u64_buffer){model, 12},
+          (sagejs_source_u64_buffer){(uint64_t *) step, 8},
+          (sagejs_source_u64_buffer){scalar_words, 1},
+          (sagejs_source_u64_buffer){scalar_signs, 1},
+          1, 1, genus, 1009) ||
+      accepted != 1 || status.code != SAGEJS_NATIVE_OK ||
+      memcmp(scalar_output, progression + 257 * 8, 8 * sizeof(uint64_t)) != 0) {
+    free(statuses);
+    free(progression);
+    return 0;
+  }
+  free(statuses);
+  free(progression);
+  return 1;
+}
+
+`;
+  return match[1]
+    .replace("int main(void) {", `${exercise}int main(void) {`)
+    .replace(
+      "  const uint64_t time2 = bench_case(2, &digest2);",
+      "  if (!exercise_scalar_and_progression(2) || " +
+        "!exercise_scalar_and_progression(3)) return 5;\n" +
+        "  const uint64_t time2 = bench_case(2, &digest2);",
+    );
 }
 
 function main() {
@@ -83,6 +145,8 @@ function main() {
   const harnessText = standaloneHarness();
   if (config.check) {
     assert.match(harnessText, /sagejs_kernel_packed_cantor_add_batch/);
+    assert.match(harnessText, /sagejs_kernel_packed_cantor_scalar_batch/);
+    assert.match(harnessText, /sagejs_kernel_packed_cantor_progression_batch/);
     assert.match(harnessText, /genus == 2/);
     assert.match(harnessText, /bench_case\(3/);
     process.stdout.write("Cantor sanitizer harness extraction passed\n");
@@ -182,6 +246,7 @@ function main() {
       generated_core_sha256: sha256(readFileSync(core)),
       harness_path: "bench/hyperelliptic/benchmark-public-jacobian.cjs",
       harness_sha256: sha256(readFileSync(benchmark)),
+      sanitizer_harness_sha256: sha256(harnessText),
       flint_prefix_identity: sha256(
         readFileSync(join(flintPrefix, "include", "flint", "flint.h")),
       ),
