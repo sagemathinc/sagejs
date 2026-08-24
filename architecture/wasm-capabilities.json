@@ -10979,12 +10979,12 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "The receipt-authenticated production pack compiles all 7 registered functions in this source-transparent kernel family.",
-      "public_explanation": "All 7 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "review_note": "The receipt-authenticated production pack compiles all 8 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 8 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 7,
+        "compiled_functions": 8,
         "fallback_functions": 0,
-        "total_functions": 7,
+        "total_functions": 8,
         "production_pack": true,
         "fallback_reasons": []
       }
