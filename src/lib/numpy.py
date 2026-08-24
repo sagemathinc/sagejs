@@ -1826,6 +1826,10 @@ def _random_result(name: str, values: list[Any]) -> Any:
     for position, value in enumerate(values):
         if value is None:
             values[position] = runtime.undefined
+        elif isinstance(value, (list, tuple)):
+            values[position] = [_native_operand(item) for item in value]
+        else:
+            values[position] = _native_operand(value)
     answer = _call_random(name, values)
     if answer is runtime.undefined:
         return None
