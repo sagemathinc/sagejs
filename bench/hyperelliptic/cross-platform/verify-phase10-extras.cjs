@@ -19,6 +19,8 @@ const receipts = paths.map((path) => ({
   value: JSON.parse(readFileSync(path, "utf8")),
 }));
 const reference = receipts[0].value;
+const referencePackageSmokeOverlay =
+  reference.repository.package_smoke_overlay ?? null;
 const portableHarness = receipts.find(
   ({ value }) => value.host.platform !== "darwin",
 )?.value.repository.harness_sha256;
@@ -55,8 +57,8 @@ for (const { path, value } of receipts) {
     );
   }
   assert.deepEqual(
-    value.repository.package_smoke_overlay,
-    reference.repository.package_smoke_overlay,
+    value.repository.package_smoke_overlay ?? null,
+    referencePackageSmokeOverlay,
     `${path}: package-smoke test overlay`,
   );
   assert.equal(value.configuration.repeat, reference.configuration.repeat);
@@ -78,14 +80,19 @@ for (const { path, value } of receipts) {
   );
   assert.match(value.wasm.package_load_test.stdout_sha256, /^[0-9a-f]{64}$/);
   assert.equal(value.wasm.package_load_test.status, "passed");
-  assert.equal(
-    value.wasm.package_load_test.test_patch_commit,
-    value.repository.package_smoke_overlay.test_patch_commit,
-  );
-  assert.equal(
-    value.wasm.package_load_test.test_source_sha256,
-    value.repository.package_smoke_overlay.patched_test_sha256,
-  );
+  if (referencePackageSmokeOverlay === null) {
+    assert.equal(value.wasm.package_load_test.test_patch_commit, undefined);
+    assert.equal(value.wasm.package_load_test.test_source_sha256, undefined);
+  } else {
+    assert.equal(
+      value.wasm.package_load_test.test_patch_commit,
+      referencePackageSmokeOverlay.test_patch_commit,
+    );
+    assert.equal(
+      value.wasm.package_load_test.test_source_sha256,
+      referencePackageSmokeOverlay.patched_test_sha256,
+    );
+  }
   if (value.host.platform === "win32") {
     assert.equal(value.standalone.status, "unavailable");
     assert.match(value.standalone.reason, /POSIX static-archive/);
