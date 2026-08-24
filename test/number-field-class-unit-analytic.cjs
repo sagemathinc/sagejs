@@ -844,11 +844,38 @@ validation = validate_hr_index(
 assert validation.rigorous and validation.index_one
 assert validation.lower_index == validation.upper_index == 1
 
+# The fused exact endpoint sum must reproduce the former scalar formula's
+# final hR index ball.  The scalar expression remains an independent readable
+# oracle for both the true and deliberately inflated tentative class numbers.
+def scalar_hr_index(class_number):
+    precision = 128
+    field = IntervalBallField(precision)
+    log_two = field.log_integer(2)
+    log_prefactor = (
+        RealBall(2, precision_bits=precision) * log_two
+        - field.log_integer(2)
+        - field.log_integer(5) / RealBall(2, precision_bits=precision)
+    )
+    algebraic = (
+        log_prefactor
+        + field.log_integer(class_number)
+        + field.log(regulator.ball)
+    )
+    log_index = algebraic - zeta.ball
+    return field.exp(log_index)
+
+scalar_validation = scalar_hr_index(1)
+assert validation.index_ball.lower == scalar_validation.lower
+assert validation.index_ball.upper == scalar_validation.upper
+
 forged = validate_hr_index(
     signature=(2, 0), discriminant=5, class_number=2, roots_of_unity=2,
     regulator=regulator, zeta_log_residue=zeta, precision_bits=128,
 )
 assert forged.rigorous and forged.unique_index == 2 and not forged.index_one
+scalar_forged = scalar_hr_index(2)
+assert forged.index_ball.lower == scalar_forged.lower
+assert forged.index_ball.upper == scalar_forged.upper
 
 try:
     zeta_log_residue_bound(

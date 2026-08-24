@@ -605,6 +605,45 @@ class RealBall:
         return "[" + str(self.lower) + ", " + str(self.upper) + "]"
 
 
+def _real_ball_linear_combination(
+    terms: Sequence[tuple[RationalEndpoint, RealBall]],
+    *,
+    precision_bits: int,
+    source: str,
+) -> RealBall:
+    """Add exact interval multiples with one final outward rounding.
+
+    Repeated `RealBall` additions are individually rigorous, but each one
+    rounds to the working dyadic scale and allocates another interval tree.
+    A fixed analytic formula may instead combine its exact rational endpoints
+    first and round outwards once.  Negative coefficients reverse the endpoint
+    choice in the usual interval-linear-combination rule.
+    """
+    lower = RationalEndpoint(0)
+    upper = RationalEndpoint(0)
+    rigorous = True
+    zero = RationalEndpoint(0)
+    for coefficient, ball in terms:
+        if not isinstance(coefficient, RationalEndpoint) or not isinstance(
+            ball, RealBall
+        ):
+            raise TypeError("a real-ball linear term needs an exact coefficient")
+        if coefficient < zero:
+            lower += coefficient * ball.upper
+            upper += coefficient * ball.lower
+        else:
+            lower += coefficient * ball.lower
+            upper += coefficient * ball.upper
+        rigorous = rigorous and ball.rigorous
+    return RealBall._arithmetic_result(
+        lower,
+        upper,
+        precision_bits=int(precision_bits),
+        rigorous=rigorous,
+        source=str(source),
+    )
+
+
 def _ball(value: Any, *, precision_bits: int, rigorous: bool) -> RealBall:
     if isinstance(value, RealBall):
         return value
@@ -4798,16 +4837,18 @@ def validate_hr_index(
         raise AnalyticCertificationError("the regulator ball must be provably positive")
     field = IntervalBallField(int(precision_bits))
     log_two = field.log_integer(2)
-    log_prefactor = (
-        RealBall(r1, precision_bits=precision_bits) * log_two
-        + RealBall(r2, precision_bits=precision_bits)
-        * (log_two + field.log(field.pi()))
-        - field.log_integer(roots_of_unity)
-        - field.log_integer(abs(discriminant))
-        / RealBall(2, precision_bits=precision_bits)
-    )
-    algebraic = (
-        log_prefactor + field.log_integer(class_number) + field.log(regulator_ball)
+    log_pi = field.log(field.pi())
+    algebraic = _real_ball_linear_combination(
+        (
+            (RationalEndpoint(r1 + r2), log_two),
+            (RationalEndpoint(r2), log_pi),
+            (RationalEndpoint(-1), field.log_integer(roots_of_unity)),
+            (RationalEndpoint(-1, 2), field.log_integer(abs(discriminant))),
+            (RationalEndpoint(1), field.log_integer(class_number)),
+            (RationalEndpoint(1), field.log(regulator_ball)),
+        ),
+        precision_bits=precision_bits,
+        source="analytic class-number formula; one-step exact linear combination",
     )
     log_index = algebraic - residue_ball
     index_ball = field.exp(log_index)
