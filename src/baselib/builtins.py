@@ -2450,6 +2450,32 @@ def ρσ_int(value: Any = 0, base: Any = runtime.undefined) -> Any:
     return runtime.number(answer)
 
 
+_BUILTINS_DECIMAL_DIGITS = "0123456789"
+
+
+def _builtins_valid_float_underscores(text: _Str) -> _Bool:
+    """Return whether every `_` in `text` separates two decimal digits.
+
+    CPython removes underscores before converting numeric text, but only after
+    checking that each one has an ASCII digit immediately before and after it.
+    The check deliberately does not admit underscores in signs, decimal-point
+    boundaries, exponents, or the `inf` and `nan` spellings.
+    """
+    groups = text.split("_")
+    index = 1
+    while index < len(groups):
+        before = groups[index - 1]
+        after = groups[index]
+        if len(before) == 0 or len(after) == 0:
+            return False
+        if runtime.string_find(_BUILTINS_DECIMAL_DIGITS, before[-1]) == -1:
+            return False
+        if runtime.string_find(_BUILTINS_DECIMAL_DIGITS, after[0]) == -1:
+            return False
+        index += 1
+    return True
+
+
 def ρσ_float(value: Any = 0) -> Any:
     if _builtins_is_boxed_float(value):
         return value
@@ -2471,8 +2497,13 @@ def ρσ_float(value: Any = 0) -> Any:
             return runtime.number.NaN
         if normalized == "":
             raise ValueError("Could not convert string to float: " + str(value))
+        text = value
+        if runtime.string_find(text, "_") != -1:
+            if not _builtins_valid_float_underscores(text):
+                raise ValueError("Could not convert string to float: " + str(value))
+            text = text.replace(runtime.regexp("_", "g"), "")
         # Number() rejects trailing junk which JavaScript parseFloat accepts.
-        answer = runtime.number(value)
+        answer = runtime.number(text)
         reject_nan = True
     elif _builtins_member_is_function(value, "decode") and _builtins_member_is_function(
         value, "__len__"
