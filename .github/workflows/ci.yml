@@ -49,6 +49,14 @@ jobs:
       - name: Run bounded routine validation
         run: pnpm test:ci
 
+      - name: Install the minimum supported Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.2
+
+      - name: Verify minimum-runtime SQLite compatibility
+        run: node --test test/sqlite3.cjs test/graphs.cjs
+
   platform-smoke:
     name: Platform smoke (${{ matrix.target }})
     needs: routine

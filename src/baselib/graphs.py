@@ -3491,11 +3491,18 @@ class GraphQuery:
 
     def query_iterator(self, immutable: Any = None) -> Iterator[Graph]:
         del immutable
-        options = _native_record(readBigInts=True, returnArrays=True)
+        # Node 22 ignores prepare's newer options argument.  Configure the
+        # statement explicitly so rows have the same shape on every supported
+        # runtime.
         statement = runtime.reflect.apply(
             runtime.reflect.get(self._database, "prepare"),
             self._database,
-            [self._sql, options],
+            [self._sql],
+        )
+        runtime.reflect.apply(
+            runtime.reflect.get(statement, "setReturnArrays"),
+            statement,
+            [True],
         )
         rows = runtime.reflect.apply(
             runtime.reflect.get(statement, "all"),

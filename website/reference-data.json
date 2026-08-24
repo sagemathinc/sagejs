@@ -21296,9 +21296,9 @@
         "name": "close",
         "qualified": "GraphDatabase.close",
         "path": "src/baselib/graphs.py",
-        "line": 3581,
+        "line": 3588,
         "excerpt": {
-          "start_line": 3569,
+          "start_line": 3576,
           "text": "            for key in runtime.object.keys(query_dict):\n                runtime.reflect.set(merged, key, runtime.reflect.get(query_dict, key))\n        for key in runtime.object.keys(conditions):\n            runtime.reflect.set(merged, key, runtime.reflect.get(conditions, key))\n        return GraphQuery(self._database, merged, limit)\n\n    def graphs(self, **conditions: Any) -> list[Graph]:\n        return self.query(**conditions).list()\n\n    def count(self, **conditions: Any) -> int:\n        return self.query(**conditions).count()\n\n    def close(self) -> None:\n        runtime.reflect.apply(\n            runtime.reflect.get(self._database, \"close\"), self._database, []\n        )\n\n    def __enter__(self) -> GraphDatabase:\n        return self\n\n    def __exit__(self, *_arguments: Any) -> None:\n        self.close()\n\n    def __repr__(self) -> str:\n        return \"Sage graph database at \" + self.filename"
         }
       },
@@ -21362,9 +21362,9 @@
         "name": "count",
         "qualified": "GraphDatabase.count",
         "path": "src/baselib/graphs.py",
-        "line": 3578,
+        "line": 3585,
         "excerpt": {
-          "start_line": 3566,
+          "start_line": 3573,
           "text": "        del display_cols\n        merged = _native_object()\n        if query_dict is not None:\n            for key in runtime.object.keys(query_dict):\n                runtime.reflect.set(merged, key, runtime.reflect.get(query_dict, key))\n        for key in runtime.object.keys(conditions):\n            runtime.reflect.set(merged, key, runtime.reflect.get(conditions, key))\n        return GraphQuery(self._database, merged, limit)\n\n    def graphs(self, **conditions: Any) -> list[Graph]:\n        return self.query(**conditions).list()\n\n    def count(self, **conditions: Any) -> int:\n        return self.query(**conditions).count()\n\n    def close(self) -> None:\n        runtime.reflect.apply(\n            runtime.reflect.get(self._database, \"close\"), self._database, []\n        )\n\n    def __enter__(self) -> GraphDatabase:\n        return self\n\n    def __exit__(self, *_arguments: Any) -> None:\n        self.close()"
         }
       },
@@ -21428,9 +21428,9 @@
         "name": "graphs",
         "qualified": "GraphDatabase.graphs",
         "path": "src/baselib/graphs.py",
-        "line": 3575,
+        "line": 3582,
         "excerpt": {
-          "start_line": 3563,
+          "start_line": 3570,
           "text": "        limit: int | None = None,\n        **conditions: Any,\n    ) -> GraphQuery:\n        del display_cols\n        merged = _native_object()\n        if query_dict is not None:\n            for key in runtime.object.keys(query_dict):\n                runtime.reflect.set(merged, key, runtime.reflect.get(query_dict, key))\n        for key in runtime.object.keys(conditions):\n            runtime.reflect.set(merged, key, runtime.reflect.get(conditions, key))\n        return GraphQuery(self._database, merged, limit)\n\n    def graphs(self, **conditions: Any) -> list[Graph]:\n        return self.query(**conditions).list()\n\n    def count(self, **conditions: Any) -> int:\n        return self.query(**conditions).count()\n\n    def close(self) -> None:\n        runtime.reflect.apply(\n            runtime.reflect.get(self._database, \"close\"), self._database, []\n        )\n\n    def __enter__(self) -> GraphDatabase:\n        return self"
         }
       },
@@ -21496,9 +21496,9 @@
         "name": "query",
         "qualified": "GraphDatabase.query",
         "path": "src/baselib/graphs.py",
-        "line": 3559,
+        "line": 3566,
         "excerpt": {
-          "start_line": 3547,
+          "start_line": 3554,
           "text": "                    \"Sage graph database not found at \"\n                    + self.filename\n                    + \"; set SAGEJS_GRAPH_DATABASE to an installed graphs.db\"\n                )\n            database_bytes = runtime.reflect.apply(resource_hook, runtime.undefined, [])\n            self._database = runtime.reflect.construct(constructor, [\":memory:\"])\n            runtime.reflect.apply(\n                runtime.reflect.get(self._database, \"deserialize\"),\n                self._database,\n                [database_bytes],\n            )\n\n    def query(\n        self,\n        query_dict: Any = None,\n        display_cols: Any = None,\n        limit: int | None = None,\n        **conditions: Any,\n    ) -> GraphQuery:\n        del display_cols\n        merged = _native_object()\n        if query_dict is not None:\n            for key in runtime.object.keys(query_dict):\n                runtime.reflect.set(merged, key, runtime.reflect.get(query_dict, key))\n        for key in runtime.object.keys(conditions):"
         }
       },
@@ -22343,9 +22343,9 @@
         "name": "count",
         "qualified": "GraphQuery.count",
         "path": "src/baselib/graphs.py",
-        "line": 3515,
+        "line": 3522,
         "excerpt": {
-          "start_line": 3503,
+          "start_line": 3510,
           "text": "            self._parameters,\n        )\n        return iter([Graph(row[0]) for row in rows])\n\n    def __iter__(self) -> Iterator[Graph]:\n        return self.query_iterator()\n\n    def list(self) -> list[Graph]:\n        return list(self.query_iterator())\n\n    get_graphs_list = list\n\n    def count(self) -> int:\n        return len(self.list())\n\n    def __repr__(self) -> str:\n        return \"Graph database query: \" + self._sql\n\n    __str__ = __repr__\n    toString = __repr__\n\n\nclass GraphDatabase:\n    \"\"\"Immutable SQLite database of all unlabeled graphs through order 7.\"\"\"\n"
         }
       },
@@ -22468,10 +22468,10 @@
         "name": "list",
         "qualified": "GraphQuery.list",
         "path": "src/baselib/graphs.py",
-        "line": 3510,
+        "line": 3517,
         "excerpt": {
-          "start_line": 3498,
-          "text": "            [self._sql, options],\n        )\n        rows = runtime.reflect.apply(\n            runtime.reflect.get(statement, \"all\"),\n            statement,\n            self._parameters,\n        )\n        return iter([Graph(row[0]) for row in rows])\n\n    def __iter__(self) -> Iterator[Graph]:\n        return self.query_iterator()\n\n    def list(self) -> list[Graph]:\n        return list(self.query_iterator())\n\n    get_graphs_list = list\n\n    def count(self) -> int:\n        return len(self.list())\n\n    def __repr__(self) -> str:\n        return \"Graph database query: \" + self._sql\n\n    __str__ = __repr__\n    toString = __repr__"
+          "start_line": 3505,
+          "text": "            [True],\n        )\n        rows = runtime.reflect.apply(\n            runtime.reflect.get(statement, \"all\"),\n            statement,\n            self._parameters,\n        )\n        return iter([Graph(row[0]) for row in rows])\n\n    def __iter__(self) -> Iterator[Graph]:\n        return self.query_iterator()\n\n    def list(self) -> list[Graph]:\n        return list(self.query_iterator())\n\n    get_graphs_list = list\n\n    def count(self) -> int:\n        return len(self.list())\n\n    def __repr__(self) -> str:\n        return \"Graph database query: \" + self._sql\n\n    __str__ = __repr__\n    toString = __repr__"
         }
       },
       "examples": [
@@ -22539,7 +22539,7 @@
         "line": 3492,
         "excerpt": {
           "start_line": 3480,
-          "text": "            )\n        if len(clauses):\n            sql += \"WHERE \" + \" AND \".join(clauses) + \" \"\n        sql += \"ORDER BY graph_data.graph6\"\n        if limit is not None:\n            if int(limit) < 0:\n                raise ValueError(\"query limit must be nonnegative\")\n            sql += \" LIMIT ?\"\n            parameters.append(int(limit))\n        self._sql = sql\n        self._parameters = parameters\n\n    def query_iterator(self, immutable: Any = None) -> Iterator[Graph]:\n        del immutable\n        options = _native_record(readBigInts=True, returnArrays=True)\n        statement = runtime.reflect.apply(\n            runtime.reflect.get(self._database, \"prepare\"),\n            self._database,\n            [self._sql, options],\n        )\n        rows = runtime.reflect.apply(\n            runtime.reflect.get(statement, \"all\"),\n            statement,\n            self._parameters,\n        )"
+          "text": "            )\n        if len(clauses):\n            sql += \"WHERE \" + \" AND \".join(clauses) + \" \"\n        sql += \"ORDER BY graph_data.graph6\"\n        if limit is not None:\n            if int(limit) < 0:\n                raise ValueError(\"query limit must be nonnegative\")\n            sql += \" LIMIT ?\"\n            parameters.append(int(limit))\n        self._sql = sql\n        self._parameters = parameters\n\n    def query_iterator(self, immutable: Any = None) -> Iterator[Graph]:\n        del immutable\n        # Node 22 ignores prepare's newer options argument.  Configure the\n        # statement explicitly so rows have the same shape on every supported\n        # runtime.\n        statement = runtime.reflect.apply(\n            runtime.reflect.get(self._database, \"prepare\"),\n            self._database,\n            [self._sql],\n        )\n        runtime.reflect.apply(\n            runtime.reflect.get(statement, \"setReturnArrays\"),\n            statement,"
         }
       },
       "examples": [
