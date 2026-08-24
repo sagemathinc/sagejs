@@ -1290,6 +1290,7 @@ class ClassUnitGroupEngine:
             "relation_log_rank_calls": 0,
             "relation_dependency_unit_requests": 0,
             "relation_dependency_unit_cache_hits": 0,
+            "relation_dependency_unit_object_cache_hits": 0,
             "relation_dependency_unit_cache_entries": 0,
             "relation_dependency_units_seen": 0,
             "relation_independent_log_units": 0,
@@ -1301,6 +1302,7 @@ class ClassUnitGroupEngine:
             "relation_witness_logarithm_cache_hits": 0,
             "dependency_unit_materializations": 0,
             "dependency_unit_eager_candidates": 0,
+            "dependency_unit_steering_basis_hits": 0,
             "unit_live_relation_authority_hits": 0,
             "unit_principal_authority_requests": 0,
             "unit_principal_authority_hits": 0,
@@ -1353,8 +1355,11 @@ class ClassUnitGroupEngine:
         self._unit_logarithm_cache: dict[tuple[int, str], tuple[Any, ...]] = {}
         self._relation_log_record_prefix: tuple[Any, ...] = ()
         self._relation_dependency_unit_hashes: dict[tuple[int, ...], str] = {}
+        self._relation_dependency_units: dict[tuple[int, ...], Any] = {}
         self._relation_seen_dependency_units: set[str] = set()
         self._relation_independent_logarithms: list[tuple[Any, ...]] = []
+        self._relation_independent_dependency_keys: list[tuple[int, ...]] = []
+        self._relation_initial_basis_selected = False
         self._relation_witness_cache: dict[int, tuple[Any, str, Any]] = {}
         self._relation_witness_logarithm_cache: dict[
             tuple[int, int], tuple[Any, str, tuple[Any, ...]]
@@ -3077,8 +3082,10 @@ class ClassUnitGroupEngine:
                     < MAX_RELATION_LOG_STEERING_RECORDS
                 ):
                     self._relation_dependency_unit_hashes[dependency_key] = unit_hash
+                    self._relation_dependency_units[dependency_key] = unit
             else:
                 self._resource_usage["relation_dependency_unit_cache_hits"] += 1
+                unit = self._relation_dependency_units.get(dependency_key)
             if unit_hash in self._relation_seen_dependency_units:
                 continue
             if (
@@ -3098,6 +3105,7 @@ class ClassUnitGroupEngine:
             candidate_rank = _floating_matrix_rank(candidate)
             if candidate_rank > current_rank:
                 logarithms.append(row)
+                self._relation_independent_dependency_keys.append(dependency_key)
                 current_rank = candidate_rank
         self._resource_usage["relation_dependency_unit_cache_entries"] = len(
             self._relation_dependency_unit_hashes
@@ -3113,14 +3121,19 @@ class ClassUnitGroupEngine:
         if (
             self._relation_log_record_prefix
             or self._relation_dependency_unit_hashes
+            or self._relation_dependency_units
             or self._relation_seen_dependency_units
             or self._relation_independent_logarithms
+            or self._relation_independent_dependency_keys
         ):
             self._resource_usage["relation_log_steering_resets"] += 1
         self._relation_log_record_prefix = ()
         self._relation_dependency_unit_hashes.clear()
+        self._relation_dependency_units.clear()
         self._relation_seen_dependency_units.clear()
         self._relation_independent_logarithms.clear()
+        self._relation_independent_dependency_keys.clear()
+        self._relation_initial_basis_selected = False
 
     def _uncached_unit_logarithmic_rank(
         self, records: Sequence[Any], presentation: Any, unit_rank: int
@@ -3227,12 +3240,81 @@ class ClassUnitGroupEngine:
         # every dependency.  Larger presentations retain the streaming path
         # to avoid materializing a potentially large family of factored units.
         eager_units: tuple[Any, ...] = ()
-        if int(self.field.degree()) == 3 and len(dependencies) <= 16:
-            eager_units = tuple(
-                self._combine(records, dependency) for dependency in dependencies
+        normalized_dependencies = []
+        for dependency in dependencies:
+            normalized = [int(value) for value in dependency]
+            while normalized and normalized[-1] == 0:
+                normalized.pop()
+            normalized_dependencies.append(tuple(normalized))
+        retained_prefix = tuple(records) == self._relation_log_record_prefix
+        # The relation loop has already found an observed full-rank unit
+        # subgroup.  Use that exact live basis for the first rigorous `hR`
+        # test instead of eagerly minimizing its regulator over every
+        # dependency.  If its certified index is not one, adaptive saturation
+        # calls this method again and deliberately takes the complete
+        # minimum-volume path below.
+        if (
+            not self._relation_initial_basis_selected
+            and retained_prefix
+            and unit_rank > 0
+            and len(self._relation_independent_dependency_keys) >= unit_rank
+        ):
+            dependency_rows: dict[tuple[int, ...], tuple[int, ...]] = {}
+            for dependency, dependency_key in zip(
+                dependencies, normalized_dependencies, strict=True
+            ):
+                dependency_rows.setdefault(
+                    dependency_key, tuple(int(value) for value in dependency)
+                )
+            selected_keys = tuple(
+                self._relation_independent_dependency_keys[:unit_rank]
             )
+            if all(
+                key in dependency_rows and key in self._relation_dependency_units
+                for key in selected_keys
+            ):
+                self._relation_initial_basis_selected = True
+                self._resource_usage["dependency_unit_steering_basis_hits"] += 1
+                self._resource_usage["relation_dependency_unit_object_cache_hits"] += (
+                    len(selected_keys)
+                )
+                return (
+                    tuple(
+                        self._relation_dependency_units[key] for key in selected_keys
+                    ),
+                    tuple(dependency_rows[key] for key in selected_keys),
+                )
+        retained_complete = bool(
+            retained_prefix
+            and all(
+                dependency in self._relation_dependency_units
+                for dependency in normalized_dependencies
+            )
+        )
+        if len(dependencies) <= 16 and (
+            int(self.field.degree()) == 3 or retained_complete
+        ):
+            selected_units: list[Any] = []
+            materialized = 0
+            for dependency, dependency_key in zip(
+                dependencies, normalized_dependencies, strict=True
+            ):
+                unit = (
+                    self._relation_dependency_units.get(dependency_key)
+                    if retained_prefix
+                    else None
+                )
+                if unit is None:
+                    unit = self._combine(records, dependency)
+                    materialized += 1
+                else:
+                    self._resource_usage[
+                        "relation_dependency_unit_object_cache_hits"
+                    ] += 1
+                selected_units.append(unit)
+            eager_units = tuple(selected_units)
             self._resource_usage["dependency_unit_eager_candidates"] += len(eager_units)
-            self._resource_usage["dependency_unit_materializations"] += len(eager_units)
+            self._resource_usage["dependency_unit_materializations"] += materialized
             logarithms = [
                 list(self._unit_logarithms(unit, 80)[:-1]) for unit in eager_units
             ]

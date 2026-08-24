@@ -777,6 +777,20 @@ assert len(engine.logs) == 3
 assert engine._resource_usage["relation_dependency_unit_cache_hits"] == 2
 assert engine._resource_usage["relation_independent_log_units"] == 2
 
+# Final basis selection consumes the exact unit objects constructed during
+# log-rank steering instead of decoding and combining the same live prefix.
+units, dependencies = engine._select_dependency_unit_basis(
+    (first, second, third),
+    ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    2,
+)
+assert len(units) == 2
+assert dependencies == ((1, 0, 0), (0, 0, 1))
+assert len(engine.combinations) == 3
+assert engine._resource_usage["relation_dependency_unit_object_cache_hits"] == 2
+assert engine._resource_usage["dependency_unit_steering_basis_hits"] == 1
+assert engine._resource_usage["dependency_unit_materializations"] == 0
+
 # A detached/restored prefix has equal mathematical-looking records but distinct
 # identities.  It must reset and recompute instead of inheriting producer state.
 detached = (FakeRecord(), FakeRecord(), FakeRecord())

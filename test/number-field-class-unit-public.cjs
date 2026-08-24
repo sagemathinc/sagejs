@@ -768,8 +768,10 @@ assert resources["saturation_rounds"] == 0
 assert resources["relation_attempts"] == 0
 assert resources["relation_candidates"] == 0
 assert resources["relation_witness_logarithm_requests"] == 0
-assert resources["dependency_unit_eager_candidates"] == 3
-assert resources["dependency_unit_materializations"] == 3
+assert resources["dependency_unit_eager_candidates"] == 0
+assert resources["dependency_unit_materializations"] == 0
+assert resources["dependency_unit_steering_basis_hits"] == 1
+assert resources["relation_dependency_unit_object_cache_hits"] == 1
 assert resources["unit_live_relation_authority_hits"] == 1
 assert resources["generation_live_relation_payload_hits"] >= 1
 assert resources["relation_witness_decode_requests"] <= 3 * resources["relations"]
