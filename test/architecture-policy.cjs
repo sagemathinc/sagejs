@@ -28,7 +28,10 @@ const auditManifest = JSON.parse(readFileSync(
 
 test("every tracked native file has an architectural classification", () => {
   const result = validateNativeCode(codeManifest);
-  assert.equal(result.entries.length, nativeFiles().length);
+  assert.equal(
+    result.entries.length,
+    nativeFiles(root, codeManifest.policy.tracked_extensions).length,
+  );
   assert.ok(result.audited.some((entry) =>
     entry.path === "packages/flint/src/p1.c"
   ));

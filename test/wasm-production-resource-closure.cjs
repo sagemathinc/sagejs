@@ -187,7 +187,7 @@ test("production resource closure compiles every registered function", async () 
       .map((fn) => [kernel.id, fn.name, fn.reason, fn.resources])
   );
   assert.equal(inventory.inventory.flatMap((kernel) => kernel.functions)
-    .filter((fn) => fn.status === "compiled-source").length, 229);
+    .filter((fn) => fn.status === "compiled-source").length, 248);
   assert.deepEqual(unsupported, []);
 });
 

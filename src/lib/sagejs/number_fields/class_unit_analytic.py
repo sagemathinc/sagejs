@@ -3115,7 +3115,7 @@ def _primes_below(bound: int) -> list[int]:
     # Reuse Sage.js's canonical exact prime service.  Its retained sieve is
     # shared with maximal-order splitting, whereas spelling a bytearray sieve
     # here repeated the same prime enumeration inside every analytic workspace
-    # and lowered poorly through the Python runtime.
+    # and lowered poorly through dynamic Python execution.
     try:
         base_module = __import__(
             "sagejs._baselib.number_fields", fromlist=["number_fields"]

@@ -60,15 +60,16 @@ def central_coefficient_cutoff(
     if conductor < 1 or genus not in (2, 3):
         raise ValueError("invalid hyperelliptic L-function normalization")
     try:
-        runtime_module = __import__("sagejs.runtime", fromlist=["flint_backend"])
-        backend = runtime_module.flint_backend()
-        function = runtime_module.reflect.get(backend, "hyperellipticCentralWeights")
-        if runtime_module.jstype(function) != "undefined":
-            planned = runtime_module.reflect.apply(
+        import sagejs.runtime as runtime
+
+        backend = runtime.flint_backend()
+        function = runtime.reflect.get(backend, "hyperellipticCentralWeights")
+        if runtime.jstype(function) != "undefined":
+            planned = runtime.reflect.apply(
                 function,
                 backend,
                 [
-                    runtime_module.bigint(conductor),
+                    runtime.bigint(conductor),
                     1,
                     genus,
                     [0, 1],
@@ -76,7 +77,7 @@ def central_coefficient_cutoff(
                     maximum_order,
                 ],
             )
-            required = int(runtime_module.reflect.get(planned, "requiredCutoff"))
+            required = int(runtime.reflect.get(planned, "requiredCutoff"))
             if required >= 1:
                 return required
     except Exception:
@@ -295,19 +296,20 @@ def evaluate_twist_tile(job: tuple[Any, ...]) -> tuple[dict[str, Any], ...]:
     Kronecker arithmetic, cache authentication, and the one native Arb call.
     """
     json_module = __import__("json")
-    runtime_module = __import__("sagejs.runtime", fromlist=["flint_backend"])
-    crypto_module = runtime_module.require_module("node:crypto")
+    import sagejs.runtime as runtime
+
+    crypto_module = runtime.require_module("node:crypto")
 
     def canonical_json(value: object) -> str:
         return json_module.dumps(value, sort_keys=True, separators=(",", ":"))
 
     def digest_value(value: object) -> str:
-        create_hash = runtime_module.reflect.get(crypto_module, "createHash")
-        state = runtime_module.reflect.apply(create_hash, crypto_module, ["sha256"])
-        update = runtime_module.reflect.get(state, "update")
-        runtime_module.reflect.apply(update, state, [canonical_json(value)])
-        finish = runtime_module.reflect.get(state, "digest")
-        return str(runtime_module.reflect.apply(finish, state, ["hex"]))
+        create_hash = runtime.reflect.get(crypto_module, "createHash")
+        state = runtime.reflect.apply(create_hash, crypto_module, ["sha256"])
+        update = runtime.reflect.get(state, "update")
+        runtime.reflect.apply(update, state, [canonical_json(value)])
+        finish = runtime.reflect.get(state, "digest")
+        return str(runtime.reflect.apply(finish, state, ["hex"]))
 
     def quadratic_character(discriminant: int, value: int) -> int:
         if value == 0:
@@ -371,15 +373,15 @@ def evaluate_twist_tile(job: tuple[Any, ...]) -> tuple[dict[str, Any], ...]:
         raise RuntimeError("worker coefficient prefix is invalid")
 
     mode, threshold = mode_and_threshold
-    backend = runtime_module.flint_backend()
-    function = runtime_module.reflect.get(backend, "hyperellipticCentralWeights")
-    if runtime_module.jstype(function) == "undefined":
+    backend = runtime.flint_backend()
+    function = runtime.reflect.get(backend, "hyperellipticCentralWeights")
+    if runtime.jstype(function) == "undefined":
         raise NotImplementedError(
             "the native Arb central-weight backend is unavailable"
         )
     answer = []
     for discriminant in discriminants:
-        started = runtime_module.wall_time()
+        started = runtime.wall_time()
         d_value = int(discriminant)
         conductor = int(base_conductor) * abs(d_value) ** (2 * int(genus))
         root_number = int(base_root_number) * quadratic_character(
@@ -387,15 +389,15 @@ def evaluate_twist_tile(job: tuple[Any, ...]) -> tuple[dict[str, Any], ...]:
         )
         try:
             arguments = [
-                runtime_module.bigint(conductor),
+                runtime.bigint(conductor),
                 root_number,
                 int(genus),
                 [0, 1],
                 int(precision),
                 int(maximum_order),
             ]
-            planned = runtime_module.reflect.apply(function, backend, arguments)
-            required = int(runtime_module.reflect.get(planned, "requiredCutoff"))
+            planned = runtime.reflect.apply(function, backend, arguments)
+            required = int(runtime.reflect.get(planned, "requiredCutoff"))
             if required >= len(coefficients):
                 raise RuntimeError(
                     "worker coefficient cache is shorter than the analytic plan"
@@ -406,12 +408,12 @@ def evaluate_twist_tile(job: tuple[Any, ...]) -> tuple[dict[str, Any], ...]:
                     int(coefficients[index]) * quadratic_character(d_value, index)
                 )
             arguments[3] = twisted
-            native = runtime_module.reflect.apply(function, backend, arguments)
-            if str(runtime_module.reflect.get(native, "status")) != "ok":
+            native = runtime.reflect.apply(function, backend, arguments)
+            if str(runtime.reflect.get(native, "status")) != "ok":
                 raise RuntimeError(
                     "the worker did not satisfy the native coefficient plan"
                 )
-            stable = bool(runtime_module.reflect.get(native, "refinementStable"))
+            stable = bool(runtime.reflect.get(native, "refinementStable"))
             if not stable:
                 status = "numerical_indeterminacy"
                 reason = "the hyperelliptic L-series refinement did not stabilize"
@@ -419,14 +421,12 @@ def evaluate_twist_tile(job: tuple[Any, ...]) -> tuple[dict[str, Any], ...]:
             else:
                 status = "ok"
                 reason = None
-                raw = runtime_module.reflect.get(native, "rawDerivatives")
+                raw = runtime.reflect.get(native, "rawDerivatives")
                 derivatives = [
                     {
-                        "real": str(
-                            runtime_module.reflect.get(raw[index], "realMidpoint")
-                        ),
+                        "real": str(runtime.reflect.get(raw[index], "realMidpoint")),
                         "imaginary": str(
-                            runtime_module.reflect.get(raw[index], "imagMidpoint")
+                            runtime.reflect.get(raw[index], "imagMidpoint")
                         ),
                     }
                     for index in range(len(raw))
@@ -466,8 +466,8 @@ def evaluate_twist_tile(job: tuple[Any, ...]) -> tuple[dict[str, Any], ...]:
                         "gpu_auto_reason": "physical crossover gate not recorded",
                     },
                     "timings": {
-                        "analytic": runtime_module.wall_time() - started,
-                        "total": runtime_module.wall_time() - started,
+                        "analytic": runtime.wall_time() - started,
+                        "total": runtime.wall_time() - started,
                     },
                 }
             )
@@ -486,7 +486,7 @@ def evaluate_twist_tile(job: tuple[Any, ...]) -> tuple[dict[str, Any], ...]:
                     "arithmetic_balls_rigorous": False,
                     "refinement_stable": False,
                     "screening": {"mode": str(mode), "backend": "cpu"},
-                    "timings": {"total": runtime_module.wall_time() - started},
+                    "timings": {"total": runtime.wall_time() - started},
                 }
             )
     return tuple(answer)
