@@ -21,8 +21,8 @@ jobs:
       R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-      STAGED_MIRROR: ${{ runner.temp }}/sagejs-source-mirror-stage
-      VERIFIED_MIRROR: ${{ runner.temp }}/sagejs-source-mirror-verify
+      STAGED_MIRROR: /tmp/sagejs-source-mirror-stage
+      VERIFIED_MIRROR: /tmp/sagejs-source-mirror-verify
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
