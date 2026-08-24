@@ -529,7 +529,7 @@ def _order_one_coordinates(order: Any) -> list[int]:
 
 
 def _modular_table(order: Any, prime: int) -> list[list[list[int]]]:
-    table = _maximal._nf_order_multiplication_table(order)
+    table = _maximal._nf_order_multiplication_table_frozen(order)
     return [
         [[int(value) % prime for value in product] for product in left]
         for left in table

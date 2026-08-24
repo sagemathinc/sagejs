@@ -1665,7 +1665,7 @@ def _local_pth_power_obstruction(
     maximal_order = __import__(
         "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
     )
-    table = maximal_order._nf_order_multiplication_table(order)
+    table = maximal_order._nf_order_multiplication_table_frozen(order)
     one = _order_coordinates(order, order.number_field().one())
     target_coordinates = _order_coordinates(order, target)
     degree = len(one)

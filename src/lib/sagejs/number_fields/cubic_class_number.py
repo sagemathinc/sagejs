@@ -613,7 +613,7 @@ def _order_cubic_norm_form_coefficients(order: Any) -> tuple[int, ...]:
                 "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
             )
             native_module = __import__("sagejs.native", fromlist=["native"])
-            table = maximal_module._nf_order_multiplication_table(order)
+            table = maximal_module._nf_order_multiplication_table_frozen(order)
             packed_table = tuple(
                 _integer_rational(
                     table[left][right][coordinate],

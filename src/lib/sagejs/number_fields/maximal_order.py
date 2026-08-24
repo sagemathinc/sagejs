@@ -199,8 +199,16 @@ def _nf_order_multiplication_table_packed(order: Any) -> list[list[list[Any]]]:
     return buchmann_lenstra._order_multiplication_table(coefficients, basis)
 
 
-def _nf_order_multiplication_table(order: Any) -> list[list[list[Any]]]:
-    """Return the cached integral multiplication table in the order basis."""
+def _nf_order_multiplication_table_frozen(
+    order: Any,
+) -> tuple[tuple[tuple[Any, ...], ...], ...]:
+    """Return the cached immutable integral multiplication table.
+
+    Internal read-only consumers use this boundary so a cached order table is
+    not copied merely to be packed into another immutable representation.  The
+    public internal compatibility helper below still returns a defensive
+    mutable copy for callers that may alter their result.
+    """
     for index, (cached_order, cached_table) in enumerate(
         _order_multiplication_table_cache
     ):
@@ -209,7 +217,7 @@ def _nf_order_multiplication_table(order: Any) -> list[list[list[Any]]]:
                 _order_multiplication_table_cache.append(
                     _order_multiplication_table_cache.pop(index)
                 )
-            return _copy_order_multiplication_table(cached_table)
+            return cached_table
     field = order.number_field()
     if getattr(field, "_equation_order_cache", None) is order:
         # The power-basis recurrence is already linear in the table size and
@@ -238,7 +246,14 @@ def _nf_order_multiplication_table(order: Any) -> list[list[list[Any]]]:
         tuple(tuple(value for value in product) for product in left) for left in table
     )
     _order_multiplication_table_cache.append((order, frozen_table))
-    return _copy_order_multiplication_table(frozen_table)
+    return frozen_table
+
+
+def _nf_order_multiplication_table(order: Any) -> list[list[list[Any]]]:
+    """Return a defensive copy of the integral order multiplication table."""
+    return _copy_order_multiplication_table(
+        _nf_order_multiplication_table_frozen(order)
+    )
 
 
 def _nf_modular_algebra_product(

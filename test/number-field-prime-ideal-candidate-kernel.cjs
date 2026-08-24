@@ -409,12 +409,18 @@ maximal_order._nf_order_multiplication_table_packed = counted
 try:
     first = maximal_order._nf_order_multiplication_table(order)
     second = maximal_order._nf_order_multiplication_table(order)
+    frozen = maximal_order._nf_order_multiplication_table_frozen(order)
+    frozen_again = maximal_order._nf_order_multiplication_table_frozen(order)
 finally:
     maximal_order._nf_order_multiplication_table_packed = original
 assert calls == [order]
 assert first == second and first is not second
+assert frozen is frozen_again
+assert isinstance(frozen, tuple) and isinstance(frozen[0], tuple)
+assert [[list(product) for product in left] for left in frozen] == second
 first[0][0][0] += 1
 assert maximal_order._nf_order_multiplication_table(order) == second
+assert maximal_order._nf_order_multiplication_table_frozen(order) is frozen
 
 # A rejected or unavailable packed boundary keeps the original exact field-
 # arithmetic implementation as a capability fallback.

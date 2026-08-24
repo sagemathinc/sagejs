@@ -1495,7 +1495,9 @@ class ExactRelationCollector:
                 maximal_module = __import__(
                     "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
                 )
-                raw_table = maximal_module._nf_order_multiplication_table(self.order)
+                raw_table = maximal_module._nf_order_multiplication_table_frozen(
+                    self.order
+                )
                 cubic_multiplication_table = tuple(
                     tuple(
                         tuple(_integral_structure_constant(entry) for entry in product)
