@@ -95,13 +95,31 @@ selected = "native" if compiled else "reference"
 
 def scalar_operations(scalar):
     magnitude = abs(scalar)
-    bits = 0
-    ones = 0
+    operations = 0
+    started = False
     while magnitude:
-        bits += 1
-        ones += magnitude % 2
+        if magnitude % 2:
+            digit = 1 if magnitude == 1 else 2 - magnitude % 4
+            magnitude -= digit
+            if started:
+                operations += 1
+            else:
+                started = True
         magnitude //= 2
-    return ones + max(0, bits - 1)
+        if magnitude:
+            operations += 1
+    return operations
+
+
+assert tuple(scalar_operations(value) for value in (0, 1, 2, 3, 17, 31)) == (
+    0,
+    0,
+    1,
+    3,
+    5,
+    6,
+)
+assert scalar_operations(2**64 - 1) == 65
 
 
 def check_curve(curve, exhaustive):
@@ -310,7 +328,18 @@ def check_curve(curve, exhaustive):
         assert source_progression == progression_reference
 
     scalars = [
-        -(2**130 + 17), -257, -1, 0, 1, 2, 17, 2**128 + 12345
+        -(2**130 + 17),
+        -257,
+        -1,
+        0,
+        1,
+        2,
+        17,
+        31,
+        2**64 - 1,
+        2**64 + 3,
+        2**128 + 12345,
+        2**192 - 1,
     ]
     scalar_points = [sample[index % len(sample)] for index in range(len(scalars))]
     products, scalar_diagnostics = context.scalar_batch(
@@ -325,6 +354,10 @@ def check_curve(curve, exhaustive):
     )
     if compiled:
         assert scalar_diagnostics.statuses == operation_statuses
+    identity_products = context.scalar_batch(
+        (J.zero(),) * len(scalars), scalars, algorithm=selected
+    )
+    assert all(product.is_zero() for product in identity_products)
     if not compiled:
         maximum_bits = max(abs(value).bit_length() for value in scalars)
         words_per_scalar = max(1, (maximum_bits + 63) // 64)
@@ -356,6 +389,27 @@ def check_curve(curve, exhaustive):
         )
         assert source_products == reference_products
         assert tuple(raw_status) == operation_statuses
+
+    small_scalars = tuple(range(-80, 81))
+    small_points = tuple(
+        sample[index % len(sample)] for index in range(len(small_scalars))
+    )
+    small_products, small_diagnostics = context.scalar_batch(
+        small_points,
+        small_scalars,
+        algorithm=selected,
+        diagnostics=True,
+    )
+    small_reference = J.prepared_arithmetic(algorithm="reference").scalar_batch(
+        small_points,
+        small_scalars,
+        algorithm="reference",
+    )
+    assert small_products == small_reference
+    if compiled:
+        assert small_diagnostics.statuses == tuple(
+            scalar_operations(scalar) + 1 for scalar in small_scalars
+        )
 
     search_point = sample[1]
     search_order = search_point.order(multiple=J.order(), algorithm="reference")
@@ -541,6 +595,28 @@ def check_curve(curve, exhaustive):
         pass
     else:
         raise AssertionError("scalar operation resource limit was ignored")
+    dense_scalar = 2**128 - 1
+    dense_operations = scalar_operations(dense_scalar)
+    dense_product, dense_diagnostics = context.scalar_batch(
+        sample[:1],
+        [dense_scalar],
+        algorithm=selected,
+        diagnostics=True,
+        max_group_operations=dense_operations,
+    )
+    assert dense_product[0] == context._reference_scalar(sample[0], dense_scalar)
+    if compiled:
+        assert dense_diagnostics.statuses == (dense_operations + 1,)
+    try:
+        context.scalar_batch(
+            sample[:1],
+            [dense_scalar],
+            max_group_operations=dense_operations - 1,
+        )
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("signed scalar operation bound was ignored")
     try:
         context.progression_batch(
             sample[0], sample[1], 4, max_group_operations=2

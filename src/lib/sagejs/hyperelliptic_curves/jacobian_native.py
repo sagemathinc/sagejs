@@ -482,14 +482,22 @@ def _ceil_square_root(value: int) -> int:
 
 
 def _scalar_group_operations(value: int) -> int:
+    """Count additions and doublings in the signed non-adjacent chain."""
     magnitude = abs(value)
-    additions = 0
-    copy = magnitude
-    while copy:
-        additions += copy % 2
-        copy //= 2
-    bits = _bit_length(magnitude)
-    return additions + max(0, bits - 1)
+    operations = 0
+    started = False
+    while magnitude:
+        if magnitude % 2:
+            digit = 1 if magnitude == 1 else 2 - magnitude % 4
+            magnitude -= digit
+            if started:
+                operations += 1
+            else:
+                started = True
+        magnitude //= 2
+        if magnitude:
+            operations += 1
+    return operations
 
 
 def _backend_capability() -> tuple[Any, Any, Mapping[str, Any]] | None:
@@ -1675,14 +1683,7 @@ class PreparedJacobianArithmetic:
             if operation_limit < 0:
                 raise ValueError("max_group_operations must be nonnegative")
             for scalar in scalar_values:
-                magnitude = abs(scalar)
-                required = 0
-                while magnitude:
-                    required += magnitude % 2
-                    magnitude //= 2
-                bits = _bit_length(abs(scalar))
-                if bits:
-                    required += bits - 1
+                required = _scalar_group_operations(scalar)
                 if required > operation_limit:
                     raise RuntimeError(
                         "prepared scalar multiplication exceeds "
@@ -1788,9 +1789,17 @@ class PreparedJacobianArithmetic:
             return self._reference_scalar(value._negate_reference(), -scalar)
         result = self._jacobian.zero()
         addend = value
+        started = False
         while scalar:
             if scalar % 2:
-                result = self._reference_add(result, addend)
+                digit = 1 if scalar == 1 else 2 - scalar % 4
+                selected = addend if digit == 1 else addend._negate_reference()
+                if started:
+                    result = self._reference_add(result, selected)
+                else:
+                    result = selected
+                    started = True
+                scalar -= digit
             scalar //= 2
             if scalar:
                 addend = self._reference_add(addend, addend)

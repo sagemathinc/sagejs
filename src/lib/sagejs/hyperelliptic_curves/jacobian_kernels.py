@@ -1256,18 +1256,56 @@ def _scalar_operation_count(
     scalar_offset: uint64,
     words_per_scalar: uint64,
 ) -> uint64:
+    # Count the signed non-adjacent chain exactly. The first nonzero digit is
+    # copied (or negated) into the accumulator and is not a group operation.
     bits = _scalar_bit_length(scalar_words, scalar_offset, words_per_scalar)
     if bits == 0:
         return 0
-    additions: uint64 = 0
+    operations: uint64 = 0
+    started: uint64 = 0
+    carry: uint64 = 0
+    position: uint64 = 0
     word_index: uint64 = 0
-    while word_index < words_per_scalar:
-        word = scalar_words[scalar_offset + word_index]
-        while word > 0:
-            additions += word % 2
+    bit_in_word: uint64 = 0
+    word = scalar_words[scalar_offset]
+    while position < bits or carry != 0:
+        original_bit: uint64 = 0
+        if position < bits:
+            original_bit = word % 2
             word //= 2
-        word_index += 1
-    return additions + bits - 1
+        next_bit: uint64 = 0
+        if position + 1 < bits:
+            if bit_in_word + 1 < 64:
+                next_bit = word % 2
+            else:
+                next_bit = scalar_words[scalar_offset + word_index + 1] % 2
+        total = original_bit + carry
+        digit: uint64 = 0
+        if total == 0:
+            carry = 0
+        elif total == 2:
+            carry = 1
+        else:
+            digit = 1
+            carry = 0
+            if next_bit != 0:
+                digit = 2
+                carry = 1
+        if digit != 0:
+            if started != 0:
+                operations += 1
+            else:
+                started = 1
+        position += 1
+        bit_in_word += 1
+        if bit_in_word == 64:
+            word_index += 1
+            bit_in_word = 0
+            if word_index < words_per_scalar:
+                word = scalar_words[scalar_offset + word_index]
+        if position < bits or carry != 0:
+            operations += 1
+    return operations
 
 
 def _cantor_scalar_one(
@@ -1295,34 +1333,107 @@ def _cantor_scalar_one(
     accumulator[0] = 0
     accumulator[1] = 1
     operations: uint64 = 0
-    used_words = words_per_scalar
-    while used_words > 0 and scalar_words[scalar_offset + used_words - 1] == 0:
-        used_words -= 1
+    started: uint64 = 0
+    carry: uint64 = 0
+    bits = _scalar_bit_length(scalar_words, scalar_offset, words_per_scalar)
+    position: uint64 = 0
     word_index: uint64 = 0
-    while word_index < used_words:
-        word = scalar_words[scalar_offset + word_index]
-        bit_count: uint64 = 64
-        if word_index + 1 == used_words:
-            bit_count = 0
-            remaining = word
-            while remaining > 0:
-                bit_count += 1
-                remaining //= 2
-        bit: uint64 = 0
-        while bit < bit_count:
-            if word % 2 == 1:
-                status = _cantor_add_one(
-                    temporary,
-                    0,
-                    accumulator,
-                    0,
-                    addend,
-                    0,
-                    model,
-                    genus,
-                    modulus,
-                    store,
-                )
+    bit_in_word: uint64 = 0
+    word: uint64 = 0
+    if bits != 0:
+        word = scalar_words[scalar_offset]
+    # Generate the width-two non-adjacent form from the immutable little-endian
+    # words. `carry` can create one final digit above the original top bit.
+    while position < bits or carry != 0:
+        original_bit: uint64 = 0
+        if position < bits:
+            original_bit = word % 2
+            word //= 2
+        next_bit: uint64 = 0
+        if position + 1 < bits:
+            if bit_in_word + 1 < 64:
+                next_bit = word % 2
+            else:
+                next_bit = scalar_words[scalar_offset + word_index + 1] % 2
+        total = original_bit + carry
+        digit: uint64 = 0
+        if total == 0:
+            carry = 0
+        elif total == 2:
+            carry = 1
+        else:
+            digit = 1
+            carry = 0
+            if next_bit != 0:
+                digit = 2
+                carry = 1
+        if digit != 0:
+            if started == 0:
+                if digit == 1:
+                    index = 0
+                    while index < 8:
+                        accumulator[index] = addend[index]
+                        index += 1
+                else:
+                    if (
+                        _cantor_negate_one(
+                            accumulator,
+                            0,
+                            addend,
+                            0,
+                            model,
+                            genus,
+                            modulus,
+                            store,
+                        )
+                        == 0
+                    ):
+                        return 0
+                started = 1
+            else:
+                status: uint64 = 0
+                # Keep the two borrowed roots explicit. Native Kernel v22 does
+                # not yet prove a buffer local safely rebindable between them.
+                if digit == 1:
+                    status = _cantor_add_one(
+                        temporary,
+                        0,
+                        accumulator,
+                        0,
+                        addend,
+                        0,
+                        model,
+                        genus,
+                        modulus,
+                        store,
+                    )
+                else:
+                    if (
+                        _cantor_negate_one(
+                            output,
+                            output_offset,
+                            addend,
+                            0,
+                            model,
+                            genus,
+                            modulus,
+                            store,
+                        )
+                        == 0
+                    ):
+                        return 0
+                    status = _cantor_add_one(
+                        temporary,
+                        0,
+                        accumulator,
+                        0,
+                        output,
+                        output_offset,
+                        model,
+                        genus,
+                        modulus,
+                        store,
+                    )
                 if status == 0:
                     return 0
                 index = 0
@@ -1330,29 +1441,33 @@ def _cantor_scalar_one(
                     accumulator[index] = temporary[index]
                     index += 1
                 operations += 1
-            word //= 2
-            if bit + 1 < bit_count or word_index + 1 < used_words:
-                status = _cantor_add_one(
-                    temporary,
-                    0,
-                    addend,
-                    0,
-                    addend,
-                    0,
-                    model,
-                    genus,
-                    modulus,
-                    store,
-                )
-                if status == 0:
-                    return 0
-                index = 0
-                while index < 8:
-                    addend[index] = temporary[index]
-                    index += 1
-                operations += 1
-            bit += 1
-        word_index += 1
+        position += 1
+        bit_in_word += 1
+        if bit_in_word == 64:
+            word_index += 1
+            bit_in_word = 0
+            if word_index < words_per_scalar:
+                word = scalar_words[scalar_offset + word_index]
+        if position < bits or carry != 0:
+            status = _cantor_add_one(
+                temporary,
+                0,
+                addend,
+                0,
+                addend,
+                0,
+                model,
+                genus,
+                modulus,
+                store,
+            )
+            if status == 0:
+                return 0
+            index = 0
+            while index < 8:
+                addend[index] = temporary[index]
+                index += 1
+            operations += 1
     index = 0
     while index < 8:
         output[output_offset + index] = accumulator[index]
