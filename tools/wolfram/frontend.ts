@@ -236,6 +236,153 @@ const OPTIMIZATION_HEADS = new Set([
   "NMinimize",
 ]);
 
+/**
+ * The subset of `OPTIMIZATION_HEADS` that reaches `_optimize` in
+ * `wolfram.py` -- the global `N*` family. Their Python entry points
+ * (`n_minimize` and its five siblings) all take the same keyword surface:
+ * `method`, `method_options`, `max_iterations`, `tolerance`, `seed`,
+ * `penalty_scale`. The other half, `Find*`, reaches `_find_optimize`
+ * instead, whose entry points take only `method`, `max_iterations`,
+ * `tolerance` -- no `method_options`, so `GLOBAL_OPTIMIZATION_OPTIONS` and
+ * `LOCAL_OPTIMIZATION_OPTIONS` below disagree on exactly one thing: whether
+ * `Method -> {"Name", "Sub" -> value, ...}` sub-options have anywhere to go.
+ */
+const GLOBAL_OPTIMIZATION_HEADS = new Set([
+  "NArgMax",
+  "NArgMin",
+  "NMaxValue",
+  "NMaximize",
+  "NMinValue",
+  "NMinimize",
+]);
+
+/**
+ * How one Wolfram option name lowers for a given optimization head.
+ * `"keyword"` passes the Rule's value straight through to that Python
+ * keyword. `"method"` routes through `lowerMethodOption`, which also
+ * decides whether `Method -> {"Name", ...}` sub-options are legal for this
+ * head. `"decline"` means the option is real Wolfram syntax with no
+ * faithful implementation here -- refused by name with `reason`, never
+ * silently accepted or dropped.
+ */
+type OptimizationOptionAction =
+  | { kind: "keyword"; keyword: string }
+  | { kind: "method"; subOptions: boolean }
+  | { kind: "decline"; reason: string };
+
+function declinedOptions(
+  reasons: Record<string, string>,
+): Record<string, OptimizationOptionAction> {
+  const result: Record<string, OptimizationOptionAction> = {};
+  for (const [name, reason] of Object.entries(reasons)) {
+    result[name] = { kind: "decline", reason };
+  }
+  return result;
+}
+
+/**
+ * Options every one of the thirteen optimization heads declines, all for
+ * the same reason each time -- real, documented Wolfram options with no
+ * faithful counterpart anywhere in this package, not merely in the head
+ * being asked about.
+ */
+const UNIVERSALLY_DECLINED_OPTIONS: Record<string, string> = {
+  // Every engine reached from `wolfram.py` coerces its numbers through
+  // Python `float()` -- this package is IEEE double throughout, with no
+  // higher- or lower-precision code path -- so honoring a different
+  // `WorkingPrecision` would be a lie about what actually ran.
+  WorkingPrecision: "this package is IEEE double throughout (every engine " +
+    "coerces through float()), so honoring a different working " +
+    "precision would be a lie",
+  // Wolfram's `AccuracyGoal`/`PrecisionGoal` are digits of absolute/relative
+  // precision sought in the answer. This package's own `tolerance=` is a
+  // different thing: it is simultaneously the largest constraint violation
+  // still accepted as feasible (`nminimize`'s penalty weight) and each
+  // solver's own step/gradient convergence tolerance -- not a digit count,
+  // and not cleanly separable into "accuracy" versus "precision" once
+  // constraints are involved. Presenting a guessed digit-to-tolerance
+  // formula as this option would be worse than declining it.
+  AccuracyGoal: "no faithful mapping onto this package's tolerance= " +
+    "exists -- tolerance already conflates constraint-feasibility slack " +
+    "and solver convergence, not digits of accuracy",
+  PrecisionGoal: "no faithful mapping onto this package's tolerance= " +
+    "exists -- tolerance already conflates constraint-feasibility slack " +
+    "and solver convergence, not digits of precision",
+  // The objective always runs as a plain Python/Sage callable here; there
+  // is no interpreted-versus-compiled code path for `Compiled` to select.
+  Compiled: "the objective always runs as a plain Python/Sage callable " +
+    "here; there is no interpreted/compiled distinction to switch",
+  // Neither monitor has a callback hook anywhere in these engines: no
+  // solver here calls back into user code between steps or evaluations.
+  StepMonitor: "no per-step callback hook exists in these engines",
+  EvaluationMonitor: "no per-evaluation callback hook exists in these engines",
+};
+
+/** Options accepted by the global `N*` family (`GLOBAL_OPTIMIZATION_HEADS`). */
+const GLOBAL_OPTIMIZATION_OPTIONS: Record<string, OptimizationOptionAction> = {
+  Method: { kind: "method", subOptions: true },
+  MaxIterations: { kind: "keyword", keyword: "max_iterations" },
+  ...declinedOptions(UNIVERSALLY_DECLINED_OPTIONS),
+};
+
+/** Options accepted by the local `Find*` family (the rest of `OPTIMIZATION_HEADS`). */
+const LOCAL_OPTIMIZATION_OPTIONS: Record<string, OptimizationOptionAction> = {
+  Method: { kind: "method", subOptions: false },
+  MaxIterations: { kind: "keyword", keyword: "max_iterations" },
+  // `wolfram.find_minimum` computes the gradient itself -- one compiled
+  // partial derivative per variable -- only when the objective is
+  // symbolic, and takes no keyword through which a caller could supply a
+  // different one, so there is nowhere for Wolfram's `Gradient` to go.
+  Gradient: {
+    kind: "decline",
+    reason: "wolfram.find_minimum computes the gradient itself from a " +
+      "symbolic objective and takes no keyword for a caller-supplied one",
+  },
+  ...declinedOptions(UNIVERSALLY_DECLINED_OPTIONS),
+};
+
+/**
+ * Options accepted by `FindFit` -- none. `sage_api.find_fit` (reached
+ * through `wolfram.find_fit`) has exactly one fixed signature: `data`,
+ * `model`, `initial_guess`, `parameters`, `variables`, `solution_dict`.
+ * There is no `method`, no iteration limit, no gradient override, no norm
+ * or weighting choice and no regularization anywhere in that call chain, so
+ * every option Wolfram documents for `FindFit` is declined by name here
+ * rather than accepted and quietly ignored.
+ */
+const FIND_FIT_OPTIONS: Record<string, OptimizationOptionAction> = {
+  Method: {
+    kind: "decline",
+    reason: "FindFit has exactly one engine, Levenberg-Marquardt " +
+      "(sage_api.find_fit, backed by levenberg_marquardt.leastsq), so " +
+      "there is no method to select",
+  },
+  MaxIterations: {
+    kind: "decline",
+    reason: "sage_api.find_fit takes no iteration-limit keyword; leastsq " +
+      "runs to its own convergence criteria",
+  },
+  Gradient: {
+    kind: "decline",
+    reason: "sage_api.find_fit computes its own Jacobian by forward " +
+      "differences inside leastsq and takes no keyword to override it",
+  },
+  NormFunction: {
+    kind: "decline",
+    reason: "sage_api.find_fit always minimizes the plain sum of squared " +
+      "residuals and has no norm parameter to expose",
+  },
+  Weights: {
+    kind: "decline",
+    reason: "sage_api.find_fit has no weighting parameter to expose",
+  },
+  FitRegularization: {
+    kind: "decline",
+    reason: "sage_api.find_fit has no regularization parameter to expose",
+  },
+  ...declinedOptions(UNIVERSALLY_DECLINED_OPTIONS),
+};
+
 class SageLowerer {
   private readonly names = new Map<string, string>();
   private readonly plotVariables = new Set<string>();
@@ -733,6 +880,149 @@ class SageLowerer {
     return names;
   }
 
+  /**
+   * Lower one option's Wolfram value. Identical to `this.expression` except
+   * for the bare symbol `Automatic`: the optimization engines compare
+   * `Method` (and its sub-options such as `"PostProcess"`) against the
+   * exact capitalized string `"Automatic"` (`nminimize.py`'s and
+   * `findminimum.py`'s own `_AUTOMATIC`), not the lowercase `'automatic'`
+   * the plot-option constants table below produces for the same symbol --
+   * plot code and these engines read the same Wolfram symbol differently,
+   * so this cannot reuse that table.
+   */
+  private optimizationOptionValue(expression: WolframExpression): string {
+    if (expression.kind === "symbol" && expression.name === "Automatic") {
+      return this.stringLiteral("Automatic");
+    }
+    return this.expression(expression);
+  }
+
+  /**
+   * Lower a `Method -> ...` Rule into one or two Python keyword fragments.
+   * A bare value (almost always a string, `Method -> "NelderMead"`) becomes
+   * `method=...`. Wolfram's method-with-suboptions form, `Method ->
+   * {"Name", "Sub" -> value, ...}`, becomes `method="Name"` plus
+   * `method_options={"Sub": value, ...}` -- `nminimize`'s own
+   * `method_options` reads those sub-option names by their documented
+   * Wolfram spelling directly, so no further translation happens here.
+   * `allowSubOptions` is false for the `Find*` family, whose Python entry
+   * points take no `method_options` keyword at all; sub-options given there
+   * are refused by name rather than silently dropped.
+   */
+  private lowerMethodOption(
+    option: BinaryExpression,
+    head: string,
+    allowSubOptions: boolean,
+  ): string[] {
+    const value = option.right;
+    if (value.kind !== "list") {
+      return [`method=${this.optimizationOptionValue(value)}`];
+    }
+    if (!value.elements.length) {
+      throw new WolframSyntaxError(
+        `${head}'s Method -> {} names no method`,
+        option.span,
+      );
+    }
+    const [methodName, ...subOptions] = value.elements;
+    const fragments = [`method=${this.optimizationOptionValue(methodName)}`];
+    if (!subOptions.length) return fragments;
+    if (!allowSubOptions) {
+      throw new WolframSyntaxError(
+        `${head} does not support Method sub-options: its Python entry ` +
+          `point takes no method_options keyword, so ` +
+          `Method -> {"Name", ...} has nowhere for the sub-options to go; ` +
+          `write Method -> "Name" without sub-options instead`,
+        option.span,
+      );
+    }
+    const entries = subOptions.map((sub) => {
+      // Unlike a head's own top-level options (`MaxIterations -> 10`,
+      // always a bare symbol), Wolfram writes a Method sub-option's name as
+      // a quoted string -- `Method -> {"NelderMead", "RandomSeed" -> i}` is
+      // the form the NMinimize documentation itself uses, and
+      // `nminimize.py`'s `method_options` keys are read as strings too.
+      if (
+        sub.kind !== "binary" ||
+        !["->", ":>"].includes(sub.operator) ||
+        sub.left.kind !== "literal" ||
+        sub.left.literalKind !== "string"
+      ) {
+        throw new WolframSyntaxError(
+          'Method sub-options must be "Name" -> value or "Name" :> value, ' +
+            "with the sub-option name a quoted string",
+          sub.span,
+        );
+      }
+      const name = sub.left.value.slice(1, -1);
+      return `${this.stringLiteral(name)}: ${
+        this.optimizationOptionValue(sub.right)
+      }`;
+    });
+    fragments.push(`method_options={${entries.join(", ")}}`);
+    return fragments;
+  }
+
+  /**
+   * Lower an optimization head's trailing Rule arguments into Python
+   * keyword-argument fragments, against `spec`, one of
+   * `GLOBAL_OPTIMIZATION_OPTIONS`, `LOCAL_OPTIMIZATION_OPTIONS` or
+   * `FIND_FIT_OPTIONS`. An option not in `spec` is refused by name -- never
+   * silently dropped -- and so is one `spec` marks `"decline"`, with the
+   * reason recorded there. A name given more than once keeps only its last
+   * Rule, the same way a Python call could not carry the keyword twice.
+   */
+  private lowerOptimizationOptions(
+    options: WolframExpression[],
+    head: string,
+    spec: Record<string, OptimizationOptionAction>,
+  ): string[] {
+    const keywords = new Map<string, string>();
+    for (const option of options) {
+      if (
+        option.kind !== "binary" ||
+        !["->", ":>"].includes(option.operator) ||
+        option.left.kind !== "symbol"
+      ) {
+        throw new WolframSyntaxError(
+          `${head} options must be Rule or RuleDelayed expressions`,
+          option.span,
+        );
+      }
+      const name = option.left.name;
+      const action = spec[name];
+      if (!action) {
+        throw new WolframSyntaxError(
+          `${head} does not support the option ${name}`,
+          option.span,
+        );
+      }
+      if (action.kind === "decline") {
+        throw new WolframSyntaxError(
+          `${head}'s ${name} option is not supported: ${action.reason}`,
+          option.span,
+        );
+      }
+      if (action.kind === "keyword") {
+        keywords.set(
+          action.keyword,
+          `${action.keyword}=${this.optimizationOptionValue(option.right)}`,
+        );
+        continue;
+      }
+      for (
+        const fragment of this.lowerMethodOption(
+          option,
+          head,
+          action.subOptions,
+        )
+      ) {
+        keywords.set(fragment.slice(0, fragment.indexOf("=")), fragment);
+      }
+    }
+    return [...keywords.values()];
+  }
+
   private optimizationCall(
     expression: CallExpression,
     head: string,
@@ -743,23 +1033,22 @@ class SageLowerer {
         expression.span,
       );
     }
-    if (expression.arguments.length > 2) {
-      // Rule expressions are lowered only inside plot and graphics option
-      // lists, so `Method -> "NelderMead"` has nowhere to go here. Say so
-      // rather than dropping the option silently; the Python entry points
-      // in `wolfram.py` take `method=` and `method_options=` directly.
-      throw new WolframSyntaxError(
-        `${head} options are not supported yet: Rule expressions do not ` +
-          `lower to keyword arguments outside plot options`,
-        expression.span,
-      );
-    }
     for (const symbol of this.optimizationVariables(expression.arguments[1])) {
       this.plotVariables.add(this.name(symbol));
     }
-    return `_wolfram.${head}(${
-      this.expression(expression.arguments[0])
-    }, ${this.expression(expression.arguments[1])})`;
+    const spec = GLOBAL_OPTIMIZATION_HEADS.has(head)
+      ? GLOBAL_OPTIMIZATION_OPTIONS
+      : LOCAL_OPTIMIZATION_OPTIONS;
+    const options = this.lowerOptimizationOptions(
+      expression.arguments.slice(2),
+      head,
+      spec,
+    );
+    const positional = [
+      this.expression(expression.arguments[0]),
+      this.expression(expression.arguments[1]),
+    ];
+    return `_wolfram.${head}(${[...positional, ...options].join(", ")})`;
   }
 
   /**
@@ -770,6 +1059,8 @@ class SageLowerer {
    * reads for `NMinimize`'s and `FindMinimum`'s variable arguments -- a
    * bare symbol, a `List` of symbols, or a `List` of `{symbol, ...}` pairs
    * -- so that one helper collects both instead of a second copy of it.
+   * Trailing Rule arguments all decline, through `FIND_FIT_OPTIONS` -- see
+   * its own comment for why not one of them has anywhere to go.
    */
   private findFitCall(expression: CallExpression): string {
     const head = "FindFit";
@@ -780,16 +1071,6 @@ class SageLowerer {
         expression.span,
       );
     }
-    if (expression.arguments.length > 4) {
-      // Same refusal `optimizationCall` gives the N*/Find* heads: Rule
-      // expressions (Method ->, NormFunction ->, Weights ->) do not lower
-      // to keyword arguments outside plot options.
-      throw new WolframSyntaxError(
-        `${head} options are not supported yet: Rule expressions do not ` +
-          `lower to keyword arguments outside plot options`,
-        expression.span,
-      );
-    }
     const [data, model, pars, vars_] = expression.arguments;
     for (const symbol of this.optimizationVariables(pars)) {
       this.plotVariables.add(this.name(symbol));
@@ -797,10 +1078,15 @@ class SageLowerer {
     for (const symbol of this.optimizationVariables(vars_)) {
       this.plotVariables.add(this.name(symbol));
     }
-    return `_wolfram.${head}(${
-      [data, model, pars, vars_].map((argument) => this.expression(argument))
-        .join(", ")
-    })`;
+    const options = this.lowerOptimizationOptions(
+      expression.arguments.slice(4),
+      head,
+      FIND_FIT_OPTIONS,
+    );
+    const positional = [data, model, pars, vars_].map((argument) =>
+      this.expression(argument)
+    );
+    return `_wolfram.${head}(${[...positional, ...options].join(", ")})`;
   }
 
   private showCall(expression: CallExpression): string {

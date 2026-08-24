@@ -418,10 +418,12 @@ def n_minimize(
     `method` selects among `"Automatic"`, `"NelderMead"`,
     `"DifferentialEvolution"`, `"SimulatedAnnealing"` and `"RandomSearch"`;
     `method_options` carries that method's Wolfram sub-options by their
-    documented string names. **The Wolfram frontend does not lower `Rule`
-    expressions into keyword arguments**, so `Method -> "NelderMead"` cannot
-    be written in Wolfram source today; select a method through these Python
-    keyword arguments instead.
+    documented string names. The Wolfram frontend lowers `Method ->
+    "NelderMead"` and `Method -> {"NelderMead", "RandomSeed" -> i, ...}`
+    straight onto `method` and `method_options` (see
+    `GLOBAL_OPTIMIZATION_OPTIONS` in `tools/wolfram/frontend.ts`); these
+    Python keyword arguments are still there directly for a caller that
+    is not going through Wolfram source.
     """
     answer = _optimize(
         problem,
@@ -755,10 +757,13 @@ def find_minimum(
     two-element list exactly as `NMinimize` returns it (see `_rules`).
 
     `method` selects among `"Automatic"`, `"QuasiNewton"`,
-    `"ConjugateGradient"`, `"Newton"` and `"PrincipalAxis"`. **The Wolfram
-    frontend does not lower `Rule` expressions into keyword arguments**, so
-    `Method -> "Newton"` cannot be written in Wolfram source today; select a
-    method through this Python keyword argument instead.
+    `"ConjugateGradient"`, `"Newton"` and `"PrincipalAxis"`. The Wolfram
+    frontend lowers `Method -> "Newton"` straight onto this keyword (see
+    `LOCAL_OPTIMIZATION_OPTIONS` in `tools/wolfram/frontend.ts`); unlike
+    `n_minimize`, there is no `method_options` here to route Wolfram's
+    method-with-suboptions form to -- `findminimum` takes no such keyword --
+    so the frontend declines `Method -> {"Name", ...}` sub-options for this
+    head and its five siblings by name rather than dropping them.
     """
     answer = _find_optimize(
         problem, variables, False, method, max_iterations, tolerance
@@ -938,13 +943,16 @@ def find_fit(data: Any, expr: Any, pars: Any, vars: Any) -> list[Any]:
     with `leastsq` reporting back whatever the starting value happened to
     be.
 
-    **The Wolfram frontend does not lower `Rule` expressions into keyword
-    arguments**, so `Method -> ...` cannot be written in Wolfram source
-    today, the same limitation already recorded for `NMinimize` and
-    `FindMinimum`. Unlike those two, there is no Python-side `method=`
-    escape hatch to offer here: `FindFit` has exactly one engine,
+    Unlike the other twelve numeric heads, the Wolfram frontend declines
+    every option `FindFit` documents -- `Method`, `MaxIterations`,
+    `Gradient`, `NormFunction`, `Weights`, `FitRegularization`,
+    `WorkingPrecision`, `AccuracyGoal`, `PrecisionGoal`, `Compiled`,
+    `StepMonitor`, `EvaluationMonitor` -- by name, each with its own reason
+    (see `FIND_FIT_OPTIONS` in `tools/wolfram/frontend.ts`), rather than
+    lowering any of them here. There is no Python-side `method=` escape
+    hatch to offer as a substitute either: `FindFit` has exactly one engine,
     Levenberg-Marquardt, so there is no method to select. `NormFunction ->`
-    and `Weights ->` have no workaround either, for a different reason --
+    and `Weights ->` have no workaround for a different reason --
     `sage_api.find_fit` always minimizes the plain sum of squared
     residuals and has no norm or weighting parameter to expose, so
     supporting either would mean adding that capability to the fitting

@@ -201,13 +201,39 @@ test("every Find head is registered in the frontend", async () => {
   }
 });
 
-test("options are still refused, naming the head that refused them", async () => {
-  // Rule lowering is deliberately not part of this layer. The refusal has
-  // to name the head so the message is actionable.
+test("an unrecognized option is refused, naming the option and the head", async () => {
   assert.throws(
-    () => frontend.lower('FindMinimum[(x-1)^2, {x, 0}, Method -> "Newton"]', {
-      captureResult: true,
-    }),
-    /FindMinimum options are not supported yet/,
+    () =>
+      frontend.lower('FindMinimum[(x-1)^2, {x, 0}, Frobnicate -> True]', {
+        captureResult: true,
+      }),
+    /FindMinimum does not support the option Frobnicate/,
+  );
+});
+
+test("a declined option is refused by name with its reason", async () => {
+  // WorkingPrecision has no faithful counterpart: this package is IEEE
+  // double throughout, so honoring a different precision would be a lie.
+  // The refusal has to name both the option and the head.
+  assert.throws(
+    () =>
+      frontend.lower('FindMinimum[(x-1)^2, {x, 0}, WorkingPrecision -> 30]', {
+        captureResult: true,
+      }),
+    /FindMinimum's WorkingPrecision option is not supported: .*IEEE double/,
+  );
+});
+
+test("Method sub-options are refused for the local Find* family", async () => {
+  // `wolfram.find_minimum` takes no `method_options` keyword at all, unlike
+  // the global `N*` family, so Wolfram's method-with-suboptions form has
+  // nowhere to go here.
+  assert.throws(
+    () =>
+      frontend.lower(
+        'FindMinimum[(x-1)^2, {x, 0}, Method -> {"Newton", "StepControl" -> "LineSearch"}]',
+        { captureResult: true },
+      ),
+    /FindMinimum does not support Method sub-options/,
   );
 });

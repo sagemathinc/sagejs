@@ -152,16 +152,29 @@ test("FindFit rejects a parameter that does not occur in the model", async () =>
   );
 });
 
-test("FindFit options are refused, naming the head", async () => {
-  // Rule lowering is deliberately not part of this layer, same as every
-  // other optimization head; the refusal has to name FindFit specifically.
+test("FindFit options are refused by name, with a reason", async () => {
+  // `sage_api.find_fit` has one fixed engine and no method to select --
+  // unlike every other optimization head, `FindFit` has no Python-side
+  // escape hatch for `Method` at all, so it is declined rather than
+  // silently accepted.
   assert.throws(
     () =>
       frontend.lower(
         'FindFit[{{0,1},{1,3}}, a*x+b, {a,b}, x, Method -> "LevenbergMarquardt"]',
         { captureResult: true },
       ),
-    /FindFit options are not supported yet/,
+    /FindFit's Method option is not supported: .*no method to select/,
+  );
+});
+
+test("an unrecognized FindFit option is refused, naming the option", async () => {
+  assert.throws(
+    () =>
+      frontend.lower(
+        'FindFit[{{0,1},{1,3}}, a*x+b, {a,b}, x, Frobnicate -> True]',
+        { captureResult: true },
+      ),
+    /FindFit does not support the option Frobnicate/,
   );
 });
 
