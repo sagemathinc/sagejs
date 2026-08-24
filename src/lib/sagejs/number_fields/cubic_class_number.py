@@ -1064,6 +1064,29 @@ def _packed_cubic_relation_candidates(
             maxima.append(maximum)
         if sum(maxima) < 1 or sum(maxima) > _CUBIC_RELATION_SIEVE_MAX_PRIME_POWERS:
             return None
+        pending_packed_factors = tuple(
+            (prime_ideal, maximum)
+            for prime_ideal, maximum in zip(factor_base, maxima, strict=True)
+            if isinstance(prime_ideal, PackedCubicFactorRecord)
+            and maximum > len(prime_ideal._power_cache)
+        )
+        if pending_packed_factors:
+            packed_chains = ideal_module.packed_ideal_power_basis_chains_from_bases(
+                order.number_field(),
+                tuple(
+                    (
+                        factor.basis_numerators,
+                        factor.basis_denominator,
+                        maximum,
+                    )
+                    for factor, maximum in pending_packed_factors
+                ),
+            )
+            if packed_chains is not None:
+                for (factor, _maximum), powers in zip(
+                    pending_packed_factors, packed_chains, strict=True
+                ):
+                    factor._power_cache = powers
         offsets = [0]
         prime_power_numerators: list[int] = []
         prime_power_denominators: list[int] = []

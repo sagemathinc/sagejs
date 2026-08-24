@@ -38,6 +38,7 @@ MAX_MULTIPLICATION_TENSOR_CACHE_ENTRIES = 32
 _multiplication_tensor_cache: list[tuple[Any, tuple[int, ...], int]] = []
 _ideal_product_kernel_override: Any = None
 _ideal_power_chain_kernel_override: Any = None
+_ideal_power_chains_kernel_override: Any = None
 _element_membership_kernel_override: Any = None
 _element_membership_batch_kernel_override: Any = None
 _element_valuations_kernel_override: Any = None
@@ -563,6 +564,109 @@ def packed_ideal_power_bases_from_basis(
         return None
 
 
+def packed_ideal_power_basis_chains_from_bases(
+    field: Any,
+    specifications: tuple[tuple[tuple[int, ...], int, int], ...],
+) -> tuple[tuple[tuple[tuple[int, ...], int], ...], ...] | None:
+    """Return several exact packed HNF power chains in one bounded call."""
+    degree = int(field.degree())
+    if (
+        degree < 1
+        or degree > MAX_PACKED_IDEAL_PRODUCT_DEGREE
+        or not specifications
+        or len(specifications) > MAX_PACKED_IDEAL_POWER_CHAIN
+    ):
+        return None
+    if _ideal_power_chains_kernel_override is False:
+        return None
+    square = degree * degree
+    total_power_count = 0
+    maximum_power_count = 0
+    bases: list[int] = []
+    offsets = [0]
+    for basis, basis_denominator, maximum in specifications:
+        count = int(maximum)
+        if (
+            count < 1
+            or count > MAX_PACKED_IDEAL_POWER_CHAIN
+            or len(basis) != square
+            or int(basis_denominator) <= 0
+        ):
+            return None
+        total_power_count += count
+        if total_power_count > MAX_PACKED_IDEAL_POWER_CHAIN:
+            return None
+        maximum_power_count = max(maximum_power_count, count)
+        bases.extend(int(value) for value in basis)
+        offsets.append(total_power_count)
+    kernel_module = __import__(
+        "sagejs.number_fields.bl_composite_kernel", fromlist=["bl_composite_kernel"]
+    )
+    kernel = (
+        _ideal_power_chains_kernel_override
+        if callable(_ideal_power_chains_kernel_override)
+        else getattr(kernel_module, "packed_ideal_power_chains_hnf_in_place", None)
+    )
+    if not callable(kernel):
+        return None
+    try:
+        tensor, tensor_denominator = _field_multiplication_tensor(field)
+        maximum_bits = max(
+            [1]
+            + [abs(value).bit_length() for value in bases]
+            + [abs(value).bit_length() for value in tensor]
+        )
+        if maximum_bits > MAX_PACKED_IDEAL_POWER_CHAIN_INTEGER_BITS:
+            return None
+        growth_bits = maximum_power_count * (3 * maximum_bits + square.bit_length())
+        word_capacity = max(16, (growth_bits + 63) // 64 + 8 * degree)
+        product_entries = square * degree
+        buffer_entries = (
+            total_power_count * square
+            + 2 * product_entries
+            + 2 * degree
+            + len(bases)
+            + len(offsets)
+            + len(tensor)
+        )
+        if word_capacity > MAX_PACKED_IDEAL_POWER_CHAIN_BUFFER_WORDS // buffer_entries:
+            return None
+        powers = kernel_integer_zeros(kernel, total_power_count * square, word_capacity)
+        if not kernel(
+            powers,
+            kernel_integer_zeros(kernel, product_entries, word_capacity),
+            kernel_integer_zeros(kernel, product_entries, word_capacity),
+            kernel_integer_zeros(kernel, 2 * degree, word_capacity),
+            kernel_integer_buffer(kernel, bases),
+            kernel_integer_buffer(kernel, offsets),
+            kernel_integer_buffer(kernel, tensor),
+            degree,
+            len(specifications),
+            total_power_count,
+        ):
+            return None
+        values = tuple(int(value) for value in integer_buffer_values(powers))
+        if len(values) != total_power_count * square:
+            return None
+        answer: list[tuple[tuple[tuple[int, ...], int], ...]] = []
+        power_offset = 0
+        for _basis, basis_denominator, maximum in specifications:
+            denominator = runtime.bigint(basis_denominator)
+            denominator_step = runtime.bigint(basis_denominator) * runtime.bigint(
+                tensor_denominator
+            )
+            chain: list[tuple[tuple[int, ...], int]] = []
+            for _exponent in range(int(maximum)):
+                offset = power_offset * square
+                chain.append((values[offset : offset + square], int(denominator)))
+                denominator *= denominator_step
+                power_offset += 1
+            answer.append(tuple(chain))
+        return tuple(answer)
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+
+
 def _compute_packed_ideal_power_bases(
     ideal: Any, maximum: int
 ) -> tuple[tuple[tuple[int, ...], int], ...] | None:
@@ -989,6 +1093,7 @@ __all__ = [
     "numerator_ideal",
     "packed_valuation_power_bases",
     "packed_ideal_power_bases_from_basis",
+    "packed_ideal_power_basis_chains_from_bases",
     "scalar_translate",
     "serialize_ideal",
 ]

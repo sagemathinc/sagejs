@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "34eb78727b9d28e8785777567dba15d50e16cbff8d882cea22db32eea4d6ecda",
+  "source_sha256": "a682951695bdac6865acae5f2904c777cdb6f4b77b9b8fa9dccb4bd08adce691",
   "counts": {
     "total": 965,
     "by_kind": {
@@ -5685,7 +5685,7 @@
         "buchmann-lenstra-row-hnf",
         "number-field-ideal-products"
       ],
-      "explanation": "All 8 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 9 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:compiler-owned-record-witness",

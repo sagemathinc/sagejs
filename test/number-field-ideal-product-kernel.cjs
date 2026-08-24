@@ -26,6 +26,7 @@ const kernelDifferential = String.raw`
 from sagejs.native import integer_buffer_values, kernel_integer_buffer, kernel_integer_zeros
 from sagejs.number_fields.bl_composite_kernel import (
     packed_ideal_power_chain_hnf_in_place,
+    packed_ideal_power_chains_hnf_in_place,
     packed_ideal_product_hnf_in_place,
 )
 
@@ -33,6 +34,8 @@ packed = packed_ideal_product_hnf_in_place
 dynamic = getattr(packed, "__sagejs_native_source__", packed)
 power_chain = packed_ideal_power_chain_hnf_in_place
 dynamic_power_chain = getattr(power_chain, "__sagejs_native_source__", power_chain)
+power_chains = packed_ideal_power_chains_hnf_in_place
+dynamic_power_chains = getattr(power_chains, "__sagejs_native_source__", power_chains)
 left = [2, 0, 0, 1]
 right = [3, 0, 0, 1]
 # Multiplication in the power basis of x^2 - 2.
@@ -94,6 +97,41 @@ for function in (dynamic_power_chain, power_chain):
         2,
         3,
     )
+
+def batched_power_outcome(function):
+    powers = kernel_integer_zeros(function, 20, 32)
+    assert function(
+        powers,
+        kernel_integer_zeros(function, 8, 32),
+        kernel_integer_zeros(function, 8, 32),
+        kernel_integer_zeros(function, 4, 32),
+        kernel_integer_buffer(function, left + right),
+        kernel_integer_buffer(function, [0, 3, 5]),
+        kernel_integer_buffer(function, tensor),
+        2,
+        2,
+        5,
+    )
+    return [int(value) for value in integer_buffer_values(powers)]
+
+expected_batched_powers = power_outcome(dynamic_power_chain) + [
+    3, 0, 0, 1, 1, 0, 0, 3
+]
+assert batched_power_outcome(dynamic_power_chains) == expected_batched_powers
+assert batched_power_outcome(power_chains) == expected_batched_powers
+for function in (dynamic_power_chains, power_chains):
+    assert not function(
+        kernel_integer_zeros(function, 20, 32),
+        kernel_integer_zeros(function, 8, 32),
+        kernel_integer_zeros(function, 8, 32),
+        kernel_integer_zeros(function, 4, 32),
+        kernel_integer_buffer(function, left + right),
+        kernel_integer_buffer(function, [0, 3, 4]),
+        kernel_integer_buffer(function, tensor),
+        2,
+        2,
+        5,
+    )
 `;
 
 test("ideal-product HNF source matches in CPython and compiled Sage.js", () => {
@@ -105,9 +143,9 @@ test("ideal-product HNF source matches in CPython and compiled Sage.js", () => {
   const output = run(
     sagejs,
     ["--python", "-"],
-    `${kernelDifferential}\nfrom sagejs.native import is_compiled\nprint(is_compiled(packed), is_compiled(power_chain))\n`,
+    `${kernelDifferential}\nfrom sagejs.native import is_compiled\nprint(is_compiled(packed), is_compiled(power_chain), is_compiled(power_chains))\n`,
   );
-  assert.equal(output, "True True");
+  assert.equal(output, "True True True");
 });
 
 test("packed ideal products agree with the readable exact lattice oracle", () => {
@@ -145,6 +183,26 @@ for polynomial in (x**2 - 5, x**3 + 4*x - 1, x**4 - x + 1):
     readable_fractional_integral = all(element in O for element in fractional.basis())
     assert fractional.is_integral() == readable_fractional_integral
     assert fractional.is_integral() == readable_fractional_integral
+
+specifications = tuple(
+    (*ideals._packed_ideal_basis(prime_ideal), maximum)
+    for prime_ideal, maximum in ((primes[0], 3), (primes[-1], 2))
+)
+expected_chains = tuple(
+    ideals.packed_ideal_power_bases_from_basis(K, basis, denominator, maximum)
+    for basis, denominator, maximum in specifications
+)
+assert ideals.packed_ideal_power_basis_chains_from_bases(
+    K, specifications
+) == expected_chains
+saved_chains = ideals._ideal_power_chains_kernel_override
+ideals._ideal_power_chains_kernel_override = False
+try:
+    assert ideals.packed_ideal_power_basis_chains_from_bases(
+        K, specifications
+    ) is None
+finally:
+    ideals._ideal_power_chains_kernel_override = saved_chains
 
 saved = ideals._ideal_product_kernel_override
 ideals._ideal_product_kernel_override = lambda *args: False

@@ -211,6 +211,7 @@ test("packed cubic collector reuses its authenticated factor-base snapshot", () 
 from sagejs.number_fields import class_group_factor_base as factor_bases
 from sagejs.number_fields import class_group_relations as relations
 from sagejs.number_fields import cubic_class_number as cubic
+from sagejs.number_fields import ideal_arithmetic as ideals
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -231,6 +232,34 @@ finally:
     relations._validate_factor_base = saved
 assert result.complete and result.order() == 3
 assert calls == 0
+
+# Disabling only the batched power-chain boundary falls through to the
+# pre-existing scalar chains and produces the same exact mathematical proof.
+saved_batch = ideals._ideal_power_chains_kernel_override
+ideals._ideal_power_chains_kernel_override = False
+try:
+    scalar_field = NumberField(x**3 - x**2 - 6*x - 12, "a")
+    scalar_result = cubic.bounded_cubic_minkowski_class_number(scalar_field)
+finally:
+    ideals._ideal_power_chains_kernel_override = saved_batch
+assert scalar_result.complete and scalar_result.order() == 3
+assert [record.to_dict() for record in scalar_result.relation_records] == [
+    record.to_dict() for record in result.relation_records
+]
+assert scalar_result.presentation.to_dict() == result.presentation.to_dict()
+for key in (
+    "prime",
+    "line",
+    "class_coordinates",
+    "ambient_row",
+    "ideal_norm",
+    "norm_form_coefficients",
+    "modulus",
+    "residue_states",
+):
+    assert scalar_result.certificate.obstructions[0][key] == (
+        result.certificate.obstructions[0][key]
+    )
 
 # A one-prime cubic base also stays packed.  The former ordinary-record
 # special case became slower than the fused cubic materializer and rebuilt the

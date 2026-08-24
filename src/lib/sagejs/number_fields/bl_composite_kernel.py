@@ -2479,6 +2479,120 @@ def packed_ideal_power_chain_hnf_in_place(
 
 
 @native
+def packed_ideal_power_chains_hnf_in_place(
+    powers: IntegerBuffer,
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    workspace: IntegerBuffer,
+    bases: IntegerBuffer,
+    chain_offsets: IntegerBuffer,
+    multiplication_tensor: IntegerBuffer,
+    degree: uint64,
+    chain_count: uint64,
+    total_power_count: uint64,
+) -> bool:
+    """Compute several canonical ideal-power HNF chains in one call.
+
+    `chain_offsets` partitions `powers` into one nonempty chain per packed
+    basis. The scratch HNF buffers are reused across chains; no arithmetic or
+    canonicalization step is shared between distinct ideals.
+    """
+    maximum_degree: uint64 = 16
+    maximum_chain_count: uint64 = 256
+    maximum_power_count: uint64 = 256
+    square = degree * degree
+    product_entries = square * degree
+    valid = (
+        degree > 0
+        and degree <= maximum_degree
+        and chain_count > 0
+        and chain_count <= maximum_chain_count
+        and total_power_count > 0
+        and total_power_count <= maximum_power_count
+        and len(powers) == total_power_count * square
+        and len(output) == product_entries
+        and len(source) == product_entries
+        and len(workspace) == 2 * degree
+        and len(bases) == chain_count * square
+        and len(chain_offsets) == chain_count + 1
+        and len(multiplication_tensor) == product_entries
+    )
+    if not valid or chain_offsets[0] != 0:
+        return False
+    chain = 0
+    while chain < chain_count:
+        start = chain_offsets[chain]
+        stop = chain_offsets[chain + 1]
+        if start >= stop or stop > total_power_count:
+            return False
+        chain = chain + 1
+    if chain_offsets[chain_count] != total_power_count:
+        return False
+
+    chain = 0
+    while chain < chain_count:
+        start = chain_offsets[chain]
+        stop = chain_offsets[chain + 1]
+        basis_offset = chain * square
+        power_offset = start * square
+        index = 0
+        while index < square:
+            value = bases[basis_offset + index]
+            output[index] = value
+            powers[power_offset + index] = value
+            index += 1
+
+        exponent = start + 1
+        while exponent < stop:
+            left_row = 0
+            while left_row < degree:
+                right_row = 0
+                while right_row < degree:
+                    product_row = left_row * degree + right_row
+                    coordinate = 0
+                    while coordinate < degree:
+                        value = 0
+                        left_coordinate = 0
+                        while left_coordinate < degree:
+                            right_coordinate = 0
+                            while right_coordinate < degree:
+                                tensor_index = (
+                                    left_coordinate * degree + right_coordinate
+                                ) * degree + coordinate
+                                value += (
+                                    output[left_row * degree + left_coordinate]
+                                    * bases[
+                                        basis_offset
+                                        + right_row * degree
+                                        + right_coordinate
+                                    ]
+                                    * multiplication_tensor[tensor_index]
+                                )
+                                right_coordinate += 1
+                            left_coordinate += 1
+                        source[product_row * degree + coordinate] = value
+                        coordinate += 1
+                    right_row += 1
+                left_row += 1
+            if not _packed_row_hnf_in_place(
+                output,
+                source,
+                workspace,
+                square,
+                degree,
+            ):
+                return False
+            index = 0
+            power_offset = exponent * square
+            while index < square:
+                powers[power_offset + index] = output[index]
+                index += 1
+            exponent += 1
+        chain += 1
+    return True
+
+
+@native
 def packed_prime_ideal_candidate_hnf_in_place(
     output: IntegerBuffer,
     source: IntegerBuffer,
@@ -2644,6 +2758,7 @@ __all__ = [
     "packed_known_overorder_contains_vectors_in_place",
     "packed_ideal_product_hnf_in_place",
     "packed_ideal_power_chain_hnf_in_place",
+    "packed_ideal_power_chains_hnf_in_place",
     "packed_order_contains_vector_in_place",
     "packed_order_contains_vectors_in_place",
     "packed_order_table_in_place",

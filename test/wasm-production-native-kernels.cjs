@@ -37,7 +37,7 @@ test("the Wasm source-kernel inventory accounts for all registered kernels", asy
   assert.equal(inventory.nonProduction.length, 7);
   assert.equal(coverage.totals.registered_kernels, 42);
   assert.equal(coverage.totals.production_kernels, 35);
-  assert.equal(coverage.totals.compiled_functions, 247);
+  assert.equal(coverage.totals.compiled_functions, 248);
   assert.equal(coverage.totals.unsupported_production_functions, 0);
   const coverageById = new Map(coverage.kernels.map((item) => [item.id, item]));
   for (const omitted of inventory.nonProduction) {
@@ -112,7 +112,7 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
     assert.equal(manifest.registeredKernels, 42);
     assert.equal(manifest.productionKernels, 35);
     assert.equal(manifest.compiledKernelCores, 35);
-    assert.equal(manifest.compiledFunctions, 247);
+    assert.equal(manifest.compiledFunctions, 248);
     assert.equal(manifest.unsupportedFunctions, 0);
     assert.equal(manifest.nonProductionKernels.length, 7);
     assert.deepEqual(manifest.packs.map((pack) => pack.domain), ["flint", "gmp"]);
