@@ -35,6 +35,7 @@ flint = Library(
         "sagejs/fmpq_matrix_ffi.h",
         "sagejs/fmpz_mod_polynomial_ffi.h",
         "sagejs/fq_polynomial_ffi.h",
+        "sagejs/hyperelliptic/rational_jacobian_ffi.h",
         "sagejs/nmod_matrix_ffi.h",
         "sagejs/number_field_analysis_resource_ffi.h",
         "sagejs/number_field_order_ffi.h",
@@ -191,6 +192,39 @@ FmpqPolynomial = flint.resource(
     close="ffiFmpqPolynomialClose",
     clear="sagejs_fmpq_polynomial_clear",
     size="sagejs_fmpq_polynomial_allocated_bytes",
+    wasm=False,
+)
+
+
+FmpqPolynomialWorkspace = flint.resource(
+    id="fmpq_polynomial_workspace",
+    abi=sagejs_fmpq_polynomial_workspace_t,
+    ownership="owned",
+    close="ffiFmpqPolynomialWorkspaceClose",
+    clear="sagejs_fmpq_polynomial_workspace_clear",
+    size="sagejs_fmpq_polynomial_workspace_allocated_bytes",
+    wasm=False,
+)
+
+
+FmpqPolynomialPair = flint.resource(
+    id="fmpq_polynomial_pair",
+    abi=sagejs_fmpq_polynomial_pair_t,
+    ownership="owned",
+    close="ffiFmpqPolynomialPairClose",
+    clear="sagejs_fmpq_polynomial_pair_clear",
+    size="sagejs_fmpq_polynomial_pair_allocated_bytes",
+    wasm=False,
+)
+
+
+FmpqMumfordResult = flint.resource(
+    id="fmpq_mumford_result",
+    abi=sagejs_fmpq_mumford_result_t,
+    ownership="owned",
+    close="ffiFmpqMumfordResultClose",
+    clear="sagejs_fmpq_mumford_result_clear",
+    size="sagejs_fmpq_mumford_result_allocated_bytes",
     wasm=False,
 )
 
@@ -1133,6 +1167,577 @@ def fmpz_polynomial_from_byte_region(
     offset: uint64,
     length: uint64,
 ) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceCreate",
+    symbol="sagejs_fmpq_polynomial_workspace_init",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_workspace_t),
+        in_("slot_count", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial workspace size is unsupported",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_workspace(
+    slot_count: uint64,
+) -> FmpqPolynomialWorkspace: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceLoad",
+    symbol="sagejs_fmpq_polynomial_workspace_load",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("output", uint64_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["workspace"],
+    ),
+    result=Status(1, exception=ValueError, message="invalid workspace load"),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_load(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    output: uint64,
+    source: FmpqPolynomial,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceCopyPairOut",
+    symbol="sagejs_fmpq_polynomial_workspace_copy_pair_out",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_pair_t),
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("u_slot", uint64_t),
+        in_("v_slot", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational polynomial workspace pair copy",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_copy_pair_out(
+    workspace: FmpqPolynomialWorkspace,
+    u_slot: uint64,
+    v_slot: uint64,
+) -> FmpqPolynomialPair: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceLoadPair",
+    symbol="sagejs_fmpq_polynomial_workspace_load_pair",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("u_output", uint64_t),
+        in_("v_output", uint64_t),
+        in_("source", sagejs_fmpq_polynomial_pair_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["workspace"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational polynomial workspace pair load",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_load_pair(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    u_output: uint64,
+    v_output: uint64,
+    source: FmpqPolynomialPair,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceMoveMumfordResultOut",
+    symbol="sagejs_fmpq_polynomial_workspace_move_mumford_result_out",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_mumford_result_t),
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("u_slot", uint64_t),
+        in_("v_slot", uint64_t),
+        in_("genus", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["workspace"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational Mumford workspace move",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_move_mumford_result_out(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    u_slot: uint64,
+    v_slot: uint64,
+    genus: uint64,
+) -> FmpqMumfordResult: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceLoadMumfordResult",
+    symbol="sagejs_fmpq_polynomial_workspace_load_mumford_result",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("u_output", uint64_t),
+        in_("v_output", uint64_t),
+        in_("source", sagejs_fmpq_mumford_result_t),
+        in_("genus", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["workspace"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational Mumford workspace load",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_load_mumford_result(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    u_output: uint64,
+    v_output: uint64,
+    source: FmpqMumfordResult,
+    genus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceZero",
+    symbol="sagejs_fmpq_polynomial_workspace_zero",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("output", uint64_t),
+    ],
+    effects=Effects(
+        pure=False, allocates=True, raises=[ValueError], writes=["workspace"]
+    ),
+    result=Status(1, exception=ValueError, message="invalid workspace slot"),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_zero(
+    workspace: Writable[FmpqPolynomialWorkspace], output: uint64
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceOne",
+    symbol="sagejs_fmpq_polynomial_workspace_one",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("output", uint64_t),
+    ],
+    effects=Effects(
+        pure=False, allocates=True, raises=[ValueError], writes=["workspace"]
+    ),
+    result=Status(1, exception=ValueError, message="invalid workspace slot"),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_one(
+    workspace: Writable[FmpqPolynomialWorkspace], output: uint64
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceCopy",
+    symbol="sagejs_fmpq_polynomial_workspace_copy",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("output", uint64_t),
+        in_("source", uint64_t),
+    ],
+    effects=Effects(
+        pure=False, allocates=True, raises=[ValueError], writes=["workspace"]
+    ),
+    result=Status(1, exception=ValueError, message="invalid workspace slots"),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_copy(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    output: uint64,
+    source: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceSwap",
+    symbol="sagejs_fmpq_polynomial_workspace_swap",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("left", uint64_t),
+        in_("right", uint64_t),
+    ],
+    effects=Effects(
+        pure=False, allocates=False, raises=[ValueError], writes=["workspace"]
+    ),
+    result=Status(1, exception=ValueError, message="invalid workspace slots"),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_swap(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    left: uint64,
+    right: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceMonic",
+    symbol="sagejs_fmpq_polynomial_workspace_monic",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("output", uint64_t),
+        in_("source", uint64_t),
+    ],
+    effects=Effects(
+        pure=False, allocates=True, raises=[ValueError], writes=["workspace"]
+    ),
+    result=Status(1, exception=ValueError, message="invalid workspace monic input"),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_monic(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    output: uint64,
+    source: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceAdd",
+    symbol="sagejs_fmpq_polynomial_workspace_add",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("output", uint64_t),
+        in_("left", uint64_t),
+        in_("right", uint64_t),
+    ],
+    effects=Effects(
+        pure=False, allocates=True, raises=[ValueError], writes=["workspace"]
+    ),
+    result=Status(1, exception=ValueError, message="invalid workspace addition"),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_add(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    output: uint64,
+    left: uint64,
+    right: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceSub",
+    symbol="sagejs_fmpq_polynomial_workspace_sub",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("output", uint64_t),
+        in_("left", uint64_t),
+        in_("right", uint64_t),
+    ],
+    effects=Effects(
+        pure=False, allocates=True, raises=[ValueError], writes=["workspace"]
+    ),
+    result=Status(1, exception=ValueError, message="invalid workspace subtraction"),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_sub(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    output: uint64,
+    left: uint64,
+    right: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceNeg",
+    symbol="sagejs_fmpq_polynomial_workspace_neg",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("output", uint64_t),
+        in_("source", uint64_t),
+    ],
+    effects=Effects(
+        pure=False, allocates=True, raises=[ValueError], writes=["workspace"]
+    ),
+    result=Status(1, exception=ValueError, message="invalid workspace negation"),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_neg(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    output: uint64,
+    source: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceMul",
+    symbol="sagejs_fmpq_polynomial_workspace_mul",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("output", uint64_t),
+        in_("left", uint64_t),
+        in_("right", uint64_t),
+    ],
+    effects=Effects(
+        pure=False, allocates=True, raises=[ValueError], writes=["workspace"]
+    ),
+    result=Status(1, exception=ValueError, message="invalid workspace multiplication"),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_mul(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    output: uint64,
+    left: uint64,
+    right: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceDivExact",
+    symbol="sagejs_fmpq_polynomial_workspace_divexact",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("output", uint64_t),
+        in_("left", uint64_t),
+        in_("right", uint64_t),
+    ],
+    effects=Effects(
+        pure=False, allocates=True, raises=[ValueError], writes=["workspace"]
+    ),
+    result=Status(1, exception=ValueError, message="workspace quotient is not exact"),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_divexact(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    output: uint64,
+    left: uint64,
+    right: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceRemainder",
+    symbol="sagejs_fmpq_polynomial_workspace_rem",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("output", uint64_t),
+        in_("left", uint64_t),
+        in_("right", uint64_t),
+    ],
+    effects=Effects(
+        pure=False, allocates=True, raises=[ValueError], writes=["workspace"]
+    ),
+    result=Status(1, exception=ValueError, message="invalid workspace remainder"),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_rem(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    output: uint64,
+    left: uint64,
+    right: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceXgcd",
+    symbol="sagejs_fmpq_polynomial_workspace_xgcd",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("gcd", uint64_t),
+        in_("left_coefficient", uint64_t),
+        in_("right_coefficient", uint64_t),
+        in_("left", uint64_t),
+        in_("right", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["workspace"],
+    ),
+    result=Status(1, exception=ValueError, message="invalid workspace xgcd"),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_xgcd(
+    workspace: Writable[FmpqPolynomialWorkspace],
+    gcd: uint64,
+    left_coefficient: uint64,
+    right_coefficient: uint64,
+    left: uint64,
+    right: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceLength",
+    symbol="sagejs_fmpq_polynomial_workspace_length",
+    returns=uint64_t,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("slot", uint64_t),
+    ],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_length(
+    workspace: FmpqPolynomialWorkspace, slot: uint64
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceAllocatedBytes",
+    symbol="sagejs_fmpq_polynomial_workspace_allocated_bytes",
+    returns=uint64_t,
+    abi=[in_("workspace", sagejs_fmpq_polynomial_workspace_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_allocated_bytes(
+    workspace: FmpqPolynomialWorkspace,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceIsZero",
+    symbol="sagejs_fmpq_polynomial_workspace_is_zero",
+    returns=uint64_t,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("slot", uint64_t),
+    ],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_is_zero(
+    workspace: FmpqPolynomialWorkspace, slot: uint64
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceIsOne",
+    symbol="sagejs_fmpq_polynomial_workspace_is_one",
+    returns=uint64_t,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("slot", uint64_t),
+    ],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_is_one(
+    workspace: FmpqPolynomialWorkspace, slot: uint64
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceEqual",
+    symbol="sagejs_fmpq_polynomial_workspace_equal",
+    returns=uint64_t,
+    abi=[
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("left", uint64_t),
+        in_("right", uint64_t),
+    ],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_equal(
+    workspace: FmpqPolynomialWorkspace,
+    left: uint64,
+    right: uint64,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceCoefficientNumerator",
+    symbol="sagejs_fmpq_polynomial_workspace_coefficient_numerator",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("slot", uint64_t),
+        in_("index", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1, exception=ValueError, message="workspace coefficient is out of bounds"
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_coefficient_numerator(
+    workspace: FmpqPolynomialWorkspace, slot: uint64, index: uint64
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialWorkspaceCoefficientDenominator",
+    symbol="sagejs_fmpq_polynomial_workspace_coefficient_denominator",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("workspace", sagejs_fmpq_polynomial_workspace_t),
+        in_("slot", uint64_t),
+        in_("index", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1, exception=ValueError, message="workspace coefficient is out of bounds"
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_workspace_coefficient_denominator(
+    workspace: FmpqPolynomialWorkspace, slot: uint64, index: uint64
+) -> Integer: ...
 
 
 @flint.function(

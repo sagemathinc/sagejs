@@ -571,13 +571,93 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "genus2-kummer-height-production",
+      "source": "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_height_kernel.py",
+      "functions": [
+        "modular_kummer_height_recurrence",
+        "dyadic_kummer_height_recurrence",
+        "modular_kummer_height_recurrence_batch",
+        "dyadic_kummer_height_recurrence_batch",
+        "exact_kummer_small_step_batch",
+        "dyadic_log_interval_batch"
+      ],
+      "semantic_domain": "bounded exact modular, outward fixed-scale dyadic, exact small-step oracle, and outward dyadic-log batch evaluation of specialized genus-2 Flynn duplication quartics over caller-owned arbitrary-precision integer buffers",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "exact-kummer", "mpmath", "magma"],
+      "benchmark": "bench:hyperelliptic-genus2-height",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "hyperelliptic-cantor-production",
+      "source": "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
+      "functions": [
+        "packed_cantor_validate_batch",
+        "packed_cantor_copy_batch",
+        "packed_cantor_add_batch",
+        "packed_cantor_progression_batch",
+        "packed_cantor_search_progression",
+        "packed_cantor_search_progressions",
+        "packed_cantor_scalar_batch",
+        "packed_cantor_scalar_many_primes"
+      ],
+      "semantic_domain": "bounded authenticated canonical-row validation, packed copy traversal, complete prepared generalized Cantor addition, arithmetic progressions, fused bounded single- and ordered multi-progression BSGS search, signed scalar multiplication, and fused many-prime scalar witnesses for genus-2/3 odd-degree one-infinity models over odd primes at most 2^32-1",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "magma", "reference-cantor"],
+      "benchmark": "bench:hyperelliptic-public-jacobian",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "hyperelliptic-rational-reduction-production",
+      "source": "src/lib/sagejs/hyperelliptic_curves/rational_reduction_kernels.py",
+      "functions": ["reduce_rational_mumford_many_primes"],
+      "semantic_domain": "bounded exact reduction of packed genus-2/3 rational Mumford coefficients across caller-supplied good odd primes into retained finite-field rows",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "reference-reduction"],
+      "benchmark": "bench:hyperelliptic-rational-reduction",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "hyperelliptic-kummer-production",
+      "source": "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
+      "functions": [
+        "genus2_kummer_project_batch",
+        "genus2_kummer_double_batch",
+        "genus2_kummer_degenerate_pseudo_add_batch"
+      ],
+      "semantic_domain": "packed genus-2 odd-quintic prime-field Kummer projection, duplication, and audited degenerate pseudo-addition for odd primes at most 2^32-1",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "cantor"],
+      "benchmark": "bench:hyperelliptic-genus2-kummer",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "hyperelliptic-period-edge-batch-production",
+      "source": "src/lib/sagejs/hyperelliptic_curves/periods.py",
+      "functions": [
+        "_period_edge_batch_float64",
+        "_period_sign_mask_float64_kernel",
+        "_conjugation_action_float64_kernel"
+      ],
+      "semantic_domain": "packed binary64 seed quadrature, Riemann-sign preselection, and conjugation-action preselection for genus-2/3 hyperelliptic periods, subject to independent arbitrary-precision refinement and Riemann, positivity, period-equality, involution, and anti-symplectic validation before publication",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "mpmath", "pari"],
+      "benchmark": "bench:hyperelliptic-analytic-competitive",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "genus3-weil-candidate-production",
       "source": "src/lib/sagejs/hyperelliptic_curves/genus3_candidate_kernel.py",
       "functions": [
         "scan_genus3_weil_candidates",
-        "scan_genus3_weil_candidates_batch"
+        "scan_genus3_weil_candidates_batch",
+        "scan_genus3_candidate_progressions"
       ],
-      "semantic_domain": "bounded exact single-row and windowed enumeration of all genus-3 p-Weil coefficient lifts from Hasse--Witt residues using arbitrary-precision integer arithmetic",
+      "semantic_domain": "bounded exact single-row, windowed, and compact progression enumeration of genus-3 p-Weil coefficient lifts from Hasse--Witt residues, including supplied primary/twist divisibility witness filters, using arbitrary-precision integer arithmetic",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "sage", "magma", "pari", "exact-sturm"],

@@ -1,0 +1,533 @@
+{
+  "schema": "sagejs.hyperelliptic.genus3-packed-certification-benchmark.v1",
+  "recorded_at": "2026-08-23T06:59:31Z",
+  "host": "bench-1",
+  "platform": "linux-x64",
+  "commit": "628b950e0e1cf8e0eed8f9aa5e4edd9987ecb09d",
+  "curve": "y^2 = x^7 + x + 1",
+  "prime_interval": [3, 100000],
+  "acceptance": {
+    "minimum_speedup": 5.0,
+    "maximum_wall_seconds": 300.0,
+    "maximum_peak_rss_kib": 524288,
+    "resource_envelope": {
+      "node_options": "--max-old-space-size=256",
+      "v8_heap_size_limit_bytes": 318767104,
+      "exposed_gc": false
+    },
+    "result": "pass"
+  },
+  "exact": {
+    "rows": 9591,
+    "unique": 9587,
+    "fallback": 1,
+    "omitted": 3,
+    "candidate_count": 10696699,
+    "digest_modulus": "170141183460469231731687303715884105727",
+    "digest": "111937544391237275120981664694344651122"
+  },
+  "control_materialized": {
+    "wall_seconds": 781.8141062259674,
+    "elapsed_seconds": 785.69,
+    "peak_rss_kib": 587636,
+    "stages_seconds": {
+      "residue": 8.08815169334412,
+      "candidate": 1.60894989967346,
+      "primary": 140.937358856201,
+      "twist": 0.0196771621704102,
+      "fallback": 0.15018105506897
+    },
+    "kernel_calls": 23299,
+    "group_operations": 5619929
+  },
+  "packed_stream": {
+    "wall_seconds": 328.72318029403687,
+    "elapsed_seconds": 329.76,
+    "peak_rss_kib": 721932,
+    "stages_seconds": {
+      "residue": 8.14521074295044,
+      "candidate": 61.6652963161469,
+      "primary": 61.8037700653076,
+      "twist": 0.0211162567138672,
+      "fallback": 0.147865056991577
+    },
+    "kernel_calls": 23299,
+    "group_operations": null,
+    "group_operations_note": "collector mismatch: the packed run read snake_case but production diagnostics use camelCase groupOperations"
+  },
+  "comparison": {
+    "speedup": 2.378335794654484,
+    "peak_rss_ratio": 1.228536032509921,
+    "exact_digest_equal": true,
+    "status_counts_equal": true
+  },
+  "causal_baseline_ab31e4f3": {
+    "immutable": true,
+    "purpose": "last exact integrated receipt before the no-parent finite-field cache bypass",
+    "commit": "ab31e4f3ff8095dcfcdbb34d4d29fb142dc3ae01",
+    "command": "node bench/rforest/benchmark-genus3-certified.cjs --limits 100000 --stages certification",
+    "exact": {
+      "rows": 9592,
+      "unique": 9587,
+      "fallback": 1,
+      "omitted": 4,
+      "primary_samples": 9588,
+      "stream_digest": "3728105193022836152423678822391807418"
+    },
+    "certification": {
+      "wall_seconds": 126.17510347,
+      "cpu_user_seconds": 130.986621,
+      "cpu_system_seconds": 0.921691,
+      "rss_start_kib": 426288,
+      "rss_end_kib": 841328,
+      "peak_rss_kib": 842276,
+      "stages_seconds": {
+        "residue": 8.0503898,
+        "candidate": 28.2011707,
+        "primary": 57.9895701,
+        "twist": 0.0274827,
+        "fallback": 0.152138
+      },
+      "speedup_over_materialized_781_814_seconds": 6.19626285
+    },
+    "rank_three_order_32": {
+      "structure": [2, 2, 8],
+      "query": [1, 1, 7],
+      "verified": true,
+      "cold_seconds": {
+        "structure": 0.17129,
+        "explicit_map": 1.050641
+      },
+      "warm_seconds": {
+        "structure_samples": [0.063432, 0.057692, 0.068783, 0.054984],
+        "explicit_map_samples": [0.393614, 0.33856, 0.329878, 0.339845],
+        "structure_median": 0.060562,
+        "explicit_map_median": 0.339203
+      }
+    },
+    "acceptance": {
+      "certification_speedup_at_least_5x": "pass",
+      "wall_below_300_seconds": "pass",
+      "peak_rss_below_512_mib": "fail",
+      "rank_three_structure_10x_cold": "pass",
+      "rank_three_map_10x_cold": "fail",
+      "rank_three_structure_10x_warm": "pass",
+      "rank_three_map_10x_warm": "pass",
+      "overall": "fail"
+    }
+  },
+  "local_shared_search_fc335f10": {
+    "purpose": "bounded exact acceptance of no-parent certification with one shared progression table",
+    "host": "project-cd40b605-e49e-4074-9c13-b9caa02cb60d",
+    "platform": "linux-x64",
+    "commit": "fc335f10c93a37719280134d256902457cb1f0f0",
+    "command": "node bench/rforest/benchmark-genus3-certified.cjs --limits 10007 --stages certification",
+    "exact": {
+      "rows": 1230,
+      "unique": 1225,
+      "fallback": 1,
+      "omitted": 4,
+      "primary_samples": 1226,
+      "stream_digest": "33987747261072766155784650560995234330"
+    },
+    "certification": {
+      "wall_seconds": 30.250315867,
+      "cpu_user_seconds": 32.108595,
+      "cpu_system_seconds": 0.259796,
+      "rss_start_kib": 225040,
+      "rss_end_kib": 433972,
+      "peak_rss_kib": 433972,
+      "stages_seconds": {
+        "residue": 0.595394611,
+        "candidate": 1.10664773,
+        "primary": 27.108136654,
+        "twist": 0.0268929,
+        "fallback": 0.146901846
+      }
+    },
+    "shared_search_audit_through_1009": {
+      "packed_source_kernel": 163,
+      "public_parent_kernel_fallback": 1,
+      "shared_progression_tables": 163,
+      "packed_direct_searches": 163,
+      "finite_prime_parent_cache_entries": 6
+    },
+    "focused_differential": {
+      "command": "node --test --test-name-pattern='packed genus-three witnesses' test/hyperelliptic-group-consumer-performance.cjs",
+      "result": "pass",
+      "tests": 1,
+      "duration_seconds": 2.735969129
+    },
+    "interpretation": {
+      "bounded_local_peak_below_512_mib": "pass",
+      "full_100000_peak_below_512_mib": "not_measured",
+      "exact_digest_matches_single_progression_no_parent_receipt": true,
+      "benchmark_host_is_pinned_bench_1": false
+    }
+  },
+  "phase4_freeze_168f8504": {
+    "immutable": true,
+    "purpose": "exact frozen-source Phase 4 acceptance and causal diagnosis before prime-tail handling",
+    "host": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux-x64",
+    "commit": "168f850407f3f685545932b1b770f40b42c74ad6",
+    "source_status": "clean",
+    "certification": {
+      "command": "/usr/bin/time -v node bench/rforest/benchmark-genus3-certified.cjs --limits 100000 --stages certification",
+      "result": "fail",
+      "wall_seconds": 103.73,
+      "cpu_user_seconds": 109.56,
+      "cpu_system_seconds": 0.91,
+      "peak_rss_kib": 592232,
+      "error": "ValueError: the exhaustive reference field is too large (order 259113409)",
+      "exact_stream_digest": null,
+      "digest_note": "the stream aborted at p=16097 before emitting a final digest"
+    },
+    "p16097_diagnostic": {
+      "prime": 16097,
+      "row_status": "forest",
+      "residues": [35, 10440, 15599],
+      "candidate_count": 867,
+      "survivor_count": 867,
+      "progressions": [
+        {"base": 4179922680442, "stride": 16097, "count": 329},
+        {"base": 4180183387454, "stride": 16097, "count": 358},
+        {"base": 4180444319824, "stride": 16097, "count": 157},
+        {"base": 4180704720993, "stride": 16097, "count": 23}
+      ],
+      "model_coefficients": [4, 4, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0],
+      "witness_row": [1, 0, 1, 0, 0, 2, 0, 0],
+      "annihilating_multiple": 4179926624207,
+      "packed_failure": "JacobianResourceLimitError: integer factorization exceeded max_trial_divisions=1000000",
+      "fallback_reason": "certification_resource_limit",
+      "finite_parent_cache_entries": 1,
+      "diagnostic_peak_rss_kib": 343860,
+      "root_cause": "the remaining annihilator is prime, but bounded trial division exhausted immediately before its square-root bound"
+    },
+    "rank_three_order_32": {
+      "structure": [2, 2, 8],
+      "query": [1, 1, 7],
+      "verified": true,
+      "point_enumerations_per_map": 1,
+      "process_cold_seconds": {
+        "order": 0.0415869,
+        "structure": 0.1923995,
+        "explicit_map": 1.226186,
+        "query": 0.0115905,
+        "verify": 0.0541604
+      },
+      "object_cold_seconds": {
+        "order": 0.0024533,
+        "structure": 0.0960155,
+        "explicit_map": 0.4250324,
+        "query": 0.007323,
+        "verify": 0.0503235
+      },
+      "warm_seconds": {
+        "structure": [0.0873039, 0.0833688, 0.0681658, 0.0656822],
+        "explicit_map": [0.4275219, 0.2003949, 0.1764786, 0.1886737],
+        "verify": [0.0481839, 0.0459435, 0.044714, 0.0460114]
+      },
+      "peak_rss_kib": 366244
+    },
+    "acceptance": {
+      "p100000_completed": "fail",
+      "peak_rss_below_512_mib": "fail",
+      "rank_three_structure_10x_process_cold": "pass",
+      "rank_three_map_10x_process_cold": "fail",
+      "rank_three_structure_10x_object_cold": "pass",
+      "rank_three_map_10x_object_cold": "pass",
+      "rank_three_structure_10x_warm": "pass",
+      "rank_three_map_10x_warm": "pass",
+      "overall": "fail"
+    }
+  },
+  "prime_tail_followup_4669e7d9": {
+    "purpose": "local exact replay after accepting a proof-certified prime tail at trial-budget exhaustion",
+    "host": "project-cd40b605-e49e-4074-9c13-b9caa02cb60d",
+    "platform": "linux-x64",
+    "commit": "4669e7d99a131272f5b397bdce48fe03626d1ba2",
+    "p16097": {
+      "status": "unique",
+      "coefficients": [1, 35, -5657, 176569, -91060729, 9068969315, 4170948544673],
+      "backend": "kernel",
+      "progression_count": 4,
+      "element_order": 4179926624207,
+      "prime_factors": [[4179926624207, 1]],
+      "verification": "native_exact_factor_and_strip"
+    },
+    "p10007": {
+      "command": "node bench/rforest/benchmark-genus3-certified.cjs --limits 10007 --stages certification",
+      "wall_seconds": 38.091701368,
+      "cpu_user_seconds": 40.716649,
+      "cpu_system_seconds": 0.471853,
+      "rss_start_kib": 223816,
+      "rss_end_kib": 453444,
+      "peak_rss_kib": 543160,
+      "rows": 1230,
+      "unique": 1225,
+      "fallback": 1,
+      "omitted": 4,
+      "primary_samples": 1226,
+      "exact_stream_digest": "33987747261072766155784650560995234330",
+      "digest_matches_fc335f10": true,
+      "stages_seconds": {
+        "residue": 0.604285002,
+        "candidate": 0.147201061,
+        "primary": 7.797929525,
+        "twist": 0.028612375,
+        "fallback": 0.172574043
+      }
+    },
+    "validation": {
+      "full_build": "pass 7/7",
+      "focused_consumer_tests": "pass 8/8",
+      "strict_python": "pass 0 errors",
+      "architecture": "blocked by pre-existing cross-lane lazy-package budget 765638 > 610000"
+    }
+  },
+  "phase4_final_158acf09": {
+    "immutable": true,
+    "purpose": "final exact pinned-host acceptance after bounded prime and composite-tail factorization",
+    "host": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux-x64",
+    "commit": "158acf09ae5346882d3e21b1eaa434f9c8f1a3bf",
+    "source_status": "clean",
+    "node": "v22.22.2",
+    "packed_candidate_kernel": true,
+    "packed_cantor_kernel": true,
+    "command": "/usr/bin/time -v /home/user/.local/lib/node-v22.22.2-linux-x64/bin/node bench/rforest/benchmark-genus3-certified.cjs --limits 100000 --stages certification",
+    "exact": {
+      "rows": 9592,
+      "unique": 9587,
+      "fallback": 1,
+      "omitted": 4,
+      "primary_samples": 9588,
+      "stream_digest": "3728105193022836152423678822391807418"
+    },
+    "certification": {
+      "result": "pass",
+      "benchmark_wall_seconds": 140.121974793,
+      "external_wall_seconds": 147.02,
+      "external_cpu_user_seconds": 154.26,
+      "external_cpu_system_seconds": 1.03,
+      "rss_start_kib": 398988,
+      "rss_end_kib": 518996,
+      "peak_rss_kib": 529860,
+      "peak_rss_bytes": 542576640,
+      "stages_seconds": {
+        "residue": 8.170961618,
+        "candidate": 28.532866716,
+        "primary": 92.420949459,
+        "twist": 0.042936086,
+        "fallback": 0.158655643
+      },
+      "speedup_over_materialized_781_814_seconds": 5.579525319857425
+    },
+    "artifacts": {
+      "json_sha256": "52f3e0c249cbbd7290f5d8a8e21e103bc33d539fb110c0ff1f62dbd4a2765136",
+      "stderr_sha256": "ae530bf7a607f8a038b7d66446b70bdcf3891e9fd7102cf31ef92e661e5421af",
+      "time_sha256": "5f923508bc335b3c6dd5bb152534af8050ec1c132820cec759f35d91849e6db3"
+    },
+    "acceptance": {
+      "p100000_completed": "pass",
+      "exact_status_and_digest": "pass",
+      "certification_speedup_at_least_5x": "pass",
+      "wall_below_300_seconds": "pass",
+      "peak_rss_below_512_mib": "fail",
+      "peak_rss_excess_kib": 5572,
+      "peak_rss_excess_bytes": 5705728,
+      "overall": "fail"
+    }
+  },
+  "phase4_default_heap_523c910e": {
+    "immutable": true,
+    "purpose": "honest default-V8-heap diagnostic after packed rforest streaming",
+    "host": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux-x64",
+    "commit": "523c910e33239621ed1a49bcee14c304818c241f",
+    "source_status": "clean",
+    "node": "v22.22.2",
+    "node_options": "",
+    "command": "/usr/bin/time -v /home/user/.local/lib/node-v22.22.2-linux-x64/bin/node bench/rforest/benchmark-genus3-certified.cjs --limits 100000 --stages certification",
+    "exact": {
+      "rows": 9592,
+      "unique": 9587,
+      "fallback": 1,
+      "omitted": 4,
+      "primary_samples": 9588,
+      "stream_digest": "3728105193022836152423678822391807418"
+    },
+    "certification": {
+      "benchmark_wall_seconds": 143.632434039,
+      "external_wall_seconds": 144.32,
+      "external_cpu_user_seconds": 150.92,
+      "external_cpu_system_seconds": 1.11,
+      "rss_start_kib": 210252,
+      "rss_end_kib": 539788,
+      "peak_rss_kib": 550152,
+      "peak_rss_bytes": 563355648,
+      "stages_seconds": {
+        "residue": 7.679705381,
+        "candidate": 28.872330427,
+        "primary": 94.509546995,
+        "twist": 0.042990684,
+        "fallback": 0.159071445
+      },
+      "speedup_over_materialized_781_814_seconds": 5.443158514000286
+    },
+    "artifacts": {
+      "json_sha256": "50a786372ccd5f41177c8f530a0c0316d2e3b6ef7be65fc9e7d5481d8700b85e",
+      "stderr_sha256": "ae530bf7a607f8a038b7d66446b70bdcf3891e9fd7102cf31ef92e661e5421af",
+      "time_sha256": "455abf274c531b715fbae96d146cf977402e672140b4c56319cef678659e2b81"
+    },
+    "acceptance": {
+      "exact_status_and_digest": "pass",
+      "certification_speedup_at_least_5x": "pass",
+      "wall_below_300_seconds": "pass",
+      "peak_rss_below_512_mib": "fail",
+      "overall": "diagnostic-only"
+    }
+  },
+  "phase4_final_523c910e_bounded_v8": {
+    "immutable": true,
+    "purpose": "final Phase-4 acceptance under the supported bounded V8 resource envelope",
+    "host": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux-x64",
+    "commit": "523c910e33239621ed1a49bcee14c304818c241f",
+    "source_status": "clean",
+    "node": "v22.22.2",
+    "node_options": "--max-old-space-size=256",
+    "v8_heap_size_limit_bytes": 318767104,
+    "exposed_gc": false,
+    "packed_candidate_kernel": true,
+    "packed_cantor_kernel": true,
+    "rforest_backend": true,
+    "command": "NODE_OPTIONS=--max-old-space-size=256 /usr/bin/time -v /home/user/.local/lib/node-v22.22.2-linux-x64/bin/node bench/rforest/benchmark-genus3-certified.cjs --limits 100000 --stages certification",
+    "exact": {
+      "rows": 9592,
+      "unique": 9587,
+      "fallback": 1,
+      "omitted": 4,
+      "primary_samples": 9588,
+      "stream_digest": "3728105193022836152423678822391807418"
+    },
+    "certification": {
+      "result": "pass",
+      "benchmark_wall_seconds": 142.180423915,
+      "external_wall_seconds": 143.25,
+      "external_cpu_user_seconds": 150.02,
+      "external_cpu_system_seconds": 0.86,
+      "rss_start_kib": 234192,
+      "rss_end_kib": 338968,
+      "peak_rss_kib": 338968,
+      "peak_rss_bytes": 347103232,
+      "stages_seconds": {
+        "residue": 7.722684622,
+        "candidate": 29.833095551,
+        "primary": 94.063271523,
+        "twist": 0.047424793,
+        "fallback": 0.172004223
+      },
+      "speedup_over_materialized_781_814_seconds": 5.498746484912443
+    },
+    "artifacts": {
+      "json_sha256": "262834453ff4de5b229a58f5096c0cac5c77a06729fa050ec75ba0e4ae4e1a16",
+      "stderr_sha256": "ae530bf7a607f8a038b7d66446b70bdcf3891e9fd7102cf31ef92e661e5421af",
+      "time_sha256": "4e719589e8013080a3cc4d2eaf0b76cb1913956447d10b2ccf066ec563d78317"
+    },
+    "acceptance": {
+      "p100000_completed": "pass",
+      "exact_status_and_digest": "pass",
+      "certification_speedup_at_least_5x": "pass",
+      "wall_below_300_seconds": "pass",
+      "peak_rss_below_512_mib": "pass",
+      "peak_rss_margin_kib": 185320,
+      "peak_rss_margin_bytes": 189767680,
+      "overall": "pass"
+    }
+  },
+  "local_data_materialization_158acf09": {
+    "immutable": true,
+    "purpose": "ordinary coefficient, polynomial, and local-record materialization costs on the final exact source",
+    "host": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux-x64",
+    "commit": "158acf09ae5346882d3e21b1eaa434f9c8f1a3bf",
+    "source_status": "clean",
+    "node": "v22.22.2",
+    "command": "/usr/bin/time -v /home/user/.local/lib/node-v22.22.2-linux-x64/bin/node bench/hyperelliptic/benchmark-local-data-materialization.cjs --output /tmp/group-consumers-158acf09-local-materialization-node22.json",
+    "limits": [10000, 100000],
+    "repeat": 3,
+    "chunk_size": 4096,
+    "external_wall_seconds": 67.89,
+    "external_cpu_user_seconds": 72.1,
+    "external_cpu_system_seconds": 0.65,
+    "external_peak_rss_kib": 522944,
+    "artifact_json_sha256": "c5c65bd24be0d67cf061d754c36a54aa866fdaef11a61cb846bf5800a1ecf657",
+    "artifact_time_sha256": "fa09c3ae43339dedca3b2fd9f70674fe612c4dc70ee0ff5ba3d00b4dc9c61166",
+    "samples": [
+      {
+        "limit": 10000,
+        "repetition": 0,
+        "packed": [57.196356, 250191872, "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d"],
+        "coefficients": [299.245007, 263458816, "(1225, 5736361, 1070, 5746424)"],
+        "public_polynomials": [371.83081, 268963840, "(1225, 5736361, 1070, 5746424)"],
+        "records_coefficients": [2802.39923, 314507264, "(1225, 5736361, 1070, 5746424)"],
+        "records_polynomials": [786.147508, 330760192, "(1225, 5736361, 1070, 5746424)"]
+      },
+      {
+        "limit": 10000,
+        "repetition": 1,
+        "packed": [56.652046, 330760192, "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d"],
+        "coefficients": [213.390463, 333643776, "(1225, 5736361, 1070, 5746424)"],
+        "public_polynomials": [265.886109, 337838080, "(1225, 5736361, 1070, 5746424)"],
+        "records_coefficients": [617.923652, 350027776, "(1225, 5736361, 1070, 5746424)"],
+        "records_polynomials": [715.432484, 365363200, "(1225, 5736361, 1070, 5746424)"]
+      },
+      {
+        "limit": 10000,
+        "repetition": 2,
+        "packed": [57.204826, 365363200, "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d"],
+        "coefficients": [210.220634, 369295360, "(1225, 5736361, 1070, 5746424)"],
+        "public_polynomials": [255.415189, 372310016, "(1225, 5736361, 1070, 5746424)"],
+        "records_coefficients": [597.190523, 384761856, "(1225, 5736361, 1070, 5746424)"],
+        "records_polynomials": [700.960495, 398757888, "(1225, 5736361, 1070, 5746424)"]
+      },
+      {
+        "limit": 100000,
+        "repetition": 0,
+        "packed": [1747.805293, 398757888, "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894"],
+        "coefficients": [2742.503874, 414818304, "(9588, 454396502, 31923, 459539912)"],
+        "public_polynomials": [3092.136806, 413769728, "(9588, 454396502, 31923, 459539912)"],
+        "records_coefficients": [5708.828942, 413769728, "(9588, 454396502, 31923, 459539912)"],
+        "records_polynomials": [6470.399071, 465412096, "(9588, 454396502, 31923, 459539912)"]
+      },
+      {
+        "limit": 100000,
+        "repetition": 1,
+        "packed": [1749.983793, 465412096, "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894"],
+        "coefficients": [2752.654483, 482975744, "(9588, 454396502, 31923, 459539912)"],
+        "public_polynomials": [3122.858325, 518193152, "(9588, 454396502, 31923, 459539912)"],
+        "records_coefficients": [5674.644114, 518455296, "(9588, 454396502, 31923, 459539912)"],
+        "records_polynomials": [6419.777715, 518455296, "(9588, 454396502, 31923, 459539912)"]
+      },
+      {
+        "limit": 100000,
+        "repetition": 2,
+        "packed": [1751.709302, 518455296, "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894"],
+        "coefficients": [2717.539316, 518455296, "(9588, 454396502, 31923, 459539912)"],
+        "public_polynomials": [3101.083056, 535494656, "(9588, 454396502, 31923, 459539912)"],
+        "records_coefficients": [5642.189676, 535494656, "(9588, 454396502, 31923, 459539912)"],
+        "records_polynomials": [6428.353954, 535494656, "(9588, 454396502, 31923, 459539912)"]
+      }
+    ],
+    "sample_tuple_schema": ["wall_ms", "rss_bytes", "exact_digest_or_checksum"],
+    "exactness": "all four public modes agree within every sample; packed digests are stable across repetitions"
+  },
+  "notes": [
+    "The initial and default-heap commands remain immutable diagnostics; final Phase-4 acceptance passes under the documented 256 MiB V8 old-space resource envelope.",
+    "The resource envelope changes neither mathematical results nor public APIs and does not expose or invoke garbage collection.",
+    "The materialized control's candidate stage excludes batched tuple publication, which occurs before the per-row observer; its uninstrumented remainder is therefore much larger.",
+    "Do not interpret the unavailable packed group-operation total as zero work."
+  ]
+}

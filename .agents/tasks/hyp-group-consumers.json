@@ -1,0 +1,55 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-group-consumers",
+  "title": "Hyp Group Consumers",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile and accelerate group structure, explicit maps, and genus-3 certification consumers independently of the core kernel, preserving certificates.",
+  "base_commit": "76b863adb13c683b265ddc0c987b727fd7291990",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/group_structure.py",
+    "src/lib/sagejs/hyperelliptic_curves/abelian_group.py",
+    "src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
+    "src/lib/sagejs/hyperelliptic_curves/genus3_completion.py",
+    "src/lib/sagejs/hyperelliptic_curves/genus3_candidate_kernel.py",
+    "src/lib/sagejs/hyperelliptic_curves/rforest.py",
+    "test/hyperelliptic-group-consumer-performance.cjs",
+    "bench/hyperelliptic/benchmark-group-consumers.cjs",
+    "bench/results/hyperelliptic-genus3-packed-certification-linux-x64-2026-08-23.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Final exact 523c910e pinned-Node-22 certification completes p<=100000 with the established exact digest under the documented NODE_OPTIONS=--max-old-space-size=256 resource envelope. It takes 142.180 seconds, peaks at 338968 KiB OS RSS, and passes the exactness, 5x speedup, 300-second wall, and 512 MiB memory gates. The receipt preserves the exact default-heap 523c910e result and the earlier 158acf09 near-miss as immutable diagnostics.",
+    "risks": [
+      "The passing Phase-4 memory result depends on the supported 256 MiB V8 old-space process envelope; default V8 sizing remains above the 512 MiB OS-RSS gate on the pinned host.",
+      "The lane base predates substantial integration work; integrate this receipt/documentation commit rather than merging the branch wholesale."
+    ],
+    "next_steps": [
+      "Preserve NODE_OPTIONS=--max-old-space-size=256 and record the V8-reported 318767104-byte heap limit in comparable Phase-4 acceptance runs.",
+      "Retain the immutable default-heap and 158acf09 receipts as diagnostics for future allocator or native-buffer improvements."
+    ]
+  }
+}

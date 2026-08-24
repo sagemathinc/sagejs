@@ -47,6 +47,102 @@ const routes = [
   ],
 ];
 
+function u32(value) {
+  const result = [];
+  let current = value >>> 0;
+  do {
+    let byte = current & 0x7f;
+    current >>>= 7;
+    if (current !== 0) byte |= 0x80;
+    result.push(byte);
+  } while (current !== 0);
+  return result;
+}
+
+function vector(values) {
+  return [...u32(values.length), ...values.flat()];
+}
+
+function wasmString(value) {
+  const bytes = Buffer.from(value, "utf8");
+  return [...u32(bytes.length), ...bytes];
+}
+
+function section(id, payload) {
+  return [id, ...u32(payload.length), ...payload];
+}
+
+function functionType(parameters, results) {
+  return [0x60, ...vector(parameters), ...vector(results)];
+}
+
+function f64(value) {
+  const bytes = Buffer.alloc(8);
+  bytes.writeDoubleLE(value);
+  return [...bytes];
+}
+
+function functionBody(locals, instructions) {
+  const body = [...vector(locals), ...instructions, 0x0b];
+  return [...u32(body.length), ...body];
+}
+
+function float64Wasm() {
+  const i32 = 0x7f;
+  const i64 = 0x7e;
+  const binary64 = 0x7c;
+  const types = [
+    functionType([i32], [i32]),
+    functionType([i32], []),
+    functionType([i32, i32, i32, i32, binary64, i64], [i32]),
+    functionType([i32], [binary64]),
+    functionType([], [i32]),
+  ];
+  const functions = [0, 1, 2, 3, 4];
+  const exports = [
+    ["memory", 0x02, 0],
+    ["allocate", 0x00, 0],
+    ["deallocate", 0x00, 1],
+    ["target", 0x00, 2],
+    ["result_f64", 0x00, 3],
+    ["last_message", 0x00, 4],
+  ].map(([name, kind, index]) => [
+    ...wasmString(name), kind, ...u32(index),
+  ]);
+  const scaledStores = [0, 8, 16].flatMap((offset) => [
+    0x20, 0x02, // local.get output
+    0x20, 0x00, // local.get source
+    0x2b, 0x03, ...u32(offset), // f64.load align=8, offset
+    0x20, 0x04, // local.get scale
+    0xa2, // f64.mul
+    0x39, 0x03, ...u32(offset), // f64.store align=8, offset
+  ]);
+  const bodies = [
+    functionBody([[0x01, i32]], [
+      0x23, 0x00, // global.get bump
+      0x21, 0x01, // local.set scratch
+      0x23, 0x00,
+      0x20, 0x00,
+      0x6a, // i32.add
+      0x24, 0x00, // global.set bump
+      0x20, 0x01, // local.get scratch
+    ]),
+    functionBody([], []),
+    functionBody([], [...scaledStores, 0x41, 0x00]),
+    functionBody([], [0x44, ...f64(7.0)]),
+    functionBody([], [0x41, 0x00]),
+  ];
+  return Buffer.from([
+    0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+    ...section(1, vector(types)),
+    ...section(3, vector(functions.map(u32))),
+    ...section(5, [0x01, 0x00, 0x01]),
+    ...section(6, [0x01, i32, 0x01, 0x41, ...u32(1024), 0x0b]),
+    ...section(7, vector(exports)),
+    ...section(10, vector(bodies)),
+  ]);
+}
+
 function manifest() {
   const modules = routes.map(([id, logicalSource, name], index) => ({
     logicalSource,
@@ -199,5 +295,98 @@ test("route metadata must match the digest-authenticated pack identity", async (
   await assert.rejects(
     runtime(source),
     /route metadata differs from authenticated gmp pack/,
+  );
+});
+
+test("browser-safe loader marshals bounded Float64 buffers and results", async () => {
+  const bytes = float64Wasm();
+  const moduleIdentity = {
+    logicalSource: "sagejs/native/float64_loader_witness.py",
+    sourceHash: "float64-source",
+    abiHash: "float64-abi",
+    coreHash: "float64-core",
+    oracleIdentity: "float64-oracle",
+    identityHash: "float64-identity",
+    functions: ["scaled_buffer_batch"],
+  };
+  const source = {
+    schema: "sagejs.native-wasm-pack/v1",
+    packs: [{
+      domain: "gmp",
+      status: "built",
+      asset: "float64.wasm",
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+      modules: [moduleIdentity.identityHash],
+      identity: { modules: [moduleIdentity] },
+    }],
+    kernels: [{
+      id: "float64-loader-witness-production",
+      logicalSource: moduleIdentity.logicalSource,
+      domain: "gmp",
+      ...moduleIdentity,
+      runtime: {
+        allocate: "allocate",
+        deallocate: "deallocate",
+        resultFloat64: "result_f64",
+        lastMessage: "last_message",
+      },
+      functions: [{
+        name: "scaled_buffer_batch",
+        declarationHash: "float64-declaration",
+        status: "compiled-source",
+        bridge: {
+          export: "target",
+          parameters: [
+            { name: "source", type: "Float64Buffer", mutable: false },
+            { name: "output", type: "Float64Buffer", mutable: true },
+            { name: "scale", type: "Float64" },
+            { name: "count", type: "uint64" },
+          ],
+          results: ["Float64"],
+        },
+      }],
+    }],
+  };
+  const {
+    instantiateWasmKernelPacks,
+  } = await import("../wasm-pack-loader.mjs");
+  const resolver = await instantiateWasmKernelPacks({
+    manifest: source,
+    load: async () => bytes,
+    host: async () => ({}),
+  });
+  const batch = resolver.function(
+    moduleIdentity.logicalSource,
+    "scaled_buffer_batch",
+  );
+  const input = Object.freeze([1.5, -2.0, 4.0]);
+  const output = new Float64Array(3);
+  assert.equal(batch(input, output, 2.0, 3n), 7.0);
+  assert.deepEqual(Array.from(output), [3.0, -4.0, 8.0]);
+  const boxedPythonFloat = Object.freeze(Object(2.0));
+  assert.equal(batch(input, output, boxedPythonFloat, 3n), 7.0);
+  assert.deepEqual(Array.from(output), [3.0, -4.0, 8.0]);
+  const sageReal = Object.freeze({ __float__: () => Object(2.0) });
+  assert.equal(batch(input, output, sageReal, 3n), 7.0);
+  assert.deepEqual(Array.from(output), [3.0, -4.0, 8.0]);
+  assert.throws(
+    () => batch({ length: 0x2000_0000 }, output, 2.0, 3n),
+    /bounded wasm32 allocation ABI/,
+  );
+  assert.throws(
+    () => batch(input, output, 2n, 3n),
+    /Float64 arguments require a JavaScript number or Python numeric value/,
+  );
+  assert.throws(
+    () => batch(input, output, "2.0", 3n),
+    /Float64 arguments require a JavaScript number or Python numeric value/,
+  );
+  assert.throws(
+    () => batch(input, output, { valueOf: () => 2.0 }, 3n),
+    /Float64 arguments require a JavaScript number or Python numeric value/,
+  );
+  assert.throws(
+    () => batch(input, output, { __float__: () => "2.0" }, 3n),
+    /Float64 arguments require a JavaScript number or Python numeric value/,
   );
 });

@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 41,
-    "production_kernels": 34,
-    "compiled_functions": 241,
+    "registered_kernels": 46,
+    "production_kernels": 39,
+    "compiled_functions": 263,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -154,12 +154,57 @@
       "fallback_reasons": []
     },
     {
+      "id": "genus2-kummer-height-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 6,
+      "fallback_functions": 0,
+      "total_functions": 6,
+      "fallback_reasons": []
+    },
+    {
       "id": "genus3-weil-candidate-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 2,
+      "compiled_functions": 3,
       "fallback_functions": 0,
-      "total_functions": 2,
+      "total_functions": 3,
+      "fallback_reasons": []
+    },
+    {
+      "id": "hyperelliptic-cantor-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 8,
+      "fallback_functions": 0,
+      "total_functions": 8,
+      "fallback_reasons": []
+    },
+    {
+      "id": "hyperelliptic-kummer-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 3,
+      "fallback_functions": 0,
+      "total_functions": 3,
+      "fallback_reasons": []
+    },
+    {
+      "id": "hyperelliptic-period-edge-batch-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 3,
+      "fallback_functions": 0,
+      "total_functions": 3,
+      "fallback_reasons": []
+    },
+    {
+      "id": "hyperelliptic-rational-reduction-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
       "fallback_reasons": []
     },
     {

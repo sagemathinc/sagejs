@@ -74,6 +74,181 @@ def _integer_xgcd(left: int, right: int) -> tuple[int, int, int]:
     return old_r, old_s, old_t
 
 
+def _integer_gcd(left: int, right: int) -> int:
+    """Return the nonnegative gcd of two ordinary exact integers."""
+    left = abs(left)
+    right = abs(right)
+    while right:
+        left, right = right, left % right
+    return left
+
+
+def group_element_key(element: Any, prepared_context: Any = None) -> Any:
+    """Return a cheap exact table key for a prime-field Mumford divisor.
+
+    `MumfordDivisor.__hash__` deliberately has a completely general fallback,
+    but that fallback formats both polynomials.  Vector discrete logarithms
+    can hash the same divisor thousands of times.  Inside one generic-group
+    computation the parent is already fixed, so coefficient tuples are a
+    complete and substantially cheaper key over a prime field.  Other group
+    elements retain their ordinary exact hash/equality semantics.
+    """
+    if prepared_context is not None and hasattr(prepared_context, "pack"):
+        fingerprint = getattr(prepared_context, "model_fingerprint", None)
+        return (
+            "prepared-prime-field-mumford",
+            fingerprint,
+            tuple(int(value) for value in prepared_context.pack(element)),
+        )
+    if not hasattr(element, "uv") or not hasattr(element, "parent"):
+        return element
+    parent = element.parent()
+    if not hasattr(parent, "base_ring"):
+        return element
+    field = parent.base_ring()
+    if not hasattr(field, "characteristic") or not hasattr(field, "order"):
+        return element
+    prime = int(field.characteristic())
+    if prime != int(field.order()):
+        return element
+    u_value, v_value = element.uv()
+
+    def coefficients(polynomial: Any) -> tuple[int, ...]:
+        answer = []
+        for coefficient in polynomial.list():
+            lifted = coefficient.lift() if hasattr(coefficient, "lift") else coefficient
+            answer.append(int(lifted) % prime)
+        return tuple(answer)
+
+    return ("prime-field-mumford", coefficients(u_value), coefficients(v_value))
+
+
+def _prepared_context(
+    parent: Any, algorithm: str, max_batch_items: int | None = None
+) -> Any:
+    """Return the parent's cached prepared context when its domain supports it."""
+    if algorithm == "reference" or not hasattr(parent, "prepared_arithmetic"):
+        return None
+    try:
+        if max_batch_items is None:
+            context = parent.prepared_arithmetic(algorithm=algorithm)
+        else:
+            context = parent.prepared_arithmetic(
+                algorithm=algorithm,
+                max_batch_items=max_batch_items,
+            )
+        # `auto` contexts deliberately retain an exact reference fallback.
+        # Eager DLP table materialization pays off only for a native batch.
+        if (
+            algorithm == "auto"
+            and hasattr(context, "native_available")
+            and not context.native_available
+        ):
+            return None
+        return context
+    except NotImplementedError:
+        if algorithm == "native":
+            raise
+        return None
+
+
+def scalar_multiples_batched(
+    elements: Any,
+    scalars: Any,
+    *,
+    algorithm: str = "auto",
+    max_group_operations: Any = None,
+) -> tuple[Any, ...]:
+    """Compute same-parent scalar multiples through one prepared boundary.
+
+    This is also the exact portable adapter used before/without native Cantor
+    support.  It deliberately accepts a scalar broadcast, matching the public
+    Jacobian batch API.
+    """
+    if algorithm not in ("auto", "native", "reference"):
+        raise ValueError("unknown scalar algorithm " + repr(algorithm))
+    values = list(elements)
+    if not values:
+        return ()
+    if isinstance(scalars, int) or hasattr(scalars, "lift"):
+        multipliers = [scalars for _value in values]
+    else:
+        multipliers = list(scalars)
+        if len(multipliers) != len(values):
+            raise ValueError("elements and scalars must have the same length")
+    multipliers = [
+        _checked_integer(multiplier, "group scalar") for multiplier in multipliers
+    ]
+    parent = values[0].parent()
+    if any(value.parent() is not parent for value in values):
+        raise ValueError("batched group elements must have the same parent")
+    context = _prepared_context(parent, algorithm)
+    if context is not None and hasattr(context, "scalar_batch"):
+        return tuple(context.scalar_batch(values, multipliers))
+    if hasattr(parent, "scalar_multiples"):
+        return tuple(
+            parent.scalar_multiples(
+                values,
+                multipliers,
+                algorithm=algorithm,
+                max_group_operations=max_group_operations,
+            )
+        )
+    answer = []
+    for value, integer in zip(values, multipliers, strict=True):
+        if hasattr(value, "scalar_multiple"):
+            answer.append(
+                value.scalar_multiple(
+                    integer,
+                    algorithm=algorithm,
+                    max_group_operations=max_group_operations,
+                )
+            )
+        else:
+            answer.append(integer * value)
+    return tuple(answer)
+
+
+def add_pairs_batched(
+    left_values: Any,
+    right_values: Any,
+    *,
+    algorithm: str = "auto",
+) -> tuple[Any, ...]:
+    """Add same-parent pairs through one prepared boundary when available."""
+    left = list(left_values)
+    right = list(right_values)
+    if len(left) != len(right):
+        raise ValueError("batched addition inputs must have the same length")
+    if not left:
+        return ()
+    parent = left[0].parent()
+    if any(value.parent() is not parent for value in left + right):
+        raise ValueError("batched group elements must have the same parent")
+    context = _prepared_context(parent, algorithm)
+    if context is not None and hasattr(context, "add_batch"):
+        return tuple(context.add_batch(left, right))
+    return tuple(a + b for a, b in zip(left, right, strict=True))
+
+
+def annihilation_tests_batched(
+    element: Any,
+    multiples: Any,
+    *,
+    algorithm: str = "auto",
+) -> tuple[bool, ...]:
+    """Test many annihilating multiples of one element in one exact batch."""
+    multipliers = list(multiples)
+    if not multipliers:
+        return ()
+    values = scalar_multiples_batched(
+        [element for _multiplier in multipliers],
+        multipliers,
+        algorithm=algorithm,
+    )
+    return tuple(value.is_zero() for value in values)
+
+
 class GroupOperationBudget:
     """Deterministic accounting for bounded generic-group computations."""
 
@@ -101,6 +276,25 @@ class GroupOperationBudget:
         self.group_operations = 0
         self.baby_steps = 0
         self.peak_table_entries = 0
+        self._prepared_parent: Any = None
+        self._prepared_value: Any = None
+        self._prepared_checked = False
+
+    def _batch_limit(self) -> int:
+        return max(1, min(1_000_000, self.max_memory_bytes // 512))
+
+    def _context(self, parent: Any) -> Any:
+        if self._prepared_checked and parent is self._prepared_parent:
+            return self._prepared_value
+        context = _prepared_context(
+            parent,
+            self.scalar_algorithm,
+            max_batch_items=self._batch_limit(),
+        )
+        self._prepared_parent = parent
+        self._prepared_value = context
+        self._prepared_checked = True
+        return context
 
     def diagnostics(self) -> dict[str, int]:
         return {
@@ -111,6 +305,12 @@ class GroupOperationBudget:
             "max_baby_steps": self.max_baby_steps,
             "max_memory_bytes": self.max_memory_bytes,
         }
+
+    def element_key(self, element: Any) -> Any:
+        """Return a canonical key without materializing prepared divisors."""
+        parent = element.parent() if hasattr(element, "parent") else None
+        context = None if parent is None else self._context(parent)
+        return group_element_key(element, context)
 
     def _consume(self, count: int) -> None:
         if count < 0 or self.group_operations + count > self.max_group_operations:
@@ -144,6 +344,35 @@ class GroupOperationBudget:
         self._consume(1)
         return left + right
 
+    def add_batch(self, left_values: Any, right_values: Any) -> tuple[Any, ...]:
+        """Add a batch while charging exactly one group operation per pair."""
+        left = list(left_values)
+        right = list(right_values)
+        if len(left) != len(right):
+            raise ValueError("batched addition inputs must have the same length")
+        self._consume(len(left))
+        if left:
+            parent = left[0].parent()
+            if any(value.parent() is not parent for value in left + right):
+                raise ValueError("batched group elements must have the same parent")
+            context = self._context(parent)
+            if context is not None and hasattr(context, "add_batch"):
+                answer = []
+                limit = self._batch_limit()
+                for start in range(0, len(left), limit):
+                    answer.extend(
+                        context.add_batch(
+                            left[start : start + limit],
+                            right[start : start + limit],
+                        )
+                    )
+                return tuple(answer)
+        return add_pairs_batched(
+            left,
+            right,
+            algorithm=self.scalar_algorithm,
+        )
+
     def negate(self, value: Any) -> Any:
         return -value
 
@@ -157,6 +386,13 @@ class GroupOperationBudget:
             bits += 1
         estimate = max(1, 2 * bits)
         self._consume(estimate)
+        context = self._context(element.parent())
+        if context is not None and hasattr(context, "scalar_batch"):
+            return context.scalar_batch(
+                (element,),
+                (integer,),
+                max_group_operations=max(2, estimate),
+            )[0]
         if hasattr(element, "scalar_multiple"):
             return element.scalar_multiple(
                 integer,
@@ -165,34 +401,254 @@ class GroupOperationBudget:
             )
         return integer * element
 
+    def scalar_batch(self, elements: Any, scalars: Any) -> tuple[Any, ...]:
+        """Compute a bounded batch of scalar multiples with one preparation."""
+        values = list(elements)
+        multipliers = list(scalars)
+        if len(values) != len(multipliers):
+            raise ValueError("elements and scalars must have the same length")
+        estimate = 0
+        per_scalar_estimate = 1
+        normalized = []
+        for scalar in multipliers:
+            integer = _checked_integer(scalar, "group scalar")
+            normalized.append(integer)
+            magnitude = -integer if integer < 0 else integer
+            bits = 0
+            work = magnitude
+            while work:
+                work //= 2
+                bits += 1
+            scalar_estimate = max(1, 2 * bits)
+            estimate += scalar_estimate
+            per_scalar_estimate = max(per_scalar_estimate, scalar_estimate)
+        self._consume(estimate)
+        if values:
+            parent = values[0].parent()
+            if any(value.parent() is not parent for value in values):
+                raise ValueError("batched group elements must have the same parent")
+            context = self._context(parent)
+            if context is not None and hasattr(context, "scalar_batch"):
+                answer = []
+                limit = self._batch_limit()
+                for start in range(0, len(values), limit):
+                    answer.extend(
+                        context.scalar_batch(
+                            values[start : start + limit],
+                            normalized[start : start + limit],
+                            max_group_operations=max(2, per_scalar_estimate),
+                        )
+                    )
+                return tuple(answer)
+        return scalar_multiples_batched(
+            values,
+            normalized,
+            algorithm=self.scalar_algorithm,
+            max_group_operations=max(2, estimate),
+        )
+
+    def sum(self, elements: Any) -> Any:
+        """Sum a nonempty same-parent batch using a prepared reduction tree."""
+        values = list(elements)
+        if not values:
+            raise ValueError("a generic-group sum needs a parent")
+        if len(values) == 1:
+            return values[0]
+        self._consume(len(values) - 1)
+        parent = values[0].parent()
+        if any(value.parent() is not parent for value in values):
+            raise ValueError("batched group elements must have the same parent")
+        context = self._context(parent)
+        if context is not None and hasattr(context, "sum"):
+            limit = self._batch_limit()
+            current = values
+            if limit == 1:
+                while len(current) > 1:
+                    next_values = []
+                    pair_count = len(current) // 2
+                    for index in range(pair_count):
+                        next_values.append(
+                            context.add_batch(
+                                (current[2 * index],),
+                                (current[2 * index + 1],),
+                            )[0]
+                        )
+                    if len(current) % 2:
+                        next_values.append(current[-1])
+                    current = next_values
+                return current[0]
+            while len(current) > limit:
+                current = [
+                    context.sum(current[start : start + limit])
+                    for start in range(0, len(current), limit)
+                ]
+            return context.sum(current)
+        current = values
+        while len(current) > 1:
+            pair_count = len(current) // 2
+            paired = add_pairs_batched(
+                current[: 2 * pair_count : 2],
+                current[1 : 2 * pair_count : 2],
+                algorithm=self.scalar_algorithm,
+            )
+            next_values = list(paired)
+            if len(current) % 2:
+                next_values.append(current[-1])
+            current = next_values
+        return current[0]
+
+    def linear_combination(self, coefficients: Any, elements: Any) -> Any:
+        """Evaluate one linear combination with batched scalar and sum calls."""
+        element_list = list(elements)
+        coefficient_list = list(coefficients)
+        if len(element_list) != len(coefficient_list):
+            raise ValueError("a linear combination has mismatched lengths")
+        if not element_list:
+            raise ValueError("a generic-group linear combination needs a parent")
+        if self._context(element_list[0].parent()) is None:
+            answer = element_list[0].parent().zero()
+            for coefficient, element in zip(
+                coefficient_list, element_list, strict=True
+            ):
+                integer = _checked_integer(
+                    coefficient, "linear-combination coefficient"
+                )
+                if integer:
+                    answer = self.add(answer, self.scalar(integer, element))
+            return answer
+        active_elements = []
+        active_scalars = []
+        for coefficient, element in zip(coefficient_list, element_list, strict=True):
+            integer = _checked_integer(coefficient, "linear-combination coefficient")
+            if integer:
+                active_elements.append(element)
+                active_scalars.append(integer)
+        if not active_elements:
+            return element_list[0].parent().zero()
+        multiples = self.scalar_batch(active_elements, active_scalars)
+        return self.sum(multiples)
+
+
+def _pollard_rho_factor_bounded(value: int, max_steps: int) -> tuple[int | None, int]:
+    """Return one deterministic nontrivial factor and the rho steps used."""
+    if value % 2 == 0:
+        return 2, 0
+    steps = 0
+    constant = 1
+    while constant <= 32 and steps < max_steps:
+        slow = 2 + constant
+        fast = slow
+        divisor = 1
+        while divisor == 1 and steps < max_steps:
+            slow = (slow * slow + constant) % value
+            fast = (fast * fast + constant) % value
+            fast = (fast * fast + constant) % value
+            divisor = _integer_gcd(slow - fast, value)
+            steps += 1
+        if divisor != 1 and divisor != value:
+            return divisor, steps
+        constant += 1
+    return None, steps
+
+
+def _factor_composite_tail_bounded(value: int, max_rho_steps: int) -> list[int]:
+    """Recursively split one composite tail within a shared rho budget."""
+    remaining_steps = max_rho_steps
+    pending = [value]
+    leaves: list[int] = []
+    while pending:
+        current = pending.pop()
+        if sage.is_prime(current):
+            leaves.append(current)
+            continue
+        factor, used_steps = _pollard_rho_factor_bounded(current, remaining_steps)
+        remaining_steps -= used_steps
+        if factor is None:
+            raise JacobianResourceLimitError(
+                "integer factorization exceeded max_rho_steps=" + str(max_rho_steps)
+            )
+        pending.append(factor)
+        pending.append(current // factor)
+    return leaves
+
+
+def _checked_factorization_product(
+    value: int, factors: list[tuple[int, int]]
+) -> list[tuple[int, int]]:
+    """Sort and merge proved prime factors, checking their exact product."""
+    merged: list[tuple[int, int]] = []
+    for prime, exponent in sorted(factors):
+        if not sage.is_prime(prime):
+            raise ArithmeticError("integer factorization produced a composite leaf")
+        if merged and merged[-1][0] == prime:
+            merged[-1] = (prime, merged[-1][1] + exponent)
+        else:
+            merged.append((prime, exponent))
+    product = 1
+    for prime, exponent in merged:
+        product *= prime**exponent
+    if product != value:
+        raise ArithmeticError("integer factorization has the wrong product")
+    return merged
+
 
 def factor_integer_bounded(
     value: Any,
     max_trial_divisions: int = 1_000_000,
-) -> list[tuple[Any, int]]:
-    """Factor a positive integer by trial division within an explicit budget.
+    max_rho_steps: int = 20_000,
+) -> list[tuple[int, int]]:
+    """Factor a positive integer with separate deterministic work budgets.
 
     This is intended for small fallback workloads. Production-sized orders
     should be factored by Sage.js's integer-factorization service and passed to
-    the group algorithms explicitly.
+    the group algorithms explicitly. An exact primality proof handles prime
+    inputs immediately. A proved-composite tail is recursively split by
+    deterministic Pollard rho within `max_rho_steps`; bounded trial division
+    is the independent fallback when rho cannot split it. Every leaf is proved
+    prime, and exhaustion of both budgets fails closed.
     """
     value = _checked_integer(value, "the integer to factor")
     max_trial_divisions = _checked_integer(max_trial_divisions, "max_trial_divisions")
+    max_rho_steps = _checked_integer(max_rho_steps, "max_rho_steps")
     if value <= 0:
         raise ValueError("the integer to factor must be positive")
     if max_trial_divisions < 0:
         raise ValueError("max_trial_divisions must be nonnegative")
+    if max_rho_steps < 0:
+        raise ValueError("max_rho_steps must be nonnegative")
+    if value == 1:
+        return []
+    if sage.is_prime(value):
+        return [(value, 1)]
+
+    # Rho is the bounded fast path for a cofactor already proved composite.
+    # Trial division remains an independent deterministic fallback rather
+    # than imposing up to a million redundant modulus operations first.
+    try:
+        rho_factors = [
+            (prime, 1) for prime in _factor_composite_tail_bounded(value, max_rho_steps)
+        ]
+        return _checked_factorization_product(value, rho_factors)
+    except JacobianResourceLimitError:
+        pass
 
     remaining = value
     divisor = 2
     trials = 0
-    answer: list[tuple[Any, int]] = []
+    answer: list[tuple[int, int]] = []
     while divisor * divisor <= remaining:
         if trials >= max_trial_divisions:
-            raise JacobianResourceLimitError(
-                "integer factorization exceeded max_trial_divisions="
-                + str(max_trial_divisions)
-            )
+            if sage.is_prime(remaining):
+                answer.append((remaining, 1))
+            else:
+                raise JacobianResourceLimitError(
+                    "integer factorization exceeded max_trial_divisions="
+                    + str(max_trial_divisions)
+                    + " and max_rho_steps="
+                    + str(max_rho_steps)
+                )
+            remaining = 1
+            break
         trials += 1
         exponent = 0
         while remaining % divisor == 0:
@@ -202,8 +658,10 @@ def factor_integer_bounded(
             answer.append((divisor, exponent))
         divisor = 3 if divisor == 2 else divisor + 2
     if remaining > 1:
+        if not sage.is_prime(remaining):
+            raise ArithmeticError("trial division ended with a composite cofactor")
         answer.append((remaining, 1))
-    return answer
+    return _checked_factorization_product(value, answer)
 
 
 def validate_factorization(
@@ -247,22 +705,46 @@ def element_order_from_multiple(
     """Return the exact order of `element`, given a known annihilating multiple."""
     if multiple <= 0:
         raise ValueError("the annihilating multiple must be positive")
-    if not element.scalar_multiple(multiple, algorithm=scalar_algorithm).is_zero():
-        raise ValueError("the supplied multiple does not annihilate the element")
     factors = (
         factor_integer_bounded(multiple, max_trial_divisions)
         if factorization is None
         else validate_factorization(multiple, factorization)
     )
-    order = multiple
+    if _prepared_context(element.parent(), scalar_algorithm) is None:
+        if not element.scalar_multiple(multiple, algorithm=scalar_algorithm).is_zero():
+            raise ValueError("the supplied multiple does not annihilate the element")
+        order = multiple
+        for prime, exponent in factors:
+            for _index in range(exponent):
+                candidate = order // prime
+                if not element.scalar_multiple(
+                    candidate, algorithm=scalar_algorithm
+                ).is_zero():
+                    break
+                order = candidate
+        return order
+    candidates = [multiple]
+    slices = []
     for prime, exponent in factors:
-        for _index in range(exponent):
-            candidate = order // prime
-            if not element.scalar_multiple(
-                candidate, algorithm=scalar_algorithm
-            ).is_zero():
+        start = len(candidates)
+        divisor = 1
+        for _index in range(int(exponent)):
+            divisor *= int(prime)
+            candidates.append(multiple // divisor)
+        slices.append((int(prime), start, len(candidates)))
+    annihilates = annihilation_tests_batched(
+        element,
+        candidates,
+        algorithm=scalar_algorithm,
+    )
+    if not annihilates[0]:
+        raise ValueError("the supplied multiple does not annihilate the element")
+    order = multiple
+    for prime, start, stop in slices:
+        for index in range(start, stop):
+            if not annihilates[index]:
                 break
-            order = candidate
+            order //= prime
     return order
 
 
@@ -355,6 +837,17 @@ def invariant_factors_from_elements(
         raise ArithmeticError(
             "computed group invariants do not multiply to the group order"
         )
+    # The automatic tiny-group path has already paid for a complete exact
+    # enumeration.  Retain only this bounded case on the Jacobian so the
+    # immediately following explicit-map request does not enumerate the same
+    # 32 or 64 public divisors a second time.  The map builder independently
+    # checks the parent, cardinality, basis orders, coordinate-key collisions,
+    # and full table size before trusting this optimization cache.
+    if int(order) <= 64 and elements:
+        parent_function = getattr(elements[0], "parent", None)
+        if callable(parent_function):
+            parent: Any = parent_function()
+            parent._tiny_exhaustive_group_elements = (int(order), tuple(elements))
     return tuple(invariants)
 
 
@@ -381,18 +874,46 @@ def _linear_combination(
     elements: Any,
     budget: GroupOperationBudget,
 ) -> Any:
-    element_list = list(elements)
-    coefficient_list = list(coefficients)
-    if len(element_list) != len(coefficient_list):
-        raise ValueError("a linear combination has mismatched lengths")
-    if not element_list:
-        raise ValueError("a generic-group linear combination needs a parent")
-    answer = element_list[0].parent().zero()
-    for coefficient, element in zip(coefficient_list, element_list, strict=True):
-        integer = _checked_integer(coefficient, "linear-combination coefficient")
-        if integer:
-            answer = budget.add(answer, budget.scalar(integer, element))
-    return answer
+    return budget.linear_combination(coefficients, elements)
+
+
+def _linear_combinations(
+    coefficient_rows: Any,
+    elements: Any,
+    budget: GroupOperationBudget,
+) -> tuple[Any, ...]:
+    """Evaluate equally sized rows with one batch per basis coordinate."""
+    generators = list(elements)
+    rows = [list(row) for row in coefficient_rows]
+    if not generators:
+        raise ValueError("generic-group linear combinations need a parent")
+    if any(len(row) != len(generators) for row in rows):
+        raise ValueError("a linear-combination batch has mismatched lengths")
+    if not rows:
+        return ()
+    parent = generators[0].parent()
+    if budget._context(parent) is None:
+        return tuple(_linear_combination(row, generators, budget) for row in rows)
+    answers = [parent.zero() for _row in rows]
+    for position, generator in enumerate(generators):
+        active_indices = []
+        active_scalars = []
+        for index, row in enumerate(rows):
+            integer = _checked_integer(row[position], "linear-combination coefficient")
+            if integer:
+                active_indices.append(index)
+                active_scalars.append(integer)
+        if not active_indices:
+            continue
+        multiples = budget.scalar_batch(
+            [generator for _index in active_indices], active_scalars
+        )
+        updated = budget.add_batch(
+            [answers[index] for index in active_indices], multiples
+        )
+        for index, value in zip(active_indices, updated, strict=True):
+            answers[index] = value
+    return tuple(answers)
 
 
 def discrete_log_pgroup(
@@ -427,10 +948,7 @@ def discrete_log_pgroup(
         return [p ** (j + max(0, value - k)) for value in vals]
 
     def subbasis(j: int, k: int) -> list[Any]:
-        return [
-            budget.scalar(multiplier, generator)
-            for multiplier, generator in zip(q_values(j, k), generators, strict=True)
-        ]
+        return list(budget.scalar_batch(generators, q_values(j, k)))
 
     def base_case(j: int, k: int, value: Any) -> tuple[int, ...]:
         if k - j != 1:
@@ -456,13 +974,19 @@ def discrete_log_pgroup(
         for item in left_ranges:
             table_entries *= len(item)
         budget.reserve_table(table_entries)
+        left_coordinates = list(_cartesian_ranges(left_ranges))
+        left_values = _linear_combinations(left_coordinates, layer, budget)
         table: dict[Any, tuple[int, ...]] = {}
-        for coordinates in _cartesian_ranges(left_ranges):
-            key = _linear_combination(coordinates, layer, budget)
-            table[key] = coordinates
-        for coordinates in _cartesian_ranges(right_ranges):
-            part = _linear_combination(coordinates, layer, budget)
-            key = budget.add(value, budget.negate(part))
+        for coordinates, element in zip(left_coordinates, left_values, strict=True):
+            table[budget.element_key(element)] = coordinates
+        right_coordinates = list(_cartesian_ranges(right_ranges))
+        right_values = _linear_combinations(right_coordinates, layer, budget)
+        differences = budget.add_batch(
+            [value for _part in right_values],
+            [budget.negate(part) for part in right_values],
+        )
+        for coordinates, difference in zip(right_coordinates, differences, strict=True):
+            key = budget.element_key(difference)
             if key in table:
                 left = table[key]
                 return tuple(
@@ -620,14 +1144,23 @@ def basis_from_generators(
     global_orders: list[int] = []
     for raw_prime, _ambient_exponent in factors:
         prime = int(raw_prime)
-        primary_generators: list[tuple[Any, int]] = []
+        source_generators: list[Any] = []
+        source_orders: list[int] = []
+        source_scalars: list[int] = []
         for generator, order in zip(gens, ords, strict=True):
             exponent = _valuation(order, prime)
             if exponent:
                 primary_order = prime**exponent
-                primary_generators.append(
-                    (budget.scalar(order // primary_order, generator), primary_order)
-                )
+                source_generators.append(generator)
+                source_orders.append(primary_order)
+                source_scalars.append(order // primary_order)
+        primary_generators: list[tuple[Any, int]] = list(
+            zip(
+                budget.scalar_batch(source_generators, source_scalars),
+                source_orders,
+                strict=True,
+            )
+        )
         if not primary_generators:
             continue
         primary_generators.sort(key=lambda item: item[1])
@@ -729,10 +1262,12 @@ def coordinates_in_basis(
             index for index, modulus in enumerate(moduli) if modulus % prime == 0
         ]
         valuations = [_valuation(moduli[index], prime) for index in indices]
-        primary_basis = [
-            budget.scalar(cofactor, generators[index]) for index in indices
-        ]
-        primary_target = budget.scalar(cofactor, target)
+        projected = budget.scalar_batch(
+            [generators[index] for index in indices] + [target],
+            [cofactor for _index in indices] + [cofactor],
+        )
+        primary_basis = list(projected[:-1])
+        primary_target = projected[-1]
         local = discrete_log_pgroup(
             prime, valuations, primary_basis, primary_target, budget
         )

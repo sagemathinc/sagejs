@@ -24,11 +24,11 @@
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "a802af1292548e24919c55fe57f2246ffd031e6e21020c6e503aacf9d17667c8"
+      "sha256": "0cc7fe6f9a9884c9c00f740cc19dcf94c10e8a2762f31cf87cd9bd203b289a54"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
-      "sha256": "ace0e5a945713c47b7510e939c3fbf93e0789854b13d7d55721f345e437b97e2"
+      "sha256": "7a53a677d5e4c071edc9f75cd9eb61361ffba2afb626bf400df6b50636110fae"
     },
     "performance_cases": {
       "path": "bench/browser-wasm-performance-cases.json",
@@ -42,32 +42,32 @@
     "parity_workloads": 35,
     "performance_workloads": 20,
     "capability_counts": {
-      "total": 965,
+      "total": 1005,
       "by_kind": {
-        "declared-ffi-function": 414,
-        "declared-ffi-resource": 29,
-        "napi-export": 317,
-        "production-kernel": 41,
-        "runtime-intrinsic": 138,
+        "declared-ffi-function": 439,
+        "declared-ffi-resource": 32,
+        "napi-export": 320,
+        "production-kernel": 46,
+        "runtime-intrinsic": 142,
         "specialist-capability": 26
       },
       "by_disposition": {
-        "compiled-source": 41,
-        "desktop-only": 14,
+        "compiled-source": 46,
+        "desktop-only": 42,
         "generated-wasm": 320,
-        "portable-fallback": 545,
+        "portable-fallback": 552,
         "shared-core": 45
       },
       "by_status": {
-        "available": 539,
-        "desktop-only": 14,
-        "fallback": 412
+        "available": 548,
+        "desktop-only": 42,
+        "fallback": 415
       }
     },
     "kernel_coverage_totals": {
-      "registered_kernels": 41,
-      "production_kernels": 34,
-      "compiled_functions": 241,
+      "registered_kernels": 46,
+      "production_kernels": 39,
+      "compiled_functions": 263,
       "unsupported_production_functions": 0,
       "non_production_functions": 30,
       "same_source_fallback_functions": 30

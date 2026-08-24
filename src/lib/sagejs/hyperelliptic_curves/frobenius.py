@@ -6,14 +6,21 @@ from typing import Any, Iterator
 
 import sagejs as sage
 import sagejs.runtime as runtime
+from sagejs.hyperelliptic_curves.auto_receipt_policy import (
+    auto_receipt_decision,
+    curve_model_fingerprint,
+    h_kind_from_coefficients,
+)
 
 MAX_EXHAUSTIVE_FIELD_ORDER = 2_000_000
 MAX_LOCAL_FACTOR_CHUNK_SIZE = 65_536
+MAX_LOCAL_FACTOR_STREAM_CACHE_SIZE = 256
 _LPOLYNOMIAL_BACKENDS: dict[str, Any] = {}
 _smalljac_capability_cache: Any = runtime.undefined
 _lpolynomial_ring_cache: Any = runtime.undefined
 _frobenius_ring_cache: Any = runtime.undefined
 _zeta_ring_cache: Any = runtime.undefined
+_polynomial_module_cache: Any = runtime.undefined
 
 
 def _property(value: Any, name: str) -> Any:
@@ -421,14 +428,93 @@ def register_lpolynomial_backend(name: str, backend: Any) -> None:
     _LPOLYNOMIAL_BACKENDS[name] = backend
 
 
+def _local_factor_receipt_decision(
+    curve: Any,
+    algorithm: str,
+    backend: str,
+    start: int,
+    stop: int,
+    *,
+    batch_items: int,
+    resource_bytes: int,
+    operation: str = "local-factor",
+    domain_id: str = "hyperelliptic-local-factor-v1",
+) -> Any:
+    f_value, h_value = curve.hyperelliptic_polynomials()
+    base = curve.base_ring()
+    field_kind = "prime-field" if getattr(base, "_kind", None) == "GF" else "rational"
+    effective_degree = max(int(f_value.degree()), 2 * int(h_value.degree()))
+    model_kind = (
+        "odd-degree-one-infinity"
+        if effective_degree == 2 * int(curve.genus()) + 1
+        else "general-hyperelliptic"
+    )
+    return auto_receipt_decision(
+        algorithm=algorithm,
+        backend=backend,
+        operation=operation,
+        fingerprint=curve_model_fingerprint(
+            curve, "sagejs.hyperelliptic.curve-model.v1"
+        ),
+        domain_id=domain_id,
+        genus=int(curve.genus()),
+        field_kind=field_kind,
+        model_kind=model_kind,
+        h_kind=h_kind_from_coefficients(h_value.list()),
+        prime=stop,
+        interval_start=start,
+        interval_stop=stop,
+        batch_items=batch_items,
+        resource_bytes=resource_bytes,
+    )
+
+
+def smalljac_group_auto_receipt_decision(curve: Any) -> Any:
+    """Authorize automatic smalljac group structure for one finite model."""
+
+    prime = int(curve.base_ring().characteristic())
+    return _local_factor_receipt_decision(
+        curve,
+        "auto",
+        "smalljac",
+        prime,
+        prime,
+        batch_items=1,
+        resource_bytes=512,
+        operation="group-structure",
+        domain_id="hyperelliptic-group-structure-v1",
+    )
+
+
 def select_lpolynomial_algorithm(curve: Any, algorithm: str) -> str:
     if algorithm == "auto":
         if _smalljac_supports_finite_curve(curve):
-            return "smalljac"
+            prime = int(curve.base_ring().characteristic())
+            decision = _local_factor_receipt_decision(
+                curve,
+                algorithm,
+                "smalljac",
+                prime,
+                prime,
+                batch_items=1,
+                resource_bytes=256,
+            )
+            return "smalljac" if decision.allowed else "exhaustive"
         smalljac = _LPOLYNOMIAL_BACKENDS.get("smalljac")
         supports = getattr(smalljac, "supports", None)
         if smalljac is not None and (not callable(supports) or supports(curve)):
-            return "smalljac"
+            base = curve.base_ring()
+            prime = int(base.characteristic())
+            decision = _local_factor_receipt_decision(
+                curve,
+                algorithm,
+                "smalljac",
+                prime,
+                prime,
+                batch_items=1,
+                resource_bytes=256,
+            )
+            return "smalljac" if decision.allowed else "exhaustive"
         return "exhaustive"
     if algorithm == "smalljac" and _smalljac_supports_finite_curve(curve):
         return "smalljac"
@@ -927,6 +1013,43 @@ def lpolynomial(coefficients: list[int]) -> Any:
     return _lpolynomial_ring_cache(coefficients)
 
 
+def _packed_lpolynomial(coefficients: Any) -> Any:
+    """Return a genuine public `ZZ[T]` polynomial with packed lazy storage.
+
+    Exact polynomial construction normally publishes a sealed FLINT resource.
+    That is the right representation for arithmetic, but allocating one
+    resource for every row in a research stream overwhelms the already-packed
+    smalljac traversal.  A local factor is only degree four or six, and most
+    stream consumers first inspect coefficients.  Keep those exact integers in
+    the ordinary public polynomial's packed storage until an operation actually
+    needs its FLINT resource.
+
+    The private baselib constructor is a representation boundary, not a second
+    polynomial type: callers still receive the standard `PolynomialElement`,
+    with the standard parent and exact behavior.  CPython and hosts without the
+    packed baselib representation retain the ordinary constructor fallback.
+    """
+    global _lpolynomial_ring_cache
+    global _polynomial_module_cache
+    if _lpolynomial_ring_cache is runtime.undefined:
+        _lpolynomial_ring_cache = sage.PolynomialRing(sage.ZZ, "T")
+    values = [runtime.integer_bigint(value) for value in coefficients]
+    try:
+        if _polynomial_module_cache is runtime.undefined:
+            _polynomial_module_cache = __import__(
+                "sagejs._baselib.polynomial",
+                fromlist=["PolynomialElement"],
+            )
+        storage = _polynomial_module_cache._PackedIntegerPolynomialStorage(
+            runtime.integer_buffer(values, 1)
+        )
+        return _polynomial_module_cache.PolynomialElement(
+            _lpolynomial_ring_cache, storage
+        )
+    except (ImportError, AttributeError):
+        return _lpolynomial_ring_cache(values)
+
+
 def frobenius_polynomial(coefficients: list[int]) -> Any:
     global _frobenius_ring_cache
     if _frobenius_ring_cache is runtime.undefined:
@@ -1008,13 +1131,39 @@ def _rational_rforest_supported(curve: Any, start: int, stop: int) -> bool:
 
 
 def _select_rational_algorithm(
-    curve: Any, algorithm: str, start: int, stop: int
+    curve: Any,
+    algorithm: str,
+    start: int,
+    stop: int,
+    *,
+    batch_items: int = 1,
+    resource_bytes: int = 256,
 ) -> str:
     if algorithm == "auto":
         if _rational_smalljac_supported(curve, start, stop):
-            return "smalljac"
+            decision = _local_factor_receipt_decision(
+                curve,
+                algorithm,
+                "smalljac",
+                start,
+                stop,
+                batch_items=batch_items,
+                resource_bytes=resource_bytes,
+            )
+            if decision.allowed:
+                return "smalljac"
         if _rational_rforest_supported(curve, start, stop):
-            return "rforest"
+            decision = _local_factor_receipt_decision(
+                curve,
+                algorithm,
+                "rforest",
+                start,
+                stop,
+                batch_items=batch_items,
+                resource_bytes=resource_bytes,
+            )
+            if decision.allowed:
+                return "rforest"
         return "exhaustive"
     if algorithm == "smalljac":
         if _smalljac_capabilities() is None:
@@ -1067,8 +1216,10 @@ def rational_local_lpolynomial(curve: Any, prime: Any, algorithm: str = "auto") 
     """Compute one good local factor over `QQ`.
 
     `auto` uses the native genus-2 smalljac stream and the measured certified
-    odd-degree genus-3 rforest pipeline where their complete capability checks
-    pass. Other inputs retain exact exhaustive reduction and counting.
+    odd-degree genus-3 rforest pipeline where their capability checks pass. An
+    installed enabled release policy additionally requires an exact receipt
+    for the model and range. Other inputs retain exact exhaustive reduction
+    and counting.
     """
     prime = _checked_prime(prime)
     selected = _select_rational_algorithm(curve, algorithm, prime, prime)
@@ -1116,14 +1267,20 @@ def _checked_interval(start: Any, stop: Any, chunk_size: Any) -> tuple[int, int,
     return start, stop, min(chunk_size, MAX_LOCAL_FACTOR_CHUNK_SIZE)
 
 
-def rational_local_lpolynomial_chunks(
+def rational_local_coefficient_chunks(
     curve: Any,
     start: Any,
     stop: Any,
     algorithm: str = "auto",
     chunk_size: Any = 100_000,
 ) -> Iterator[list[Any]]:
-    """Yield bounded ordered chunks of good `(p, L_p(T))` pairs.
+    """Yield bounded chunks of exact good local-factor coefficient rows.
+
+    Each row is the immutable triple `(p, coefficients, backend)`, with exact
+    ascending coefficients and the backend which actually produced them.  No
+    public polynomial is constructed, and this traversal does not populate the
+    curve's result cache.  It is the packed internal contract for statistics,
+    Euler products, and analytic `L`-function coefficient consumers.
 
     The interval is closed. Bad-reduction primes and primes excluded by the
     checked rational-to-integral transformation are deliberately omitted.
@@ -1135,15 +1292,29 @@ def rational_local_lpolynomial_chunks(
         and _rational_smalljac_supported(curve, 3, stop)
     )
     selected = _select_rational_algorithm(
-        curve, algorithm, 3 if native_after_two else start, stop
+        curve,
+        algorithm,
+        3 if native_after_two else start,
+        stop,
+        batch_items=chunk_size,
+        resource_bytes=256 + 64 * chunk_size,
     )
     if native_after_two:
         try:
-            factor_at_two = rational_local_lpolynomial(curve, 2, "exhaustive")
+            reduced = _rational_reduction(curve, 2)
+            coefficients_at_two = reduced._lpolynomial_coefficients("exhaustive")
         except ArithmeticError:
             pass
         else:
-            yield [runtime.math_tuple([sage.ZZ(2), factor_at_two])]
+            yield [
+                runtime.math_tuple(
+                    [
+                        sage.ZZ(2),
+                        runtime.math_tuple(list(coefficients_at_two)),
+                        "exhaustive",
+                    ]
+                )
+            ]
         start = 3
     if selected == "rforest":
         certified = __import__(
@@ -1155,9 +1326,15 @@ def rational_local_lpolynomial_chunks(
             if result["status"] == "omitted":
                 continue
             coefficients = list(result["coefficients"])
-            _store_local_coefficients(curve, prime, selected, coefficients)
+            backend = "exhaustive" if result["status"] == "fallback" else "rforest"
             chunk.append(
-                runtime.math_tuple([sage.ZZ(prime), lpolynomial(coefficients)])
+                runtime.math_tuple(
+                    [
+                        sage.ZZ(prime),
+                        runtime.math_tuple(coefficients),
+                        backend,
+                    ]
+                )
             )
             if len(chunk) == chunk_size:
                 yield chunk
@@ -1172,10 +1349,19 @@ def rational_local_lpolynomial_chunks(
             if not sage.is_prime(prime):
                 continue
             try:
-                factor = rational_local_lpolynomial(curve, prime, selected)
+                reduced = _rational_reduction(curve, prime)
+                coefficients = reduced._lpolynomial_coefficients(selected)
             except ArithmeticError:
                 continue
-            chunk.append(runtime.math_tuple([sage.ZZ(prime), factor]))
+            chunk.append(
+                runtime.math_tuple(
+                    [
+                        sage.ZZ(prime),
+                        runtime.math_tuple(list(coefficients)),
+                        selected,
+                    ]
+                )
+            )
             if len(chunk) == chunk_size:
                 yield chunk
                 chunk = []
@@ -1199,13 +1385,70 @@ def rational_local_lpolynomial_chunks(
         for prime, coefficients in rows:
             if excluded % prime == 0 or coefficients is None:
                 continue
-            _store_local_coefficients(curve, prime, selected, coefficients)
             output.append(
-                runtime.math_tuple([sage.ZZ(prime), lpolynomial(coefficients)])
+                runtime.math_tuple(
+                    [
+                        sage.ZZ(prime),
+                        runtime.math_tuple(coefficients),
+                        "smalljac",
+                    ]
+                )
             )
         if len(output) != 0:
             yield output
         cursor = window_stop + 1
+
+
+def rational_local_lpolynomial_chunks(
+    curve: Any,
+    start: Any,
+    stop: Any,
+    algorithm: str = "auto",
+    chunk_size: Any = 100_000,
+) -> Iterator[list[Any]]:
+    """Yield bounded ordered chunks of good `(p, L_p(T))` pairs.
+
+    The coefficient stream remains canonical until this explicit public
+    polynomial boundary.  Published factors are ordinary `PolynomialElement`
+    instances backed by exact packed coefficients, so indexing, formatting,
+    and coefficient statistics do not allocate one FLINT resource per row.
+    """
+    checked_start, checked_stop, _checked_chunk = _checked_interval(
+        start, stop, chunk_size
+    )
+    native_after_two = (
+        algorithm == "auto"
+        and checked_start == 2
+        and _rational_smalljac_supported(curve, 3, checked_stop)
+    )
+    selected = _select_rational_algorithm(
+        curve,
+        algorithm,
+        3 if native_after_two else checked_start,
+        checked_stop,
+        batch_items=_checked_chunk,
+        resource_bytes=256 + 64 * _checked_chunk,
+    )
+    cache_remaining = max(
+        0,
+        MAX_LOCAL_FACTOR_STREAM_CACHE_SIZE - len(_local_cache(curve)),
+    )
+    for coefficient_chunk in rational_local_coefficient_chunks(
+        curve, start, stop, algorithm, chunk_size
+    ):
+        output = []
+        for prime, coefficients, _backend in coefficient_chunk:
+            prime_value = int(prime)
+            cache_algorithm = (
+                "exhaustive" if native_after_two and prime_value == 2 else selected
+            )
+            values = list(coefficients)
+            if cache_remaining > 0:
+                _store_local_coefficients(curve, prime_value, cache_algorithm, values)
+                cache_remaining -= 1
+            output.append(runtime.math_tuple([prime, _packed_lpolynomial(values)]))
+        if len(output) != 0:
+            yield output
 
 
 def rational_local_lpolynomials(

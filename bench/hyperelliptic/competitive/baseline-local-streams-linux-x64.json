@@ -1,0 +1,222 @@
+{
+  "schema": "sagejs.hyperelliptic-competitive-local-streams.v1",
+  "generated_at_utc": "2026-08-23T06:52:02.204Z",
+  "source_commit": "70ed9cdb0ffe8d10c94fb1ef05c3992ebd7e8a5e",
+  "source_status": "",
+  "host": {
+    "hostname": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux",
+    "release": "6.17.0-1022-gcp",
+    "architecture": "x64",
+    "node": "v22.22.2",
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpus": 8,
+    "total_memory_bytes": 33649016832,
+    "free_memory_bytes": 32544923648,
+    "load_average": [
+      0.4,
+      0.69,
+      0.76
+    ],
+    "preflight": [
+      {
+        "command": "uptime",
+        "status": 0,
+        "stdout": "06:52:02 up 20:48,  1 user,  load average: 0.40, 0.69, 0.76",
+        "stderr": ""
+      },
+      {
+        "command": "uname -a",
+        "status": 0,
+        "stdout": "Linux cocalc-vm-51c5044ca6d3406d983e0f10 6.17.0-1022-gcp #25-Ubuntu SMP Sat Jul 25 01:12:40 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux",
+        "stderr": ""
+      },
+      {
+        "command": "free -b",
+        "status": 0,
+        "stdout": "total        used        free      shared  buff/cache   available\nMem:     33649016832  1104433152 16543424512     1105920 16486543360 32544583680\nSwap:              0           0           0",
+        "stderr": ""
+      }
+    ]
+  },
+  "backend": {
+    "available": true,
+    "backendVersion": "smalljac version 4.1.3",
+    "normalization": "det(1-T*Frob)",
+    "maxGenus": 2,
+    "fullLpolynomialGenus": [
+      2
+    ],
+    "groupStructureGenus": [
+      2
+    ],
+    "groupRequiresOddDegree": true,
+    "primeUpperBounds": {
+      "lpolynomial": "4294967295",
+      "groupStructure": "1073741823"
+    },
+    "statuses": {
+      "OK": 0,
+      "TRUNCATED": 1,
+      "UNAVAILABLE": -1,
+      "INVALID_ARGUMENT": -2,
+      "PARSE_ERROR": -3,
+      "UNSUPPORTED_CURVE": -4,
+      "SINGULAR_CURVE": -5,
+      "INVALID_INTERVAL": -6,
+      "ALLOCATION_FAILED": -7,
+      "CALLBACK_CANCELLED": -8,
+      "COEFFICIENT_RANGE": -9,
+      "INTERNAL_ERROR": -10,
+      "ROW_GOOD": 0,
+      "ROW_BAD_REDUCTION": 1
+    }
+  },
+  "resources": {
+    "peak_rss_kib": 95224,
+    "user_seconds": 13.893078,
+    "system_seconds": 0.036589
+  },
+  "contract": {
+    "curve": "y^2=x^5+x+1",
+    "interval": "[3,limit)",
+    "normalization": "det(1-T*Frob)",
+    "representation": "packed typed arrays; no public polynomial materialization"
+  },
+  "rows": [
+    {
+      "limit": 10000,
+      "result": {
+        "rows": 1228,
+        "good_rows": 1225,
+        "exact_stream_sha256": "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d"
+      },
+      "wall": {
+        "median_ms": 57.256315,
+        "min_ms": 57.04998599999999,
+        "max_ms": 57.704626000000005,
+        "mad_ms": 0.1587799999999504,
+        "samples": 7
+      },
+      "cpu_user": {
+        "median_ms": 57.283,
+        "min_ms": 57.077,
+        "max_ms": 463.731,
+        "mad_ms": 0.20600000000000307,
+        "samples": 7
+      },
+      "peak_rss_bytes": 95805440,
+      "samples": [
+        {
+          "wall_ms": 57.704626000000005,
+          "cpu_user_ms": 463.731,
+          "cpu_system_ms": 0.018,
+          "rss_bytes": 88465408
+        },
+        {
+          "wall_ms": 57.33586600000001,
+          "cpu_user_ms": 92.215,
+          "cpu_system_ms": 0.065,
+          "rss_bytes": 89120768
+        },
+        {
+          "wall_ms": 57.256315,
+          "cpu_user_ms": 57.283,
+          "cpu_system_ms": 0,
+          "rss_bytes": 90431488
+        },
+        {
+          "wall_ms": 57.668166000000014,
+          "cpu_user_ms": 57.877,
+          "cpu_system_ms": 0.988,
+          "rss_bytes": 95412224
+        },
+        {
+          "wall_ms": 57.09753500000005,
+          "cpu_user_ms": 57.199,
+          "cpu_system_ms": 0.003,
+          "rss_bytes": 95543296
+        },
+        {
+          "wall_ms": 57.04998599999999,
+          "cpu_user_ms": 57.077,
+          "cpu_system_ms": 0,
+          "rss_bytes": 95674368
+        },
+        {
+          "wall_ms": 57.22846500000003,
+          "cpu_user_ms": 57.255,
+          "cpu_system_ms": 0,
+          "rss_bytes": 95805440
+        }
+      ]
+    },
+    {
+      "limit": 100000,
+      "result": {
+        "rows": 9591,
+        "good_rows": 9588,
+        "exact_stream_sha256": "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894"
+      },
+      "wall": {
+        "median_ms": 1809.2884669999994,
+        "min_ms": 1805.3494879999998,
+        "max_ms": 1815.2172169999994,
+        "mad_ms": 1.1031389999993735,
+        "samples": 7
+      },
+      "cpu_user": {
+        "median_ms": 1808.674,
+        "min_ms": 1805.134,
+        "max_ms": 1815.036,
+        "mad_ms": 1.1189999999999145,
+        "samples": 7
+      },
+      "peak_rss_bytes": 97509376,
+      "samples": [
+        {
+          "wall_ms": 1808.185328,
+          "cpu_user_ms": 1807.83,
+          "cpu_system_ms": 0,
+          "rss_bytes": 96722944
+        },
+        {
+          "wall_ms": 1810.1159179999995,
+          "cpu_user_ms": 1809.793,
+          "cpu_system_ms": 0.005,
+          "rss_bytes": 97116160
+        },
+        {
+          "wall_ms": 1809.2884669999994,
+          "cpu_user_ms": 1808.079,
+          "cpu_system_ms": 0.999,
+          "rss_bytes": 97378304
+        },
+        {
+          "wall_ms": 1805.3494879999998,
+          "cpu_user_ms": 1805.134,
+          "cpu_system_ms": 0,
+          "rss_bytes": 97509376
+        },
+        {
+          "wall_ms": 1808.8997169999993,
+          "cpu_user_ms": 1808.674,
+          "cpu_system_ms": 0,
+          "rss_bytes": 97509376
+        },
+        {
+          "wall_ms": 1815.2172169999994,
+          "cpu_user_ms": 1815.036,
+          "cpu_system_ms": 0,
+          "rss_bytes": 97509376
+        },
+        {
+          "wall_ms": 1812.3609770000003,
+          "cpu_user_ms": 1812.099,
+          "cpu_system_ms": 0,
+          "rss_bytes": 97509376
+        }
+      ]
+    }
+  ]
+}

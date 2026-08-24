@@ -1,0 +1,401 @@
+{
+  "schema": "sagejs.hyperelliptic-competitive-cases.v1",
+  "normalization": {
+    "equation": "y^2 + h(x)*y = f(x)",
+    "coefficient_order": "ascending",
+    "integer_encoding": "canonical decimal string",
+    "divisor": "canonical reduced Mumford pair (u,v)",
+    "local_polynomial": "det(1 - T*Frob), coefficients ascending"
+  },
+  "defaults": {
+    "warmups": 2,
+    "repetitions": 7,
+    "batch_size": 1000
+  },
+  "cases": [
+    {
+      "id": "g2-p13-add-coprime",
+      "category": "finite-jacobian",
+      "kind": "jacobian_add",
+      "contract": "canonical signed Mumford divisor",
+      "model": {"genus": 2, "prime": "13", "f": ["1", "2", "0", "0", "0", "1"], "h": ["0"]},
+      "left": {"u": ["1", "0", "1"], "v": ["6", "10"]},
+      "right": {"u": ["5", "1"], "v": ["8"]},
+      "expected": {"u": ["2", "5", "1"], "v": ["3", "9"]},
+      "tags": ["genus-2", "odd-degree", "coprime-composition"]
+    },
+    {
+      "id": "g2-p13-double",
+      "category": "finite-jacobian",
+      "kind": "jacobian_double",
+      "contract": "canonical signed Mumford divisor",
+      "model": {"genus": 2, "prime": "13", "f": ["1", "2", "0", "0", "0", "1"], "h": ["0"]},
+      "left": {"u": ["1", "0", "1"], "v": ["6", "10"]},
+      "expected": {"u": ["10", "1"], "v": ["4"]},
+      "tags": ["genus-2", "odd-degree", "doubling"]
+    },
+    {
+      "id": "g2-p13-scalar-256",
+      "category": "finite-jacobian",
+      "kind": "jacobian_scalar",
+      "contract": "canonical signed Mumford divisor",
+      "model": {"genus": 2, "prime": "13", "f": ["1", "2", "0", "0", "0", "1"], "h": ["0"]},
+      "left": {"u": ["1", "0", "1"], "v": ["6", "10"]},
+      "scalar": "115792089237316195423570985008687907853269984665640564039457584007913129639937",
+      "expected": {"u": ["6", "10", "1"], "v": ["10", "12"]},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "warm-arithmetic"},
+      "tags": ["genus-2", "odd-degree", "256-bit-scalar"]
+    },
+    {
+      "id": "g2-p13-general-h-shared-factor",
+      "category": "finite-jacobian",
+      "kind": "jacobian_add",
+      "contract": "canonical signed Mumford divisor",
+      "model": {"genus": 2, "prime": "13", "f": ["0", "-1", "1", "0", "-1", "1"], "h": ["1"]},
+      "left": {"u": ["0", "1", "1"], "v": ["0", "1"]},
+      "right": {"u": ["0", "0", "1"], "v": ["12", "1"]},
+      "expected": {"u": ["0", "1", "1"], "v": ["12"]},
+      "tags": ["genus-2", "nonzero-h", "shared-factor", "collision"]
+    },
+    {
+      "id": "g2-p13-conjugate-cancellation",
+      "category": "finite-jacobian",
+      "kind": "jacobian_add",
+      "contract": "canonical signed Mumford identity",
+      "model": {"genus": 2, "prime": "13", "f": ["0", "-1", "1", "0", "-1", "1"], "h": ["1"]},
+      "left": {"u": ["0", "1", "1"], "v": ["0", "1"]},
+      "right": {"u": ["0", "1", "1"], "v": ["12", "12"]},
+      "expected": {"u": ["1"], "v": []},
+      "tags": ["genus-2", "nonzero-h", "conjugate-cancellation"]
+    },
+    {
+      "id": "g2-p13-degree0-validate",
+      "category": "finite-jacobian",
+      "kind": "jacobian_validate",
+      "contract": "canonical degree-0 Mumford divisor",
+      "model": {"genus": 2, "prime": "13", "f": ["1", "2", "0", "0", "0", "1"], "h": ["0"]},
+      "left": {"u": ["1"], "v": ["0"]},
+      "expected": {"u": ["1"], "v": []},
+      "tags": ["genus-2", "divisor-degree-0", "constructor"]
+    },
+    {
+      "id": "g3-p5-degree3-validate",
+      "category": "finite-jacobian",
+      "kind": "jacobian_validate",
+      "contract": "canonical degree-3 Mumford divisor",
+      "model": {"genus": 3, "prime": "5", "f": ["1", "1", "0", "0", "0", "0", "0", "1"], "h": ["0"]},
+      "left": {"u": ["2", "3", "1", "1"], "v": ["4", "1", "2"]},
+      "expected": {"u": ["2", "3", "1", "1"], "v": ["4", "1", "2"]},
+      "tags": ["genus-3", "divisor-degree-3", "constructor"]
+    },
+    {
+      "id": "g2-p2147482661-double",
+      "tier": "slow",
+      "category": "finite-jacobian",
+      "kind": "jacobian_double",
+      "contract": "canonical signed Mumford divisor",
+      "model": {"genus": 2, "prime": "2147482661", "f": ["1", "1", "0", "0", "0", "1"], "h": ["0"]},
+      "left": {"u": ["0", "1"], "v": ["1"]},
+      "expected": {"u": ["0", "0", "1"], "v": ["1", "1073741331"]},
+      "tags": ["genus-2", "31-bit-prime", "throughput"]
+    },
+    {
+      "id": "g3-p4503599627360549-double",
+      "tier": "slow",
+      "category": "finite-jacobian",
+      "kind": "jacobian_double",
+      "contract": "canonical signed Mumford divisor",
+      "model": {"genus": 3, "prime": "4503599627360549", "f": ["1", "1", "0", "0", "0", "0", "0", "1"], "h": ["0"]},
+      "left": {"u": ["0", "1"], "v": ["1"]},
+      "expected": {"u": ["0", "0", "1"], "v": ["1", "2251799813680275"]},
+      "tags": ["genus-3", "52-bit-prime", "throughput"]
+    },
+    {
+      "id": "g3-p5-double",
+      "category": "finite-jacobian",
+      "kind": "jacobian_double",
+      "contract": "canonical signed Mumford divisor",
+      "model": {"genus": 3, "prime": "5", "f": ["1", "1", "0", "0", "0", "0", "0", "1"], "h": ["0"]},
+      "left": {"u": ["0", "1"], "v": ["1"]},
+      "expected": {"u": ["0", "0", "1"], "v": ["1", "3"]},
+      "tags": ["genus-3", "odd-degree", "doubling"]
+    },
+    {
+      "id": "g3-p5-scalar-1024",
+      "category": "finite-jacobian",
+      "kind": "jacobian_scalar",
+      "contract": "canonical signed Mumford divisor",
+      "model": {"genus": 3, "prime": "5", "f": ["1", "1", "0", "0", "0", "0", "0", "1"], "h": ["0"]},
+      "left": {"u": ["0", "1"], "v": ["1"]},
+      "scalar": "179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137217",
+      "expected": {"u": ["2", "3", "1", "1"], "v": ["4", "1", "2"]},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "warm-arithmetic"},
+      "tags": ["genus-3", "odd-degree", "bounded-native-fallback", "1024-bit-scalar"]
+    },
+    {
+      "id": "g3-p5-scalar-64-native",
+      "category": "finite-jacobian",
+      "kind": "jacobian_scalar",
+      "contract": "canonical signed Mumford divisor; explicit native Sage.js path",
+      "model": {"genus": 3, "prime": "5", "f": ["1", "1", "0", "0", "0", "0", "0", "1"], "h": ["0"]},
+      "left": {"u": ["0", "1"], "v": ["1"]},
+      "scalar": "18446744073709551557",
+      "options": {"algorithm": "native"},
+      "expected": {"u": ["0", "2", "1", "1"], "v": ["1", "1", "4"]},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "warm-arithmetic"},
+      "tags": ["genus-3", "odd-degree", "64-bit-scalar", "explicit-native"]
+    },
+    {
+      "id": "g3-p5-scalar-64-reference",
+      "category": "finite-jacobian",
+      "kind": "jacobian_scalar",
+      "contract": "canonical signed Mumford divisor; explicit dynamic Sage.js path",
+      "model": {"genus": 3, "prime": "5", "f": ["1", "1", "0", "0", "0", "0", "0", "1"], "h": ["0"]},
+      "left": {"u": ["0", "1"], "v": ["1"]},
+      "scalar": "18446744073709551557",
+      "options": {"algorithm": "reference"},
+      "expected": {"u": ["0", "2", "1", "1"], "v": ["1", "1", "4"]},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "warm-arithmetic"},
+      "tags": ["genus-3", "odd-degree", "64-bit-scalar", "explicit-reference"]
+    },
+    {
+      "id": "g2-p5-group-rank2",
+      "category": "group-structure",
+      "kind": "group_structure",
+      "contract": "certified invariant factors only",
+      "model": {"genus": 2, "prime": "5", "f": ["1", "1", "0", "0", "0", "1"], "h": ["0"]},
+      "options": {"algorithm": "basis", "seed": 1},
+      "expected": ["6", "6"],
+      "timing": {"batch_size": 1, "warm_mode": "cache-hit"},
+      "tags": ["genus-2", "rank-2"]
+    },
+    {
+      "id": "g3-p13-group-cyclic",
+      "category": "group-structure",
+      "kind": "group_structure",
+      "contract": "certified invariant factors only",
+      "model": {"genus": 3, "prime": "13", "f": ["1", "2", "0", "0", "0", "0", "0", "1"], "h": ["0"]},
+      "options": {"algorithm": "basis", "seed": 1},
+      "expected": ["2160"],
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "cache-hit"},
+      "tags": ["genus-3", "cyclic", "order-known-after-local-factor"]
+    },
+    {
+      "id": "g2-p5-generalized-group-rank3",
+      "tier": "slow",
+      "category": "group-structure",
+      "kind": "group_structure",
+      "contract": "certified invariant factors only",
+      "model": {"genus": 2, "prime": "5", "f": ["1", "1", "0", "0", "0", "1"], "h": ["1", "0", "1"]},
+      "options": {"algorithm": "basis", "seed": 1},
+      "expected": ["2", "2", "8"],
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "cache-hit"},
+      "tags": ["genus-2", "nonzero-h", "rank-3", "order-32"]
+    },
+    {
+      "id": "g3-p19-group-cyclic",
+      "category": "group-structure",
+      "kind": "group_structure",
+      "contract": "certified invariant factors only",
+      "model": {"genus": 3, "prime": "19", "f": ["1", "2", "0", "0", "0", "0", "0", "1"], "h": ["0"]},
+      "options": {"algorithm": "basis", "seed": 1},
+      "expected": ["6490"],
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "cache-hit"},
+      "tags": ["genus-3", "cyclic", "order-known-after-local-factor"]
+    },
+    {
+      "id": "g3-p7-group-rank3",
+      "tier": "slow",
+      "category": "group-structure",
+      "kind": "group_structure",
+      "contract": "certified invariant factors only",
+      "model": {"genus": 3, "prime": "7", "f": ["1", "1", "0", "0", "0", "0", "0", "1"], "h": ["0"]},
+      "options": {"algorithm": "basis", "seed": 3},
+      "expected": ["8", "8", "8"],
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "cache-hit"},
+      "tags": ["genus-3", "rank-3", "order-512"]
+    },
+    {
+      "id": "g2-p11-local-factor",
+      "category": "local-factor",
+      "kind": "local_factor",
+      "contract": "exact local polynomial",
+      "model": {"genus": 2, "prime": "11", "f": ["1", "1", "0", "0", "0", "1"], "h": ["0"]},
+      "expected": ["1", "-4", "14", "-44", "121"],
+      "tags": ["genus-2", "good-reduction", "smalljac"]
+    },
+    {
+      "id": "g3-p7-local-factor",
+      "category": "local-factor",
+      "kind": "local_factor",
+      "contract": "exact certified local polynomial",
+      "model": {"genus": 3, "prime": "7", "f": ["1", "1", "0", "0", "0", "0", "0", "1"], "h": ["0"]},
+      "expected": ["1", "0", "21", "0", "147", "0", "343"],
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1},
+      "tags": ["genus-3", "good-reduction", "certified"]
+    },
+    {
+      "id": "g2-p5-even-local-factor",
+      "category": "local-factor",
+      "kind": "local_factor",
+      "contract": "exact local polynomial; no public group-law comparison",
+      "model": {"genus": 2, "prime": "5", "f": ["1", "1", "0", "0", "0", "0", "1"], "h": ["0"]},
+      "expected": ["1", "0", "5", "0", "25"],
+      "tags": ["genus-2", "even-degree", "local-only"]
+    },
+    {
+      "id": "g3-p5-even-local-factor",
+      "category": "local-factor",
+      "kind": "local_factor",
+      "contract": "exact certified local polynomial; no public group-law comparison",
+      "model": {"genus": 3, "prime": "5", "f": ["1", "1", "0", "0", "0", "0", "0", "0", "1"], "h": ["0"]},
+      "expected": ["1", "3", "10", "20", "50", "75", "125"],
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1},
+      "tags": ["genus-3", "even-degree", "local-only"]
+    },
+    {
+      "id": "g2-global-reduction",
+      "category": "global-arithmetic",
+      "kind": "global_reduction",
+      "contract": "certified conductor, root number, and bad-prime rows",
+      "model": {"genus": 2, "base": "QQ", "f": ["0", "1"], "h": ["1", "-1", "0", "1"]},
+      "expected": {"conductor": "713", "root_number": "1", "bad_primes": ["23", "31"]},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "cache-hit"},
+      "tags": ["genus-2", "certified-global-data"]
+    },
+    {
+      "id": "g2-qq-general-h-shared-factor",
+      "category": "rational-jacobian",
+      "kind": "jacobian_add",
+      "contract": "canonical exact rational Mumford divisor",
+      "model": {"genus": 2, "base": "QQ", "f": ["0", "-1", "1", "0", "-1", "1"], "h": ["1"]},
+      "left": {"u": ["0", "1", "1"], "v": ["0", "1"]},
+      "right": {"u": ["0", "0", "1"], "v": ["-1", "1"]},
+      "expected": {"u": ["0", "1", "1"], "v": ["-1"]},
+      "tags": ["genus-2", "rational", "nonzero-h", "shared-factor"]
+    },
+    {
+      "id": "g2-real-period-64",
+      "category": "periods",
+      "kind": "real_period",
+      "contract": "refinement-stable model real period, 64 requested bits",
+      "model": {"genus": 2, "base": "QQ", "f": ["1", "-1", "0", "0", "0", "1"], "h": ["0"]},
+      "precision": 64,
+      "expected": {"value": "11.372514313081663914742254687398882251", "absolute_tolerance": "0.0000000001", "real_components": 1, "verified": true},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "cache-hit"},
+      "tags": ["genus-2", "mixed-real-roots", "numerical"]
+    },
+    {
+      "id": "g2-qq-general-h-double-growth",
+      "tier": "slow",
+      "category": "rational-jacobian",
+      "kind": "jacobian_double",
+      "contract": "canonical exact rational Mumford divisor",
+      "model": {"genus": 2, "base": "QQ", "f": ["0", "-1", "1", "0", "-1", "1"], "h": ["1"]},
+      "left": {"u": ["0", "1", "1"], "v": ["0", "1"]},
+      "expected": {"u": ["-11/81", "35/81", "1"], "v": ["-25/729", "-620/729"]},
+      "tags": ["genus-2", "rational", "doubling", "coefficient-growth"]
+    },
+    {
+      "id": "g2-qq-general-h-scalar3-growth",
+      "tier": "slow",
+      "category": "rational-jacobian",
+      "kind": "jacobian_scalar",
+      "contract": "canonical exact rational Mumford divisor",
+      "model": {"genus": 2, "base": "QQ", "f": ["0", "-1", "1", "0", "-1", "1"], "h": ["1"]},
+      "left": {"u": ["0", "1", "1"], "v": ["0", "1"]},
+      "scalar": "3",
+      "expected": {"u": ["6685/28561", "-21701/28561", "1"], "v": ["207760/4826809", "-4658620/4826809"]},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "warm-arithmetic"},
+      "tags": ["genus-2", "rational", "scalar", "coefficient-growth"]
+    },
+    {
+      "id": "g2-central-value-32",
+      "category": "l-function",
+      "kind": "central_value",
+      "contract": "probable raw L(C,1), 32 requested bits",
+      "model": {"genus": 2, "base": "QQ", "f": ["0", "1"], "h": ["1", "-1", "0", "1"]},
+      "precision": 32,
+      "expected": {"analytic_rank": 0, "value": "0.2858010009469617", "absolute_tolerance": "0.0000001"},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "cache-hit"},
+      "tags": ["genus-2", "central-value", "probable"]
+    },
+    {
+      "id": "g2-lfunction-init-32-order4",
+      "category": "l-function",
+      "kind": "lfunction_init",
+      "contract": "prepared central jet through order 4, 32 requested bits",
+      "model": {"genus": 2, "base": "QQ", "f": ["0", "1"], "h": ["1", "-1", "0", "1"]},
+      "precision": 32,
+      "maximum_order": 4,
+      "expected": {"analytic_rank": 0, "value": "0.2858010009469617", "absolute_tolerance": "0.0000001"},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "prepared-curve-init"},
+      "tags": ["genus-2", "prepared-central-jet", "probable"]
+    },
+    {
+      "id": "g3-real-period-64",
+      "category": "periods",
+      "kind": "real_period",
+      "contract": "refinement-stable model real period, 64 requested bits",
+      "model": {"genus": 3, "base": "QQ", "f": ["1", "-1", "0", "0", "0", "0", "0", "1"], "h": ["0", "0", "1"]},
+      "precision": 64,
+      "expected": {"value": "20.940781336171819101702406919185380489", "absolute_tolerance": "0.000000001"},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "cache-hit"},
+      "tags": ["genus-3", "generalized-model", "numerical"]
+    },
+    {
+      "id": "g3-central-value-16",
+      "category": "l-function",
+      "kind": "central_value",
+      "contract": "probable raw L(C,1), 16 requested bits, certified global data",
+      "model": {"genus": 3, "base": "QQ", "f": ["0", "1", "3", "5", "7", "6", "4", "1"], "h": ["1"]},
+      "precision": 16,
+      "expected": {"analytic_rank": 0, "value": "0.2263", "absolute_tolerance": "0.0001"},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1, "warm_mode": "cache-hit"},
+      "tags": ["genus-3", "conductor-24055", "central-value", "probable"]
+    },
+    {
+      "id": "g2-height-64",
+      "tier": "slow",
+      "category": "rational-height",
+      "kind": "canonical_height",
+      "contract": "certified genus-2 canonical height at 64 requested bits",
+      "model": {"genus": 2, "base": "QQ", "f": ["1", "1", "0", "0", "0", "1"], "h": ["0"]},
+      "left": {"u": ["0", "1"], "v": ["1"]},
+      "precision": 64,
+      "expected": {"rigorous": true},
+      "timing": {"repetitions": 3, "warmups": 1, "batch_size": 1},
+      "tags": ["genus-2", "canonical-height", "certified"]
+    },
+    {
+      "id": "unsupported-characteristic-2-jacobian",
+      "category": "capability",
+      "kind": "unsupported_characteristic_2_jacobian",
+      "contract": "structured unsupported result",
+      "model": {"genus": 2, "prime": "2", "f": ["1", "1", "0", "0", "0", "1"], "h": ["1", "1", "1"]},
+      "expected": {"status": "unsupported", "reason": "characteristic-2"},
+      "timing": {"repetitions": 1, "warmups": 0, "batch_size": 1},
+      "tags": ["honest-capability-boundary"]
+    },
+    {
+      "id": "unsupported-even-degree-jacobian",
+      "category": "capability",
+      "kind": "unsupported_even_degree_jacobian",
+      "contract": "structured unsupported result",
+      "model": {"genus": 2, "prime": "5", "f": ["1", "1", "0", "0", "0", "0", "1"], "h": ["0"]},
+      "expected": {"status": "unsupported", "reason": "odd-degree"},
+      "timing": {"repetitions": 1, "warmups": 0, "batch_size": 1},
+      "tags": ["honest-capability-boundary"]
+    },
+    {
+      "id": "unsupported-wild-p2-global",
+      "category": "capability",
+      "kind": "unsupported_wild_global",
+      "contract": "structured unsupported result",
+      "model": {"genus": 2, "base": "QQ", "f": ["1", "0", "1", "0", "0", "1"], "h": ["0"]},
+      "expected": {"status": "unsupported", "prime": "2"},
+      "timing": {"repetitions": 1, "warmups": 0, "batch_size": 1},
+      "tags": ["wild-reduction", "honest-capability-boundary"]
+    }
+  ]
+}

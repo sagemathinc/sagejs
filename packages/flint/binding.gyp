@@ -19,6 +19,7 @@
         "src/floating.c",
         "src/hyperelliptic/genus3_jacobian.c",
         "src/hyperelliptic/genus3_jacobian_addon.c",
+        "src/hyperelliptic/period_quadrature.c",
         "src/hyperelliptic/rforest.c",
         "src/hyperelliptic/smalljac.c",
         "src/matrix.c",

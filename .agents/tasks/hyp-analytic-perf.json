@@ -1,0 +1,105 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-analytic-perf",
+  "title": "Hyp Analytic Perf",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Benchmark and optimize reusable genus-2/3 periods and initialized L-functions against PARI while preserving numerical honesty.",
+  "base_commit": "52f14e0cdc6fd9fca0e9625d5d32cb1415b99a84",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/periods.py",
+    "src/lib/sagejs/hyperelliptic_curves/lseries.py",
+    "test/hyperelliptic-analytic-performance.cjs",
+    "bench/hyperelliptic/benchmark-analytic-competitive.cjs"
+  ],
+  "dependencies": [
+    "hyp-local-stream-perf",
+    "native-compiler"
+  ],
+  "references": [
+    "agents/hyperelliptic-magma-pari-performance-plan.md",
+    "agents/hyperelliptic-central-weights-gpu-twists-plan.md",
+    "agents/hyperelliptic-bsd-arithmetic-plan.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "same-source mpmath period quadrature",
+      "PARI/GP 2.18.1-alpha hyperellperiods and lfun"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.686,
+      "started_at": "2026-08-23T04:52:09.464Z",
+      "commit": "8fc76245435dad17e2c8de4917c8653e6b95b9af",
+      "workspace_fingerprint": "a4ea40cb3e3f57b87f104aaba4bf934698c5b837cc8921280d2cf1cd56c2351d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.881,
+      "started_at": "2026-08-23T04:52:20.951Z",
+      "commit": "8fc76245435dad17e2c8de4917c8653e6b95b9af",
+      "workspace_fingerprint": "a4ea40cb3e3f57b87f104aaba4bf934698c5b837cc8921280d2cf1cd56c2351d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-analytic-performance.cjs test/hyperelliptic-global-lseries.cjs test/hyperelliptic-twist-lseries.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 67.41,
+      "started_at": "2026-08-23T04:52:58.971Z",
+      "commit": "8fc76245435dad17e2c8de4917c8653e6b95b9af",
+      "workspace_fingerprint": "a4ea40cb3e3f57b87f104aaba4bf934698c5b837cc8921280d2cf1cd56c2351d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-periods.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 247.186,
+      "started_at": "2026-08-23T04:54:10.775Z",
+      "commit": "8fc76245435dad17e2c8de4917c8653e6b95b9af",
+      "workspace_fingerprint": "b887b34f831aa5fdd77698e95680137e5bc12631a74ccaa208b7ae073fc55ae5",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented a reusable exact coefficient prefix and prepared analytic evaluation cache in lseries.py, plus exact topology reuse, packed source-transparent binary64 edge quadrature, branch/sign preselection, reusable conjugation action, and sealed result caches in periods.py. Added focused differential/evidence/cache tests and a resident Sage.js/PARI benchmark harness. Binary64 period work is explicitly capped at 44 evidence bits; higher requested precision requires two arbitrary-precision refinements before it is advertised.",
+    "risks": [
+      "Public periods above 44 bits still spend most of their time in two mpmath quadrature refinements and remain orders of magnitude slower than PARI's hyperellperiods.",
+      "The packed coefficient fast path requires the coordinated hyp-local-stream-perf API to be integrated before this commit; otherwise lseries.py deliberately uses its exact legacy fallback.",
+      "The production native-kernel registry entry and Float64Buffer WebAssembly bridge are shared integration/native-compiler work outside this lane's claims.",
+      "The new analytic performance test needs an integration-lane test-manifest entry; pnpm test:changed otherwise fails only the manifest coverage check."
+    ],
+    "next_steps": [
+      "Integrate hyp-local-stream-perf before this implementation so GlobalCoefficientPrefix consumes rational_local_coefficient_chunks.",
+      "Register hyperelliptic-period-edge-batch-production in architecture/native-kernels.json and land the coordinated Float64Buffer WebAssembly bridge.",
+      "Replace the remaining two arbitrary-precision per-node mpmath quadratures with a batched Arb/Acb or equivalently source-transparent high-precision kernel while retaining the outer refinement and Riemann gates.",
+      "Add test/hyperelliptic-analytic-performance.cjs to the shared test manifest, preferably in a slow/non-routine tier."
+    ]
+  }
+}

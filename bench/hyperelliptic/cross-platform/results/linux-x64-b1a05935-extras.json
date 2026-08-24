@@ -1,0 +1,307 @@
+{
+  "schema": "sagejs.hyperelliptic-phase10-portable-extras.v1",
+  "started_at": "2026-08-24T06:11:53.851Z",
+  "repository": {
+    "commit": "b1a059358d8a4325ef5be9998feb55a7a27db0fa",
+    "status": "",
+    "harness_sha256": "2451b8695b4cb9de08f015fd52882e41cf7aada32ab158b30f8564e6972ea9a8"
+  },
+  "host": {
+    "hostname": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v22.22.2"
+  },
+  "configuration": {
+    "repeat": 5
+  },
+  "standalone": {
+    "status": "available",
+    "elapsed_ms": 258073.79697400003,
+    "stdout_sha256": "2bb8c6de7ecdfbeda2256352fa866704a1b3804f44fbad713db9ede720f9da8b",
+    "value": {
+      "compiled": true,
+      "rows": [
+        {
+          "add_speedup": 1483.7733361835542,
+          "authenticated_unpack_batch_median_ns": 70270720,
+          "authenticated_unpack_cached_prepare_median_ns": 30208,
+          "batch_items": 1000,
+          "full_copy_boundary_median_ns": 1309184,
+          "genus": 2,
+          "materialized_add_speedup": 24.784774163139577,
+          "materialized_scalar_batch_median_ns": 895651840,
+          "materialized_scalar_speedup": 1357.2239884393064,
+          "multi_search_group_operations": 509,
+          "multi_search_progressions": 4,
+          "multi_search_speedup": 2.463655030800821,
+          "multi_search_table_bytes": 20480,
+          "native_add_materialized_median_ns": 215081984,
+          "native_add_materialized_stages": {
+            "kernel": 2002176,
+            "materialization": 269864192,
+            "pack": 741120,
+            "publication": 966144,
+            "validation": 0
+          },
+          "native_add_median_ns": 3592704,
+          "native_add_stages": {
+            "kernel": 1991936,
+            "materialization": 0,
+            "pack": 707328,
+            "publication": 1018880,
+            "validation": 0
+          },
+          "native_multi_search_median_ns": 3116800,
+          "native_negate_median_ns": 12256768,
+          "native_scalar_batch_median_ns": 678415616,
+          "native_scalar_materialized_median_ns": 7971840,
+          "native_scalar_median_ns": 5944320,
+          "native_scalar_throughput_ns": 45606144,
+          "native_search_median_ns": 2096128,
+          "native_subtract_median_ns": 15531264,
+          "native_sum_median_ns": 124733696,
+          "negate_speedup": 303.11568987844106,
+          "prepare_cached_batch_median_ns": 39936,
+          "prepare_fresh_unregistered_batch_median_ns": 852804096,
+          "prepare_public_batch_median_ns": 202496,
+          "prime": 1009,
+          "publish_frozen_batch_median_ns": 518144,
+          "raw_add_boundary_median_ns": 1963520,
+          "raw_copy_boundary_median_ns": 26880,
+          "raw_fixed_add_boundary_median_ns": 1021132,
+          "raw_fixed_digest": "16532588233038003552",
+          "raw_fixed_timing": {
+            "calls_per_sample": 50,
+            "samples": 9,
+            "warmups": 10
+          },
+          "reference_add_median_ns": 5330758400,
+          "reference_negate_median_ns": 3715218688,
+          "reference_scalar_median_ns": 10819572480,
+          "reference_search_median_ns": 2407295488,
+          "reference_subtract_median_ns": 8735433728,
+          "reference_sum_median_ns": 5078547456,
+          "reference_unpack_batch_median_ns": 1730091776,
+          "repeated_native_search_median_ns": 7678720,
+          "result_digest": "52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176",
+          "retained_add_median_ns": 3109120,
+          "retained_add_published_input": 0,
+          "retained_add_published_output": 0,
+          "retained_copy_boundary_median_ns": 796672,
+          "retained_scalar_batch_median_ns": 677318400,
+          "retained_to_raw_add_ratio": 1.5834419817470664,
+          "scalar_batch_items": 1000,
+          "scalar_bits": 256,
+          "scalar_comparison_items": 8,
+          "scalar_speedup": 1820.1531007751937,
+          "scalar_throughput_items": 64,
+          "search_count": 10000,
+          "search_group_operations": 209,
+          "search_hash_collisions": 121,
+          "search_speedup": 1148.4487054225697,
+          "search_status": "not_found",
+          "subtract_speedup": 562.4419060805353,
+          "sum_speedup": 40.715120443476636,
+          "validated_public_construct_and_prepare_median_ns": 2565039104,
+          "validated_public_construction_median_ns": 1688041216,
+          "standalone_core_median_ns": 1001896,
+          "raw_fixed_boundary_to_standalone_ratio": 1.0191995975630206,
+          "full_copy_to_raw_copy_ratio": 48.7047619047619
+        },
+        {
+          "add_speedup": 1566.503457814661,
+          "authenticated_unpack_batch_median_ns": 65025536,
+          "authenticated_unpack_cached_prepare_median_ns": 23296,
+          "batch_items": 1000,
+          "full_copy_boundary_median_ns": 1294080,
+          "genus": 3,
+          "materialized_add_speedup": 22.917070604422783,
+          "materialized_scalar_batch_median_ns": 1177661440,
+          "materialized_scalar_speedup": 1521.8082019877522,
+          "multi_search_group_operations": 509,
+          "multi_search_progressions": 4,
+          "multi_search_speedup": 2.2393822393822393,
+          "multi_search_table_bytes": 20480,
+          "native_add_materialized_median_ns": 227731456,
+          "native_add_materialized_stages": {
+            "kernel": 1944576,
+            "materialization": 226489088,
+            "pack": 420864,
+            "publication": 668160,
+            "validation": 0
+          },
+          "native_add_median_ns": 3331584,
+          "native_add_stages": {
+            "kernel": 1976320,
+            "materialization": 0,
+            "pack": 524032,
+            "publication": 678656,
+            "validation": 0
+          },
+          "native_multi_search_median_ns": 3381504,
+          "native_negate_median_ns": 12763136,
+          "native_scalar_batch_median_ns": 965618944,
+          "native_scalar_materialized_median_ns": 10200064,
+          "native_scalar_median_ns": 8103424,
+          "native_scalar_throughput_ns": 62992384,
+          "native_search_median_ns": 1950464,
+          "native_subtract_median_ns": 14832896,
+          "native_sum_median_ns": 123950080,
+          "negate_speedup": 294.7818116174583,
+          "prepare_cached_batch_median_ns": 22528,
+          "prepare_fresh_unregistered_batch_median_ns": 877081088,
+          "prepare_public_batch_median_ns": 194304,
+          "prime": 1009,
+          "publish_frozen_batch_median_ns": 505856,
+          "raw_add_boundary_median_ns": 1957632,
+          "raw_copy_boundary_median_ns": 23040,
+          "raw_fixed_add_boundary_median_ns": 1022878,
+          "raw_fixed_digest": "8706117988639488592",
+          "raw_fixed_timing": {
+            "calls_per_sample": 50,
+            "samples": 9,
+            "warmups": 10
+          },
+          "reference_add_median_ns": 5218937856,
+          "reference_negate_median_ns": 3762340352,
+          "reference_scalar_median_ns": 15522541056,
+          "reference_search_median_ns": 2690350080,
+          "reference_subtract_median_ns": 8825232640,
+          "reference_sum_median_ns": 7319366144,
+          "reference_unpack_batch_median_ns": 1627720448,
+          "repeated_native_search_median_ns": 7572480,
+          "result_digest": "815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323",
+          "retained_add_median_ns": 3937024,
+          "retained_add_published_input": 0,
+          "retained_add_published_output": 0,
+          "retained_copy_boundary_median_ns": 776448,
+          "retained_scalar_batch_median_ns": 964482048,
+          "retained_to_raw_add_ratio": 2.011115470119001,
+          "scalar_batch_items": 1000,
+          "scalar_bits": 256,
+          "scalar_comparison_items": 8,
+          "scalar_speedup": 1915.5533581853795,
+          "scalar_throughput_items": 64,
+          "search_count": 10000,
+          "search_group_operations": 209,
+          "search_hash_collisions": 114,
+          "search_speedup": 1379.3384958655993,
+          "search_status": "not_found",
+          "subtract_speedup": 594.9770456153674,
+          "sum_speedup": 59.05091907968111,
+          "validated_public_construct_and_prepare_median_ns": 2610188288,
+          "validated_public_construction_median_ns": 1716871936,
+          "standalone_core_median_ns": 996771,
+          "raw_fixed_boundary_to_standalone_ratio": 1.0261915725878863,
+          "full_copy_to_raw_copy_ratio": 56.166666666666664
+        }
+      ],
+      "schema": "sagejs.hyperelliptic.public-jacobian-benchmark.v1",
+      "workload": "resident prepared context; medians; 1000 public results",
+      "standalone": {
+        "compiler": "cc -O3 -fPIC with native bounds-check, frame, section, and link flags",
+        "contract": "same full compiled source-transparent core; 1000 repeated fixed degree-one pairs",
+        "timing": {
+          "warmups": 10,
+          "samples": 9,
+          "callsPerSample": 50
+        },
+        "rows": [
+          {
+            "genus": 2,
+            "standalone_core_median_ns": 1001896,
+            "digest": "16532588233038003552"
+          },
+          {
+            "genus": 3,
+            "standalone_core_median_ns": 996771,
+            "digest": "8706117988639488592"
+          }
+        ]
+      }
+    }
+  },
+  "wasm": {
+    "status": "available",
+    "manifest_sha256": "f6e7dc0bad7e98b7ccfcbb31c1491e77320e3646a71743c32e82a31555464df8",
+    "artifact_id": null,
+    "pack_count": 36,
+    "load_ms": 41.15444599997136,
+    "process_rss_bytes": 104136704,
+    "cantor": [
+      {
+        "genus": 2,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 2.517188999976497,
+          "median": 2.86087000000407,
+          "max": 3.190789999993285,
+          "mad": 0.3295310000248719
+        },
+        "exact_sha256": "6aa08d78cca6c13a9db2e08eed347753f11e244e10c2c5c8e833734301af4579",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "16532588233038003552",
+        "wasm_to_standalone_ratio": 2.8554560553231774
+      },
+      {
+        "genus": 3,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 2.447019999992335,
+          "median": 2.508109999995213,
+          "max": 3.168950000021141,
+          "mad": 0.03627099998993799
+        },
+        "exact_sha256": "5b744187da93296da6ef5f2bbfbdad554708d052ad35a1144970515974a6500d",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "8706117988639488592",
+        "wasm_to_standalone_ratio": 2.5162349225601597
+      }
+    ],
+    "kummer_project": {
+      "items": 4096,
+      "wall_ms": {
+        "count": 5,
+        "min": 3.5740790000127163,
+        "median": 4.572839000000386,
+        "max": 4.988840000005439,
+        "mad": 0.41600100000505336
+      },
+      "exact_sha256": "7aeb8f81607106b01b78ec62f2b6eb29c55fd2df9d9190d02df584cb28ad49b5",
+      "status_sha256": "9247c332f18377770d8324295d982e7ef80195863ccaa25e38803940a79b9e61"
+    },
+    "resource_bounds": {
+      "result": false,
+      "error": null,
+      "short_output_unchanged": true
+    },
+    "package_verification": {
+      "elapsed_ms": 336.8926130000036,
+      "stdout_sha256": "56c3ab96a2e32063f5178bb2fe1ff5cba05803e56c7f037936dcdf9a7a55da43",
+      "stderr": ""
+    },
+    "cancellation": {
+      "elapsed_ms": 4347.794357999985,
+      "exit_code": 124,
+      "signal": null,
+      "stdout": "",
+      "stderr": "SageSessionTimeoutError: Sage.js evaluation timed out after 100 ms\n    at Timeout.<anonymous> (file:///home/user/sagejs-rc-b1a05935/packages/flint-wasm/kernel.mjs:274:13)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)",
+      "recovery_elapsed_ms": 2408.2831710000173,
+      "recovery_stdout": "42"
+    },
+    "package_load_test": {
+      "status": "passed",
+      "exit_code": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 56815.92240600003,
+      "stdout_sha256": "0a416553e11b67f36dc7c3795aac6fd8f46b23b925933d5636eb7306c15a2987",
+      "stdout": "TAP version 13\n# (node:1050322) ExperimentalWarning: WASI is an experimental feature and might change at any time\n# (Use `node --trace-warnings ...` to show where the warning was created)\n# Subtest: authenticated production packs execute every hyperelliptic source family\nok 1 - authenticated production packs execute every hyperelliptic source family\n  ---\n  duration_ms: 51146.521002\n  type: 'test'\n  ...\n# Subtest: the public Node-Wasm evaluator authenticates all hyperelliptic kernel routes\nok 2 - the public Node-Wasm evaluator authenticates all hyperelliptic kernel routes\n  ---\n  duration_ms: 5449.121701\n  type: 'test'\n  ...\n# Subtest: a real browser authenticates and executes all hyperelliptic kernel routes\nok 3 - a real browser authenticates and executes all hyperelliptic kernel routes # SKIP Chromium is not installed\n  ---\n  duration_ms: 0.35829\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 2\n# fail 0\n# cancelled 0\n# skipped 1\n# todo 0\n# duration_ms 56775.899749",
+      "stderr": ""
+    }
+  },
+  "finished_at": "2026-08-24T06:17:16.067Z"
+}

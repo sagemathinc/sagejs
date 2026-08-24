@@ -266,8 +266,16 @@ function constantBits(value) {
 }
 
 function executionProfile(fn) {
+  const integerBufferParameters = new Set(
+    fn.params
+      .filter((param) => param.type === "IntegerBuffer")
+      .map((param) => param.name),
+  );
+  const integerBufferLoadParameters = new Set();
   const profile = {
     arithmeticOperations: 0,
+    integerGrowthOperations: 0,
+    integerBufferLoads: 0,
     uint64BitwiseOperations: 0,
     nativeCalls: 0,
     rangeLoops: 0,
@@ -290,6 +298,22 @@ function executionProfile(fn) {
         profile.arithmeticOperations += 1;
       }
       if (
+        (operation.kind === "integer.binary" &&
+          ["mul", "floordiv", "mod"].includes(operation.operation)) ||
+        operation.kind === "integer.pow_uint" ||
+        operation.kind === "integer.divmod" ||
+        operation.kind === "integer.mod_uint64" ||
+        operation.kind === "integer.round_sqrt"
+      ) {
+        profile.integerGrowthOperations += 1;
+      }
+      if (operation.kind === "integer.buffer.get") {
+        profile.integerBufferLoads += 1;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
+      }
+      if (
         operation.kind === "uint64.binary" &&
         isUint64Bitwise(operation.operation)
       ) {
@@ -308,6 +332,9 @@ function executionProfile(fn) {
     read() {},
     write() {},
   });
+  profile.integerBufferLoadParameters = Array.from(
+    integerBufferLoadParameters,
+  ).sort();
   return profile;
 }
 
@@ -499,6 +526,157 @@ function bufferWrites(fn, dependencyEffects) {
     .sort();
 }
 
+/**
+ * Prove which caller-owned UInt64Buffer parameters a prime-source function
+ * may mutate. Prime-source helpers remain in the same lowered module, so the
+ * proof follows positional calls to a fixed point instead of trusting names or
+ * declarations supplied by a consumer.
+ *
+ * Unknown callees fail closed: every buffer argument is treated as writable.
+ * Compiler-owned records are also conservative at call boundaries because the
+ * public ABI does not yet represent effects for individual record fields.
+ */
+function primeSourceBufferWrites(fn, dependencyEffects) {
+  const aliases = new Map(
+    fn.params
+      .filter((param) => param.type === "UInt64Buffer")
+      .map((param) => [param.name, new Set([param.name])]),
+  );
+  const recordAliases = new Map();
+  const writes = new Set();
+  function roots(name) {
+    return aliases.get(name) || new Set();
+  }
+  function addAlias(target, sourceRoots) {
+    const current = aliases.get(target) || new Set();
+    const before = current.size;
+    for (const root of sourceRoots) current.add(root);
+    aliases.set(target, current);
+    return current.size !== before;
+  }
+  function addRecordAliases(target, fields) {
+    const current = recordAliases.get(target) || new Map();
+    let changed = false;
+    for (const [field, sourceRoots] of fields) {
+      const previous = current.get(field) || new Set();
+      const before = previous.size;
+      for (const root of sourceRoots) previous.add(root);
+      current.set(field, previous);
+      changed = previous.size !== before || changed;
+    }
+    recordAliases.set(target, current);
+    return changed;
+  }
+  function markRoots(sourceRoots) {
+    for (const root of sourceRoots) writes.add(root);
+  }
+  function markArgument(argument) {
+    markRoots(roots(argument.name));
+    for (const sourceRoots of recordAliases.get(argument.name)?.values() || []) {
+      markRoots(sourceRoots);
+    }
+  }
+  function visit(statements) {
+    let changed = false;
+    for (const statement of statements || []) {
+      if (
+        statement.kind === "source.copy" &&
+        statement.type === "UInt64Buffer"
+      ) {
+        changed = addAlias(statement.target, roots(statement.source)) || changed;
+      } else if (
+        statement.kind === "source.copy" &&
+        statement.type?.startsWith("Record:")
+      ) {
+        changed = addRecordAliases(
+          statement.target,
+          recordAliases.get(statement.source) || new Map(),
+        ) || changed;
+      } else if (statement.kind === "source.record.construct") {
+        changed = addRecordAliases(
+          statement.target,
+          new Map(
+            statement.fields
+              .filter((field) => field.type === "UInt64Buffer")
+              .map((field) => [field.name, roots(field.value)]),
+          ),
+        ) || changed;
+      } else if (
+        statement.kind === "source.record.get" &&
+        statement.type === "UInt64Buffer"
+      ) {
+        changed = addAlias(
+          statement.target,
+          recordAliases.get(statement.source)?.get(statement.field) || new Set(),
+        ) || changed;
+      } else if (statement.kind === "source.buffer.set") {
+        markRoots(roots(statement.buffer));
+      } else if (statement.kind === "source.call") {
+        const effect = dependencyEffects.get(statement.function);
+        if (effect === undefined) {
+          for (const argument of statement.arguments) markArgument(argument);
+        } else {
+          for (const written of effect.externalWrites) {
+            const position = effect.params.indexOf(written);
+            if (position >= 0 && statement.arguments[position] !== undefined) {
+              markArgument(statement.arguments[position]);
+            }
+          }
+          // Record-field effects are deliberately not represented yet.
+          for (const argument of statement.arguments) {
+            if (argument.type?.startsWith("Record:")) markArgument(argument);
+          }
+        }
+      } else if (statement.kind === "source.if") {
+        changed = visit(statement.condition.operations) || changed;
+        changed = visit(statement.body) || changed;
+        changed = visit(statement.alternative) || changed;
+      } else if (statement.kind === "source.while") {
+        changed = visit(statement.condition.operations) || changed;
+        changed = visit(statement.body) || changed;
+      } else if (statement.kind === "source.loop.range") {
+        changed = visit(statement.body) || changed;
+      } else if (statement.kind === "source.bool.short_circuit") {
+        changed = visit(statement.right.operations) || changed;
+      }
+    }
+    return changed;
+  }
+  let changed;
+  do changed = visit(fn.body); while (changed);
+  return Array.from(writes)
+    .filter((name) => fn.params.some((param) => param.name === name))
+    .sort();
+}
+
+function primeSourceEffectAnalyses(functions) {
+  const primeSource = new Map(
+    functions
+      .filter((fn) => fn.kernelKind === "prime-field-source")
+      .map((fn) => [fn.name, fn]),
+  );
+  const effects = new Map(
+    Array.from(primeSource, ([name, fn]) => [name, {
+      params: fn.params.map((param) => param.name),
+      externalWrites: [],
+    }]),
+  );
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [name, fn] of primeSource) {
+      const effect = effects.get(name);
+      const externalWrites = primeSourceBufferWrites(fn, effects);
+      if (externalWrites.join("\0") !== effect.externalWrites.join("\0")) {
+        effect.externalWrites = externalWrites;
+        changed = true;
+      }
+    }
+  }
+  for (const effect of effects.values()) delete effect.params;
+  return effects;
+}
+
 function effectAnalyses(functions) {
   const exact = new Map(
     functions
@@ -627,6 +805,20 @@ function backendPolicy(fn, profile, recursive) {
     };
   }
   if (
+    profile.integerBufferLoads > 0 &&
+    profile.rangeLoops + profile.whileLoops > 0 &&
+    profile.integerBufferLoadParameters.length > 0 &&
+    ((profile.nativeCalls > 0 && profile.dependencyDepth >= 2) ||
+      profile.integerGrowthOperations >= 16)
+  ) {
+    return {
+      kind: "integer-buffer-values",
+      parameters: profile.integerBufferLoadParameters,
+      reason:
+        "an amortizable exact loop selects tagged or GMP from packed input bounds",
+    };
+  }
+  if (
     profile.rangeLoops > 0 &&
     profile.nativeCalls > 0 &&
     profile.dependencyDepth >= 2
@@ -731,7 +923,10 @@ function analyzeExactModule(functions) {
       dependencyDepth: dependencyDepth(fn.name),
     };
     let backend = backendPolicy(fn, profile, recursive.has(fn.name));
-    if (profile.rangeLoops > 0 && backend.kind !== "gmp") {
+    if (
+      profile.rangeLoops > 0 &&
+      !["gmp", "integer-buffer-values"].includes(backend.kind)
+    ) {
       backend = {
         kind: "tagged",
         reason: "an exact range loop amortizes tagged native entry",
@@ -747,6 +942,13 @@ function analyzeExactModule(functions) {
       ...(hasUint64Bitwise(fn.body) ? { uint64: UINT64_SEMANTICS } : {}),
     };
   }
+  const primeSourceEffects = primeSourceEffectAnalyses(functions);
+  for (const fn of functions) {
+    const effects = primeSourceEffects.get(fn.name);
+    if (effects !== undefined) {
+      fn.analysis = { ...fn.analysis, effects };
+    }
+  }
   return functions;
 }
 
@@ -756,6 +958,7 @@ module.exports = {
   effectAnalyses,
   executionProfile,
   localEffects,
+  primeSourceEffectAnalyses,
   storageAnalysis,
   taggedIntegerProof,
 };

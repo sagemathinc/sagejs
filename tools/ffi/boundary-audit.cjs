@@ -102,14 +102,15 @@ function runtimeIntrinsics(root) {
   const end = source.indexOf("\n};", start);
   if (start < 0 || end < 0) throw new Error("cannot locate runtime intrinsic registry");
   const result = [];
-  const pattern = /^\s{2}([A-Za-z_][A-Za-z0-9_]*):\s*"([^"]+)"/gm;
+  const pattern = /^\s{2}([A-Za-z_][A-Za-z0-9_]*):\s*("(?:\\.|[^"\\])*")/gm;
   for (const match of source.slice(start, end).matchAll(pattern)) {
+    const symbol = JSON.parse(match[2]);
     result.push({
       id: `runtime:${match[1]}`,
       kind: "runtime-intrinsic",
       path,
       export: match[1],
-      symbol: match[2],
+      symbol,
       disposition: match[1] === "ffi_call"
         ? "declared-ffi-gateway"
         : match[1].startsWith("ffi_resource_")

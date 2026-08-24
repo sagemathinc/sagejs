@@ -31,12 +31,20 @@ from sagejs.hyperelliptic_curves.group_structure import (
     factor_integer_bounded,
     validate_factorization,
 )
+from sagejs.native import (
+    integer_buffer_values,
+    is_compiled,
+    kernel_integer_buffer,
+    kernel_uint64_buffer,
+    kernel_uint64_zeros,
+)
 
 TORSION_BOUND_SCHEMA = "sagejs.hyperelliptic-rational-torsion-bound/v1"
 TORSION_RESULT_SCHEMA = "sagejs.hyperelliptic-rational-torsion/v1"
 TWO_TORSION_SCHEMA = "sagejs.hyperelliptic-rational-two-torsion/v1"
 QQ_DIVISOR_SCHEMA = "sagejs.hyperelliptic-rational-mumford-divisor/v1"
 QQ_ORDER_SCHEMA = "sagejs.hyperelliptic-rational-mumford-order/v1"
+RATIONAL_REDUCTION_BATCH_ALGORITHM = "prepared-many-prime-mumford-reduction/v1"
 
 TORSION_BOUND_THEOREM = (
     "for good p, reduction injects on prime-to-p rational torsion; "
@@ -61,6 +69,17 @@ class RationalTorsionCapabilityError(NotImplementedError):
 
 class _RationalDivisorNonintegralError(ArithmeticError):
     """A fixed Mumford representative has a denominator divisible by `p`."""
+
+
+class RationalReductionCancelledError(RuntimeError):
+    """A bounded many-prime rational reduction batch was cancelled."""
+
+
+def _check_cancel(cancel: Any, stage: str) -> None:
+    if cancel is not None and bool(cancel()):
+        raise RationalReductionCancelledError(
+            "rational Mumford reduction cancelled during " + stage
+        )
 
 
 def _frobenius() -> Any:
@@ -146,6 +165,33 @@ def _rational_data(value: Any) -> dict[str, str]:
     numerator = rational.numerator()
     denominator = rational.denominator()
     return {"numerator": str(numerator), "denominator": str(denominator)}
+
+
+def _rational_pair(value: Any) -> tuple[int, int]:
+    """Return the canonical packed numerator/denominator pair for `value`."""
+    rational = sage.QQ(value)
+    return int(rational.numerator()), int(rational.denominator())
+
+
+def rational_mumford_fingerprint(jacobian: Any, divisor: Any) -> tuple[Any, ...]:
+    """Return a collision-free canonical packed fingerprint.
+
+    This is an internal execution key, not a display-string hash.  Every
+    rational coefficient is represented by its lowest-terms signed numerator
+    and positive denominator.  Tuple equality therefore resolves ordinary
+    hash-table collisions by exact coefficient equality.
+    """
+    _require_rational_jacobian(jacobian)
+    checked = jacobian(divisor, check=True)
+    u_value, v_value = checked.uv()
+    return (
+        QQ_DIVISOR_SCHEMA,
+        int(jacobian.dimension()),
+        tuple(_rational_pair(value) for value in jacobian.f().list()),
+        tuple(_rational_pair(value) for value in jacobian.h().list()),
+        tuple(_rational_pair(value) for value in u_value.list()),
+        tuple(_rational_pair(value) for value in v_value.list()),
+    )
 
 
 def _rational_from_data(data: Any) -> Any:
@@ -815,11 +861,21 @@ def verify_torsion_bound_certificate(
     return True
 
 
-def _reduce_rational_divisor(jacobian: Any, divisor: Any, prime: int) -> Any:
+def _prepared_reduced_jacobian(jacobian: Any, prime: int) -> Any:
     frobenius = _frobenius()
     reduced_curve = frobenius._rational_reduction(jacobian.curve(), prime)
-    reduced_jacobian = reduced_curve.jacobian()
-    field = reduced_curve.base_ring()
+    return reduced_curve.jacobian()
+
+
+def _reduce_rational_divisors_prepared(
+    jacobian: Any,
+    divisors: Any,
+    prime: int,
+    reduced_jacobian: Any,
+    *,
+    cancel: Any = None,
+) -> tuple[Any, ...]:
+    field = reduced_jacobian.base_ring()
     ring = reduced_jacobian.polynomial_ring()
 
     def reduced_coefficients(polynomial: Any) -> list[Any]:
@@ -835,11 +891,798 @@ def _reduce_rational_divisor(jacobian: Any, divisor: Any, prime: int) -> Any:
             values.append(field(int(rational.numerator())) / field(denominator % prime))
         return values
 
-    u_value, v_value = divisor.uv()
-    return reduced_jacobian(
-        [ring(reduced_coefficients(u_value)), ring(reduced_coefficients(v_value))],
-        check=True,
-    )
+    answer = []
+    for index, divisor in enumerate(divisors):
+        if index % 32 == 0:
+            _check_cancel(cancel, "basis reduction")
+        u_value, v_value = divisor.uv()
+        answer.append(
+            reduced_jacobian(
+                [
+                    ring(reduced_coefficients(u_value)),
+                    ring(reduced_coefficients(v_value)),
+                ],
+                check=True,
+            )
+        )
+    return tuple(answer)
+
+
+def _reduce_rational_divisor(jacobian: Any, divisor: Any, prime: int) -> Any:
+    reduced_jacobian = _prepared_reduced_jacobian(jacobian, prime)
+    return _reduce_rational_divisors_prepared(
+        jacobian, (divisor,), prime, reduced_jacobian
+    )[0]
+
+
+class _PackedFiniteMumfordRows:
+    """A bounded lazy view of canonical rows in one native output buffer."""
+
+    def __init__(
+        self,
+        output: Any,
+        status_buffer: Any,
+        statuses: Any,
+        output_cache: Any,
+        start: int,
+        count: int,
+        cancel: Any,
+    ) -> None:
+        self._output = output
+        self._status_buffer = status_buffer
+        self._statuses = statuses
+        self._output_cache = output_cache
+        self._start = start
+        self._count = count
+        self._cancel = cancel
+
+    def __len__(self) -> int:
+        return self._count
+
+    def __getitem__(self, raw_index: Any) -> Any:
+        index = int(raw_index)
+        if index < 0:
+            index += self._count
+        if index < 0 or index >= self._count:
+            raise IndexError("packed finite Mumford row index out of range")
+        if index % 256 == 0:
+            _check_cancel(self._cancel, "packed finite row materialization")
+        pair_index = self._start + index
+        if int(self._statuses[pair_index]) != 1:
+            return None
+        values = self._output_cache[0]
+        if values is None:
+            values = integer_buffer_values(self._output)
+            self._output_cache[0] = values
+        offset = pair_index * 8
+        return tuple(int(values[offset + word]) for word in range(8))
+
+    def __iter__(self) -> Any:
+        index = 0
+        while index < self._count:
+            yield self[index]
+            index += 1
+
+
+class _PackedFiniteWitnessRows:
+    """A lazy view of exact match flags retained in one native buffer."""
+
+    def __init__(self, statuses: Any, start: int, count: int, cancel: Any) -> None:
+        self._statuses = statuses
+        self._start = start
+        self._count = count
+        self._cancel = cancel
+
+    def __len__(self) -> int:
+        return self._count
+
+    def __getitem__(self, raw_index: Any) -> Any:
+        index = int(raw_index)
+        if index < 0:
+            index += self._count
+        if index < 0 or index >= self._count:
+            raise IndexError("packed finite witness index out of range")
+        if index % 256 == 0:
+            _check_cancel(self._cancel, "packed finite witness materialization")
+        encoded = int(self._statuses[self._start + index])
+        if encoded == 0:
+            return None
+        return encoded in (2, 4)
+
+    def __iter__(self) -> Any:
+        index = 0
+        while index < self._count:
+            yield self[index]
+            index += 1
+
+
+class PreparedRationalReductionBatch:
+    """Prepared, bounded reduction of one rational Mumford basis.
+
+    The rational coefficients are validated and packed once. One native call
+    fills canonical rows for every divisor/prime pair, and one reduced curve
+    context is retained per requested prime. Pair and peak-memory limits make
+    that retention explicit; `iter_chunks` bounds it independently of a long
+    prime stream.
+    """
+
+    def __init__(
+        self,
+        jacobian: Any,
+        divisors: Any,
+        *,
+        max_memory_bytes: Any = 256 * 1024 * 1024,
+        max_kernel_pairs: Any = 1_000_000,
+        cancel: Any = None,
+    ) -> None:
+        _require_rational_jacobian(jacobian)
+        if cancel is not None and not callable(cancel):
+            raise TypeError("cancel must be callable")
+        maximum = _checked_integer(max_memory_bytes, "max_memory_bytes")
+        maximum_pairs = _checked_integer(max_kernel_pairs, "max_kernel_pairs")
+        if maximum < 1:
+            raise ValueError("max_memory_bytes must be positive")
+        if maximum_pairs < 1:
+            raise ValueError("max_kernel_pairs must be positive")
+        checked = tuple(
+            verify_rational_mumford_divisor(jacobian, divisor) for divisor in divisors
+        )
+        # This deliberately charges arbitrary-precision integer storage by
+        # magnitude, not merely by coefficient count.
+        bit_count = 0
+        fingerprints = []
+        degrees = []
+        numerators = []
+        denominators = []
+        for divisor in checked:
+            fingerprint = rational_mumford_fingerprint(jacobian, divisor)
+            fingerprints.append(fingerprint)
+            u_value, v_value = divisor.uv()
+            degrees.append(int(u_value.degree()))
+            for polynomial, capacity in ((u_value, 4), (v_value, 3)):
+                coefficients = polynomial.list()
+                for index in range(capacity):
+                    coefficient = (
+                        coefficients[index] if index < len(coefficients) else 0
+                    )
+                    numerator, denominator = _rational_pair(coefficient)
+                    numerators.append(numerator)
+                    denominators.append(denominator)
+                    bit_count += max(1, abs(numerator).bit_length())
+                    bit_count += max(1, denominator.bit_length())
+        model_numerators = []
+        model_denominators = []
+        for polynomial, capacity in ((jacobian.f(), 8), (jacobian.h(), 4)):
+            coefficients = polynomial.list()
+            for index in range(capacity):
+                coefficient = coefficients[index] if index < len(coefficients) else 0
+                numerator, denominator = _rational_pair(coefficient)
+                model_numerators.append(numerator)
+                model_denominators.append(denominator)
+                bit_count += max(1, abs(numerator).bit_length())
+                bit_count += max(1, denominator.bit_length())
+        branch_discriminant = (jacobian.h() ** 2 + 4 * jacobian.f()).discriminant()
+        bad_reduction_numerator, _bad_reduction_denominator = _rational_pair(
+            branch_discriminant
+        )
+        estimated_bytes = 512 + len(checked) * 256 + (bit_count + 7) // 8
+        if estimated_bytes > maximum:
+            raise RationalTorsionCapabilityError(
+                "prepared rational Mumford basis exceeds max_memory_bytes="
+                + str(maximum),
+                {
+                    "estimated_bytes": estimated_bytes,
+                    "max_memory_bytes": maximum,
+                    "divisor_count": len(checked),
+                },
+            )
+        self.jacobian = jacobian
+        self.divisors = checked
+        self.fingerprints = tuple(fingerprints)
+        self.max_memory_bytes = maximum
+        self.max_kernel_pairs = maximum_pairs
+        self.estimated_bytes = estimated_bytes
+        self.cancel = cancel
+        self.algorithm = RATIONAL_REDUCTION_BATCH_ALGORITHM
+        self._degrees = tuple(degrees)
+        self._numerators = tuple(numerators)
+        self._denominators = tuple(denominators)
+        self._model_numerators = tuple(model_numerators)
+        self._model_denominators = tuple(model_denominators)
+        self._bad_reduction_numerator = bad_reduction_numerator
+        self._native_input_cache: tuple[Any, Any, Any, Any] | None = None
+
+    def _kernel(self) -> Any:
+        module = __import__(
+            "sagejs.hyperelliptic_curves.rational_reduction_kernels",
+            fromlist=["reduce_rational_mumford_many_primes"],
+        )
+        return module.reduce_rational_mumford_many_primes
+
+    def _kernel_inputs(self, kernel: Any) -> tuple[Any, Any, Any]:
+        cached = self._native_input_cache
+        if cached is not None and cached[0] is kernel:
+            return cached[1], cached[2], cached[3]
+        degrees = kernel_uint64_buffer(kernel, self._degrees)
+        numerators = kernel_integer_buffer(kernel, self._numerators)
+        denominators = kernel_integer_buffer(kernel, self._denominators)
+        self._native_input_cache = (kernel, degrees, numerators, denominators)
+        return degrees, numerators, denominators
+
+    def _reduction_batch_bytes(self, prime_count: int) -> int:
+        # Eight uint64 words and one status word for every prime/divisor pair.
+        return int(prime_count) * len(self.divisors) * 9 * 8
+
+    def _materialized_batch_bytes(self, prime_count: int) -> int:
+        # Lazy row consumption may additionally materialize the eight output
+        # words as exact host integers.  Charge that peak before the kernel.
+        return int(prime_count) * len(self.divisors) * 8 * 8
+
+    def _packed_models(self, primes: Any) -> tuple[tuple[int, ...], ...]:
+        """Reduce the fixed QQ model without constructing finite objects."""
+        answer = []
+        for prime in primes:
+            if self._bad_reduction_numerator % int(prime) == 0:
+                raise ArithmeticError(
+                    "the hyperelliptic model has bad reduction at p=" + str(prime)
+                )
+            model = []
+            for numerator, denominator in zip(
+                self._model_numerators,
+                self._model_denominators,
+                strict=True,
+            ):
+                residue = denominator % int(prime)
+                if residue == 0:
+                    raise ArithmeticError(
+                        "the hyperelliptic model is nonintegral at p=" + str(prime)
+                    )
+                model.append(
+                    (numerator % int(prime))
+                    * pow(residue, int(prime) - 2, int(prime))
+                    % int(prime)
+                )
+            answer.append(tuple(model))
+        return tuple(answer)
+
+    def reduce_many(
+        self,
+        primes: Any,
+        *,
+        algorithm: str = "auto",
+        allow_nonintegral: bool = False,
+        packed: bool = False,
+        diagnostics: bool = False,
+    ) -> Any:
+        """Reduce the prepared basis across many primes in one kernel call.
+
+        Native output is retained in the finite prepared context's canonical
+        packed representation.  The source rational divisors were exactly
+        validated before packing, and each reduced curve is independently
+        smoothness-checked before a row is published.  Certificate verification
+        continues to reconstruct every divisor through the reference path.
+        """
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown rational reduction algorithm " + repr(algorithm))
+        values = tuple(_normalize_primes(primes))
+        if not values:
+            return ((), {"selected": "reference", "count": 0}) if diagnostics else ()
+        _check_cancel(self.cancel, "many-prime kernel preparation")
+        pair_count = len(values) * len(self.divisors)
+        if pair_count > self.max_kernel_pairs:
+            raise RationalTorsionCapabilityError(
+                "packed rational reduction exceeds max_kernel_pairs="
+                + str(self.max_kernel_pairs),
+                {
+                    "prime_count": len(values),
+                    "divisor_count": len(self.divisors),
+                    "pair_count": pair_count,
+                    "max_kernel_pairs": self.max_kernel_pairs,
+                },
+            )
+        batch_bytes = self._reduction_batch_bytes(len(values))
+        materialized_bytes = self._materialized_batch_bytes(len(values))
+        if (
+            self.estimated_bytes + batch_bytes + materialized_bytes
+            > self.max_memory_bytes
+        ):
+            raise RationalTorsionCapabilityError(
+                "packed rational reduction output exceeds max_memory_bytes="
+                + str(self.max_memory_bytes),
+                {
+                    "estimated_input_bytes": self.estimated_bytes,
+                    "estimated_output_bytes": batch_bytes,
+                    "estimated_materialized_bytes": materialized_bytes,
+                    "prime_count": len(values),
+                    "divisor_count": len(self.divisors),
+                },
+            )
+        if algorithm == "reference":
+            rows = []
+            for prime in values:
+                reduced_jacobian = _prepared_reduced_jacobian(self.jacobian, prime)
+                reduced_values = []
+                for divisor in self.divisors:
+                    try:
+                        reduced = _reduce_rational_divisors_prepared(
+                            self.jacobian,
+                            (divisor,),
+                            prime,
+                            reduced_jacobian,
+                            cancel=self.cancel,
+                        )[0]
+                    except _RationalDivisorNonintegralError:
+                        if not allow_nonintegral:
+                            raise
+                        reduced = None
+                    if reduced is None or not packed:
+                        reduced_values.append(reduced)
+                    else:
+                        prepared = reduced_jacobian.prepared_arithmetic(
+                            algorithm="auto", max_batch_items=1
+                        )
+                        reduced_values.append(prepared.pack(reduced))
+                rows.append(
+                    {
+                        "prime": prime,
+                        "algorithm": self.algorithm,
+                        "reduced_jacobian": reduced_jacobian,
+                        "divisors": tuple(reduced_values),
+                        "fingerprints": self.fingerprints,
+                    }
+                )
+            answer = tuple(rows)
+            record = {
+                "requested": algorithm,
+                "selected": "reference",
+                "prime_count": len(values),
+                "divisor_count": len(self.divisors),
+                "kernel_crossings": 0,
+                "packed_output_bytes": batch_bytes,
+                "packed_results": packed,
+            }
+            return (answer, record) if diagnostics else answer
+
+        native_domain = all(3 <= prime <= 4_294_967_295 for prime in values)
+        if algorithm == "native" and not native_domain:
+            raise NotImplementedError(
+                "packed rational reduction requires odd primes at most 2^32-1"
+            )
+        if not native_domain:
+            return self.reduce_many(
+                values,
+                algorithm="reference",
+                allow_nonintegral=allow_nonintegral,
+                packed=packed,
+                diagnostics=diagnostics,
+            )
+        kernel = self._kernel()
+        compiled = is_compiled(kernel)
+        if algorithm == "native" and not compiled:
+            raise NotImplementedError(
+                "the packed rational many-prime reduction kernel is unavailable"
+            )
+        if not compiled:
+            return self.reduce_many(
+                values,
+                algorithm="reference",
+                allow_nonintegral=allow_nonintegral,
+                packed=packed,
+                diagnostics=diagnostics,
+            )
+        packed_models = self._packed_models(values) if packed else ()
+        degrees, numerators, denominators = self._kernel_inputs(kernel)
+        output = kernel_uint64_zeros(kernel, pair_count * 8)
+        statuses = kernel_uint64_zeros(kernel, pair_count)
+        accepted = kernel(
+            output,
+            statuses,
+            degrees,
+            numerators,
+            denominators,
+            kernel_uint64_buffer(kernel, values),
+            len(self.divisors),
+            len(values),
+        )
+        if not accepted:
+            raise ArithmeticError("packed rational many-prime reduction failed closed")
+        _check_cancel(self.cancel, "many-prime kernel publication")
+        status_values = integer_buffer_values(statuses)
+        output_cache = [None]
+        if not allow_nonintegral:
+            for pair_index, status in enumerate(status_values):
+                if int(status) != 1:
+                    prime = values[pair_index // len(self.divisors)]
+                    raise _RationalDivisorNonintegralError(
+                        "the Mumford representative has a denominator divisible by p="
+                        + str(prime)
+                    )
+        rows = []
+        for prime_index, prime in enumerate(values):
+            if packed:
+                reduced = _PackedFiniteMumfordRows(
+                    output,
+                    statuses,
+                    status_values,
+                    output_cache,
+                    prime_index * len(self.divisors),
+                    len(self.divisors),
+                    self.cancel,
+                )
+                rows.append(
+                    {
+                        "prime": prime,
+                        "algorithm": self.algorithm,
+                        "reduced_jacobian": None,
+                        "model_coefficients": packed_models[prime_index],
+                        "divisors": reduced,
+                        "fingerprints": self.fingerprints,
+                    }
+                )
+                continue
+            reduced_jacobian = _prepared_reduced_jacobian(self.jacobian, prime)
+            prepared = reduced_jacobian.prepared_arithmetic(
+                algorithm="auto", max_batch_items=max(1, len(self.divisors))
+            )
+            publisher = getattr(prepared, "_new_packed_divisor", None)
+            if publisher is None:
+                raise NotImplementedError(
+                    "the finite prepared context cannot publish proved packed rows"
+                )
+            reduced = []
+            for divisor_index in range(len(self.divisors)):
+                pair_index = prime_index * len(self.divisors) + divisor_index
+                if int(status_values[pair_index]) != 1:
+                    if not allow_nonintegral:
+                        raise _RationalDivisorNonintegralError(
+                            "the Mumford representative has a denominator divisible by p="
+                            + str(prime)
+                        )
+                    reduced.append(None)
+                    continue
+                offset = pair_index * 8
+                row = tuple(int(output[offset + index]) for index in range(8))
+                reduced.append(publisher(row))
+            rows.append(
+                {
+                    "prime": prime,
+                    "algorithm": self.algorithm,
+                    "reduced_jacobian": reduced_jacobian,
+                    "divisors": tuple(reduced),
+                    "fingerprints": self.fingerprints,
+                }
+            )
+        answer = tuple(rows)
+        record = {
+            "requested": algorithm,
+            "selected": "native",
+            "prime_count": len(values),
+            "divisor_count": len(self.divisors),
+            "kernel_crossings": 1,
+            "packed_output_bytes": batch_bytes,
+            "max_retained_and_materialized_bytes": batch_bytes + materialized_bytes,
+            "packed_results": packed,
+        }
+        return (answer, record) if diagnostics else answer
+
+    def scalar_zero_many(
+        self,
+        reduction_rows: Any,
+        scalars: Any,
+        *,
+        algorithm: str = "auto",
+        targets: Any = None,
+        packed: bool = False,
+        diagnostics: bool = False,
+    ) -> Any:
+        """Test varying scalars on all retained prime-major rows.
+
+        Native execution consumes the reduction output/status buffers directly
+        and changes model/modulus inside one finite-kernel call. With `targets`
+        supplied it tests equality to one packed target per prime; otherwise it
+        tests the identity. A single integer `scalars` value uses one retained
+        scalar for every pair; a matrix permits pair-specific scalars. With
+        `packed=True`, exact match flags remain in bounded lazy prime-major
+        views. `None` marks a source row that was nonintegral at that prime and
+        is never a failed mathematical witness.
+        """
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown packed witness algorithm " + repr(algorithm))
+        rows = tuple(reduction_rows)
+        uniform_scalar = None
+        scalar_rows = None
+        if isinstance(scalars, int):
+            uniform_scalar = int(scalars)
+        else:
+            scalar_rows = tuple(tuple(int(value) for value in row) for row in scalars)
+        target_rows = None if targets is None else tuple(targets)
+        if scalar_rows is not None and len(rows) != len(scalar_rows):
+            raise ValueError("packed witness prime/scalar rows have different lengths")
+        if not rows:
+            result: tuple[Any, ...] = ()
+            record = {"requested": algorithm, "selected": "reference", "count": 0}
+            return (result, record) if diagnostics else result
+        if target_rows is not None:
+            if len(target_rows) != len(rows):
+                raise ValueError("packed witness targets have the wrong prime count")
+            if any(target is None or len(target) != 8 for target in target_rows):
+                raise ValueError(
+                    "every packed witness target must be an eight-word row"
+                )
+        count = len(self.divisors)
+        if scalar_rows is not None and any(len(row) != count for row in scalar_rows):
+            raise ValueError("a packed witness scalar row has the wrong length")
+        if uniform_scalar is not None and uniform_scalar < 0:
+            raise ValueError("packed finite witnesses require a nonnegative scalar")
+        if scalar_rows is not None and any(
+            value < 0 for row in scalar_rows for value in row
+        ):
+            raise ValueError("packed finite witnesses require nonnegative scalars")
+        views = tuple(row.get("divisors") for row in rows)
+        if not all(isinstance(view, _PackedFiniteMumfordRows) for view in views):
+            if algorithm == "native":
+                raise NotImplementedError(
+                    "native fused witnesses require retained rows"
+                )
+            answer = []
+            for row_index, row in enumerate(rows):
+                scalar_row = (
+                    tuple(uniform_scalar for _value in row["divisors"])
+                    if scalar_rows is None
+                    else scalar_rows[row_index]
+                )
+                values = row["divisors"]
+                products = _packed_scalar_batch_rows(
+                    row["reduced_jacobian"],
+                    tuple(value for value in values if value is not None),
+                    tuple(
+                        scalar
+                        for value, scalar in zip(values, scalar_row, strict=True)
+                        if value is not None
+                    ),
+                    algorithm="reference",
+                )
+                product_index = 0
+                prime_answer = []
+                for value in values:
+                    if value is None:
+                        prime_answer.append(None)
+                    else:
+                        product = products[product_index]
+                        target = (
+                            None if target_rows is None else target_rows[len(answer)]
+                        )
+                        prime_answer.append(
+                            product[0] == 0 if target is None else product == target
+                        )
+                        product_index += 1
+                answer.append(tuple(prime_answer))
+            result = tuple(answer)
+            record = {
+                "requested": algorithm,
+                "selected": "reference",
+                "prime_count": len(rows),
+                "divisor_count": count,
+                "kernel_crossings": 0,
+            }
+            return (result, record) if diagnostics else result
+        first_view = views[0]
+        if not all(
+            view._output is first_view._output
+            and view._status_buffer is first_view._status_buffer
+            and view._count == count
+            for view in views
+        ):
+            raise ValueError("packed witness rows do not share one reduction buffer")
+        if algorithm == "reference":
+            # Materialize only for the explicit dynamic oracle.
+            materialized = []
+            for row in rows:
+                materialized.append(
+                    {
+                        **row,
+                        "divisors": tuple(row["divisors"]),
+                    }
+                )
+            return self.scalar_zero_many(
+                tuple(materialized),
+                uniform_scalar if scalar_rows is None else scalar_rows,
+                algorithm="reference",
+                targets=target_rows,
+                packed=packed,
+                diagnostics=diagnostics,
+            )
+        module = __import__(
+            "sagejs.hyperelliptic_curves.jacobian_kernels",
+            fromlist=["packed_cantor_scalar_many_primes"],
+        )
+        kernel = module.packed_cantor_scalar_many_primes
+        if not is_compiled(kernel):
+            if algorithm == "native":
+                raise NotImplementedError(
+                    "the fused packed witness kernel is unavailable"
+                )
+            return self.scalar_zero_many(
+                rows,
+                uniform_scalar if scalar_rows is None else scalar_rows,
+                algorithm="reference",
+                targets=target_rows,
+                packed=packed,
+                diagnostics=diagnostics,
+            )
+        pair_count = len(rows) * count
+        uniform_value = 0 if uniform_scalar is None else uniform_scalar
+        maximum_bits = (
+            uniform_value.bit_length()
+            if scalar_rows is None
+            else max(
+                (value.bit_length() for row in scalar_rows for value in row), default=0
+            )
+        )
+        words_per_scalar = max(1, (maximum_bits + 63) // 64)
+        scalar_word_count = (
+            words_per_scalar if scalar_rows is None else pair_count * words_per_scalar
+        )
+        # Output rows/statuses, scalar words, per-prime models/targets/moduli,
+        # and the three-word aggregate are all live at the native boundary.
+        fused_bytes = (
+            pair_count * 9 * 8
+            + scalar_word_count * 8
+            + len(rows) * (12 + 8 + 1) * 8
+            + 3 * 8
+        )
+        retained_bytes = self._reduction_batch_bytes(len(rows))
+        if self.estimated_bytes + retained_bytes + fused_bytes > self.max_memory_bytes:
+            raise RationalTorsionCapabilityError(
+                "fused packed witnesses exceed max_memory_bytes="
+                + str(self.max_memory_bytes),
+                {
+                    "estimated_input_bytes": self.estimated_bytes,
+                    "retained_reduction_bytes": retained_bytes,
+                    "fused_output_bytes": fused_bytes,
+                },
+            )
+        _check_cancel(self.cancel, "fused packed witness preparation")
+        scalar_words = []
+        if scalar_rows is None:
+            magnitude = uniform_value
+            for _word_index in range(words_per_scalar):
+                scalar_words.append(magnitude % (1 << 64))
+                magnitude //= 1 << 64
+        else:
+            for prime_index, scalar_row in enumerate(scalar_rows):
+                if prime_index % 16 == 0:
+                    _check_cancel(self.cancel, "fused packed scalar packing")
+                for value in scalar_row:
+                    magnitude = value
+                    for _word_index in range(words_per_scalar):
+                        scalar_words.append(magnitude % (1 << 64))
+                        magnitude //= 1 << 64
+        models = []
+        primes = []
+        packed_targets = []
+        for prime_index, row in enumerate(rows):
+            if prime_index % 16 == 0:
+                _check_cancel(self.cancel, "fused packed model packing")
+            model_coefficients = row.get("model_coefficients")
+            if model_coefficients is None:
+                reduced_jacobian = row["reduced_jacobian"]
+                prepared = reduced_jacobian.prepared_arithmetic(
+                    algorithm="native", max_batch_items=max(1, count)
+                )
+                model_coefficients = prepared.model_coefficients
+            models.extend(int(value) for value in model_coefficients)
+            primes.append(int(row["prime"]))
+            target = (
+                (0, 1, 0, 0, 0, 0, 0, 0)
+                if target_rows is None
+                else target_rows[prime_index]
+            )
+            packed_targets.extend(int(value) for value in target)
+        output = kernel_uint64_zeros(kernel, pair_count * 8)
+        statuses = kernel_uint64_zeros(kernel, pair_count)
+        kernel_diagnostics = kernel_uint64_zeros(kernel, 3)
+        accepted = kernel(
+            output,
+            statuses,
+            kernel_diagnostics,
+            kernel_uint64_buffer(kernel, models),
+            first_view._output,
+            first_view._status_buffer,
+            kernel_uint64_buffer(kernel, packed_targets),
+            kernel_uint64_buffer(kernel, scalar_words),
+            kernel_uint64_buffer(kernel, primes),
+            count,
+            len(rows),
+            words_per_scalar,
+            1 if scalar_rows is None else 0,
+            int(self.jacobian.genus()),
+            primes[0],
+        )
+        if not accepted:
+            raise ArithmeticError("the fused packed witness kernel failed closed")
+        _check_cancel(self.cancel, "fused packed witness publication")
+        input_statuses = first_view._statuses
+        output_statuses = integer_buffer_values(statuses)
+        diagnostic_values = integer_buffer_values(kernel_diagnostics)
+        source_nonzero_count = int(diagnostic_values[1])
+        if packed:
+            result = tuple(
+                _PackedFiniteWitnessRows(
+                    output_statuses,
+                    prime_index * count,
+                    count,
+                    self.cancel,
+                )
+                for prime_index in range(len(rows))
+            )
+            record = {
+                "requested": algorithm,
+                "selected": "native",
+                "prime_count": len(rows),
+                "divisor_count": count,
+                "kernel_crossings": 1,
+                "retained_reduction_bytes": retained_bytes,
+                "fused_output_bytes": fused_bytes,
+                "available_count": int(diagnostic_values[0]),
+                "source_nonzero_count": source_nonzero_count,
+                "matches_target_count": int(diagnostic_values[2]),
+                "packed_results": True,
+            }
+            return (result, record) if diagnostics else result
+        answer = []
+        for prime_index in range(len(rows)):
+            if prime_index % 16 == 0:
+                _check_cancel(self.cancel, "fused packed witness decoding")
+            prime_answer = []
+            for divisor_index in range(count):
+                pair_index = prime_index * count + divisor_index
+                if int(input_statuses[pair_index]) != 1:
+                    prime_answer.append(None)
+                elif int(output_statuses[pair_index]) == 0:
+                    raise ArithmeticError("a fused packed witness item failed")
+                else:
+                    encoded_status = int(output_statuses[pair_index])
+                    prime_answer.append(encoded_status in (2, 4))
+            answer.append(tuple(prime_answer))
+        result = tuple(answer)
+        record = {
+            "requested": algorithm,
+            "selected": "native",
+            "prime_count": len(rows),
+            "divisor_count": count,
+            "kernel_crossings": 1,
+            "retained_reduction_bytes": retained_bytes,
+            "fused_output_bytes": fused_bytes,
+            "source_nonzero_count": source_nonzero_count,
+            "available_count": int(diagnostic_values[0]),
+            "matches_target_count": int(diagnostic_values[2]),
+            "packed_results": False,
+        }
+        return (result, record) if diagnostics else result
+
+    def reduce_prime(self, prime: Any) -> dict[str, Any]:
+        """Reduce the entire prepared basis at one checked good prime."""
+        checked_prime = _checked_integer(prime, "reduction prime")
+        if checked_prime < 2 or not sage.is_prime(checked_prime):
+            raise ValueError("reduction prime must be prime")
+        return self.reduce_many((checked_prime,))[0]
+
+    def iter_chunks(self, primes: Any, *, chunk_size: Any = 8) -> Any:
+        """Yield bounded tuples of reduction rows in canonical prime order."""
+        size = _checked_integer(chunk_size, "chunk_size")
+        if size < 1:
+            raise ValueError("chunk_size must be positive")
+        values = _normalize_primes(primes)
+        chunk = []
+        for prime in values:
+            _check_cancel(self.cancel, "prime iteration")
+            chunk.append(prime)
+            if len(chunk) >= size:
+                yield self.reduce_many(tuple(chunk))
+                chunk = []
+        if chunk:
+            yield self.reduce_many(tuple(chunk))
 
 
 def _is_power_of_prime(value: int, prime: int) -> bool:
@@ -859,19 +1702,7 @@ def _reduction_order_witness(
     prime = _canonical_positive_integer(row.get("prime"), "reduction prime")
     try:
         reduced = _reduce_rational_divisor(jacobian, divisor, prime)
-        if not reduced.scalar_multiple(order, algorithm="reference").is_zero():
-            raise ArithmeticError(
-                "the rational divisor order does not annihilate its reduction"
-            )
-        reduced_order = order
-        for factor_prime, exponent in order_factors:
-            for _index in range(int(exponent)):
-                candidate = reduced_order // int(factor_prime)
-                if not reduced.scalar_multiple(
-                    candidate, algorithm="reference"
-                ).is_zero():
-                    break
-                reduced_order = candidate
+        return _reduction_order_witness_from_reduced(reduced, order, order_factors, row)
     except _RationalDivisorNonintegralError as error:
         return {
             "prime": str(prime),
@@ -885,6 +1716,26 @@ def _reduction_order_witness(
             "reason": str(error),
         }
 
+
+def _reduction_order_witness_from_reduced(
+    reduced: Any,
+    order: int,
+    order_factors: Any,
+    row: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Factor-and-strip one already reduced point on the reference path."""
+    prime = _canonical_positive_integer(row.get("prime"), "reduction prime")
+    if not reduced.scalar_multiple(order, algorithm="reference").is_zero():
+        raise ArithmeticError(
+            "the rational divisor order does not annihilate its reduction"
+        )
+    reduced_order = order
+    for factor_prime, exponent in order_factors:
+        for _index in range(int(exponent)):
+            candidate = reduced_order // int(factor_prime)
+            if not reduced.scalar_multiple(candidate, algorithm="reference").is_zero():
+                break
+            reduced_order = candidate
     finite_order = _canonical_positive_integer(
         row.get("jacobian_order"), "finite Jacobian order"
     )
@@ -906,13 +1757,222 @@ def _reduction_order_witness(
     }
 
 
-def _order_certificate(
+def _scalar_zero_batch(
+    reduced_jacobian: Any,
+    divisors: Any,
+    scalars: Any,
+    *,
+    algorithm: str,
+) -> tuple[bool, ...]:
+    """Test varying scalar multiples with a prepared context when available."""
+    points = tuple(divisors)
+    values = tuple(int(value) for value in scalars)
+    if len(points) != len(values):
+        raise ValueError("a scalar batch has inconsistent lengths")
+    if not points:
+        return ()
+    if algorithm != "reference":
+        prepared_method = getattr(reduced_jacobian, "prepared_arithmetic", None)
+        if prepared_method is not None:
+            try:
+                prepared = prepared_method(
+                    algorithm=algorithm, max_batch_items=max(1, len(points))
+                )
+                results = prepared.scalar_batch(points, values)
+                return tuple(result.is_zero() for result in results)
+            except (ArithmeticError, NotImplementedError, RuntimeError, TypeError):
+                if algorithm != "auto":
+                    raise
+    return tuple(
+        point.scalar_multiple(value, algorithm="reference").is_zero()
+        for point, value in zip(points, values, strict=True)
+    )
+
+
+def _packed_scalar_batch_rows(
+    reduced_jacobian: Any,
+    packed_divisors: Any,
+    scalars: Any,
+    *,
+    algorithm: str,
+) -> tuple[tuple[int, ...], ...]:
+    """Multiply packed finite rows without publishing intermediate divisors."""
+    rows = tuple(tuple(int(word) for word in row) for row in packed_divisors)
+    values = tuple(int(value) for value in scalars)
+    if len(rows) != len(values):
+        raise ValueError("a packed scalar batch has inconsistent lengths")
+    if not rows:
+        return ()
+    if any(value < 0 for value in values):
+        raise ValueError("packed finite order tests require nonnegative scalars")
+    if algorithm != "reference":
+        module = __import__(
+            "sagejs.hyperelliptic_curves.jacobian_kernels",
+            fromlist=["packed_cantor_scalar_batch"],
+        )
+        kernel = module.packed_cantor_scalar_batch
+        if is_compiled(kernel):
+            prepared = reduced_jacobian.prepared_arithmetic(
+                algorithm="native", max_batch_items=max(1, len(rows))
+            )
+            maximum_bits = max((value.bit_length() for value in values), default=0)
+            words_per_scalar = max(1, (maximum_bits + 63) // 64)
+            scalar_words = []
+            for value in values:
+                magnitude = value
+                for _index in range(words_per_scalar):
+                    scalar_words.append(magnitude % (1 << 64))
+                    magnitude //= 1 << 64
+            output = kernel_uint64_zeros(kernel, len(rows) * 8)
+            statuses = kernel_uint64_zeros(kernel, len(rows))
+            accepted = kernel(
+                output,
+                statuses,
+                kernel_uint64_buffer(kernel, prepared.model_coefficients),
+                kernel_uint64_buffer(
+                    kernel, tuple(word for row in rows for word in row)
+                ),
+                kernel_uint64_buffer(kernel, scalar_words),
+                kernel_uint64_buffer(kernel, (0 for _row in rows)),
+                len(rows),
+                words_per_scalar,
+                int(reduced_jacobian.genus()),
+                int(reduced_jacobian.base_ring().characteristic()),
+            )
+            if not accepted:
+                raise ArithmeticError(
+                    "the packed finite scalar kernel rejected a torsion witness batch"
+                )
+            status_values = integer_buffer_values(statuses)
+            if any(int(value) == 0 for value in status_values):
+                raise ArithmeticError(
+                    "the packed finite scalar kernel returned a failed witness item"
+                )
+            output_values = integer_buffer_values(output)
+            return tuple(
+                tuple(int(output_values[8 * index + offset]) for offset in range(8))
+                for index in range(len(rows))
+            )
+        if algorithm != "auto":
+            raise NotImplementedError("the packed finite scalar kernel is unavailable")
+    prepared = reduced_jacobian.prepared_arithmetic(
+        algorithm="auto", max_batch_items=max(1, len(rows))
+    )
+    points = tuple(prepared.unpack(row) for row in rows)
+    products = tuple(
+        point.scalar_multiple(value, algorithm="reference")
+        for point, value in zip(points, values, strict=True)
+    )
+    return tuple(prepared.pack(product) for product in products)
+
+
+def _packed_scalar_zero_batch(
+    reduced_jacobian: Any,
+    packed_divisors: Any,
+    scalars: Any,
+    *,
+    algorithm: str,
+) -> tuple[bool, ...]:
+    """Test scalar zeroes without publishing intermediate finite divisors."""
+    products = _packed_scalar_batch_rows(
+        reduced_jacobian, packed_divisors, scalars, algorithm=algorithm
+    )
+    return tuple(row[0] == 0 for row in products)
+
+
+def _reduction_order_witnesses_batch_from_reduced(
+    reduced_jacobian: Any,
+    reduced_points: Any,
+    exact_orders: Any,
+    row: Mapping[str, Any],
+    *,
+    algorithm: str = "auto",
+    packed: bool = False,
+) -> tuple[dict[str, Any], ...]:
+    """Batch annihilation and factor stripping for one residue field."""
+    points = tuple(reduced_points)
+    exact = tuple(exact_orders)
+    if len(points) != len(exact):
+        raise ValueError("a reduced order batch has inconsistent lengths")
+    orders = [int(value[0]) for value in exact]
+    zero_batch = _packed_scalar_zero_batch if packed else _scalar_zero_batch
+    annihilated = zero_batch(reduced_jacobian, points, orders, algorithm=algorithm)
+    if not all(annihilated):
+        raise ArithmeticError(
+            "a rational divisor order does not annihilate its reduction"
+        )
+    factor_primes = []
+    for _order, factors in exact:
+        for factor_prime, _exponent in factors:
+            prime = int(factor_prime)
+            if prime not in factor_primes:
+                factor_primes.append(prime)
+    for factor_prime in factor_primes:
+        blocked: set[int] = set()
+        while True:
+            indices = [
+                index
+                for index, value in enumerate(orders)
+                if index not in blocked and value % factor_prime == 0
+            ]
+            if not indices:
+                break
+            candidates = [orders[index] // factor_prime for index in indices]
+            zeroes = zero_batch(
+                reduced_jacobian,
+                tuple(points[index] for index in indices),
+                candidates,
+                algorithm=algorithm,
+            )
+            changed = False
+            for index, candidate, is_zero in zip(
+                indices, candidates, zeroes, strict=True
+            ):
+                if is_zero:
+                    orders[index] = candidate
+                    changed = True
+                else:
+                    blocked.add(index)
+            # Points which fail at q never become q-divisible after stripping
+            # other primes.  Avoid repeating the same failed scalar test.
+            if not changed:
+                break
+    finite_order = _canonical_positive_integer(
+        row.get("jacobian_order"), "finite Jacobian order"
+    )
+    residue_prime = _canonical_positive_integer(row.get("prime"), "reduction prime")
+    answer = []
+    for (rational_order, _factors), reduced_order in zip(exact, orders, strict=True):
+        rational_value = int(rational_order)
+        if rational_value % reduced_order != 0:
+            raise ArithmeticError(
+                "a reduced divisor order does not divide its QQ order"
+            )
+        if finite_order % reduced_order != 0:
+            raise ArithmeticError("a reduced divisor order does not divide #J(F_p)")
+        quotient = rational_value // reduced_order
+        if not _is_power_of_prime(quotient, residue_prime):
+            raise ArithmeticError(
+                "the specialization order quotient is not residue-characteristic primary"
+            )
+        answer.append(
+            {
+                "prime": str(residue_prime),
+                "status": "verified",
+                "finite_jacobian_order": str(finite_order),
+                "reduction_order": str(reduced_order),
+                "specialization_kernel_quotient": str(quotient),
+            }
+        )
+    return tuple(answer)
+
+
+def _exact_order_without_reductions(
     jacobian: Any,
     divisor: Any,
     upper_bound: int,
     factors: Any,
-    reduction_rows: Any,
-) -> dict[str, Any]:
+) -> tuple[int, tuple[tuple[int, int], ...]]:
     if not divisor.scalar_multiple(upper_bound, algorithm="reference").is_zero():
         raise ValueError(
             "a supplied rational divisor is not torsion within the certified bound"
@@ -933,21 +1993,274 @@ def _order_certificate(
             remaining //= int(prime) ** exponent
     if remaining != 1:
         raise ArithmeticError("the divisor order has an unknown prime factor")
+    return order, tuple(order_factors)
 
-    reduction_witnesses = tuple(
-        _reduction_order_witness(jacobian, divisor, order, order_factors, row)
+
+def _packed_reduction_order_witness_matrix(
+    prepared: PreparedRationalReductionBatch,
+    reduction_rows: Any,
+    exact: Any,
+    finite_rows: Any,
+) -> tuple[tuple[dict[str, Any], ...], ...]:
+    """Factor and strip every prime/divisor pair through fused buffers."""
+    rows = tuple(reduction_rows)
+    exact_values = tuple(exact)
+    finite_values = tuple(finite_rows)
+    orders = [
+        [int(value[0]) for value in exact_values] for _prime_index in range(len(rows))
+    ]
+    initial_orders = tuple(int(value[0]) for value in exact_values)
+    initial_scalars: Any = tuple(tuple(row) for row in orders)
+    if initial_orders and all(value == initial_orders[0] for value in initial_orders):
+        initial_scalars = initial_orders[0]
+    annihilated = prepared.scalar_zero_many(rows, initial_scalars, packed=True)
+    for prime_index, prime_row in enumerate(annihilated):
+        for divisor_index, is_zero in enumerate(prime_row):
+            if is_zero is False:
+                raise ArithmeticError(
+                    "a rational divisor order does not annihilate its reduction"
+                )
+            if is_zero is None:
+                orders[prime_index][divisor_index] = 0
+    factor_primes = []
+    for _order, factors in exact_values:
+        for factor_prime, _exponent in factors:
+            value = int(factor_prime)
+            if value not in factor_primes:
+                factor_primes.append(value)
+    for factor_prime in factor_primes:
+        blocked: set[tuple[int, int]] = set()
+        while True:
+            selected = []
+            candidates = []
+            for prime_index, prime_orders in enumerate(orders):
+                scalar_row = []
+                for divisor_index, order in enumerate(prime_orders):
+                    key = (prime_index, divisor_index)
+                    if order > 0 and order % factor_prime == 0 and key not in blocked:
+                        selected.append(key)
+                        scalar_row.append(order // factor_prime)
+                    else:
+                        scalar_row.append(0)
+                candidates.append(tuple(scalar_row))
+            if not selected:
+                break
+            zeroes = prepared.scalar_zero_many(rows, tuple(candidates), packed=True)
+            changed = False
+            for prime_index, divisor_index in selected:
+                candidate = candidates[prime_index][divisor_index]
+                is_zero = zeroes[prime_index][divisor_index]
+                if is_zero is True:
+                    orders[prime_index][divisor_index] = candidate
+                    changed = True
+                else:
+                    blocked.add((prime_index, divisor_index))
+            if not changed:
+                break
+    answer = []
+    for prime_index, row in enumerate(finite_values):
+        residue_prime = _canonical_positive_integer(row.get("prime"), "reduction prime")
+        finite_order = _canonical_positive_integer(
+            row.get("jacobian_order"), "finite Jacobian order"
+        )
+        prime_answer = []
+        for divisor_index, (rational_order, _factors) in enumerate(exact_values):
+            reduced_order = orders[prime_index][divisor_index]
+            if reduced_order == 0:
+                prime_answer.append(
+                    {
+                        "prime": str(residue_prime),
+                        "status": "nonintegral",
+                        "reason": "the Mumford representative has a denominator divisible by p="
+                        + str(residue_prime),
+                    }
+                )
+                continue
+            rational_value = int(rational_order)
+            if rational_value % reduced_order != 0:
+                raise ArithmeticError(
+                    "a reduced divisor order does not divide its QQ order"
+                )
+            if finite_order % reduced_order != 0:
+                raise ArithmeticError("a reduced divisor order does not divide #J(F_p)")
+            quotient = rational_value // reduced_order
+            if not _is_power_of_prime(quotient, residue_prime):
+                raise ArithmeticError(
+                    "the specialization order quotient is not residue-characteristic primary"
+                )
+            prime_answer.append(
+                {
+                    "prime": str(residue_prime),
+                    "status": "verified",
+                    "finite_jacobian_order": str(finite_order),
+                    "reduction_order": str(reduced_order),
+                    "specialization_kernel_quotient": str(quotient),
+                }
+            )
+        answer.append(tuple(prime_answer))
+    return tuple(answer)
+
+
+def _order_certificates_batch(
+    jacobian: Any,
+    divisors: Any,
+    upper_bound: int,
+    factors: Any,
+    reduction_rows: Any,
+    *,
+    cancel: Any = None,
+) -> tuple[dict[str, Any], ...]:
+    """Build factor-and-strip certificates while sharing prime preparation.
+
+    Rational scalar arithmetic remains on the ordinary reference path.  Exact
+    coefficient reduction crosses the packed kernel once for all supported
+    prime/divisor pairs, while finite-field order tests consume the retained
+    packed rows.  Certificate verification reconstructs and replays each
+    reduction independently through the reference path.
+    """
+    checked = tuple(divisors)
+    exact = []
+    for index, divisor in enumerate(checked):
+        if index % 8 == 0:
+            _check_cancel(cancel, "rational order stripping")
+        order, order_factors = _exact_order_without_reductions(
+            jacobian, divisor, upper_bound, factors
+        )
+        exact.append((order, order_factors))
+
+    witnesses: list[list[Any]] = [[] for _divisor in checked]
+    packed_rows = {}
+    prepared_batch = None
+    if checked:
+        reduction_primes = tuple(
+            _canonical_positive_integer(row.get("prime"), "reduction prime")
+            for row in reduction_rows
+        )
+        try:
+            prepared_batch = PreparedRationalReductionBatch(
+                jacobian, checked, cancel=cancel
+            )
+            prepared_reductions = prepared_batch.reduce_many(
+                reduction_primes,
+                algorithm="auto",
+                allow_nonintegral=True,
+                packed=True,
+            )
+            packed_rows = {
+                int(prepared["prime"]): prepared for prepared in prepared_reductions
+            }
+        except (ArithmeticError, NotImplementedError, ValueError, ZeroDivisionError):
+            # An unsupported model or prime must not make certificate creation
+            # less capable.  The per-prime reference path below preserves the
+            # prior unsupported/nonintegral witness semantics.
+            packed_rows = {}
+            prepared_batch = None
+    fused_witnesses = None
+    if prepared_batch is not None and all(
+        _canonical_positive_integer(row.get("prime"), "reduction prime") in packed_rows
         for row in reduction_rows
-    )
-    return {
-        "schema": QQ_ORDER_SCHEMA,
-        "theorem": TORSION_ORDER_THEOREM,
-        "proof_algorithm": TORSION_ORDER_ALGORITHM,
-        "divisor": rational_mumford_data(jacobian, divisor),
-        "annihilating_upper_bound": str(upper_bound),
-        "order": str(order),
-        "order_factorization": _factorization_data(order_factors),
-        "reduction_witnesses": reduction_witnesses,
-    }
+    ):
+        ordered_rows = tuple(
+            packed_rows[
+                _canonical_positive_integer(row.get("prime"), "reduction prime")
+            ]
+            for row in reduction_rows
+        )
+        fused_witnesses = _packed_reduction_order_witness_matrix(
+            prepared_batch,
+            ordered_rows,
+            tuple(exact),
+            reduction_rows,
+        )
+    for row_index, row in enumerate(reduction_rows):
+        _check_cancel(cancel, "finite order witnesses")
+        if fused_witnesses is not None:
+            for divisor_index, witness in enumerate(fused_witnesses[row_index]):
+                witnesses[divisor_index].append(witness)
+            continue
+        prime = _canonical_positive_integer(row.get("prime"), "reduction prime")
+        packed_row = packed_rows.get(prime)
+        if packed_row is None:
+            try:
+                reduced_jacobian = _prepared_reduced_jacobian(jacobian, prime)
+            except NotImplementedError as error:
+                for values in witnesses:
+                    values.append(
+                        {
+                            "prime": str(prime),
+                            "status": "unsupported",
+                            "reason": str(error),
+                        }
+                    )
+                continue
+            packed_divisors = None
+        else:
+            reduced_jacobian = packed_row["reduced_jacobian"]
+            packed_divisors = packed_row["divisors"]
+        valid_indices = []
+        valid_reduced = []
+        for index, divisor in enumerate(checked):
+            try:
+                reduced = (
+                    _reduce_rational_divisors_prepared(
+                        jacobian,
+                        (divisor,),
+                        prime,
+                        reduced_jacobian,
+                        cancel=cancel,
+                    )[0]
+                    if packed_divisors is None
+                    else packed_divisors[index]
+                )
+                if reduced is None:
+                    raise _RationalDivisorNonintegralError(
+                        "the Mumford representative has a denominator divisible by p="
+                        + str(prime)
+                    )
+                valid_indices.append(index)
+                valid_reduced.append(reduced)
+                witness = None
+            except _RationalDivisorNonintegralError as error:
+                witness = {
+                    "prime": str(prime),
+                    "status": "nonintegral",
+                    "reason": str(error),
+                }
+            except NotImplementedError as error:
+                witness = {
+                    "prime": str(prime),
+                    "status": "unsupported",
+                    "reason": str(error),
+                }
+            if witness is not None:
+                witnesses[index].append(witness)
+        valid_witnesses = _reduction_order_witnesses_batch_from_reduced(
+            reduced_jacobian,
+            valid_reduced,
+            tuple(exact[index] for index in valid_indices),
+            row,
+            algorithm="auto",
+            packed=packed_divisors is not None,
+        )
+        for index, witness in zip(valid_indices, valid_witnesses, strict=True):
+            witnesses[index].append(witness)
+
+    answer = []
+    for index, divisor in enumerate(checked):
+        order, order_factors = exact[index]
+        answer.append(
+            {
+                "schema": QQ_ORDER_SCHEMA,
+                "theorem": TORSION_ORDER_THEOREM,
+                "proof_algorithm": TORSION_ORDER_ALGORITHM,
+                "divisor": rational_mumford_data(jacobian, divisor),
+                "annihilating_upper_bound": str(upper_bound),
+                "order": str(order),
+                "order_factorization": _factorization_data(order_factors),
+                "reduction_witnesses": tuple(witnesses[index]),
+            }
+        )
+    return tuple(answer)
 
 
 def _verify_order_certificate(
@@ -1012,6 +2325,7 @@ def certify_supplied_torsion(
     max_group_operations: Any = 10_000_000,
     max_baby_steps: Any = 1_000_000,
     max_memory_bytes: Any = 256 * 1024 * 1024,
+    cancel: Any = None,
 ) -> RationalTorsionData:
     """Verify supplied rational torsion and certify its generated subgroup.
 
@@ -1019,6 +2333,9 @@ def certify_supplied_torsion(
     equals the independently proved reduction upper bound.
     """
     _require_rational_jacobian(jacobian)
+    if cancel is not None and not callable(cancel):
+        raise TypeError("cancel must be callable")
+    _check_cancel(cancel, "torsion setup")
     upper_data = (
         torsion_bound(
             jacobian,
@@ -1052,15 +2369,18 @@ def certify_supplied_torsion(
         if checked not in checked_generators and not checked.is_zero():
             checked_generators.append(checked)
 
-    certificates = []
-    orders = []
     reduction_rows = upper_data.upper_bound_certificate["good_reductions"]
-    for divisor in checked_generators:
-        certificate = _order_certificate(
-            jacobian, divisor, upper, factors, reduction_rows
+    certificates = list(
+        _order_certificates_batch(
+            jacobian,
+            checked_generators,
+            upper,
+            factors,
+            reduction_rows,
+            cancel=cancel,
         )
-        certificates.append(certificate)
-        orders.append(int(certificate["order"]))
+    )
+    orders = [int(certificate["order"]) for certificate in certificates]
 
     budget = GroupOperationBudget(
         max_group_operations=max_group_operations,
@@ -1073,11 +2393,41 @@ def certify_supplied_torsion(
     )
     canonical_generators = tuple(reversed(basis))
     invariants = tuple(reversed(descending_orders))
+    certificate_cache = [
+        (rational_mumford_fingerprint(jacobian, divisor), certificate)
+        for divisor, certificate in zip(checked_generators, certificates, strict=True)
+    ]
+
+    def cached_certificate(divisor: Any) -> Any:
+        fingerprint = rational_mumford_fingerprint(jacobian, divisor)
+        for key, certificate in certificate_cache:
+            if key == fingerprint:
+                return certificate
+        return None
+
+    missing = tuple(
+        divisor
+        for divisor in canonical_generators
+        if cached_certificate(divisor) is None
+    )
+    missing_certificates = _order_certificates_batch(
+        jacobian,
+        missing,
+        upper,
+        factors,
+        reduction_rows,
+        cancel=cancel,
+    )
+    for divisor, certificate in zip(missing, missing_certificates, strict=True):
+        certificate_cache.append(
+            (rational_mumford_fingerprint(jacobian, divisor), certificate)
+        )
+
     basis_certificates = []
     for divisor, order in zip(canonical_generators, invariants, strict=True):
-        certificate = _order_certificate(
-            jacobian, divisor, upper, factors, reduction_rows
-        )
+        certificate = cached_certificate(divisor)
+        if certificate is None:
+            raise ArithmeticError("a torsion-basis certificate was not cached")
         if int(certificate["order"]) != int(order):
             raise ArithmeticError("a subgroup basis order is inconsistent")
         basis_certificates.append(certificate)
@@ -1280,14 +2630,18 @@ def verify_torsion_result_certificate(
 
 
 __all__ = [
+    "PreparedRationalReductionBatch",
     "QQ_DIVISOR_SCHEMA",
     "QQ_ORDER_SCHEMA",
+    "RATIONAL_REDUCTION_BATCH_ALGORITHM",
+    "RationalReductionCancelledError",
     "RationalTorsionCapabilityError",
     "RationalTorsionData",
     "RationalTwoTorsionData",
     "certify_supplied_torsion",
     "rational_mumford_data",
     "rational_mumford_from_data",
+    "rational_mumford_fingerprint",
     "rational_two_torsion",
     "torsion_bound",
     "verify_rational_mumford_divisor",

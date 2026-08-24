@@ -4,6 +4,7 @@ const RUNTIME_EXPORT_KEYS = Object.freeze([
   "allocate",
   "deallocate",
   "resultU64",
+  "resultFloat64",
   "resultLimbs",
   "resultLength",
   "resultSign",

@@ -414,11 +414,58 @@ function emitUint64Constant(context, node, operations, value) {
 }
 
 function lowerUint64Operand(node, context, operations) {
-  const literal = integerLiteral(node);
-  if (literal !== undefined) {
-    return emitUint64Constant(context, node, operations, literal);
+  return lowerExpression(node, context, operations, "uint64");
+}
+
+/*
+ * Python integer literals have no fixed-width type of their own.  Keep them
+ * exact unless their enclosing native operation supplies a uint64 context.
+ * This lets ordinary typed source spell `length - 1`, `length > 0`, and
+ * helper calls such as `span(output, 0, length)` without inserting a cast or
+ * silently promoting the machine-word value to GMP arithmetic.
+ *
+ * Comparisons additionally infer a literal's type from the opposite operand;
+ * this is safe because the result type is always bool.  Arithmetic without an
+ * enclosing uint64 context keeps literals exact, preserving intentional
+ * promotion idioms such as `exact_level = level + 0`.  When the left operand
+ * is a comparison literal, retain Python's left-to-right operation order even
+ * though the right side must be lowered first to discover its type.
+ */
+function lowerContextualBinaryOperands(
+  node,
+  context,
+  operations,
+  expectedType = undefined,
+  inferLiteralType = false,
+) {
+  if (expectedType === "uint64") {
+    return [
+      lowerExpression(node.left, context, operations, "uint64"),
+      lowerExpression(node.right, context, operations, "uint64"),
+    ];
   }
-  return lowerExpression(node, context, operations);
+  if (!inferLiteralType) {
+    return [
+      lowerExpression(node.left, context, operations),
+      lowerExpression(node.right, context, operations),
+    ];
+  }
+  const leftLiteral = integerLiteral(node.left);
+  const rightLiteral = integerLiteral(node.right);
+  if (leftLiteral !== undefined && rightLiteral === undefined) {
+    const rightOperations = [];
+    const right = lowerExpression(node.right, context, rightOperations);
+    const left = right.type === "uint64"
+      ? emitUint64Constant(context, node.left, operations, leftLiteral)
+      : emitConstant(context, node.left, operations, leftLiteral);
+    operations.push(...rightOperations);
+    return [left, right];
+  }
+  const left = lowerExpression(node.left, context, operations);
+  const right = rightLiteral !== undefined && left.type === "uint64"
+    ? emitUint64Constant(context, node.right, operations, rightLiteral)
+    : lowerExpression(node.right, context, operations);
+  return [left, right];
 }
 
 function emitBoolean(context, node, operations, value) {
@@ -634,7 +681,12 @@ function lowerCall(node, context, operations) {
       `${name} expects ${signature.parameters.length} arguments, got ${args.length}`,
     );
     const lowered = signature.parameters.map((param, index) => {
-      let value = lowerExpression(args[index], context, operations);
+      let value = lowerExpression(
+        args[index],
+        context,
+        operations,
+        param.type === "uint64" ? "uint64" : undefined,
+      );
       if (param.type === "Integer") {
         value = coerceInteger(value, context, args[index], operations);
       }
@@ -834,6 +886,13 @@ function lowerCall(node, context, operations) {
     if (arg === undefined) {
       if (param.type === "bool") {
         value = emitBoolean(context, node, operations, param.default);
+      } else if (param.type === "uint64") {
+        value = emitUint64Constant(
+          context,
+          node,
+          operations,
+          BigInt(param.default),
+        );
       } else {
         value = emitConstant(
           context,
@@ -843,7 +902,12 @@ function lowerCall(node, context, operations) {
         );
       }
     } else {
-      value = lowerExpression(arg, context, operations);
+      value = lowerExpression(
+        arg,
+        context,
+        operations,
+        param.type === "uint64" ? "uint64" : undefined,
+      );
     }
     const expectedType = signature.params[index].type;
     if (expectedType === "Integer") {
@@ -887,10 +951,12 @@ function lowerCall(node, context, operations) {
   return result;
 }
 
-function lowerExpression(node, context, operations) {
+function lowerExpression(node, context, operations, expectedType = undefined) {
   const integer = integerLiteral(node);
   if (integer !== undefined) {
-    return emitConstant(context, node, operations, integer);
+    return expectedType === "uint64"
+      ? emitUint64Constant(context, node, operations, integer)
+      : emitConstant(context, node, operations, integer);
   }
   const boolean = booleanLiteral(node);
   if (boolean !== undefined) {
@@ -1043,8 +1109,12 @@ function lowerExpression(node, context, operations) {
 
   const arithmetic = INTEGER_BINARY.get(node.operator);
   if (arithmetic !== undefined) {
-    let left = lowerExpression(node.left, context, operations);
-    let right = lowerExpression(node.right, context, operations);
+    let [left, right] = lowerContextualBinaryOperands(
+      node,
+      context,
+      operations,
+      expectedType,
+    );
     if (arithmetic === "mod" && left.type === "Integer" &&
         right.type === "uint64") {
       const target = temporary(context, node, "uint64");
@@ -1113,8 +1183,13 @@ function lowerExpression(node, context, operations) {
 
   const comparison = COMPARISONS.get(node.operator);
   if (comparison !== undefined) {
-    let left = lowerExpression(node.left, context, operations);
-    let right = lowerExpression(node.right, context, operations);
+    let [left, right] = lowerContextualBinaryOperands(
+      node,
+      context,
+      operations,
+      undefined,
+      true,
+    );
     if (left.type === "uint64" && right.type === "uint64") {
       const target = temporary(context, node, "bool");
       operations.push({
@@ -1303,7 +1378,7 @@ function lowerBufferAssignment(item, right, operator, context) {
       left: current,
       right: value.name,
     });
-    value = { name: target, type: "Integer" };
+    value = { name: target, type: valueType };
   }
   operations.push({
     kind: buffer.type === "IntegerBuffer"
@@ -1344,16 +1419,12 @@ function lowerAssignment(statement, context) {
       "native exact local annotation must be Integer, int, uint64, or bool",
     );
     const operations = [];
-    let value = lowerExpression(assign.value, context, operations);
-    if (declaredType === "uint64" && value.type === "Integer") {
-      const literal = integerLiteral(assign.value);
-      if (literal !== undefined) {
-        operations.length = 0;
-        value = emitUint64Constant(
-          context, assign.value, operations, literal,
-        );
-      }
-    }
+    let value = lowerExpression(
+      assign.value,
+      context,
+      operations,
+      declaredType === "uint64" ? "uint64" : undefined,
+    );
     if (declaredType === "Integer") {
       value = coerceInteger(value, context, assign.value, operations);
     }
@@ -1413,7 +1484,15 @@ function lowerAssignment(statement, context) {
       context.initialized.add(target);
       return operations;
     }
-    const value = lowerExpression(assign.right, context, operations);
+    const existingType = nodeType(assign.left) === "AST_SymbolRef"
+      ? context.variables.get(assign.left.name)
+      : undefined;
+    const value = lowerExpression(
+      assign.right,
+      context,
+      operations,
+      existingType === "uint64" ? "uint64" : undefined,
+    );
     const targets = sequenceElements(assign.left);
     if (targets !== undefined) {
       expect(
@@ -1466,7 +1545,7 @@ function lowerAssignment(statement, context) {
     `unsupported augmented operator ${assign.operator}`,
   );
   const type = context.variables.get(target);
-  if (type === "uint64" && bitwise !== undefined) {
+  if (type === "uint64") {
     expect(
       context,
       assign.left,
@@ -1482,7 +1561,7 @@ function lowerAssignment(statement, context) {
     );
     operations.push({
       kind: "uint64.binary",
-      operation: bitwise,
+      operation: bitwise ?? operation,
       target,
       left: target,
       right: right.name,
@@ -1627,7 +1706,12 @@ function lowerStatements(statements, context) {
     if (nodeType(statement) === "AST_Return") {
       context.scalarCoercions = new Map();
       const operations = [];
-      let value = lowerExpression(statement.value, context, operations);
+      let value = lowerExpression(
+        statement.value,
+        context,
+        operations,
+        context.returnType === "uint64" ? "uint64" : undefined,
+      );
       if (context.returnType === "Integer") {
         value = coerceInteger(value, context, statement.value, operations);
       }

@@ -1,0 +1,129 @@
+{
+  "schema": "sagejs.hyperelliptic/genus2-height-competitive-benchmark-v1",
+  "commit": "11a5a0136315e90d1339f21217c4ea9f888761d1",
+  "host": {
+    "hostname": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.5.1",
+    "cpus": 8,
+    "loadAverage": [
+      0.66,
+      0.95,
+      1.05
+    ]
+  },
+  "contract": {
+    "curve": "y^2=x^5-x+1",
+    "pointP": "[x,1]",
+    "pointQ": "[x-1,1]",
+    "normalization": "Cassels-Flynn 2Theta principal polarization",
+    "oracle": "0.55175981952139493925311708933354526634108654109670",
+    "oracleConfidenceBits": 96,
+    "highPrecisionValidation": {
+      "status": "independently reproduced",
+      "methods": [
+        "180-decimal one-log-per-step Flynn recurrence",
+        "exact Mumford-to-Kummer doubling through 8 steps",
+        "grouped outward interval recurrence"
+      ],
+      "note": "The independent recurrences agree with Sage.js beyond the 96-bit prefix trusted from Magma 2.18-5."
+    },
+    "targets": [
+      64
+    ],
+    "repetitions": 7,
+    "modes": [
+      "resident object cold",
+      "resident prepared-context warm"
+    ]
+  },
+  "sagejs": {
+    "rows": [
+      {
+        "targetBits": 64,
+        "steps": 37,
+        "workingPrecisionBits": 260,
+        "achievedEnclosureWidthBits": 67,
+        "objectColdMilliseconds": 372.13826179504395,
+        "warmMilliseconds": 11.945554188319615,
+        "enclosure": {
+          "lower": "511115378076694730929095947187847075241605143809695671427359498361820516812411/926336713898529563388567880069503262826159877325124512315660672063305037119488",
+          "upper": "1022230756153389461865461937792843060988284539878242561240757103554638218480431/1852673427797059126777135760139006525652319754650249024631321344126610074238976",
+          "rigorous": true
+        },
+        "finiteCacheHits": 0,
+        "archimedeanCacheHits": 0,
+        "minimumStateWidthBits": 120,
+        "magmaOracleCompatibleAtConfidenceBits": true,
+        "finiteRecurrenceBackend": "native-integer-buffer",
+        "archimedeanRecurrenceBackend": "native-integer-buffer",
+        "canonicalHeightCacheHits": 7,
+        "stageMilliseconds": {
+          "contextAndSpecializedQuartics": 10.678529739379883,
+          "initialAutomaticBounds": 21.326065063476562,
+          "guardedAutomaticBounds": 0,
+          "finiteCorrection": 29.268503189086914,
+          "archimedeanCorrection": 100.91328620910645,
+          "cachedAssemblyAndExactOracle": 203.8288116455078
+        }
+      }
+    ],
+    "rank2": {
+      "targetBits": 64,
+      "pairingObjectColdMilliseconds": 870.1181411743164,
+      "pairingWarmMilliseconds": 21.072217396327428,
+      "regulatorWarmMilliseconds": 29.124021530151367,
+      "regulatorEnclosure": {
+        "lower": "1647920104494733827/18446744073709551616",
+        "upper": "1647920104494733829/18446744073709551616",
+        "rigorous": true
+      }
+    },
+    "rank4": {
+      "targetBits": 64,
+      "basis": [
+        "P",
+        "Q",
+        "P+Q",
+        "P-Q"
+      ],
+      "pairingObjectColdMilliseconds": 2358.2472801208496,
+      "pairingWarmMilliseconds": 37.353345326014924,
+      "pairingCacheHits": 7,
+      "canonicalHeightCacheEntries": 8
+    }
+  },
+  "magma": {
+    "executable": "/home/user/bin/magma",
+    "version": "2.18-5",
+    "rows": [
+      {
+        "targetBits": 64,
+        "accuracyMatchedToTarget": true,
+        "demonstratedAccuracyBits": 96,
+        "objectColdMilliseconds": 190,
+        "warmMilliseconds": 8.571,
+        "value": "0.5517598195213949392531170893335037073943742052886718733265\\"
+      }
+    ],
+    "rank2": {
+      "targetBits": 64,
+      "pairingObjectColdMilliseconds": 40,
+      "pairingWarmMilliseconds": 42.857,
+      "regulatorWarmMilliseconds": 40,
+      "regulator": "0.089333927868786494835785498947016199800262023229845\\"
+    },
+    "rank4": {
+      "targetBits": 64,
+      "basis": [
+        "P",
+        "Q",
+        "P+Q",
+        "P-Q"
+      ],
+      "pairingObjectColdMilliseconds": 190,
+      "pairingWarmMilliseconds": 194.286
+    }
+  }
+}

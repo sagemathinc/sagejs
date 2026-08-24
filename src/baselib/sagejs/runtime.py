@@ -155,6 +155,70 @@ def uint64_buffer(source):
     })()"""
 
 
+def immutable_uint64_capsule(source, owner, model, format, count):
+    """Copy unsigned words into opaque immutable runtime-owned storage.
+
+    The capsule exposes neither its words nor its binding. `owner` is matched
+    by identity; `model`, `format`, and `count` are matched exactly whenever a
+    consumer requests either a native lease or a dynamic copy.
+    """
+    try:
+        return r"%js globalThis.__sagejs_create_immutable_uint64_capsule__(source, owner, model, format, count)"
+    except:
+        message = r"%js ρσ_last_exception.message"
+        if r"%js ρσ_last_exception instanceof RangeError":
+            raise ValueError(message)
+        raise TypeError(message)
+
+
+def immutable_uint64_capsule_lease(capsule, owner, model, format, count):
+    """Authorize a short-lived read-only native lease for `capsule`."""
+    try:
+        return r"%js globalThis.__sagejs_authorize_immutable_uint64_capsule__(capsule, owner, model, format, count)"
+    except:
+        message = r"%js ρσ_last_exception.message"
+        if r"%js ρσ_last_exception instanceof RangeError":
+            raise ValueError(message)
+        raise TypeError(message)
+
+
+def immutable_uint64_capsule_copy(capsule, owner, model, format, count):
+    """Return an owned mutable copy for source-transparent dynamic fallback."""
+    try:
+        return r"%js globalThis.__sagejs_copy_immutable_uint64_capsule__(capsule, owner, model, format, count)"
+    except:
+        message = r"%js ρσ_last_exception.message"
+        if r"%js ρσ_last_exception instanceof RangeError":
+            raise ValueError(message)
+        raise TypeError(message)
+
+
+def immutable_uint64_capsule_gather(
+    destination_owner,
+    source_owners,
+    source_model,
+    source_format,
+    source_count,
+    item_words,
+    destination_model,
+    destination_format,
+    destination_count,
+):
+    """Gather privately registered rows into one new opaque capsule.
+
+    `source_owners` must be an immutable tuple. Source and destination logical
+    bindings are explicit; the dynamic path must request an owned copy before
+    reading the gathered words.
+    """
+    try:
+        return r"%js globalThis.__sagejs_gather_immutable_uint64_capsules__(destination_owner, source_owners, source_model, source_format, source_count, item_words, destination_model, destination_format, destination_count)"
+    except:
+        message = r"%js ρσ_last_exception.message"
+        if r"%js ρσ_last_exception instanceof RangeError":
+            raise ValueError(message)
+        raise TypeError(message)
+
+
 def integer_buffer(source, minimum_word_capacity=1):
     """Pack primitive exact integers into owned signed-limb storage."""
     return ρσ_integer_buffer(source, minimum_word_capacity)

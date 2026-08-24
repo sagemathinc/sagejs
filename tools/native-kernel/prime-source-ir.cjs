@@ -13,6 +13,7 @@ const {
   hasUint64Bitwise,
   uint64BitwiseOperation,
 } = require("./uint64-operations.cjs");
+const { canonicalType } = require("./integer-ir.cjs");
 
 /*
  * Source-transparent lowering for the prime-field compiler experiment.
@@ -514,6 +515,53 @@ function lowerBufferAssignment(item, rightNode, operator, context) {
 
 function lowerAssignment(statement, context) {
   const assign = statement.body;
+  if (nodeType(assign) === "AST_AnnotatedAssignment") {
+    expect(
+      context,
+      assign.target,
+      nodeType(assign.target) === "AST_SymbolRef",
+      "native local annotations require a local-name target",
+    );
+    expect(
+      context,
+      assign,
+      assign.value !== null && assign.value !== undefined,
+      "native local annotations require an initializer",
+    );
+    const declaredType = canonicalType(assign.annotation);
+    expect(
+      context,
+      assign.annotation,
+      ["bool", "uint64", "PrimeModulusValue"].includes(declaredType),
+      "native prime-source local annotation must be uint64, bool, or PrimeFieldModulus",
+    );
+    const operations = [];
+    const value = lowerExpression(assign.value, context, operations);
+    expect(
+      context,
+      assign.value,
+      value.type === declaredType ||
+        (declaredType === "PrimeModulusValue" && value.type === "uint64"),
+      `local ${assign.target.name} expects ${declaredType}, got ${value.type}`,
+    );
+    ensureVariable(context, assign.target, assign.target.name, declaredType);
+    operations.push(
+      declaredType === "PrimeModulusValue" && value.type === "uint64"
+        ? {
+            kind: "source.modulus.from_uint64",
+            target: assign.target.name,
+            source: value.name,
+          }
+        : copyOperation(
+            declaredType,
+            assign.target.name,
+            value.name,
+            false,
+          ),
+    );
+    context.initialized.add(assign.target.name);
+    return operations;
+  }
   if (nodeType(assign) === "AST_ItemAccess" && assign.assignment !== undefined) {
     return lowerBufferAssignment(
       assign,
@@ -548,7 +596,7 @@ function lowerAssignment(statement, context) {
   const symbol = assign.operator.endsWith("=") ? assign.operator.slice(0, -1) : "";
   const bitwise = uint64BitwiseOperation(symbol);
   expect(context, assign,
-    ["+", "-", "*"].includes(symbol) || bitwise !== undefined,
+    ["+", "-", "*", "//", "%"].includes(symbol) || bitwise !== undefined,
     `unsupported augmented operator ${assign.operator}`);
   expect(context, assign.left, context.variables.get(target) === "uint64" &&
     context.initialized.has(target), `augmented target ${target} must be uint64`);

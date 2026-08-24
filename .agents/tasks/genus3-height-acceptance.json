@@ -1,0 +1,130 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "genus3-height-acceptance",
+  "title": "Genus3 Height Acceptance",
+  "lane": "hyperelliptic-curves",
+  "status": "review",
+  "owner": "user",
+  "objective": "Capture equal-contract current, historical direct, and descriptive Magma genus-3 radius-6 height timings with exact finite replay and honest numerical labels",
+  "base_commit": "b490c744945d4dfd3cd31606168ebeb67ce84441",
+  "claims": [
+    "bench/hyperelliptic/competitive/genus3-height.cjs",
+    "bench/hyperelliptic/competitive/genus3-height-magma.m",
+    "bench/hyperelliptic/competitive/genus3-height-receipt-linux-x64.json",
+    "bench/hyperelliptic/competitive/GENUS3-HEIGHT-linux-x64.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "test/hyperelliptic-bsd-oracles/sagejs-genus3-height-radius6.py",
+    "test/hyperelliptic-bsd-oracles/sagejs-genus3-height-radius6.json",
+    "test/hyperelliptic-bsd-oracles/magma-genus3-height.m",
+    "test/hyperelliptic-bsd-oracles/magma-genus3-height.json",
+    "test/hyperelliptic-bsd-oracles/expected-magma-2.18-5-genus3-height.txt",
+    "302bf8ccb3e3b71901e646f9ee75877d61640298"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "exact finite-plan replay",
+      "Magma 2.18-5 pinned numerical fixture",
+      "exact preoptimization Sage.js checkout 302bf8ccb3e3"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "node bench/hyperelliptic/competitive/genus3-height.cjs --check",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/hyperelliptic/competitive/genus3-height.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.053,
+      "started_at": "2026-08-23T17:21:39.889Z",
+      "commit": "b490c744945d4dfd3cd31606168ebeb67ce84441",
+      "workspace_fingerprint": "c8ef6d4b068a4bfb3f0728306dd39ccc8a412a3dd30c6664aebb3ca22e35850b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.985,
+      "started_at": "2026-08-23T17:21:44.679Z",
+      "commit": "b490c744945d4dfd3cd31606168ebeb67ce84441",
+      "workspace_fingerprint": "c8ef6d4b068a4bfb3f0728306dd39ccc8a412a3dd30c6664aebb3ca22e35850b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.484,
+      "started_at": "2026-08-23T17:21:55.679Z",
+      "commit": "b490c744945d4dfd3cd31606168ebeb67ce84441",
+      "workspace_fingerprint": "c8ef6d4b068a4bfb3f0728306dd39ccc8a412a3dd30c6664aebb3ca22e35850b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/hyperelliptic/competitive/genus3-height.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.059,
+      "started_at": "2026-08-23T19:15:59.797Z",
+      "commit": "30b48fd873d7ef2035a61900ba87a4605cadb38f",
+      "workspace_fingerprint": "ff845d83a96341e914c5a9c512ad8678cff6aa8210a499099621864c7184e789",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.376,
+      "started_at": "2026-08-23T19:16:00.501Z",
+      "commit": "30b48fd873d7ef2035a61900ba87a4605cadb38f",
+      "workspace_fingerprint": "ff845d83a96341e914c5a9c512ad8678cff6aa8210a499099621864c7184e789",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.702,
+      "started_at": "2026-08-23T19:16:08.780Z",
+      "commit": "30b48fd873d7ef2035a61900ba87a4605cadb38f",
+      "workspace_fingerprint": "ff845d83a96341e914c5a9c512ad8678cff6aa8210a499099621864c7184e789",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 892.21,
+      "started_at": "2026-08-23T19:16:56.578Z",
+      "commit": "30b48fd873d7ef2035a61900ba87a4605cadb38f",
+      "workspace_fingerprint": "ff845d83a96341e914c5a9c512ad8678cff6aa8210a499099621864c7184e789",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added the genus-3 radius-6 equal-contract harness and durable Linux x64 receipt. On quiet bench-1 with Node 22.22.2, current process-cold Sage.js measured 55797.37 ms versus 406497.25 ms at exact historical commit 302bf8cc, passing the same-host 5x gate at 7.285x. The receipt preserves exact complete finite replay, radius-refinement-stable/nonrigorous labels, and descriptive non-gating Magma 2.18-5 timing and accuracy evidence.",
+    "risks": [
+      "The 7.285x performance claim is intentionally limited to this pinned workload, quiet bench-1 host, Node 22.22.2 build, and one exact historical process-cold replay.",
+      "Neither Sage.js nor Magma is labeled rigorous for the archimedean numerical result; Magma does not expose the exact finite-plan certificate or radius-refinement witness."
+    ],
+    "next_steps": [
+      "Review and integrate branch agent/genus3-height-acceptance through receipt commit 30b48fd873d7ef2035a61900ba87a4605cadb38f."
+    ]
+  }
+}

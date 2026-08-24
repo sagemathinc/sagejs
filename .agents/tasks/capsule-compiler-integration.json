@@ -1,0 +1,55 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "capsule-compiler-integration",
+  "title": "Integrate immutable capsules with compiler effects",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Declare immutable UInt64 capsule runtime boundaries and prove transitive prime-source buffer effects so read-only native leases work only for source-proven read parameters",
+  "base_commit": "fc335f10c93a37719280134d256902457cb1f0f0",
+  "claims": [
+    ".agents/lanes.json",
+    "tools/python/contract.ts",
+    "tools/ffi/boundary-audit.cjs",
+    "test/runtime-intrinsics.cjs",
+    "test/immutable-uint64-capsule.cjs",
+    "src/baselib/sagejs/runtime.py",
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/ir.cjs",
+    "tools/native-kernel/test/immutable-capsule-effects.cjs",
+    "tools/native-kernel/test/immutable_capsule_effects_witness.py",
+    "architecture/native-boundaries.json",
+    "architecture/wasm-capabilities.json",
+    "architecture/wasm-capabilities-report.json",
+    "architecture/wasm-workload-dashboard.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython/dynamic/native neutral nested-helper differential",
+      "inspectable prime-source effect metadata and emitted wrapper mutability"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

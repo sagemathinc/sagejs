@@ -556,13 +556,28 @@ function comparison(operation) {
   }[operation];
 }
 
-function emitStatementBody(operation, indent) {
+function emitStatementBody(operation, indent, context = {}) {
   const target = operation.target === undefined ? null : cName(operation.target);
   if (operation.kind === "source.uint64.constant") {
     return `${indent}${target} = UINT64_C(${operation.value});`;
   }
   if (operation.kind === "source.bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
+  }
+  if (operation.kind === "source.modulus.from_uint64") {
+    return [
+      `${indent}${target} = ${cName(operation.source)};`,
+      `${indent}if (${target} < UINT64_C(2) || ` +
+        `${target} > (uint64_t) UINT32_MAX)`,
+      `${indent}{`,
+      statusFailure(
+        "local PrimeFieldModulus must be between 2 and 2^32 - 1",
+        `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}nmod_init(&${target}_nmod, (ulong) ${target});`,
+    ].join("\n");
   }
   if (operation.kind === "source.copy") {
     if (operation.type === "UInt64Buffer") {
@@ -681,6 +696,20 @@ function emitStatementBody(operation, indent) {
     const argumentsList = operation.arguments.map((argument) =>
       cName(argument.name)
     );
+    const wordCallee = context.wordFunctions?.get(operation.function);
+    const directlyWordCallable = wordCallee !== undefined &&
+      context.wordMayPromote?.get(operation.function) === false &&
+      [wordCallee.returnType, ...wordCallee.params.map(({ type }) => type)]
+        .every((type) => ["bool", "uint64", "UInt64Buffer"].includes(type));
+    if (directlyWordCallable) {
+      return [
+        `${indent}if (word_${operation.function}(`,
+        `${indent}        status, &${target}` +
+          `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}) ` +
+          "!= SAGEJS_WORD_OK)",
+        `${indent}    goto fail;`,
+      ].join("\n");
+    }
     return [
       `${indent}if (!sagejs_kernel_${operation.function}(`,
       `${indent}        status, &${target}` +
@@ -742,7 +771,7 @@ function emitStatementBody(operation, indent) {
       `${indent}if (${test})`,
       `${indent}{`,
       ...operation.right.operations.map((item) =>
-        emitStatement(item, `${indent}    `)
+        emitStatement(item, `${indent}    `, context)
       ),
       `${indent}    ${target} = ${cName(operation.right.value)};`,
       `${indent}}`,
@@ -796,17 +825,23 @@ function emitStatementBody(operation, indent) {
   }
   if (operation.kind === "source.if") {
     const lines = [
-      ...operation.condition.operations.map((item) => emitStatement(item, indent)),
+      ...operation.condition.operations.map((item) =>
+        emitStatement(item, indent, context)
+      ),
       `${indent}if (${cName(operation.condition.value)})`,
       `${indent}{`,
-      ...operation.body.map((item) => emitStatement(item, `${indent}    `)),
+      ...operation.body.map((item) =>
+        emitStatement(item, `${indent}    `, context)
+      ),
       `${indent}}`,
     ];
     if (operation.alternative.length > 0) {
       lines.push(
         `${indent}else`,
         `${indent}{`,
-        ...operation.alternative.map((item) => emitStatement(item, `${indent}    `)),
+        ...operation.alternative.map((item) =>
+          emitStatement(item, `${indent}    `, context)
+        ),
         `${indent}}`,
       );
     }
@@ -816,9 +851,13 @@ function emitStatementBody(operation, indent) {
     return [
       `${indent}for (;;)`,
       `${indent}{`,
-      ...operation.condition.operations.map((item) => emitStatement(item, `${indent}    `)),
+      ...operation.condition.operations.map((item) =>
+        emitStatement(item, `${indent}    `, context)
+      ),
       `${indent}    if (!${cName(operation.condition.value)}) break;`,
-      ...operation.body.map((item) => emitStatement(item, `${indent}    `)),
+      ...operation.body.map((item) =>
+        emitStatement(item, `${indent}    `, context)
+      ),
       `${indent}}`,
     ].join("\n");
   }
@@ -828,7 +867,9 @@ function emitStatementBody(operation, indent) {
       `${indent}     ${cName(operation.index)} < ${cName(operation.stop)};`,
       `${indent}     ${cName(operation.index)}++)`,
       `${indent}{`,
-      ...operation.body.map((item) => emitStatement(item, `${indent}    `)),
+      ...operation.body.map((item) =>
+        emitStatement(item, `${indent}    `, context)
+      ),
       `${indent}}`,
     ].join("\n");
   }
@@ -856,8 +897,8 @@ function emitStatementBody(operation, indent) {
   throw new Error(`unsupported source-transparent C operation ${operation.kind}`);
 }
 
-function emitStatement(operation, indent) {
-  const body = emitStatementBody(operation, indent);
+function emitStatement(operation, indent, context) {
+  const body = emitStatementBody(operation, indent, context);
   const comment = cOperationComment(operation, indent);
   const directive = cSourceDirective(operation);
   return [comment, directive, body].filter(Boolean).join("\n");
@@ -866,7 +907,9 @@ function emitStatement(operation, indent) {
 function primeSourceCoreSignature(fn, prototype = false) {
   const output = fn.returnType === "PrimeFieldMatrix"
     ? "nmod_mat_struct **sagejs_native_output"
-    : "uint64_t *sagejs_native_output";
+    : fn.returnType === "bool"
+      ? "int *sagejs_native_output"
+      : "uint64_t *sagejs_native_output";
   const params = fn.params.map((param) => {
     if (param.type === "PrimeFieldMatrix") {
       return `const nmod_mat_struct *${cName(param.name)}`;
@@ -888,7 +931,7 @@ function primeSourceCoreSignature(fn, prototype = false) {
   ].join(", ") + `)${prototype ? ";" : ""}`;
 }
 
-function emitPrimeSourceCoreFunction(fn) {
+function emitPrimeSourceCoreFunction(fn, context = {}) {
   const buffers = fn.locals.filter((local) =>
     local.type === "UInt64Buffer" && local.ownership !== "borrowed"
   );
@@ -948,7 +991,7 @@ ${fn.locals.map((local) => declaration(local, fn)).join("\n")}
 ${modulusInitialization}
 ${recordModulusValidation}
 
-${fn.body.map((item) => emitStatement(item, "    ")).join("\n")}
+${fn.body.map((item) => emitStatement(item, "    ", context)).join("\n")}
     sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
         "source-transparent kernel did not return");
     goto fail;
@@ -1057,7 +1100,9 @@ function emitPrimeSourceNodeAdapter(fn) {
   }
   const outputDeclaration = fn.returnType === "PrimeFieldMatrix"
     ? "    nmod_mat_struct *output = NULL;"
-    : "    uint64_t output = 0;";
+    : fn.returnType === "bool"
+      ? "    int output = 0;"
+      : "    uint64_t output = 0;";
   const result = fn.returnType === "PrimeFieldMatrix"
     ? [
       "    result = sagejs_source_wrap_matrix(env, output);",

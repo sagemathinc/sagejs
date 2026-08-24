@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import cmath
 import math
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 import sagejs as sage
 import sagejs.runtime as runtime
@@ -75,13 +75,53 @@ class HyperellipticLseriesNumericalIndeterminacyError(ArithmeticError):
 
 _CENTRAL_PLAN_CACHE: dict[tuple[int, int, int, int, bool], dict[str, Any]] = {}
 _CENTRAL_WEIGHT_CACHE: dict[tuple[int, int, str, int], Any] = {}
+_NATIVE_CENTRAL_WEIGHT_TABLE_CACHE: dict[tuple[Any, ...], Any] = {}
 _CENTRAL_CACHE_LIMIT = 256
+_NATIVE_CENTRAL_WEIGHT_TABLE_CACHE_LIMIT = 8
+_MAX_THETA_DIRICHLET_UPDATES = 200_000_000
+_MAX_THETA_OUTER_UPDATES = 100_000_000
+
+
+def _clone_public_data(value: Any) -> Any:
+    """Detach nested public diagnostics from reusable internal state."""
+    if isinstance(value, dict):
+        return {key: _clone_public_data(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_clone_public_data(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_clone_public_data(item) for item in value)
+    return value
+
+
+def _curve_model_key(curve: Any) -> tuple[Any, ...]:
+    """Return an exact key for the coefficient model bound to a prefix."""
+    f_value, h_value = curve.hyperelliptic_polynomials()
+    return (
+        str(curve.base_ring()),
+        int(curve.genus()),
+        tuple(str(value) for value in f_value.list()),
+        tuple(str(value) for value in h_value.list()),
+    )
+
+
+def _coefficient_prefix_matches_curve(prefix: Any, curve: Any) -> bool:
+    """Check ordinary and exact quadratic-twist coefficient views."""
+    if isinstance(prefix, GlobalCoefficientPrefix):
+        return prefix.model_key == _curve_model_key(curve)
+    base = getattr(prefix, "base", None)
+    source = getattr(curve, "source", None)
+    if not isinstance(base, GlobalCoefficientPrefix) or source is None:
+        return False
+    if getattr(prefix, "discriminant", None) != getattr(curve, "discriminant", None):
+        return False
+    return base.model_key == _curve_model_key(source)
 
 
 def clear_central_weight_cache() -> None:
     """Clear bounded process-local central plan and reference-weight caches."""
     _CENTRAL_PLAN_CACHE.clear()
     _CENTRAL_WEIGHT_CACHE.clear()
+    _NATIVE_CENTRAL_WEIGHT_TABLE_CACHE.clear()
 
 
 def central_weight_cache_info() -> dict[str, int]:
@@ -89,7 +129,9 @@ def central_weight_cache_info() -> dict[str, int]:
     return {
         "curve_plans": len(_CENTRAL_PLAN_CACHE),
         "reference_weights": len(_CENTRAL_WEIGHT_CACHE),
+        "native_universal_tables": len(_NATIVE_CENTRAL_WEIGHT_TABLE_CACHE),
         "limit": _CENTRAL_CACHE_LIMIT,
+        "native_universal_table_limit": _NATIVE_CENTRAL_WEIGHT_TABLE_CACHE_LIMIT,
     }
 
 
@@ -98,13 +140,21 @@ class GlobalCoefficientPrefix:
 
     def __init__(self, curve: Any) -> None:
         self.curve = curve
-        self.values = [0, 1]
+        self._model_key = _curve_model_key(curve)
+        self._values = [0, 1]
         self.extensions = 0
         self.backend_counts: dict[str, int] = {}
         self.bad_primes = {
             int(row.prime): tuple(int(value) for value in row.coefficients)
             for row in curve.global_reduction().local_data
         }
+        self._euler_factors: dict[int, tuple[int, ...]] = dict(self.bad_primes)
+        self._reciprocal_coefficients: dict[int, list[Any]] = {}
+        self._local_prime_bound = 1
+        self._coefficient_stream = "public-local-data"
+        self._prepared_evaluation_cache: dict[tuple[Any, ...], dict[str, Any]] = {}
+        self._prepared_evaluation_cache_hits = 0
+        self._prepared_evaluation_cache_subsumption_hits = 0
 
     @staticmethod
     def _smallest_prime_table(bound: int) -> list[int]:
@@ -119,47 +169,103 @@ class GlobalCoefficientPrefix:
                         table[multiple] = prime
         return table
 
+    @property
+    def values(self) -> tuple[int, ...]:
+        """Return an immutable snapshot of the exact cached prefix."""
+        return tuple(self._values)
+
+    @property
+    def model_key(self) -> tuple[Any, ...]:
+        """Return the exact hyperelliptic model identity for this prefix."""
+        return self._model_key
+
     def through(self, cutoff: int) -> list[int]:
         if cutoff < 1:
             cutoff = 1
-        if cutoff < len(self.values):
-            return self.values[: cutoff + 1]
+        if cutoff < len(self._values):
+            return list(self._values[: cutoff + 1])
+        previous_cutoff = len(self._values) - 1
         smallest = self._smallest_prime_table(cutoff)
-        local: dict[int, tuple[Any, ...]] = {}
-        for record in self.curve.local_data(2, cutoff, algorithm="auto"):
-            prime = int(record.prime)
+        start = max(2, self._local_prime_bound + 1)
+        packed_chunks = None
+        try:
+            from . import frobenius
+
+            packed_function = getattr(
+                frobenius, "rational_local_coefficient_chunks", None
+            )
+            if packed_function is not None:
+                packed_chunks = packed_function(
+                    self.curve,
+                    start,
+                    cutoff,
+                    algorithm="auto",
+                )
+        except NotImplementedError:
+            packed_chunks = None
+        if packed_chunks is not None:
+            self._coefficient_stream = "packed-local-coefficients"
+            rows = (row for chunk in packed_chunks for row in chunk)
+        else:
+            rows = (
+                (
+                    int(record.prime),
+                    None
+                    if record.coefficients is None
+                    else tuple(int(value) for value in record.coefficients),
+                    str(record.backend),
+                )
+                for record in self.curve.local_data(start, cutoff, algorithm="auto")
+                if record.available
+            )
+        for prime_value, coefficient_values, backend_value in rows:
+            prime = int(prime_value)
             if prime in self.bad_primes:
                 coefficients = self.bad_primes[prime]
                 backend = "certified-bad-reduction"
-            elif record.available and record.coefficients is not None:
-                coefficients = tuple(int(value) for value in record.coefficients)
-                backend = record.backend
+            elif coefficient_values is not None:
+                coefficients = tuple(int(value) for value in coefficient_values)
+                backend = str(backend_value)
             else:
                 raise ArithmeticError(
                     "a supposedly good prime has no certified Euler factor: p="
                     + str(prime)
                 )
+            self._euler_factors[prime] = coefficients
             self.backend_counts[backend] = self.backend_counts.get(backend, 0) + 1
-            exponent = 0
+        self._local_prime_bound = cutoff
+        for prime in range(2, cutoff + 1):
+            if smallest[prime] != prime:
+                continue
+            coefficients = self._euler_factors.get(prime)
+            if coefficients is None:
+                raise ArithmeticError(
+                    "a supposedly good prime has no certified Euler factor: p="
+                    + str(prime)
+                )
+            exponent = 1
             power = prime
-            while power <= cutoff:
+            while power <= cutoff // prime:
                 exponent += 1
-                if power > cutoff // prime:
-                    break
                 power *= prime
-            local[prime] = reciprocal_local_coefficients(coefficients, exponent)
-        values = [0, 1]
-        for index in range(2, cutoff + 1):
+            local_values = self._reciprocal_coefficients.get(prime)
+            if local_values is None or len(local_values) <= exponent:
+                self._reciprocal_coefficients[prime] = list(
+                    reciprocal_local_coefficients(coefficients, exponent)
+                )
+        for index in range(previous_cutoff + 1, cutoff + 1):
             prime = smallest[index]
             remaining = index
             exponent = 0
             while remaining % prime == 0:
                 remaining //= prime
                 exponent += 1
-            values.append(int(local[prime][exponent]) * values[remaining])
-        self.values = values
+            self._values.append(
+                int(self._reciprocal_coefficients[prime][exponent])
+                * self._values[remaining]
+            )
         self.extensions += 1
-        return self.values
+        return list(self._values)
 
     def _seed_exact_values(
         self,
@@ -176,12 +282,34 @@ class GlobalCoefficientPrefix:
         if len(values) < 2 or int(values[0]) != 0 or int(values[1]) != 1:
             raise ValueError("an exact coefficient prefix must begin with [0, 1]")
         checked = [int(value) for value in values]
-        self.values = checked
+        self._values = checked
         self.backend_counts = {
             str(name): int(count)
             for name, count in dict(
                 {} if backend_counts is None else backend_counts
             ).items()
+        }
+        # A seeded prefix may replace every coefficient used by an earlier
+        # analytic result.  Never retain a curve-specific numerical plan
+        # across that exact-state transition.
+        self._prepared_evaluation_cache.clear()
+        self._prepared_evaluation_cache_hits = 0
+        self._prepared_evaluation_cache_subsumption_hits = 0
+
+    def diagnostics(self) -> dict[str, Any]:
+        """Return exact-prefix reuse and local-stream diagnostics."""
+        return {
+            "bound": len(self._values) - 1,
+            "extensions": self.extensions,
+            "local_prime_bound": self._local_prime_bound,
+            "cached_euler_factors": len(self._euler_factors),
+            "coefficient_stream": self._coefficient_stream,
+            "backend_counts": dict(self.backend_counts),
+            "prepared_evaluation_entries": len(self._prepared_evaluation_cache),
+            "prepared_evaluation_hits": self._prepared_evaluation_cache_hits,
+            "prepared_evaluation_subsumption_hits": (
+                self._prepared_evaluation_cache_subsumption_hits
+            ),
         }
 
 
@@ -230,18 +358,27 @@ def _property(value: Any, name: str) -> Any:
     return runtime.reflect.get(value, name)
 
 
+def _optional_property(value: Any, name: str, default: Any = None) -> Any:
+    answer = _property(value, name)
+    return default if answer is runtime.undefined else answer
+
+
 def _ball_pair(value: Any) -> tuple[str, str]:
     return str(_property(value, "realMidpoint")), str(_property(value, "imagMidpoint"))
 
 
-def _ball_diagnostics(value: Any) -> dict[str, Any]:
-    return {
-        "real_midpoint": str(_property(value, "realMidpoint")),
-        "imaginary_midpoint": str(_property(value, "imagMidpoint")),
+def _ball_pair_and_diagnostics(value: Any) -> tuple[tuple[str, str], dict[str, Any]]:
+    """Materialize one native ball once for values and diagnostics."""
+    real_midpoint = str(_property(value, "realMidpoint"))
+    imaginary_midpoint = str(_property(value, "imagMidpoint"))
+    diagnostics = {
+        "real_midpoint": real_midpoint,
+        "imaginary_midpoint": imaginary_midpoint,
         "real_radius": str(_property(value, "realRadius")),
         "imaginary_radius": str(_property(value, "imagRadius")),
         "accuracy_bits": int(_property(value, "accuracyBits")),
     }
+    return (real_midpoint, imaginary_midpoint), diagnostics
 
 
 def _plan(
@@ -284,13 +421,25 @@ def _plan(
         log_a + genus * mp.log((demand + maximum_real_offset * 8 + 8) / genus) + 2,
     )
     outer_points = int(mp.ceil(outer_height / outer_step))
-    if cutoff > 2_000_000 or inverse_points > 4000 or outer_points > 20000:
+    dirichlet_updates = cutoff * (inverse_points + 1)
+    theta_updates = (inverse_points + 1) * (outer_points + 1)
+    if (
+        cutoff > 2_000_000
+        or inverse_points > 4000
+        or outer_points > 20000
+        or dirichlet_updates > _MAX_THETA_DIRICHLET_UPDATES
+        or theta_updates > _MAX_THETA_OUTER_UPDATES
+    ):
         raise HyperellipticLseriesResourceError(
             "the hyperelliptic L-series plan exceeds resource limits",
             {
                 "cutoff": cutoff,
                 "inverse_mellin_points": inverse_points,
                 "outer_points": outer_points,
+                "dirichlet_updates": dirichlet_updates,
+                "theta_updates": theta_updates,
+                "maximum_dirichlet_updates": _MAX_THETA_DIRICHLET_UPDATES,
+                "maximum_theta_updates": _MAX_THETA_OUTER_UPDATES,
             },
         )
     return {
@@ -305,8 +454,32 @@ def _plan(
     }
 
 
+def _dirichlet_vertical_values(
+    values: Sequence[int], logarithms: list[Any], step: Any, point_count: int
+) -> list[Any]:
+    """Evaluate one vertical Dirichlet-polynomial progression.
+
+    Transposing the term/height loops replaces one transcendental evaluation
+    per `(coefficient, height)` by one phase step per coefficient.  The same
+    precision remains active, and the enclosing coarse/fine refinement is
+    unchanged.
+    """
+    totals = [mp.mpc(0) for _index in range(point_count + 1)]
+    imaginary_unit = mp.mpc(0, 1)
+    for coefficient, logarithm in zip(values, logarithms, strict=True):
+        if coefficient == 0:
+            continue
+        amplitude = coefficient * mp.exp(-2 * logarithm)
+        phase = mp.mpc(1)
+        phase_step = mp.exp(-imaginary_unit * step * logarithm)
+        for index in range(point_count + 1):
+            totals[index] += amplitude * phase
+            phase *= phase_step
+    return totals
+
+
 def _theta_grid(
-    coefficients: list[int],
+    coefficients: Sequence[int],
     genus: int,
     plan: dict[str, Any],
 ) -> tuple[list[Any], list[Any], int]:
@@ -318,42 +491,46 @@ def _theta_grid(
     inverse_step = mp.mpf(plan["inverse_mellin_step"])
     inverse_points = int(plan["inverse_mellin_points"])
     contour = mp.mpf(2)
+    dirichlet_values = _dirichlet_vertical_values(
+        values, logarithms, inverse_step, inverse_points
+    )
     q_values = []
     base_values = []
-    coefficient_terms = 0
     for index in range(inverse_points + 1):
         height = inverse_step * index
         q_value = mp.mpc(contour, height)
-        dirichlet = mp.fsum(
-            coefficient * mp.exp(-q_value * logarithm)
-            for coefficient, logarithm in zip(values, logarithms, strict=True)
-            if coefficient != 0
-        )
         base = (
             mp.gamma(q_value) ** genus
             * mp.exp(q_value * mp.mpf(plan["log_a"]))
-            * dirichlet
+            * dirichlet_values[index]
         )
         if index == inverse_points:
             base /= 2
         q_values.append(q_value)
         base_values.append(base)
-        coefficient_terms += len(values)
     outer_step = mp.mpf(plan["outer_step"])
     outer_points = int(plan["outer_points"])
     arguments = [outer_step * index for index in range(outer_points + 1)]
-    theta_values = []
     scale = inverse_step / (2 * mp.pi)
-    for argument in arguments:
-        total = base_values[0] * mp.exp(-q_values[0] * argument)
-        for q_value, base in zip(q_values[1:], base_values[1:], strict=True):
-            total += 2 * mp.re(base * mp.exp(-q_value * argument))
-        theta_values.append(mp.re(scale * total))
-    return arguments, theta_values, coefficient_terms
+    theta_values = [mp.mpf(0) for _argument in arguments]
+    for contour_index, (q_value, base) in enumerate(
+        zip(q_values, base_values, strict=True)
+    ):
+        phase = mp.mpc(1)
+        phase_step = mp.exp(-q_value * outer_step)
+        for argument_index in range(len(arguments)):
+            contribution = base * phase
+            if contour_index:
+                theta_values[argument_index] += 2 * mp.re(contribution)
+            else:
+                theta_values[argument_index] += mp.re(contribution)
+            phase *= phase_step
+    theta_values = [scale * value for value in theta_values]
+    return arguments, theta_values, (inverse_points + 1) * len(values)
 
 
 def _theta_grid_machine(
-    values: list[int], genus: int, plan: dict[str, Any]
+    values: Sequence[int], genus: int, plan: dict[str, Any]
 ) -> tuple[list[Any], list[Any], int]:
     """Evaluate the expensive Fourier sums with binary64 arithmetic."""
     logarithms = [math.log(index) for index in range(1, len(values) + 1)]
@@ -392,12 +569,19 @@ def _theta_grid_machine(
     outer_points = int(plan["outer_points"])
     arguments = [outer_step * index for index in range(outer_points + 1)]
     scale = inverse_step / (2 * math.pi)
-    theta_values = []
-    for argument in arguments:
-        total = base_values[0] * cmath.exp(-q_values[0] * argument)
-        for q_value, base in zip(q_values[1:], base_values[1:], strict=True):
-            total += 2 * (base * cmath.exp(-q_value * argument)).real
-        theta_values.append(float((scale * total).real))
+    theta_values = [0.0 for _argument in arguments]
+    for contour_index, (q_value, base) in enumerate(
+        zip(q_values, base_values, strict=True)
+    ):
+        phase = complex(1)
+        phase_step = cmath.exp(-q_value * outer_step)
+        for argument_index in range(len(arguments)):
+            contribution = base * phase
+            theta_values[argument_index] += (
+                2 * contribution.real if contour_index else contribution.real
+            )
+            phase *= phase_step
+    theta_values = [scale * value for value in theta_values]
     return arguments, theta_values, (inverse_points + 1) * len(values)
 
 
@@ -413,27 +597,29 @@ def _completed_derivatives_from_grid(
     answer = []
     for point in points:
         machine_point = complex(float(mp.re(point)), float(mp.im(point)))
-        derivatives = []
-        for order in range(maximum_order + 1):
-            terms = []
-            for index, (argument, theta) in enumerate(
-                zip(arguments, theta_values, strict=True)
-            ):
-                if machine:
-                    weight = 0.5 if index in (0, len(arguments) - 1) else 1.0
-                else:
-                    weight = mp.mpf("0.5") if index in (0, len(arguments) - 1) else 1
-                if machine:
-                    exponential = cmath.exp(machine_point * argument) + root_number * (
-                        -1
-                    ) ** order * cmath.exp((2 - machine_point) * argument)
-                else:
-                    exponential = mp.exp(point * argument) + root_number * (
-                        -1
-                    ) ** order * mp.exp((2 - point) * argument)
-                terms.append(weight * theta * argument**order * exponential)
-            total = sum(terms) if machine else mp.fsum(terms)
-            derivatives.append(outer_step * total)
+        totals = [
+            complex(0) if machine else mp.mpc(0) for _order in range(maximum_order + 1)
+        ]
+        for index, (argument, theta) in enumerate(
+            zip(arguments, theta_values, strict=True)
+        ):
+            if machine:
+                weight = 0.5 if index in (0, len(arguments) - 1) else 1.0
+                forward = cmath.exp(machine_point * argument)
+                reflected = cmath.exp((2 - machine_point) * argument)
+            else:
+                weight = mp.mpf("0.5") if index in (0, len(arguments) - 1) else 1
+                forward = mp.exp(point * argument)
+                reflected = mp.exp((2 - point) * argument)
+            argument_power = 1
+            parity = root_number
+            for order in range(maximum_order + 1):
+                totals[order] += (
+                    weight * theta * argument_power * (forward + parity * reflected)
+                )
+                argument_power *= argument
+                parity = -parity
+        derivatives = [outer_step * total for total in totals]
         answer.append(derivatives)
     return answer
 
@@ -609,7 +795,7 @@ def _central_weight_plan(
 
 
 def _central_weight_contour(
-    coefficients: list[int],
+    coefficients: Sequence[int],
     genus: int,
     root_number: int,
     maximum_derivative: int,
@@ -622,18 +808,17 @@ def _central_weight_contour(
     step = mp.mpf(plan["contour_step"])
     contour_points = int(plan["contour_points"])
     log_a = mp.mpf(plan["log_a"])
+    dirichlet_values = _dirichlet_vertical_values(
+        values, logarithms, step, contour_points
+    )
     totals = [mp.mpf(0) for _order in range(maximum_derivative + 1)]
     factorials = [mp.factorial(order) for order in range(maximum_derivative + 1)]
-    coefficient_terms = 0
     for index in range(contour_points + 1):
         height = step * index
         point = mp.mpc(2, height)
-        dirichlet = mp.fsum(
-            coefficient * mp.exp(-point * logarithm)
-            for coefficient, logarithm in zip(values, logarithms, strict=True)
-            if coefficient != 0
+        base = (
+            mp.gamma(point) ** genus * mp.exp(point * log_a) * dirichlet_values[index]
         )
-        base = mp.gamma(point) ** genus * mp.exp(point * log_a) * dirichlet
         endpoint_weight = mp.mpf("0.5") if index in (0, contour_points) else 1
         denominator = point - 1
         denominator_power = denominator
@@ -647,9 +832,8 @@ def _central_weight_contour(
                     * mp.re(base / denominator_power)
                 )
             denominator_power *= denominator
-        coefficient_terms += cutoff
     scale = step / mp.pi
-    return [scale * value for value in totals], coefficient_terms
+    return [scale * value for value in totals], (contour_points + 1) * cutoff
 
 
 def central_weight_values(
@@ -902,10 +1086,15 @@ def native_lseries_values(
             completed = _property(row, "completedDerivatives")
             coarse_raw = _property(row, "coarseRawDerivatives")
             coarse_completed = _property(row, "coarseCompletedDerivatives")
-            raw_pairs = tuple(_ball_pair(raw[index]) for index in range(len(raw)))
-            completed_pairs = tuple(
-                _ball_pair(completed[index]) for index in range(len(completed))
+            raw_materialized = tuple(
+                _ball_pair_and_diagnostics(raw[index]) for index in range(len(raw))
             )
+            completed_materialized = tuple(
+                _ball_pair_and_diagnostics(completed[index])
+                for index in range(len(completed))
+            )
+            raw_pairs = tuple(value[0] for value in raw_materialized)
+            completed_pairs = tuple(value[0] for value in completed_materialized)
             coarse_raw_pairs = tuple(
                 _ball_pair(coarse_raw[index]) for index in range(len(coarse_raw))
             )
@@ -925,13 +1114,8 @@ def native_lseries_values(
             )
             ball_rows.append(
                 {
-                    "raw": tuple(
-                        _ball_diagnostics(raw[index]) for index in range(len(raw))
-                    ),
-                    "completed": tuple(
-                        _ball_diagnostics(completed[index])
-                        for index in range(len(completed))
-                    ),
+                    "raw": tuple(value[1] for value in raw_materialized),
+                    "completed": tuple(value[1] for value in completed_materialized),
                 }
             )
         return {
@@ -970,8 +1154,16 @@ def native_central_weight_values(
     precision_bits: int,
     coefficient_prefix: GlobalCoefficientPrefix,
     maximum_derivative: int = 0,
+    coefficient_workers: int | None = None,
+    use_universal_table: bool = True,
 ) -> dict[str, Any] | None:
-    """Evaluate the one-contour central weights with FLINT Arb/Acb."""
+    """Evaluate the one-contour central weights with FLINT Arb/Acb.
+
+    `coefficient_workers` and `use_universal_table` are internal
+    benchmarking/control hooks.  The native backend otherwise reuses a
+    bounded process-local, curve-independent table and retains the direct Arb
+    contour as its differential oracle and fallback.
+    """
     try:
         backend = runtime.flint_backend()
         function = _property(backend, "hyperellipticCentralWeights")
@@ -988,26 +1180,64 @@ def native_central_weight_values(
             precision_bits,
             maximum_derivative,
         ]
+        if coefficient_workers is not None:
+            arguments.append(int(coefficient_workers))
         planned = runtime.reflect.apply(function, backend, arguments)
         required = int(_property(planned, "requiredCutoff"))
+        native_table_supported = bool(
+            _optional_property(planned, "universalWeightTableSupported", False)
+        )
+        table_key: tuple[Any, ...] | None = None
+        prepared_table = None
+        if use_universal_table and native_table_supported:
+            table_key = (
+                "native-central-taylor-v1",
+                genus,
+                int(precision_bits),
+                int(maximum_derivative),
+                int(_property(planned, "universalWeightTableSegmentStart")),
+                int(_property(planned, "universalWeightTableSegmentCount")),
+                int(_property(planned, "universalWeightTableDegree")),
+            )
+            prepared_table = _NATIVE_CENTRAL_WEIGHT_TABLE_CACHE.get(table_key)
         coefficients = coefficient_prefix.through(required)
         if any(value < -(2**31) or value > 2**31 - 1 for value in coefficients):
             return None
         arguments[3] = coefficients
+        if prepared_table is not None or not use_universal_table:
+            if len(arguments) == 6:
+                arguments.append(4)
+            arguments.append(None)
+            arguments.append(prepared_table)
         native = runtime.reflect.apply(function, backend, arguments)
         if str(_property(native, "status")) != "ok":
             raise HyperellipticLseriesResourceError(
                 "the native central-weight coefficient plan was not satisfied",
                 {"required_cutoff": required},
             )
+        published_table = _optional_property(native, "universalWeightTable", None)
+        if table_key is not None and published_table is not None:
+            if (
+                table_key not in _NATIVE_CENTRAL_WEIGHT_TABLE_CACHE
+                and len(_NATIVE_CENTRAL_WEIGHT_TABLE_CACHE)
+                >= _NATIVE_CENTRAL_WEIGHT_TABLE_CACHE_LIMIT
+            ):
+                first_table_key = next(iter(_NATIVE_CENTRAL_WEIGHT_TABLE_CACHE))
+                del _NATIVE_CENTRAL_WEIGHT_TABLE_CACHE[first_table_key]
+            _NATIVE_CENTRAL_WEIGHT_TABLE_CACHE[table_key] = published_table
         raw = _property(native, "rawDerivatives")
         completed = _property(native, "completedDerivatives")
         coarse_raw = _property(native, "coarseRawDerivatives")
         coarse_completed = _property(native, "coarseCompletedDerivatives")
-        raw_pairs = tuple(_ball_pair(raw[index]) for index in range(len(raw)))
-        completed_pairs = tuple(
-            _ball_pair(completed[index]) for index in range(len(completed))
+        raw_materialized = tuple(
+            _ball_pair_and_diagnostics(raw[index]) for index in range(len(raw))
         )
+        completed_materialized = tuple(
+            _ball_pair_and_diagnostics(completed[index])
+            for index in range(len(completed))
+        )
+        raw_pairs = tuple(value[0] for value in raw_materialized)
+        completed_pairs = tuple(value[0] for value in completed_materialized)
         coarse_raw_pairs = tuple(
             _ball_pair(coarse_raw[index]) for index in range(len(coarse_raw))
         )
@@ -1016,7 +1246,11 @@ def native_central_weight_values(
             for index in range(len(coarse_completed))
         )
         return {
-            "algorithm": "native-arb-central-mellin-weights",
+            "algorithm": (
+                "native-arb-universal-central-taylor-weights"
+                if bool(_optional_property(native, "universalWeightTableUsed", False))
+                else "native-arb-central-mellin-weights"
+            ),
             "status": "ok",
             "precision_bits": precision_bits,
             "work_precision_bits": int(_property(native, "workPrecisionBits")),
@@ -1030,6 +1264,127 @@ def native_central_weight_values(
             "contour_step": str(_property(native, "contourStep")),
             "contour_real": int(_property(native, "contourReal")),
             "coefficient_terms": int(_property(native, "coefficientTerms")),
+            "native_stage_diagnostics": {
+                "shared_coarse_fine_coefficient_traversal": True,
+                "coefficient_worker_count": int(
+                    _optional_property(native, "coefficientWorkerCount", 1)
+                ),
+                "coefficient_worker_capability": str(
+                    _optional_property(
+                        native, "coefficientWorkerCapability", "single-worker"
+                    )
+                ),
+                "coefficient_worker_grid_slots": int(
+                    _optional_property(native, "coefficientWorkerGridSlots", 0)
+                ),
+                "coefficient_worker_creation_fallbacks": int(
+                    _optional_property(native, "coefficientWorkerCreationFallbacks", 0)
+                ),
+                "shared_coefficient_logarithms": int(
+                    _optional_property(native, "sharedCoefficientLogarithms", 0)
+                ),
+                "coarse_phase_updates": int(
+                    _optional_property(native, "coarsePhaseUpdates", 0)
+                ),
+                "fine_phase_updates": int(
+                    _optional_property(native, "finePhaseUpdates", 0)
+                ),
+                "coefficient_traversal_cpu_seconds": str(
+                    _optional_property(native, "coefficientTraversalCpuSeconds", 0)
+                ),
+                "coefficient_traversal_wall_seconds": str(
+                    _optional_property(native, "coefficientTraversalWallSeconds", 0)
+                ),
+                "coarse_completion_cpu_seconds": str(
+                    _optional_property(native, "coarseCompletionCpuSeconds", 0)
+                ),
+                "fine_completion_cpu_seconds": str(
+                    _optional_property(native, "fineCompletionCpuSeconds", 0)
+                ),
+                "total_cpu_seconds": str(
+                    _optional_property(native, "totalCpuSeconds", 0)
+                ),
+                "total_wall_seconds": str(
+                    _optional_property(native, "totalWallSeconds", 0)
+                ),
+                "universal_weight_table": {
+                    "supported": native_table_supported,
+                    "enabled": use_universal_table,
+                    "used": bool(
+                        _optional_property(native, "universalWeightTableUsed", False)
+                    ),
+                    "cache_hit": bool(
+                        _optional_property(
+                            native, "universalWeightTableCacheHit", False
+                        )
+                    ),
+                    "segment_start": int(
+                        _optional_property(
+                            native, "universalWeightTableSegmentStart", 0
+                        )
+                    ),
+                    "segment_count": int(
+                        _optional_property(
+                            native, "universalWeightTableSegmentCount", 0
+                        )
+                    ),
+                    "degree": int(
+                        _optional_property(native, "universalWeightTableDegree", 0)
+                    ),
+                    "coefficient_count": int(
+                        _optional_property(
+                            native, "universalWeightTableCoefficientCount", 0
+                        )
+                    ),
+                    "coarse_contour_points": int(
+                        _optional_property(
+                            native,
+                            "universalWeightTableCoarseContourPoints",
+                            0,
+                        )
+                    ),
+                    "fine_contour_points": int(
+                        _optional_property(
+                            native, "universalWeightTableContourPoints", 0
+                        )
+                    ),
+                    "construction_wall_seconds": str(
+                        _optional_property(
+                            native,
+                            "universalWeightTableConstructionWallSeconds",
+                            0,
+                        )
+                    ),
+                    "construction_cpu_seconds": str(
+                        _optional_property(
+                            native,
+                            "universalWeightTableConstructionCpuSeconds",
+                            0,
+                        )
+                    ),
+                    "evaluation_wall_seconds": str(
+                        _optional_property(
+                            native,
+                            "universalWeightTableEvaluationWallSeconds",
+                            0,
+                        )
+                    ),
+                    "evaluation_cpu_seconds": str(
+                        _optional_property(
+                            native,
+                            "universalWeightTableEvaluationCpuSeconds",
+                            0,
+                        )
+                    ),
+                    "tail_relative_difference": str(
+                        _optional_property(
+                            native,
+                            "universalWeightTableTailRelativeDifference",
+                            0,
+                        )
+                    ),
+                },
+            },
             "coefficient_backend_counts": dict(coefficient_prefix.backend_counts),
             "coefficient_prefix_extensions": coefficient_prefix.extensions,
             "values": [
@@ -1044,13 +1399,8 @@ def native_central_weight_values(
             ],
             "balls": (
                 {
-                    "raw": tuple(
-                        _ball_diagnostics(raw[index]) for index in range(len(raw))
-                    ),
-                    "completed": tuple(
-                        _ball_diagnostics(completed[index])
-                        for index in range(len(completed))
-                    ),
+                    "raw": tuple(value[1] for value in raw_materialized),
+                    "completed": tuple(value[1] for value in completed_materialized),
                 },
             ),
             "refinement_difference": "not-materialized",
@@ -1082,13 +1432,18 @@ class HyperellipticLSeries:
         self, curve: Any, coefficient_prefix: GlobalCoefficientPrefix | None = None
     ) -> None:
         self._curve = curve
-        self._coefficient_prefix = (
-            GlobalCoefficientPrefix(curve)
-            if coefficient_prefix is None
-            else coefficient_prefix
-        )
+        if coefficient_prefix is None:
+            self._coefficient_prefix = GlobalCoefficientPrefix(curve)
+        else:
+            if not _coefficient_prefix_matches_curve(coefficient_prefix, curve):
+                raise ValueError(
+                    "the coefficient prefix belongs to a different hyperelliptic model"
+                )
+            self._coefficient_prefix = coefficient_prefix
         self._last_diagnostics: Any = None
         self._evaluation_cache: dict[tuple[Any, ...], dict[str, Any]] = {}
+        self._evaluation_cache_hits = 0
+        self._evaluation_cache_subsumption_hits = 0
 
     def __repr__(self) -> str:
         return "L-series of " + repr(self._curve)
@@ -1120,8 +1475,77 @@ class HyperellipticLSeries:
         )
         cached = self._evaluation_cache.get(cache_key)
         if cached is not None:
-            self._last_diagnostics = cached
-            return cached, bits
+            self._evaluation_cache_hits += 1
+            # Cached result trees are private: public diagnostics and ball
+            # accessors clone before returning.  Only the top-level hit
+            # metadata differs, so preserve the private nested tree instead
+            # of copying every Arb diagnostic and derivative twice.
+            reused = dict(cached)
+            reused["cache_hit"] = True
+            reused["cache_scope"] = "lseries"
+            reused["cache_reused_maximum_derivative"] = int(maximum_derivative)
+            self._last_diagnostics = reused
+            return reused, bits
+        for candidate_key, candidate in self._evaluation_cache.items():
+            candidate_pairs, candidate_bits, candidate_order, candidate_algorithm = (
+                candidate_key
+            )
+            if (
+                candidate_pairs == tuple(pairs)
+                and candidate_bits == bits
+                and candidate_algorithm == algorithm
+                and int(candidate_order) > int(maximum_derivative)
+            ):
+                self._evaluation_cache_hits += 1
+                self._evaluation_cache_subsumption_hits += 1
+                reused = dict(candidate)
+                reused["cache_hit"] = True
+                reused["cache_scope"] = "lseries"
+                reused["cache_reused_maximum_derivative"] = int(candidate_order)
+                reused["requested_maximum_derivative"] = int(maximum_derivative)
+                self._last_diagnostics = reused
+                return reused, bits
+        prepared_cache = (
+            self._coefficient_prefix._prepared_evaluation_cache
+            if central and isinstance(self._coefficient_prefix, GlobalCoefficientPrefix)
+            else None
+        )
+        if prepared_cache is not None:
+            prepared = prepared_cache.get(cache_key)
+            if prepared is not None:
+                self._evaluation_cache_hits += 1
+                self._coefficient_prefix._prepared_evaluation_cache_hits += 1
+                reused = dict(prepared)
+                reused["cache_hit"] = True
+                reused["cache_scope"] = "coefficient-prefix"
+                reused["cache_reused_maximum_derivative"] = int(maximum_derivative)
+                self._evaluation_cache[cache_key] = prepared
+                self._last_diagnostics = reused
+                return reused, bits
+            for candidate_key, candidate in prepared_cache.items():
+                (
+                    candidate_pairs,
+                    candidate_bits,
+                    candidate_order,
+                    candidate_algorithm,
+                ) = candidate_key
+                if (
+                    candidate_pairs == tuple(pairs)
+                    and candidate_bits == bits
+                    and candidate_algorithm == algorithm
+                    and int(candidate_order) > int(maximum_derivative)
+                ):
+                    self._evaluation_cache_hits += 1
+                    self._evaluation_cache_subsumption_hits += 1
+                    self._coefficient_prefix._prepared_evaluation_cache_hits += 1
+                    self._coefficient_prefix._prepared_evaluation_cache_subsumption_hits += 1
+                    reused = dict(candidate)
+                    reused["cache_hit"] = True
+                    reused["cache_scope"] = "coefficient-prefix"
+                    reused["cache_reused_maximum_derivative"] = int(candidate_order)
+                    reused["requested_maximum_derivative"] = int(maximum_derivative)
+                    self._last_diagnostics = reused
+                    return reused, bits
         result = None
         if central and algorithm != "inverse_mellin":
             if algorithm != "reference":
@@ -1166,10 +1590,22 @@ class HyperellipticLSeries:
             raise HyperellipticLseriesNumericalIndeterminacyError(
                 "the hyperelliptic L-series refinement did not stabilize"
             )
+        result["cache_hit"] = False
+        result["cache_scope"] = "fresh"
+        result["requested_maximum_derivative"] = int(maximum_derivative)
         if len(self._evaluation_cache) >= 32:
             first_key = next(iter(self._evaluation_cache))
             del self._evaluation_cache[first_key]
+        # Nothing below `_evaluate` publishes this result tree directly.
+        # Retain one private canonical snapshot; `last_diagnostics()`,
+        # `value_ball()`, and `LFunctionInit.diagnostics()` detach it before
+        # crossing the public boundary.
         self._evaluation_cache[cache_key] = result
+        if prepared_cache is not None:
+            if len(prepared_cache) >= 32:
+                first_prepared_key = next(iter(prepared_cache))
+                del prepared_cache[first_prepared_key]
+            prepared_cache[cache_key] = result
         self._last_diagnostics = result
         return result, bits
 
@@ -1321,7 +1757,10 @@ class HyperellipticLSeries:
         result, bits = self._evaluate([1], prec, maximum, algorithm)
         key = "completed_derivatives" if completed else "raw_derivatives"
         return runtime.math_tuple(
-            [self._coerce(value, bits) for value in result["values"][0][key]]
+            [
+                self._coerce(value, bits)
+                for value in result["values"][0][key][: maximum + 1]
+            ]
         )
 
     def value_ball(
@@ -1340,8 +1779,8 @@ class HyperellipticLSeries:
                 "the selected evaluator does not return Arb balls"
             )
         return {
-            "raw": balls[0]["raw"][0],
-            "completed": balls[0]["completed"][0],
+            "raw": _clone_public_data(balls[0]["raw"][0]),
+            "completed": _clone_public_data(balls[0]["completed"][0]),
             "rigorous": bool(result["rigorous"]),
             "arithmetic_balls_rigorous": bool(
                 result.get("arithmetic_balls_rigorous", False)
@@ -1351,7 +1790,16 @@ class HyperellipticLSeries:
         }
 
     def last_diagnostics(self) -> Any:
-        return self._last_diagnostics
+        return _clone_public_data(self._last_diagnostics)
+
+    def cache_diagnostics(self) -> dict[str, Any]:
+        """Return reusable evaluation and exact-coefficient cache statistics."""
+        return {
+            "evaluation_entries": len(self._evaluation_cache),
+            "evaluation_hits": self._evaluation_cache_hits,
+            "evaluation_subsumption_hits": self._evaluation_cache_subsumption_hits,
+            "coefficient_prefix": self._coefficient_prefix.diagnostics(),
+        }
 
 
 class LFunctionInit:
@@ -1377,11 +1825,25 @@ class LFunctionInit:
         self._domain = domain
         self._algorithm = str(algorithm)
         self._closed = False
-        self._central_result, _bits = lseries._evaluate(
+        central_result, _bits = lseries._evaluate(
             [1],
             self._precision,
             self._maximum_order,
             self._algorithm,
+        )
+        # `_evaluate` already returns an object detached from both its reusable
+        # cache entry and `_last_diagnostics`.  This initialized evaluator owns
+        # that snapshot, and every public diagnostics call clones it again.
+        # Cloning it here a third time made prepared-curve initialization spend
+        # more time copying Arb diagnostics than constructing the public jet.
+        self._central_result = central_result
+        raw_values = self._central_result["values"][0]["raw_derivatives"]
+        completed_values = self._central_result["values"][0]["completed_derivatives"]
+        self._central_raw: tuple[Any, ...] = tuple(
+            self._lseries._coerce(value, self._precision) for value in raw_values
+        )
+        self._central_completed: tuple[Any, ...] = tuple(
+            self._lseries._coerce(value, self._precision) for value in completed_values
         )
         self._point_cache: dict[str, Any] = {}
 
@@ -1395,6 +1857,8 @@ class LFunctionInit:
     def close(self) -> None:
         """Release prepared host caches owned by this object."""
         self._point_cache.clear()
+        self._central_raw = ()
+        self._central_completed = ()
         self._closed = True
 
     def __enter__(self) -> Any:
@@ -1411,10 +1875,7 @@ class LFunctionInit:
 
     def central_value(self) -> Any:
         self._check_open()
-        return self._lseries._coerce(
-            self._central_result["values"][0]["raw_derivatives"][0],
-            self._precision,
-        )
+        return self._central_raw[0]
 
     def central_jet(self, max_order: Any = None, *, completed: bool = False) -> Any:
         self._check_open()
@@ -1423,13 +1884,8 @@ class LFunctionInit:
         )
         if maximum > self._maximum_order:
             raise ValueError("the requested order exceeds this initialized jet")
-        key = "completed_derivatives" if completed else "raw_derivatives"
-        return runtime.math_tuple(
-            [
-                self._lseries._coerce(value, self._precision)
-                for value in self._central_result["values"][0][key][: maximum + 1]
-            ]
-        )
+        prepared = self._central_completed if completed else self._central_raw
+        return runtime.math_tuple(list(prepared[: maximum + 1]))
 
     def analytic_rank(self, *, leading_coefficient: bool = False) -> Any:
         self._check_open()
@@ -1462,8 +1918,7 @@ class LFunctionInit:
             )
         if not leading_coefficient:
             return sage.ZZ(rank)
-        raw = self._central_result["values"][0]["raw_derivatives"][rank]
-        return sage.ZZ(rank), self._lseries._coerce(raw, self._precision)
+        return sage.ZZ(rank), self._central_raw[rank]
 
     def leading_derivative(self) -> Any:
         """Return `(rank, L^(rank)(1))` using the prepared jet."""
@@ -1532,14 +1987,18 @@ class LFunctionInit:
 
     def diagnostics(self) -> Any:
         self._check_open()
-        return {
-            "precision_bits": self._precision,
-            "maximum_derivative": self._maximum_order,
-            "domain": self._domain,
-            "algorithm": self._central_result["algorithm"],
-            "central": self._central_result,
-            "cached_points": len(self._point_cache),
-        }
+        return _clone_public_data(
+            {
+                "precision_bits": self._precision,
+                "maximum_derivative": self._maximum_order,
+                "domain": self._domain,
+                "algorithm": self._central_result["algorithm"],
+                "central": self._central_result,
+                "cached_points": len(self._point_cache),
+                "prepared_derivatives": len(self._central_raw),
+                "lseries_cache": self._lseries.cache_diagnostics(),
+            }
+        )
 
 
 __all__ = [

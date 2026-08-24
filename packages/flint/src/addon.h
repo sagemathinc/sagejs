@@ -7,6 +7,7 @@
 #include <sagejs/hyperelliptic/smalljac.h>
 
 #include "hyperelliptic/genus3_jacobian_addon.h"
+#include "hyperelliptic/period_quadrature.h"
 
 napi_value sagejs_smalljac_lpoly_batch_value(
     napi_env env, napi_callback_info info);

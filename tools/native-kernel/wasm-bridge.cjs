@@ -2,13 +2,19 @@
 
 const { tupleElementTypes } = require("./portable-identity.cjs");
 
-const SCALAR_TYPES = new Set(["Integer", "uint64", "PrimeModulusValue"]);
+const SCALAR_TYPES = new Set([
+  "Float64",
+  "Integer",
+  "uint64",
+  "PrimeModulusValue",
+]);
 const BUFFER_TYPES = new Set([
+  "Float64Buffer",
   "IntegerBuffer",
   "Int64Buffer",
   "UInt64Buffer",
 ]);
-const RESULT_TYPES = new Set(["Integer", "uint64", "bool"]);
+const RESULT_TYPES = new Set(["Float64", "Integer", "uint64", "bool"]);
 
 function cName(value) {
   return String(value).replace(/[^A-Za-z0-9_]/g, "_");
@@ -59,7 +65,7 @@ function resourceDescriptor(resource) {
 }
 
 function classifyWasmFunction(fn, ir) {
-  if (!["integer", "prime-field-source"].includes(fn.kernelKind)) {
+  if (!["float64", "integer", "prime-field-source"].includes(fn.kernelKind)) {
     return {
       supported: false,
       reason: `kernel-kind-${fn.kernelKind}-bridge-not-generated`,
@@ -171,8 +177,12 @@ function bufferDeclaration(type, variable, name, sourceBuffer = false) {
         (size_t) ${prefix}_word_capacity
     };`;
   }
-  const cType = type === "Int64Buffer" ? "int64_t" : "uint64_t";
-  const structType = type === "Int64Buffer"
+  const cType = type === "Float64Buffer"
+    ? "double"
+    : type === "Int64Buffer" ? "int64_t" : "uint64_t";
+  const structType = type === "Float64Buffer"
+    ? "sagejs_float64_buffer"
+    : type === "Int64Buffer"
     ? "sagejs_int64_buffer"
     : sourceBuffer
       ? "sagejs_source_u64_buffer"
@@ -234,6 +244,15 @@ function parameterBridge(parameter, ir, fn) {
       descriptor: { name: parameter.name, type: parameter.type },
     };
   }
+  if (parameter.type === "Float64") {
+    return {
+      signature: [`double sagejs_arg_${name}`],
+      declaration: "",
+      argument: `sagejs_arg_${name}`,
+      cleanup: "",
+      descriptor: { name: parameter.name, type: parameter.type },
+    };
+  }
   if (BUFFER_TYPES.has(parameter.type)) {
     return {
       signature: bufferParameters(parameter.type, parameter.name),
@@ -245,7 +264,17 @@ function parameterBridge(parameter, ir, fn) {
       ),
       argument: variable,
       cleanup: "",
-      descriptor: { name: parameter.name, type: parameter.type },
+      descriptor: {
+        name: parameter.name,
+        type: parameter.type,
+        ...(parameter.type === "Float64Buffer"
+          ? {
+            mutable: (fn.analysis?.effects?.mutates ?? []).includes(
+              parameter.name,
+            ),
+          }
+          : {}),
+      },
     };
   }
   const record = recordByType(ir, parameter.type);
@@ -334,10 +363,14 @@ function resultLocals(results, fn) {
         "        sagejs_wasm_ok = 0;",
         "    }",
       );
+    } else if (type === "Float64") {
+      declarations.push(`    double ${name} = 0.0;`);
+      arguments_.push(`&${name}`);
+      stores.push(
+        `    sagejs_wasm_result_f64_storage_m_$MODULE[${index}] = ${name};`,
+      );
     } else {
-      const cType = type === "bool" && fn.kernelKind !== "prime-field-source"
-        ? "int"
-        : "uint64_t";
+      const cType = type === "bool" ? "int" : "uint64_t";
       declarations.push(`    ${cType} ${name} = 0;`);
       arguments_.push(`&${name}`);
       stores.push(
@@ -434,6 +467,7 @@ function generateWasmBridge({ ir, moduleIdentity, functionNames }) {
   const allocate = `sagejs_wasm_allocate_m_${moduleIdentity}`;
   const deallocate = `sagejs_wasm_deallocate_m_${moduleIdentity}`;
   const resultU64 = `sagejs_wasm_result_u64_at_m_${moduleIdentity}`;
+  const resultFloat64 = `sagejs_wasm_result_f64_at_m_${moduleIdentity}`;
   const resultLimbs = `sagejs_wasm_result_limbs_m_${moduleIdentity}`;
   const resultLength = `sagejs_wasm_result_length_m_${moduleIdentity}`;
   const resultSign = `sagejs_wasm_result_sign_m_${moduleIdentity}`;
@@ -483,6 +517,8 @@ ${[...resources.values()].sort((left, right) => left.id.localeCompare(right.id))
 #define SAGEJS_WASM_RESULT_SLOTS 8
 static uint64_t sagejs_wasm_result_u64_storage_m_${moduleIdentity}[
     SAGEJS_WASM_RESULT_SLOTS];
+static double sagejs_wasm_result_f64_storage_m_${moduleIdentity}[
+    SAGEJS_WASM_RESULT_SLOTS];
 static uint64_t *sagejs_wasm_result_limbs_storage_m_${moduleIdentity}[
     SAGEJS_WASM_RESULT_SLOTS];
 static uint32_t sagejs_wasm_result_length_storage_m_${moduleIdentity}[
@@ -507,6 +543,12 @@ uint64_t ${resultU64}(uint32_t slot)
 {
     return slot < SAGEJS_WASM_RESULT_SLOTS
         ? sagejs_wasm_result_u64_storage_m_${moduleIdentity}[slot] : 0;
+}
+
+double ${resultFloat64}(uint32_t slot)
+{
+    return slot < SAGEJS_WASM_RESULT_SLOTS
+        ? sagejs_wasm_result_f64_storage_m_${moduleIdentity}[slot] : 0.0;
 }
 
 uint32_t ${resultLimbs}(uint32_t slot)
@@ -539,12 +581,13 @@ ${generated.map((item) => item.source).join("\n\n")}
   return {
     source,
     functions: generated.map((item) => item.descriptor),
-    runtime: { allocate, deallocate, resultU64, resultLimbs, resultLength,
-      resultSign, lastMessage },
+    runtime: { allocate, deallocate, resultU64, resultFloat64, resultLimbs,
+      resultLength, resultSign, lastMessage },
     exports: [
       allocate,
       deallocate,
       resultU64,
+      resultFloat64,
       resultLimbs,
       resultLength,
       resultSign,

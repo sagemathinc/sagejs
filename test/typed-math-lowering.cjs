@@ -66,7 +66,7 @@ assert.doesNotMatch(
 
 assert.match(newReduced, /Object\.create\(_finite_field_element_prototype\)/);
 assert.match(newReduced, /answer\._parent = self\._parent/);
-assert.match(newReduced, /answer\._value = value/);
+assert.match(newReduced, /answer\._value = BigInt\(value\)/);
 assert.match(newReduced, /Object\.freeze\(answer\)/);
 assert.match(add, /return self\._new_reduced\(value\)/);
 assert.match(subtract, /return self\._new_reduced\(value\)/);

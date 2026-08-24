@@ -18,6 +18,7 @@ from sagejs.hyperelliptic_curves.genus2_kummer import (
     kummer_coordinates,
 )
 from sagejs.hyperelliptic_curves.genus2_heights import (
+    AutomaticHeightBounds,
     Genus2HeightCapabilityError,
     Genus2HeightResourceLimitError,
     Genus2HeightResolutionError,
@@ -26,6 +27,7 @@ from sagejs.hyperelliptic_curves.genus2_heights import (
     canonical_height,
     factorization_free_finite_correction,
     height_pairing,
+    normalized_archimedean_correction,
     regulator,
 )
 from sagejs.number_fields.class_unit_analytic import RealBall
@@ -218,6 +220,57 @@ assert height_bad.ball.contains(
     "0.42678333558746747233428100338279869019877473010608"
 )
 
+# For the binary sextic F(X,Z)=Z*f_hom(X,Z), the Mueller--Stoll constant
+# includes lc(f)^2.  Omitting it loses the first local content 25 here.
+f_nonmonic = 5*x**5 + x**4 - x + 1
+J_nonmonic = HyperellipticJacobian(HeightTestCurve(f_nonmonic))
+P_nonmonic = J_nonmonic([x, 1])
+finite_nonmonic = factorization_free_finite_correction(
+    P_nonmonic, precision=80, steps=1
+)
+height_nonmonic = canonical_height(
+    P_nonmonic, precision=100, target_bits=96, algorithm="local"
+)
+expected_D = 16 * 5**2 * abs(int(str(f_nonmonic.discriminant())))
+assert finite_nonmonic.diagnostics["discriminant_bound_D"] == str(expected_D)
+assert height_nonmonic.bounds.diagnostics["mueller_stoll_discriminant_bound"] == str(
+    expected_D
+)
+assert finite_nonmonic.diagnostics["raw_duplication_gcds"][0] == "25"
+assert height_nonmonic.diagnostics["exact_small_step_oracle"]["finite_gcds"][0] == (
+    "25"
+)
+assert height_nonmonic.ball.contains(
+    "0.71938561843064084750898177991281388442829705692175948669319594"
+)
+assert finite_nonmonic.ball.lower > RealBall("0.8", precision_bits=80).lower
+tampered_context = HeightContext(J_nonmonic)
+tampered_tables = [list(table) for table in tampered_context._classical_duplication_terms]
+tampered = False
+for table in tampered_tables:
+    for index, term in enumerate(table):
+        if term[1:] == (0, 4, 0, 0):
+            table[index] = (term[0] + 1,) + term[1:]
+            tampered = True
+            break
+    if tampered:
+        break
+assert tampered
+tampered_context._classical_duplication_terms = tuple(
+    tuple(table) for table in tampered_tables
+)
+try:
+    canonical_height(
+        P_nonmonic,
+        steps=8,
+        precision=100,
+        algorithm="local",
+        context=tampered_context,
+    )
+    assert False
+except Genus2HeightCapabilityError as error:
+    assert "do not match" in str(error)
+
 twice = canonical_height(2*P, steps=5, precision=80, context=context)
 assert h6.ball.intersection(twice.ball / RealBall(4, precision_bits=80))
 
@@ -341,6 +394,116 @@ assert float_rejected
       result.repr,
       "['numerical-reference', 'conditional-supplied-bound', True, True]",
     );
+  } finally {
+    await session.close();
+  }
+});
+
+test("rigorous bounds and specialized quartics are model-bound and unforgeable", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      `${setup}
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+J = HyperellipticJacobian(HeightTestCurve(x**5 - x + 1))
+P = J([x, 1])
+J_other = HyperellipticJacobian(HeightTestCurve(x**5 + x + 1))
+P_other = J_other([x, 1])
+valid = automatic_height_bounds(J, precision=96)
+cross_model = automatic_height_bounds(J_other, precision=96)
+forged = AutomaticHeightBounds(
+    RealBall(100, precision_bits=96),
+    RealBall(100, precision_bits=96),
+    {"automatic_bound": "certified"},
+)
+forged_rejected = False
+try:
+    normalized_archimedean_correction(P, precision=96, steps=4, bounds=forged)
+except Genus2HeightCapabilityError:
+    forged_rejected = True
+cross_model_rejected = False
+try:
+    normalized_archimedean_correction(P, precision=96, steps=4, bounds=cross_model)
+except Genus2HeightCapabilityError:
+    cross_model_rejected = True
+
+context = HeightContext(J)
+context.archimedean_correction(
+    P, precision=96, steps=4, bounds=valid, target_bits=None
+)
+cache_hits_before_forgery = context.diagnostics()[
+    "archimedean_correction_cache_hits"
+]
+same_endpoints_without_proof = AutomaticHeightBounds(
+    valid.correction_lower,
+    valid.correction_upper,
+    {"automatic_bound": "certified"},
+)
+cached_bound_forgery_rejected = False
+try:
+    context.archimedean_correction(
+        P,
+        precision=96,
+        steps=4,
+        bounds=same_endpoints_without_proof,
+        target_bits=None,
+    )
+except Genus2HeightCapabilityError:
+    cached_bound_forgery_rejected = True
+assert (
+    context.diagnostics()["archimedean_correction_cache_hits"]
+    == cache_hits_before_forgery
+)
+canonical_height(P, precision=96, steps=9, algorithm="local", context=context)
+tables = [list(table) for table in context._classical_duplication_terms]
+term = tables[0][0]
+tables[0][0] = (term[0] + 1,) + term[1:]
+tampered = tuple(tuple(table) for table in tables)
+finite_rejected = False
+try:
+    factorization_free_finite_correction(
+        P, precision=96, steps=4, specialized_terms=tampered
+    )
+except Genus2HeightCapabilityError:
+    finite_rejected = True
+arch_rejected = False
+try:
+    normalized_archimedean_correction(
+        P,
+        precision=96,
+        steps=4,
+        bounds=valid,
+        specialized_terms=tampered,
+    )
+except Genus2HeightCapabilityError:
+    arch_rejected = True
+context._classical_duplication_terms = tampered
+context_rejected = False
+try:
+    canonical_height(P, precision=96, steps=9, algorithm="local", context=context)
+except Genus2HeightCapabilityError:
+    context_rejected = True
+assert (
+    forged_rejected
+    and cross_model_rejected
+    and finite_rejected
+    and arch_rejected
+    and cached_bound_forgery_rejected
+    and context_rejected
+)
+[
+    forged_rejected,
+    cross_model_rejected,
+    finite_rejected,
+    arch_rejected,
+    cached_bound_forgery_rejected,
+    context_rejected,
+]
+`,
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "[True, True, True, True, True, True]");
   } finally {
     await session.close();
   }
@@ -521,6 +684,7 @@ try:
         P,
         steps=8,
         precision=80,
+        algorithm="exact",
         context=HeightContext(J, max_exact_coordinate_bits=1024),
     )
 except Genus2HeightResourceLimitError as error:

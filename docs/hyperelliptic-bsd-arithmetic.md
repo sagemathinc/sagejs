@@ -238,6 +238,13 @@ print(z.diagnostics())
 assert z.verify()["verified"] and not z.rigorous
 ```
 
+For 1 through 64 affine rational points on the same odd-degree model, use
+`period.abel_jacobi_batch(points, prec=...)`. The batch isolates the exact
+roots and topology once, evaluates every differential and path through one
+bounded Arb/Acb boundary with at least two independent refinements, and
+publishes ordinary `AbelJacobiResult` values. `verify()` independently replays
+the source calculation; the scalar route is the portable capability fallback.
+
 These analytic objects are refinement-stable, not claimed Arb enclosures;
 their records say `rigorous=False`.
 
@@ -352,6 +359,17 @@ changes transform the pairing by `M^T H M` and the regulator by `det(M)^2`.
 Generalized `h` arithmetic is exact, but a caller-supplied height-difference
 bound remains explicitly conditional unless its theorem certificate is
 replayed.
+
+For local certified genus-2 pairings, one proof transaction deduplicates the
+required diagonal and sum divisors, shares frozen Flynn quartics and theorem
+bounds, and evaluates the missing modular, dyadic, outward-log, and exact
+small-step recurrences in bounded source-transparent batches. Canonical-height
+and pairing records are committed together only after every point and the
+final cancellation check pass. A cancelled or failed transaction publishes no
+partial proof state. Reused pairings and regulators restore detached primitive
+proof payloads, revalidate the exact model, ordered points, parameters, and
+Flynn tables, and return fresh result objects. The ordinary scalar route
+remains the exact differential oracle.
 
 Genus 3 uses Faltings--Hriljac arithmetic in a narrower envelope: odd-degree
 models, rational infinity, split rational Mumford support, a complete finite

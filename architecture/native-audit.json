@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5138,
-      "bytes": 168075,
+      "lines": 5147,
+      "bytes": 168535,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -23,7 +23,7 @@
         "locally implemented integer, polynomial, and factoring helpers",
         "bounded adapters for elliptic and hyperelliptic external-library kernels"
       ],
-      "rationale": "The boundary is legitimate, but a 5,135-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
+      "rationale": "The boundary is legitimate, but a 5,141-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
       "fallback": "Existing ordinary Python arithmetic remains the capability fallback while each exported operation is separated.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Create a symbol-level inventory and extract one representation-neutral helper family per change set."
@@ -63,16 +63,16 @@
     },
     {
       "path": "packages/flint/src/elliptic_lfunction.c",
-      "lines": 3583,
-      "bytes": 137563,
+      "lines": 4756,
+      "bytes": 185215,
       "decision": "retain-primitive",
       "priority": "medium",
       "responsibilities": [
         "canonical completed elliptic and genus-2/3 hyperelliptic L-function central jets and complex values",
-        "FLINT Arb and Acb coefficient, ball, gamma-conversion, and tail-bound arithmetic",
+        "FLINT Arb and Acb coefficient, ball, gamma-conversion, tail-bound, and reusable universal-weight-table arithmetic",
         "batched Node-API decimal input validation, compact planning, packed plotting output, and diagnostic conversion"
       ],
-      "rationale": "The compact host-neutral numerical cores are justified arbitrary-precision primitives over Arb and Acb, while the surrounding adapters provide one batched exact-coefficient crossing. The hyperelliptic double-Mellin implementation is a direct translation of its ordinary-Python source oracle, and the central-weight contour is independently checked against it. Rank selection, value caching, precision refinement, and the readable mathematical fallbacks remain ordinary Python.",
+      "rationale": "The compact host-neutral numerical cores are justified arbitrary-precision primitives over Arb and Acb, while the surrounding adapters provide one batched exact-coefficient crossing. The hyperelliptic double-Mellin implementation is a direct translation of its ordinary-Python source oracle, and the curve-independent universal central-weight tables are checked against both independent contour refinements and the direct Arb path. Rank selection, result caching, precision policy, and the readable mathematical fallbacks remain ordinary Python.",
       "fallback": "The ordinary Python Mellin evaluators preserve the same completed-function normalizations, probable-rank semantics, and moderate-complex values whenever the native capability is unavailable.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "Sage/PARI", "Magma"],
       "next": "Keep differential tests for every supported platform and add a proved Molin discretization enclosure before changing the diagnostic from non-rigorous."
@@ -284,6 +284,29 @@
         "native Windows x64"
       ],
       "next": "Keep the adapter limited to packed sums, scalar and search primitives, and capability metadata; do not move certification policy across this boundary."
+    },
+    {
+      "path": "packages/flint/src/hyperelliptic/period_quadrature.c",
+      "lines": 2752,
+      "bytes": 103239,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "bounded decimal ingress for complex roots and leading coefficients",
+        "batched endpoint-regularized Gauss--Legendre edge evaluation with Arb and Acb",
+        "complete real-period matrix refinement, Riemann-sign selection, conjugation action, and real-lattice extraction",
+        "shared-plan Abel--Jacobi integration with exact source replay and conjugate-cancellation evidence",
+        "outward ball serialization and accuracy-status transport"
+      ],
+      "rationale": "The implementation delegates arbitrary-precision operations to mature Arb and Acb and implements the same bounded panel, matrix, and lattice formulas as the ordinary Python oracle. A native adapter is warranted because the source-transparent compiler cannot yet own Arb/Acb resources in loops and per-node host crossings were the measured period bottleneck; exact input validation, bounded refinement policy, and public certification remain in ordinary Python.",
+      "fallback": "The ordinary mpmath period evaluator remains available and is differentially checked in both genera before the Arb result enters public period publication.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT",
+        "PARI/GP"
+      ],
+      "next": "Keep this operation bounded and representation-only, preserve two independent arbitrary-precision refinement runs, and migrate the loop to source-transparent typed code if the compiler gains owned Arb/Acb resource semantics."
     },
     {
       "path": "packages/flint/src/hyperelliptic/rforest.c",
