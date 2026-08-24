@@ -103,6 +103,7 @@ test("the production artifact manifest is deterministic and uses dist-relative f
         "compiled-gmp",
         "conway-data",
         "plotly",
+        "polyglot-frontends",
         "numpy",
       ],
     );
