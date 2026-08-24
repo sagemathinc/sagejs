@@ -13,6 +13,11 @@ import time
 from typing import Any, Mapping
 
 import sagejs.runtime as runtime
+from sagejs.hyperelliptic_curves.auto_receipt_policy import (
+    AutoReceiptDecision,
+    auto_receipt_decision,
+    h_kind_from_coefficients,
+)
 from sagejs.native import (
     is_compiled,
     kernel_uint64_buffer,
@@ -595,7 +600,9 @@ class PreparedJacobianArithmetic:
     `algorithm="reference"` always executes ordinary polynomial Cantor
     arithmetic. `algorithm="native"` fails closed unless the same-source
     kernel is compiled and the v1 prime-field domain applies. `"auto"` uses
-    that kernel when available and otherwise takes the exact reference path.
+    that kernel when available in development; an installed enabled release
+    policy additionally requires an exact receipt for the model and workload.
+    Every denied automatic request takes the exact reference path.
     """
 
     def __init__(
@@ -614,12 +621,13 @@ class PreparedJacobianArithmetic:
         self._divisor_class = type(jacobian.zero())
         self._algorithm = algorithm
         self._max_batch_items = maximum
-        self._kummer_context_cache: dict[int, Any] = {}
+        self._kummer_context_cache: dict[tuple[int, str], Any] = {}
         self.genus = int(jacobian.genus())
         self.prime, self._domain_reason = _prepared_prime(jacobian)
         self.schema = PACKED_MUMFORD_SCHEMA
         self.model_kind = "odd-degree-one-infinity"
         self._model = self._pack_model() if self.prime is not None else ()
+        self._h_kind = h_kind_from_coefficients(self._model[8:])
         digest = hashlib.sha256()
         digest.update(self.schema.encode("ascii"))
         digest.update(bytes([self.genus]))
@@ -712,7 +720,12 @@ class PreparedJacobianArithmetic:
         """Return the four fixed-width packed coefficients of `h`."""
         return self._model[8:]
 
-    def kummer_context(self, *, max_batch_bytes: int = 64 << 20) -> Any:
+    def kummer_context(
+        self,
+        *,
+        max_batch_bytes: int = 64 << 20,
+        algorithm: str | None = None,
+    ) -> Any:
         """Return the cached sign-free genus-2 prime Kummer context.
 
         The import is deliberately lazy: public Cantor consumers need not load
@@ -722,13 +735,17 @@ class PreparedJacobianArithmetic:
         maximum = _exact_integer(max_batch_bytes, "max_batch_bytes")
         if maximum < 1:
             raise ValueError("max_batch_bytes must be positive")
+        requested = self._algorithm if algorithm is None else algorithm
+        if requested not in ("auto", "native", "reference"):
+            raise ValueError("unknown Kummer algorithm " + repr(requested))
         if self.genus != 2:
             raise NotImplementedError("the prepared Kummer context requires genus 2")
         if self.prime is None:
             raise NotImplementedError(
                 "the prepared Kummer context is unavailable: " + self._domain_reason
             )
-        cached = self._kummer_context_cache.get(maximum)
+        cache_key = (maximum, requested)
+        cached = self._kummer_context_cache.get(cache_key)
         if cached is not None:
             return cached
         try:
@@ -745,12 +762,18 @@ class PreparedJacobianArithmetic:
             self.f_coefficients,
             self.h_coefficients,
             max_batch_bytes=maximum,
+            algorithm=requested,
         )
-        self._kummer_context_cache[maximum] = context
+        self._kummer_context_cache[cache_key] = context
         return context
 
     def capability(self) -> PreparedJacobianCapability:
-        selected, reason = self._selection(self._algorithm)
+        selected, reason = self._selection(
+            self._algorithm,
+            operation="add",
+            batch_items=1,
+            resource_bytes=352,
+        )
         return PreparedJacobianCapability(
             available=self._native_available,
             selected=selected,
@@ -763,14 +786,59 @@ class PreparedJacobianArithmetic:
             multi_search_available=self._multi_search_available,
         )
 
-    def _selection(self, requested: str | None) -> tuple[str, str]:
+    def _receipt_decision(
+        self,
+        algorithm: str,
+        operation: str,
+        *,
+        batch_items: int,
+        scalar_bits: int = 0,
+        resource_bytes: int = 0,
+    ) -> AutoReceiptDecision:
+        assert self.prime is not None
+        return auto_receipt_decision(
+            algorithm=algorithm,
+            backend="prime-cantor",
+            operation=operation,
+            fingerprint=self.model_fingerprint,
+            domain_id="prime-cantor-odd-v1",
+            genus=self.genus,
+            field_kind="prime-field",
+            model_kind=self.model_kind,
+            h_kind=self._h_kind,
+            prime=self.prime,
+            interval_start=self.prime,
+            interval_stop=self.prime,
+            batch_items=batch_items,
+            scalar_bits=scalar_bits,
+            resource_bytes=resource_bytes,
+        )
+
+    def _selection(
+        self,
+        requested: str | None,
+        *,
+        operation: str,
+        batch_items: int,
+        scalar_bits: int = 0,
+        resource_bytes: int = 0,
+    ) -> tuple[str, str]:
         algorithm = self._algorithm if requested is None else requested
         if algorithm not in ("auto", "native", "reference"):
             raise ValueError("unknown prepared Jacobian algorithm " + repr(algorithm))
         if algorithm == "reference":
             return "reference", "explicit-reference"
         if self._native_available:
-            return "native", "supported-source-transparent-kernel"
+            decision = self._receipt_decision(
+                algorithm,
+                operation,
+                batch_items=batch_items,
+                scalar_bits=scalar_bits,
+                resource_bytes=resource_bytes,
+            )
+            if decision.allowed:
+                return "native", decision.reason
+            return "reference", decision.reason
         reason = (
             self._domain_reason
             if self.prime is None
@@ -782,14 +850,30 @@ class PreparedJacobianArithmetic:
             )
         return "reference", reason
 
-    def _search_selection(self, requested: str | None) -> tuple[str, str]:
+    def _search_selection(
+        self,
+        requested: str | None,
+        *,
+        batch_items: int,
+        scalar_bits: int,
+        resource_bytes: int,
+    ) -> tuple[str, str]:
         algorithm = self._algorithm if requested is None else requested
         if algorithm not in ("auto", "native", "reference"):
             raise ValueError("unknown prepared Jacobian algorithm " + repr(algorithm))
         if algorithm == "reference":
             return "reference", "explicit-reference"
         if self._search_available:
-            return "native", "supported-source-transparent-search-kernel"
+            decision = self._receipt_decision(
+                algorithm,
+                "search-progression",
+                batch_items=batch_items,
+                scalar_bits=scalar_bits,
+                resource_bytes=resource_bytes,
+            )
+            if decision.allowed:
+                return "native", decision.reason
+            return "reference", decision.reason
         reason = (
             self._domain_reason
             if self.prime is None
@@ -801,14 +885,28 @@ class PreparedJacobianArithmetic:
             )
         return "reference", reason
 
-    def _validation_selection(self, requested: str | None) -> tuple[str, str]:
+    def _validation_selection(
+        self,
+        requested: str | None,
+        *,
+        batch_items: int,
+        resource_bytes: int,
+    ) -> tuple[str, str]:
         algorithm = self._algorithm if requested is None else requested
         if algorithm not in ("auto", "native", "reference"):
             raise ValueError("unknown prepared Jacobian algorithm " + repr(algorithm))
         if algorithm == "reference":
             return "reference", "explicit-reference"
         if self._validation_available:
-            return "native", "supported-source-transparent-validation-kernel"
+            decision = self._receipt_decision(
+                algorithm,
+                "validate",
+                batch_items=batch_items,
+                resource_bytes=resource_bytes,
+            )
+            if decision.allowed:
+                return "native", decision.reason
+            return "reference", decision.reason
         reason = (
             self._domain_reason
             if self.prime is None
@@ -820,14 +918,30 @@ class PreparedJacobianArithmetic:
             )
         return "reference", reason
 
-    def _multi_search_selection(self, requested: str | None) -> tuple[str, str]:
+    def _multi_search_selection(
+        self,
+        requested: str | None,
+        *,
+        batch_items: int,
+        scalar_bits: int,
+        resource_bytes: int,
+    ) -> tuple[str, str]:
         algorithm = self._algorithm if requested is None else requested
         if algorithm not in ("auto", "native", "reference"):
             raise ValueError("unknown prepared Jacobian algorithm " + repr(algorithm))
         if algorithm == "reference":
             return "reference", "explicit-reference"
         if self._multi_search_available:
-            return "native", "supported-source-transparent-multi-search-kernel"
+            decision = self._receipt_decision(
+                algorithm,
+                "search-progressions",
+                batch_items=batch_items,
+                scalar_bits=scalar_bits,
+                resource_bytes=resource_bytes,
+            )
+            if decision.allowed:
+                return "native", decision.reason
+            return "reference", decision.reason
         reason = (
             self._domain_reason
             if self.prime is None
@@ -1159,7 +1273,11 @@ class PreparedJacobianArithmetic:
                     )
                 flattened.append(exact)
 
-        selected, _reason = self._validation_selection(algorithm)
+        selected, _reason = self._validation_selection(
+            algorithm,
+            batch_items=count,
+            resource_bytes=96 + 136 * count,
+        )
         if selected == "reference":
             # Validate the whole input before publishing the batch.  The
             # temporary divisors remain unreachable if any later row fails.
@@ -1219,7 +1337,12 @@ class PreparedJacobianArithmetic:
             left_values._lease_for(self)
         if right_is_packed:
             right_values._lease_for(self)
-        selected, reason = self._selection(algorithm)
+        selected, reason = self._selection(
+            algorithm,
+            operation="add",
+            batch_items=len(left_values),
+            resource_bytes=96 + 200 * len(left_values),
+        )
         started = time.perf_counter_ns()
         packed_left = None
         packed_right = None
@@ -1433,7 +1556,12 @@ class PreparedJacobianArithmetic:
                     "prepared progression exceeds max_group_operations="
                     + str(operation_limit)
                 )
-        selected, reason = self._selection(algorithm)
+        selected, reason = self._selection(
+            algorithm,
+            operation="progression",
+            batch_items=length,
+            resource_bytes=224 + 72 * length,
+        )
         started = time.perf_counter_ns()
         start_row = step_row = ()
         if selected == "native":
@@ -1560,7 +1688,17 @@ class PreparedJacobianArithmetic:
                         "prepared scalar multiplication exceeds "
                         "max_group_operations=" + str(operation_limit)
                     )
-        selected, reason = self._selection(algorithm)
+        maximum_bits = max(
+            (_bit_length(abs(value)) for value in scalar_values), default=0
+        )
+        words_per_scalar = max(1, (maximum_bits + 63) // 64)
+        selected, reason = self._selection(
+            algorithm,
+            operation="scalar",
+            batch_items=len(values),
+            scalar_bits=maximum_bits,
+            resource_bytes=96 + len(values) * (18 + words_per_scalar) * 8,
+        )
         started = time.perf_counter_ns()
         packed_rows = None
         if selected == "native":
@@ -1569,10 +1707,6 @@ class PreparedJacobianArithmetic:
             else:
                 prepared_values = self.prepare_batch(values)
                 packed_rows = prepared_values._lease_for(self)
-        maximum_bits = max(
-            (_bit_length(abs(value)) for value in scalar_values), default=0
-        )
-        words_per_scalar = max(1, (maximum_bits + 63) // 64)
         words: list[int] = []
         signs: list[int] = []
         for value in scalar_values:
@@ -1719,12 +1853,17 @@ class PreparedJacobianArithmetic:
                 raise ValueError("max_group_operations must be nonnegative")
         if operation_limit >= 1 << 64:
             raise ValueError("max_group_operations exceeds the uint64 kernel ABI")
-        selected, reason = self._search_selection(algorithm)
+        maximum_bits = max(_bit_length(base_value), _bit_length(stride_value))
+        words_per_scalar = max(1, (maximum_bits + 63) // 64)
+        selected, reason = self._search_selection(
+            algorithm,
+            batch_items=baby_value,
+            scalar_bits=maximum_bits,
+            resource_bytes=256 + baby_value * 96 + words_per_scalar * 16,
+        )
         requested = self._algorithm if algorithm is None else algorithm
         started = time.perf_counter_ns()
         packed_element = self.pack(element) if selected == "native" else ()
-        maximum_bits = max(_bit_length(base_value), _bit_length(stride_value))
-        words_per_scalar = max(1, (maximum_bits + 63) // 64)
         base_words: list[int] = []
         stride_words: list[int] = []
         base_copy = base_value
@@ -1945,16 +2084,23 @@ class PreparedJacobianArithmetic:
                 raise ValueError("max_group_operations must be nonnegative")
         if operation_limit >= 1 << 64:
             raise ValueError("max_group_operations exceeds the uint64 kernel ABI")
-        selected, reason = self._multi_search_selection(algorithm)
-        requested = self._algorithm if algorithm is None else algorithm
-
-        started = time.perf_counter_ns()
-        packed_element = self.pack(element) if selected == "native" else ()
         maximum_bits = max(
             _bit_length(stride_value),
             max(_bit_length(value) for value in base_values),
         )
         words_per_scalar = max(1, (maximum_bits + 63) // 64)
+        selected, reason = self._multi_search_selection(
+            algorithm,
+            batch_items=len(base_values),
+            scalar_bits=maximum_bits,
+            resource_bytes=(
+                256 + baby_value * 96 + len(base_values) * (words_per_scalar + 1) * 8
+            ),
+        )
+        requested = self._algorithm if algorithm is None else algorithm
+
+        started = time.perf_counter_ns()
+        packed_element = self.pack(element) if selected == "native" else ()
         base_words: list[int] = []
         for base_value in base_values:
             base_copy = base_value
@@ -2127,17 +2273,23 @@ class PreparedJacobianArithmetic:
         diagnostics: bool = False,
         materialize: bool = False,
     ) -> Any:
-        selected, reason = self._selection(algorithm)
+        level: Any = (
+            elements if isinstance(elements, PreparedDivisorBatch) else tuple(elements)
+        )
+        count = len(level)
+        self._check_batch_size(count)
+        selected, reason = self._selection(
+            algorithm,
+            operation="sum",
+            batch_items=count,
+            resource_bytes=96 + 200 * count,
+        )
         initial_pack_ns = 0
         if selected == "native":
             started = time.perf_counter_ns()
-            level: Any = self.prepare_batch(elements)
+            level = self.prepare_batch(level)
             initial_pack_ns = time.perf_counter_ns() - started
-            count = len(level)
         else:
-            level = tuple(elements)
-            count = len(level)
-            self._check_batch_size(count)
             for value in level:
                 if value.parent() is not self._jacobian:
                     raise ValueError("every batch divisor must lie in this Jacobian")

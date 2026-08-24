@@ -616,13 +616,13 @@ class MumfordDivisor(sage.Element):
                 "sagejs.hyperelliptic_curves.jacobian_native",
                 fromlist=["native_scalar_multiply"],
             )
-            context = self._parent.prepared_arithmetic()
+            context = self._parent.prepared_arithmetic(algorithm=algorithm)
             if context.native_available:
                 try:
                     return context.scalar_batch(
                         (self,),
                         (scalar,),
-                        algorithm="native",
+                        algorithm=algorithm,
                         max_group_operations=max_group_operations,
                     )[0]
                 except RuntimeError as error:
@@ -1249,7 +1249,7 @@ class HyperellipticJacobian(sage.Parent):
             return self.zero()
         prepared = self.prepared_arithmetic()
         if prepared.native_available:
-            return prepared.sum(divisors, algorithm="native")
+            return prepared.sum(divisors)
         native = __import__(
             "sagejs.hyperelliptic_curves.jacobian_native",
             fromlist=["native_sum"],
@@ -2135,6 +2135,10 @@ class HyperellipticJacobian(sage.Parent):
             fromlist=["smalljac_group_invariants"],
         )
         use_smalljac = frobenius.smalljac_supports_group_structure(self._curve)
+        if use_smalljac and algorithm == "auto":
+            use_smalljac = bool(
+                frobenius.smalljac_group_auto_receipt_decision(self._curve).allowed
+            )
         if algorithm == "smalljac" and not use_smalljac:
             raise NotImplementedError(
                 "smalljac group structure requires an odd-degree genus-2 curve "

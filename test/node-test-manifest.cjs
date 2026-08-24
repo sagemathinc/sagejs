@@ -19,6 +19,7 @@ const unit = [
   "test/math-dispatch-benchmark-ingestion.cjs",
   "test/hyperelliptic-analytic-acceptance.cjs",
   "test/hyperelliptic-auto-receipt-policy.cjs",
+  "test/hyperelliptic-auto-receipt-dispatch.cjs",
   "test/hyperelliptic-rational-public-scalar-benchmark.cjs",
   "test/macos-arm64-math-witness.cjs",
   "test/native-build-order.cjs",

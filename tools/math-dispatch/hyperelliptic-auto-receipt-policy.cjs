@@ -13,7 +13,9 @@ const path = require("node:path");
 
 const POLICY_SCHEMA = "sagejs.hyperelliptic-auto-receipt-policy/v1";
 const RECEIPT_SCHEMA = "sagejs.hyperelliptic-auto-receipt/v1";
+const RUNTIME_SCHEMA = "sagejs.hyperelliptic-auto-receipt-runtime/v1";
 const SOURCE_BUNDLE_ALGORITHM = "sagejs.source-bundle-sha256/v1";
+const RUNTIME_GLOBAL = "__sagejs_hyperelliptic_auto_receipt_policy__";
 const PLATFORMS = Object.freeze([
   "linux-x64",
   "linux-arm64",
@@ -852,6 +854,173 @@ function queryAutoReceiptPolicy(verifiedPolicy, rawQuery) {
   });
 }
 
+function hostPlatform(platform = process.platform, architecture = process.arch) {
+  const value = `${platform}-${architecture}`;
+  if (!PLATFORMS.includes(value)) {
+    throw new Error(`unsupported hyperelliptic receipt-policy platform ${value}`);
+  }
+  return value;
+}
+
+function runtimeInteger(value, label) {
+  if (typeof value === "bigint") {
+    if (value < 0n || value > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new Error(`${label} must fit a nonnegative JavaScript safe integer`);
+    }
+    return Number(value);
+  }
+  return checkedInteger(value, label);
+}
+
+function runtimeDecision(verifiedPolicy, platform, values) {
+  if (!verifiedPolicy.enabled) {
+    return Object.freeze({
+      schema: RUNTIME_SCHEMA,
+      policy_enabled: false,
+      selected: false,
+      reason: "policy-disabled",
+      entry_id: null,
+      backend: values.backend,
+      operation: values.operation,
+    });
+  }
+  const common = {
+    platform,
+    backend: values.backend,
+    operation: values.operation,
+    source_bundle_sha256: verifiedPolicy.source_bundle.sha256,
+    workload: {
+      prime: values.prime,
+      interval_start: values.interval_start,
+      interval_stop: values.interval_stop,
+      batch_items: values.batch_items,
+      scalar_bits: values.scalar_bits,
+      resource_bytes: values.resource_bytes,
+    },
+  };
+  const exact = queryAutoReceiptPolicy(verifiedPolicy, {
+    ...common,
+    model: {
+      kind: "exact-fingerprint",
+      fingerprint: values.fingerprint,
+    },
+  });
+  const domain = queryAutoReceiptPolicy(verifiedPolicy, {
+    ...common,
+    model: {
+      kind: "domain-envelope",
+      domain_id: values.domain_id,
+      genus: values.genus,
+      field_kind: values.field_kind,
+      model_kind: values.model_kind,
+      h_kind: values.h_kind,
+    },
+  });
+  const selected = [exact, domain].filter((decision) => decision.selected);
+  const ambiguous = [exact, domain].some(
+    (decision) => decision.reason === "ambiguous-policy",
+  );
+  if (ambiguous || selected.length > 1) {
+    return Object.freeze({
+      schema: RUNTIME_SCHEMA,
+      policy_enabled: true,
+      selected: false,
+      reason: "ambiguous-policy",
+      entry_id: null,
+      backend: values.backend,
+      operation: values.operation,
+    });
+  }
+  if (selected.length === 0) {
+    return Object.freeze({
+      schema: RUNTIME_SCHEMA,
+      policy_enabled: true,
+      selected: false,
+      reason: "unreceipted-fallback",
+      entry_id: null,
+      backend: values.backend,
+      operation: values.operation,
+    });
+  }
+  return Object.freeze({
+    schema: RUNTIME_SCHEMA,
+    policy_enabled: true,
+    selected: true,
+    reason: selected[0].reason,
+    entry_id: selected[0].entry_id,
+    backend: selected[0].backend,
+    operation: values.operation,
+  });
+}
+
+function createAutoReceiptPolicyRuntime(
+  verifiedPolicy,
+  { platform = hostPlatform() } = {},
+) {
+  if (!verifiedPolicy || !VERIFIED_POLICIES.has(verifiedPolicy)) {
+    throw new Error("runtime installation requires a verified immutable policy");
+  }
+  checkedPlatform(platform, "runtime platform");
+  const decide = (
+    backend,
+    operation,
+    fingerprint,
+    domainId,
+    genus,
+    fieldKind,
+    modelKind,
+    hKind,
+    prime,
+    intervalStart,
+    intervalStop,
+    batchItems,
+    scalarBits,
+    resourceBytes,
+  ) => runtimeDecision(verifiedPolicy, platform, {
+    backend,
+    operation,
+    fingerprint,
+    domain_id: domainId,
+    genus: runtimeInteger(genus, "runtime genus"),
+    field_kind: fieldKind,
+    model_kind: modelKind,
+    h_kind: hKind,
+    prime: runtimeInteger(prime, "runtime prime"),
+    interval_start: runtimeInteger(intervalStart, "runtime interval_start"),
+    interval_stop: runtimeInteger(intervalStop, "runtime interval_stop"),
+    batch_items: runtimeInteger(batchItems, "runtime batch_items"),
+    scalar_bits: runtimeInteger(scalarBits, "runtime scalar_bits"),
+    resource_bytes: runtimeInteger(resourceBytes, "runtime resource_bytes"),
+  });
+  return Object.freeze({
+    schema: RUNTIME_SCHEMA,
+    enabled: verifiedPolicy.enabled,
+    platform,
+    source_bundle_sha256: verifiedPolicy.source_bundle?.sha256 ?? null,
+    decide,
+  });
+}
+
+function installAutoReceiptPolicyRuntime(
+  verifiedPolicy,
+  { target = globalThis, platform = hostPlatform() } = {},
+) {
+  if (target === null || (typeof target !== "object" && typeof target !== "function")) {
+    throw new TypeError("runtime installation target must be an object");
+  }
+  if (Object.prototype.hasOwnProperty.call(target, RUNTIME_GLOBAL)) {
+    throw new Error("hyperelliptic auto-receipt runtime is already installed");
+  }
+  const runtime = createAutoReceiptPolicyRuntime(verifiedPolicy, { platform });
+  Object.defineProperty(target, RUNTIME_GLOBAL, {
+    configurable: false,
+    enumerable: false,
+    writable: false,
+    value: runtime,
+  });
+  return runtime;
+}
+
 function readJson(filename) {
   return JSON.parse(fs.readFileSync(filename, "utf8"));
 }
@@ -860,12 +1029,17 @@ module.exports = {
   PLATFORMS,
   POLICY_SCHEMA,
   RECEIPT_SCHEMA,
+  RUNTIME_GLOBAL,
+  RUNTIME_SCHEMA,
   REQUIRED_FAILURES,
   REQUIRED_SANITIZERS,
   EXECUTION_TARGETS,
   SOURCE_BUNDLE_ALGORITHM,
   envelopeWithin,
+  createAutoReceiptPolicyRuntime,
   generateSourceBundle,
+  hostPlatform,
+  installAutoReceiptPolicyRuntime,
   modelWithin,
   queryAutoReceiptPolicy,
   readJson,

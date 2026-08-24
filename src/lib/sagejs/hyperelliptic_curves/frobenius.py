@@ -6,6 +6,11 @@ from typing import Any, Iterator
 
 import sagejs as sage
 import sagejs.runtime as runtime
+from sagejs.hyperelliptic_curves.auto_receipt_policy import (
+    auto_receipt_decision,
+    curve_model_fingerprint,
+    h_kind_from_coefficients,
+)
 
 MAX_EXHAUSTIVE_FIELD_ORDER = 2_000_000
 MAX_LOCAL_FACTOR_CHUNK_SIZE = 65_536
@@ -423,14 +428,93 @@ def register_lpolynomial_backend(name: str, backend: Any) -> None:
     _LPOLYNOMIAL_BACKENDS[name] = backend
 
 
+def _local_factor_receipt_decision(
+    curve: Any,
+    algorithm: str,
+    backend: str,
+    start: int,
+    stop: int,
+    *,
+    batch_items: int,
+    resource_bytes: int,
+    operation: str = "local-factor",
+    domain_id: str = "hyperelliptic-local-factor-v1",
+) -> Any:
+    f_value, h_value = curve.hyperelliptic_polynomials()
+    base = curve.base_ring()
+    field_kind = "prime-field" if getattr(base, "_kind", None) == "GF" else "rational"
+    effective_degree = max(int(f_value.degree()), 2 * int(h_value.degree()))
+    model_kind = (
+        "odd-degree-one-infinity"
+        if effective_degree == 2 * int(curve.genus()) + 1
+        else "general-hyperelliptic"
+    )
+    return auto_receipt_decision(
+        algorithm=algorithm,
+        backend=backend,
+        operation=operation,
+        fingerprint=curve_model_fingerprint(
+            curve, "sagejs.hyperelliptic.curve-model.v1"
+        ),
+        domain_id=domain_id,
+        genus=int(curve.genus()),
+        field_kind=field_kind,
+        model_kind=model_kind,
+        h_kind=h_kind_from_coefficients(h_value.list()),
+        prime=stop,
+        interval_start=start,
+        interval_stop=stop,
+        batch_items=batch_items,
+        resource_bytes=resource_bytes,
+    )
+
+
+def smalljac_group_auto_receipt_decision(curve: Any) -> Any:
+    """Authorize automatic smalljac group structure for one finite model."""
+
+    prime = int(curve.base_ring().characteristic())
+    return _local_factor_receipt_decision(
+        curve,
+        "auto",
+        "smalljac",
+        prime,
+        prime,
+        batch_items=1,
+        resource_bytes=512,
+        operation="group-structure",
+        domain_id="hyperelliptic-group-structure-v1",
+    )
+
+
 def select_lpolynomial_algorithm(curve: Any, algorithm: str) -> str:
     if algorithm == "auto":
         if _smalljac_supports_finite_curve(curve):
-            return "smalljac"
+            prime = int(curve.base_ring().characteristic())
+            decision = _local_factor_receipt_decision(
+                curve,
+                algorithm,
+                "smalljac",
+                prime,
+                prime,
+                batch_items=1,
+                resource_bytes=256,
+            )
+            return "smalljac" if decision.allowed else "exhaustive"
         smalljac = _LPOLYNOMIAL_BACKENDS.get("smalljac")
         supports = getattr(smalljac, "supports", None)
         if smalljac is not None and (not callable(supports) or supports(curve)):
-            return "smalljac"
+            base = curve.base_ring()
+            prime = int(base.characteristic())
+            decision = _local_factor_receipt_decision(
+                curve,
+                algorithm,
+                "smalljac",
+                prime,
+                prime,
+                batch_items=1,
+                resource_bytes=256,
+            )
+            return "smalljac" if decision.allowed else "exhaustive"
         return "exhaustive"
     if algorithm == "smalljac" and _smalljac_supports_finite_curve(curve):
         return "smalljac"
@@ -1047,13 +1131,39 @@ def _rational_rforest_supported(curve: Any, start: int, stop: int) -> bool:
 
 
 def _select_rational_algorithm(
-    curve: Any, algorithm: str, start: int, stop: int
+    curve: Any,
+    algorithm: str,
+    start: int,
+    stop: int,
+    *,
+    batch_items: int = 1,
+    resource_bytes: int = 256,
 ) -> str:
     if algorithm == "auto":
         if _rational_smalljac_supported(curve, start, stop):
-            return "smalljac"
+            decision = _local_factor_receipt_decision(
+                curve,
+                algorithm,
+                "smalljac",
+                start,
+                stop,
+                batch_items=batch_items,
+                resource_bytes=resource_bytes,
+            )
+            if decision.allowed:
+                return "smalljac"
         if _rational_rforest_supported(curve, start, stop):
-            return "rforest"
+            decision = _local_factor_receipt_decision(
+                curve,
+                algorithm,
+                "rforest",
+                start,
+                stop,
+                batch_items=batch_items,
+                resource_bytes=resource_bytes,
+            )
+            if decision.allowed:
+                return "rforest"
         return "exhaustive"
     if algorithm == "smalljac":
         if _smalljac_capabilities() is None:
@@ -1106,8 +1216,10 @@ def rational_local_lpolynomial(curve: Any, prime: Any, algorithm: str = "auto") 
     """Compute one good local factor over `QQ`.
 
     `auto` uses the native genus-2 smalljac stream and the measured certified
-    odd-degree genus-3 rforest pipeline where their complete capability checks
-    pass. Other inputs retain exact exhaustive reduction and counting.
+    odd-degree genus-3 rforest pipeline where their capability checks pass. An
+    installed enabled release policy additionally requires an exact receipt
+    for the model and range. Other inputs retain exact exhaustive reduction
+    and counting.
     """
     prime = _checked_prime(prime)
     selected = _select_rational_algorithm(curve, algorithm, prime, prime)
@@ -1180,7 +1292,12 @@ def rational_local_coefficient_chunks(
         and _rational_smalljac_supported(curve, 3, stop)
     )
     selected = _select_rational_algorithm(
-        curve, algorithm, 3 if native_after_two else start, stop
+        curve,
+        algorithm,
+        3 if native_after_two else start,
+        stop,
+        batch_items=chunk_size,
+        resource_bytes=256 + 64 * chunk_size,
     )
     if native_after_two:
         try:
@@ -1309,6 +1426,8 @@ def rational_local_lpolynomial_chunks(
         algorithm,
         3 if native_after_two else checked_start,
         checked_stop,
+        batch_items=_checked_chunk,
+        resource_bytes=256 + 64 * _checked_chunk,
     )
     cache_remaining = max(
         0,

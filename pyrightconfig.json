@@ -117,6 +117,7 @@
     "src/lib/sagejs/elliptic_curves/lseries.py",
     "src/lib/sagejs/hyperelliptic_curves/__init__.py",
     "src/lib/sagejs/hyperelliptic_curves/abelian_group.py",
+    "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",
     "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
     "src/lib/sagejs/hyperelliptic_curves/bsd.py",
     "src/lib/sagejs/hyperelliptic_curves/bsd_pipeline.py",
