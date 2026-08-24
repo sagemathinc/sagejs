@@ -25,7 +25,7 @@ function run(executable, args, source, timeout = 120_000) {
 
 const kernelDifferential = String.raw`
 from sagejs.native import integer_buffer_values, kernel_integer_buffer, kernel_integer_zeros
-from sagejs.number_fields.bl_composite_kernel import packed_prime_ideal_candidate_hnf_in_place
+from sagejs.number_fields.bl_composite_kernel import packed_cubic_reduced_algebra_factors_in_place, packed_prime_ideal_candidate_hnf_in_place
 
 packed = packed_prime_ideal_candidate_hnf_in_place
 dynamic = getattr(packed, "__sagejs_native_source__", packed)
@@ -74,6 +74,64 @@ for function in (dynamic, packed):
         1,
     )
     assert list(integer_buffer_values(output)) == [0] * 12
+
+cubic_packed = packed_cubic_reduced_algebra_factors_in_place
+cubic_dynamic = getattr(cubic_packed, "__sagejs_native_source__", cubic_packed)
+cubic_table = [
+    1, 0, 0, 0, 1, 0, 0, 0, 1,
+    0, 1, 0, 1, 1, 1, 0, 0, 0,
+    0, 0, 1, 0, 0, 0, 0, 0, 1,
+]
+expected_metadata = [2, 2, 1, 1, 2, 0, 0]
+expected_kernels = [
+    1, 0, 1, 0, 1, 0, 0, 0, 0,
+    0, 0, 1, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0,
+]
+expected_presentations = [
+    1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0,
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0,
+    0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0,
+    1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0,
+] + [0] * 25
+
+def cubic_outcome(function, table=cubic_table, one=(1, 0, 0), prime=2):
+    metadata = kernel_integer_zeros(function, 7, 16)
+    kernels = kernel_integer_zeros(function, 27, 16)
+    presentations = kernel_integer_zeros(function, 75, 16)
+    accepted = function(
+        metadata,
+        kernels,
+        presentations,
+        kernel_integer_zeros(function, 128, 16),
+        kernel_integer_buffer(function, table),
+        kernel_integer_buffer(function, one),
+        prime,
+    )
+    return (
+        bool(accepted),
+        [int(value) for value in integer_buffer_values(metadata)],
+        [int(value) for value in integer_buffer_values(kernels)],
+        [int(value) for value in integer_buffer_values(presentations)],
+    )
+
+for function in (cubic_dynamic, cubic_packed):
+    accepted, metadata, kernels, presentations = cubic_outcome(function)
+    assert accepted
+    assert metadata == expected_metadata
+    assert kernels == expected_kernels
+    assert presentations == expected_presentations
+    # The fixed-shape kernel is deliberately bounded in the rational prime.
+    assert cubic_outcome(function, prime=263) == (False, [0] * 7, [0] * 27, [0] * 75)
+    # The reduced but nonmonogenic algebra F_2^3 declines to the complete
+    # readable Frobenius recursion.
+    product_table = [
+        1 if left == right == coordinate else 0
+        for left in range(3)
+        for right in range(3)
+        for coordinate in range(3)
+    ]
+    assert cubic_outcome(function, product_table, (1, 1, 1), 2)[0] is False
 `;
 
 test("candidate HNF source matches in CPython and compiled Sage.js", () => {
@@ -85,9 +143,9 @@ test("candidate HNF source matches in CPython and compiled Sage.js", () => {
   const output = run(
     sagejs,
     ["--python", "-"],
-    `${kernelDifferential}\nfrom sagejs.native import is_compiled\nprint(is_compiled(packed))\n`,
+    `${kernelDifferential}\nfrom sagejs.native import is_compiled\nprint([is_compiled(packed), is_compiled(cubic_packed)])\n`,
   );
-  assert.equal(output, "True");
+  assert.equal(output, "[True, True]");
 });
 
 test("packed h3 candidates replay and preserve the five-record payload", () => {
@@ -105,8 +163,10 @@ field = NumberField(x**3 - x**2 - 6*x - 12, "a")
 order = field.maximal_order()
 modular_table_calls = 0
 quotient_cache_events = []
+cubic_kernel_calls = []
 original_modular_table = prime_ideals._modular_table
 original_quotient_map = prime_ideals._quotient_map
+original_cubic_kernel = prime_ideals._candidate_kernel.packed_cubic_reduced_algebra_factors_in_place
 def counted_modular_table(*args, **kwargs):
     global modular_table_calls
     modular_table_calls += 1
@@ -118,22 +178,24 @@ def counted_quotient_map(*args, **kwargs):
     after = None if cache is None else len(cache)
     quotient_cache_events.append((cache, before, after))
     return answer
+def counted_cubic_kernel(*args):
+    answer = original_cubic_kernel(*args)
+    cubic_kernel_calls.append(bool(answer))
+    return answer
 prime_ideals._modular_table = counted_modular_table
 prime_ideals._quotient_map = counted_quotient_map
+prime_ideals._cubic_reduced_algebra_kernel_override = counted_cubic_kernel
 try:
     plan = factor_bases.factor_base_plan(order, proof=True, theorem="minkowski")
     records = factor_bases.build_factor_base(plan)
 finally:
     prime_ideals._modular_table = original_modular_table
     prime_ideals._quotient_map = original_quotient_map
+    prime_ideals._cubic_reduced_algebra_kernel_override = None
 assert modular_table_calls == 4
+assert cubic_kernel_calls == [True]
 producer_events = [event for event in quotient_cache_events if event[0] is not None]
-assert len(producer_events) == 3
-producer_cache = producer_events[0][0]
-assert all(event[0] is producer_cache for event in producer_events)
-assert sum(event[2] > event[1] for event in producer_events) == 3
-assert sum(event[2] == event[1] for event in producer_events) == 0
-assert len(producer_cache) == 3
+assert producer_events == []
 assert len([event for event in quotient_cache_events if event[0] is None]) >= 2
 payload = [record.to_dict() for record in records]
 encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
@@ -369,6 +431,105 @@ print(hashlib.sha256(encoded).hexdigest())
   );
 });
 
+test("cubic reduced-algebra output is canonical or falls back exactly", () => {
+  const output = run(sagejs, ["--python", "-"], String.raw`
+from sagejs.number_fields import prime_ideals
+
+R = PolynomialRing(QQ, "x")
+cases = [
+    ([-1, 0, -1, 1], 2, True),
+    ([-1, 4, 0, 1], 2, True),
+    ([1, 5, -1, 1], 2, False),
+    ([-12, -6, -1, 1], 2, True),
+    ([-12, -6, -1, 1], 3, False),
+    ([-12, -6, -1, 1], 7, True),
+    ([-21, 9, -1, 1], 7, False),
+    ([3, 5, 0, 1], 3, True),
+]
+native_kernel = prime_ideals._candidate_kernel.packed_cubic_reduced_algebra_factors_in_place
+
+def frozen(records):
+    return [
+        (
+            record["e"],
+            record["f"],
+            prime_ideals._encode_rows(record["rows"]),
+            record["subspace"],
+            record["presentation"],
+        )
+        for record in records
+    ]
+
+outcomes = []
+for index, (coefficients, prime, expected_native) in enumerate(cases):
+    order = NumberField(R(coefficients), "t" + str(index)).maximal_order()
+    table = prime_ideals._modular_table(order, prime)
+    one = [
+        value % prime for value in prime_ideals._order_one_coordinates(order)
+    ]
+    calls = []
+    def counted(*args):
+        accepted = native_kernel(*args)
+        calls.append(bool(accepted))
+        return accepted
+    prime_ideals._cubic_reduced_algebra_kernel_override = counted
+    accelerated = prime_ideals.packed_finite_algebra_candidates(
+        order,
+        prime,
+        prime_ideals.DEFAULT_MAX_PRIMITIVE_CANDIDATES,
+        modular_table=table,
+        one_coordinates=one,
+    )
+    prime_ideals._cubic_reduced_algebra_kernel_override = False
+    readable = prime_ideals.packed_finite_algebra_candidates(
+        order,
+        prime,
+        prime_ideals.DEFAULT_MAX_PRIMITIVE_CANDIDATES,
+        modular_table=table,
+        one_coordinates=one,
+    )
+    assert calls == [expected_native]
+    assert accelerated is not None and readable is not None
+    assert frozen(accelerated) == frozen(readable)
+    outcomes.append((prime, expected_native, [(r["e"], r["f"]) for r in readable]))
+
+# Successful-looking but noncanonical native output is rejected before it can
+# become a factor-base record; the caller then uses the readable decomposition.
+order = NumberField(R([-12, -6, -1, 1]), "corrupt").maximal_order()
+table = prime_ideals._modular_table(order, 2)
+one = [value % 2 for value in prime_ideals._order_one_coordinates(order)]
+def corrupt(metadata, kernels, presentations, *rest):
+    accepted = native_kernel(metadata, kernels, presentations, *rest)
+    if accepted:
+        presentations[3] = (presentations[3] + 1) % 2
+    return accepted
+prime_ideals._cubic_reduced_algebra_kernel_override = corrupt
+assert prime_ideals._packed_cubic_reduced_algebra_candidates(
+    order, 2, table, one, residue_degrees=None
+) is None
+fallback = prime_ideals.packed_finite_algebra_candidates(
+    order,
+    2,
+    prime_ideals.DEFAULT_MAX_PRIMITIVE_CANDIDATES,
+    modular_table=table,
+    one_coordinates=one,
+)
+prime_ideals._cubic_reduced_algebra_kernel_override = False
+readable = prime_ideals.packed_finite_algebra_candidates(
+    order,
+    2,
+    prime_ideals.DEFAULT_MAX_PRIMITIVE_CANDIDATES,
+    modular_table=table,
+    one_coordinates=one,
+)
+prime_ideals._cubic_reduced_algebra_kernel_override = None
+assert frozen(fallback) == frozen(readable)
+print(outcomes)
+`);
+  assert.match(output, /\(2, True, \[\(1, 1\), \(1, 2\)\]\)/);
+  assert.match(output, /\(3, False, \[\(1, 1\), \(2, 1\)\]\)/);
+});
+
 test("maximal-order tables reuse the packed exact BL kernel", () => {
   const output = run(sagejs, ["--python", "-"], String.raw`
 from sagejs.number_fields import maximal_order
@@ -454,6 +615,7 @@ test("production inventory names the isolated candidate kernel", () => {
     "src/lib/sagejs/number_fields/bl_composite_kernel.py",
   );
   assert.deepEqual(record?.functions, [
+    "packed_cubic_reduced_algebra_factors_in_place",
     "packed_prime_ideal_candidate_hnf_in_place",
   ]);
   const expected = createHash("sha256")

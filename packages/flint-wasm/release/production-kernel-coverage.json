@@ -4,7 +4,7 @@
   "totals": {
     "registered_kernels": 42,
     "production_kernels": 35,
-    "compiled_functions": 246,
+    "compiled_functions": 247,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -368,9 +368,9 @@
       "id": "prime-ideal-candidate-materializer-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 1,
+      "compiled_functions": 2,
       "fallback_functions": 0,
-      "total_functions": 1,
+      "total_functions": 2,
       "fallback_reasons": []
     },
     {

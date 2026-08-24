@@ -179,7 +179,7 @@
       "id": "number-field-algorithms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 1175000,
+      "max_source_bytes": 1200000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -197,7 +197,7 @@
       "id": "number-field-prime-arithmetic",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 120000,
+      "max_source_bytes": 130000,
       "depends_on": [
         "core-runtime",
         "native-integration",

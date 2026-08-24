@@ -336,10 +336,10 @@ finally:
     prime_ideals._modular_table = saved_modular_table
     prime_ideals._order_one_coordinates = saved_one_coordinates
 assert direct_packed_factors is not None and len(direct_packed_factors) == 5
-# The sole generic factorization is inside the p=2 finite-algebra fallback.
-# The irreducible p=7 cubic is rejected from its requested degree set before
-# constructing a multiplication table or residue presentation.
-assert generic_factor_calls == 1
+# The packed reduced-algebra kernel handles p=2 without the generic modular
+# factorizer.  The irreducible p=7 cubic uses the bounded cubic factorizer
+# while authenticating its (unselected) degree-three residue presentation.
+assert generic_factor_calls == 0
 assert legacy_p_maximal_calls == 0
 assert modular_table_calls == 3
 assert one_coordinate_calls == 1

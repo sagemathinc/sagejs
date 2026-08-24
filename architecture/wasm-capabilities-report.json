@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "f3b39e90b18e660024070ec0c52cb171bee5c2c8491f4920e0dfd2f29375d2dc",
+  "source_sha256": "34eb78727b9d28e8785777567dba15d50e16cbff8d882cea22db32eea4d6ecda",
   "counts": {
     "total": 965,
     "by_kind": {
@@ -6130,7 +6130,7 @@
       "public_consumers": [
         "prime-ideal-candidate-materializer"
       ],
-      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:sparse-random-matrix-production",

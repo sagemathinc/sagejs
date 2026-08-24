@@ -483,8 +483,11 @@
     {
       "id": "prime-ideal-candidate-materializer-production",
       "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
-      "functions": ["packed_prime_ideal_candidate_hnf_in_place"],
-      "semantic_domain": "bounded exact construction and canonical row HNF of pO plus a modular maximal-order subspace over compiler-owned IntegerBuffer storage",
+      "functions": [
+        "packed_cubic_reduced_algebra_factors_in_place",
+        "packed_prime_ideal_candidate_hnf_in_place"
+      ],
+      "semantic_domain": "bounded exact construction and canonical row HNF of pO plus a modular maximal-order subspace, together with fixed-shape reduced cubic finite-algebra factor kernels and canonical residue presentations over compiler-owned IntegerBuffer storage",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "sage", "pari"],

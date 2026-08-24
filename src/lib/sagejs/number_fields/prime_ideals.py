@@ -55,6 +55,7 @@ COMPACT_FACTOR_BATCH_SIZE = 8192
 _decomposition_cache: list[tuple[Any, int, Any]] = []
 _identity_tokens: list[Any] = []
 _PACKED_CANDIDATE_TOKEN = object()
+_cubic_reduced_algebra_kernel_override: Any = None
 
 
 def _equation_order_is_p_maximal_from_factors(
@@ -1429,7 +1430,11 @@ def _presentation_modulus_is_irreducible(
             return constant != 0 and (1 + linear + constant) % 2 != 0
         discriminant = (linear * linear - 4 * constant) % prime
         return pow(discriminant, (prime - 1) // 2, prime) == prime - 1
-    modular_factors = _om.factor_mod_prime(modulus, prime)
+    modular_factors = (
+        _om.factor_cubic_mod_prime(modulus, prime)
+        if residue_degree == 3
+        else _om.factor_mod_prime(modulus, prime)
+    )
     return bool(
         len(modular_factors) == 1
         and int(modular_factors[0].multiplicity) == 1
@@ -1564,6 +1569,16 @@ def packed_finite_algebra_candidates(
         if one_coordinates is None
         else [int(value) % prime for value in one_coordinates]
     )
+    if degree == 3:
+        packed = _packed_cubic_reduced_algebra_candidates(
+            order,
+            prime,
+            table,
+            one,
+            residue_degrees=residue_degrees,
+        )
+        if packed is not None:
+            return packed
     radical = _nilradical(degree, prime, one, table)
     quotient_cache: dict[Any, Any] = {}
     field_kernels = _monogenic_reduced_field_kernels(
@@ -1631,6 +1646,202 @@ def packed_finite_algebra_candidates(
         )
     if local_degree_sum != degree:
         raise ArithmeticError("finite-algebra factors have the wrong local degree")
+    answer.sort(
+        key=lambda record: tuple(
+            value
+            for row in _encode_rows(record["rows"])
+            for pair in row
+            for value in pair
+        )
+    )
+    return answer
+
+
+def _packed_cubic_reduced_algebra_candidates(
+    order: Any,
+    prime: int,
+    table: list[list[list[int]]],
+    one: list[int],
+    *,
+    residue_degrees: set[int] | None,
+) -> list[dict[str, Any]] | None:
+    """Use the fixed-shape reduced cubic kernel, or decline cleanly.
+
+    The packed producer is checked as algebraic data before retention: every
+    row space is a canonical ideal, its quotient map has the claimed kernel,
+    the primitive power basis and inverse replay exactly, the modulus vanishes
+    and is irreducible, and the distinct residue degrees sum to three.  The
+    complete readable nilradical/decomposition path remains the fallback.
+    """
+    if _cubic_reduced_algebra_kernel_override is False:
+        return None
+    kernel = (
+        _cubic_reduced_algebra_kernel_override
+        if callable(_cubic_reduced_algebra_kernel_override)
+        else getattr(
+            _candidate_kernel,
+            "packed_cubic_reduced_algebra_factors_in_place",
+            None,
+        )
+    )
+    if not callable(kernel):
+        return None
+    try:
+        metadata = kernel_integer_zeros(kernel, 7, 16)
+        kernels = kernel_integer_zeros(kernel, 27, 16)
+        presentations = kernel_integer_zeros(kernel, 75, 16)
+        if not kernel(
+            metadata,
+            kernels,
+            presentations,
+            kernel_integer_zeros(kernel, 128, 16),
+            kernel_integer_buffer(
+                kernel,
+                [value for left in table for right in left for value in right],
+            ),
+            kernel_integer_buffer(kernel, one),
+            prime,
+        ):
+            return None
+        metadata_values = tuple(int(value) for value in integer_buffer_values(metadata))
+        kernel_values = tuple(int(value) for value in integer_buffer_values(kernels))
+        presentation_values = tuple(
+            int(value) for value in integer_buffer_values(presentations)
+        )
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+    factor_count = metadata_values[0] if len(metadata_values) == 7 else 0
+    if (
+        factor_count < 1
+        or factor_count > 3
+        or len(kernel_values) != 27
+        or len(presentation_values) != 75
+    ):
+        return None
+    answer: list[dict[str, Any]] = []
+    seen_subspaces: set[tuple[tuple[int, ...], ...]] = set()
+    local_degree_sum = 0
+    for factor_index in range(factor_count):
+        row_count = metadata_values[1 + 2 * factor_index]
+        residue_degree = metadata_values[2 + 2 * factor_index]
+        if (
+            row_count < 0
+            or row_count > 2
+            or residue_degree < 1
+            or residue_degree > 3
+            or row_count + residue_degree != 3
+        ):
+            return None
+        kernel_offset = 9 * factor_index
+        subspace = [
+            [
+                kernel_values[kernel_offset + row * 3 + column] % prime
+                for column in range(3)
+            ]
+            for row in range(row_count)
+        ]
+        frozen_subspace = tuple(tuple(row) for row in subspace)
+        if (
+            frozen_subspace in seen_subspaces
+            or _row_basis(subspace, 3, prime) != subspace
+            or _subspace_ideal_generated_by(subspace, 3, table, prime) != subspace
+        ):
+            return None
+        seen_subspaces.add(frozen_subspace)
+        presentation_offset = 25 * factor_index
+        primitive = tuple(
+            presentation_values[presentation_offset + coordinate] % prime
+            for coordinate in range(3)
+        )
+        quotient_offset = presentation_offset + 3
+        quotient_matrix = [
+            [
+                presentation_values[quotient_offset + row * 3 + column] % prime
+                for column in range(residue_degree)
+            ]
+            for row in range(3)
+        ]
+        canonical_quotient_matrix, _canonical_lifts = _quotient_map(subspace, 3, prime)
+        inverse_offset = presentation_offset + 12
+        power_inverse = [
+            [
+                presentation_values[inverse_offset + row * 3 + column] % prime
+                for column in range(residue_degree)
+            ]
+            for row in range(residue_degree)
+        ]
+        modulus_offset = presentation_offset + 21
+        modulus = tuple(
+            presentation_values[modulus_offset + index] % prime
+            for index in range(residue_degree + 1)
+        )
+        if (
+            quotient_matrix != canonical_quotient_matrix
+            or _rank(quotient_matrix, residue_degree, prime) != residue_degree
+            or any(
+                any(_row_times_matrix(row, quotient_matrix, prime)) for row in subspace
+            )
+        ):
+            return None
+        powers: list[list[int]] = []
+        power = list(one)
+        for _exponent in range(residue_degree):
+            powers.append(_row_times_matrix(power, quotient_matrix, prime))
+            power = _modular_product(power, list(primitive), table, prime)
+        try:
+            if _matrix_inverse(powers, prime) != power_inverse:
+                return None
+        except ArithmeticError:
+            return None
+        encoded_primitive = sum(
+            primitive[coordinate] * prime**coordinate for coordinate in range(3)
+        )
+        if encoded_primitive < 1 or encoded_primitive > min(8, prime**3 - 1):
+            return None
+        for earlier_code in range(1, encoded_primitive):
+            earlier = _encoded_vector(earlier_code, 3, prime)
+            earlier_powers: list[list[int]] = []
+            earlier_power = list(one)
+            for _exponent in range(residue_degree):
+                earlier_powers.append(
+                    _row_times_matrix(earlier_power, quotient_matrix, prime)
+                )
+                earlier_power = _modular_product(earlier_power, earlier, table, prime)
+            if _rank(earlier_powers, residue_degree, prime) == residue_degree:
+                return None
+        next_image = _row_times_matrix(power, quotient_matrix, prime)
+        coefficients = _row_times_matrix(next_image, power_inverse, prime)
+        expected_modulus = tuple([(-value) % prime for value in coefficients] + [1])
+        presentation = {
+            "primitive": primitive,
+            "quotient_matrix": tuple(tuple(row) for row in quotient_matrix),
+            "power_inverse": tuple(tuple(row) for row in power_inverse),
+            "modulus": modulus,
+        }
+        if modulus != expected_modulus or not _presentation_modulus_is_irreducible(
+            presentation, prime, residue_degree
+        ):
+            return None
+        local_degree_sum += residue_degree
+        if residue_degrees is not None and residue_degree not in residue_degrees:
+            continue
+        rows = _packed_candidate_rows(order, subspace, prime)
+        if rows is None:
+            return None
+        answer.append(
+            {
+                "rows": rows,
+                "subspace": subspace,
+                "e": 1,
+                "f": residue_degree,
+                "presentation": presentation,
+                "second_generator": None,
+                "table": table,
+                "one": one,
+            }
+        )
+    if local_degree_sum != 3:
+        return None
     answer.sort(
         key=lambda record: tuple(
             value
