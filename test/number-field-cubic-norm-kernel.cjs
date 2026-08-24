@@ -336,6 +336,27 @@ packed_field = NumberField(x**3 - x**2 - 6*x - 12, "a")
 # modular oracle, including repeated factors at the index prime 2.
 equation = maximal_order.integral_equation_polynomial(packed_field)
 coefficients = tuple(int(value) for value in equation.list())
+# The fixed-size cubic quotient map is byte-for-byte identical to the generic
+# row-basis/nullspace/lift construction, including redundant input rows.
+for prime, subspaces in (
+    (2, ([], [[1, 0, 0]], [[1, 1, 0], [0, 1, 1]], [[1, 0, 1], [1, 0, 1]])),
+    (3, ([[1, 2, 0]], [[0, 1, 2]], [[1, 2, 0], [2, 1, 1]], [[1, 0, 0], [0, 1, 0], [0, 0, 1]])),
+    (5, ([[2, 4, 1]], [[1, 2, 3], [4, 0, 1]], [[0, 0, 0], [3, 1, 4]])),
+):
+    for subspace in subspaces:
+        expected = prime_ideals._quotient_map_reference(subspace, 3, prime)
+        assert prime_ideals._cubic_quotient_map(subspace, prime) == expected
+        quotient_cache = {}
+        assert prime_ideals._quotient_map(
+            subspace, 3, prime, cache=quotient_cache
+        ) == expected
+        assert prime_ideals._quotient_map(
+            subspace, 3, prime, cache=quotient_cache
+        ) == expected
+inverse_rows = packed_field.maximal_order()._basis_inverse_matrix().rows()
+assert prime_ideals._order_one_coordinates(packed_field.maximal_order()) == [
+    int(value._numerator) for value in inverse_rows[0]
+]
 for prime in (2, 3, 5, 7, 11, 13, 17, 19):
     fast_factors = prime_ideals._om.factor_cubic_mod_prime(coefficients, prime)
     generic_factors = prime_ideals._om.factor_mod_prime(coefficients, prime)

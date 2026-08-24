@@ -407,7 +407,7 @@ def _row_times_matrix(row: list[int], matrix: list[list[int]], prime: int) -> li
     ]
 
 
-def _quotient_map(
+def _quotient_map_reference(
     subspace: list[list[int]],
     degree: int,
     prime: int,
@@ -417,17 +417,7 @@ def _quotient_map(
     """Return a quotient-coordinate matrix and standard-coordinate lifts."""
     key = None
     if cache is not None:
-        key = (
-            degree,
-            prime,
-            tuple(
-                tuple(
-                    (int(row[column]) if column < len(row) else 0) % prime
-                    for column in range(degree)
-                )
-                for row in subspace
-            ),
-        )
+        key = _quotient_map_cache_key(subspace, degree, prime)
         cached = cache.get(key)
         if cached is not None:
             return (
@@ -473,6 +463,107 @@ def _quotient_map(
     return coordinate_matrix, lifts
 
 
+def _quotient_map_cache_key(
+    subspace: list[list[int]], degree: int, prime: int
+) -> tuple[Any, ...]:
+    return (
+        degree,
+        prime,
+        tuple(
+            tuple(
+                (int(row[column]) if column < len(row) else 0) % prime
+                for column in range(degree)
+            )
+            for row in subspace
+        ),
+    )
+
+
+def _cubic_quotient_map(
+    subspace: list[list[int]], prime: int
+) -> tuple[list[list[int]], list[list[int]]]:
+    """Return the exact degree-three quotient map with fixed-size arithmetic."""
+    basis = _row_basis(subspace, 3, prime)
+    pivots: list[int] = []
+    for row in basis:
+        pivot = next((index for index, value in enumerate(row) if value), None)
+        if pivot is not None:
+            pivots.append(pivot)
+    free = [index for index in range(3) if index not in pivots]
+    annihilator: list[list[int]] = []
+    for free_column in free:
+        vector = [0, 0, 0]
+        vector[free_column] = 1
+        for row_index in range(len(pivots) - 1, -1, -1):
+            pivot = pivots[row_index]
+            vector[pivot] = (
+                -sum(
+                    basis[row_index][column] * vector[column]
+                    for column in range(pivot + 1, 3)
+                )
+            ) % prime
+        annihilator.append(vector)
+    dimension = len(annihilator)
+    coordinate_matrix = [
+        [annihilator[column][row] for column in range(dimension)] for row in range(3)
+    ]
+    if dimension == 0:
+        return coordinate_matrix, []
+
+    selected: list[int] = []
+    images: list[list[int]] = []
+    for index, row in enumerate(coordinate_matrix):
+        independent = False
+        if not images:
+            independent = any(row)
+        elif dimension == 2 and len(images) == 1:
+            independent = (images[0][0] * row[1] - images[0][1] * row[0]) % prime != 0
+        elif dimension == 3:
+            independent = _rank(images + [row], dimension, prime) > len(images)
+        if independent:
+            selected.append(index)
+            images.append(row)
+        if len(images) == dimension:
+            break
+    if len(images) != dimension:
+        raise ArithmeticError("failed to select cubic quotient-coordinate lifts")
+    inverse = _matrix_inverse(images, prime)
+    lifts: list[list[int]] = []
+    for coordinate in range(dimension):
+        lift = [0, 0, 0]
+        for index, source in enumerate(selected):
+            lift[source] = inverse[coordinate][index]
+        lifts.append(lift)
+    return coordinate_matrix, lifts
+
+
+def _quotient_map(
+    subspace: list[list[int]],
+    degree: int,
+    prime: int,
+    *,
+    cache: dict[Any, Any] | None = None,
+) -> tuple[list[list[int]], list[list[int]]]:
+    if degree == 3:
+        key = None
+        if cache is not None:
+            key = _quotient_map_cache_key(subspace, degree, prime)
+            cached = cache.get(key)
+            if cached is not None:
+                return (
+                    [list(row) for row in cached[0]],
+                    [list(row) for row in cached[1]],
+                )
+        coordinate_matrix, lifts = _cubic_quotient_map(subspace, prime)
+        if cache is not None and key is not None and len(cache) < 4 * degree:
+            cache[key] = (
+                tuple(tuple(value for value in row) for row in coordinate_matrix),
+                tuple(tuple(value for value in row) for row in lifts),
+            )
+        return coordinate_matrix, lifts
+    return _quotient_map_reference(subspace, degree, prime, cache=cache)
+
+
 def _modular_product(
     left: list[int],
     right: list[int],
@@ -514,11 +605,10 @@ def _modular_power(
 
 def _order_one_coordinates(order: Any) -> list[int]:
     degree = order.degree()
-    row = [sage.QQ(0)] * degree
-    row[0] = sage.QQ(1)
-    coordinates = list(
-        _nf_global("vector")(sage.QQ, row) * order._basis_inverse_matrix()
-    )
+    inverse_rows = order._basis_inverse_matrix().rows()
+    if len(inverse_rows) != degree:
+        raise ArithmeticError("the maximal-order inverse basis has the wrong height")
+    coordinates = list(inverse_rows[0])
     answer: list[int] = []
     for value in coordinates:
         if value._denominator != 1:
