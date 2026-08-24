@@ -46,6 +46,7 @@ MAX_PACKED_PRESENTATION_ENTRY_BITS = 16_384
 MAX_PACKED_PRESENTATION_OUTPUT_WORDS = 1_000_000
 
 _presentation_replay_kernel_override: Any = None
+_presentation_forms_kernel_override: Any = None
 
 
 class RelationMatrixError(ValueError):
@@ -1419,6 +1420,130 @@ def _flint_forms(
     )
 
 
+def _packed_flint_forms(
+    source: list[list[int]], columns: int
+) -> (
+    tuple[
+        list[list[int]],
+        list[list[int]],
+        list[list[int]],
+        list[list[int]],
+        list[list[int]],
+    ]
+    | None
+):
+    """Extract FLINT transforms directly through bounded integer buffers.
+
+    The general matrix API owns cached native matrix resources and is the
+    right boundary for public matrix objects.  Relation presentations only
+    need five canonical integer arrays once, so constructing seven Matrix
+    wrappers and reading their entries back dominates FLINT on the small
+    matrices used by class-group relation collection.  This path calls the
+    same source-transparent HNF/SNF kernels directly.  Any unsupported shape,
+    output-capacity failure, or unavailable kernel falls back to `_flint_forms`.
+    """
+    rows = len(source)
+    if (
+        rows < 1
+        or columns < 1
+        or rows > MAX_PACKED_PRESENTATION_DIMENSION
+        or columns > MAX_PACKED_PRESENTATION_DIMENSION
+        or rows * columns > MAX_PACKED_PRESENTATION_VALUES
+        or rows * rows > MAX_PACKED_PRESENTATION_VALUES
+        or columns * columns > MAX_PACKED_PRESENTATION_VALUES
+        or _presentation_forms_kernel_override is False
+    ):
+        return None
+    maximum_bits = 1
+    for row in source:
+        if len(row) != columns:
+            return None
+        for value in row:
+            if isinstance(value, bool) or not isinstance(value, int):
+                return None
+            maximum_bits = max(maximum_bits, abs(value).bit_length())
+    if maximum_bits > MAX_PACKED_PRESENTATION_ENTRY_BITS:
+        return None
+    largest_dimension = max(rows, columns)
+    output_bits = largest_dimension * (
+        maximum_bits + largest_dimension.bit_length() + 2
+    )
+    word_capacity = max(8, (output_bits + 63) // 64 + 2)
+    output_entries = 2 * rows * columns + 2 * rows * rows + columns * columns
+    if output_entries * word_capacity > MAX_PACKED_PRESENTATION_OUTPUT_WORDS:
+        return None
+
+    def reshape(values: Any, row_count: int, column_count: int) -> list[list[int]]:
+        materialized = list(values)
+        if len(materialized) != row_count * column_count:
+            raise ArithmeticError("packed matrix form has the wrong size")
+        return [
+            materialized[index * column_count : (index + 1) * column_count]
+            for index in range(row_count)
+        ]
+
+    try:
+        kernel_module = __import__(
+            "sagejs.kernels.matrix.dense_integer_flint",
+            fromlist=["dense_integer_flint"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        override = _presentation_forms_kernel_override
+        if isinstance(override, tuple) and len(override) == 2:
+            hnf_kernel, smith_kernel = override
+        else:
+            hnf_kernel = kernel_module.flint_dense_integer_matrix_hnf_transform
+            smith_kernel = kernel_module.flint_dense_integer_matrix_snf_transform
+        flat = [entry for row in source for entry in row]
+
+        hnf_source = native_module.kernel_integer_buffer(hnf_kernel, flat)
+        hnf = native_module.kernel_integer_zeros(
+            hnf_kernel, rows * columns, word_capacity
+        )
+        hnf_left = native_module.kernel_integer_zeros(
+            hnf_kernel, rows * rows, word_capacity
+        )
+        if not hnf_kernel(hnf, hnf_left, hnf_source, rows, columns):
+            return None
+
+        smith_source = native_module.kernel_integer_buffer(smith_kernel, flat)
+        smith = native_module.kernel_integer_zeros(
+            smith_kernel, rows * columns, word_capacity
+        )
+        smith_left = native_module.kernel_integer_zeros(
+            smith_kernel, rows * rows, word_capacity
+        )
+        smith_right = native_module.kernel_integer_zeros(
+            smith_kernel, columns * columns, word_capacity
+        )
+        if not smith_kernel(
+            smith,
+            smith_left,
+            smith_right,
+            smith_source,
+            rows,
+            columns,
+        ):
+            return None
+        values = native_module.integer_buffer_values
+        return (
+            reshape(values(hnf), rows, columns),
+            reshape(values(hnf_left), rows, rows),
+            reshape(values(smith), rows, columns),
+            reshape(values(smith_left), rows, rows),
+            reshape(values(smith_right), columns, columns),
+        )
+    except (
+        ImportError,
+        OverflowError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        ArithmeticError,
+    ):
+        return None
+
+
 def _checked_matrix(
     value: Any, rows: int, columns: int, label: str
 ) -> tuple[tuple[int, ...], ...]:
@@ -1787,9 +1912,10 @@ def extract_relation_presentation(
     smith_right: list[list[int]] = []
     if backend in ("auto", "flint") and source:
         try:
-            hnf, hnf_left, smith, smith_left, smith_right = _flint_forms(
-                source, columns
-            )
+            packed_forms = _packed_flint_forms(source, columns)
+            if packed_forms is None:
+                packed_forms = _flint_forms(source, columns)
+            hnf, hnf_left, smith, smith_left, smith_right = packed_forms
             selected = "flint"
         except (ImportError, RuntimeError, TypeError, ValueError, ArithmeticError):
             if backend == "flint":

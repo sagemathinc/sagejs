@@ -92,6 +92,16 @@ for case in fixture['cases']:
 
     python = accumulator.presentation(backend='python')
     flint = accumulator.presentation(backend='flint')
+    source = [row.dense() for row in accumulator.rows]
+    packed_forms = matrix_module._packed_flint_forms(source, columns)
+    assert packed_forms == matrix_module._flint_forms(source, columns)
+    saved_forms_override = matrix_module._presentation_forms_kernel_override
+    matrix_module._presentation_forms_kernel_override = False
+    try:
+        legacy_flint = accumulator.presentation(backend='flint')
+    finally:
+        matrix_module._presentation_forms_kernel_override = saved_forms_override
+    assert legacy_flint.to_dict() == flint.to_dict()
     expected_diagonal = tuple(
         value for value in case['elementary_divisors'] if value
     )
