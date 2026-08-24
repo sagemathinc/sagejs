@@ -1325,6 +1325,17 @@ def _cantor_scalar_one(
     addend: UInt64Buffer,
     temporary: UInt64Buffer,
 ) -> uint64:
+    packed = _unpack_row(
+        store,
+        0,
+        16,
+        element,
+        element_offset,
+        genus,
+        modulus,
+    )
+    if packed == 0:
+        return 0
     index: uint64 = 0
     while index < 8:
         accumulator[index] = 0
@@ -1517,6 +1528,23 @@ def packed_cantor_scalar_batch(
         and len(scalar_signs) == count
     )
     if not valid:
+        return False
+    index: uint64 = 0
+    while index < 12:
+        if model[index] >= checked_modulus:
+            return False
+        index += 1
+    index = 2 * genus + 2
+    while index < 8:
+        if model[index] != 0:
+            return False
+        index += 1
+    index = genus + 1
+    while index < 4:
+        if model[8 + index] != 0:
+            return False
+        index += 1
+    if model[2 * genus + 1] == 0:
         return False
     store = prime_zeros(16 * 52)
     accumulator = prime_zeros(8)

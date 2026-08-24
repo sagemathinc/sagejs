@@ -359,6 +359,63 @@ def check_curve(curve, exhaustive):
         (J.zero(),) * len(scalars), scalars, algorithm=selected
     )
     assert all(product.is_zero() for product in identity_products)
+
+    # Scalar zero and the first nonzero NAF digit do not invoke Cantor
+    # addition.  They must nevertheless validate direct packed ingress,
+    # and a rejected row or model must not change caller-owned output.
+    valid_scalar_row = list(context.pack(scalar_points[0]))
+    invalid_scalar_row = list(valid_scalar_row)
+    invalid_scalar_row[1] = context.prime
+    scalar_model = kernel_uint64_buffer(
+        packed_cantor_scalar_batch, context.model_coefficients
+    )
+    for first_scalar in (0, 1):
+        rejected_output = kernel_uint64_buffer(
+            packed_cantor_scalar_batch, [99] * 8
+        )
+        rejected_status = kernel_uint64_buffer(
+            packed_cantor_scalar_batch, [7]
+        )
+        assert not packed_cantor_scalar_batch(
+            rejected_output,
+            rejected_status,
+            scalar_model,
+            kernel_uint64_buffer(
+                packed_cantor_scalar_batch, invalid_scalar_row
+            ),
+            kernel_uint64_buffer(
+                packed_cantor_scalar_batch, [first_scalar]
+            ),
+            kernel_uint64_buffer(packed_cantor_scalar_batch, [0]),
+            1,
+            1,
+            context.genus,
+            context.prime,
+        )
+        assert tuple(int(value) for value in rejected_output) == (99,) * 8
+        assert tuple(int(value) for value in rejected_status) == (0,)
+    invalid_scalar_model = list(context.model_coefficients)
+    invalid_scalar_model[2 * context.genus + 1] = 0
+    rejected_output = kernel_uint64_buffer(
+        packed_cantor_scalar_batch, [88] * 8
+    )
+    rejected_status = kernel_uint64_buffer(packed_cantor_scalar_batch, [6])
+    assert not packed_cantor_scalar_batch(
+        rejected_output,
+        rejected_status,
+        kernel_uint64_buffer(
+            packed_cantor_scalar_batch, invalid_scalar_model
+        ),
+        kernel_uint64_buffer(packed_cantor_scalar_batch, valid_scalar_row),
+        kernel_uint64_buffer(packed_cantor_scalar_batch, [1]),
+        kernel_uint64_buffer(packed_cantor_scalar_batch, [0]),
+        1,
+        1,
+        context.genus,
+        context.prime,
+    )
+    assert tuple(int(value) for value in rejected_output) == (88,) * 8
+    assert tuple(int(value) for value in rejected_status) == (6,)
     if not compiled:
         maximum_bits = max(abs(value).bit_length() for value in scalars)
         words_per_scalar = max(1, (maximum_bits + 63) // 64)
