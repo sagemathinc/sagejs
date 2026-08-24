@@ -414,6 +414,31 @@ assert live["factor_base_size"] == 5
 assert live["relation_count"] == len(result.conditional_relation_records)
 assert len(artifact._packed_factor_records) == 5
 
+# When an attached factor-base generator already proves the class quotient
+# trivial, scalar discovery skips the coefficient box entirely.  The later
+# unit request enumerates a duplicate row lazily and still avoids LLL search.
+M = NumberField(x**3 + 2*x + 1, "m")
+assert M.class_number(proof=False) == 1
+artifact59 = M._bounded_cubic_class_number_artifact
+seed59 = cubic_module.authenticated_cubic_relation_seed(artifact59, M)
+assert seed59 is not None
+assert seed59.relation_candidates == ()
+assert seed59.selected_relation_candidates == ()
+assert len(seed59.collector.records) == 1
+assert seed59.collector.records[0].provenance["algorithm"] == (
+    "packed-cubic-attached-prime-generator"
+)
+materialized59 = cubic_module.materialize_authenticated_cubic_relation_seed(
+    seed59, M, include_unit_dependencies=True
+)
+assert materialized59 is not None
+assert materialized59.dependency_relations == 1
+result59 = M.class_unit_group(proof=False)
+assert result59.complete and result59.class_number() == 1
+resources59 = result59.diagnostics["resources"]
+assert resources59["relation_attempts"] == 0
+assert resources59["cubic_relation_seed_dependency_relations"] == 1
+
 # The retained prefix is only an optimization authority.  Mutation makes it
 # unavailable; restoring the exact producer state restores the live hint.
 T = NumberField(x**3 - x**2 - 6*x - 12, "t")

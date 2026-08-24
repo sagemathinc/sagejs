@@ -327,6 +327,12 @@ generic59 = bounded_cubic_minkowski_class_number(K59)
 assert generic59.complete and generic59.order() == 1
 assert generic59.certificate.obstructions == []
 assert generic59.certificate.verify()
+assert generic59.diagnostics["relation_search"]["integral_sieve_candidates"] == 0
+assert len(generic59.relation_records) == 1
+assert generic59.relation_records[0].row == (1,)
+assert generic59.relation_records[0].provenance["algorithm"] == (
+    "packed-cubic-attached-prime-generator"
+)
 
 # The nontrivial quotient is proved exact without units, a regulator, or hR.
 K1083 = NumberField(x**3 - x**2 - 6*x - 12, "d")

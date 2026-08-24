@@ -1202,6 +1202,54 @@ def _validated_cubic_integral_relation_batch(
         return None
 
 
+def _packed_principal_factor_proposals(
+    order: Any, factor_base: tuple[Any, ...]
+) -> tuple[tuple[tuple[int, ...], tuple[int, ...], dict[str, Any]], ...]:
+    """Return attached generators whose exact norms prove a prime principal."""
+    if not factor_base or not all(
+        isinstance(record, PackedCubicFactorRecord) for record in factor_base
+    ):
+        return ()
+    inverse = order._basis_inverse_matrix().rows()
+    norm_form = _order_cubic_norm_form_coefficients(order)
+    answer = []
+    for index, record in enumerate(factor_base):
+        payload = record._second_generator_payload
+        if payload is None:
+            continue
+        power_coordinates = tuple(
+            sage.QQ(numerator) / sage.QQ(denominator)
+            for numerator, denominator in payload
+        )
+        coordinates = []
+        for target in range(3):
+            value = sage.QQ(0)
+            for source in range(3):
+                value += power_coordinates[source] * inverse[source][target]
+            if value._denominator != 1:
+                coordinates = []
+                break
+            coordinates.append(int(value._numerator))
+        if not coordinates or abs(_cubic_norm_form_value(norm_form, *coordinates)) != (
+            int(record.norm_value)
+        ):
+            continue
+        row = [0] * len(factor_base)
+        row[index] = 1
+        answer.append(
+            (
+                tuple(coordinates),
+                tuple(row),
+                {
+                    "algorithm": "packed-cubic-attached-prime-generator",
+                    "factor_base_index": index,
+                    "order_basis_coordinates": list(coordinates),
+                },
+            )
+        )
+    return tuple(answer)
+
+
 def _select_cubic_relation_candidates(
     matrix_module: Any,
     initial_rows: tuple[tuple[int, ...], ...],
@@ -2384,7 +2432,28 @@ def _extend_packed_cubic_relation_seed_for_units(
         return None
     primary_candidates = seed.relation_candidates
     selected = seed.selected_relation_candidates
-    if not primary_candidates or not selected:
+    if not selected:
+        coefficients = _order_cubic_norm_form_coefficients(seed.plan.order)
+        selected = tuple(
+            (
+                row,
+                coordinates,
+                abs(_cubic_norm_form_value(coefficients, *coordinates)),
+            )
+            for coordinates, row, _provenance in (
+                _packed_principal_factor_proposals(seed.plan.order, seed.factor_base)
+            )
+        )
+    if not selected:
+        return None
+    if not primary_candidates:
+        primary_candidates = _packed_cubic_relation_candidates(
+            seed.plan.order,
+            seed.factor_base,
+            maximum_candidates=maximum_relations,
+            cancelled=cancelled,
+        )
+    if not primary_candidates:
         return None
     matrix_module = __import__(
         "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
@@ -2924,7 +2993,22 @@ def bounded_cubic_minkowski_class_number(
                     },
                 )
             )
-    sieve_capacity = checked_caps["max_relations"] - len(initial_proposals)
+    for proposal in _packed_principal_factor_proposals(order, factor_base):
+        if not any(retained[1] == proposal[1] for retained in initial_proposals):
+            initial_proposals.append(proposal)
+    initial_rows = [proposal[1] for proposal in initial_proposals]
+    trivial_quotient = bool(
+        not factor_base
+        or (
+            len(initial_rows) == len(factor_base)
+            and abs(matrix_module._determinant_exact(initial_rows)) == 1
+        )
+    )
+    sieve_capacity = (
+        0
+        if trivial_quotient
+        else checked_caps["max_relations"] - len(initial_proposals)
+    )
     sieve_candidates: Any = None
     if sieve_capacity > 0:
         sieve_candidates = _packed_cubic_relation_candidates(
@@ -2933,6 +3017,8 @@ def bounded_cubic_minkowski_class_number(
             maximum_candidates=sieve_capacity,
             cancelled=cancelled,
         )
+    elif trivial_quotient:
+        sieve_candidates = ()
     raw_sieve_count = 0 if sieve_candidates is None else len(sieve_candidates)
     selected_sieve_candidates: Any = None
     if sieve_candidates is not None:
