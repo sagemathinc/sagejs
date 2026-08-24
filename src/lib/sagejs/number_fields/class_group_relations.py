@@ -49,6 +49,7 @@ DEFAULT_FACTOR_POWER_CACHE_SIZE = 512
 DEFAULT_ADMISSION_RECEIPT_CACHE_SIZE = 64
 _VALIDATED_FACTOR_BASE_TOKEN = object()
 _LIVE_VERIFIED_RELATION_PREFIX_TOKEN = object()
+_INTEGRAL_RELATION_RECORD_TOKEN = object()
 _U64_MASK = (1 << 64) - 1
 _IDEAL_REDUCTION_STATE_KEYS = {
     "schema",
@@ -819,18 +820,54 @@ class RelationRecord:
         archimedean_logs: Iterable[Any] = (),
         log_precision: int = 0,
         provenance: dict[str, Any] | None = None,
+        _producer_token: Any = None,
     ) -> None:
         self.row = tuple(int(value) for value in row)
         self.quotient_row = tuple(int(value) for value in quotient_row)
         self.source_row = tuple(int(value) for value in source_row)
         if not (len(self.row) == len(self.quotient_row) == len(self.source_row)):
             raise ValueError("relation rows must have equal width")
-        self.witness = _json_value(witness)
-        self.norm_smoothness = _json_value(norm_smoothness)
-        self.archimedean_logs = tuple(_json_value(value) for value in archimedean_logs)
-        self.log_precision = _checked_nonnegative(log_precision, "log precision")
-        self.provenance = _json_value({} if provenance is None else provenance)
+        if _producer_token is _INTEGRAL_RELATION_RECORD_TOKEN:
+            self.witness = witness
+            self.norm_smoothness = norm_smoothness
+            self.archimedean_logs = ()
+            self.log_precision = 0
+            self.provenance = {} if provenance is None else provenance
+        else:
+            self.witness = _json_value(witness)
+            self.norm_smoothness = _json_value(norm_smoothness)
+            self.archimedean_logs = tuple(
+                _json_value(value) for value in archimedean_logs
+            )
+            self.log_precision = _checked_nonnegative(log_precision, "log precision")
+            self.provenance = _json_value({} if provenance is None else provenance)
         self._principal_ideal_cache: list[tuple[Any, str, Any]] = []
+
+    @classmethod
+    def _from_integral_payload(
+        cls,
+        *,
+        row: tuple[int, ...],
+        element_payload: list[list[int]],
+        norm_smoothness: dict[str, Any],
+        provenance: dict[str, Any] | None,
+    ) -> RelationRecord:
+        """Construct producer-owned evidence after exact batch admission."""
+        owned_element = [[int(pair[0]), int(pair[1])] for pair in element_payload]
+        owned_provenance = _json_value({} if provenance is None else provenance)
+        zero_row = (0,) * len(row)
+        return cls(
+            row=row,
+            quotient_row=row,
+            source_row=zero_row,
+            witness={
+                "schema": WITNESS_SCHEMA,
+                "factors": [{"element": owned_element, "exponent": 1}],
+            },
+            norm_smoothness=norm_smoothness,
+            provenance=owned_provenance,
+            _producer_token=_INTEGRAL_RELATION_RECORD_TOKEN,
+        )
 
     def _principal_from_witness(self, order: Any) -> Any:
         """Replay the witness ideal with bounded live-record memoization."""
@@ -1781,15 +1818,9 @@ class ExactRelationCollector:
         provenance: dict[str, Any] | None,
     ) -> RelationRecord:
         """Construct one compact singleton witness from canonical coefficients."""
-        zero_row = (0,) * len(row)
-        return RelationRecord(
+        return RelationRecord._from_integral_payload(
             row=row,
-            quotient_row=row,
-            source_row=zero_row,
-            witness={
-                "schema": WITNESS_SCHEMA,
-                "factors": [{"element": element_payload, "exponent": 1}],
-            },
+            element_payload=element_payload,
             norm_smoothness=_norm_smoothness_from_norms(
                 witness_norm,
                 row,

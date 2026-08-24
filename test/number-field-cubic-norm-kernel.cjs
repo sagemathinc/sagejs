@@ -551,6 +551,26 @@ finally:
 assert norm_batch is not None and len(norm_batch) == 1
 assert norm_batch[0].record.to_dict() == packed.relation_records[2].to_dict()
 
+# Producer-owned records may skip a second recursive JSON validation only after
+# batch admission.  Caller-owned provenance must nevertheless be copied before
+# the record enters the collector.
+owned_provenance = {
+    "algorithm": "integral-batch-ownership-regression",
+    "nested": {"values": [1, 2]},
+}
+ownership_collector = ExactRelationCollector(order, packed.factor_base)
+ownership_batch = ownership_collector.admit_integral_order_basis_rows(((
+    (0, 1, -1),
+    packed.relation_records[2].row,
+    owned_provenance,
+),))
+assert ownership_batch is not None and len(ownership_batch) == 1
+owned_provenance["nested"]["values"].append(3)
+assert ownership_batch[0].record.provenance == {
+    "algorithm": "integral-batch-ownership-regression",
+    "nested": {"values": [1, 2]},
+}
+
 probe_collector = ExactRelationCollector(order, packed.factor_base)
 try:
     # Both rows have norm 27.  Exact containment, not norm equality alone,
