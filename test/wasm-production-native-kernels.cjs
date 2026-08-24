@@ -439,6 +439,7 @@ test("number-field Wasm cores execute the same exact sources as fallbacks", {
       emitOnly: false,
       toolchain: {
         clang,
+        target: "wasm32-wasip1",
         sysroot,
         gmpPrefix,
         flintPrefix,
@@ -637,6 +638,7 @@ test("the Round-4 Wasm core executes the same exact source as its fallback", {
       emitOnly: false,
       toolchain: {
         clang,
+        target: "wasm32-wasip1",
         sysroot,
         gmpPrefix,
         flintPrefix,

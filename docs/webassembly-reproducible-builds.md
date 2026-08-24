@@ -4,166 +4,175 @@ title: "Reproducible WebAssembly builds"
 
 # Reproducible WebAssembly builds
 
-A production Sage.js Wasm artifact is built from a checked lock and a
-content-addressed toolchain cache. It must not depend on a developer's sibling
-CoWasm checkout, system FLINT, or undocumented compiler flags.
+A production Sage.js Wasm artifact is built from the v2 toolchain lock and the
+neutral authenticated source catalog. It does not use a sibling checkout,
+system mathematical libraries, ambient compiler paths, or an install-time
+native build.
 
-The lock records the exact CoWasm revision, WASI SDK identity, FLINT, GMP,
-MPFR, MPC, Arb, and M4RI sources, archive digests, targets, flags, and recipe
-overrides. It also records the immutable R2 object for the CoWasm Git history,
-every supported host's WASI SDK, the desktop native-oracle archives, ffpoly,
-and smalljac. The build receipt
-authenticates that toolchain, the complete source
-and generator closure, generated adapter inputs, each output asset, module
-memory limits, and the exported capability set.
+The lock records the official WASI SDK 33 source for each supported POSIX
+builder, upstream mathematical sources, semantic install prefixes, compile and
+link policy, recipes, patches, and portability transformations. The prepared
+toolchain receipt records the exact compiler identity, normalized commands,
+archive hashes, and header-tree hashes. The production receipt then binds that
+toolchain to the complete Sage.js source/generator closure and every deployed
+asset.
 
 ## Clean local build
 
-Use Node 22.22.2 or newer and the repository's pinned pnpm. On a supported
-POSIX build host:
+Use Node 22.22.2 or newer and the repository's pinned pnpm. On Linux x86-64,
+Linux arm64, or macOS arm64:
 
 ```sh
 git submodule update --init --recursive
 pnpm install --frozen-lockfile
 
-node packages/flint-wasm/scripts/wasm-toolchain.cjs status
-node packages/flint-wasm/scripts/wasm-toolchain.cjs prepare
+node packages/wasm-toolchain/scripts/toolchain.cjs status
+pnpm --dir packages/wasm-toolchain toolchain:prepare
+pnpm --dir packages/wasm-toolchain probe
 pnpm build
 pnpm --dir packages/flint-wasm build
 node packages/flint-wasm/scripts/production-receipt.cjs validate
 ```
 
-`status` is expected to fail before the first preparation. `prepare` clones the
-locked CoWasm revision into the Git common directory's content-addressed cache,
-verifies source pins and digests, builds the locked dependencies, and publishes
-the completed directory atomically. A second worktree with the same lock reuses
-it.
+`status` fails before the first preparation. `toolchain:prepare` downloads the
+checked official SDK and source archives, compiles static libraries with the
+SDK tools directly, validates the complete prefix, and publishes it atomically
+under the Git common directory. Another worktree with the same identity reuses
+the prepared directory. Merely running `pnpm install` never prepares it.
 
-Production release builds do not contact gmplib.org, flintlib.org, GNU mirrors,
-GitHub release assets, or other native-source hosts. The `sagejs-source-mirror`
-GitHub environment fetches the current platform's complete source closure from
-the private R2 bucket first. Every key contains its SHA-256 digest, every
-download is hashed again. `SAGEJS_WASM_SOURCE_MIRROR_DIR` makes Wasm preparation
-fail closed instead of falling back to the network, while the release workflow
-exports the verified `SAGEJS_*_TARBALL` paths for the desktop native oracle.
-Upstream URLs in the lock
-are bootstrap/audit provenance used only when an administrator intentionally
-stages a new mirror revision.
+Library recipes run with a deliberately small environment. Ambient compiler,
+preprocessor, linker, pkg-config, Configure-site, and Make policy is discarded;
+only the reviewed recipe values and a fixed minimal platform command path reach
+the build. Validation probes are authenticated test inputs, but do not invalidate
+the prepared-library cache because they cannot change an installed archive or
+header.
 
-To stage and publish a reviewed mirror revision:
+The probe compile/links and executes minimal C and C++ modules, then compiles a
+raw Preview 1 filesystem/clock module and executes it through both the Sage.js
+host and Node's independent standards-oriented WASI implementation. The
+production build separately checks every module's exact imports, exports,
+memory contract, and artifact receipt.
 
-```sh
-node packages/flint-wasm/scripts/source-mirror.mjs stage --all-platforms \
-  --cowasm-bundle /secure/path/to/the-reviewed-complete.bundle \
-  --output /secure/staging/sagejs-wasm-sources
-node packages/flint-wasm/scripts/source-mirror.mjs upload --all-platforms \
-  --input /secure/staging/sagejs-wasm-sources
-```
-
-`upload` uses bucket-scoped S3 credentials and HEAD-verifies every immutable
-object after publication. A new CoWasm bundle must publish the locked commit as
-the canonical `refs/heads/toolchain` ref; mirror-only preparation checks out and
-validates that exact revision before building.
-
-Inspect the selected paths without guessing:
+Inspect paths without guessing:
 
 ```sh
-node packages/flint-wasm/scripts/wasm-toolchain.cjs cache-path
-node packages/flint-wasm/scripts/wasm-toolchain.cjs path
-node packages/flint-wasm/scripts/wasm-toolchain.cjs status --json
+node packages/wasm-toolchain/scripts/toolchain.cjs cache-path
+node packages/wasm-toolchain/scripts/toolchain.cjs path
+node packages/wasm-toolchain/scripts/toolchain.cjs status --json
 ```
 
-`SAGEJS_WASM_TOOLCHAIN_CACHE` may relocate the content-addressed cache.
-`SAGEJS_WASM_SOURCE_MIRROR_DIR` selects a fully downloaded, verified source
-mirror and forbids native-source network fallback.
-`SAGEJS_WASM_TOOLCHAIN_ROOT` is an expert override for an already prepared
-checkout; the resolver still verifies the full revision, pins, SDK, headers,
-and archives. The legacy `SAGEJS_COWASM_ROOT` spelling cannot name a different
-tree. An override is not a way to bypass the lock.
+`SAGEJS_WASM_TOOLCHAIN_CACHE` relocates the content-addressed cache.
+`SAGEJS_WASM_TOOLCHAIN_ROOT` selects an already prepared v2 directory, but the
+resolver still checks its exact receipt. It is not a fallback to arbitrary
+headers or archives.
 
-Windows is a supported runtime and development target, but does not prepare
-the POSIX CoWasm toolchain locally. Windows CI consumes the authenticated
-prebuilt Wasm artifact and exercises the portable/native fallback contract.
+Windows is a supported runtime and development target. It validates and runs
+the authenticated production artifact rather than preparing Autoconf-based
+libraries locally.
+
+## Authenticated source mirror
+
+Release jobs use no upstream network fallback. They first fetch the selected
+platform SDK plus all shared sources from the private R2 mirror, where the
+object key and metadata contain the SHA-256 identity. Setting
+`SAGEJS_WASM_SOURCE_MIRROR_DIR` makes preparation mirror-only. The same neutral
+catalog exports verified `SAGEJS_*_TARBALL` values for desktop native builds.
+
+Administrators stage and publish a reviewed catalog revision with:
+
+```sh
+node tools/source-mirror/scripts/source-mirror.mjs stage --all-platforms \
+  --output /secure/staging/sagejs-native-sources
+node tools/source-mirror/scripts/source-mirror.mjs upload --all-platforms \
+  --input /secure/staging/sagejs-native-sources
+```
+
+`upload` uses bucket-scoped S3 credentials and HEAD-verifies length and digest
+metadata after publication. Upstream HTTPS URLs are bootstrap provenance only;
+routine and release workflows fetch immutable mirror objects.
 
 ## What a release contains
 
 `packages/flint-wasm/dist/production-manifest.json` lists every served asset by
-path, content length, SHA-256 digest, and safe public path. The matching
-`build-receipt.json` embeds the same artifact identity and adds source and
-toolchain provenance. A release is invalid if either file is missing, if an
-asset is unlisted, or if any byte differs.
+path, byte length, SHA-256 digest, memory contract, capability closure, and
+topology group. The matching `build-receipt.json` embeds the same artifact
+identity plus source and toolchain provenance. Missing, unlisted, or changed
+bytes invalidate the release.
 
-The production layout separates allocator ownership domains:
+The production layout preserves allocator ownership domains:
 
-- FLINT/GMP/MPFR/MPC/Arb, loaded eagerly;
-- M4RI, loaded lazily;
-- source-transparent kernel packs and optional specialist modules as declared.
+- FLINT/GMP/MPFR/MPC/Arb;
+- M4RI;
+- source-transparent kernel packs;
+- independently loaded specialist modules.
 
-Host JavaScript, parser modules, standard-library data, and styles used by the
-runtime are authenticated assets too. Staging a site or mobile application may
-only copy files covered by the receipt.
+Host JavaScript, parser modules, standard-library data, plotting assets, and
+the bounded first-party WASI host are authenticated assets too. Site and mobile
+staging may copy only the receipt's closure.
 
 ## Reproducibility and release gates
 
-The scheduled/tag workflow performs two clean builds in separate jobs and
-compares the production directories byte for byte. It then runs:
+The scheduled/tag workflow builds twice in separate canonical Linux x86-64
+jobs using only the mirror and compares production directories byte for byte.
+It then runs:
 
-- production manifest and memory-contract validation;
-- artifact size, startup, operation, and memory budgets;
+- receipt, export/import allowlist, memory, topology, and size validation;
 - the identical Node oracle and public browser corpus;
 - Chromium, Firefox, and WebKit release parity;
-- serialization, stale-view, lifecycle, interruption, filesystem quota,
-  offline cache, upgrade, and rollback checks.
+- startup, operation, interrupt, and memory budgets;
+- serialization, lifecycle, filesystem quota, security, offline cache,
+  upgrade, and rollback checks.
 
-The authoritative pipeline is
-[`wasm-release.yml`](../.github/workflows/wasm-release.yml). The routine
-Chromium path in [`wasm-routine.yml`](../.github/workflows/wasm-routine.yml)
-may restore an exact artifact cache; a cache miss must resolve the pinned
-toolchain rather than an ambient directory.
+Linux arm64 and macOS arm64 independently prepare the semantic toolchain from
+the authenticated mirror, run the compiler/WASI probes, build the production
+payload, and compare every payload byte with the canonical Linux x86-64 build.
+The release also compares the prepared receipts' SDK version, compiler version,
+source identities, installed header trees, and static archives. Their complete
+build receipts intentionally retain their distinct builder platform and
+platform-specific SDK archive/tool hashes.
+Windows downloads that exact canonical artifact, validates it, and runs a
+diagnosed public CLI evaluation without preparing a POSIX toolchain. The
+authoritative pipeline is
+[`wasm-release.yml`](../.github/workflows/wasm-release.yml).
 
-To compare two locally produced release directories, use the same validator as
-CI:
+To compare local release directories:
 
 ```sh
 node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs \
   --dist build/a/packages/flint-wasm/dist \
   --compare build/b/packages/flint-wasm/dist \
   --output build/reproducible-artifact.json
+
+node packages/wasm-toolchain/scripts/compare-receipts.cjs \
+  build/a/toolchain.json build/linux-arm64/toolchain.json \
+  build/darwin-arm64/toolchain.json
 ```
 
-Do not compare timestamps in ad hoc archives. Release archives normalize file
-order, modification time, owner, and group after the byte-identical directory
-check.
+Release archives normalize file order, modification time, owner, and group
+only after the byte-identical directory check.
 
 ## Staging applications
 
-The live site verifies the production manifest and receipt before copying the
-complete closure:
+The live and mobile applications validate the same receipt before copying it:
 
 ```sh
 node website/live/scripts/stage.mjs
 node website/live/scripts/static-server.mjs
+
+pnpm --dir apps/sagejs-mobile assets:prepare
+pnpm --dir apps/sagejs-mobile assets:verify
 ```
 
-The mobile shell applies the same rule:
-
-```sh
-cd apps/sagejs-mobile
-pnpm assets:prepare
-pnpm assets:verify
-```
-
-Neither application has a remote-runtime fallback. Missing, partial, stale,
-or unattested assets fail staging or the platform build.
+Neither application has a remote mathematical-runtime fallback.
 
 ## Diagnosing a mismatch
 
-1. Compare `toolchain/lock.json` and its resolver digest.
-2. Compare the receipt's source closure and generated adapter-input hash.
-3. Compare the first differing asset SHA-256 in the production manifests.
-4. Confirm that no untracked generated source or ambient library entered the
-   link.
-5. Rebuild from a clean checkout before changing normalization rules.
+1. Compare `packages/wasm-toolchain/lock.json` and its resolver digest.
+2. Compare prepared receipts, normalized commands, header trees, and archives.
+3. Compare the production receipt's source closure and adapter-input hash.
+4. Compare the first differing asset digest in the production manifests.
+5. Confirm no ambient compiler, header, or library entered the command.
+6. Rebuild from clean mirror-only directories before changing normalization.
 
-Never “fix” reproducibility by excluding a runtime input from the receipt.
-Authenticate the missing input or remove the dependency.
+Never make a mismatch disappear by excluding an input. Authenticate it or
+remove the dependency.

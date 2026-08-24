@@ -143,4 +143,4 @@ pnpm architecture:check
 
 Use the [clean reproducible build guide](webassembly-reproducible-builds.md)
 when the linked closure, toolchain, or production assets change. A local
-ambient CoWasm checkout is not release evidence.
+ambient compiler or mathematical-library prefix is not release evidence.

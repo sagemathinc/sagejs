@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 117,
+    "classified-native-file": 121,
     "declared-ffi": 414,
     "declared-ffi-resource": 29,
     "napi-export": 317,
@@ -8981,6 +8981,38 @@
       "disposition": "external-library-bridge",
       "review_status": "accepted",
       "lane": "integration"
+    },
+    {
+      "id": "native-file:packages/wasm-toolchain/patches/sagejs_wasi_fenv_compat.h",
+      "kind": "classified-native-file",
+      "path": "packages/wasm-toolchain/patches/sagejs_wasi_fenv_compat.h",
+      "disposition": "portability-shim",
+      "review_status": "audited",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/wasm-toolchain/probes/compiler-c.c",
+      "kind": "classified-native-file",
+      "path": "packages/wasm-toolchain/probes/compiler-c.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/wasm-toolchain/probes/compiler-cxx.cc",
+      "kind": "classified-native-file",
+      "path": "packages/wasm-toolchain/probes/compiler-cxx.cc",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/wasm-toolchain/probes/wasi-abi.c",
+      "kind": "classified-native-file",
+      "path": "packages/wasm-toolchain/probes/wasi-abi.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution"
     },
     {
       "id": "native-file:tools/maple/src/parser.c",

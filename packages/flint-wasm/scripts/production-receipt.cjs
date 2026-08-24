@@ -14,7 +14,7 @@ const { join, relative, resolve } = require("node:path");
 const {
   canonicalJson,
   toolchainReceiptIdentity,
-} = require("./wasm-toolchain.cjs");
+} = require("../../wasm-toolchain/scripts/toolchain.cjs");
 const {
   lazyModuleReceiptInputs,
 } = require("../../../scripts/lazy-module-provenance.cjs");
@@ -152,8 +152,9 @@ function sourceClosure(repositoryRoot, packageRoot, sourceInputs = []) {
     join(packageRoot, "scripts", "build.cjs"),
     join(packageRoot, "scripts", "browser-wasm-release-artifact.cjs"),
     join(packageRoot, "scripts", "production-receipt.cjs"),
-    join(packageRoot, "scripts", "wasm-toolchain.cjs"),
-    join(packageRoot, "toolchain"),
+    join(repositoryRoot, "packages", "wasm-toolchain"),
+    join(repositoryRoot, "tools", "source-mirror"),
+    join(packageRoot, "release", "adapter-inputs.json"),
     join(packageRoot, "release"),
     join(repositoryRoot, "package.json"),
     join(repositoryRoot, "pnpm-lock.yaml"),
@@ -456,7 +457,7 @@ function writeProductionReceipt({
   const artifact = createArtifactManifest({ packageRoot, outputDirectory });
   const artifactFilename = join(outputDirectory, "production-manifest.json");
   writeFileSync(artifactFilename, `${JSON.stringify(artifact, null, 2)}\n`);
-  const adapterInputs = readFileSync(join(packageRoot, "toolchain", "adapter-inputs.json"));
+  const adapterInputs = readFileSync(join(packageRoot, "release", "adapter-inputs.json"));
   const receipt = {
     schema: receiptSchema,
     source: {

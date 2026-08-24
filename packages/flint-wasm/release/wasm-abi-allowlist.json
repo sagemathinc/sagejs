@@ -1,0 +1,5569 @@
+{
+  "schema": "sagejs.wasm-abi-allowlist/v1",
+  "modules": {
+    "flint-algebraic.wasm": {
+      "imports": [
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "clock_time_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_close",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_fdstat_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_fdstat_set_flags",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_dir_name",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_read",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_seek",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "path_open",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "path_remove_directory",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "path_unlink_file",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "proc_exit",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "_initialize",
+          "kind": "function"
+        },
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_binary",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_clear",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_close",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_compare_real",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_deserialize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_enclosure",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_equal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_format",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_from_rational",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_i",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_initialize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_input_capacity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_input",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_last_status",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_live_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_matrix_binary",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_matrix_charpoly",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_matrix_close",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_matrix_create",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_matrix_det",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_matrix_entry_handles",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_matrix_entry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_matrix_equal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_matrix_live_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_matrix_rank",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_matrix_scalar_mul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_matrix_unary",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_minpoly",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_output_capacity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_output_length",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_output",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_polynomial_roots",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_pow_rational",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_pow",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_property",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_result_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_result_handle",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_result_value",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_root_handles",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_root_multiplicities",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_root_of_unity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_serialize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_algebraic_unary",
+          "kind": "function"
+        }
+      ]
+    },
+    "flint-factor.wasm": {
+      "imports": [
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "clock_time_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_close",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_fdstat_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_fdstat_set_flags",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_dir_name",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_read",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_seek",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "path_open",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "path_remove_directory",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "path_unlink_file",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "proc_exit",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "_initialize",
+          "kind": "function"
+        },
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_analytic_execute_request",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_analytic_input_capacity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_analytic_input",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_analytic_max_input_capacity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_analytic_max_output_capacity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_analytic_output_capacity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_analytic_output_length",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_analytic_output",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_analytic_release",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_analytic_reserve",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_factor_input_capacity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_factor_input",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_factor_output_capacity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_factor_output",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_factor",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_integer_charpoly_begin",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_integer_charpoly_clear",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_integer_charpoly_coefficient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_integer_charpoly_compute",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_integer_charpoly_set",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_is_prime",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_modsym_clear",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_modsym_dimension",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_modsym_farey_cusps",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_modsym_p1_checksum",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_modsym_p1_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_modsym_weight2_init",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_next_prime",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nf_zeta_residue_begin",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nf_zeta_residue_clear",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nf_zeta_residue_compute",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nf_zeta_residue_input_words",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nf_zeta_residue_input",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nf_zeta_residue_output_words",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nf_zeta_residue_output",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_bessel_i",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_binary",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_close",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_ei",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_equal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_format",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_from_reals",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_neg",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_part_double",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_part",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_pow_int",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_precision",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_round",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_input_capacity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_input",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_last_status",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_live_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_output_capacity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_output",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_binary",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_close",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_equal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_format",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_from_string",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_neg",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_pow_int",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_precision",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_round",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_to_double",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_symbolic_find_root",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_symbolic_integral",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_symbolic_result",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_zeta_zero_output",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_zeta_zeros",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_apply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_boundary_data",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_create",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_cusp_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_cusp_denominator",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_cusp_numerator",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_cuspidal_basis",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_destroy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_entry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_hecke_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_index",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_level",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_matrix_columns",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_matrix_data",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_matrix_rows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_normalized_scalar",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_normalized_u",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_normalized_v",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_normalize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_presentation_field",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_reduce_path",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_star_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_rational_charpoly_begin",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_rational_charpoly_clear",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_rational_charpoly_coefficient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_rational_charpoly_compute",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_rational_charpoly_set",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_character_begin",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_character_conductor",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_character_conrey_number",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_character_exponent_compute",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_character_exponent_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_character_exponent_value",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_character_exponents_compute",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_character_exponents",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_character_is_even",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_character_is_primitive",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_character_is_principal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_character_is_real",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_character_max_vector_entries",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_character_order",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_group_begin",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_group_clear",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_group_component_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_group_component_order",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_group_exponent",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_group_generator",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_group_modulus",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_group_number_primitive",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_dirichlet_group_size",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_begin",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_clear",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_coefficients",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_compute",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_conductor_text",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_decimal_byte_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_decimal_bytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_decimal_field_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_decimal_offset_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_decimal_offsets",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_diagnostic_double",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_diagnostic",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_direct_begin",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_direct_compute",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_direct_cutoffs",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_plot_stride",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_plot_value_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_plot_values",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_point_offsets",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ec_lseries_point_text",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiDirichletGroupClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiDirichletGroupCreate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiDirichletGroupNumPrimitive",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiDirichletGroupSize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFlintByteRegionClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFlintByteRegionCopyBytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFlintByteRegionCreate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFlintByteRegionFromBytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFlintByteRegionSet",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatCharpoly",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatDet",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatInv",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatRank",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixAddScaledEntry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixAugment",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixCopy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixCreate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixDeserialize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixDet",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixEchelonPivots",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixEntryDenominator",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixEntryIsZero",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixEntryNumerator",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixFormat",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixIsOne",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixMulVector",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixNcols",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixNonzeroCount",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixNrows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixPrefixRows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixRandbits",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixRank",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixRref",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixScalarMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixSerialize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixSetBlock",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixSetEntry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixStack",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixSubmatrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixSwapColumns",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixSwapRows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixTranspose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatRref",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatSolve",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqPolyDivExact",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqPolyFactor",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqPolyMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqValueClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqValueDenominator",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqValueNumerator",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqVectorAdd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqVectorClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqVectorCopy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqVectorDot",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqVectorEntryDenominator",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqVectorEntryNumerator",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqVectorEqual",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqVectorFromByteRegion",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqVectorLength",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqVectorMulMatrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqVectorScalarMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqVectorSerialize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqVectorSetEntry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqVectorSub",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzIsProbabprime",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatCharpoly",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatDet",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatHnf",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatHnfModularEldiv",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatHnfTransform",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatLllTransform",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatRank",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatRightKernel",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixAugment",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixCopy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixCreate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixDeserializeEntries",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixDeserialize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixDet",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixEchelonPivots",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixEntry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixExportModUi",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixFormat",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixFromFmpqIntegral",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixHnf",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixIsOne",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixMulVector",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixNcols",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixNrows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixPrefixRows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixRightKernel",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixSelectColumns",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixSerialize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixSetBlock",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixSetEntry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixStack",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixSubmatrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixSwapColumns",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixSwapRows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixTrace",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixTranspose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatSnfTransform",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialAdd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialCoefficient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialCopy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialCreate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialDerivative",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialDeserialize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialDivisionResultClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialDivisionResultQuotient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialDivisionResultRemainder",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialDivremResource",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialEntryCount",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialEqual",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialEvaluate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialGcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialIsZero",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialLength",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialModulus",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialNeg",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialPow",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialSeal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialSerialize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialSetCoefficient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialSub",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialXgcdResource",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialXgcdResultClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialXgcdResultGcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialXgcdResultLeftCoefficient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialXgcdResultRightCoefficient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzPerfectPowerData",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzPolyDivExact",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzPolyFactor",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzPolyMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzVectorAdd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzVectorClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzVectorCopy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzVectorDot",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzVectorEntry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzVectorEqual",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzVectorFromByteRegion",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzVectorLength",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzVectorMulMatrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzVectorScalarMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzVectorSerialize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzVectorSetEntry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzVectorSub",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqContextCharacteristic",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqContextClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqContextCreate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqContextDegree",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementAdd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementCoordinateBytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementCopy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementCreate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementEqual",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementExtensionDegree",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementInverse",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementIsOne",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementIsZero",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementNeg",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementPow",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementSub",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqPolynomialAdd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqPolynomialClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqPolynomialCoordinateBytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqPolynomialCopy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqPolynomialCreate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqPolynomialEqual",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqPolynomialExtensionDegree",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqPolynomialLength",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqPolynomialMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqPolynomialNeg",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqPolynomialPow",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqPolynomialSub",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiIntegerLogSqrtBallsPacked",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatCharpoly",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatDet",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatInv",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatMinpoly",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatRank",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatRightKernel",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixAdd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixAugment",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixCharpoly",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixCopy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixDet",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixEntry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixEqual",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixFormat",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixFromEntries",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixInv",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixIsOne",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixIsZero",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixMinpoly",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixModulus",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixMulVector",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixNcols",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixNeg",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixNonzeroCount",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixNrows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixRandom",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixRank",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixRightKernel",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixRref",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixScalarMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixSelectColumns",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixSelectRows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixSerialize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixSetBlock",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixSetEntry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixSolve",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixStack",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixSub",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixSwapColumns",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixSwapRows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixTrace",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixTranspose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatRref",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatSolve",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyAdd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyCompose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyDerivative",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyDiscriminant",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyDivExact",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyDivRem",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyEqual",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyEvaluate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyFactor",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyGcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyIntegral",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyIsIrreducible",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyNeg",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyResultant",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyReverse",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyRoots",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyShiftLeft",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyShiftRight",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolySub",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyTruncate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodPolyXgcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodVectorMulMatrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNumberFieldOrderMaximalAtPrimes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNumberFieldOrderPmaximal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_gcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_bytes_length",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_bytes_pointer",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_status",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_u64",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_mpoly_input_capacity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_mpoly_input",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_mpoly_output_capacity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_mpoly_output_length",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_mpoly_output",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_mpoly_resultant",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_byte_region",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_dirichlet_group",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fmpq_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fmpq_value",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fmpq_vector",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fmpz_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fmpz_mod_polynomial_division_result",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fmpz_mod_polynomial_xgcd_result",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fmpz_mod_polynomial",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fmpz_vector",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fq_context",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fq_element",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fq_polynomial",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_nmod_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_byte_region",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_dirichlet_group",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fmpq_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fmpq_value",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fmpq_vector",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fmpz_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fmpz_mod_polynomial_division_result",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fmpz_mod_polynomial_xgcd_result",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fmpz_mod_polynomial",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fmpz_vector",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fq_context",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fq_element",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fq_polynomial",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_nmod_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_live_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_begin",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_clear",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_compute",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_curve_text",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_backend_version_bytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_backend_version",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_begin",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_clear",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_coefficient_counts",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_coefficients",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_compute",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_curve_text",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_genus",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_good",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_primes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_required_rows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_row_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_row_status",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_truncated",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_lpoly_upstream_status",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_output_words",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_smalljac_output",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_stage_bytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_stage_pointer",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_wordIsPrime",
+          "kind": "function"
+        }
+      ]
+    },
+    "m4ri-resource.wasm": {
+      "imports": [
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_close",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_seek",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "_initialize",
+          "kind": "function"
+        },
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riAvailable",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riByteRegionClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riByteRegionCopyBytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riByteRegionFromBytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixAdd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixCopy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixCreate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixDeterminantCode",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixEntryCode",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixEqual",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixFormat",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixFromLogicalWords",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixFromSagepackBytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixInverse",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixLogicalWords",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixMul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixNcols",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixNrows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixPrefixRows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixRank",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixRightKernel",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixRref",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixSagepackBytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixSetEntry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixSolve",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixSwapColumns",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixSwapRows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiM4riMatrixTranspose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_bytes_length",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_bytes_pointer",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_status",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_u64",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_byte_region",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_byte_region",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_live_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_stage_bytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_stage_pointer",
+          "kind": "function"
+        }
+      ]
+    },
+    "native-kernels/kernel-flint.wasm": {
+      "imports": [
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "clock_time_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_close",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_fdstat_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_fdstat_set_flags",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_dir_name",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_read",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_seek",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "path_open",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "path_remove_directory",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "path_unlink_file",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "proc_exit",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "_initialize",
+          "kind": "function"
+        },
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_055ea54ac287efd7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_0f39386b7dc46c1d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_1de85a178858c532",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_2735cc03a3919bb9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_4222421fd0c404ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_562a2f882cd43fbf",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_5662ddda41b1bd72",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_81dd77fb56433b6f",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_8b4156cbda8547a8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_9a835f4f162f1c5b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_c68520ca595be012",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_f5b0aa7b18baf31d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_faa367a172176dc7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_fdaa9e246244c375",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_fe654417a28c7f88",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_byte_region_copy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_integer_polynomial_divexact",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_integer_polynomial_factor",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_integer_polynomial_multiply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_prime_field_polynomial_add",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_prime_field_polynomial_derivative",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_prime_field_polynomial_divexact",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_prime_field_polynomial_divrem",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_prime_field_polynomial_equal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_prime_field_polynomial_evaluate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_prime_field_polynomial_factor",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_prime_field_polynomial_gcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_prime_field_polynomial_is_irreducible",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_prime_field_polynomial_multiply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_prime_field_polynomial_negate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_prime_field_polynomial_roots",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_prime_field_polynomial_subtract",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_prime_field_polynomial_xgcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_rational_polynomial_divexact",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_rational_polynomial_factor",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_055ea54ac287efd7_flint_packed_rational_polynomial_multiply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_0f39386b7dc46c1d_packed_round4_exact_characteristic",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_0f39386b7dc46c1d_packed_round4_padic_characteristic",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_0f39386b7dc46c1d_packed_round4_power_basis_covolume",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_1de85a178858c532_flint_word_prime_matrix_nonzero_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_1de85a178858c532_flint_word_prime_matrix_pivots",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_2735cc03a3919bb9_flint_dense_prime_field_matrix_charpoly",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_2735cc03a3919bb9_flint_dense_prime_field_matrix_determinant",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_2735cc03a3919bb9_flint_dense_prime_field_matrix_inverse",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_2735cc03a3919bb9_flint_dense_prime_field_matrix_minpoly",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_2735cc03a3919bb9_flint_dense_prime_field_matrix_mul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_2735cc03a3919bb9_flint_dense_prime_field_matrix_rank",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_2735cc03a3919bb9_flint_dense_prime_field_matrix_right_kernel",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_2735cc03a3919bb9_flint_dense_prime_field_matrix_rref",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_2735cc03a3919bb9_flint_dense_prime_field_matrix_solve",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_4222421fd0c404ab_integer_matrix_polynomial_annihilates_first_coordinate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_4222421fd0c404ab_integer_matrix_word_prime_minimal_polynomial_batch",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_4222421fd0c404ab_word_prime_krylov_minimal_polynomial",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_matrix_charpoly",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_matrix_determinant",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_matrix_hnf_modular_eldiv",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_matrix_hnf_transform",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_matrix_hnf",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_matrix_lll_transform",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_matrix_mul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_matrix_rank",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_matrix_right_kernel",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_matrix_snf_transform",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_matrix_space_random_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_resource_import",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_resource_nonzero_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_resource_random_fill_default",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_resource_random_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_562a2f882cd43fbf_flint_dense_integer_resource_set_diagonal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_5662ddda41b1bd72_assemble_bf_dyadic_finite_term",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_5662ddda41b1bd72_assemble_bf_dyadic_layout",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_5662ddda41b1bd72_assemble_bf_integer_transcendental_endpoints_flint",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_5662ddda41b1bd72_assemble_bf_integer_transcendental_endpoints",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_5662ddda41b1bd72_assemble_zeta_coefficients_from_factors",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_81dd77fb56433b6f_packed_prime_matrix_minors",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_81dd77fb56433b6f_packed_prime_matrix_permanent",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_8b4156cbda8547a8_flint_arbitrary_prime_polynomial_coefficient_sum",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_9a835f4f162f1c5b_packed_prime_field_polynomial_add",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_9a835f4f162f1c5b_packed_prime_field_polynomial_derivative",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_9a835f4f162f1c5b_packed_prime_field_polynomial_equal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_9a835f4f162f1c5b_packed_prime_field_polynomial_evaluate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_9a835f4f162f1c5b_packed_prime_field_polynomial_multiply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_9a835f4f162f1c5b_packed_prime_field_polynomial_negate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_9a835f4f162f1c5b_packed_prime_field_polynomial_quo_rem",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_9a835f4f162f1c5b_packed_prime_field_polynomial_subtract",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_heilbronn_coset_transport_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_heilbronn_cremona_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_heilbronn_cremona_digest",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_heilbronn_cremona_entry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_heilbronn_cremona_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_heilbronn_higher_weight_action_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_heilbronn_higher_weight_hecke_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_heilbronn_merel_digest",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_heilbronn_merel_entry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_heilbronn_merel_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_heilbronn_reduce_transported_action",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_heilbronn_transported_action_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_p1_apply_packed",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_p1_gcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_p1_index_normalized_packed",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_p1_monomial_matrix_coefficient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_p1_normalize_with_scalar",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_p1_rational_add_scaled_at",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_p1_round_quotient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c68520ca595be012_p1_xgcd_left",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_add",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_augment",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_equal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_identity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_is_one",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_is_zero",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_mul_vector",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_negate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_nonzero_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_pivots",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_random_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_rank",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_right_kernel",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_rref",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_scalar_multiply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_select_columns",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_select_rows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_set_block",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_set_diagonal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_set_sequence",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_solution_from_rref",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_solve",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_space_random_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_stack",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_subtract",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_swap_columns",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_swap_rows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_trace",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_matrix_transpose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f5b0aa7b18baf31d_dense_prime_field_vector_mul_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_faa367a172176dc7_flint_extension_element_coordinate_sum",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_faa367a172176dc7_flint_extension_element_coordinate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_faa367a172176dc7_flint_extension_polynomial_add",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_faa367a172176dc7_flint_extension_polynomial_coordinate_sum",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_faa367a172176dc7_flint_extension_polynomial_coordinate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_faa367a172176dc7_flint_extension_polynomial_from_coordinates",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_faa367a172176dc7_flint_extension_polynomial_multiply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fdaa9e246244c375_sparse_random_binary",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fdaa9e246244c375_sparse_random_fmpq",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fdaa9e246244c375_sparse_random_fmpz",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fdaa9e246244c375_sparse_random_prime",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fe654417a28c7f88_flint_byte_region_copy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fe654417a28c7f88_flint_dense_rational_matrix_charpoly",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fe654417a28c7f88_flint_dense_rational_matrix_determinant",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fe654417a28c7f88_flint_dense_rational_matrix_entry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fe654417a28c7f88_flint_dense_rational_matrix_import",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fe654417a28c7f88_flint_dense_rational_matrix_inverse",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fe654417a28c7f88_flint_dense_rational_matrix_mul",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fe654417a28c7f88_flint_dense_rational_matrix_nonzero_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fe654417a28c7f88_flint_dense_rational_matrix_rank",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fe654417a28c7f88_flint_dense_rational_matrix_rref",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fe654417a28c7f88_flint_dense_rational_matrix_set_diagonal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_fe654417a28c7f88_flint_dense_rational_matrix_solve",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_055ea54ac287efd7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_0f39386b7dc46c1d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_1de85a178858c532",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_2735cc03a3919bb9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_4222421fd0c404ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_562a2f882cd43fbf",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_5662ddda41b1bd72",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_81dd77fb56433b6f",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_8b4156cbda8547a8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_9a835f4f162f1c5b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_c68520ca595be012",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_f5b0aa7b18baf31d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_faa367a172176dc7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_fdaa9e246244c375",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_fe654417a28c7f88",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFlintByteRegionClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFlintByteRegionCopyBytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFlintByteRegionFromBytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpqMatrixClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzMatrixClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFmpzModPolynomialClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqContextClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqElementClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiFqPolynomialClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_ffiNmodMatrixClose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_bytes_length",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_bytes_pointer",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_055ea54ac287efd7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_0f39386b7dc46c1d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_1de85a178858c532",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_2735cc03a3919bb9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_4222421fd0c404ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_562a2f882cd43fbf",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_5662ddda41b1bd72",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_81dd77fb56433b6f",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_8b4156cbda8547a8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_9a835f4f162f1c5b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_c68520ca595be012",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_f5b0aa7b18baf31d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_faa367a172176dc7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_fdaa9e246244c375",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_fe654417a28c7f88",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_status",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_u64",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_byte_region",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fmpq_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fmpz_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fmpz_mod_polynomial",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fq_context",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fq_element",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_fq_polynomial",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_adopt_nmod_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_byte_region",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fmpq_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fmpz_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fmpz_mod_polynomial",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fq_context",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fq_element",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_fq_polynomial",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_borrow_nmod_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_resource_live_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_055ea54ac287efd7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_0f39386b7dc46c1d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_1de85a178858c532",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_2735cc03a3919bb9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_4222421fd0c404ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_562a2f882cd43fbf",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_5662ddda41b1bd72",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_81dd77fb56433b6f",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_8b4156cbda8547a8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_9a835f4f162f1c5b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_c68520ca595be012",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_f5b0aa7b18baf31d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_faa367a172176dc7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_fdaa9e246244c375",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_fe654417a28c7f88",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_055ea54ac287efd7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_0f39386b7dc46c1d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_1de85a178858c532",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_2735cc03a3919bb9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_4222421fd0c404ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_562a2f882cd43fbf",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_5662ddda41b1bd72",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_81dd77fb56433b6f",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_8b4156cbda8547a8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_9a835f4f162f1c5b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_c68520ca595be012",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_f5b0aa7b18baf31d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_faa367a172176dc7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_fdaa9e246244c375",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_fe654417a28c7f88",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_055ea54ac287efd7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_0f39386b7dc46c1d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_1de85a178858c532",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_2735cc03a3919bb9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_4222421fd0c404ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_562a2f882cd43fbf",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_5662ddda41b1bd72",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_81dd77fb56433b6f",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_8b4156cbda8547a8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_9a835f4f162f1c5b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_c68520ca595be012",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_f5b0aa7b18baf31d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_faa367a172176dc7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_fdaa9e246244c375",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_fe654417a28c7f88",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_055ea54ac287efd7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_0f39386b7dc46c1d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_1de85a178858c532",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_2735cc03a3919bb9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_4222421fd0c404ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_562a2f882cd43fbf",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_5662ddda41b1bd72",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_81dd77fb56433b6f",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_8b4156cbda8547a8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_9a835f4f162f1c5b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_c68520ca595be012",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_f5b0aa7b18baf31d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_faa367a172176dc7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_fdaa9e246244c375",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_fe654417a28c7f88",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_stage_bytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_stage_pointer",
+          "kind": "function"
+        }
+      ]
+    },
+    "native-kernels/kernel-gmp.wasm": {
+      "imports": [
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_close",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_seek",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "_initialize",
+          "kind": "function"
+        },
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_0e464ad6570e580f",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_0f81351895caf2f3",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_29acfbd626082145",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_3a8e60a8a0a4ac58",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_54f89905a23d2e21",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_5547df72e5e80b9b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_69762a15ec2d708d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_6fb60fe5a9636211",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_79512eb2d366b7a5",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_7bc6cbb31ffa2f3c",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_7e4bc8e170fd294d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_833d48fe95a60baa",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_891c3d104cef21b2",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_8a7cf1b82c9c620a",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_a8a0b06fe84ad105",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_ac30348d317cc03b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_c2638e10f03ff946",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_c53580e8feb3d067",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_e0091f6354148ec7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_0e464ad6570e580f_packed_moebius_range",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_0f81351895caf2f3_packed_integer_polynomial_add",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_0f81351895caf2f3_packed_integer_polynomial_equal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_0f81351895caf2f3_packed_integer_polynomial_multiply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_0f81351895caf2f3_packed_integer_polynomial_negate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_0f81351895caf2f3_packed_integer_polynomial_shift_left",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_0f81351895caf2f3_packed_integer_polynomial_subtract",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_29acfbd626082145_packed_composite_dedekind_basis_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_29acfbd626082145_packed_ideal_product_hnf_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_29acfbd626082145_packed_known_overorder_contains_vectors_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_29acfbd626082145_packed_order_contains_vector_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_29acfbd626082145_packed_order_contains_vectors_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_29acfbd626082145_packed_order_table_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_29acfbd626082145_packed_row_hnf_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_3a8e60a8a0a4ac58_packed_permutation_center",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_54f89905a23d2e21_scan_genus3_weil_candidates_batch",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_54f89905a23d2e21_scan_genus3_weil_candidates",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_5547df72e5e80b9b_packed_composite_polynomial_split_hint_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_69762a15ec2d708d_packed_integer_square_root",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_69762a15ec2d708d_packed_order_lattice_is_valid",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_69762a15ec2d708d_packed_polynomial_discriminant",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_6fb60fe5a9636211_packed_graph_all_pairs_distances",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_6fb60fe5a9636211_packed_graph_shortest_paths",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_79512eb2d366b7a5_packed_cubic_norm_smooth_candidates_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_79512eb2d366b7a5_packed_cubic_order_norm_form_coefficients_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_79512eb2d366b7a5_packed_factor_base_rows_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_7bc6cbb31ffa2f3c_packed_field_analysis_authenticate_projection",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_7bc6cbb31ffa2f3c_packed_field_analysis_decode_integers",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_7bc6cbb31ffa2f3c_packed_field_analysis_decode_word_bytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_7bc6cbb31ffa2f3c_packed_field_analysis_fixed_points_are_valid",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_7bc6cbb31ffa2f3c_packed_round2_order_proof_decode_word_bytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_7bc6cbb31ffa2f3c_packed_round2_order_proof_is_valid",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_7e4bc8e170fd294d_packed_cubic_norm_form_target_slice",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_833d48fe95a60baa_packed_graph_components",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_891c3d104cef21b2_packed_incremental_row_hnf_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_891c3d104cef21b2_packed_maxmin_valuations_are_maximal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_891c3d104cef21b2_packed_triangular_basis_is_closed",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_8a7cf1b82c9c620a_packed_lattice_memberships_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_a8a0b06fe84ad105_packed_integer_matrix_minors",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_a8a0b06fe84ad105_packed_integer_matrix_permanent",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_a8a0b06fe84ad105_packed_rational_matrix_minors",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_a8a0b06fe84ad105_packed_rational_matrix_permanent",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_add_pair",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_add",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_augment",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_copy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_equal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_fill_denominator_one",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_gcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_get",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_identity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_is_one",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_is_zero",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_kernel_from_rref",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_multiply_pair",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_negate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_nonzero_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_normalize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_scalar_multiply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_select_columns",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_select_rows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_set",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_stack",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_subtract_pair",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_subtract",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_trace",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ac30348d317cc03b_dense_rational_matrix_transpose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_add",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_augment",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_copy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_equal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_get",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_is_one",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_is_zero",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_negate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_nonzero_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_random_fill_default",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_random_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_scalar_multiply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_select_columns",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_select_rows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_set",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_stack",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_subtract",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_trace",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c2638e10f03ff946_dense_integer_matrix_transpose",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c53580e8feb3d067_packed_integral_number_field_exact_quotient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c53580e8feb3d067_packed_integral_number_field_multiply_reduce",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c53580e8feb3d067_packed_integral_number_field_power_basis",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c53580e8feb3d067_packed_rational_polynomial_add_pair",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c53580e8feb3d067_packed_rational_polynomial_add",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c53580e8feb3d067_packed_rational_polynomial_equal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c53580e8feb3d067_packed_rational_polynomial_gcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c53580e8feb3d067_packed_rational_polynomial_multiply_pair",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c53580e8feb3d067_packed_rational_polynomial_multiply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c53580e8feb3d067_packed_rational_polynomial_negate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_c53580e8feb3d067_packed_rational_polynomial_subtract",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_e0091f6354148ec7_packed_prime_ideal_candidate_hnf_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_0e464ad6570e580f",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_0f81351895caf2f3",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_29acfbd626082145",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_3a8e60a8a0a4ac58",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_54f89905a23d2e21",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_5547df72e5e80b9b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_69762a15ec2d708d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_6fb60fe5a9636211",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_79512eb2d366b7a5",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_7bc6cbb31ffa2f3c",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_7e4bc8e170fd294d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_833d48fe95a60baa",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_891c3d104cef21b2",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_8a7cf1b82c9c620a",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_a8a0b06fe84ad105",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_ac30348d317cc03b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_c2638e10f03ff946",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_c53580e8feb3d067",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_e0091f6354148ec7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_0e464ad6570e580f",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_0f81351895caf2f3",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_29acfbd626082145",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_3a8e60a8a0a4ac58",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_54f89905a23d2e21",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_5547df72e5e80b9b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_69762a15ec2d708d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_6fb60fe5a9636211",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_79512eb2d366b7a5",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_7bc6cbb31ffa2f3c",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_7e4bc8e170fd294d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_833d48fe95a60baa",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_891c3d104cef21b2",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_8a7cf1b82c9c620a",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_a8a0b06fe84ad105",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_ac30348d317cc03b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_c2638e10f03ff946",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_c53580e8feb3d067",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_e0091f6354148ec7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_0e464ad6570e580f",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_0f81351895caf2f3",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_29acfbd626082145",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_3a8e60a8a0a4ac58",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_54f89905a23d2e21",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_5547df72e5e80b9b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_69762a15ec2d708d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_6fb60fe5a9636211",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_79512eb2d366b7a5",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_7bc6cbb31ffa2f3c",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_7e4bc8e170fd294d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_833d48fe95a60baa",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_891c3d104cef21b2",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_8a7cf1b82c9c620a",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_a8a0b06fe84ad105",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_ac30348d317cc03b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_c2638e10f03ff946",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_c53580e8feb3d067",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_e0091f6354148ec7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_0e464ad6570e580f",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_0f81351895caf2f3",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_29acfbd626082145",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_3a8e60a8a0a4ac58",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_54f89905a23d2e21",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_5547df72e5e80b9b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_69762a15ec2d708d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_6fb60fe5a9636211",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_79512eb2d366b7a5",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_7bc6cbb31ffa2f3c",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_7e4bc8e170fd294d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_833d48fe95a60baa",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_891c3d104cef21b2",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_8a7cf1b82c9c620a",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_a8a0b06fe84ad105",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_ac30348d317cc03b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_c2638e10f03ff946",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_c53580e8feb3d067",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_e0091f6354148ec7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_0e464ad6570e580f",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_0f81351895caf2f3",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_29acfbd626082145",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_3a8e60a8a0a4ac58",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_54f89905a23d2e21",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_5547df72e5e80b9b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_69762a15ec2d708d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_6fb60fe5a9636211",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_79512eb2d366b7a5",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_7bc6cbb31ffa2f3c",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_7e4bc8e170fd294d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_833d48fe95a60baa",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_891c3d104cef21b2",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_8a7cf1b82c9c620a",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_a8a0b06fe84ad105",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_ac30348d317cc03b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_c2638e10f03ff946",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_c53580e8feb3d067",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_e0091f6354148ec7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_0e464ad6570e580f",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_0f81351895caf2f3",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_29acfbd626082145",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_3a8e60a8a0a4ac58",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_54f89905a23d2e21",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_5547df72e5e80b9b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_69762a15ec2d708d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_6fb60fe5a9636211",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_79512eb2d366b7a5",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_7bc6cbb31ffa2f3c",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_7e4bc8e170fd294d",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_833d48fe95a60baa",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_891c3d104cef21b2",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_8a7cf1b82c9c620a",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_a8a0b06fe84ad105",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_ac30348d317cc03b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_c2638e10f03ff946",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_c53580e8feb3d067",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_e0091f6354148ec7",
+          "kind": "function"
+        }
+      ]
+    },
+    "tree-sitter-macaulay2.wasm": {
+      "imports": [
+        {
+          "module": "env",
+          "name": "__indirect_function_table",
+          "kind": "table"
+        },
+        {
+          "module": "env",
+          "name": "__memory_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "__stack_pointer",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "__table_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "module": "env",
+          "name": "strcmp",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "__wasm_apply_data_relocs",
+          "kind": "function"
+        },
+        {
+          "name": "tree_sitter_macaulay2",
+          "kind": "function"
+        }
+      ]
+    },
+    "tree-sitter-magma.wasm": {
+      "imports": [
+        {
+          "module": "env",
+          "name": "__indirect_function_table",
+          "kind": "table"
+        },
+        {
+          "module": "env",
+          "name": "__memory_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "__table_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "iswspace",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "memory",
+          "kind": "memory"
+        }
+      ],
+      "exports": [
+        {
+          "name": "__wasm_apply_data_relocs",
+          "kind": "function"
+        },
+        {
+          "name": "tree_sitter_magma",
+          "kind": "function"
+        }
+      ]
+    },
+    "tree-sitter-maple.wasm": {
+      "imports": [
+        {
+          "module": "env",
+          "name": "__indirect_function_table",
+          "kind": "table"
+        },
+        {
+          "module": "env",
+          "name": "__memory_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "__table_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "memory",
+          "kind": "memory"
+        }
+      ],
+      "exports": [
+        {
+          "name": "__wasm_apply_data_relocs",
+          "kind": "function"
+        },
+        {
+          "name": "tree_sitter_maple",
+          "kind": "function"
+        }
+      ]
+    },
+    "tree-sitter-matlab.wasm": {
+      "imports": [
+        {
+          "module": "env",
+          "name": "__indirect_function_table",
+          "kind": "table"
+        },
+        {
+          "module": "env",
+          "name": "__memory_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "__stack_pointer",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "__table_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "calloc",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "free",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "iswalpha",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "iswspace",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "memcmp",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "module": "env",
+          "name": "strcmp",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "__wasm_apply_data_relocs",
+          "kind": "function"
+        },
+        {
+          "name": "tree_sitter_matlab",
+          "kind": "function"
+        }
+      ]
+    },
+    "tree-sitter-python.wasm": {
+      "imports": [
+        {
+          "module": "env",
+          "name": "__indirect_function_table",
+          "kind": "table"
+        },
+        {
+          "module": "env",
+          "name": "__memory_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "__table_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "calloc",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "free",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "malloc",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "module": "env",
+          "name": "realloc",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "__wasm_apply_data_relocs",
+          "kind": "function"
+        },
+        {
+          "name": "tree_sitter_python",
+          "kind": "function"
+        }
+      ]
+    },
+    "tree-sitter-sage.wasm": {
+      "imports": [
+        {
+          "module": "env",
+          "name": "__indirect_function_table",
+          "kind": "table"
+        },
+        {
+          "module": "env",
+          "name": "__memory_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "__table_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "calloc",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "free",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "malloc",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "module": "env",
+          "name": "realloc",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "__wasm_apply_data_relocs",
+          "kind": "function"
+        },
+        {
+          "name": "tree_sitter_sage",
+          "kind": "function"
+        }
+      ]
+    },
+    "tree-sitter-wolfram.wasm": {
+      "imports": [
+        {
+          "module": "env",
+          "name": "__indirect_function_table",
+          "kind": "table"
+        },
+        {
+          "module": "env",
+          "name": "__memory_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "__stack_pointer",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "__table_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "iswspace",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "memory",
+          "kind": "memory"
+        }
+      ],
+      "exports": [
+        {
+          "name": "__wasm_apply_data_relocs",
+          "kind": "function"
+        },
+        {
+          "name": "tree_sitter_wolfram",
+          "kind": "function"
+        }
+      ]
+    },
+    "web-tree-sitter.wasm": {
+      "imports": [
+        {
+          "module": "env",
+          "name": "__indirect_function_table",
+          "kind": "table"
+        },
+        {
+          "module": "env",
+          "name": "__memory_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "__stack_pointer",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "__table_base",
+          "kind": "global"
+        },
+        {
+          "module": "env",
+          "name": "_abort_js",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "emscripten_resize_heap",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "module": "env",
+          "name": "tree_sitter_log_callback",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "tree_sitter_parse_callback",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "tree_sitter_progress_callback",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "tree_sitter_query_progress_callback",
+          "kind": "function"
+        },
+        {
+          "module": "GOT.mem",
+          "name": "__heap_base",
+          "kind": "global"
+        },
+        {
+          "module": "GOT.mem",
+          "name": "__stack_high",
+          "kind": "global"
+        },
+        {
+          "module": "GOT.mem",
+          "name": "__stack_low",
+          "kind": "global"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_close",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_seek",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "__wasm_apply_data_relocs",
+          "kind": "function"
+        },
+        {
+          "name": "__wasm_call_ctors",
+          "kind": "function"
+        },
+        {
+          "name": "_emscripten_stack_alloc",
+          "kind": "function"
+        },
+        {
+          "name": "_emscripten_stack_restore",
+          "kind": "function"
+        },
+        {
+          "name": "calloc",
+          "kind": "function"
+        },
+        {
+          "name": "emscripten_stack_get_current",
+          "kind": "function"
+        },
+        {
+          "name": "free",
+          "kind": "function"
+        },
+        {
+          "name": "iswalnum",
+          "kind": "function"
+        },
+        {
+          "name": "iswalpha",
+          "kind": "function"
+        },
+        {
+          "name": "iswblank",
+          "kind": "function"
+        },
+        {
+          "name": "iswdigit",
+          "kind": "function"
+        },
+        {
+          "name": "iswlower",
+          "kind": "function"
+        },
+        {
+          "name": "iswspace",
+          "kind": "function"
+        },
+        {
+          "name": "iswupper",
+          "kind": "function"
+        },
+        {
+          "name": "iswxdigit",
+          "kind": "function"
+        },
+        {
+          "name": "malloc",
+          "kind": "function"
+        },
+        {
+          "name": "memchr",
+          "kind": "function"
+        },
+        {
+          "name": "memcmp",
+          "kind": "function"
+        },
+        {
+          "name": "memcpy",
+          "kind": "function"
+        },
+        {
+          "name": "memmove",
+          "kind": "function"
+        },
+        {
+          "name": "memset",
+          "kind": "function"
+        },
+        {
+          "name": "realloc",
+          "kind": "function"
+        },
+        {
+          "name": "setThrew",
+          "kind": "function"
+        },
+        {
+          "name": "strcmp",
+          "kind": "function"
+        },
+        {
+          "name": "strlen",
+          "kind": "function"
+        },
+        {
+          "name": "strncat",
+          "kind": "function"
+        },
+        {
+          "name": "strncmp",
+          "kind": "function"
+        },
+        {
+          "name": "strncpy",
+          "kind": "function"
+        },
+        {
+          "name": "towlower",
+          "kind": "function"
+        },
+        {
+          "name": "towupper",
+          "kind": "function"
+        },
+        {
+          "name": "ts_init",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_abi_version",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_field_count",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_field_name_for_id",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_metadata_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_name",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_next_state",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_state_count",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_subtypes_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_supertypes_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_symbol_count",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_symbol_for_name",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_symbol_name",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_symbol_type",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_type_is_named_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_language_type_is_visible_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_lookahead_iterator_current_symbol",
+          "kind": "function"
+        },
+        {
+          "name": "ts_lookahead_iterator_delete",
+          "kind": "function"
+        },
+        {
+          "name": "ts_lookahead_iterator_new",
+          "kind": "function"
+        },
+        {
+          "name": "ts_lookahead_iterator_next",
+          "kind": "function"
+        },
+        {
+          "name": "ts_lookahead_iterator_reset_state",
+          "kind": "function"
+        },
+        {
+          "name": "ts_lookahead_iterator_reset",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_child_by_field_id_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_child_count_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_child_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_child_with_descendant_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_children_by_field_id_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_children_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_descendant_count_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_descendant_for_index_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_descendant_for_position_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_descendants_of_type_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_end_index_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_end_point_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_field_name_for_child_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_field_name_for_named_child_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_first_child_for_byte_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_first_named_child_for_byte_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_grammar_symbol_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_has_changes_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_has_error_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_is_error_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_is_extra_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_is_missing_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_is_named_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_named_child_count_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_named_child_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_named_children_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_named_descendant_for_index_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_named_descendant_for_position_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_next_named_sibling_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_next_parse_state_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_next_sibling_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_parent_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_parse_state_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_prev_named_sibling_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_prev_sibling_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_start_index_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_start_point_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_symbol_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_node_to_string_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_parser_delete",
+          "kind": "function"
+        },
+        {
+          "name": "ts_parser_enable_logger_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_parser_included_ranges_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_parser_new_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_parser_parse_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_parser_reset",
+          "kind": "function"
+        },
+        {
+          "name": "ts_parser_set_included_ranges",
+          "kind": "function"
+        },
+        {
+          "name": "ts_parser_set_language",
+          "kind": "function"
+        },
+        {
+          "name": "ts_point_edit",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_capture_count",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_capture_name_for_id",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_capture_quantifier_for_id",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_captures_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_delete",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_disable_capture",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_disable_pattern",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_end_byte_for_pattern",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_is_pattern_guaranteed_at_step",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_is_pattern_non_local",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_is_pattern_rooted",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_matches_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_new",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_pattern_count",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_predicates_for_pattern",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_start_byte_for_pattern",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_string_count",
+          "kind": "function"
+        },
+        {
+          "name": "ts_query_string_value_for_id",
+          "kind": "function"
+        },
+        {
+          "name": "ts_range_edit",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_copy",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_copy_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_current_depth_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_current_descendant_index_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_current_field_id_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_current_node_id_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_current_node_is_missing_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_current_node_is_named_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_current_node_state_id_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_current_node_type_id_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_current_node_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_delete_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_end_index_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_end_position_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_goto_descendant_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_goto_first_child_for_index_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_goto_first_child_for_position_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_goto_first_child_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_goto_last_child_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_goto_next_sibling_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_goto_parent_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_goto_previous_sibling_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_new_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_reset_to_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_reset_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_start_index_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_cursor_start_position_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_delete",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_edit_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_get_changed_ranges_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_included_ranges_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_root_node_wasm",
+          "kind": "function"
+        },
+        {
+          "name": "ts_tree_root_node_with_offset_wasm",
+          "kind": "function"
+        }
+      ]
+    }
+  }
+}

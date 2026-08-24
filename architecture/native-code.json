@@ -186,6 +186,34 @@
       "rationale": "WASI compatibility symbols required by the browser build."
     },
     {
+      "path": "packages/wasm-toolchain/patches/sagejs_wasi_fenv_compat.h",
+      "category": "portability-shim",
+      "review_status": "audited",
+      "lane": "distribution",
+      "rationale": "Narrow BSD-licensed FLINT/WASI fenv macro and mkstemp declaration shim used only by the pinned direct FLINT cross-build."
+    },
+    {
+      "path": "packages/wasm-toolchain/probes/compiler-c.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Minimal C compile/link/run probe for the pinned direct WASI SDK; it has no production consumer."
+    },
+    {
+      "path": "packages/wasm-toolchain/probes/compiler-cxx.cc",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Minimal C++ compile/link/run probe for the pinned direct WASI SDK; it has no production consumer."
+    },
+    {
+      "path": "packages/wasm-toolchain/probes/wasi-abi.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Standalone raw Preview 1 conformance probe compiled and run against the Sage.js host and an independent standards-oriented host; it is not linked into production."
+    },
+    {
       "path": "packages/flint/include/sagejs/exact_polynomial_ffi.h",
       "category": "external-library-bridge",
       "review_status": "accepted",

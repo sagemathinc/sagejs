@@ -343,8 +343,9 @@ the FLINT addon and statically linked GMP, MPFR, MPC, OpenBLAS, and FLINT.
 [`DISTRIBUTION.md`](DISTRIBUTION.md) documents the reproducible SEA builds,
 the smaller FLINT-free `sagepython` artifact, browser/WebWorker plans,
 container deployment, and the evaluated TypeScript-to-native alternatives.
-A [`flint-wasm`](packages/flint-wasm/README.md) proof of concept links
-CoWasm's FLINT, GMP, and MPFR archives into a 4.7 MiB browser module. The real
+A [`flint-wasm`](packages/flint-wasm/README.md) runtime links Sage.js-owned
+FLINT, GMP, MPFR, MPC, M4RI, ffpoly, and smalljac builds into authenticated
+browser modules. The real
 Sage.js evaluator compiles source in a nested worker and runs
 arbitrary-precision factorization in an interruptible outer worker. Native and
 WASM builds also share the same host-neutral `P1List` and weight-2
