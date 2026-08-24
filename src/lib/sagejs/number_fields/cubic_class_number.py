@@ -114,6 +114,58 @@ def _cubic_lcm(left: int, right: int) -> int:
     return 0 if product == 0 else product // a
 
 
+def _is_integral_cubic_power_basis(order: Any) -> bool:
+    """Return whether the maximal-order basis is exactly `1, a, a^2`."""
+    if int(order.degree()) != 3 or len(order._basis_rows) != 3:
+        return False
+    for row_index, row in enumerate(order._basis_rows):
+        if len(row) != 3:
+            return False
+        for column_index, value in enumerate(row):
+            rational = sage.QQ(value)
+            if rational._denominator != 1 or int(rational._numerator) != int(
+                row_index == column_index
+            ):
+                return False
+    field = order.number_field()
+    scale = getattr(field, "_integral_equation_scale_cache", None)
+    return scale is not None and int(runtime.integer_bigint(scale)) == 1
+
+
+def _power_basis_cubic_element_norm(
+    order: Any, coordinates: tuple[Any, ...]
+) -> int | None:
+    """Evaluate an integral power-basis cubic norm with integer arithmetic."""
+    if len(coordinates) != 3 or not _is_integral_cubic_power_basis(order):
+        return None
+    values: list[int] = []
+    for value in coordinates:
+        rational = sage.QQ(value)
+        if rational._denominator != 1:
+            return None
+        values.append(int(rational._numerator))
+    maximal_module = __import__(
+        "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
+    )
+    polynomial = maximal_module.integral_equation_polynomial(order.number_field())
+    coefficients = tuple(int(value) for value in polynomial.list())
+    if len(coefficients) != 4 or coefficients[3] != 1:
+        return None
+    c0, c1, c2, _leading = coefficients
+    u, v, w = values
+    column0 = (u, v, w)
+    column1 = (-w * c0, u - w * c1, v - w * c2)
+    column2 = (
+        -v * c0 + w * c2 * c0,
+        -v * c1 + w * (-c0 + c2 * c1),
+        u - v * c2 + w * (-c1 + c2 * c2),
+    )
+    a, d, g = column0
+    b, e, h = column1
+    c, f, i = column2
+    return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
+
+
 class PackedCubicFactorRecord:
     """One exact factor-base prime retained as HNF integers, not an ideal."""
 
@@ -128,7 +180,7 @@ class PackedCubicFactorRecord:
         subspace: list[list[int]],
         presentation: dict[str, Any],
         second_generator_payload: Any,
-        table: list[list[list[int]]],
+        table: list[list[list[int]]] | None,
         one_coordinates: list[int],
         dedekind_kummer: bool,
     ) -> None:
@@ -208,13 +260,31 @@ class PackedCubicFactorRecord:
             else tuple(normalized_witness_payload)
         )
         self._second_generator_cache: Any = None
-        self.modular_table = tuple(
-            tuple(tuple(int(value) for value in product) for product in left)
-            for left in table
+        self._modular_table = (
+            None
+            if table is None
+            else tuple(
+                tuple(tuple(int(value) for value in product) for product in left)
+                for left in table
+            )
         )
         self.modular_one = tuple(int(value) for value in one_coordinates)
         self.dedekind_kummer = bool(dedekind_kummer)
         self._power_cache: tuple[tuple[tuple[int, ...], int], ...] = ()
+
+    @property
+    def modular_table(self) -> tuple[tuple[tuple[int, ...], ...], ...]:
+        """Materialize the exact modular order table only when it is consumed."""
+        if self._modular_table is None:
+            prime_module = __import__(
+                "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+            )
+            table = prime_module._modular_table(self.order, self.prime)
+            self._modular_table = tuple(
+                tuple(tuple(int(value) for value in product) for product in left)
+                for left in table
+            )
+        return self._modular_table
 
     def rational_prime(self) -> int:
         return self.prime
@@ -309,6 +379,78 @@ class PackedCubicFactorRecord:
         }
 
 
+def _packed_power_basis_linear_candidates(
+    order: Any,
+    prime: int,
+    requested: set[int],
+    modular_factors: tuple[Any, ...],
+) -> list[dict[str, Any]] | None:
+    """Construct degree-one Dedekind--Kummer data without an order table."""
+    if requested != {1} or not _is_integral_cubic_power_basis(order):
+        return None
+    if (
+        sum(
+            int(factor.multiplicity) * (len(factor.polynomial) - 1)
+            for factor in modular_factors
+        )
+        != 3
+    ):
+        raise ArithmeticError("Dedekind--Kummer factors have the wrong local degree")
+    prime_module = __import__(
+        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+    )
+    answer: list[dict[str, Any]] = []
+    for factor in modular_factors:
+        polynomial = tuple(int(value) % prime for value in factor.polynomial)
+        if len(polynomial) != 2:
+            continue
+        if polynomial[1] != 1:
+            return None
+        root = (-polynomial[0]) % prime
+        quotient_coordinates = [1, root, (root * root) % prime]
+        subspace = prime_module._row_basis(
+            [
+                [(-root) % prime, 1, 0],
+                [(-(root * root)) % prime, 0, 1],
+            ],
+            3,
+            prime,
+        )
+        rows = prime_module._packed_candidate_rows(order, subspace, prime)
+        if rows is None:
+            return None
+        answer.append(
+            {
+                "rows": rows,
+                "subspace": subspace,
+                "e": int(factor.multiplicity),
+                "f": 1,
+                "presentation": {
+                    "primitive": [1, 0, 0],
+                    "quotient_matrix": [[value] for value in quotient_coordinates],
+                    "power_inverse": [[1]],
+                    "modulus": [(-1) % prime, 1],
+                },
+                "second_generator_payload": [
+                    [polynomial[0], 1],
+                    [polynomial[1], 1],
+                    [0, 1],
+                ],
+                "table": None,
+                "one": [1, 0, 0],
+            }
+        )
+    answer.sort(
+        key=lambda record: tuple(
+            value
+            for row in record["rows"]
+            for entry in row
+            for value in (int(entry._numerator), int(entry._denominator))
+        )
+    )
+    return answer
+
+
 def packed_cubic_factor_records(
     plan: Any,
 ) -> tuple[PackedCubicFactorRecord, ...] | None:
@@ -349,10 +491,20 @@ def packed_cubic_factor_records(
             len(factor.polynomial) - 1 in requested for factor in modular_factors
         ):
             continue
-        modular_table = prime_module._modular_table(order, prime)
-        modular_one = [value % prime for value in one_coordinates]
         local = (
-            prime_module.packed_dedekind_kummer_candidates(
+            _packed_power_basis_linear_candidates(
+                order, prime, requested, modular_factors
+            )
+            if p_maximal
+            else None
+        )
+        modular_table: Any = None
+        modular_one: Any = None
+        if local is None:
+            modular_table = prime_module._modular_table(order, prime)
+            modular_one = [value % prime for value in one_coordinates]
+        if local is None and p_maximal:
+            local = prime_module.packed_dedekind_kummer_candidates(
                 order,
                 prime,
                 requested,
@@ -361,9 +513,6 @@ def packed_cubic_factor_records(
                 modular_table=modular_table,
                 one_coordinates=modular_one,
             )
-            if p_maximal
-            else None
-        )
         if local is None:
             local = prime_module.packed_finite_algebra_candidates(
                 order,
@@ -1163,7 +1312,7 @@ def _validated_cubic_integral_relation_batch(
     """Issue live authority only for the ordinary packed cubic producer."""
     if _cubic_relation_sieve_kernel_override is not None:
         return None
-    coefficients = _order_cubic_norm_form_coefficients(order)
+    coefficients: tuple[int, ...] | None = None
     factor_norms = tuple(
         _integer_rational(prime_ideal.norm(), "a factor-base norm")
         for prime_ideal in factor_base
@@ -1178,7 +1327,12 @@ def _validated_cubic_integral_relation_batch(
     for coordinates, row, expected_norm in proposed:
         if len(coordinates) != 3 or len(row) != len(factor_norms):
             return None
-        exact_norm = abs(_cubic_norm_form_value(coefficients, *coordinates))
+        signed_norm = _power_basis_cubic_element_norm(order, coordinates)
+        if signed_norm is None:
+            if coefficients is None:
+                coefficients = _order_cubic_norm_form_coefficients(order)
+            signed_norm = _cubic_norm_form_value(coefficients, *coordinates)
+        exact_norm = abs(signed_norm)
         row_norm = 1
         for factor_norm, exponent in zip(factor_norms, row, strict=True):
             if exponent < 0:
@@ -1205,49 +1359,144 @@ def _validated_cubic_integral_relation_batch(
 def _packed_principal_factor_proposals(
     order: Any, factor_base: tuple[Any, ...]
 ) -> tuple[tuple[tuple[int, ...], tuple[int, ...], dict[str, Any]], ...]:
-    """Return attached generators whose exact norms prove a prime principal."""
+    """Return tiny retained generators whose exact norms prove a prime principal."""
     if not factor_base or not all(
         isinstance(record, PackedCubicFactorRecord) for record in factor_base
     ):
         return ()
-    inverse = order._basis_inverse_matrix().rows()
-    norm_form = _order_cubic_norm_form_coefficients(order)
+    power_basis = _is_integral_cubic_power_basis(order)
+    inverse: Any = None
+    norm_form: tuple[int, ...] | None = None
     answer = []
     for index, record in enumerate(factor_base):
         payload = record._second_generator_payload
-        if payload is None:
-            continue
-        power_coordinates = tuple(
-            sage.QQ(numerator) / sage.QQ(denominator)
-            for numerator, denominator in payload
-        )
-        coordinates = []
-        for target in range(3):
-            value = sage.QQ(0)
-            for source in range(3):
-                value += power_coordinates[source] * inverse[source][target]
-            if value._denominator != 1:
-                coordinates = []
+        coordinate_candidates: list[tuple[tuple[int, ...], str]] = []
+        if payload is not None:
+            power_coordinates = tuple(
+                sage.QQ(numerator) / sage.QQ(denominator)
+                for numerator, denominator in payload
+            )
+            attached_coordinates: list[int] = []
+            if power_basis:
+                if all(value._denominator == 1 for value in power_coordinates):
+                    attached_coordinates = [
+                        int(value._numerator) for value in power_coordinates
+                    ]
+            else:
+                if inverse is None:
+                    inverse = order._basis_inverse_matrix().rows()
+                for target in range(3):
+                    value = sage.QQ(0)
+                    for source in range(3):
+                        value += power_coordinates[source] * inverse[source][target]
+                    if value._denominator != 1:
+                        attached_coordinates = []
+                        break
+                    attached_coordinates.append(int(value._numerator))
+            if attached_coordinates:
+                coordinate_candidates.append(
+                    (
+                        tuple(attached_coordinates),
+                        "packed-cubic-attached-prime-generator",
+                    )
+                )
+
+        # A modular generator can have a poor integral lift.  In a tiny
+        # residue ideal, enumerate all centered lifts of its complete retained
+        # subspace instead of running the general coefficient-box sieve.  The
+        # work cap is verifier-owned and independent of untrusted payloads.
+        if power_basis:
+            prime = int(record.prime)
+            subspace = tuple(
+                tuple(int(value) for value in row) for row in record.subspace
+            )
+            modular_work = prime ** len(subspace) * 8
+            if 1 <= len(subspace) <= 2 and modular_work <= 64:
+                coefficient_vectors = (
+                    ((left,) for left in range(prime))
+                    if len(subspace) == 1
+                    else (
+                        (left, right) for left in range(prime) for right in range(prime)
+                    )
+                )
+                for coefficients in coefficient_vectors:
+                    modular = tuple(
+                        sum(
+                            coefficients[row] * subspace[row][column]
+                            for row in range(len(subspace))
+                        )
+                        % prime
+                        for column in range(3)
+                    )
+                    options: list[tuple[int, ...]] = []
+                    for value in modular:
+                        centered = value if 2 * value <= prime else value - prime
+                        choices = [centered]
+                        if prime % 2 == 0 and 2 * value == prime:
+                            choices.append(centered - prime)
+                        options.append(tuple(choices))
+                    for first in options[0]:
+                        for second in options[1]:
+                            for third in options[2]:
+                                candidate = (first, second, third)
+                                if not any(candidate) or any(
+                                    retained[0] == candidate
+                                    for retained in coordinate_candidates
+                                ):
+                                    continue
+                                coordinate_candidates.append(
+                                    (
+                                        candidate,
+                                        "packed-cubic-modular-prime-generator",
+                                    )
+                                )
+
+        selected_coordinates: tuple[int, ...] | None = None
+        algorithm: str | None = None
+        for candidate, candidate_algorithm in coordinate_candidates:
+            exact_norm = _power_basis_cubic_element_norm(order, candidate)
+            if exact_norm is None:
+                if norm_form is None:
+                    norm_form = _order_cubic_norm_form_coefficients(order)
+                exact_norm = _cubic_norm_form_value(norm_form, *candidate)
+            if abs(exact_norm) == int(record.norm_value):
+                selected_coordinates = candidate
+                algorithm = candidate_algorithm
                 break
-            coordinates.append(int(value._numerator))
-        if not coordinates or abs(_cubic_norm_form_value(norm_form, *coordinates)) != (
-            int(record.norm_value)
-        ):
+        if selected_coordinates is None or algorithm is None:
             continue
         row = [0] * len(factor_base)
         row[index] = 1
         answer.append(
             (
-                tuple(coordinates),
+                selected_coordinates,
                 tuple(row),
                 {
-                    "algorithm": "packed-cubic-attached-prime-generator",
+                    "algorithm": algorithm,
                     "factor_base_index": index,
-                    "order_basis_coordinates": list(coordinates),
+                    "order_basis_coordinates": list(selected_coordinates),
                 },
             )
         )
     return tuple(answer)
+
+
+def _single_unit_relation_presentation(matrix_module: Any, collector: Any) -> Any:
+    """Return the canonical one-row presentation, or decline."""
+    records = tuple(collector.records)
+    if len(collector.factor_base) != 1 or len(records) != 1 or records[0].row != (1,):
+        return None
+    return matrix_module.RelationPresentation(
+        1,
+        ((1,),),
+        ((1,),),
+        ((1,),),
+        ((1,),),
+        ((1,),),
+        ((1,),),
+        ((1,),),
+        "python",
+    )
 
 
 def _select_cubic_relation_candidates(
@@ -3125,11 +3374,13 @@ def bounded_cubic_minkowski_class_number(
         # logarithmic unit dependencies.  One exact row per searched ideal is
         # sufficient; the loop continues until the exact presentation reaches
         # full rank, and the detached certificate replays every retained row.
-        presentation = matrix_module.extract_relation_presentation(
-            tuple(record.row for record in collector.records),
-            len(factor_base),
-            require_full_rank=False,
-        )
+        presentation = _single_unit_relation_presentation(matrix_module, collector)
+        if presentation is None:
+            presentation = matrix_module.extract_relation_presentation(
+                tuple(record.row for record in collector.records),
+                len(factor_base),
+                require_full_rank=False,
+            )
         if presentation.rank == len(factor_base):
             # The packed rows already give an exact full-rank quotient.  A
             # zero-attempt search state is the canonical continuation cursor:

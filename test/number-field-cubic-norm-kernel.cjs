@@ -293,6 +293,44 @@ finally:
     factor_bases.build_factor_base = saved_build
 assert small_result.complete and small_result.order() == 1
 assert len(small_result._packed_factor_records) == 1
+small_record = small_result._packed_factor_records[0]
+assert small_record._modular_table is None
+assert small_result.presentation.backend == "python"
+assert small_result.presentation.verify()
+assert small_record.to_dict() == factor_bases.build_factor_base(
+    factor_bases.factor_base_plan(
+        small.maximal_order(), proof=True, theorem="minkowski"
+    )
+)[0].to_dict()
+small_basis = tuple(small.maximal_order().basis())
+for coordinates in ((1, 0, 0), (1, 1, 0), (-2, 3, 1), (5, -4, 2)):
+    element = sum(
+        coordinate * basis_element
+        for coordinate, basis_element in zip(coordinates, small_basis)
+    )
+    assert cubic._power_basis_cubic_element_norm(
+        small.maximal_order(), coordinates
+    ) == int(QQ(element.norm())._numerator)
+assert small_record.modular_table
+assert small_record._modular_table is not None
+
+# The isomorphic LMFDB polynomial has a poor canonical modular lift: a + 1 has
+# norm four.  A complete 32-state centered lift of the same retained residue
+# subspace finds a^2 - a, whose norm two proves the prime principal,
+# without invoking the general coefficient box.
+small_lmfdb = NumberField(x**3 + 2*x - 1, "l")
+small_lmfdb_result = cubic.bounded_cubic_minkowski_class_number(small_lmfdb)
+assert small_lmfdb_result.complete and small_lmfdb_result.order() == 1
+assert small_lmfdb_result.certificate.verify()
+assert small_lmfdb_result.diagnostics["relation_search"][
+    "integral_sieve_candidates"
+] == 0
+assert len(small_lmfdb_result.relation_records) == 1
+assert small_lmfdb_result.relation_records[0].provenance == {
+    "algorithm": "packed-cubic-modular-prime-generator",
+    "factor_base_index": 0,
+    "order_basis_coordinates": [0, 1, -1],
+}
 
 # The private authority still checks retained object identities.  It cannot
 # transfer packed records to another maximal order, while detached replay
