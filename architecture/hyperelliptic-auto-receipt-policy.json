@@ -13,6 +13,7 @@
     "paths": [
       "packages/flint/src/addon.h",
       "packages/flint/src/hyperelliptic/smalljac.c",
+      "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",
       "src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
       "src/lib/sagejs/hyperelliptic_curves/frobenius.py",
       "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_formulas.py",
@@ -21,7 +22,8 @@
       "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
       "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
       "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py",
-      "src/lib/sagejs/hyperelliptic_curves/rforest.py"
+      "src/lib/sagejs/hyperelliptic_curves/rforest.py",
+      "tools/math-dispatch/hyperelliptic-auto-receipt-policy.cjs"
     ]
   },
   "source_bundle": null,

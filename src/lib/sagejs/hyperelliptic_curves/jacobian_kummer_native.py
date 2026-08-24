@@ -22,6 +22,12 @@ from __future__ import annotations
 
 from typing import Any, Iterable, cast
 
+from sagejs.hyperelliptic_curves.auto_receipt_policy import (
+    AutoReceiptDecision,
+    auto_receipt_decision,
+    coefficient_model_fingerprint,
+    h_kind_from_coefficients,
+)
 from sagejs.hyperelliptic_curves.genus2_kummer_formulas import (
     _CLASSICAL_DELTA_1,
     _CLASSICAL_DELTA_2,
@@ -31,6 +37,7 @@ from sagejs.hyperelliptic_curves.genus2_kummer_formulas import (
 from sagejs.native import (
     PrimeFieldModulus,
     UInt64Buffer,
+    is_compiled,
     kernel_uint64_buffer,
     kernel_uint64_zeros,
     native,
@@ -414,9 +421,10 @@ def _materialize(buffer: Any) -> list[int]:
 
 
 class Genus2PrimeKummerContext:
-    """Prepared fixed-model Kummer arithmetic with bounded batch allocation."""
+    """Prepared Kummer arithmetic."""
 
     __slots__ = (
+        "_algorithm",
         "_f",
         "_generalized",
         "_h",
@@ -425,6 +433,7 @@ class Genus2PrimeKummerContext:
         "_kernel_model_h",
         "_kernel_plan",
         "_max_batch_bytes",
+        "_model_fingerprint",
         "_plan",
         "_prime",
     )
@@ -436,7 +445,10 @@ class Genus2PrimeKummerContext:
         h_coefficients: Iterable[Any] = (),
         *,
         max_batch_bytes: int = _DEFAULT_MAX_BATCH_BYTES,
+        algorithm: str = "auto",
     ) -> None:
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown Kummer algorithm " + repr(algorithm))
         characteristic = int(prime)
         if (
             characteristic <= 2
@@ -465,11 +477,19 @@ class Genus2PrimeKummerContext:
                     ) % characteristic
         h_transform = (2 * h_values[0] * h_values[2]) % characteristic
         self._prime = characteristic
+        self._algorithm = algorithm
         self._f = tuple(f_values)
         self._h = tuple(h_values)
         self._generalized = generalized
         self._h_transform = h_transform
         self._max_batch_bytes = byte_limit
+        self._model_fingerprint = coefficient_model_fingerprint(
+            "sagejs.hyperelliptic.genus2-prime-kummer.v1",
+            2,
+            "prime-field:" + str(characteristic),
+            f_values,
+            h_values,
+        )
         self._plan = tuple(_specialized_quartic_plan(classical_f, characteristic))
         self._kernel_model_f = kernel_uint64_buffer(
             genus2_kummer_project_batch, self._f
@@ -478,6 +498,15 @@ class Genus2PrimeKummerContext:
             genus2_kummer_project_batch, self._h
         )
         self._kernel_plan = kernel_uint64_buffer(genus2_kummer_double_batch, self._plan)
+        if algorithm == "native" and not all(
+            is_compiled(kernel)
+            for kernel in (
+                genus2_kummer_project_batch,
+                genus2_kummer_double_batch,
+                genus2_kummer_degenerate_pseudo_add_batch,
+            )
+        ):
+            raise NotImplementedError("native Kummer arithmetic is unavailable")
 
     @property
     def prime(self) -> int:
@@ -486,6 +515,58 @@ class Genus2PrimeKummerContext:
     @property
     def model_fingerprint(self) -> tuple[Any, ...]:
         return ("genus2-kummer-prime.v1", self._prime, self._f, self._h)
+
+    def _receipt_decision(
+        self,
+        operation: str,
+        *,
+        batch_items: int,
+        scalar_bits: int = 0,
+        resource_bytes: int = 0,
+    ) -> AutoReceiptDecision:
+        return auto_receipt_decision(
+            algorithm=self._algorithm,
+            backend="prime-kummer",
+            operation=operation,
+            fingerprint=self._model_fingerprint,
+            domain_id="prime-kummer-v1",
+            genus=2,
+            field_kind="prime-field",
+            model_kind="odd-degree-one-infinity",
+            h_kind=h_kind_from_coefficients(self._h),
+            prime=self._prime,
+            interval_start=self._prime,
+            interval_stop=self._prime,
+            batch_items=batch_items,
+            scalar_bits=scalar_bits,
+            resource_bytes=resource_bytes,
+        )
+
+    def _kernel(
+        self,
+        kernel: Any,
+        operation: str,
+        *,
+        batch_items: int,
+        scalar_bits: int = 0,
+        resource_bytes: int = 0,
+    ) -> Any:
+        if not is_compiled(kernel):
+            if self._algorithm == "native":
+                raise NotImplementedError("native Kummer arithmetic is unavailable")
+            return kernel
+        decision = self._receipt_decision(
+            operation,
+            batch_items=batch_items,
+            scalar_bits=scalar_bits,
+            resource_bytes=resource_bytes,
+        )
+        if decision.allowed:
+            return kernel
+        source = getattr(kernel, "__sagejs_native_source__", None)
+        if source is None:
+            raise RuntimeError("Kummer dynamic fallback is unavailable")
+        return source
 
     def capability(self) -> dict[str, Any]:
         return {
@@ -496,6 +577,12 @@ class Genus2PrimeKummerContext:
             "packed_divisor_words": _DIVISOR_WORDS,
             "packed_kummer_words": _KUMMER_WORDS,
             "max_batch_bytes": self._max_batch_bytes,
+            "requested_algorithm": self._algorithm,
+            "receipt_policy": self._receipt_decision(
+                "double",
+                batch_items=1,
+                resource_bytes=1472,
+            ).to_dict(),
             "general_pseudo_addition": False,
             "supported_pseudo_addition": (
                 "left-identity",
@@ -521,7 +608,12 @@ class Genus2PrimeKummerContext:
         flat = _rows(packed_divisors, _DIVISOR_WORDS, self._prime)
         count = len(flat) // _DIVISOR_WORDS
         self._check_batch(count, 104, 96)
-        kernel = genus2_kummer_project_batch
+        kernel = self._kernel(
+            genus2_kummer_project_batch,
+            "project",
+            batch_items=count,
+            resource_bytes=96 + count * 104,
+        )
         source = kernel_uint64_buffer(kernel, flat)
         output = kernel_uint64_zeros(kernel, count * _KUMMER_WORDS)
         statuses = kernel_uint64_zeros(kernel, count)
@@ -546,11 +638,19 @@ class Genus2PrimeKummerContext:
         points: Iterable[Iterable[Any]],
         *,
         normalize: bool = True,
+        _receipt_operation: str = "double",
+        _scalar_bits: int = 0,
     ) -> tuple[list[list[int]], list[int]]:
         flat = _rows(points, _KUMMER_WORDS, self._prime)
         count = len(flat) // _KUMMER_WORDS
         self._check_batch(count, 72, 1400)
-        kernel = genus2_kummer_double_batch
+        kernel = self._kernel(
+            genus2_kummer_double_batch,
+            _receipt_operation,
+            batch_items=count,
+            scalar_bits=_scalar_bits,
+            resource_bytes=1400 + count * 72,
+        )
         source = kernel_uint64_buffer(kernel, flat)
         output = kernel_uint64_zeros(kernel, count * _KUMMER_WORDS)
         statuses = kernel_uint64_zeros(kernel, count)
@@ -587,7 +687,11 @@ class Genus2PrimeKummerContext:
         self._check_batch(len(current), 72, 1400)
         statuses = [KUMMER_OK for _row in current]
         for _step in range(steps):
-            current, statuses = self.double_batch(current)
+            current, statuses = self.double_batch(
+                current,
+                _receipt_operation="power-of-two",
+                _scalar_bits=steps + 1,
+            )
             if any(status != KUMMER_OK for status in statuses):
                 break
         return current, statuses
@@ -623,7 +727,12 @@ class Genus2PrimeKummerContext:
         left_flat = _rows(left_rows, 4, self._prime)
         right_flat = _rows(right_rows, 4, self._prime)
         difference_flat = _rows(difference_rows, 4, self._prime)
-        kernel = genus2_kummer_degenerate_pseudo_add_batch
+        kernel = self._kernel(
+            genus2_kummer_degenerate_pseudo_add_batch,
+            "pseudo-add",
+            batch_items=count,
+            resource_bytes=count * 136,
+        )
         packed_left = kernel_uint64_buffer(kernel, left_flat)
         packed_right = kernel_uint64_buffer(kernel, right_flat)
         packed_differences = kernel_uint64_buffer(kernel, difference_flat)
