@@ -513,8 +513,17 @@ schema; unsupported competitor cells are explicit.
 6. Differentially replay every serialized divisor through the ordinary
    implementation.
 
-Exit criterion: pack/unpack and prepared batch overhead is below 10% of a
-no-op native traversal for batches of at least 1,000 divisors.
+Exit criteria for batches of at least 1,000 divisors:
+
+- first ingress of serialized canonical rows performs complete degree,
+  normalization, curve-relation, owner/model, and mutation-safety validation
+  in one fail-atomic batch and is at least 20x faster than scalar public
+  validation;
+- preparing an already authenticated retained batch performs no duplicate
+  mathematical validation and costs at most 50 microseconds on the pinned
+  Linux x64 host;
+- no first-ingress validation cost is compared with, or relabelled as,
+  overhead over a no-op traversal.
 
 ### Phase 2 — native public Cantor addition and doubling
 
