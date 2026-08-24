@@ -1358,6 +1358,36 @@ def _select_cubic_dependency_candidates(
     return tuple(answer)
 
 
+def _bounded_cubic_dependency_candidates(
+    order: Any,
+    factor_base: tuple[Any, ...],
+    selected: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    primary: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    maximum: int,
+    maximum_candidates: int,
+    *,
+    cancelled: Callable[[], bool] | None,
+) -> tuple[tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...], int]:
+    """Find bounded duplicate rows, widening the coefficient box once."""
+    dependencies = _select_cubic_dependency_candidates(selected, primary, maximum)
+    bound = _CUBIC_RELATION_SIEVE_BOUND
+    if not dependencies:
+        widened = _packed_cubic_relation_candidates(
+            order,
+            factor_base,
+            maximum_candidates=maximum_candidates,
+            coefficient_bound=_CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND,
+            cancelled=cancelled,
+        )
+        if widened is not None:
+            dependencies = _select_cubic_dependency_candidates(
+                selected, widened, maximum
+            )
+            if dependencies:
+                bound = _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND
+    return dependencies, bound
+
+
 def _readable_cubic_norm_form_represents_targets(
     coefficients: tuple[int, ...],
     modulus: int,
@@ -2265,6 +2295,11 @@ class _MaterializedCubicRelationSeed:
         factor_records: tuple[Any, ...],
         factor_base: tuple[Any, ...],
         collector: Any,
+        presentation: Any,
+        *,
+        dependency_candidates: int = 0,
+        dependency_relations: int = 0,
+        dependency_coefficient_bound: int = 0,
     ) -> None:
         self.schema = AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA
         self._source_seed = source
@@ -2273,13 +2308,116 @@ class _MaterializedCubicRelationSeed:
         self.factor_records = tuple(factor_records)
         self.factor_base = tuple(factor_base)
         self.collector = collector
-        self.presentation = source.presentation
+        self.presentation = presentation
         self.search_state = source.search_state
         self.materialized_from_packed = True
+        self.dependency_candidates = int(dependency_candidates)
+        self.dependency_relations = int(dependency_relations)
+        self.dependency_coefficient_bound = int(dependency_coefficient_bound)
         runtime.object.freeze(self)
 
 
-def materialize_authenticated_cubic_relation_seed(seed: Any, field: Any) -> Any:
+def _extend_packed_cubic_relation_seed_for_units(
+    seed: _AuthenticatedCubicRelationSeed,
+    relations: Any,
+    *,
+    cancelled: Callable[[], bool] | None,
+) -> tuple[Any, Any, int, int, int] | None:
+    """Admit one bounded exact unit dependency into a cloned live prefix."""
+    result = seed._source_result
+    if not result.complete:
+        return None
+    caps = result.diagnostics.get("caps", {})
+    maximum_relations = caps.get("max_relations")
+    if (
+        isinstance(maximum_relations, bool)
+        or not isinstance(maximum_relations, int)
+        or maximum_relations < 1
+        or maximum_relations > 2048
+    ):
+        return None
+    remaining = maximum_relations - len(seed.collector.records)
+    if remaining < 1:
+        return None
+    initial_rows = tuple(
+        tuple(int(value) for value in record.row)
+        for record in seed.collector.records
+        if record.provenance.get("algorithm") == "rational-prime-decomposition"
+    )
+    if not initial_rows:
+        return None
+    primary_candidates = _packed_cubic_relation_candidates(
+        seed.plan.order,
+        seed.factor_base,
+        maximum_candidates=maximum_relations,
+        coefficient_bound=_CUBIC_RELATION_SIEVE_BOUND,
+        cancelled=cancelled,
+    )
+    if primary_candidates is None:
+        return None
+    matrix_module = __import__(
+        "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
+    )
+    selected = _select_cubic_relation_candidates(
+        matrix_module,
+        initial_rows,
+        primary_candidates,
+        len(seed.factor_base),
+    )
+    if selected is None:
+        return None
+    unit_rank_bound = 1 if int(seed.plan.order.discriminant()) < 0 else 2
+    dependency_candidates, dependency_bound = _bounded_cubic_dependency_candidates(
+        seed.plan.order,
+        seed.factor_base,
+        selected,
+        primary_candidates,
+        min(remaining, unit_rank_bound),
+        maximum_relations,
+        cancelled=cancelled,
+    )
+    if not dependency_candidates or len(dependency_candidates) > remaining:
+        return None
+    collector = seed.collector.rebind_verified_factor_base(
+        seed.factor_base,
+        _validated_token=relations._VALIDATED_FACTOR_BASE_TOKEN,
+    )
+    proposals = tuple(
+        (
+            coordinates,
+            row,
+            {
+                "algorithm": "packed-cubic-context-unit-dependency",
+                "coefficient_bound": dependency_bound,
+                "order_basis_coordinates": list(coordinates),
+            },
+        )
+        for row, coordinates, _expected_norm in dependency_candidates
+    )
+    before = len(collector.records)
+    admissions = collector.admit_integral_order_basis_rows(proposals)
+    if admissions is None or len(admissions) != len(proposals):
+        return None
+    appended = tuple(record.row for record in collector.records[before:])
+    presentation = matrix_module.extend_relation_presentation_with_duplicate_rows(
+        seed.presentation, appended
+    )
+    return (
+        collector,
+        presentation,
+        len(dependency_candidates),
+        len(appended),
+        dependency_bound,
+    )
+
+
+def materialize_authenticated_cubic_relation_seed(
+    seed: Any,
+    field: Any,
+    *,
+    include_unit_dependencies: bool = False,
+    cancelled: Callable[[], bool] | None = None,
+) -> Any:
     """Decode a live packed prefix only when the coupled engine consumes it."""
     if (
         type(seed) is not _AuthenticatedCubicRelationSeed
@@ -2292,19 +2430,49 @@ def materialize_authenticated_cubic_relation_seed(seed: Any, field: Any) -> Any:
     ):
         return seed
     try:
-        factor_records, factor_base = _materialize_packed_cubic_factor_records(
-            seed.factor_records
-        )
         relations = __import__(
             "sagejs.number_fields.class_group_relations",
             fromlist=["class_group_relations"],
         )
-        collector = seed.collector.rebind_verified_factor_base(
+        packed_collector = seed.collector
+        presentation = seed.presentation
+        dependency_candidates = 0
+        dependency_relations = 0
+        dependency_coefficient_bound = 0
+        if include_unit_dependencies:
+            try:
+                extension = _extend_packed_cubic_relation_seed_for_units(
+                    seed, relations, cancelled=cancelled
+                )
+            except (AttributeError, ArithmeticError, TypeError, ValueError):
+                # This is a bounded continuation hint, never proof evidence.
+                # Retain the authenticated class prefix when no cheap unit
+                # dependency can be added under the current implementation.
+                extension = None
+            if extension is not None:
+                (
+                    packed_collector,
+                    presentation,
+                    dependency_candidates,
+                    dependency_relations,
+                    dependency_coefficient_bound,
+                ) = extension
+        factor_records, factor_base = _materialize_packed_cubic_factor_records(
+            seed.factor_records
+        )
+        collector = packed_collector.rebind_verified_factor_base(
             factor_base,
             _validated_token=relations._VALIDATED_FACTOR_BASE_TOKEN,
         )
         return _MaterializedCubicRelationSeed(
-            seed, factor_records, factor_base, collector
+            seed,
+            factor_records,
+            factor_base,
+            collector,
+            presentation,
+            dependency_candidates=dependency_candidates,
+            dependency_relations=dependency_relations,
+            dependency_coefficient_bound=dependency_coefficient_bound,
         )
     except (AttributeError, ArithmeticError, TypeError, ValueError):
         return None
@@ -2947,36 +3115,17 @@ def bounded_cubic_minkowski_class_number(
         # cheap unit dependencies; the coupled engine independently checks
         # their logarithmic rank and continues its ordinary search if needed.
         unit_rank_bound = 1 if int(order.discriminant()) < 0 else 2
-        dependency_sieve_bound = _CUBIC_RELATION_SIEVE_BOUND
-        dependency_candidates = _select_cubic_dependency_candidates(
-            selected_sieve_candidates,
-            sieve_candidates,
-            min(remaining, unit_rank_bound),
-        )
-        if not dependency_candidates:
-            # Keep the class-number producer's small canonical coefficient
-            # box unchanged.  Only after its proof has failed, widen the
-            # packed enumeration once to look for a duplicate valuation row.
-            # Two independently admitted generators with that same row have
-            # a unit quotient.  For the small complex cubics this frequently
-            # exposes the fundamental unit directly and avoids a later LLL
-            # relation/saturation round, while successful class-number-only
-            # computations never pay for or serialize this fallback search.
-            widened_candidates = _packed_cubic_relation_candidates(
+        dependency_candidates, dependency_sieve_bound = (
+            _bounded_cubic_dependency_candidates(
                 order,
                 factor_base,
-                maximum_candidates=sieve_capacity,
-                coefficient_bound=_CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND,
+                selected_sieve_candidates,
+                sieve_candidates,
+                min(remaining, unit_rank_bound),
+                sieve_capacity,
                 cancelled=cancelled,
             )
-            if widened_candidates is not None:
-                dependency_candidates = _select_cubic_dependency_candidates(
-                    selected_sieve_candidates,
-                    widened_candidates,
-                    min(remaining, unit_rank_bound),
-                )
-                if dependency_candidates:
-                    dependency_sieve_bound = _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND
+        )
         relation_metrics["integral_sieve_dependency_candidates"] = len(
             dependency_candidates
         )

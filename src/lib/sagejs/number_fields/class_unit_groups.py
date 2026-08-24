@@ -1328,6 +1328,8 @@ class ClassUnitGroupEngine:
             "cubic_relation_seed_uses": 0,
             "cubic_relation_seed_relations": 0,
             "cubic_relation_seed_materializations": 0,
+            "cubic_relation_seed_dependency_candidates": 0,
+            "cubic_relation_seed_dependency_relations": 0,
             "cubic_factor_base_seed_uses": 0,
             "cubic_packed_factor_base_uses": 0,
             "cubic_verified_factor_base_collector_uses": 0,
@@ -4268,9 +4270,26 @@ class ClassUnitGroupEngine:
                 module, "materialize_authenticated_cubic_relation_seed", None
             )
             if seed is not None and callable(materialize):
-                seed = materialize(seed, self.field)
+                default_policy = bool(
+                    self.algorithm == "auto"
+                    and self.seed == 0
+                    and self.checkpoint_controller is None
+                    and self.limits.to_dict() == ClassUnitEngineLimits().to_dict()
+                )
+                seed = materialize(
+                    seed,
+                    self.field,
+                    include_unit_dependencies=default_policy,
+                    cancelled=self.cancelled,
+                )
                 if bool(getattr(seed, "materialized_from_packed", False)):
                     self._resource_usage["cubic_relation_seed_materializations"] += 1
+                    self._resource_usage[
+                        "cubic_relation_seed_dependency_candidates"
+                    ] += int(getattr(seed, "dependency_candidates", 0))
+                    self._resource_usage[
+                        "cubic_relation_seed_dependency_relations"
+                    ] += int(getattr(seed, "dependency_relations", 0))
             self._authenticated_cubic_relation_seed_cache = seed
             return seed
         except (AttributeError, ImportError, TypeError, ValueError, ArithmeticError):

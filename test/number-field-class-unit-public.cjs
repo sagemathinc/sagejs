@@ -330,6 +330,36 @@ assert all(
 )
 assert len(artifact._packed_factor_records) == 5
 
+# The lazy continuation itself remains an exact admission boundary.  Every
+# retained record replays over the materialized prime ideals, and a corrupted
+# proposal merely removes the optimization instead of entering the context.
+materialized = cubic_module.materialize_authenticated_cubic_relation_seed(
+    seed, K, include_unit_dependencies=True
+)
+assert materialized is not None
+assert materialized.dependency_candidates == 1
+assert materialized.dependency_relations == 1
+assert materialized.dependency_coefficient_bound == 4
+assert len(materialized.collector.records) == 6
+assert materialized.presentation.verify()
+assert all(
+    record.verify(K.maximal_order(), materialized.factor_base)["certified"]
+    for record in materialized.collector.records
+)
+original_dependency_selector = cubic_module._select_cubic_dependency_candidates
+def corrupted_dependency(*args, **kwargs):
+    return (((1, 0, 0, 0, 0), (0, 0, 0), 2),)
+cubic_module._select_cubic_dependency_candidates = corrupted_dependency
+try:
+    rejected_hint = cubic_module.materialize_authenticated_cubic_relation_seed(
+        seed, K, include_unit_dependencies=True
+    )
+finally:
+    cubic_module._select_cubic_dependency_candidates = original_dependency_selector
+assert rejected_hint is not None
+assert rejected_hint.dependency_relations == 0
+assert len(rejected_hint.collector.records) == 5
+
 # A later coupled request materializes that exact stage once, transfers its
 # authenticated collector into the ClassUnitGroupContext, and resumes only
 # the missing unit-relation work.
@@ -340,8 +370,12 @@ assert result.unit_group().unit_rank == 1
 resources = result.diagnostics["resources"]
 assert resources["cubic_factor_base_seed_uses"] == 1
 assert resources["cubic_relation_seed_uses"] == 1
-assert resources["cubic_relation_seed_relations"] == 5
+assert resources["cubic_relation_seed_relations"] == 6
 assert resources["cubic_relation_seed_materializations"] == 1
+assert resources["cubic_relation_seed_dependency_candidates"] == 1
+assert resources["cubic_relation_seed_dependency_relations"] == 1
+assert resources["relation_attempts"] == 0
+assert resources["relations"] == 6
 assert resources["generation_verification_live_authentication_hits"] == 1
 assert resources["class_group_live_authentication_hits"] == 1
 live = result.context.live_diagnostics()
