@@ -631,8 +631,14 @@ Exit criteria on the existing genus-2 through-`10^5` receipt:
 
 Exit criteria:
 
-- ordinary rational addition and 256-bit scalar multiplication are within 2x
-  of Magma on the genus-2 corpus;
+- ordinary rational addition is within 2x of Magma on the genus-2 corpus;
+- ordinary non-torsion rational scalar multiplication is compared at matched,
+  explicitly bounded exact-output coefficient budgets, reports both scalar and
+  output bit lengths, and is within 2x of Magma on at least the small and
+  growing-coefficient rows;
+- a 256-bit scalar gate is required only over a bounded-height domain (finite
+  fields, local reductions, Kummer/sign-free filters, or explicitly labelled
+  torsion) and is never reported as non-torsion `QQ` growth;
 - a many-prime torsion/saturation reduction batch is faster than Magma on at
   least one research-sized workload;
 - all successful exact certificates verify using the reference path.
