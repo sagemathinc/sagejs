@@ -39,29 +39,27 @@ def fabs(x):
     return float(Math.abs(x))
 
 
+# Factorials are usually wanted in runs, so keep a prefix of the sequence and
+# extend it on demand.  The bound keeps a single large argument from retaining
+# every intermediate value: beyond it the product is carried forward without
+# being stored.
+FACTORIAL_CACHE_LIMIT = 512
+factorial_cache = [1, 1]
+
+
 def factorial(x):
     if Math.abs(int(x)) is not x:
         raise ValueError("factorial() only accepts integral values")
-    factorial.cache = []
-
-    if x <= 12:
-        # normal javascript integer
-        def r(n):
-            if n is 0 or n is 1:
-                return 1
-            if not factorial.cache[n]:
-                factorial.cache[n] = r(n - 1) * n
-            return factorial.cache[n]
-    else:
-        # use BigInt to avoid overflow
-        def r(n):
-            if n is 0 or n is 1:
-                return BigInt(1)
-            if not factorial.cache[n]:
-                factorial.cache[n] = r(n - 1) * BigInt(n)
-            return factorial.cache[n]
-
-    return r(x)
+    if x < len(factorial_cache):
+        return factorial_cache[x]
+    result = factorial_cache[len(factorial_cache) - 1]
+    factor = len(factorial_cache)
+    while factor <= x:
+        result = result * factor
+        if factor <= FACTORIAL_CACHE_LIMIT:
+            factorial_cache.append(result)
+        factor += 1
+    return result
 
 
 def floor(x):
