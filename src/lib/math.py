@@ -25,6 +25,8 @@ def ceil(x):
 
 
 def copysign(x, y):
+    x = float(x)
+    y = float(y)
     x = Math.abs(x)
     if y < 0:
         return float(-x)
@@ -33,6 +35,7 @@ def copysign(x, y):
 
 
 def fabs(x):
+    x = float(x)
     return float(Math.abs(x))
 
 
@@ -66,6 +69,8 @@ def floor(x):
 
 
 def fmod(x, y):
+    x = float(x)
+    y = float(y)
     # javascript's % operator isn't consistent with C fmod implementation, this function is
     while y <= x:
         x -= y
@@ -76,6 +81,7 @@ def fsum(iterable):
     # like Python's fsum, this method is much more resilient to rounding errors than regular sum
     partials = []  # sorted, non-overlapping partial sums
     for x in iterable:
+        x = float(x)
         i = 0
         for y in partials:
             if Math.abs(x) < Math.abs(y):
@@ -92,14 +98,17 @@ def fsum(iterable):
 
 
 def isinf(x):
+    x = float(x)
     return not isFinite(x)
 
 
 def isfinite(x):
+    x = float(x)
     return isFinite(x)
 
 
 def isnan(x):
+    x = float(x)
     return isNaN(x)
 
 
@@ -136,6 +145,7 @@ ldexp.__staticmethod__ = True
 
 
 def modf(x):
+    x = float(x)
     m = fmod(x, 1)
     return float(m), float(x - m)
 
@@ -148,10 +158,12 @@ def trunc(x):
 # Power and logarithmic functions
 ########################################
 def exp(x):
+    x = float(x)
     return float(Math.exp(x))
 
 
 def expm1(x):
+    x = float(x)
     return float(Math.expm1(x))
 
 
@@ -209,34 +221,44 @@ def sqrt(x):
 # Trigonometric functions
 ########################################
 def acos(x):
+    x = float(x)
     return float(Math.acos(x))
 
 
 def asin(x):
+    x = float(x)
     return float(Math.asin(x))
 
 
 def atan(x):
+    x = float(x)
     return float(Math.atan(x))
 
 
 def atan2(y, x):
+    y = float(y)
+    x = float(x)
     return float(Math.atan2(y, x))
 
 
 def cos(x):
+    x = float(x)
     return float(Math.cos(x))
 
 
 def sin(x):
+    x = float(x)
     return float(Math.sin(x))
 
 
 def hypot(x, y):
+    x = float(x)
+    y = float(y)
     return float(Math.sqrt(x * x + y * y))
 
 
 def tan(x):
+    x = float(x)
     return float(Math.tan(x))
 
 
@@ -244,10 +266,12 @@ def tan(x):
 # Angular conversion
 ########################################
 def degrees(x):
+    x = float(x)
     return float(x * 180 / pi)
 
 
 def radians(x):
+    x = float(x)
     return float(x * pi / 180)
 
 
@@ -290,6 +314,7 @@ def sinh(x):
 
 
 def tanh(x):
+    x = float(x)
     return float(Math.tanh(x))
 
 

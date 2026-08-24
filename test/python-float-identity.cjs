@@ -2,9 +2,20 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
+
+function runCPython(source) {
+  const result = spawnSync(pythonExecutable(), ["-c", source], {
+    cwd: __dirname,
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return result.stdout.trim();
+}
 
 test("integral binary64 values retain Python float identity", async (t) => {
   const session = await createSage({ mode: "python" });
@@ -137,6 +148,195 @@ test("float() accepts real protocols and rejects complex values", async (t) => {
     "complex float() argument must be a string or a real number, not 'complex'",
     "object float() argument must be a string or a real number, not 'object'",
   ].join("\n"));
+});
+
+test("large integer binary64 boundaries agree exactly with CPython", async (t) => {
+  const source = String.raw`
+import math
+
+def capture(label, operation):
+    try:
+        value = operation()
+        print(label, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+
+capture('issue-23', lambda: 9 * (10**16 - 1) / 9)
+capture('balanced-huge', lambda: (2**1075 - 1) / 2**1075)
+capture('division-overflow', lambda: 10**400 / 1)
+capture('float-round-down', lambda: float(2**53 + 1))
+capture('float-round-up', lambda: float(2**53 + 3))
+capture('float-finite-edge', lambda: float(2**1023))
+capture('float-overflow-edge', lambda: float(2**1024 - 1))
+capture('negative-zero', lambda: 0 / -1)
+capture('positive-underflow', lambda: 1 / 10**400)
+capture('negative-underflow', lambda: -1 / 10**400)
+capture('negative-power-underflow', lambda: (10**400) ** -1)
+capture('mixed-add-overflow', lambda: 1.0 + 10**400)
+capture('mixed-sub-overflow', lambda: 1.0 - 10**400)
+capture('mixed-mul-overflow', lambda: 0.5 * 10**400)
+capture('mixed-div-overflow', lambda: 1.0 / 10**400)
+capture('mixed-floor-overflow', lambda: 10**400 // 1.0)
+capture('mixed-floor-right-overflow', lambda: 1.0 // 10**400)
+capture('mixed-mod-overflow', lambda: 10**400 % 3.0)
+capture('mixed-mod-right-overflow', lambda: 1.0 % 10**400)
+capture('mixed-pow-base-overflow', lambda: (10**400) ** 0.5)
+capture('mixed-pow-exp-overflow', lambda: 2.0 ** (10**400))
+capture('complex-real-overflow', lambda: complex(10**400))
+capture('complex-imag-overflow', lambda: complex(1, 10**400))
+capture('complex-add-overflow', lambda: (1 + 2j) + 10**400)
+capture('math-copysign-overflow', lambda: math.copysign(10**400, -1))
+capture('math-fabs-overflow', lambda: math.fabs(10**400))
+capture('math-fmod-overflow', lambda: math.fmod(10**400, 3))
+capture('math-fsum-overflow', lambda: math.fsum([10**400]))
+capture('math-isfinite-overflow', lambda: math.isfinite(10**400))
+capture('math-modf-overflow', lambda: math.modf(10**400))
+capture('math-exp-overflow', lambda: math.exp(10**400))
+capture('math-atan2-overflow', lambda: math.atan2(10**400, 1))
+capture('math-hypot-overflow', lambda: math.hypot(10**400, 1))
+capture('math-sin-overflow', lambda: math.sin(10**400))
+capture('math-sqrt-overflow', lambda: math.sqrt(10**400))
+capture('math-degrees-overflow', lambda: math.degrees(10**400))
+capture('math-tanh-overflow', lambda: math.tanh(10**400))
+
+class HugeIndex:
+    def __index__(self):
+        return 2**1024 - 1
+
+capture('index-overflow', lambda: float(HugeIndex()))
+`;
+  const expected = runCPython(source);
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate(source);
+  assert.equal(result.stdout.trim(), expected);
+});
+
+test("integer-to-float conversion matches CPython's rounding corpus", async (t) => {
+  // Deterministic vectors from CPython Lib/test/test_long.py, including its
+  // exhaustive neighborhoods around the 53-bit precision transition and the
+  // finite/overflow boundary at the top of binary64.
+  const source = String.raw`
+DBL_MANT_DIG = 53
+DBL_MAX_EXP = 1024
+int_dbl_max = (2**53 - 1) * 2**971
+top_power = 2**DBL_MAX_EXP
+halfway = (int_dbl_max + top_power) // 2
+values = [
+    0, 1, 2,
+    2**53 - 3, 2**53 - 2, 2**53 - 1, 2**53, 2**53 + 2,
+    2**54 - 4, 2**54 - 2, 2**54, 2**54 + 4,
+    int_dbl_max - 1, int_dbl_max, int_dbl_max + 1,
+    halfway - 1, halfway, halfway + 1,
+    top_power - 1, top_power, top_power + 1,
+    2 * top_power - 1, 2 * top_power, top_power * top_power,
+]
+for power in range(15):
+    for offset in range(8):
+        values.append(2**power * (2**53 + offset))
+    for offset in range(16):
+        values.append(2**power * (2**54 + offset))
+for power in range(-4, 8):
+    for offset in range(-128, 128):
+        values.append(2**(power + 53) + offset)
+for power in range(100):
+    values.append(2**power * (2**53 + 1) + 1)
+    values.append(2**power * (2**53 + 1))
+
+for index, value in enumerate(values):
+    for sign in (1, -1):
+        try:
+            answer = repr(float(sign * value))
+        except Exception as error:
+            answer = type(error).__name__ + ':' + str(error)
+        print(index, sign, answer)
+`;
+  const expected = runCPython(source);
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate(source);
+  assert.equal(result.stdout.trim(), expected);
+});
+
+test("integer true division matches CPython's rounding corpus", async (t) => {
+  // This follows Lib/test/test_long.py's correctly-rounded division families:
+  // exponent boundaries, overflow thresholds, sticky bits, half-even ties,
+  // subnormals, powers of ten, and deterministic large balanced operands.
+  const source = String.raw`
+DBL_MANT_DIG = 53
+DBL_MAX_EXP = 1024
+DBL_MIN_EXP = -1021
+DBL_MIN_OVERFLOW = 2**DBL_MAX_EXP - 2**(DBL_MAX_EXP - DBL_MANT_DIG - 1)
+cases = [
+    (123, 0), (-456, 0), (0, 3), (0, -3), (0, 0),
+    (9 * (10**16 - 1), 9),
+    (295147931372582273023, 295147932265116303360),
+    (671 * 12345 * 2**DBL_MAX_EXP, 12345),
+    (12345, 345678 * 2**(DBL_MANT_DIG - DBL_MIN_EXP)),
+]
+
+for base in (0, DBL_MANT_DIG, DBL_MIN_EXP, DBL_MAX_EXP,
+             DBL_MIN_EXP - DBL_MANT_DIG):
+    for exponent in range(base - 8, base + 8):
+        cases.append((75312 * 2**max(exponent, 0),
+                      69187 * 2**max(-exponent, 0)))
+        cases.append((69187 * 2**max(exponent, 0),
+                      75312 * 2**max(-exponent, 0)))
+
+for multiplier in (1, 7, 12345, 7**100, -1, -23):
+    for offset in range(-5, 6):
+        cases.append((multiplier * DBL_MIN_OVERFLOW + offset, multiplier))
+        cases.append((multiplier * DBL_MIN_OVERFLOW + offset, -multiplier))
+
+for bit in range(101):
+    cases.append(((2**DBL_MANT_DIG + 1) * 12345 * 2**200 + 2**bit,
+                  2**DBL_MANT_DIG * 12345))
+
+for exponent in range(201):
+    cases.append((10**(exponent + 1), 10**exponent))
+    cases.append((10**exponent, 10**(exponent + 1)))
+
+for multiplier in (1, 7, 12345, 7**100, -1, -23):
+    for offset in range(-5, 6):
+        cases.append((2**DBL_MANT_DIG * multiplier + offset, multiplier))
+
+for numerator in range(-20, 20):
+    cases.append((numerator, 2**1076))
+
+state = 0x4D595DF4D0F33173
+mask = 2**64 - 1
+def next_word():
+    global state
+    state = (state * 6364136223846793005 + 1442695040888963407) & mask
+    return state
+
+def patterned(bit_count):
+    value = 0
+    words = (bit_count + 63) // 64
+    for _ in range(words):
+        value = (value << 64) | next_word()
+    value &= (1 << bit_count) - 1
+    return value | (1 << (bit_count - 1))
+
+for index in range(200):
+    bits = 64 + next_word() % 937
+    numerator = patterned(bits)
+    denominator = numerator + patterned(bits) % (numerator + 1)
+    cases.extend(((numerator, denominator), (-numerator, denominator),
+                  (numerator, -denominator), (-numerator, -denominator)))
+
+for index, (numerator, denominator) in enumerate(cases):
+    try:
+        answer = repr(numerator / denominator)
+    except Exception as error:
+        answer = type(error).__name__ + ':' + str(error)
+    print(index, answer)
+`;
+  const expected = runCPython(source);
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate(source);
+  assert.equal(result.stdout.trim(), expected);
 });
 
 test("complex() honors Python numeric conversion protocols", async (t) => {
