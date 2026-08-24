@@ -12,6 +12,7 @@ const {
   parseRunnerOptions,
   partition,
 } = require("../scripts/run-test-tier.cjs");
+const packageScripts = require("../package.json").scripts;
 
 test("test durations are rendered for humans", () => {
   assert.equal(formatDuration(0), "0s");
@@ -62,6 +63,11 @@ test("routine validation is bounded and full validation remains exhaustive", () 
   assert.ok(plans.routine.length < plans.full.length);
   assert.equal(routineScripts.includes("build:check"), true);
   assert.equal(plans.ci.map((phase) => phase[1]).includes("build:check"), false);
+});
+
+test("the integration tier prepares its declared multiprocessing modules", () => {
+  assert.match(packageScripts["test:integration"], /python:precompile:run/);
+  assert.match(packageScripts["test:integration"], /test:integration:run/);
 });
 
 test("routine validation describes whether build work is reused", () => {

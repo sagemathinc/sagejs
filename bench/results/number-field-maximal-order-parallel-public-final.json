@@ -7,7 +7,7 @@
       "src/lib/sagejs/number_fields/local_parallel.py": "de3394079885b329da5a3e8e949e705caf7dd2e84a7230fb8fbc6dc2e3c70bf8",
       "src/lib/sagejs/number_fields/local_parallel_worker.py": "bbaad7dc8d475dc16b364c7554d9001a49ca69afcef41d50c937fcecacb1bef9",
       "bench/number-field-maximal-order-parallel-public.cjs": "613dc36b96c9517ca7846e6540910de60ea7574f82d83cbf902aee5019083114",
-      "test/number-field-local-parallel.cjs": "5b281169d3926c630cd4f51a74d1df4d3b3b5edd63f93ce9f62088a389b1be2a"
+      "test/number-field-local-parallel.cjs": "d00d8736963d4b580a1ea7b306050c482b26355f3a29152b9e7da506aa70647e"
     },
     "identity_note": "Measured from a clean checkout of the exact combined integration commit on bench-1. The public run deliberately makes the native resource unavailable so this receipt exercises the production multiprocessing fallback."
   },
