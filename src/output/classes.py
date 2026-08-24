@@ -123,12 +123,31 @@ def print_class(output):
                     self.name.print(output)
                     output.print(".prototype." + name + ".__classmethod__ = true")
                     output.end_statement()
-                if is_classmethod or not is_static and not name.startswith("__"):
+                if (
+                    is_classmethod
+                    or not is_static
+                    and not name.startswith("__")
+                    and name != "prototype"
+                ):
                     output.indent()
-                    self.name.print(output)
-                    output.assign("." + name)
-                    self.name.print(output)
-                    output.print(".prototype." + name)
+                    if name in ("length", "name", "caller", "arguments"):
+                        # A function already owns these, and `length` and `name`
+                        # are not writable, so an ordinary assignment throws in
+                        # the strict-mode wrapper.  Define the unbound method
+                        # instead, which is what Python exposes here.
+                        output.print("Object.defineProperty(")
+                        self.name.print(output)
+                        output.print(', "' + name + '", {value: ')
+                        self.name.print(output)
+                        output.print(
+                            ".prototype." + name + ", configurable: true"
+                            + ", writable: true, enumerable: false})"
+                        )
+                    else:
+                        self.name.print(output)
+                        output.assign("." + name)
+                        self.name.print(output)
+                        output.print(".prototype." + name)
                     output.end_statement()
 
         if not is_property and not is_static:
