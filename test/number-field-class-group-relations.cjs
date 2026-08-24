@@ -225,6 +225,61 @@ assert combined_initial_collector.admission_receipt_diagnostics()[
     "integral_batch_rows"
 ] == len(initial)
 
+# A live producer may transfer rows that it has already proved with exact
+# packed arithmetic.  The authority is identity-bound, nonserializable, and
+# accepts only its immutable coordinate/row pairs; every public or detached
+# record still uses the ordinary replay path.
+try:
+    relation_module._ValidatedIntegralRelationBatch(
+        O,
+        factor_base,
+        (((2, 0), initial[0].record.row, 4),),
+    )
+    raise AssertionError("an unsealed relation-batch authority was constructed")
+except TypeError:
+    pass
+validated_authority = relation_module._ValidatedIntegralRelationBatch(
+    O,
+    factor_base,
+    (((2, 0), initial[0].record.row, 4),),
+    _validated_token=relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN,
+)
+assert not hasattr(validated_authority, "to_dict")
+validated_collector = ExactRelationCollector(O, factor_base)
+validated_batch = validated_collector._admit_validated_integral_order_basis_rows(
+    validated_authority,
+    (((2, 0), initial[0].record.row, initial[0].record.provenance),),
+    _validated_token=relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN,
+)
+assert [item.record.to_dict() for item in validated_batch] == [
+    initial[0].record.to_dict()
+]
+assert validated_collector.admission_receipt_diagnostics()[
+    "validated_batch_calls"
+] == 1
+assert validated_collector.admission_receipt_diagnostics()[
+    "validated_batch_rows"
+] == 1
+try:
+    validated_authority.authorize(
+        O,
+        factor_base,
+        (((3, 0), initial[0].record.row, None),),
+    )
+    raise AssertionError("a relation absent from the authority was accepted")
+except ValueError:
+    pass
+other_order = NumberField(R(case["polynomial_low_to_high"]), "b").maximal_order()
+try:
+    validated_authority.authorize(
+        other_order,
+        factor_base,
+        (((2, 0), initial[0].record.row, None),),
+    )
+    raise AssertionError("a relation authority crossed maximal-order identities")
+except TypeError:
+    pass
+
 # Exact order-basis coordinates prove integrality by construction while
 # retaining the identical relation record and detached replay payload.
 coordinate_collector = ExactRelationCollector(O, factor_base)

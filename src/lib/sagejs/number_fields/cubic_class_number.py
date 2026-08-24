@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 import sagejs as sage
 import sagejs.runtime as runtime
@@ -1147,6 +1147,57 @@ def _packed_cubic_relation_candidates(
         row = tuple(row_values[offset : offset + len(factor_base)])
         answer.append((row, tuple(coordinates), absolute_norms[candidate]))
     return tuple(answer)
+
+
+def _validated_cubic_integral_relation_batch(
+    relation_module: Any,
+    order: Any,
+    factor_base: tuple[Any, ...],
+    initial_proposals: Iterable[
+        tuple[tuple[int, ...], tuple[int, ...], dict[str, Any]]
+    ],
+    selected_candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+) -> Any:
+    """Issue live authority only for the ordinary packed cubic producer."""
+    if _cubic_relation_sieve_kernel_override is not None:
+        return None
+    coefficients = _order_cubic_norm_form_coefficients(order)
+    factor_norms = tuple(
+        _integer_rational(prime_ideal.norm(), "a factor-base norm")
+        for prime_ideal in factor_base
+    )
+    entries: list[tuple[tuple[int, ...], tuple[int, ...], int]] = []
+    proposed = [
+        (coordinates, row, None) for coordinates, row, _provenance in initial_proposals
+    ] + [
+        (coordinates, row, expected_norm)
+        for row, coordinates, expected_norm in selected_candidates
+    ]
+    for coordinates, row, expected_norm in proposed:
+        if len(coordinates) != 3 or len(row) != len(factor_norms):
+            return None
+        exact_norm = abs(_cubic_norm_form_value(coefficients, *coordinates))
+        row_norm = 1
+        for factor_norm, exponent in zip(factor_norms, row, strict=True):
+            if exponent < 0:
+                return None
+            row_norm *= factor_norm**exponent
+        if (
+            exact_norm <= 1
+            or row_norm != exact_norm
+            or (expected_norm is not None and int(expected_norm) != exact_norm)
+        ):
+            return None
+        entries.append((coordinates, row, exact_norm))
+    try:
+        return relation_module._ValidatedIntegralRelationBatch(
+            order,
+            factor_base,
+            entries,
+            _validated_token=(relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN),
+        )
+    except (ArithmeticError, TypeError, ValueError):
+        return None
 
 
 def _select_cubic_relation_candidates(
@@ -2582,6 +2633,7 @@ def bounded_cubic_minkowski_class_number(
             len(factor_base),
         )
     sieve_admitted = 0
+    validated_sieve_batch_used = False
     if selected_sieve_candidates is not None:
         try:
             proposals = tuple(
@@ -2596,12 +2648,29 @@ def bounded_cubic_minkowski_class_number(
                 )
                 for row, coordinates, _expected_norm in selected_sieve_candidates
             )
-            batch_admit = getattr(collector, "admit_integral_order_basis_rows", None)
-            batch: Any = (
-                batch_admit(tuple(initial_proposals) + proposals)
-                if callable(batch_admit)
-                else None
+            validated_batch = _validated_cubic_integral_relation_batch(
+                relation_module,
+                order,
+                factor_base,
+                initial_proposals,
+                selected_sieve_candidates,
             )
+            batch_admit = getattr(collector, "admit_integral_order_basis_rows", None)
+            validated_admit = getattr(
+                collector, "_admit_validated_integral_order_basis_rows", None
+            )
+            batch: Any = None
+            if validated_batch is not None and callable(validated_admit):
+                batch = validated_admit(
+                    validated_batch,
+                    tuple(initial_proposals) + proposals,
+                    _validated_token=(
+                        relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
+                    ),
+                )
+                validated_sieve_batch_used = batch is not None
+            elif callable(batch_admit):
+                batch = batch_admit(tuple(initial_proposals) + proposals)
             if batch is None:
                 relation_module.initial_rational_prime_relations(collector)
                 for coordinates, row, provenance in proposals:
@@ -2649,6 +2718,7 @@ def bounded_cubic_minkowski_class_number(
         0 if selected_sieve_candidates is None else len(selected_sieve_candidates)
     )
     relation_metrics["integral_sieve_relations"] = sieve_admitted
+    relation_metrics["integral_sieve_validated_batch"] = int(validated_sieve_batch_used)
     relation_metrics["integral_sieve_fallback"] = int(selected_sieve_candidates is None)
     relation_metrics["integral_sieve_dependency_candidates"] = 0
     relation_metrics["integral_sieve_dependency_relations"] = 0

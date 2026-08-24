@@ -50,6 +50,7 @@ DEFAULT_ADMISSION_RECEIPT_CACHE_SIZE = 64
 _VALIDATED_FACTOR_BASE_TOKEN = object()
 _LIVE_VERIFIED_RELATION_PREFIX_TOKEN = object()
 _INTEGRAL_RELATION_RECORD_TOKEN = object()
+_VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN = object()
 _U64_MASK = (1 << 64) - 1
 _IDEAL_REDUCTION_STATE_KEYS = {
     "schema",
@@ -1077,6 +1078,96 @@ class RelationAdmission:
         self.pivot = pivot
 
 
+class _ValidatedIntegralRelationBatch:
+    """Live-only authority for exact integral rows proved by one producer."""
+
+    def __init__(
+        self,
+        order: Any,
+        factor_base: Iterable[Any],
+        entries: Iterable[tuple[Iterable[int], Iterable[int], Any]],
+        *,
+        _validated_token: Any = None,
+    ) -> None:
+        if _validated_token is not _VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN:
+            raise TypeError("validated integral relation batches are producer-only")
+        self.order = order
+        self.factor_base = tuple(factor_base)
+        degree = int(order.degree())
+        width = len(self.factor_base)
+        normalized: list[tuple[tuple[int, ...], tuple[int, ...], Any]] = []
+        seen: set[tuple[tuple[int, ...], tuple[int, ...]]] = set()
+        for raw_coordinates, raw_row, raw_norm in entries:
+            coordinates = tuple(
+                _checked_integer(value, "an authorized order-basis coordinate")
+                for value in raw_coordinates
+            )
+            row = tuple(
+                _checked_nonnegative(value, "an authorized relation exponent")
+                for value in raw_row
+            )
+            norm = sage.QQ(raw_norm)
+            if len(coordinates) != degree or len(row) != width:
+                raise ValueError("an authorized integral relation has the wrong width")
+            if not any(coordinates) or norm._denominator != 1 or norm <= 1:
+                raise ValueError("an authorized integral relation is not nonzero")
+            if any(
+                abs(value).bit_length() > MAX_INTEGRAL_RELATION_BATCH_INTEGER_BITS
+                for value in coordinates
+            ) or any(value > MAX_INTEGRAL_RELATION_BATCH_PRIME_POWERS for value in row):
+                raise ValueError("an authorized integral relation exceeds its cap")
+            key = (coordinates, row)
+            if key in seen:
+                raise ValueError("an authorized integral relation is duplicated")
+            seen.add(key)
+            normalized.append((coordinates, row, norm))
+        if len(normalized) > 4096 or len(normalized) * max(1, width) > (
+            MAX_INTEGRAL_RELATION_BATCH_VALUES
+        ):
+            raise ValueError("an authorized integral relation batch is too large")
+        self.entries = tuple(normalized)
+        runtime.object.freeze(self)
+
+    def authorize(
+        self,
+        order: Any,
+        factor_base: Iterable[Any],
+        proposals: Iterable[tuple[Iterable[int], Iterable[int], dict[str, Any] | None]],
+    ) -> tuple[
+        tuple[tuple[int, ...], tuple[int, ...], dict[str, Any] | None, Any], ...
+    ]:
+        factors = tuple(factor_base)
+        if (
+            order is not self.order
+            or len(factors) != len(self.factor_base)
+            or any(
+                supplied is not retained
+                for supplied, retained in zip(factors, self.factor_base, strict=True)
+            )
+        ):
+            raise TypeError("an integral relation authority has another live context")
+        available = {
+            (coordinates, row): norm for coordinates, row, norm in self.entries
+        }
+        answer: list[
+            tuple[tuple[int, ...], tuple[int, ...], dict[str, Any] | None, Any]
+        ] = []
+        for raw_coordinates, raw_row, provenance in proposals:
+            coordinates = tuple(
+                _checked_integer(value, "an authorized order-basis coordinate")
+                for value in raw_coordinates
+            )
+            row = tuple(
+                _checked_nonnegative(value, "an authorized relation exponent")
+                for value in raw_row
+            )
+            norm = available.get((coordinates, row))
+            if norm is None:
+                raise ValueError("an integral relation was not proved by its authority")
+            answer.append((coordinates, row, provenance, norm))
+        return tuple(answer)
+
+
 class ExactRelationCollector:
     """Authenticate, rank-screen, deduplicate, and retain exact relations."""
 
@@ -1140,6 +1231,8 @@ class ExactRelationCollector:
             "integral_batch_calls": 0,
             "integral_batch_rows": 0,
             "integral_batch_fallbacks": 0,
+            "validated_batch_calls": 0,
+            "validated_batch_rows": 0,
         }
 
     @staticmethod
@@ -1314,6 +1407,35 @@ class ExactRelationCollector:
             add(relation)
         self._remember_admission_receipt(relation, identity_key=key)
         return admission
+
+    def _store_integral_payload_records(
+        self,
+        normalized: Iterable[
+            tuple[
+                tuple[int, ...],
+                tuple[int, ...],
+                dict[str, Any] | None,
+                list[list[int]],
+                Any,
+            ]
+        ],
+    ) -> tuple[RelationAdmission, ...]:
+        records = tuple(
+            self._integral_generator_record_from_payload(
+                witness_payload, row, norm, provenance
+            )
+            for _values, row, provenance, witness_payload, norm in normalized
+        )
+        new_keys: dict[str, bool] = {}
+        for record in records:
+            key = record.live_identity_key()
+            if key in self._keys or new_keys.get(key, False):
+                raise ValueError("the exact relation record was already admitted")
+            new_keys[key] = True
+        return tuple(
+            self._store_verified(record, identity_key=key)
+            for record, key in zip(records, new_keys, strict=True)
+        )
 
     def admit_witness(
         self,
@@ -1733,26 +1855,65 @@ class ExactRelationCollector:
                     "packed relation replay disagrees with a proposed valuation row"
                 )
 
-        records = tuple(
-            self._integral_generator_record_from_payload(
-                witness_payload, row, norm, provenance
-            )
-            for _values, row, provenance, witness_payload, norm in normalized
-        )
-        new_keys: dict[str, bool] = {}
-        for record in records:
-            key = record.live_identity_key()
-            if key in self._keys or new_keys.get(key, False):
-                raise ValueError("the exact relation record was already admitted")
-            new_keys[key] = True
-        admissions = tuple(
-            self._store_verified(record, identity_key=key)
-            for record, key in zip(records, new_keys, strict=True)
-        )
+        admissions = self._store_integral_payload_records(normalized)
         self._admission_receipt_statistics["integral_norm_certificates"] += len(
             admissions
         )
         self._admission_receipt_statistics["integral_batch_rows"] += len(admissions)
+        return admissions
+
+    def _admit_validated_integral_order_basis_rows(
+        self,
+        authority: _ValidatedIntegralRelationBatch,
+        proposals: Iterable[tuple[Iterable[int], Iterable[int], dict[str, Any] | None]],
+        *,
+        _validated_token: Any = None,
+    ) -> tuple[RelationAdmission, ...]:
+        """Retain exact rows already proved by an identity-bound live producer."""
+        if _validated_token is not _VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN:
+            raise TypeError("validated integral relation admission is producer-only")
+        if not isinstance(authority, _ValidatedIntegralRelationBatch):
+            raise TypeError("validated integral relation authority has the wrong type")
+        authorized = authority.authorize(self.order, self.factor_base, proposals)
+        if not authorized:
+            return ()
+        if self._order_basis is None:
+            self._order_basis = tuple(self.order.basis())
+        if self._order_basis_coefficients is None:
+            self._order_basis_coefficients = tuple(
+                tuple(element.list()) for element in self._order_basis
+            )
+        normalized: list[
+            tuple[
+                tuple[int, ...],
+                tuple[int, ...],
+                dict[str, Any] | None,
+                list[list[int]],
+                Any,
+            ]
+        ] = []
+        for values, row, provenance, norm in authorized:
+            if _factor_base_row_norm_from_norms(self._factor_base_norms, row) != norm:
+                raise ArithmeticError(
+                    "an authorized integral relation has inconsistent norm data"
+                )
+            normalized.append(
+                (
+                    values,
+                    row,
+                    provenance,
+                    _order_basis_coordinate_payload(
+                        self._order_basis_coefficients, values
+                    ),
+                    norm,
+                )
+            )
+        admissions = self._store_integral_payload_records(normalized)
+        self._admission_receipt_statistics["integral_norm_certificates"] += len(
+            admissions
+        )
+        self._admission_receipt_statistics["validated_batch_calls"] += 1
+        self._admission_receipt_statistics["validated_batch_rows"] += len(admissions)
         return admissions
 
     def _integral_generator_record(

@@ -217,7 +217,11 @@ R = PolynomialRing(QQ, "x")
 x = R.gen()
 field = NumberField(x**3 - x**2 - 6*x - 12, "a")
 saved = relations._validate_factor_base
+saved_validated_admit = (
+    relations.ExactRelationCollector._admit_validated_integral_order_basis_rows
+)
 calls = 0
+validated_admission_calls = 0
 def forbidden(order, factors):
     global calls
     calls += 1
@@ -225,13 +229,27 @@ def forbidden(order, factors):
     if values and isinstance(values[0], cubic.PackedCubicFactorRecord):
         raise AssertionError("packed factor fingerprints were reconstructed")
     return saved(order, values)
+def counted_validated_admit(self, *args, **kwargs):
+    global validated_admission_calls
+    validated_admission_calls += 1
+    return saved_validated_admit(self, *args, **kwargs)
 relations._validate_factor_base = forbidden
+relations.ExactRelationCollector._admit_validated_integral_order_basis_rows = (
+    counted_validated_admit
+)
 try:
     result = cubic.bounded_cubic_minkowski_class_number(field)
 finally:
     relations._validate_factor_base = saved
+    relations.ExactRelationCollector._admit_validated_integral_order_basis_rows = (
+        saved_validated_admit
+    )
 assert result.complete and result.order() == 3
 assert calls == 0
+assert validated_admission_calls == 1
+assert result.diagnostics["relation_search"][
+    "integral_sieve_validated_batch"
+] == 1
 
 # Disabling only the batched power-chain boundary falls through to the
 # pre-existing scalar chains and produces the same exact mathematical proof.
