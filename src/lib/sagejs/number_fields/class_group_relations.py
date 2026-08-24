@@ -134,6 +134,35 @@ def _json_value(value: Any, path: str = "$") -> Any:
     raise TypeError(path + " is not JSON-safe")
 
 
+def _json_identity_key(value: Any) -> tuple[Any, ...]:
+    """Freeze exact JSON evidence into a hashable live identity.
+
+    Relation collectors need content-sensitive deduplication and mutation-safe
+    admission receipts, but they do not need to serialize those live checks to
+    UTF-8 and immediately hash the bytes.  Type tags preserve the distinctions
+    made by canonical JSON (in particular `bool` versus `int`), while detached
+    certificates continue to use `_canonical_json` unchanged.
+    """
+    if value is None:
+        return ("none",)
+    if isinstance(value, bool):
+        return ("bool", value)
+    if isinstance(value, int):
+        return ("int", value)
+    if isinstance(value, float):
+        return ("float", repr(value))
+    if isinstance(value, str):
+        return ("str", value)
+    if isinstance(value, (list, tuple)):
+        return ("list", tuple(_json_identity_key(item) for item in value))
+    if isinstance(value, dict):
+        return (
+            "dict",
+            tuple((key, _json_identity_key(value[key])) for key in sorted(value)),
+        )
+    raise TypeError("live relation identity requires exact JSON evidence")
+
+
 def _canonical_json(value: Any) -> str:
     return json.dumps(
         value,
@@ -934,6 +963,20 @@ class RelationRecord:
     def canonical_key(self) -> str:
         return json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
 
+    def live_identity_key(self) -> tuple[Any, ...]:
+        """Return a mutation-sensitive key without serializing live evidence."""
+        return (
+            "sagejs.number-fields/class-relation-live-identity-v1",
+            self.row,
+            self.quotient_row,
+            self.source_row,
+            _json_identity_key(self.witness),
+            _json_identity_key(self.norm_smoothness),
+            _json_identity_key(self.archimedean_logs),
+            self.log_precision,
+            _json_identity_key(self.provenance),
+        )
+
 
 def verify_relation_record(
     order: Any,
@@ -1084,11 +1127,11 @@ class ExactRelationCollector:
         self.context = context
         self._order_basis: tuple[Any, ...] | None = None
         self._order_basis_coefficients: tuple[tuple[Any, ...], ...] | None = None
-        self._keys: set[str] = set()
+        self._keys: set[tuple[Any, ...]] = set()
         self.max_admission_receipts = _checked_nonnegative(
             max_admission_receipts, "admission receipt cache size"
         )
-        self._admission_receipts: dict[str, None] = {}
+        self._admission_receipts: dict[tuple[Any, ...], None] = {}
         self._admission_receipt_statistics = {
             "requests": 0,
             "hits": 0,
@@ -1103,17 +1146,16 @@ class ExactRelationCollector:
 
     @staticmethod
     def _admission_receipt_key(
-        relation: RelationRecord, canonical_key: str | None = None
-    ) -> str:
-        payload = relation.canonical_key() if canonical_key is None else canonical_key
-        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        relation: RelationRecord, identity_key: tuple[Any, ...] | None = None
+    ) -> tuple[Any, ...]:
+        return relation.live_identity_key() if identity_key is None else identity_key
 
     def _remember_admission_receipt(
-        self, relation: RelationRecord, *, canonical_key: str | None = None
+        self, relation: RelationRecord, *, identity_key: tuple[Any, ...] | None = None
     ) -> None:
         if self.max_admission_receipts == 0:
             return
-        key = self._admission_receipt_key(relation, canonical_key)
+        key = self._admission_receipt_key(relation, identity_key)
         if key in self._admission_receipts:
             return
         if len(self._admission_receipts) >= self.max_admission_receipts:
@@ -1256,10 +1298,10 @@ class ExactRelationCollector:
         return self._store_verified(relation)
 
     def _store_verified(
-        self, relation: RelationRecord, *, canonical_key: str | None = None
+        self, relation: RelationRecord, *, identity_key: tuple[Any, ...] | None = None
     ) -> RelationAdmission:
         """Store a relation whose exact objects were verified by its producer."""
-        key = relation.canonical_key() if canonical_key is None else canonical_key
+        key = relation.live_identity_key() if identity_key is None else identity_key
         if key in self._keys:
             raise ValueError("the exact relation record was already admitted")
         independent, pivot = self.rank_screen.add(relation.row)
@@ -1272,7 +1314,7 @@ class ExactRelationCollector:
             if not callable(add):
                 raise TypeError("the relation context has no add_relation method")
             add(relation)
-        self._remember_admission_receipt(relation, canonical_key=key)
+        self._remember_admission_receipt(relation, identity_key=key)
         return admission
 
     def admit_witness(
@@ -1699,14 +1741,14 @@ class ExactRelationCollector:
             )
             for _values, row, provenance, witness_payload, norm in normalized
         )
-        new_keys: dict[str, bool] = {}
+        new_keys: dict[tuple[Any, ...], bool] = {}
         for record in records:
-            key = record.canonical_key()
+            key = record.live_identity_key()
             if key in self._keys or new_keys.get(key, False):
                 raise ValueError("the exact relation record was already admitted")
             new_keys[key] = True
         admissions = tuple(
-            self._store_verified(record, canonical_key=key)
+            self._store_verified(record, identity_key=key)
             for record, key in zip(records, new_keys, strict=True)
         )
         self._admission_receipt_statistics["integral_norm_certificates"] += len(
