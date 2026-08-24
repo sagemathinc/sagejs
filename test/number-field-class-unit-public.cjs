@@ -329,6 +329,8 @@ assert all(
     for record in seed.factor_base
 )
 assert len(artifact._packed_factor_records) == 5
+assert len(seed.relation_candidates) == 21
+assert len(seed.selected_relation_candidates) == 3
 
 # The lazy continuation itself remains an exact admission boundary.  Every
 # retained record replays over the materialized prime ideals, and a corrupted
@@ -397,6 +399,11 @@ retained_norm = packed.norm_value
 packed.norm_value += 1
 assert cubic_module.authenticated_cubic_relation_seed(forged, T) is None
 packed.norm_value = retained_norm
+assert cubic_module.authenticated_cubic_relation_seed(forged, T) is not None
+retained_candidates = forged_seed.relation_candidates
+forged_seed.__dict__["relation_candidates"] = ()
+assert cubic_module.authenticated_cubic_relation_seed(forged, T) is None
+forged_seed.__dict__["relation_candidates"] = retained_candidates
 assert cubic_module.authenticated_cubic_relation_seed(forged, T) is not None
 
 print("completed-cubic-context-seed-ok")

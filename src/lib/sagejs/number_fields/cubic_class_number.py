@@ -2139,6 +2139,8 @@ def _cubic_relation_seed_snapshot(seed: Any) -> Any:
         relations,
         presentation_snapshot,
         collector_snapshot,
+        id(seed.relation_candidates),
+        id(seed.selected_relation_candidates),
         id(search_state),
         int(search_state.seed),
         int(search_state.random_state),
@@ -2160,6 +2162,8 @@ class _AuthenticatedCubicRelationSeed:
         collector: Any,
         presentation: Any,
         search_state: Any,
+        relation_candidates: tuple[Any, ...] = (),
+        selected_relation_candidates: tuple[Any, ...] = (),
     ) -> None:
         if token is not _AUTHENTICATED_CUBIC_RELATION_SEED_TOKEN:
             raise TypeError("cubic relation seeds are module-issued")
@@ -2179,6 +2183,8 @@ class _AuthenticatedCubicRelationSeed:
         self.collector = collector
         self.presentation = presentation
         self.search_state = search_state
+        self.relation_candidates = tuple(relation_candidates)
+        self.selected_relation_candidates = tuple(selected_relation_candidates)
         self._snapshot = _cubic_relation_seed_snapshot(self)
         self.__dict__["_frozen"] = True
 
@@ -2252,6 +2258,8 @@ def _issue_cubic_relation_seed(
     collector: Any,
     presentation: Any,
     search_state: Any,
+    relation_candidates: tuple[Any, ...] = (),
+    selected_relation_candidates: tuple[Any, ...] = (),
 ) -> CubicClassNumberResult:
     seed = _AuthenticatedCubicRelationSeed(
         _AUTHENTICATED_CUBIC_RELATION_SEED_TOKEN,
@@ -2261,6 +2269,8 @@ def _issue_cubic_relation_seed(
         collector,
         presentation,
         search_state,
+        relation_candidates,
+        selected_relation_candidates,
     )
     # The private constructor has just captured every proof-bearing object in
     # one synchronous call; user code cannot interpose between construction
@@ -2339,33 +2349,13 @@ def _extend_packed_cubic_relation_seed_for_units(
     remaining = maximum_relations - len(seed.collector.records)
     if remaining < 1:
         return None
-    initial_rows = tuple(
-        tuple(int(value) for value in record.row)
-        for record in seed.collector.records
-        if record.provenance.get("algorithm") == "rational-prime-decomposition"
-    )
-    if not initial_rows:
-        return None
-    primary_candidates = _packed_cubic_relation_candidates(
-        seed.plan.order,
-        seed.factor_base,
-        maximum_candidates=maximum_relations,
-        coefficient_bound=_CUBIC_RELATION_SIEVE_BOUND,
-        cancelled=cancelled,
-    )
-    if primary_candidates is None:
+    primary_candidates = seed.relation_candidates
+    selected = seed.selected_relation_candidates
+    if not primary_candidates or not selected:
         return None
     matrix_module = __import__(
         "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
     )
-    selected = _select_cubic_relation_candidates(
-        matrix_module,
-        initial_rows,
-        primary_candidates,
-        len(seed.factor_base),
-    )
-    if selected is None:
-        return None
     unit_rank_bound = 1 if int(seed.plan.order.discriminant()) < 0 else 2
     dependency_candidates, dependency_bound = _bounded_cubic_dependency_candidates(
         seed.plan.order,
@@ -3329,6 +3319,8 @@ def bounded_cubic_minkowski_class_number(
             collector,
             presentation,
             relation_search_state,
+            tuple(sieve_candidates or ()),
+            tuple(selected_sieve_candidates or ()),
         )
     return _issue_cubic_class_number_result(result)
 
