@@ -596,7 +596,7 @@ static int call_add(
     uint64_t *right,
     uint64_t genus) {
   sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
-  uint64_t accepted = 0;
+  int accepted = 0;
   const sagejs_source_u64_buffer output_buffer = {output, COUNT * 8};
   const sagejs_source_u64_buffer status_buffer = {statuses, COUNT};
   const sagejs_source_u64_buffer model_buffer = {model, 12};
@@ -703,7 +703,8 @@ try {
   }
   const artifact = join(cache, cacheEntry.cacheKey);
   const core = join(artifact, "kernel_core.c");
-  const flintPrefix = join(root, "packages", "flint", ".native", "prefix");
+  const flintPrefix = process.env.SAGEJS_FLINT_PREFIX ||
+    join(root, "packages", "flint", ".native", "prefix");
   run("cc", [
     "-O3",
     "-DSAGEJS_NATIVE_SOURCE_BOUNDS_CHECK=1",
