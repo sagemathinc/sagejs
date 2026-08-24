@@ -1332,7 +1332,7 @@ def _validated_cubic_integral_relation_batch(
     """Issue live authority only for the ordinary packed cubic producer."""
     if _cubic_relation_sieve_kernel_override is not None:
         return None
-    coefficients: tuple[int, ...] | None = None
+    coefficients = _order_cubic_norm_form_coefficients(order)
     factor_norms = tuple(
         _integer_rational(prime_ideal.norm(), "a factor-base norm")
         for prime_ideal in factor_base
@@ -1347,11 +1347,7 @@ def _validated_cubic_integral_relation_batch(
     for coordinates, row, expected_norm in proposed:
         if len(coordinates) != 3 or len(row) != len(factor_norms):
             return None
-        signed_norm = _power_basis_cubic_element_norm(order, coordinates)
-        if signed_norm is None:
-            if coefficients is None:
-                coefficients = _order_cubic_norm_form_coefficients(order)
-            signed_norm = _cubic_norm_form_value(coefficients, *coordinates)
+        signed_norm = _cubic_norm_form_value(coefficients, *coordinates)
         exact_norm = abs(signed_norm)
         row_norm = 1
         for factor_norm, exponent in zip(factor_norms, row, strict=True):

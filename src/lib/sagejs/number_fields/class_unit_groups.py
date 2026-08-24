@@ -1474,6 +1474,7 @@ class ClassUnitGroupEngine:
             "cubic_integral_sieve_candidates": 0,
             "cubic_integral_sieve_relations": 0,
             "cubic_integral_sieve_dependency_relations": 0,
+            "cubic_integral_sieve_validated_batch_uses": 0,
             "cubic_specialized_seed_skips": 0,
             "automorphism_orbit_plans": 0,
             "automorphism_orbit_available_plans": 0,
@@ -2349,6 +2350,9 @@ class ClassUnitGroupEngine:
             select_dependencies = getattr(
                 cubic, "_select_cubic_dependency_candidates", None
             )
+            validate_batch = getattr(
+                cubic, "_validated_cubic_integral_relation_batch", None
+            )
             if (
                 not callable(propose)
                 or not callable(select)
@@ -2417,11 +2421,41 @@ class ClassUnitGroupEngine:
                 for row, coordinates, _expected_norm in candidates_group
             )
             batch_admit = getattr(trial, "admit_integral_order_basis_rows", None)
-            batch = (
-                batch_admit(initial_proposals + proposals)
-                if callable(batch_admit) and initial_proposals
+            validated_admit = getattr(
+                trial, "_admit_validated_integral_order_basis_rows", None
+            )
+            authority = (
+                validate_batch(
+                    relations,
+                    self.order,
+                    factor_base,
+                    initial_proposals,
+                    tuple(selected) + tuple(dependency_candidates),
+                )
+                if callable(validate_batch)
                 else None
             )
+            batch: Any = (
+                validated_admit(
+                    authority,
+                    initial_proposals + proposals,
+                    _validated_token=(
+                        relations._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
+                    ),
+                )
+                if authority is not None and callable(validated_admit)
+                else (
+                    batch_admit(initial_proposals + proposals)
+                    if callable(batch_admit) and initial_proposals
+                    else None
+                )
+            )
+            if batch is not None and len(batch) != len(initial_proposals + proposals):
+                raise ArithmeticError(
+                    "a packed cubic relation batch returned the wrong row count"
+                )
+            if authority is not None and batch is not None:
+                self._resource_usage["cubic_integral_sieve_validated_batch_uses"] += 1
             if batch is None:
                 relations.initial_rational_prime_relations(trial)
                 for coordinates, row, provenance in proposals:

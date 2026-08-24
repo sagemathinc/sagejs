@@ -891,12 +891,29 @@ assert large_resources["cubic_integral_sieve_uses"] == 1
 assert large_resources["cubic_integral_sieve_candidates"] == 27
 assert large_resources["cubic_integral_sieve_relations"] == 5
 assert large_resources["cubic_integral_sieve_dependency_relations"] == 1
+assert large_resources["cubic_integral_sieve_validated_batch_uses"] == 1
 assert large_resources["relation_attempts"] == 0
 assert large_resources["relation_candidates"] == 0
 assert large_resources["class_group_generator_reconstruction_calls"] == 1
 assert large_resources["class_group_generator_power_requests"] >= 1
 assert L.class_number(proof=False) == 6
 assert L._bounded_cubic_class_number_artifact is large_artifact
+
+# Missing producer authority falls back to the unchanged packed containment
+# replay; it must not change the conditional answer or proof label.
+saved_validate_batch = cubic_module._validated_cubic_integral_relation_batch
+cubic_module._validated_cubic_integral_relation_batch = lambda *args, **kwargs: None
+try:
+    Q = NumberField(x**3 - x**2 + 7*x + 8, "q")
+    assert Q.class_number(proof=False) == 6
+finally:
+    cubic_module._validated_cubic_integral_relation_batch = saved_validate_batch
+fallback_result = list(Q._class_unit_engine_cache.values())[-1]
+assert fallback_result.complete
+assert fallback_result.proof_status == "exact-relations-conditional-grh"
+assert fallback_result.diagnostics["resources"][
+    "cubic_integral_sieve_validated_batch_uses"
+] == 0
 
 # For proof=True, the same ten-prime Minkowski prefix is much cheaper than
 # discovering a conditional BDF presentation and then expressing every
