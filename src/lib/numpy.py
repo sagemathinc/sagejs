@@ -1549,6 +1549,8 @@ linalg = _Linalg()
 
 class _FFTFunction:
     def __init__(self, name: str, parameters: tuple[str, ...]) -> None:
+        if runtime.reflect.get(_native_fft, name) is runtime.undefined:
+            raise NotImplementedError("numpy-ts does not provide numpy.fft." + name)
         self._name = name
         self._parameters = parameters
 
@@ -1599,178 +1601,63 @@ class _FFT:
 fft = _FFT()
 
 
-class _RandomFunction:
-    def __init__(
-        self,
-        name: str,
-        parameters: tuple[str, ...],
-        required: int = 0,
-        array_arguments: tuple[int, ...] = (),
-        shape_arguments: tuple[int, ...] = (),
-        dtype_arguments: tuple[int, ...] = (),
-    ) -> None:
-        self._name = name
-        self._parameters = parameters
-        self._required = required
-        self._array_arguments = array_arguments
-        self._shape_arguments = shape_arguments
-        self._dtype_arguments = dtype_arguments
-
-    def __repr__(self) -> str:
-        return "<function numpy.random." + self._name + ">"
-
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        if len(args) > len(self._parameters):
-            raise TypeError(self._name + "() received too many arguments")
-        values = list(args)
-        for key, value in kwargs.items():
-            if key not in self._parameters:
-                raise TypeError(
-                    self._name + "() got an unexpected keyword argument '" + key + "'"
-                )
-            position = self._parameters.index(key)
-            if position < len(args):
-                raise TypeError(
-                    self._name + "() got multiple values for argument '" + key + "'"
-                )
-            while len(values) <= position:
-                values.append(None)
-            values[position] = value
-        if len(values) < self._required:
-            raise TypeError(self._name + "() is missing a required argument")
-        for position in self._array_arguments:
-            if position < len(values) and values[position] is not None:
-                values[position] = _native_operand(values[position])
-        for position in self._shape_arguments:
-            if position < len(values) and values[position] is not None:
-                values[position] = _shape_list(values[position])
-        for position in self._dtype_arguments:
-            if position < len(values) and values[position] is not None:
-                values[position] = _dtype_name(values[position])
-        for position, value in enumerate(values):
-            if value is None:
-                values[position] = runtime.undefined
-        answer = _call_random(self._name, values)
-        if answer is runtime.undefined:
-            return None
-        return _wrap_result(answer)
-
-
-class _RandomShapeFunction:
-    def __init__(self, name: str) -> None:
-        self._name = name
-
-    def __call__(self, *shape: Any) -> Any:
-        return _wrap_result(
-            _call_random(self._name, [runtime.number(value) for value in shape])
+_random_exports = (
+    "seed",
+    "random",
+    "random_sample",
+    "ranf",
+    "sample",
+    "rand",
+    "randn",
+    "randint",
+    "random_integers",
+    "uniform",
+    "normal",
+    "standard_normal",
+    "exponential",
+    "standard_exponential",
+    "standard_gamma",
+    "standard_cauchy",
+    "standard_t",
+    "gamma",
+    "beta",
+    "laplace",
+    "logistic",
+    "lognormal",
+    "gumbel",
+    "pareto",
+    "power",
+    "rayleigh",
+    "triangular",
+    "wald",
+    "weibull",
+    "chisquare",
+    "noncentral_chisquare",
+    "f",
+    "noncentral_f",
+    "geometric",
+    "hypergeometric",
+    "logseries",
+    "negative_binomial",
+    "zipf",
+    "poisson",
+    "binomial",
+    "multinomial",
+    "multivariate_normal",
+    "dirichlet",
+    "vonmises",
+    "choice",
+    "permutation",
+    "shuffle",
+)
+for _random_export in _random_exports:
+    if runtime.reflect.get(_native_random, _random_export) is runtime.undefined:
+        raise NotImplementedError(
+            "numpy-ts does not provide numpy.random." + _random_export
         )
 
 
 class _Random:
-    seed = _RandomFunction("seed", ("seed",))
-    random = _RandomFunction("random", ("size",), shape_arguments=(0,))
-    random_sample = _RandomFunction("random_sample", ("size",), shape_arguments=(0,))
-    ranf = _RandomFunction("ranf", ("size",), shape_arguments=(0,))
-    sample = _RandomFunction("sample", ("size",), shape_arguments=(0,))
-    rand = _RandomShapeFunction("rand")
-    randn = _RandomShapeFunction("randn")
-    randint = _RandomFunction(
-        "randint",
-        ("low", "high", "size", "dtype"),
-        1,
-        shape_arguments=(2,),
-        dtype_arguments=(3,),
-    )
-    random_integers = _RandomFunction(
-        "random_integers", ("low", "high", "size"), 1, shape_arguments=(2,)
-    )
-    uniform = _RandomFunction("uniform", ("low", "high", "size"), shape_arguments=(2,))
-    normal = _RandomFunction("normal", ("loc", "scale", "size"), shape_arguments=(2,))
-    standard_normal = _RandomFunction(
-        "standard_normal", ("size",), shape_arguments=(0,)
-    )
-    exponential = _RandomFunction(
-        "exponential", ("scale", "size"), shape_arguments=(1,)
-    )
-    standard_exponential = _RandomFunction(
-        "standard_exponential", ("size",), shape_arguments=(0,)
-    )
-    standard_gamma = _RandomFunction(
-        "standard_gamma", ("shape", "size"), 1, shape_arguments=(1,)
-    )
-    standard_cauchy = _RandomFunction(
-        "standard_cauchy", ("size",), shape_arguments=(0,)
-    )
-    standard_t = _RandomFunction("standard_t", ("df", "size"), 1, shape_arguments=(1,))
-    gamma = _RandomFunction(
-        "gamma", ("shape", "scale", "size"), 1, shape_arguments=(2,)
-    )
-    beta = _RandomFunction("beta", ("a", "b", "size"), 2, shape_arguments=(2,))
-    laplace = _RandomFunction("laplace", ("loc", "scale", "size"), shape_arguments=(2,))
-    logistic = _RandomFunction(
-        "logistic", ("loc", "scale", "size"), shape_arguments=(2,)
-    )
-    lognormal = _RandomFunction(
-        "lognormal", ("mean", "sigma", "size"), shape_arguments=(2,)
-    )
-    gumbel = _RandomFunction("gumbel", ("loc", "scale", "size"), shape_arguments=(2,))
-    pareto = _RandomFunction("pareto", ("a", "size"), 1, shape_arguments=(1,))
-    power = _RandomFunction("power", ("a", "size"), 1, shape_arguments=(1,))
-    rayleigh = _RandomFunction("rayleigh", ("scale", "size"), shape_arguments=(1,))
-    triangular = _RandomFunction(
-        "triangular", ("left", "mode", "right", "size"), 3, shape_arguments=(3,)
-    )
-    wald = _RandomFunction("wald", ("mean", "scale", "size"), 2, shape_arguments=(2,))
-    weibull = _RandomFunction("weibull", ("a", "size"), 1, shape_arguments=(1,))
-    chisquare = _RandomFunction("chisquare", ("df", "size"), 1, shape_arguments=(1,))
-    noncentral_chisquare = _RandomFunction(
-        "noncentral_chisquare", ("df", "nonc", "size"), 2, shape_arguments=(2,)
-    )
-    f = _RandomFunction("f", ("dfnum", "dfden", "size"), 2, shape_arguments=(2,))
-    noncentral_f = _RandomFunction(
-        "noncentral_f", ("dfnum", "dfden", "nonc", "size"), 3, shape_arguments=(3,)
-    )
-    geometric = _RandomFunction("geometric", ("p", "size"), 1, shape_arguments=(1,))
-    hypergeometric = _RandomFunction(
-        "hypergeometric", ("ngood", "nbad", "nsample", "size"), 3, shape_arguments=(3,)
-    )
-    logseries = _RandomFunction("logseries", ("p", "size"), 1, shape_arguments=(1,))
-    negative_binomial = _RandomFunction(
-        "negative_binomial", ("n", "p", "size"), 2, shape_arguments=(2,)
-    )
-    zipf = _RandomFunction("zipf", ("a", "size"), 1, shape_arguments=(1,))
-    poisson = _RandomFunction("poisson", ("lam", "size"), shape_arguments=(1,))
-    binomial = _RandomFunction("binomial", ("n", "p", "size"), 2, shape_arguments=(2,))
-    multinomial = _RandomFunction(
-        "multinomial",
-        ("n", "pvals", "size"),
-        2,
-        array_arguments=(1,),
-        shape_arguments=(2,),
-    )
-    multivariate_normal = _RandomFunction(
-        "multivariate_normal",
-        ("mean", "cov", "size", "check_valid", "tol"),
-        2,
-        array_arguments=(0, 1),
-        shape_arguments=(2,),
-    )
-    dirichlet = _RandomFunction(
-        "dirichlet", ("alpha", "size"), 1, array_arguments=(0,), shape_arguments=(1,)
-    )
-    vonmises = _RandomFunction(
-        "vonmises", ("mu", "kappa", "size"), 2, shape_arguments=(2,)
-    )
-    choice = _RandomFunction(
-        "choice",
-        ("a", "size", "replace", "p"),
-        1,
-        array_arguments=(0, 3),
-        shape_arguments=(1,),
-    )
-    permutation = _RandomFunction("permutation", ("x",), 1, array_arguments=(0,))
-    shuffle = _RandomFunction("shuffle", ("x",), 1, array_arguments=(0,))
-
     def seed(self, seed: Any = None) -> None:
         _random_result("seed", [seed])
 
@@ -1796,6 +1683,9 @@ class _Random:
         self, low: int, high: Any = None, size: Any = None, dtype: Any = int
     ) -> Any:
         return _random_result("randint", [low, high, size, _dtype_name(dtype)])
+
+    def random_integers(self, low: int, high: Any = None, size: Any = None) -> Any:
+        return _random_result("random_integers", [low, high, size])
 
     def uniform(self, low: float = 0.0, high: float = 1.0, size: Any = None) -> Any:
         return _random_result("uniform", [low, high, size])
@@ -1895,6 +1785,34 @@ class _Random:
 
     def binomial(self, n: int, p: float, size: Any = None) -> Any:
         return _random_result("binomial", [n, p, size])
+
+    def multinomial(self, n: int, pvals: Any, size: Any = None) -> Any:
+        return _random_result("multinomial", [n, _native_operand(pvals), size])
+
+    def multivariate_normal(
+        self,
+        mean: Any,
+        cov: Any,
+        size: Any = None,
+        check_valid: str = "warn",
+        tol: float = 1e-8,
+    ) -> Any:
+        return _random_result(
+            "multivariate_normal",
+            [
+                _native_operand(mean),
+                _native_operand(cov),
+                size,
+                check_valid,
+                tol,
+            ],
+        )
+
+    def dirichlet(self, alpha: Any, size: Any = None) -> Any:
+        return _random_result("dirichlet", [_native_operand(alpha), size])
+
+    def vonmises(self, mu: float, kappa: float, size: Any = None) -> Any:
+        return _random_result("vonmises", [mu, kappa, size])
 
     def choice(
         self, a: Any, size: Any = None, replace: bool = True, p: Any = None
