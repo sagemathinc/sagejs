@@ -219,6 +219,119 @@ witness for exact in-place dyadic accumulation, compact immutable metadata,
 and batched native/Wasm execution. It guards against designing the model too
 narrowly around ideals and matrices.
 
+## Cross-domain constraints from the higher-genus release work
+
+The higher-genus curve program reached the same general conclusion as the
+class-group profiling: once the arithmetic kernel is fast, representation and
+lifetime boundaries determine whether the public operation is competitive.
+That work also exposed several failure modes that this sprint should design
+out rather than rediscover.
+
+### Measure the complete semantic pipeline
+
+For every witness, distinguish and report these stages independently:
+
+1. canonical input normalization and authentication;
+2. import or borrow into live native state;
+3. the mathematical kernel;
+4. creation or transfer of a sealed native result;
+5. binding and publication of the public result;
+6. first semantic observation, such as indexing one row, constructing
+   polynomial objects, hashing, equality, or canonical packing; and
+7. detached serialization and independent reference replay.
+
+A kernel result is not an end-to-end win when publication or first observation
+dominates. Conversely, a lazy retained result must not be penalized by timing a
+forced observation that the comparison system performs after its timer. Timed
+functions should return the whole result, with observation recorded separately
+and performed after elapsed time is captured unless observation is explicitly
+part of the equal contract.
+
+Demanding one element of a batch must be `O(1)` in the batch size or be labeled
+as whole-batch materialization. A batch index operation that copies or decodes
+the entire retained buffer is a representation bug, not ordinary indexing.
+Likewise, a bulk kernel should use one authenticated gather/borrow boundary
+rather than one host crossing and resource copy per element. Scattered
+individually owned inputs and one contiguous batch owner are different storage
+contracts and must be represented and benchmarked honestly.
+
+### Separate semantic authority from acceleration state
+
+Canonical packed rows and detached proof payloads remain the durable semantic
+authority. A live FLINT/GMP object, arena, capsule, or workspace is ordinarily
+an acceleration representation and may never silently become the only proof
+of a mathematical value.
+
+If a sealed native aggregate is temporarily authoritative before first public
+observation, its state transition must be explicit:
+
+- the aggregate is indivisible and immutable after publication;
+- components cannot be transplanted independently;
+- the binding authenticates owner identity, exact parent/model fingerprint,
+  format, logical shape, and resource identity;
+- first observation extracts and validates one canonical primitive payload;
+- equality, hashing, packing, pickling, and reference replay are invariant
+  whether extraction occurred before or after an operation; and
+- after extraction, the canonical payload is the observation/cache authority.
+
+Context close, workspace reuse, finalization, and reconstruction in a new
+process must not invalidate an already-public exact value. Any long-lived
+owner/view feature needs explicit transplant, duplicate-owner, stale-token,
+closed-resource, and garbage-collection tests.
+
+### Keep host publication transactional
+
+Compiled cores contain no host callbacks. Cancellation is checked before and
+after bounded native stages, never inside an unbounded native call. The host
+wrapper must stage all new resources, canonical records, diagnostics, and cache
+counters, perform its final cancellation check, and then publish them without
+calling user code. Failure, cancellation, or a hostile callback must leave no
+hidden cache entry, partially bound owner, leaked result, or dishonest counter.
+
+Same-context reentry during a proof/publication transaction must be rejected or
+given explicitly nested transactional semantics. Different-context work may
+proceed independently. Public subclasses, mutable instance attributes, and
+live module-global helper replacement must not become trusted proof inputs.
+
+### Treat memory caps as logical and physical contracts
+
+An arena entry cap does not bound GMP limb allocations, allocator retention,
+Node external memory, finalizer backlog, or process RSS. Every representative
+memory receipt should therefore report, where available:
+
+- source-visible logical capacity and charged arena bytes;
+- initialized exact-entry and resource counts;
+- JavaScript heap, external, and `ArrayBuffer` high-water;
+- backend allocation counters and pending finalizers;
+- process RSS/high-water; and
+- state after deterministic close/reset and after process exit.
+
+Process resource envelopes may be part of a release contract when documented
+and measured, but they must not be used to disguise an unbounded native stage.
+Deterministic cleanup is required even when the system allocator does not
+immediately return pages to the operating system.
+
+### Admit compiler features through vertical slices
+
+Before a new ABI, ownership, effect, or exception feature is used by class
+groups, land both:
+
+1. a neutral minimal compiler witness that isolates the generic rule; and
+2. a production-shaped source witness that exercises the actual call graph,
+   buffer effects, return type, cleanup, and failure translation.
+
+This catches defects such as return-slot C type mismatches, transitive
+read-only buffers being classified writable, raw runtime errors bypassing
+Python exception handling, and owned-result transfer interacting incorrectly
+with output mutation.
+
+After C0, take the smallest useful vertical slice across C1--C3: preferably a
+caller-owned or compiler-owned reusable exact workspace, one cleanup region,
+and Witness A. Do not require the full record language, general arena syntax,
+all view forms, and all control-flow additions to land before measuring that
+slice. General ownership transfer, nested records, maps, and owned aggregates
+remain conditional on a measured witness.
+
 ## Proposed pure-Python surface
 
 The following syntax is provisional. The semantic contracts are the plan; the
@@ -525,7 +638,9 @@ any other failure.
 
 Each package lands as a coherent, independently useful change with dynamic,
 native, and—where production-relevant—Wasm evidence. Later packages may change
-their syntax based on earlier witness results.
+their syntax based on earlier witness results. The package numbering groups
+capabilities; it is not a mandate to finish every item in C1 before beginning a
+minimal C2/C3 vertical slice.
 
 ### C0 — specification, baselines, and failing witnesses
 
@@ -535,6 +650,10 @@ Deliverables:
 - minimal accepted/rejected source probes for every proposed capability;
 - generated C evidence for current per-access `IntegerBuffer` import/export;
 - representative handwritten C/FLINT ceiling benchmarks;
+- a stage-resolved profile covering authentication, kernel, sealed-result
+  transfer, public publication, first observation, and detached replay;
+- neutral and production-shaped ABI/effect/error/ownership witnesses for the
+  first proposed vertical slice;
 - current native/dynamic/Wasm class-group witness receipts; and
 - a feature matrix naming frontend, IR, C, JavaScript, and Wasm support.
 
@@ -597,7 +716,11 @@ Exit gate:
   promotion boundaries;
 - native and Wasm outputs agree byte-for-byte with CPython; and
 - the native hot loop is within 1.5x of an equivalent direct FLINT/C reference
-  on the designated microbenchmark, or the remaining gap is fully attributed.
+  on the designated microbenchmark, or the remaining gap is fully attributed;
+  and
+- the complete witness, including result publication and its contractually
+  required observation, improves materially or has a measured downstream path
+  to doing so. A kernel-only win is not sufficient.
 
 ### C4 — bounded maps, sets, and sparse rows
 
@@ -630,6 +753,8 @@ Exit gate:
 - move/transfer is single-owner and double-free impossible;
 - failed kernels publish no partial aggregate;
 - dynamic/native/Wasm ownership tests pass; and
+- authority, canonicalization, close/recreate, serialization, and finalizer
+  transitions satisfy the cross-domain contract above; and
 - a real phase becomes simpler or faster than caller-owned output.
 
 If caller-owned output remains clear and fast, defer this package.
@@ -664,7 +789,9 @@ The port must:
 - produce identical canonical relation payloads and presentation hashes;
 - preserve cancellation, memory, relation, and candidate caps;
 - use `ClassUnitComputationContext` as the owner of reusable live state;
-- avoid serializing live authority into detached certificates; and
+- keep canonical relation payloads as detached authority and treat live state
+  as authenticated acceleration unless an explicitly reviewed sealed-authority
+  transition applies; and
 - measure production, live validation, and detached validation separately.
 
 Exit gate:
@@ -689,6 +816,14 @@ Run exact-revision validation on:
 
 Regenerate capability manifests and production-kernel coverage, validate
 content-addressed cache invalidation, and update compiler documentation.
+
+Compiled availability and release `auto` selection are distinct. A new
+machine-model path may be invoked explicitly for testing and receipt
+collection, but must not become an automatic public route merely because a
+compiled artifact exists. Release-auto enablement requires an exact-source,
+platform, model/domain, operation, and workload-envelope receipt accepted by
+the release policy; an unmatched request keeps the existing exact fallback or
+fails closed according to the public algorithm contract.
 
 Exit gate:
 
@@ -797,8 +932,14 @@ Every new storage feature requires all of the following where applicable:
 - overlapping mutable-view rejection;
 - alias-sensitive arithmetic cases;
 - deterministic OOM injection at each allocation point;
+- exact translation of backend/runtime failures to the declared Python error
+  contract;
 - corrupt packed input and malformed record rejection;
 - transactional output failure tests;
+- cancellation at every host-visible stage boundary, including late
+  publication, plus same-context reentry and different-context nesting;
+- owner/resource transplant, duplicate registration, stale binding,
+  close/recreate, serialization, and finalizer tests for persistent values;
 - ASan and UBSan runs for isolated cores;
 - leak checks for native executables and Node adapters;
 - zero-host-callback audit; and
@@ -817,14 +958,23 @@ workloads.
 
 Report separately:
 
-1. generated-core execution only;
-2. native adapter plus pack/unpack;
-3. warm mathematical phase;
-4. fresh-field computation;
-5. fresh-process computation; and
-6. browser Wasm first and warm calls.
+1. canonical input normalization and authentication;
+2. generated-core execution only;
+3. native adapter plus import/borrow and pack/unpack;
+4. sealed result creation or ownership transfer;
+5. public binding and object publication;
+6. first-element observation and canonical extraction;
+7. forced full materialization, hash/equality, and detached serialization;
+8. warm mathematical phase;
+9. fresh-field computation;
+10. fresh-process computation; and
+11. browser Wasm first and warm calls.
 
 Do not claim a compiler win by moving work outside the measured region.
+Likewise, do not include a post-result observation inside only one side of a
+comparison. Record elapsed time before inspecting a lazy result when the
+equal contract places observation outside timing. Include batch sizes and
+verify that observing one element does not decode or copy the whole batch.
 
 ### Required microbenchmarks
 
@@ -845,7 +995,7 @@ Each benchmark includes:
 - direct C/FLINT ceiling where meaningful;
 - exact output differential;
 - operation/allocation counters; and
-- peak memory.
+- JavaScript, backend, and process peak memory where available.
 
 ### Mathematical acceptance corpus
 
@@ -1043,8 +1193,12 @@ The compiler sprint is complete when all of the following are true:
 - a representative end-to-end class-group workload improves by at least 15%
   without proof or startup regression;
 - the mathematical source is shorter or clearer than its manual flat-buffer
-  predecessor; and
-- exact-revision platform and release artifacts are green.
+  predecessor;
+- exact-revision platform and release artifacts are green;
+- the required public semantic pipeline—not merely the isolated kernel—has a
+  stage-resolved receipt with no hidden whole-batch observation cost; and
+- production automatic selection is enabled only for receipted source,
+  platform, mathematical-domain, operation, and workload envelopes.
 
 Meeting those conditions does not finish class groups. It gives the remaining
 class-and-unit-group program the right machine model: safe enough to trust,
@@ -1058,8 +1212,11 @@ portable enough for WebAssembly, and close enough to FLINT/GMP to compete.
 3. Create the compiler sprint integration lane and `/scratch/class-group/native-compiler-sprint`.
 4. Land C0's accepted/rejected probes and direct C/FLINT ceilings.
 5. Review R1 before committing to final API spelling.
-6. Implement C1--C3 and integrate Witness A.
-7. Port the smallest complete relation-admission slice for Witness B.
+6. Implement the minimum C1--C3 vertical slice needed for live exact
+   accumulation and integrate Witness A; defer unrelated surface area.
+7. Port the smallest complete relation-admission slice for Witness B, measuring
+   authentication, kernel, publication, first observation, and detached replay
+   separately.
 8. Reprofile the complete class/unit computation.
 9. Continue to C4/C5 only where that profile and the remaining witnesses justify
    them.
