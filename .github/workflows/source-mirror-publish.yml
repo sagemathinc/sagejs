@@ -1,0 +1,42 @@
+name: Publish authenticated source mirror
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sagejs-source-mirror-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Verify and publish the pinned source catalog
+    runs-on: ubuntu-24.04
+    environment: sagejs-source-mirror
+    timeout-minutes: 90
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      STAGED_MIRROR: ${{ runner.temp }}/sagejs-source-mirror-stage
+      VERIFIED_MIRROR: ${{ runner.temp }}/sagejs-source-mirror-verify
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+      - name: Stage every platform and verify pinned upstream digests
+        run: |
+          node tools/source-mirror/scripts/source-mirror.mjs stage \
+            --all-platforms --output "$STAGED_MIRROR"
+      - name: Publish immutable objects and verify R2 metadata
+        run: |
+          node tools/source-mirror/scripts/source-mirror.mjs upload \
+            --all-platforms --input "$STAGED_MIRROR"
+      - name: Re-fetch the complete catalog from R2 without upstream fallback
+        run: |
+          node tools/source-mirror/scripts/source-mirror.mjs fetch \
+            --all-platforms --output "$VERIFIED_MIRROR"

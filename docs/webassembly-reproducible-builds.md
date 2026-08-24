@@ -87,6 +87,14 @@ node tools/source-mirror/scripts/source-mirror.mjs upload --all-platforms \
   --input /secure/staging/sagejs-native-sources
 ```
 
+The repository's manually dispatched **Publish authenticated source mirror**
+workflow performs the same operation in the protected
+`sagejs-source-mirror` GitHub environment. It stages every platform from the
+reviewed upstream URLs, verifies all pinned digests before upload, HEAD-verifies
+the immutable R2 metadata, and finally re-fetches the complete catalog without
+an upstream fallback. Run it after merging a reviewed catalog change and before
+starting release CI.
+
 `upload` uses bucket-scoped S3 credentials and HEAD-verifies length and digest
 metadata after publication. Upstream HTTPS URLs are bootstrap provenance only;
 routine and release workflows fetch immutable mirror objects.

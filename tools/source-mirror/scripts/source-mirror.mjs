@@ -242,7 +242,15 @@ export async function fetchSourceMirror({
     } catch {
       const temporary = `${filename}.download-${process.pid}`;
       const url = encodedObjectUrl(value.accountId, value.bucket, objectKey(catalog, object));
-      await signedCurl({ value, url, output: temporary });
+      try {
+        await signedCurl({ value, url, output: temporary });
+      } catch (error) {
+        throw new Error(
+          `unable to fetch authenticated mirror object ${object.id} ` +
+          `(${objectKey(catalog, object)}): ${error.message}`,
+          { cause: error },
+        );
+      }
       await verifyFile(temporary, object);
       await rename(temporary, filename);
       bytes = await verifyFile(filename, object);
