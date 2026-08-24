@@ -93,6 +93,8 @@ def _native_operand(value: Any) -> Any:
             _native_complex,
             [runtime.number(value.real), runtime.number(value.imag)],
         )
+    if runtime.jstype(value) == "object" and hasattr(value, "__float__"):
+        return float(value)
     return value
 
 
