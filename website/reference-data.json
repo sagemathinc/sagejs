@@ -29507,16 +29507,16 @@
         "name": "prime_pi",
         "qualified": "prime_pi",
         "path": "src/baselib/builtins.py",
-        "line": 6012,
+        "line": 6196,
         "excerpt": {
-          "start_line": 6000,
+          "start_line": 6184,
           "text": "\ndef latex(value: Any) -> LatexExpr:\n    \"\"\"Return a compact LaTeX expression for `value`.\"\"\"\n    if _builtins_member_is_function(value, \"_latex_\"):\n        return LatexExpr(_builtins_call_member(value, \"_latex_\", []))\n    return LatexExpr(value)\n\n\n_prime_pi_primes = None\n_prime_pi_checked_through = 1\n\n\ndef prime_pi(value: Any) -> Any:\n    r\"\"\"\n    Return the number of primes less than or equal to `value`.\n\n    Results are exact.  Moderate bounds are served by an incremental prime\n    cache, while large isolated bounds use Lehmer's combinatorial algorithm.\n    As in Sage, inputs are limited to integers below `2^63`.\n\n    ### Examples\n\n    ```sage\n    sage: prime_pi(10)\n    4"
         }
       },
       "examples": [
         {
           "id": "src/baselib/builtins.py#4c7d8330c2c79857-4b227777d4dd1fc6",
-          "line": 6023,
+          "line": 6207,
           "source": "prime_pi(10)",
           "want": "4\n",
           "tags": [],
@@ -29532,7 +29532,7 @@
         },
         {
           "id": "src/baselib/builtins.py#ca981138a8a22b10-b7a56873cd771f2c",
-          "line": 6025,
+          "line": 6209,
           "source": "prime_pi(100)",
           "want": "25\n",
           "tags": [],
@@ -29548,7 +29548,7 @@
         },
         {
           "id": "src/baselib/builtins.py#c0bc81d3429aebdb-0f03cde178fa9f37",
-          "line": 6027,
+          "line": 6211,
           "source": "prime_pi(10^12)",
           "want": "37607912018\n",
           "tags": [],
@@ -29808,9 +29808,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 7803,
+        "line": 7987,
         "excerpt": {
-          "start_line": 7791,
+          "start_line": 7975,
           "text": "arraylike = ρσ_arraylike\nprint = ρσ_print\nid = ρσ_id\nget_module = ρσ_get_module\npow = ρσ_pow\ndivmod = ρσ_divmod\ndir = ρσ_dir\nvars = ρσ_vars\nhelp = ρσ_help\nsearch_doc = ρσ_search_doc\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
