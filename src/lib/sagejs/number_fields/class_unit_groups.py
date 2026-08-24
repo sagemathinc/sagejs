@@ -1470,6 +1470,7 @@ class ClassUnitGroupEngine:
             "cubic_relation_seed_dependency_relations": 0,
             "cubic_factor_base_seed_uses": 0,
             "cubic_packed_factor_base_uses": 0,
+            "cubic_relation_packed_factor_base_uses": 0,
             "cubic_verified_factor_base_collector_uses": 0,
             "cubic_integral_sieve_uses": 0,
             "cubic_integral_sieve_candidates": 0,
@@ -1656,7 +1657,12 @@ class ClassUnitGroupEngine:
         )
 
     def _bind_context_factor_base(
-        self, factor_base: Iterable[Any], *, validated: bool
+        self,
+        factor_base: Iterable[Any],
+        *,
+        validated: bool,
+        producer_records: Iterable[Any] = (),
+        canonical_records: Iterable[Any] = (),
     ) -> None:
         bind = getattr(self.context, "_bind_live_factor_base", None)
         if callable(bind) and self._live_context_token is not None:
@@ -1664,6 +1670,8 @@ class ClassUnitGroupEngine:
                 self._live_context_token,
                 factor_base,
                 validated=validated,
+                producer_records=producer_records,
+                canonical_records=canonical_records,
             )
 
     def _context_factor_base_validated(self, factor_base: Iterable[Any]) -> bool:
@@ -1673,6 +1681,15 @@ class ClassUnitGroupEngine:
             and self._live_context_token is not None
             and validated(self._live_context_token, factor_base)
         )
+
+    def _context_packed_factor_base(
+        self, factor_base: Iterable[Any]
+    ) -> tuple[Any, ...] | None:
+        reader = getattr(self.context, "_live_packed_factor_base", None)
+        if not callable(reader) or self._live_context_token is None:
+            return None
+        retained: Any = reader(self._live_context_token, factor_base)
+        return retained
 
     def _bind_context_analytic_proof(self, proof: Iterable[Any]) -> None:
         bind = getattr(self.context, "_bind_live_analytic_proof", None)
@@ -2048,6 +2065,7 @@ class ClassUnitGroupEngine:
         plan.require_feasible()
         records: Any = None
         primes: tuple[Any, ...] = ()
+        packed_records: tuple[Any, ...] = ()
         packed_factor_base_verified = False
         if (
             not proof
@@ -2077,6 +2095,7 @@ class ClassUnitGroupEngine:
                 if verified is not None:
                     verified_values: Any = verified
                     records, primes = verified_values
+                    packed_records = tuple(packed_values)
                     packed_factor_base_verified = True
                     self._resource_usage["cubic_packed_factor_base_uses"] += 1
             except (
@@ -2106,11 +2125,14 @@ class ClassUnitGroupEngine:
                     )
                 primes = restored
                 packed_factor_base_verified = False
+                packed_records = ()
             else:
                 self._checkpoint_capture({"factor_base": primes})
         self._bind_context_factor_base(
             primes,
             validated=packed_factor_base_verified,
+            producer_records=packed_records,
+            canonical_records=(records if packed_factor_base_verified else ()),
         )
         if record_stage:
             self._phase_finish("factor-base", started)
@@ -2382,15 +2404,19 @@ class ClassUnitGroupEngine:
             remaining = self.limits.max_relations - len(initial_proposals)
             if remaining <= 0:
                 return collector
+            packed_factor_base = self._context_packed_factor_base(factor_base)
             candidates: Any = propose(
                 self.order,
                 factor_base,
                 maximum_candidates=remaining,
                 coefficient_bound=coefficient_bound,
+                power_factor_base=packed_factor_base,
                 cancelled=self.cancelled,
             )
             if candidates is None:
                 return collector
+            if packed_factor_base is not None:
+                self._resource_usage["cubic_relation_packed_factor_base_uses"] += 1
             selected: Any = select(
                 matrix,
                 tuple(proposal[1] for proposal in initial_proposals),

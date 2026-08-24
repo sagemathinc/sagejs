@@ -363,6 +363,7 @@ from sagejs.number_fields import class_group_relations as relation_module
 from sagejs.number_fields import maximal_order
 from sagejs.number_fields import prime_ideals
 from sagejs.number_fields.class_group_relations import reconstruct_factor_base_ideal
+from sagejs.number_fields.class_unit_context import ClassUnitGroupContext, ClassUnitProofState, _LIVE_CLASS_UNIT_CONTEXT_TOKEN
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -495,6 +496,29 @@ verified_materialization = (
 )
 assert verified_materialization is not None
 verified_records, verified_primes = verified_materialization
+for packed_record in verified_packed:
+    direct_table = cubic._integral_power_basis_cubic_modular_table(
+        verified_field.maximal_order(), packed_record.prime
+    )
+    assert direct_table == prime_ideals._modular_table(
+        verified_field.maximal_order(), packed_record.prime
+    )
+    direct_rows = cubic._packed_integral_cubic_candidate_rows(
+        [list(row) for row in packed_record.subspace], packed_record.prime
+    )
+    generic_rows = prime_ideals._packed_candidate_rows(
+        verified_field.maximal_order(),
+        [list(row) for row in packed_record.subspace],
+        packed_record.prime,
+    )
+    assert direct_rows is not None and generic_rows is not None
+    assert [
+        [[int(QQ(value)._numerator), int(QQ(value)._denominator)] for value in row]
+        for row in direct_rows
+    ] == [
+        [[int(value._numerator), int(value._denominator)] for value in row]
+        for row in generic_rows
+    ]
 assert [record.to_dict() for record in verified_records] == [
     record.to_dict() for record in factor_bases.build_factor_base(verified_plan)
 ]
@@ -502,6 +526,64 @@ assert all(
     not getattr(prime, "_packed_candidate_pending_replay", True)
     for prime in verified_primes
 )
+ordinary_candidates = cubic._packed_cubic_relation_candidates(
+    verified_field.maximal_order(),
+    verified_primes,
+    maximum_candidates=64,
+    cancelled=None,
+)
+retained_candidates = cubic._packed_cubic_relation_candidates(
+    verified_field.maximal_order(),
+    verified_primes,
+    maximum_candidates=64,
+    power_factor_base=verified_packed,
+    cancelled=None,
+)
+assert retained_candidates == ordinary_candidates
+
+# A live computation context may reuse these compact producer objects only
+# while every independently materialized prime identity and private producer
+# snapshot still matches.  The compact state is intentionally absent from a
+# detached context.
+live_context = ClassUnitGroupContext(
+    verified_field,
+    verified_field.maximal_order(),
+    ClassUnitProofState.unconditional(),
+)
+live_context._activate_live(
+    _LIVE_CLASS_UNIT_CONTEXT_TOKEN,
+    reusable=True,
+)
+live_context._bind_live_factor_base(
+    _LIVE_CLASS_UNIT_CONTEXT_TOKEN,
+    verified_primes,
+    validated=True,
+    producer_records=verified_packed,
+    canonical_records=verified_records,
+)
+assert live_context._live_packed_factor_base(
+    _LIVE_CLASS_UNIT_CONTEXT_TOKEN, verified_primes
+) == verified_packed
+saved_live_subspace = verified_packed[0].subspace
+verified_packed[0].subspace = tuple(
+    tuple((value + 1) if row == 0 and column == 0 else value for column, value in enumerate(values))
+    for row, values in enumerate(saved_live_subspace)
+)
+try:
+    assert live_context._live_packed_factor_base(
+        _LIVE_CLASS_UNIT_CONTEXT_TOKEN, verified_primes
+    ) is None
+finally:
+    verified_packed[0].subspace = saved_live_subspace
+assert live_context._live_packed_factor_base(
+    _LIVE_CLASS_UNIT_CONTEXT_TOKEN, verified_primes
+) == verified_packed
+detached_context = ClassUnitGroupContext.from_dict(
+    verified_field,
+    verified_field.maximal_order(),
+    live_context.to_dict(),
+)
+assert detached_context.live_diagnostics() == {}
 saved_verified_rows = verified_packed[0].rows
 mutated_rows = [list(row) for row in saved_verified_rows]
 mutated_rows[0][0] += 1

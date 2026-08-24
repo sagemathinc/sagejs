@@ -576,6 +576,9 @@ class _LiveClassUnitArtifacts:
         self.factor_base: tuple[Any, ...] = ()
         self.factor_base_bound = False
         self.factor_base_validation_available = False
+        self.packed_factor_base: tuple[Any, ...] = ()
+        self.factor_base_records: tuple[Any, ...] = ()
+        self.packed_factor_base_snapshots: tuple[Any, ...] = ()
         self.collector: Any = None
         self.relations: tuple[Any, ...] = ()
         self.presentation: Any = None
@@ -593,12 +596,50 @@ class _LiveClassUnitArtifacts:
         self.unit_group: Any = None
         self.sealed = False
 
-    def bind_factor_base(self, factor_base: Iterable[Any], *, validated: bool) -> None:
+    def bind_factor_base(
+        self,
+        factor_base: Iterable[Any],
+        *,
+        validated: bool,
+        producer_records: Iterable[Any] = (),
+        canonical_records: Iterable[Any] = (),
+    ) -> None:
         if self.sealed:
             raise ValueError("a sealed class/unit context cannot accept a factor base")
         self.factor_base = tuple(factor_base)
         self.factor_base_bound = True
         self.factor_base_validation_available = bool(self.reusable and validated)
+        self.packed_factor_base = ()
+        self.factor_base_records = ()
+        self.packed_factor_base_snapshots = ()
+        producers = tuple(producer_records)
+        records = tuple(canonical_records)
+        if not producers and not records:
+            return
+        if (
+            not self.factor_base_validation_available
+            or len(producers) != len(self.factor_base)
+            or len(records) != len(self.factor_base)
+        ):
+            raise ValueError("live packed factor-base evidence is incomplete")
+        snapshots: list[Any] = []
+        for producer, record, factor in zip(
+            producers, records, self.factor_base, strict=True
+        ):
+            snapshot = getattr(producer, "_live_authentication_snapshot", None)
+            matches = getattr(producer, "_live_materialization_matches", None)
+            if (
+                getattr(producer, "order", None) is not self.order
+                or getattr(record, "prime_ideal", None) is not factor
+                or not callable(snapshot)
+                or not callable(matches)
+                or not matches(record, factor)
+            ):
+                raise ValueError("live packed factor-base evidence changed")
+            snapshots.append(snapshot())
+        self.packed_factor_base = producers
+        self.factor_base_records = records
+        self.packed_factor_base_snapshots = tuple(snapshots)
 
     def factor_base_validated(self, factor_base: Iterable[Any]) -> bool:
         supplied = tuple(factor_base)
@@ -612,6 +653,50 @@ class _LiveClassUnitArtifacts:
                 for retained, current in zip(self.factor_base, supplied, strict=True)
             )
         )
+
+    def live_packed_factor_base(
+        self, factor_base: Iterable[Any]
+    ) -> tuple[Any, ...] | None:
+        """Return authenticated producer records for this exact live base."""
+        supplied = tuple(factor_base)
+        if (
+            not self.factor_base_validated(supplied)
+            or not self.packed_factor_base
+            or len(self.packed_factor_base) != len(supplied)
+            or len(self.factor_base_records) != len(supplied)
+            or len(self.packed_factor_base_snapshots) != len(supplied)
+        ):
+            return None
+        try:
+            for producer, record, factor, retained_snapshot in zip(
+                self.packed_factor_base,
+                self.factor_base_records,
+                supplied,
+                self.packed_factor_base_snapshots,
+                strict=True,
+            ):
+                snapshot = getattr(producer, "_live_authentication_snapshot", None)
+                matches = getattr(producer, "_live_materialization_matches", None)
+                if (
+                    getattr(producer, "order", None) is not self.order
+                    or getattr(record, "prime_ideal", None) is not factor
+                    or not callable(snapshot)
+                    or not callable(matches)
+                    or not matches(record, factor)
+                    or snapshot() != retained_snapshot
+                ):
+                    return None
+            return self.packed_factor_base
+        except (
+            AttributeError,
+            ArithmeticError,
+            IndexError,
+            KeyError,
+            OverflowError,
+            TypeError,
+            ValueError,
+        ):
+            return None
 
     def bind_relations(
         self,
@@ -1045,6 +1130,7 @@ class _LiveClassUnitArtifacts:
             "reusable": self.reusable,
             "sealed": self.sealed,
             "factor_base_size": len(self.factor_base),
+            "packed_factor_base_size": len(self.packed_factor_base),
             "has_factor_base": self.factor_base_bound,
             "factor_base_validation_available": (self.factor_base_validation_available),
             "relation_count": len(self.relations),
@@ -1214,13 +1300,24 @@ class ClassUnitGroupContext:
         return None if live is None else live.live_cubic_relation_prefix()
 
     def _bind_live_factor_base(
-        self, token: Any, factor_base: Iterable[Any], *, validated: bool
+        self,
+        token: Any,
+        factor_base: Iterable[Any],
+        *,
+        validated: bool,
+        producer_records: Iterable[Any] = (),
+        canonical_records: Iterable[Any] = (),
     ) -> None:
         if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
             raise TypeError("live factor-base state is engine-owned")
         live = self._live_artifacts
         if live is not None:
-            live.bind_factor_base(factor_base, validated=validated)
+            live.bind_factor_base(
+                factor_base,
+                validated=validated,
+                producer_records=producer_records,
+                canonical_records=canonical_records,
+            )
 
     def _live_factor_base_validated(
         self, token: Any, factor_base: Iterable[Any]
@@ -1229,6 +1326,14 @@ class ClassUnitGroupContext:
             raise TypeError("live factor-base state is engine-owned")
         live = self._live_artifacts
         return bool(live is not None and live.factor_base_validated(factor_base))
+
+    def _live_packed_factor_base(
+        self, token: Any, factor_base: Iterable[Any]
+    ) -> tuple[Any, ...] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live packed factor-base state is engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.live_packed_factor_base(factor_base)
 
     def _live_relation_payloads(
         self, token: Any, collector: Any, presentation: Any

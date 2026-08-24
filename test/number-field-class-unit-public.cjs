@@ -886,6 +886,7 @@ assert large_resources["cubic_factor_base_seed_uses"] == 0
 assert large_resources["cubic_relation_seed_uses"] == 0
 assert large_resources["cubic_specialized_seed_skips"] == 1
 assert large_resources["cubic_packed_factor_base_uses"] == 1
+assert large_resources["cubic_relation_packed_factor_base_uses"] == 1
 assert large_resources["cubic_verified_factor_base_collector_uses"] == 1
 assert large_resources["cubic_integral_sieve_uses"] == 1
 assert large_resources["cubic_integral_sieve_candidates"] == 27
@@ -898,6 +899,7 @@ assert large_resources["relation_attempts"] == 0
 assert large_resources["relation_candidates"] == 0
 assert large_resources["class_group_generator_reconstruction_calls"] == 1
 assert large_resources["class_group_generator_power_requests"] >= 1
+assert large_result.context.live_diagnostics()["packed_factor_base_size"] == 7
 assert L.class_number(proof=False) == 6
 assert L._bounded_cubic_class_number_artifact is large_artifact
 

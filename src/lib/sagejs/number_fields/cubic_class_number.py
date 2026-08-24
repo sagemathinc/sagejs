@@ -105,6 +105,14 @@ def _integer_rational(value: Any, name: str) -> int:
     return int(rational._numerator)
 
 
+def _cubic_rational_pair(value: Any) -> tuple[int, int]:
+    """Return one canonical rational pair without boxing integral payloads."""
+    if isinstance(value, int) and not isinstance(value, bool):
+        return int(value), 1
+    rational = sage.QQ(value)
+    return int(rational._numerator), int(rational._denominator)
+
+
 def _cubic_lcm(left: int, right: int) -> int:
     a = abs(int(left))
     b = abs(int(right))
@@ -196,17 +204,17 @@ class PackedCubicFactorRecord:
             key: list(value) if isinstance(value, (list, tuple)) else value
             for key, value in presentation.items()
         }
+        pairs = tuple(
+            tuple(_cubic_rational_pair(value) for value in row) for row in self.rows
+        )
         denominator = 1
-        for row in self.rows:
-            for value in row:
-                denominator = _cubic_lcm(denominator, int(value._denominator))
+        for row in pairs:
+            for _numerator, value_denominator in row:
+                denominator = _cubic_lcm(denominator, value_denominator)
         numerators: list[int] = []
-        for row in self.rows:
-            for value in row:
-                scaled = value * denominator
-                if scaled._denominator != 1:
-                    raise ArithmeticError("a packed cubic HNF did not clear exactly")
-                numerators.append(int(scaled._numerator))
+        for row in pairs:
+            for numerator, value_denominator in row:
+                numerators.append(numerator * (denominator // value_denominator))
         self.basis_numerators = tuple(numerators)
         self.basis_denominator = denominator
         witness_payload = second_generator_payload
@@ -365,7 +373,7 @@ class PackedCubicFactorRecord:
             "e": self.ramification,
             "f": self.residue_degree,
             "hnf_fingerprint": [
-                [[int(value._numerator), int(value._denominator)] for value in row]
+                [list(_cubic_rational_pair(value)) for value in row]
                 for row in self.rows
             ],
             "two_generator": encoded_generator,
@@ -377,6 +385,146 @@ class PackedCubicFactorRecord:
             "residue_modulus": list(self.presentation["modulus"]),
             "automorphism_orbit": None,
         }
+
+    def _live_authentication_snapshot(self) -> Any:
+        """Bind every compact producer field excluded from serialization."""
+        presentation = self.presentation
+        return (
+            self.index,
+            self.prime,
+            self.ramification,
+            self.residue_degree,
+            self.norm_value,
+            tuple(
+                tuple(_cubic_rational_pair(value) for value in row) for row in self.rows
+            ),
+            self.subspace,
+            tuple(int(value) for value in presentation["primitive"]),
+            tuple(
+                tuple(int(value) for value in row)
+                for row in presentation["quotient_matrix"]
+            ),
+            tuple(
+                tuple(int(value) for value in row)
+                for row in presentation["power_inverse"]
+            ),
+            tuple(int(value) for value in presentation["modulus"]),
+            self._second_generator_payload,
+            self.basis_numerators,
+            self.basis_denominator,
+            self.modular_one,
+            self.dedekind_kummer,
+        )
+
+    def _live_materialization_matches(self, record: Any, factor: Any) -> bool:
+        """Check the independently materialized prime without JSON allocation."""
+        encoded_generator: Any = None
+        if self._second_generator_payload is not None:
+            encoded_generator = (
+                self.prime,
+                self._second_generator_payload,
+            )
+        record_generator = record.two_generator
+        normalized_record_generator: Any = None
+        if record_generator is not None:
+            normalized_record_generator = (
+                int(record_generator["rational_prime"]),
+                tuple(
+                    (int(value[0]), int(value[1]))
+                    for value in record_generator["second_generator"]
+                ),
+            )
+        return bool(
+            self.order is getattr(factor, "_order", None)
+            and record.prime_ideal is factor
+            and int(record.index) == self.index
+            and int(record.rational_prime) == self.prime
+            and int(record.ramification_index) == self.ramification
+            and int(record.residue_degree) == self.residue_degree
+            and int(record.norm) == self.norm_value
+            and tuple(record.hnf_fingerprint)
+            == tuple(
+                tuple(_cubic_rational_pair(value) for value in row) for row in self.rows
+            )
+            and normalized_record_generator == encoded_generator
+            and tuple(record.residue_modulus)
+            == tuple(int(value) for value in self.presentation["modulus"])
+            and getattr(factor, "_packed_basis_cache", None)
+            == (self.basis_numerators, self.basis_denominator)
+        )
+
+
+def _packed_integral_cubic_candidate_rows(
+    subspace: list[list[int]], prime: int
+) -> list[list[int]] | None:
+    """Return one power-basis cubic ideal HNF without rational wrappers."""
+    if len(subspace) > 3 or any(len(row) != 3 for row in subspace):
+        return None
+    try:
+        kernel_module = __import__(
+            "sagejs.number_fields.bl_composite_kernel",
+            fromlist=["bl_composite_kernel"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        kernel = kernel_module.packed_prime_ideal_candidate_hnf_in_place
+        row_count = 3 + len(subspace)
+        entry_count = 3 * row_count
+        output = native_module.kernel_integer_zeros(kernel, entry_count, 16)
+        source = native_module.kernel_integer_zeros(kernel, entry_count, 16)
+        if not kernel(
+            output,
+            source,
+            native_module.kernel_integer_zeros(kernel, 6, 16),
+            native_module.kernel_integer_buffer(kernel, (1, 0, 0, 0, 1, 0, 0, 0, 1)),
+            native_module.kernel_integer_buffer(
+                kernel, [value for row in subspace for value in row]
+            ),
+            prime,
+            3,
+            len(subspace),
+        ):
+            return None
+        values = native_module.integer_buffer_values(output)
+        return [
+            [int(values[row * 3 + column]) for column in range(3)] for row in range(3)
+        ]
+    except (
+        AttributeError,
+        ImportError,
+        OverflowError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ):
+        return None
+
+
+def _integral_power_basis_cubic_modular_table(
+    order: Any, prime: int
+) -> list[list[list[int]]] | None:
+    """Recompute the cubic power-basis algebra directly modulo `prime`."""
+    if not _is_integral_cubic_power_basis(order):
+        return None
+    maximal_module = __import__(
+        "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
+    )
+    polynomial = maximal_module.integral_equation_polynomial(order.number_field())
+    coefficients = tuple(int(value) % prime for value in polynomial.list())
+    if len(coefficients) != 4 or coefficients[3] != 1:
+        return None
+    c0, c1, c2, _leading = coefficients
+    powers = (
+        (1, 0, 0),
+        (0, 1, 0),
+        (0, 0, 1),
+        ((-c0) % prime, (-c1) % prime, (-c2) % prime),
+        (
+            (c2 * c0) % prime,
+            (-c0 + c2 * c1) % prime,
+            (-c1 + c2 * c2) % prime,
+        ),
+    )
+    return [[list(powers[left + right]) for right in range(3)] for left in range(3)]
 
 
 def _packed_power_basis_dedekind_kummer_candidates(
@@ -442,7 +590,9 @@ def _packed_power_basis_dedekind_kummer_candidates(
             power_inverse = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
             residue_modulus = list(polynomial)
             second_generator = [0, 0, 0]
-        rows = prime_module._packed_candidate_rows(order, subspace, prime)
+        rows = _packed_integral_cubic_candidate_rows(subspace, prime)
+        if rows is None:
+            rows = prime_module._packed_candidate_rows(order, subspace, prime)
         if rows is None:
             return None
         answer.append(
@@ -469,7 +619,7 @@ def _packed_power_basis_dedekind_kummer_candidates(
             value
             for row in record["rows"]
             for entry in row
-            for value in (int(entry._numerator), int(entry._denominator))
+            for value in _cubic_rational_pair(entry)
         )
     )
     return answer
@@ -689,17 +839,27 @@ def materialize_verified_packed_cubic_factor_records(
             raise TypeError("a packed factor base crossed maximal-order identities")
         prime_ideal = prime_module.NumberFieldPrimeIdeal(
             packed.order,
-            [list(row) for row in packed.rows],
+            [[sage.QQ(value) for value in row] for row in packed.rows],
             packed.prime,
             packed.ramification,
             packed.residue_degree,
             dict(packed.presentation),
             _candidate_token=prime_module._PACKED_CANDIDATE_TOKEN,
         )
+        # The candidate token deliberately avoids the generic Matrix/HNF
+        # constructor.  Retain the exact integer basis which produced these
+        # rows so later valuation-power kernels need not inspect or re-clear
+        # their rational presentation.
+        prime_ideal._packed_basis_cache = (
+            packed.basis_numerators,
+            packed.basis_denominator,
+        )
         rational_prime = packed.prime
         modular_data = verified_modular_tables.get(rational_prime)
         if modular_data is None:
-            table = prime_module._modular_table(order, rational_prime)
+            table = _integral_power_basis_cubic_modular_table(order, rational_prime)
+            if table is None:
+                table = prime_module._modular_table(order, rational_prime)
             one = [
                 int(value) % rational_prime
                 for value in prime_module._order_one_coordinates(order)
@@ -1245,6 +1405,7 @@ def _packed_cubic_relation_candidates(
     maximum_candidates: int,
     coefficient_bound: int = _CUBIC_RELATION_SIEVE_BOUND,
     duplicate_row_norms: Iterable[int] | None = None,
+    power_factor_base: tuple[Any, ...] | None = None,
     cancelled: Callable[[], bool] | None,
 ) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
     """Propose small integral relations through two packed exact kernels.
@@ -1264,6 +1425,20 @@ def _packed_cubic_relation_candidates(
         or coefficient_bound > _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND
     ):
         return None
+    power_factors = factor_base
+    if power_factor_base is not None:
+        power_factors = tuple(power_factor_base)
+        if len(power_factors) != len(factor_base):
+            return None
+        for factor, retained in zip(factor_base, power_factors, strict=True):
+            if (
+                not isinstance(retained, PackedCubicFactorRecord)
+                or retained.order is not order
+                or retained.rational_prime() != int(factor.rational_prime())
+                or retained.norm_value
+                != _integer_rational(factor.norm(), "a factor-base norm")
+            ):
+                return None
     _check_cubic_cancelled(cancelled)
     kernel_module = __import__(
         "sagejs.number_fields.bl_composite_kernel", fromlist=["bl_composite_kernel"]
@@ -1365,7 +1540,7 @@ def _packed_cubic_relation_candidates(
             return None
         pending_packed_factors = tuple(
             (prime_ideal, maximum)
-            for prime_ideal, maximum in zip(factor_base, maxima, strict=True)
+            for prime_ideal, maximum in zip(power_factors, maxima, strict=True)
             if isinstance(prime_ideal, PackedCubicFactorRecord)
             and maximum > len(prime_ideal._power_cache)
         )
@@ -1389,7 +1564,7 @@ def _packed_cubic_relation_candidates(
         offsets = [0]
         prime_power_numerators: list[int] = []
         prime_power_denominators: list[int] = []
-        for prime_ideal, maximum in zip(factor_base, maxima, strict=True):
+        for prime_ideal, maximum in zip(power_factors, maxima, strict=True):
             packed_power_method = getattr(prime_ideal, "packed_power_bases", None)
             packed_powers: Any = (
                 packed_power_method(maximum)

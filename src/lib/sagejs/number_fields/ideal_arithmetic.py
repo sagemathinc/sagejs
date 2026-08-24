@@ -169,6 +169,13 @@ def _packed_membership_word_capacity(
     return max(16, (maximum.bit_length() + 63) // 64 + 1)
 
 
+def _packed_kernel_zeros(kernel: Any, length: int, word_capacity: int) -> Any:
+    """Allocate a compiled IntegerBuffer with explicit safe JS dimensions."""
+    return kernel_integer_zeros(
+        kernel, runtime.number(length), runtime.number(word_capacity)
+    )
+
+
 def _packed_element_membership(ideal: Any, element: Any) -> bool | None:
     """Test one exact element through the packed canonical HNF solver."""
     degree = int(ideal.number_field().degree())
@@ -535,12 +542,12 @@ def packed_ideal_power_bases_from_basis(
         buffer_entries = maximum * square + 2 * product_entries + 2 * degree
         if word_capacity > MAX_PACKED_IDEAL_POWER_CHAIN_BUFFER_WORDS // buffer_entries:
             return None
-        powers = kernel_integer_zeros(kernel, maximum * square, word_capacity)
+        powers = _packed_kernel_zeros(kernel, maximum * square, word_capacity)
         if not kernel(
             powers,
-            kernel_integer_zeros(kernel, product_entries, word_capacity),
-            kernel_integer_zeros(kernel, product_entries, word_capacity),
-            kernel_integer_zeros(kernel, 2 * degree, word_capacity),
+            _packed_kernel_zeros(kernel, product_entries, word_capacity),
+            _packed_kernel_zeros(kernel, product_entries, word_capacity),
+            _packed_kernel_zeros(kernel, 2 * degree, word_capacity),
             kernel_integer_buffer(kernel, basis),
             kernel_integer_buffer(kernel, tensor),
             degree,
@@ -631,12 +638,12 @@ def packed_ideal_power_basis_chains_from_bases(
         )
         if word_capacity > MAX_PACKED_IDEAL_POWER_CHAIN_BUFFER_WORDS // buffer_entries:
             return None
-        powers = kernel_integer_zeros(kernel, total_power_count * square, word_capacity)
+        powers = _packed_kernel_zeros(kernel, total_power_count * square, word_capacity)
         if not kernel(
             powers,
-            kernel_integer_zeros(kernel, product_entries, word_capacity),
-            kernel_integer_zeros(kernel, product_entries, word_capacity),
-            kernel_integer_zeros(kernel, 2 * degree, word_capacity),
+            _packed_kernel_zeros(kernel, product_entries, word_capacity),
+            _packed_kernel_zeros(kernel, product_entries, word_capacity),
+            _packed_kernel_zeros(kernel, 2 * degree, word_capacity),
             kernel_integer_buffer(kernel, bases),
             kernel_integer_buffer(kernel, offsets),
             kernel_integer_buffer(kernel, tensor),
