@@ -1327,6 +1327,7 @@ class ClassUnitGroupEngine:
             "class_group_generator_power_cache_hits": 0,
             "cubic_relation_seed_uses": 0,
             "cubic_relation_seed_relations": 0,
+            "cubic_relation_seed_materializations": 0,
             "cubic_factor_base_seed_uses": 0,
             "cubic_packed_factor_base_uses": 0,
             "cubic_verified_factor_base_collector_uses": 0,
@@ -4263,6 +4264,13 @@ class ClassUnitGroupEngine:
             )
             reader = getattr(module, "authenticated_cubic_relation_seed", None)
             seed: Any = reader(artifact, self.field) if callable(reader) else None
+            materialize = getattr(
+                module, "materialize_authenticated_cubic_relation_seed", None
+            )
+            if seed is not None and callable(materialize):
+                seed = materialize(seed, self.field)
+                if bool(getattr(seed, "materialized_from_packed", False)):
+                    self._resource_usage["cubic_relation_seed_materializations"] += 1
             self._authenticated_cubic_relation_seed_cache = seed
             return seed
         except (AttributeError, ImportError, TypeError, ValueError, ArithmeticError):
@@ -4351,6 +4359,7 @@ class ClassUnitGroupEngine:
                 plan = relation_seed.plan
                 factor_base = relation_seed.factor_base
                 self._resource_usage["cubic_factor_base_seed_uses"] += 1
+                self._bind_context_factor_base(factor_base, validated=True)
                 self._phase_finish("factor-base", started)
                 self._stage(
                     "factor-base",

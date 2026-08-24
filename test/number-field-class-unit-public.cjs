@@ -307,6 +307,69 @@ print("cubic-class-number-fast-ok")
   assert.equal(output, "cubic-class-number-fast-ok");
 });
 
+test("completed cubic class numbers seed the shared class-unit context", () => {
+  const output = runPublic(String.raw`
+import sagejs.number_fields.cubic_class_number as cubic_module
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 - 6*x - 12, "c")
+assert K.class_number(proof=False) == 3
+artifact = K._bounded_cubic_class_number_artifact
+assert artifact.complete and artifact.proof_status == "exact-unconditional"
+assert len(K._class_unit_engine_cache) == 0
+
+# The scalar request retains the exact packed producer stage.  It does not
+# construct ordinary ideals merely in case another API will need them.
+seed = cubic_module.authenticated_cubic_relation_seed(artifact, K)
+assert seed is not None
+assert len(seed.factor_base) == 5
+assert all(
+    isinstance(record, cubic_module.PackedCubicFactorRecord)
+    for record in seed.factor_base
+)
+assert len(artifact._packed_factor_records) == 5
+
+# A later coupled request materializes that exact stage once, transfers its
+# authenticated collector into the ClassUnitGroupContext, and resumes only
+# the missing unit-relation work.
+result = K.class_unit_group(proof=False)
+assert result.complete and result.class_number() == 3
+assert result.proof_status == "exact-unconditional"
+assert result.unit_group().unit_rank == 1
+resources = result.diagnostics["resources"]
+assert resources["cubic_factor_base_seed_uses"] == 1
+assert resources["cubic_relation_seed_uses"] == 1
+assert resources["cubic_relation_seed_relations"] == 5
+assert resources["cubic_relation_seed_materializations"] == 1
+assert resources["generation_verification_live_authentication_hits"] == 1
+assert resources["class_group_live_authentication_hits"] == 1
+live = result.context.live_diagnostics()
+assert live["sealed"] and live["reusable"]
+assert live["factor_base_validation_available"]
+assert live["factor_base_size"] == 5
+assert live["relation_count"] == len(result.conditional_relation_records)
+assert len(artifact._packed_factor_records) == 5
+
+# The retained prefix is only an optimization authority.  Mutation makes it
+# unavailable; restoring the exact producer state restores the live hint.
+T = NumberField(x**3 - x**2 - 6*x - 12, "t")
+assert T.class_number(proof=False) == 3
+forged = T._bounded_cubic_class_number_artifact
+forged_seed = cubic_module.authenticated_cubic_relation_seed(forged, T)
+assert forged_seed is not None
+packed = forged_seed.factor_records[0]
+retained_norm = packed.norm_value
+packed.norm_value += 1
+assert cubic_module.authenticated_cubic_relation_seed(forged, T) is None
+packed.norm_value = retained_norm
+assert cubic_module.authenticated_cubic_relation_seed(forged, T) is not None
+
+print("completed-cubic-context-seed-ok")
+`, 180_000);
+  assert.equal(output, "completed-cubic-context-seed-ok");
+});
+
 test("public cubic fallback resumes its authenticated exact relation prefix", () => {
   const output = runPublic(String.raw`
 import sagejs.number_fields.cubic_class_number as cubic_module

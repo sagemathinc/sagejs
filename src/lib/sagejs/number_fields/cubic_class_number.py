@@ -2004,11 +2004,20 @@ def _cubic_relation_seed_snapshot(seed: Any) -> Any:
 
     factor_records = []
     for record in seed.factor_records:
-        prime_ideal = record.prime_ideal
-        current_basis = tuple(
-            tuple((int(value._numerator), int(value._denominator)) for value in row)
-            for row in prime_ideal._basis_rows
-        )
+        if isinstance(record, PackedCubicFactorRecord):
+            prime_ideal = record
+            current_basis = tuple(
+                tuple((int(value._numerator), int(value._denominator)) for value in row)
+                for row in record.rows
+            )
+            residue_presentation = record.presentation
+        else:
+            prime_ideal = record.prime_ideal
+            current_basis = tuple(
+                tuple((int(value._numerator), int(value._denominator)) for value in row)
+                for row in prime_ideal._basis_rows
+            )
+            residue_presentation = prime_ideal._residue_presentation
         factor_records.append(
             (
                 id(record),
@@ -2018,7 +2027,7 @@ def _cubic_relation_seed_snapshot(seed: Any) -> Any:
                 int(prime_ideal.rational_prime()),
                 int(prime_ideal.ramification_index()),
                 int(prime_ideal.residue_class_degree()),
-                _canonical_json(prime_ideal._residue_presentation),
+                _canonical_json(residue_presentation),
             )
         )
 
@@ -2124,14 +2133,19 @@ class _AuthenticatedCubicRelationSeed:
     ) -> None:
         if token is not _AUTHENTICATED_CUBIC_RELATION_SEED_TOKEN:
             raise TypeError("cubic relation seeds are module-issued")
-        if type(result) is not CubicClassNumberResult or result.complete:
-            raise ValueError("a cubic relation seed needs an incomplete result")
+        if type(result) is not CubicClassNumberResult:
+            raise ValueError("a cubic relation seed needs a producer result")
         self.schema = AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA
         self._source_result = result
         self.field = result.field
         self.plan = plan
         self.factor_records = tuple(factor_records)
-        self.factor_base = tuple(result.factor_base)
+        self.factor_base = (
+            self.factor_records
+            if self.factor_records
+            and isinstance(self.factor_records[0], PackedCubicFactorRecord)
+            else tuple(result.factor_base)
+        )
         self.collector = collector
         self.presentation = presentation
         self.search_state = search_state
@@ -2148,17 +2162,31 @@ class _AuthenticatedCubicRelationSeed:
         try:
             result = self._source_result
             order = self.field.maximal_order()
+            packed = bool(
+                self.factor_records
+                and isinstance(self.factor_records[0], PackedCubicFactorRecord)
+            )
+            result_factors = (
+                tuple(result.__dict__.get("_packed_factor_records", ()))
+                if packed
+                else tuple(result.factor_base)
+            )
             return bool(
                 type(result) is CubicClassNumberResult
                 and result.field is self.field
-                and not result.complete
                 and self.plan.order is order
                 and not tuple(self.plan.assumptions)
                 and "Minkowski" in str(self.plan.theorem)
-                and tuple(result.factor_base) == self.factor_base
+                and len(result_factors) == len(self.factor_base)
+                and all(
+                    retained is supplied
+                    for retained, supplied in zip(
+                        result_factors, self.factor_base, strict=True
+                    )
+                )
                 and len(self.factor_records) == len(self.factor_base)
                 and all(
-                    record.prime_ideal is ideal
+                    (record is ideal if packed else record.prime_ideal is ideal)
                     for record, ideal in zip(
                         self.factor_records, self.factor_base, strict=True
                     )
@@ -2226,6 +2254,60 @@ def authenticated_cubic_relation_seed(result: Any, field: Any) -> Any:
     ):
         return seed
     return None
+
+
+class _MaterializedCubicRelationSeed:
+    """One verified packed relation prefix decoded for the coupled engine."""
+
+    def __init__(
+        self,
+        source: _AuthenticatedCubicRelationSeed,
+        factor_records: tuple[Any, ...],
+        factor_base: tuple[Any, ...],
+        collector: Any,
+    ) -> None:
+        self.schema = AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA
+        self._source_seed = source
+        self.field = source.field
+        self.plan = source.plan
+        self.factor_records = tuple(factor_records)
+        self.factor_base = tuple(factor_base)
+        self.collector = collector
+        self.presentation = source.presentation
+        self.search_state = source.search_state
+        self.materialized_from_packed = True
+        runtime.object.freeze(self)
+
+
+def materialize_authenticated_cubic_relation_seed(seed: Any, field: Any) -> Any:
+    """Decode a live packed prefix only when the coupled engine consumes it."""
+    if (
+        type(seed) is not _AuthenticatedCubicRelationSeed
+        or seed.field is not field
+        or not seed.certified
+    ):
+        return None
+    if not seed.factor_records or not isinstance(
+        seed.factor_records[0], PackedCubicFactorRecord
+    ):
+        return seed
+    try:
+        factor_records, factor_base = _materialize_packed_cubic_factor_records(
+            seed.factor_records
+        )
+        relations = __import__(
+            "sagejs.number_fields.class_group_relations",
+            fromlist=["class_group_relations"],
+        )
+        collector = seed.collector.rebind_verified_factor_base(
+            factor_base,
+            _validated_token=relations._VALIDATED_FACTOR_BASE_TOKEN,
+        )
+        return _MaterializedCubicRelationSeed(
+            seed, factor_records, factor_base, collector
+        )
+    except (AttributeError, ArithmeticError, TypeError, ValueError):
+        return None
 
 
 class _AuthenticatedCubicClassNumberResult:
@@ -3059,40 +3141,47 @@ def bounded_cubic_minkowski_class_number(
         raise ArithmeticError("cubic class-number evidence changed during encoding")
     phase_timings["certificate_encoding"] = time.perf_counter() - encoding_started
     phase_timings["total"] = time.perf_counter() - total_started
-    return _issue_cubic_class_number_result(
-        CubicClassNumberResult(
-            field,
-            True,
-            certificate.source,
-            int(plan.bound),
-            certificate=certificate,
-            factor_base=(
-                ()
-                if factor_base and isinstance(factor_base[0], PackedCubicFactorRecord)
-                else factor_base
-            ),
-            relation_records=relation_records,
-            presentation=presentation,
-            diagnostics={
-                "algorithm": "bounded-cubic-minkowski-p-lines",
-                "phase_timings": dict(phase_timings),
-                "factor_base_size": len(factor_base),
-                "relations": len(relation_records),
-                "presentation_rank": int(presentation.rank),
-                "quotient_order": quotient_order,
-                "projective_lines": len(line_specs),
-                "residue_states": residue_states,
-                "relation_search": dict(relation_metrics),
-                "caps": dict(checked_caps),
-            },
-            _packed_factor_records=(
-                tuple(factor_records)
-                if factor_records
-                and isinstance(factor_records[0], PackedCubicFactorRecord)
-                else ()
-            ),
-        )
+    result = CubicClassNumberResult(
+        field,
+        True,
+        certificate.source,
+        int(plan.bound),
+        certificate=certificate,
+        factor_base=(
+            ()
+            if factor_base and isinstance(factor_base[0], PackedCubicFactorRecord)
+            else factor_base
+        ),
+        relation_records=relation_records,
+        presentation=presentation,
+        diagnostics={
+            "algorithm": "bounded-cubic-minkowski-p-lines",
+            "phase_timings": dict(phase_timings),
+            "factor_base_size": len(factor_base),
+            "relations": len(relation_records),
+            "presentation_rank": int(presentation.rank),
+            "quotient_order": quotient_order,
+            "projective_lines": len(line_specs),
+            "residue_states": residue_states,
+            "relation_search": dict(relation_metrics),
+            "caps": dict(checked_caps),
+        },
+        _packed_factor_records=(
+            tuple(factor_records)
+            if factor_records and isinstance(factor_records[0], PackedCubicFactorRecord)
+            else ()
+        ),
     )
+    if relation_search_state is not None:
+        result = _issue_cubic_relation_seed(
+            result,
+            plan,
+            tuple(factor_records),
+            collector,
+            presentation,
+            relation_search_state,
+        )
+    return _issue_cubic_class_number_result(result)
 
 
 __all__ = [
