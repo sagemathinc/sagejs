@@ -21,6 +21,9 @@ const {
   verifyWasmMemoryContract,
   writeProductionReceipt,
 } = require("./production-receipt.cjs");
+const autoReceiptPolicyApi = require(
+  "../../../tools/math-dispatch/hyperelliptic-auto-receipt-policy.cjs"
+);
 const { kernelPackExports } = require("./kernel-pack-exports.cjs");
 
 const packageRoot = path.resolve(__dirname, "..");
@@ -136,6 +139,15 @@ const serializationOutput = path.join(
 const plotlyOutput = path.join(outputDirectory, "plotly.min.js");
 const capabilityApiOutput = path.join(outputDirectory, "wasm-capability-api.mjs");
 const capabilityReportOutput = path.join(outputDirectory, "wasm-capabilities-report.json");
+const autoReceiptPolicySource = path.join(
+  repositoryRoot,
+  "architecture",
+  "hyperelliptic-auto-receipt-policy.json",
+);
+const autoReceiptPolicyOutput = path.join(
+  outputDirectory,
+  "hyperelliptic-auto-receipt-policy.json",
+);
 const compilerSource = path.join(
   repositoryRoot,
   "dist",
@@ -865,6 +877,29 @@ fs.writeFileSync(
     programs: dynamicPrograms,
   }),
 );
+const rawAutoReceiptPolicy = JSON.parse(
+  fs.readFileSync(autoReceiptPolicySource, "utf8"),
+);
+const verifiedAutoReceiptPolicy = autoReceiptPolicyApi.verifyPolicy(
+  rawAutoReceiptPolicy,
+  {
+    root: repositoryRoot,
+    sourceCommit: rawAutoReceiptPolicy.enabled
+      ? rawAutoReceiptPolicy.source_bundle.source_commit
+      : null,
+  },
+);
+fs.writeFileSync(
+  autoReceiptPolicyOutput,
+  JSON.stringify({
+    schema: verifiedAutoReceiptPolicy.schema,
+    enabled: verifiedAutoReceiptPolicy.enabled,
+    required_platforms: verifiedAutoReceiptPolicy.required_platforms,
+    source_bundle_contract: verifiedAutoReceiptPolicy.source_bundle_contract,
+    source_bundle: verifiedAutoReceiptPolicy.source_bundle,
+    entries: verifiedAutoReceiptPolicy.entries,
+  }),
+);
 fs.copyFileSync(
   require.resolve("plotly.js-dist-min/plotly.min.js"),
   plotlyOutput,
@@ -938,6 +973,13 @@ const receipt = writeProductionReceipt({
     ...["web-tree-sitter.wasm", "tree-sitter-python.wasm", "tree-sitter-sage.wasm"]
       .map((name) => path.join(vendorDirectory, name)),
     ...runtimeHostClosure.map(({ source }) => source),
+    autoReceiptPolicySource,
+    path.join(
+      repositoryRoot,
+      "tools",
+      "math-dispatch",
+      "hyperelliptic-auto-receipt-policy.cjs",
+    ),
     ...standardLibraryReceiptInputs,
     ...dynamicProgramInputs,
     lazyModuleGenerator,

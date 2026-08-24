@@ -370,9 +370,7 @@ function resultLocals(results, fn) {
         `    sagejs_wasm_result_f64_storage_m_$MODULE[${index}] = ${name};`,
       );
     } else {
-      const cType = type === "bool" && fn.kernelKind !== "prime-field-source"
-        ? "int"
-        : "uint64_t";
+      const cType = type === "bool" ? "int" : "uint64_t";
       declarations.push(`    ${cType} ${name} = 0;`);
       arguments_.push(`&${name}`);
       stores.push(

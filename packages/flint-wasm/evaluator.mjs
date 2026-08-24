@@ -26,6 +26,7 @@ import {
   capabilityTraceInstrumentation,
   createCapabilityDispatchTrace,
 } from "./capability-trace.mjs";
+import { createBrowserAutoReceiptPolicyRuntime } from "./auto-receipt-policy.mjs";
 
 function deserializeError(serialized) {
   const constructors = {
@@ -387,6 +388,10 @@ export async function instantiateSageEvaluator({
   pythonGrammar = new URL("./dist/tree-sitter-python.wasm", import.meta.url),
   sageGrammar = new URL("./dist/tree-sitter-sage.wasm", import.meta.url),
   capabilityReport = new URL("./dist/wasm-capabilities-report.json", import.meta.url),
+  autoReceiptPolicy = new URL(
+    "./dist/hyperelliptic-auto-receipt-policy.json",
+    import.meta.url,
+  ),
   WorkerConstructor = globalThis.Worker,
   instantiateFlint = instantiateFlintFactor,
   instantiateM4riBackend = instantiateM4ri,
@@ -404,6 +409,7 @@ export async function instantiateSageEvaluator({
   },
   evaluateGlobal = globalThis.eval,
   fetchCapabilityReport = globalThis.fetch,
+  fetchAutoReceiptPolicy = globalThis.fetch,
 }) {
   const language = new CompilerWorker(compilerWorker, WorkerConstructor);
   const globals = createGlobalInstaller(globalThis);
@@ -445,6 +451,7 @@ export async function instantiateSageEvaluator({
   let wasmNativeResolver;
   let capabilityApi;
   let capabilityReportResponse;
+  let autoReceiptPolicyResponse;
   let dynamicProgramBundle;
   const useSynchronousCompilerWorker = supportsSynchronousCompilerWorker();
   try {
@@ -459,6 +466,7 @@ export async function instantiateSageEvaluator({
       m4riBackend,
       symbolicBackendModule,
       capabilityReportResponse,
+      autoReceiptPolicyResponse,
       dynamicProgramBundle,
     ] = await Promise.all([
       language.request("initialize", {
@@ -483,6 +491,7 @@ export async function instantiateSageEvaluator({
       }),
       importSymbolic(symbolic),
       fetchCapabilityReport(String(capabilityReport)),
+      fetchAutoReceiptPolicy(String(autoReceiptPolicy)),
       useSynchronousCompilerWorker
         ? Promise.resolve(undefined)
         : fetchDynamicPrograms(dynamicPrograms),
@@ -513,6 +522,20 @@ export async function instantiateSageEvaluator({
       );
     }
     capabilityApi = createSagejsCapabilityAPI(await capabilityReportResponse.json());
+    if (!autoReceiptPolicyResponse.ok) {
+      throw new Error(
+        `unable to load hyperelliptic receipt policy (${autoReceiptPolicyResponse.status})`,
+      );
+    }
+    const autoReceiptRuntime = createBrowserAutoReceiptPolicyRuntime(
+      await autoReceiptPolicyResponse.json(),
+    );
+    installGlobal("__sagejs_hyperelliptic_auto_receipt_policy__", autoReceiptRuntime);
+    Object.defineProperty(
+      globalThis,
+      "__sagejs_hyperelliptic_auto_receipt_policy__",
+      { configurable: true, enumerable: false, writable: false },
+    );
     if (nativeKernels !== undefined) {
       const manifestUrl = new URL(String(nativeKernels), import.meta.url);
       const response = await fetch(manifestUrl);

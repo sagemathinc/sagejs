@@ -453,12 +453,13 @@
       "id": "hyperelliptic-curves-kernels",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 240000,
+      "max_source_bytes": 255000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic",
         "hyperelliptic-curves"
       ],
       "modules": [
+        "sagejs.hyperelliptic_curves.auto_receipt_policy",
         "sagejs.hyperelliptic_curves.genus2_kummer_formulas",
         "sagejs.hyperelliptic_curves.genus2_kummer_height_kernel",
         "sagejs.hyperelliptic_curves.genus3_candidate_kernel",
@@ -468,6 +469,7 @@
         "sagejs.hyperelliptic_curves.rational_reduction_kernels"
       ],
       "files": [
+        "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",
         "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_formulas.py",
         "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_height_kernel.py",
         "src/lib/sagejs/hyperelliptic_curves/genus3_candidate_kernel.py",
@@ -482,7 +484,7 @@
       "id": "hyperelliptic-curves-algorithms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 815000,
+      "max_source_bytes": 835000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic",
         "linear-algebra", "numeric-compat", "hyperelliptic-curves",

@@ -73,7 +73,10 @@ function main() {
   }
   const policy = verifyPolicy(rawPolicy, {
     root: options.root,
-    sourceCommit: rawPolicy.enabled ? sourceCommit(options.root) : null,
+    // The policy and receipts are necessarily committed after the frozen
+    // mathematical source. The framed source-bundle digest authenticates the
+    // current files; this field authenticates the exact benchmark revision.
+    sourceCommit: rawPolicy.enabled ? rawPolicy.source_bundle.source_commit : null,
   });
   if (options.command === "verify") {
     process.stdout.write(

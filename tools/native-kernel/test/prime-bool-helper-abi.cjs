@@ -10,6 +10,7 @@ const test = require("node:test");
 const { generateArtifacts } = require("../c-backend.cjs");
 const { compileKernel } = require("../compiler.cjs");
 const { lowerSource } = require("../ir.cjs");
+const { generateWasmBridge } = require("../wasm-bridge.cjs");
 
 const root = resolve(__dirname, "../../..");
 const sagejs = join(root, "bin", "sagejs");
@@ -67,6 +68,16 @@ test("prime-source bool results use one consistent C ABI", async () => {
     artifacts.adapterSource,
     /compiled_normalize_nonzero_batch\([\s\S]*?int output = 0;[\s\S]*?sagejs_kernel_normalize_nonzero_batch\(&status, &output,/,
   );
+  const wasm = generateWasmBridge({
+    ir,
+    moduleIdentity: "0123456789abcdef",
+    functionNames: ["normalize_nonzero_batch"],
+  });
+  assert.match(
+    wasm.source,
+    /int sagejs_result_0 = 0;[\s\S]*?sagejs_kernel_m_0123456789abcdef_normalize_nonzero_batch\([\s\S]*?&sagejs_result_0,/,
+  );
+  assert.doesNotMatch(wasm.source, /uint64_t sagejs_result_0 = 0;/);
 });
 
 test("bool helper mutation agrees in dynamic, native, and CPython", async () => {

@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
@@ -282,7 +283,6 @@ kummer_exact = (
     kummer.double_batch(kummer_input)
     == reference_kummer.double_batch(kummer_input)
 )
-
 print(json.dumps({
     "decision": decision.to_dict(),
     "prepared": prepared_selected,
@@ -342,12 +342,9 @@ test("verified runtime objects are immutable and fail closed without an entry", 
 test("an enabled empty policy gates auto while explicit accelerators remain collectable", (context) => {
   const item = enabledEmptyPolicy();
   context.after(() => fs.rmSync(item.root, { recursive: true, force: true }));
-  const preloadFile = preload(item, "enabled");
   const output = runSage(selectorWitness, {
-    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require=${preloadFile}`.trim(),
-    SAGEJS_TEST_RECEIPT_POLICY_MODE: "enabled",
-    SAGEJS_TEST_RECEIPT_POLICY_FILE: item.filename,
-    SAGEJS_TEST_RECEIPT_POLICY_ROOT: item.root,
+    SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY: item.filename,
+    SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_ROOT: item.root,
   });
   const observed = parseSageJson(output);
   assert.equal(observed.decision.allowed, false);
@@ -369,7 +366,9 @@ test("an enabled empty policy gates auto while explicit accelerators remain coll
 test("absent and verified disabled policies preserve development auto selection", (context) => {
   const item = enabledEmptyPolicy();
   context.after(() => fs.rmSync(item.root, { recursive: true, force: true }));
-  const absent = parseSageJson(runSage(selectorWitness));
+  const absent = parseSageJson(runSage(selectorWitness, {
+    SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY: "off",
+  }));
   assert.equal(absent.decision.allowed, true);
   assert.equal(absent.decision.reason, "development-auto-policy-absent");
   assert.equal(absent.prepared[0], "native");
@@ -377,19 +376,66 @@ test("absent and verified disabled policies preserve development auto selection"
   assert.equal(absent.kummer_selected, absent.kummer_compiled);
   assert.equal(absent.group_auto, "smalljac");
 
-  const preloadFile = preload(item, "disabled");
-  const disabled = parseSageJson(
-    runSage(selectorWitness, {
-      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require=${preloadFile}`.trim(),
-      SAGEJS_TEST_RECEIPT_POLICY_MODE: "disabled",
-    }),
-  );
+  const disabled = parseSageJson(runSage(selectorWitness));
   assert.equal(disabled.decision.allowed, true);
   assert.equal(disabled.decision.reason, "policy-disabled");
   assert.equal(disabled.prepared[0], "native");
   assert.equal(disabled.rational_auto, "smalljac");
   assert.equal(disabled.kummer_selected, disabled.kummer_compiled);
   assert.equal(disabled.group_auto, "smalljac");
+});
+
+test("the isolated task runtime installs the checked policy before callables", (context) => {
+  const item = enabledEmptyPolicy();
+  context.after(() => fs.rmSync(item.root, { recursive: true, force: true }));
+  const taskEvaluator = path.join(ROOT, "dist", "tools", "task-evaluator.js");
+  const source = String.raw`
+const { createTaskEvaluator } = require(${JSON.stringify(taskEvaluator)});
+const evaluator = createTaskEvaluator({ mode: "sage", onOutput() {} });
+const provider = globalThis[${JSON.stringify(RUNTIME_GLOBAL)}];
+const result = provider.decide(
+  "prime-cantor", "add", ${JSON.stringify(FINGERPRINT)},
+  "prime-cantor-odd-v1", 2, "prime-field", "odd-degree-one-infinity",
+  "zero", 1009, 1009, 1009, 1, 0, 352,
+);
+process.stdout.write(result.reason + "\n");
+evaluator.close();
+`;
+  const result = spawnSync(process.execPath, ["-e", source], {
+    cwd: ROOT,
+    encoding: "utf8",
+    timeout: 180_000,
+    env: {
+      ...process.env,
+      SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY: item.filename,
+      SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_ROOT: item.root,
+    },
+  });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(result.stdout.trim(), "unreceipted-fallback");
+});
+
+test("trusted startup rejects a provider installed before Sage.js", (context) => {
+  const item = enabledEmptyPolicy();
+  context.after(() => fs.rmSync(item.root, { recursive: true, force: true }));
+  const preloadFile = preload(item, "enabled");
+  const result = spawnSync(SAGEJS, [], {
+    cwd: ROOT,
+    encoding: "utf8",
+    input: "print(1)\n",
+    timeout: 180_000,
+    env: {
+      ...process.env,
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require=${preloadFile}`.trim(),
+      SAGEJS_TEST_RECEIPT_POLICY_MODE: "enabled",
+      SAGEJS_TEST_RECEIPT_POLICY_FILE: item.filename,
+      SAGEJS_TEST_RECEIPT_POLICY_ROOT: item.root,
+    },
+  });
+  if (result.error) throw result.error;
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /existed before trusted startup/);
 });
 
 test("the candidate remains disabled and binds the selector/provider source", () => {
@@ -402,6 +448,54 @@ test("the candidate remains disabled and binds the selector/provider source", ()
     "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",
   ));
   assert(candidate.source_bundle_contract.paths.includes(
+    "tools/math-dispatch/hyperelliptic-auto-receipt-loader.cjs",
+  ));
+  assert(candidate.source_bundle_contract.paths.includes(
     "tools/math-dispatch/hyperelliptic-auto-receipt-policy.cjs",
   ));
+  assert(candidate.source_bundle_contract.paths.includes("tools/runtime-bootstrap.ts"));
+});
+
+test("the portable provider enforces the same model and workload envelope", async () => {
+  const module = await import(pathToFileURL(path.join(
+    ROOT,
+    "packages",
+    "flint-wasm",
+    "auto-receipt-policy.mjs",
+  )));
+  const policy = {
+    enabled: true,
+    source_bundle: { sha256: "b".repeat(64) },
+    entries: [{
+      id: "portable-cantor-add",
+      enabled: true,
+      backend: "prime-cantor",
+      operation: "add",
+      platforms: [...PLATFORMS],
+      source_bundle_sha256: "b".repeat(64),
+      model: { kind: "exact-fingerprint", fingerprints: [FINGERPRINT] },
+      envelope: {
+        prime_min: 1009,
+        prime_max: 1009,
+        interval_start_min: 1009,
+        interval_stop_max: 1009,
+        interval_span_max: 1,
+        batch_items_min: 1,
+        batch_items_max: 64,
+        scalar_bits_max: 0,
+        resource_bytes_max: 4096,
+      },
+    }],
+  };
+  const runtime = module.createBrowserAutoReceiptPolicyRuntime(policy);
+  assert.equal(decide(runtime).selected, true);
+  assert.equal(decide(runtime).entry_id, "portable-cantor-add");
+  assert.equal(decide(runtime, { batchItems: 65 }).selected, false);
+  assert.equal(decide(runtime, { fingerprint: "c".repeat(64) }).selected, false);
+  const disabled = module.createBrowserAutoReceiptPolicyRuntime({
+    enabled: false,
+    source_bundle: null,
+    entries: [],
+  });
+  assert.equal(decide(disabled).reason, "policy-disabled");
 });
