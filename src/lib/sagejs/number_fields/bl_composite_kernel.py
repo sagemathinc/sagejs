@@ -8,7 +8,7 @@ without a matching artifact execute these same ordinary Python bodies.
 
 from __future__ import annotations
 
-from sagejs.native import IntegerBuffer, native, uint64
+from sagejs.native import IntegerBuffer, NativeIntegerVector, native, uint64
 
 
 @native
@@ -717,56 +717,62 @@ def packed_factor_base_rows_in_place(
     metadata[0] = 0
     metadata[1] = candidate_count
     metadata[2] = prime_power_count
-    candidate_index = 0
-    while candidate_index < candidate_count:
-        coordinate = 0
-        while coordinate < degree:
-            value = 0
-            basis_index = 0
-            while basis_index < degree:
-                value += (
-                    coefficient_vectors[candidate_index * degree + basis_index]
-                    * order_basis_numerators[basis_index * degree + coordinate]
-                )
-                basis_index += 1
-            workspace[coordinate] = value
-            coordinate += 1
-        row_norm = 1
-        any_valuation = False
-        factor_index = 0
-        while factor_index < factor_count:
-            valuation = 0
-            power_index = factor_offsets[factor_index]
-            stop = factor_offsets[factor_index + 1]
-            member = True
-            while member and power_index < stop:
-                member = _packed_upper_hnf_contains(
-                    prime_power_numerators,
-                    power_index * square,
-                    prime_power_denominators[power_index],
-                    workspace,
-                    order_basis_denominator,
-                    degree,
-                    workspace,
-                    degree,
-                )
-                if member:
-                    valuation += 1
-                    any_valuation = True
-                power_index += 1
-            row_output[candidate_index * factor_count + factor_index] = valuation
-            exponent = 0
-            while exponent < valuation:
-                row_norm *= factor_norms[factor_index]
-                exponent += 1
-            factor_index += 1
-        norm = absolute_norms[candidate_index]
-        if norm > 1 and any_valuation and row_norm == norm:
-            smooth_output[candidate_index] = 1
-            metadata[0] += 1
-        else:
-            smooth_output[candidate_index] = 0
-        candidate_index += 1
+    # Keep the order-basis matrix-vector accumulation live in one exact
+    # workspace.  Publishing only the completed coordinates removes one
+    # IntegerBuffer read/write crossing for every multiply-add while the
+    # canonical caller-owned buffers remain the sole semantic authority.
+    with NativeIntegerVector(maximum_degree, 65536) as exact_coordinates:
+        candidate_index = 0
+        while candidate_index < candidate_count:
+            coordinate = 0
+            while coordinate < degree:
+                exact_coordinates[coordinate] = 0
+                basis_index = 0
+                while basis_index < degree:
+                    exact_coordinates.addmul(
+                        coordinate,
+                        coefficient_vectors[candidate_index * degree + basis_index],
+                        order_basis_numerators[basis_index * degree + coordinate],
+                    )
+                    basis_index += 1
+                workspace[coordinate] = exact_coordinates[coordinate]
+                coordinate += 1
+            row_norm = 1
+            any_valuation = False
+            factor_index = 0
+            while factor_index < factor_count:
+                valuation = 0
+                power_index = factor_offsets[factor_index]
+                stop = factor_offsets[factor_index + 1]
+                member = True
+                while member and power_index < stop:
+                    member = _packed_upper_hnf_contains(
+                        prime_power_numerators,
+                        power_index * square,
+                        prime_power_denominators[power_index],
+                        workspace,
+                        order_basis_denominator,
+                        degree,
+                        workspace,
+                        degree,
+                    )
+                    if member:
+                        valuation += 1
+                        any_valuation = True
+                    power_index += 1
+                row_output[candidate_index * factor_count + factor_index] = valuation
+                exponent = 0
+                while exponent < valuation:
+                    row_norm *= factor_norms[factor_index]
+                    exponent += 1
+                factor_index += 1
+            norm = absolute_norms[candidate_index]
+            if norm > 1 and any_valuation and row_norm == norm:
+                smooth_output[candidate_index] = 1
+                metadata[0] += 1
+            else:
+                smooth_output[candidate_index] = 0
+            candidate_index += 1
     return True
 
 

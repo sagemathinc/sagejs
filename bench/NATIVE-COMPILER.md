@@ -486,6 +486,16 @@ deliberately not yet a general arena, resizable container, or owned aggregate
 result. The production relation-admission witness and its stage-resolved
 receipt determine which additional storage feature is implemented next.
 
+The first production-shaped witness is
+`packed_factor_base_rows_in_place` in
+`sagejs.number_fields.bl_composite_kernel`. Its order-basis matrix-vector
+accumulation keeps one exact vector live across the complete authenticated
+cubic relation-row batch and publishes only completed coordinates back to the
+canonical `IntegerBuffer` evidence. The surrounding candidate generation,
+authority validation, relation-record construction, public scalar observation,
+bulk certificate gather, and detached replay are measured separately by
+[`native-machine-model-c0.py`](class-unit-groups/native-machine-model-c0.py).
+
 ## Performance
 
 Run the comparative benchmark with:

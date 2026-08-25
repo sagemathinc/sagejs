@@ -315,6 +315,7 @@
     "bench:cowasm:ceilings": "node bench/cowasm/direct-ceilings.cjs",
     "bench:native": "node bench/compare-native-compiler.cjs",
     "bench:native:live-exact-vector": "node bench/compare-native-live-exact-vector.cjs",
+    "bench:native:machine-model-c0": "node bin/sagejs --sage bench/class-unit-groups/native-machine-model-c0.py",
     "bench:polyglot": "node bench/polyglot.cjs",
     "bench:audit:pilot": "node bench/compare-quadratic-class-groups.cjs --json",
     "audit:competitive": "node --test test/website.cjs test/coverage-python-stdlib.cjs test/coverage-graphics3d.cjs test/audit-gaps.cjs",

@@ -13,6 +13,10 @@ const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 
 const sourcePath = resolve(__dirname, "../bench/native_live_exact_vector.py");
+const productionSourcePath = resolve(
+  __dirname,
+  "../src/lib/sagejs/number_fields/bl_composite_kernel.py",
+);
 
 test("live exact vectors have one lexical GMP ownership implementation", async () => {
   const source = readFileSync(sourcePath, "utf8");
@@ -168,5 +172,36 @@ test("live exact vector owners cannot escape or alias", async () => {
       "live-vector-close.py",
     ),
     /unsupported NativeIntegerVector method close/,
+  );
+});
+
+test("the cubic relation row witness keeps exact accumulation live", async () => {
+  const source = readFileSync(productionSourcePath, "utf8");
+  const ir = await lowerSource(source, productionSourcePath);
+  const rows = ir.functions.find(
+    (fn) => fn.name === "packed_factor_base_rows_in_place",
+  );
+  assert.ok(rows);
+  assert.equal(rows.analysis.execution.liveExactScopes, 1);
+  assert.equal(rows.analysis.backend.kind, "gmp");
+  assert.equal(rows.analysis.backend.requiresExactWorkspace, true);
+  assert.equal(
+    rows.analysis.liveExactWorkspace.scopes[0].owner,
+    "exact_coordinates",
+  );
+  assert.equal(
+    rows.analysis.liveExactWorkspace.scopes[0].capacity,
+    "maximum_degree",
+  );
+  const scope = rows.body.find(
+    (operation) => operation.kind === "integer.vector.scope",
+  );
+  assert.ok(scope);
+  assert.ok(JSON.stringify(scope).includes("integer.vector.addmul"));
+
+  const core = generateHostCore(ir);
+  assert.match(
+    core.source,
+    /native_packed_factor_base_rows_in_place[\s\S]*?sagejs_native_integer_vector_addmul\(/,
   );
 });
