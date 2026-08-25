@@ -1,0 +1,51 @@
+{
+  "schema": "sagejs.hyperelliptic-even-degree-sage-oracle.v1",
+  "source": {
+    "name": "SageMath",
+    "upstream_merge_commit": "3f60901",
+    "pull_request": "https://github.com/sagemath/sage/pull/42373",
+    "generator": "bench/hyperelliptic/oracles/even-degree-jacobian-sage.sage",
+    "classification": "independent external exact arithmetic oracle"
+  },
+  "rows": [
+    {
+      "name": "sage-pr-42373-point-minus-itself",
+      "repr": "(1, 0 : 2)",
+      "is_zero": true
+    },
+    {
+      "name": "genus3-point-P",
+      "repr": "(x + 12, 4 : 1)",
+      "is_zero": false
+    },
+    {
+      "name": "genus3-point-Q",
+      "repr": "(x + 11, 5 : 1)",
+      "is_zero": false
+    },
+    {
+      "name": "genus3-point-difference",
+      "repr": "(x^2 + 10*x + 2, 4*x : 1)",
+      "is_zero": false
+    },
+    {
+      "name": "genus2-generalized-sum",
+      "repr": "(x^2 + 2*x + 4, x + 4 : 0)",
+      "is_zero": false
+    },
+    {
+      "name": "genus2-generalized-negation",
+      "repr": "(x^2 + 2*x + 4, 6*x + 1 : 0)",
+      "is_zero": false
+    },
+    {
+      "name": "genus3-balanced-addition",
+      "repr": "(x^3 + 4*x^2 + 2*x + 5, 2*x^2 + 3*x + 5 : 0)",
+      "is_zero": false
+    }
+  ],
+  "orders": {
+    "genus2-gf3": 13,
+    "genus3-gf5": 284
+  }
+}

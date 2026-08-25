@@ -204,16 +204,18 @@ try:
 except NotImplementedError as error:
     assert "characteristic-2" in str(error)
 
-R3 = PolynomialRing(GF(3), "x")
-x3 = R3.gen()
+R5 = PolynomialRing(GF(5), "x")
+x5 = R5.gen()
 S = PolynomialRing(ZZ, "T")
 T = S.gen()
 try:
-    HyperellipticJacobian(JacobianTestCurve(x3**6 + x3 + 1))
+    HyperellipticCurve(2*x5**6 + x5 + 1).jacobian()
     assert False
 except NotImplementedError as error:
-    assert "odd-degree" in str(error)
+    assert "inert infinity" in str(error)
 
+R3 = PolynomialRing(GF(3), "x")
+x3 = R3.gen()
 J = HyperellipticJacobian(JacobianTestCurve(
     x3**5 + 1,
     frobenius=T**4 + 9,

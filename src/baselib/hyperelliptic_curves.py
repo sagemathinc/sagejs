@@ -46,6 +46,27 @@ def HyperellipticCurve(
     return module.HyperellipticCurve(f, h, names, check_squarefree)
 
 
+def Jacobian(curve: Any) -> Any:
+    """Return the Jacobian parent of a supported hyperelliptic curve.
+
+    This is the conventional Sage spelling and is exactly equivalent to
+    `curve.jacobian()`.
+
+    ```sage
+    sage: R.<x> = GF(101)[]
+    sage: H = HyperellipticCurve(x^8 + x + 1)
+    sage: J = Jacobian(H)
+    sage: J.curve() is H
+    True
+    sage: J.model_kind()
+    'even-degree-split-two-infinity'
+    ```
+    """
+    if not hasattr(curve, "jacobian"):
+        raise TypeError("Jacobian expects a hyperelliptic curve")
+    return curve.jacobian()
+
+
 runtime.register_doc(
     "HyperellipticCurve",
     HyperellipticCurve,
@@ -85,5 +106,23 @@ runtime.register_doc(
                 "diagnostics rather than public completed local factors."
             )
         ],
+    },
+)
+
+runtime.register_doc(
+    "Jacobian",
+    Jacobian,
+    {
+        "kind": "function",
+        "module": "sage.schemes.hyperelliptic_curves.jacobian_generic",
+        "tags": ["hyperelliptic curves", "Jacobians", "divisor arithmetic"],
+        "backends": ["Sage.js exact arithmetic"],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "Genus-2 and genus-3 odd-degree models and split even-degree "
+                "models over odd prime fields."
+            ),
+        },
     },
 )
