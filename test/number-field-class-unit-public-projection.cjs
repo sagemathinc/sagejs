@@ -54,6 +54,22 @@ except ArithmeticError as error:
 finally:
     class_group_maps.class_group_from_engine_result = original_adapter
 
+# A successful but malformed sealing helper must fail before commit.  Restoring
+# the helper leaves a clean reservation and the next call publishes normally.
+original_sealer = class_group_maps.seal_public_class_group_projection
+def malformed_sealer(_group):
+    return object()
+class_group_maps.seal_public_class_group_projection = malformed_sealer
+try:
+    K.class_group(proof=False, max_relation_attempts=64)
+    raise AssertionError("a malformed projection was committed")
+except ArithmeticError as error:
+    assert "projection changed type" in str(error)
+finally:
+    class_group_maps.seal_public_class_group_projection = original_sealer
+assert result.context._live_artifacts.public_class_group_projection is None
+assert not result.context._live_artifacts.public_class_group_projection_reserved
+
 first = K.class_group(proof=False, max_relation_attempts=64)
 payload_text = json.dumps(first.proof_payload(), sort_keys=True, separators=(",", ":"))
 ideal_payload = ideal_arithmetic.serialize_ideal(first.gens_ideals()[0])
@@ -63,9 +79,24 @@ started = time.monotonic()
 second = K.class_group(proof=False, max_relation_attempts=64)
 repeat_seconds = time.monotonic() - started
 assert first is not second
+assert first._projection_core is not second._projection_core
 assert first.gen(0).parent() is first and second.gen(0).parent() is second
 assert second.invariants() == (4,) and second.order() == 4
 assert json.dumps(second.proof_payload(), sort_keys=True, separators=(",", ":")) == payload_text
+assert second.verify()
+assert second.verify_proof_payload(second.proof_payload())
+assert not second.verify_proof_payload(
+    second.proof_payload(), cancelled=lambda: True
+)
+
+# The context-owned recipe is not reachable from either public view.  Direct
+# capsule mutation is rejected and cannot alter the next view's replay.
+try:
+    first._projection_core._proof_payload_json = "{}"
+    raise AssertionError("a projected view capsule was mutable")
+except AttributeError:
+    pass
+assert not hasattr(first._projection_core, "_proof_context")
 assert second.verify()
 
 # Mutating a returned wrapper, its ideal shell, or a detached payload cannot
