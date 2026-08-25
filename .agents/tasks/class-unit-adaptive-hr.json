@@ -4,7 +4,7 @@
   "id": "class-unit-adaptive-hr",
   "title": "Adaptive rigorous hR completion",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Use a coarse-first exact zeta error schedule for rigorous hR integer-index decisions, refine only when inconclusive, and bind the authenticated history into live and detached certificates while preserving exact class/unit results",
   "base_commit": "78acff55094c9dbc090da5740fe9179e74601b81",
@@ -39,17 +39,82 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/number-field-class-unit-analytic.cjs",
+    "node --test --test-name-pattern=engine replays real analytic saturation from a nontrivial hR index test/number-field-class-unit-engine.cjs",
+    "env SAGEJS_SLOW_CLASS_UNIT=1 node --test --test-name-pattern=adaptive analytic completion preserves C4 and quartic exact outputs test/number-field-class-unit-engine.cjs",
     "pnpm test:baselib:strict",
+    "pnpm architecture:check",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/number-field-class-unit-analytic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.344,
+      "started_at": "2026-08-25T15:55:33.289Z",
+      "commit": "2e91bf5e731732c6155065b1eaa786a87e29f8d7",
+      "workspace_fingerprint": "70117db7fb7121b244c59e3905bfad1df1cec4b3f3f9bb5bda0b6d37b595a0b5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=engine replays real analytic saturation from a nontrivial hR index test/number-field-class-unit-engine.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.9,
+      "started_at": "2026-08-25T15:55:37.250Z",
+      "commit": "2e91bf5e731732c6155065b1eaa786a87e29f8d7",
+      "workspace_fingerprint": "70117db7fb7121b244c59e3905bfad1df1cec4b3f3f9bb5bda0b6d37b595a0b5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_SLOW_CLASS_UNIT=1 node --test --test-name-pattern=adaptive analytic completion preserves C4 and quartic exact outputs test/number-field-class-unit-engine.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.895,
+      "started_at": "2026-08-25T15:55:46.784Z",
+      "commit": "2e91bf5e731732c6155065b1eaa786a87e29f8d7",
+      "workspace_fingerprint": "70117db7fb7121b244c59e3905bfad1df1cec4b3f3f9bb5bda0b6d37b595a0b5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 31.867,
+      "started_at": "2026-08-25T15:55:57.303Z",
+      "commit": "2e91bf5e731732c6155065b1eaa786a87e29f8d7",
+      "workspace_fingerprint": "70117db7fb7121b244c59e3905bfad1df1cec4b3f3f9bb5bda0b6d37b595a0b5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.635,
+      "started_at": "2026-08-25T15:56:29.795Z",
+      "commit": "2e91bf5e731732c6155065b1eaa786a87e29f8d7",
+      "workspace_fingerprint": "70117db7fb7121b244c59e3905bfad1df1cec4b3f3f9bb5bda0b6d37b595a0b5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 805.0,
+      "started_at": "2026-08-25T15:40:00.000Z",
+      "commit": "2e91bf5e731732c6155065b1eaa786a87e29f8d7",
+      "workspace_fingerprint": "70117db7fb7121b244c59e3905bfad1df1cec4b3f3f9bb5bda0b6d37b595a0b5",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "Functionally green WIP: exact coarse-first hR completion starts at zeta error 1, halves only for an inconclusive rigorous integer decision, and binds the selected error and complete halving history into live and detached unit-saturation certificates. Focused tests cover a real index-2 refinement, empty-integer refinement, cancellation, resource caps, tamper rejection, detached replay, and exact C4/quartic outputs.",
+    "summary": "Completed and independently reviewed adaptive rigorous hR completion. The exact zeta error starts at 1 and halves only while the rigorous positive-integer index decision is inconclusive; the selected error and entire decision history are bound into live and detached certificates. Proof-relevant zeta/regulator cache state is owner- and field-bound, altered cache values fail closed, replay applies fixed verifier caps and cancellation, and the immediate standard-engine certificate path reuses an identity- and parameter-bound regulator receipt without weakening detached replay. Focused coverage includes near-boundary refinement, empty-integer refinement, cancellation and caps, cache alteration and cross-workspace rejection, malformed payloads, detached replay, and exact C4/quartic outputs. Independent immutable review returned SAFE. On final source, matched three-sample cold medians improved C4 from 2.5976 s to 2.3052 s (11.25%) and quartic from 1.4693 s to 1.2907 s (12.15%); the C4 analytic phase improved from 0.5824 s to 0.2160 s. Matched prepared-field C4 medians were 0.9090 s at the base and 0.9315 s here, a 2.47% regression within the 5% gate. The final build, strict Python, architecture checks, focused compiled proof tests, slow exact-output witness, and complete native gate passed at 2e91bf5e.",
     "risks": [
-      "The worktree production native-kernel pack build was stopped during coordination; final full native-backed tests and matched cold/warm Amdahl measurements remain outstanding."
+      "Performance receipts are Linux x64 measurements on a shared host; the required non-Linux platform matrix remains integration/CI work."
     ],
     "next_steps": [
-      "Run full focused, strict, architecture, detached-replay, C4/quartic, and matched cold/warm performance acceptance before review."
+      "Integrate the reviewed commit sequence into class-group and retain the cold and prepared-field benchmarks as Amdahl gates while profiling the next exact relation/unit bottleneck."
     ]
   }
 }
