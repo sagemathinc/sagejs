@@ -5369,25 +5369,30 @@ def _clone_terminal_torsion(field: Any, payload: Any) -> Any:
     units_module = _optional_module("sagejs.number_fields.units")
     decode = getattr(factored_module, "_element_from_payload", None)
     torsion_type = getattr(units_module, "RootsOfUnityResult", None)
+    certificate_type = getattr(units_module, "RootsOfUnityCertificate", None)
+    decode_certificate = getattr(certificate_type, "from_dict", None)
     raw_elements = payload.get("elements")
     if (
         not callable(decode)
         or not callable(torsion_type)
+        or not callable(decode_certificate)
         or not isinstance(raw_elements, list)
     ):
         raise TypeError("the canonical torsion decoder is unavailable")
+    certificate = decode_certificate(field, payload.get("certificate"))
     answer = torsion_type(
         [decode(field, value) for value in raw_elements],
         decode(field, payload.get("generator")),
         _integer(payload.get("order"), "terminal torsion order"),
         payload.get("complete") is True,
         str(payload.get("reason")),
+        certificate,
     )
     verify = getattr(answer, "verify", None)
     if (
         _value(answer, ("proof_status",), None) != payload.get("proof_status")
         or not callable(verify)
-        or not verify()
+        or not verify(force_replay=True)
     ):
         raise ArithmeticError("the cloned terminal torsion failed exact replay")
     return answer
@@ -5670,7 +5675,13 @@ def _upgrade_cached_conditional_result(
     fork = getattr(context, "_fork_live_terminal_for_unconditional_proof", None)
     proof_state_type = getattr(context_module, "ClassUnitProofState", None)
     live_token = getattr(context_module, "_LIVE_CLASS_UNIT_CONTEXT_TOKEN", None)
-    if not callable(fork) or proof_state_type is None or live_token is None:
+    finish_terminal_upgrade = getattr(context, "_finish_live_terminal_upgrade", None)
+    if (
+        not callable(fork)
+        or not callable(finish_terminal_upgrade)
+        or proof_state_type is None
+        or live_token is None
+    ):
         return None
     requested_state = proof_state_type.incomplete(
         "unconditional terminal proof upgrade in progress",
@@ -5679,113 +5690,109 @@ def _upgrade_cached_conditional_result(
             "requested_proof": True,
         },
     )
-    issued = fork(live_token, source, requested_state)
-    if not isinstance(issued, tuple) or len(issued) != 2:
-        return None
-    forked_context = issued[0]
-    material = issued[1]
-    if not isinstance(material, dict):
-        return None
-    finish_terminal_upgrade = getattr(context, "_finish_live_terminal_upgrade", None)
-    if not callable(finish_terminal_upgrade):
-        return None
-    engine = ClassUnitGroupEngine(
-        field,
-        proof=True,
-        algorithm=algorithm,
-        limits=limits,
-        seed=seed,
-    )
-    if engine.order is not getattr(context, "order", None):
-        finish_terminal_upgrade(live_token, commit=False)
-        return None
-    engine.context = forked_context
-    source_group = material["class_group"]
-    source_units = material["unit_group"]
-    collector = material["collector"]
-    presentation = material["presentation"]
-    saturation = material["saturation_record"]
-    factor_base = tuple(material["factor_base"])
-    units = tuple(material["units"])
-    if (
-        collector is None
-        or presentation is None
-        or saturation is None
-        or getattr(source_group, "_relation_reconstructor", None) is not collector
-        or getattr(source_group, "_presentation", None) is not presentation
-    ):
-        finish_terminal_upgrade(live_token, commit=False)
-        return None
-    group = _clone_engine_class_group_for_unconditional_proof(source_group)
-    units, unit_group, cloned_saturation = _clone_terminal_unit_authority(
-        field,
-        engine.order,
-        source_units,
-        saturation,
-        material.get("terminal_semantic_snapshot"),
-    )
-    engine.stages = [
-        stage for stage in source.stages if stage.name not in ("proof", "terminal")
-    ]
-    conditional_dependencies, unconditional_dependencies = (
-        _terminal_dependency_hashes_for_policies(
-            engine, group, collector, presentation, saturation
-        )
-    )
-    if conditional_dependencies != source.proof_dependency_hashes:
-        finish_terminal_upgrade(live_token, commit=False)
-        return None
-    engine._proof_dependency_hashes = unconditional_dependencies
+    committed = False
     try:
+        issued = fork(live_token, source, requested_state)
+        if not isinstance(issued, tuple) or len(issued) != 2:
+            return None
+        forked_context = issued[0]
+        material = issued[1]
+        if not isinstance(material, dict):
+            return None
+        engine = ClassUnitGroupEngine(
+            field,
+            proof=True,
+            algorithm=algorithm,
+            limits=limits,
+            seed=seed,
+        )
+        if engine.order is not getattr(context, "order", None):
+            return None
+        engine.context = forked_context
+        source_group = material["class_group"]
+        source_units = material["unit_group"]
+        collector = material["collector"]
+        presentation = material["presentation"]
+        saturation = material["saturation_record"]
+        factor_base = tuple(material["factor_base"])
+        units = tuple(material["units"])
+        if (
+            collector is None
+            or presentation is None
+            or saturation is None
+            or getattr(source_group, "_relation_reconstructor", None) is not collector
+            or getattr(source_group, "_presentation", None) is not presentation
+        ):
+            return None
+        group = _clone_engine_class_group_for_unconditional_proof(source_group)
+        units, unit_group, cloned_saturation = _clone_terminal_unit_authority(
+            field,
+            engine.order,
+            source_units,
+            saturation,
+            material.get("terminal_semantic_snapshot"),
+        )
+        engine.stages = [
+            stage for stage in source.stages if stage.name not in ("proof", "terminal")
+        ]
+        conditional_dependencies, unconditional_dependencies = (
+            _terminal_dependency_hashes_for_policies(
+                engine, group, collector, presentation, saturation
+            )
+        )
+        if conditional_dependencies != source.proof_dependency_hashes:
+            return None
+        engine._proof_dependency_hashes = unconditional_dependencies
         proof_records = engine._unconditional_proof_pass(group)
-    except Exception:
-        finish_terminal_upgrade(live_token, commit=False)
-        raise
-    engine._stage(
-        "proof",
-        "complete",
-        proof_status=EXACT_UNCONDITIONAL,
-        minkowski_primes=len(proof_records),
-        exact_relations=len(material["relations"]),
-    )
-    engine._phase_finish("total", engine._started_ns)
-    engine._stage("terminal", "complete", class_number=group.order())
-    diagnostics = _merged_terminal_upgrade_diagnostics(
-        source,
-        engine,
-        proof_records=proof_records,
-        factor_base_size=len(factor_base),
-    )
-    engine._retain_context_terminal(
-        EXACT_UNCONDITIONAL,
-        "exact relations and rigorous class/unit index one",
-        theorem="Minkowski ideal-class theorem",
-        assumptions=(),
-        units=units,
-        saturation_record=cloned_saturation,
-        class_group=group,
-        unit_group=unit_group,
-        diagnostics=diagnostics,
-    )
-    answer = ClassUnitComputation(
-        field,
-        proof_status=EXACT_UNCONDITIONAL,
-        complete=True,
-        reason="exact relations and rigorous class/unit index one",
-        algorithm=source.algorithm,
-        stages=engine.stages,
-        class_group=group,
-        unit_group=unit_group,
-        tentative_invariants=group.invariants(),
-        context=forked_context,
-        diagnostics=diagnostics,
-        saturation_record=cloned_saturation,
-        proof_progress=engine._proof_progress,
-        proof_dependency_hashes=engine._proof_dependency_hashes,
-    )
-    if finish_terminal_upgrade(live_token, commit=True) is not True:
-        return None
-    return answer
+        engine._stage(
+            "proof",
+            "complete",
+            proof_status=EXACT_UNCONDITIONAL,
+            minkowski_primes=len(proof_records),
+            exact_relations=len(material["relations"]),
+        )
+        engine._phase_finish("total", engine._started_ns)
+        engine._stage("terminal", "complete", class_number=group.order())
+        diagnostics = _merged_terminal_upgrade_diagnostics(
+            source,
+            engine,
+            proof_records=proof_records,
+            factor_base_size=len(factor_base),
+        )
+        engine._retain_context_terminal(
+            EXACT_UNCONDITIONAL,
+            "exact relations and rigorous class/unit index one",
+            theorem="Minkowski ideal-class theorem",
+            assumptions=(),
+            units=units,
+            saturation_record=cloned_saturation,
+            class_group=group,
+            unit_group=unit_group,
+            diagnostics=diagnostics,
+        )
+        answer = ClassUnitComputation(
+            field,
+            proof_status=EXACT_UNCONDITIONAL,
+            complete=True,
+            reason="exact relations and rigorous class/unit index one",
+            algorithm=source.algorithm,
+            stages=engine.stages,
+            class_group=group,
+            unit_group=unit_group,
+            tentative_invariants=group.invariants(),
+            context=forked_context,
+            diagnostics=diagnostics,
+            saturation_record=cloned_saturation,
+            proof_progress=engine._proof_progress,
+            proof_dependency_hashes=engine._proof_dependency_hashes,
+        )
+        if finish_terminal_upgrade(live_token, commit=True) is not True:
+            return None
+        committed = True
+        return answer
+    finally:
+        if not committed:
+            finish_terminal_upgrade(live_token, commit=False)
 
 
 def _class_number_projection_cache_key(

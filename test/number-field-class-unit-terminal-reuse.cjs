@@ -247,3 +247,128 @@ print("terminal-reuse", conditional_seconds, upgrade_seconds)
 `);
   assert.match(output, /^terminal-reuse /);
 });
+
+test("reuses C4 quintic terminals with detached torsion authority", () => {
+  const output = run(String.raw`
+import json
+import time
+
+import sagejs.number_fields.class_unit_groups as engine_module
+import sagejs.number_fields.units as units_module
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**5 + x**3 - x**2 + 4*x + 1, "a")
+
+started = time.monotonic()
+conditional = K.class_unit_group(proof=False)
+conditional_seconds = time.monotonic() - started
+assert conditional.complete
+assert conditional.proof_status == "exact-relations-conditional-grh"
+assert conditional.class_number() == 4
+assert conditional.class_group().invariants() == (4,)
+conditional_torsion = conditional.unit_group().torsion
+assert conditional_torsion.verify(force_replay=True)
+limits = engine_module.ClassUnitEngineLimits()
+live = conditional.context._live_artifacts
+
+# Hostile torsion and certificate mutations fail closed before the proof suffix.
+original_order = conditional_torsion.order
+conditional_torsion.order = 999
+assert engine_module._upgrade_cached_conditional_result(
+    K, conditional, algorithm="auto", limits=limits, seed=0
+) is None
+assert not live.terminal_upgrade_reserved
+assert not live.terminal_upgrade_issued
+conditional_torsion.order = original_order
+
+original_kind = conditional_torsion.certificate.kind
+conditional_torsion.certificate.kind = "embedding-box-exhaustion"
+assert engine_module._upgrade_cached_conditional_result(
+    K, conditional, algorithm="auto", limits=limits, seed=0
+) is None
+assert not live.terminal_upgrade_reserved
+assert not live.terminal_upgrade_issued
+conditional_torsion.certificate.kind = original_kind
+assert conditional_torsion.verify(force_replay=True)
+
+original_certificate = conditional_torsion.certificate
+replacement_certificate = units_module.RootsOfUnityCertificate.from_dict(
+    K, json.loads(json.dumps(original_certificate.to_dict()))
+)
+conditional_torsion.certificate = replacement_certificate
+assert engine_module._upgrade_cached_conditional_result(
+    K, conditional, algorithm="auto", limits=limits, seed=0
+) is None
+assert not live.terminal_upgrade_reserved
+assert not live.terminal_upgrade_issued
+conditional_torsion.certificate = original_certificate
+assert conditional_torsion.verify(force_replay=True)
+
+original_certificate_type = units_module.RootsOfUnityCertificate
+class FailingCertificateDecoder:
+    @classmethod
+    def from_dict(cls, field, payload):
+        raise RuntimeError("induced roots-of-unity replay failure")
+units_module.RootsOfUnityCertificate = FailingCertificateDecoder
+try:
+    engine_module._upgrade_cached_conditional_result(
+        K, conditional, algorithm="auto", limits=limits, seed=0
+    )
+    raise AssertionError("the induced certificate replay unexpectedly succeeded")
+except RuntimeError as error:
+    assert "induced roots-of-unity replay failure" in str(error)
+finally:
+    units_module.RootsOfUnityCertificate = original_certificate_type
+assert not live.terminal_upgrade_reserved
+assert not live.terminal_upgrade_issued
+assert conditional_torsion.verify(force_replay=True)
+
+started = time.monotonic()
+unconditional = K.class_unit_group(proof=True)
+upgrade_seconds = time.monotonic() - started
+assert unconditional.complete
+assert unconditional.proof_status == "exact-unconditional"
+assert unconditional.class_number() == 4
+assert unconditional.class_group().invariants() == (4,)
+assert unconditional.diagnostics["terminal_upgrade"] == {
+    "schema": "sagejs.number-fields/class-unit-terminal-upgrade-v1",
+    "reused_factor_base_size": 6,
+    "reused_relation_count": 21,
+    "reused_presentation": True,
+    "reused_units": 2,
+    "reused_saturation": True,
+    "rerun_relation_search": False,
+    "rerun_analytic_index": False,
+}
+unconditional_torsion = unconditional.unit_group().torsion
+assert unconditional_torsion is not conditional_torsion
+assert unconditional_torsion.certificate is not conditional_torsion.certificate
+assert unconditional_torsion.verify(force_replay=True)
+
+certificate_payload = json.loads(
+    json.dumps(unconditional_torsion.certificate.to_dict())
+)
+detached_certificate = units_module.RootsOfUnityCertificate.from_dict(
+    K, certificate_payload
+)
+assert detached_certificate.verify(unconditional_torsion, force_replay=True)
+
+# Mutating the conditional certificate after issuance cannot poison the exact clone.
+conditional_torsion.certificate.kind = "embedding-box-exhaustion"
+assert not conditional_torsion.verify(force_replay=True)
+assert unconditional_torsion.verify(force_replay=True)
+assert K.class_unit_group(proof=True) is unconditional
+
+public_group = K.class_group(proof=True)
+assert public_group.proof_status == "exact-unconditional"
+assert public_group.order() == 4
+assert public_group.invariants() == (4,)
+assert public_group.verify()
+public_payload = json.loads(json.dumps(public_group.proof_payload()))
+assert public_group.verify_proof_payload(public_payload)
+
+print("c4-terminal-reuse", conditional_seconds, upgrade_seconds)
+`);
+  assert.match(output, /^c4-terminal-reuse /);
+});

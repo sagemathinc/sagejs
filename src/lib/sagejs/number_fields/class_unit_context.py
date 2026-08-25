@@ -620,6 +620,15 @@ class _LiveClassUnitArtifacts:
         regulator = getattr(unit_group, "regulator_enclosure", None)
         if torsion is None or regulator is None:
             raise ValueError("a terminal upgrade needs torsion and regulator evidence")
+        torsion_certificate = getattr(torsion, "certificate", None)
+        encode_torsion_certificate = getattr(torsion_certificate, "to_dict", None)
+        if not callable(encode_torsion_certificate):
+            raise ValueError(
+                "a terminal upgrade needs replayable roots-of-unity evidence"
+            )
+        torsion_certificate_payload = encode_torsion_certificate()
+        if not isinstance(torsion_certificate_payload, dict):
+            raise ValueError("the terminal roots-of-unity certificate is malformed")
         if not self._same_identity_sequence(
             self.factored_units, getattr(unit_group, "generators", ())
         ):
@@ -659,6 +668,7 @@ class _LiveClassUnitArtifacts:
                     "complete": getattr(torsion, "complete", None),
                     "reason": getattr(torsion, "reason", None),
                     "proof_status": getattr(torsion, "proof_status", None),
+                    "certificate": torsion_certificate_payload,
                 },
                 "regulator": regulator,
                 "saturation_body_json": body_json,
@@ -744,6 +754,9 @@ class _LiveClassUnitArtifacts:
             "unit_group": unit_group,
             "unit_proof_status": getattr(unit_group, "proof_status", None),
             "unit_torsion": getattr(unit_group, "torsion", None),
+            "unit_torsion_certificate": getattr(
+                getattr(unit_group, "torsion", None), "certificate", None
+            ),
             "unit_generators": tuple(getattr(unit_group, "generators", ())),
             "unit_rank": getattr(unit_group, "unit_rank", None),
             "unit_complete": getattr(unit_group, "complete", None),
@@ -798,6 +811,7 @@ class _LiveClassUnitArtifacts:
                 "group_combine_reduction_witness",
                 "unit_group",
                 "unit_torsion",
+                "unit_torsion_certificate",
                 "unit_regulator",
                 "saturation_certificate",
                 "saturation_generation_verifier",
