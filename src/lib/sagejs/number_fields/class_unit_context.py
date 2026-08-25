@@ -635,6 +635,16 @@ class _LiveClassUnitArtifacts:
             raise ValueError("a terminal saturation snapshot is malformed")
         return canonical_component(
             {
+                # Identity checks alone are insufficient here: prime-ideal
+                # shells retain mutable exact HNF and residue-presentation
+                # payloads.  Bind the full canonical serializations in their
+                # factor-base order before allowing the proof-only suffix.
+                # The theorem label records which generation plan the retained
+                # base was proved against.
+                "factor_base": self.factor_base,
+                "factor_base_theorem": getattr(
+                    self.class_group, "factor_base_theorem", None
+                ),
                 "unit_rank": getattr(unit_group, "unit_rank", None),
                 "unit_complete": getattr(unit_group, "complete", None),
                 "unit_reason": getattr(unit_group, "reason", None),
