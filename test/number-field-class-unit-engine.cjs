@@ -1744,6 +1744,53 @@ live_proof = engine._context_analytic_proof()
 live_regulator = live_proof[3]
 live_zeta = live_proof[4]
 live_index = live_proof[5]
+forged_regulator = engine.components.analytic.RegulatorEnclosure(
+    live_regulator.ball * engine.components.analytic.RealBall(
+        "101/100", precision_bits=live_regulator.precision_bits
+    ),
+    live_regulator.unit_rank,
+    live_regulator.precision_history,
+    weighted_complex_places=True,
+    determinant_widths=live_regulator.determinant_widths,
+)
+forged_regulator_index = engine.components.analytic.validate_hr_index(
+    signature=(2, 0),
+    discriminant=int(engine.order.discriminant()),
+    class_number=1,
+    roots_of_unity=int(torsion.order),
+    regulator=forged_regulator,
+    zeta_log_residue=live_zeta,
+    precision_bits=96,
+)
+assert forged_regulator_index.unique_index is not None
+assert forged_regulator_index.unique_index == live_index.unique_index
+try:
+    engine.components.analytic.certify_unit_saturation_index(
+        K,
+        engine.order,
+        initial_units,
+        class_number=1,
+        roots_of_unity=int(torsion.order),
+        precision_bits=96,
+        maximum_precision_bits=256,
+        zeta_absolute_error="1/2",
+        zeta_absolute_error_history=("1", "1/2"),
+        zeta_limits=engine.components.analytic.ZetaLogResidueLimits(
+            maximum_prime_bound=20000,
+            maximum_precision_bits=256,
+        ),
+        workspace=engine._analytic_workspace,
+        generation_evidence=generation_evidence,
+        generation_verifier=verify_generation,
+        proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
+        _precomputed_regulator=forged_regulator,
+        _precomputed_zeta_log_residue=live_zeta,
+        _precomputed_index=forged_regulator_index,
+    )
+    raise AssertionError("a regulator unrelated to the exact units was issued")
+except engine.components.analytic.AnalyticCertificationError:
+    pass
+
 try:
     engine.components.analytic.certify_unit_saturation_index(
         K,

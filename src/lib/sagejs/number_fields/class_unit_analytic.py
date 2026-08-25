@@ -5261,30 +5261,18 @@ def _unit_index_replay_parameters(
     )
 
 
-def _compute_unit_index_proof(
+def _authenticated_unit_index_inputs(
     field: Any,
-    order: Any,
     initial_units: Sequence[Any],
     configuration: dict[str, Any],
     *,
-    workspace: ZetaLogResidueWorkspace | None = None,
-    cancelled: Callable[[], Any] | None = None,
-) -> tuple[int, dict[str, Any]]:
-    def check_cancelled() -> None:
-        if callable(cancelled) and cancelled():
-            raise AnalyticResourceError("global index certificate replay was cancelled")
-
-    check_cancelled()
-    (
-        regulator_precision,
-        regulator_tolerance,
-        regulator_maximum_precision,
-        hr_precision,
-        _zeta_absolute_error,
-        zeta_error_history,
-        zeta_precision,
-        limits,
-    ) = _unit_index_replay_parameters(configuration)
+    regulator_precision: int,
+    regulator_tolerance: int,
+    regulator_maximum_precision: int,
+    workspace: ZetaLogResidueWorkspace | None,
+    cancelled: Callable[[], Any] | None,
+) -> tuple[tuple[int, int], RegulatorEnclosure]:
+    """Authenticate exact signature, torsion, rank, and unit regulator."""
     signature_module = __import__(
         "sagejs.number_fields.embeddings", fromlist=["embeddings"]
     )
@@ -5333,6 +5321,43 @@ def _compute_unit_index_proof(
             maximum_precision_bits=regulator_maximum_precision,
             cancelled=cancelled,
         )
+    )
+    return (signature[0], signature[1]), regulator
+
+
+def _compute_unit_index_proof(
+    field: Any,
+    order: Any,
+    initial_units: Sequence[Any],
+    configuration: dict[str, Any],
+    *,
+    workspace: ZetaLogResidueWorkspace | None = None,
+    cancelled: Callable[[], Any] | None = None,
+) -> tuple[int, dict[str, Any]]:
+    def check_cancelled() -> None:
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("global index certificate replay was cancelled")
+
+    check_cancelled()
+    (
+        regulator_precision,
+        regulator_tolerance,
+        regulator_maximum_precision,
+        hr_precision,
+        _zeta_absolute_error,
+        zeta_error_history,
+        zeta_precision,
+        limits,
+    ) = _unit_index_replay_parameters(configuration)
+    signature, regulator = _authenticated_unit_index_inputs(
+        field,
+        initial_units,
+        configuration,
+        regulator_precision=regulator_precision,
+        regulator_tolerance=regulator_tolerance,
+        regulator_maximum_precision=regulator_maximum_precision,
+        workspace=workspace,
+        cancelled=cancelled,
     )
     check_cancelled()
     hr_started = time.perf_counter_ns()
@@ -5860,6 +5885,28 @@ def certify_unit_saturation_index(
             ):
                 raise AnalyticCertificationError(
                     "precomputed analytic proof components are inconsistent"
+                )
+            authenticated_signature, authenticated_regulator = (
+                _authenticated_unit_index_inputs(
+                    field,
+                    initial_units,
+                    configuration,
+                    regulator_precision=configured_regulator_precision,
+                    regulator_tolerance=configured_regulator_tolerance,
+                    regulator_maximum_precision=(
+                        configured_regulator_maximum_precision
+                    ),
+                    workspace=selected_workspace,
+                    cancelled=None,
+                )
+            )
+            if authenticated_signature != (signature[0], signature[1]):
+                raise AnalyticCertificationError(
+                    "the precomputed signature authentication changed"
+                )
+            if authenticated_regulator.to_dict() != regulator.to_dict():
+                raise AnalyticCertificationError(
+                    "the precomputed regulator does not match the exact units"
                 )
             recomputed_index = validate_hr_index(
                 signature=(signature[0], signature[1]),
