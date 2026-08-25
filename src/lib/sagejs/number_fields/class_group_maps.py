@@ -64,7 +64,7 @@ _CONDITIONAL_MAX_STRING_BYTES = 1 << 16
 _CONDITIONAL_MAX_INTEGER_BITS = 4_096
 _CONDITIONAL_MAX_CONTAINER_LENGTH = 8_192
 _CONDITIONAL_MAX_MATRIX_ENTRIES = 2_000_000
-_CONDITIONAL_MAX_MATRIX_ARITHMETIC_WORK = 100_000_000
+_WORK_CAP = 100_000_000
 _CONDITIONAL_MAX_MATRIX_INTEGER_BITS = 1_024
 _CONDITIONAL_MAX_IDEAL_EXPONENT = 4_096
 _CONDITIONAL_MAX_IDEAL_ROW_WORK = 262_144
@@ -325,7 +325,7 @@ def _conditional_matrix_within_caps(
             + 2 * relation_count * relation_count * relation_count
             + 4 * column_count * column_count * column_count
         )
-        if arithmetic_work > _CONDITIONAL_MAX_MATRIX_ARITHMETIC_WORK:
+        if arithmetic_work > _WORK_CAP:
             return False
         return True
     except (TypeError, ValueError, ArithmeticError, AttributeError):
@@ -490,6 +490,112 @@ def _producer_conditional_evidence(
         raise ArithmeticError("conditional relation evidence exceeds replay caps")
     body["content_sha256"] = _payload_hash(body)
     return body
+
+
+def _residue(value: Any, shape: tuple[int, ...], prime: int) -> Any:
+    if not shape:
+        answer = _integer(value, "residue entry")
+        if answer < 0 or answer >= prime:
+            raise ValueError("invalid residue")
+        return answer
+    if not isinstance(value, list) or len(value) != shape[0]:
+        raise ValueError("invalid residue")
+    return [_residue(item, shape[1:], prime) for item in value]
+
+
+def _verify_prime(
+    prime_module: Any,
+    order: Any,
+    ideal: Any,
+    expected: dict[str, Any],
+    payload: Any,
+    replay: list[Any],
+    cancelled: Any,
+) -> bool:
+    if not isinstance(payload, dict) or set(payload) != set(expected):
+        return False
+    if any(
+        _canonical_json(payload[name]) != _canonical_json(expected[name])
+        for name in expected
+        if name != "residue"
+    ):
+        return False
+    residue = payload.get("residue")
+    if not isinstance(residue, dict) or set(residue) != {
+        "primitive",
+        "quotient_matrix",
+        "power_inverse",
+        "modulus",
+    }:
+        return False
+    prime = _integer(ideal.rational_prime(), "rational prime")
+    degree = _integer(order.degree(), "field degree")
+    residue_degree = _integer(ideal.residue_class_degree(), "residue degree")
+    if not 1 <= residue_degree <= degree:
+        return False
+    table = replay[2] if replay[1] == prime else None
+    work = degree**3 * (residue_degree + 1) + residue_degree**3 * (
+        prime.bit_length() + 1
+    )
+    if table is None:
+        work += degree**3
+    replay[0] += work
+    if replay[0] > _WORK_CAP or _cancelled(cancelled):
+        return False
+    primitive = _residue(residue.get("primitive"), (degree,), prime)
+    quotient = _residue(residue.get("quotient_matrix"), (degree, residue_degree), prime)
+    power_inverse = _residue(
+        residue.get("power_inverse"), (residue_degree, residue_degree), prime
+    )
+    modulus = _residue(residue.get("modulus"), (residue_degree + 1,), prime)
+    if modulus[-1] != 1:
+        return False
+    relative = ideal.basis_matrix() * order._basis_inverse_matrix()
+    rows = relative.rows()
+    if any(value._denominator != 1 for row in rows for value in row):
+        return False
+    kernel = prime_module._row_basis(
+        [[int(value._numerator) % prime for value in row] for row in rows],
+        degree,
+        prime,
+    )
+    if (
+        prime_module._rank(kernel, degree, prime) != degree - residue_degree
+        or prime_module._rank(quotient, residue_degree, prime) != residue_degree
+        or any(
+            any(prime_module._row_times_matrix(row, quotient, prime)) for row in kernel
+        )
+    ):
+        return False
+    if table is None:
+        table = prime_module._modular_table(order, prime)
+        replay[1:] = [prime, table]
+    if _cancelled(cancelled):
+        return False
+    one = [value % prime for value in prime_module._order_one_coordinates(order)]
+    powers: list[Any] = []
+    power = list(one)
+    for _exponent in range(residue_degree):
+        if _cancelled(cancelled):
+            return False
+        powers.append(prime_module._row_times_matrix(power, quotient, prime))
+        power = prime_module._modular_product(power, primitive, table, prime)
+    if _cancelled(cancelled):
+        return False
+    if prime_module._matrix_inverse(powers, prime) != power_inverse:
+        return False
+    next_image = prime_module._row_times_matrix(power, quotient, prime)
+    coefficients = prime_module._row_times_matrix(next_image, power_inverse, prime)
+    if modulus != [(-value) % prime for value in coefficients] + [1]:
+        return False
+    if _cancelled(cancelled):
+        return False
+    return (
+        prime_module._presentation_modulus_is_irreducible(
+            residue, prime, residue_degree
+        )
+        is True
+    )
 
 
 def _producer_saturation(result: Any) -> tuple[Any, dict[str, Any]]:
@@ -1681,6 +1787,7 @@ class _EngineProofReplayContext:
         self._dependency_hashes = dependency_hashes
         self._conditional_evidence_payload = conditional_evidence_payload
         self._conditional_plan_cache: Any = None
+        self._receipt = None
 
     def verify_saturation_record(self, record: Any) -> bool:
         if (
@@ -1912,8 +2019,25 @@ class _EngineProofReplayContext:
             return False
         if _cancelled(cancelled):
             return False
-        if rebuilt_prime_payloads != prime_payloads:
+        prime_module = __import__(
+            "sagejs.number_fields.prime_ideals", fromlist=["NumberFieldPrimeIdeal"]
+        )
+        residue_replay = [0, None, None]
+        if len(rebuilt_prime_payloads) != len(prime_payloads):
             return False
+        for rebuilt_prime, rebuilt_payload, payload in zip(
+            factor_base, rebuilt_prime_payloads, prime_payloads, strict=True
+        ):
+            if _cancelled(cancelled) or not _verify_prime(
+                prime_module,
+                self.order,
+                rebuilt_prime,
+                rebuilt_payload,
+                payload,
+                residue_replay,
+                cancelled,
+            ):
+                return False
         for payload in relation_payloads:
             if not isinstance(payload, dict):
                 return False
@@ -2046,9 +2170,12 @@ class _EngineProofReplayContext:
         cancelled: Any = None,
     ) -> bool:
         try:
-            return self._verify_conditional_evidence(
+            self._receipt = None
+            answer = self._verify_conditional_evidence(
                 proof_payload.get("conditional_evidence"), record, group, cancelled
             )
+            self._receipt = record if answer else None
+            return answer
         except (
             TypeError,
             ValueError,
@@ -2214,6 +2341,8 @@ class _EngineProofReplayContext:
     def verify_conditional_grh_record(self, record: Any) -> bool:
         proof_stage = _stage(self.result, "proof")
         diagnostics = self.result.diagnostics
+        accepted = self._receipt is record
+        self._receipt = None
         return (
             self.result.complete is True
             and proof_stage is not None
@@ -2225,8 +2354,11 @@ class _EngineProofReplayContext:
             and record.relation_count == int(diagnostics.get("relations"))
             and "GRH" in record.assumption.upper()
             and self._conditional_evidence_payload is not None
-            and self._verify_conditional_evidence(
-                self._conditional_evidence_payload, record, self.engine_group
+            and (
+                accepted
+                or self._verify_conditional_evidence(
+                    self._conditional_evidence_payload, record, self.engine_group
+                )
             )
         )
 

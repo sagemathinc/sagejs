@@ -1,0 +1,94 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "residue-replay-canonicalization",
+  "title": "Residue Replay Canonicalization",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Make exact detached public class-group replay accept independently valid residue presentations for the same factor base while rejecting every altered mathematical claim",
+  "base_commit": "f05f3d1646af2486ce9cfcad0e8496518699cf7c",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_group_maps.py",
+    "test/number-field-class-group-maps-proof.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "detached proof replay plus adversarial serialized payload mutations",
+      "LMFDB 3.1.4027.2 exact public class group"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test --test-name-pattern=conditional.*semantic.*prime test/number-field-class-group-maps-proof.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test --test-name-pattern=conditional.*semantic.*prime test/number-field-class-group-maps-proof.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.029,
+      "started_at": "2026-08-25T22:48:05.670Z",
+      "commit": "f05f3d1646af2486ce9cfcad0e8496518699cf7c",
+      "workspace_fingerprint": "822ef9ff9185e27c4ce9db5bc39986c1340591ed9b90584b3e436d6a9b7abff9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.163,
+      "started_at": "2026-08-25T22:48:33.848Z",
+      "commit": "f05f3d1646af2486ce9cfcad0e8496518699cf7c",
+      "workspace_fingerprint": "822ef9ff9185e27c4ce9db5bc39986c1340591ed9b90584b3e436d6a9b7abff9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.898,
+      "started_at": "2026-08-25T22:49:11.936Z",
+      "commit": "f05f3d1646af2486ce9cfcad0e8496518699cf7c",
+      "workspace_fingerprint": "822ef9ff9185e27c4ce9db5bc39986c1340591ed9b90584b3e436d6a9b7abff9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 900,
+      "started_at": "2026-08-25T22:32:45.000Z",
+      "commit": "f05f3d1646af2486ce9cfcad0e8496518699cf7c",
+      "workspace_fingerprint": "822ef9ff9185e27c4ce9db5bc39986c1340591ed9b90584b3e436d6a9b7abff9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Conditional class-group proof replay now treats residue coordinates as verifier-checked presentations rather than producer-selected metadata. Replay preserves exact field/order identity, p/e/f, HNF lattice, factor-base order and coverage, derives each residue kernel directly from the authenticated HNF, checks quotient rank and annihilation, reconstructs primitive powers, exact inverse, modulus action, and irreducibility, and rejects noncanonical residue entries. A single cumulative verifier-local work budget, one-prime multiplication-table cache, and cancellation checkpoints bound detached replay. A one-shot record-identity receipt prevents public payload verification from repeating the authenticated evidence replay while ordinary attached group verification still replays evidence. The exact LMFDB 3.1.4027.2 regression accepts independently valid residue bases at factor-base indices 2, 4, 5, and 6; seventeen reauthenticated mutations, including boolean integer substitutions and poisoned mutable mod-p caches, fail closed. Independent read-only review approved the final source with no findings.",
+    "risks": [
+      "The fixed 100,000,000-operation replay budget intentionally fails closed on residue presentations whose conservative verifier estimate exceeds the cap.",
+      "The number-field-global-arithmetic package is at 1,564,814 of 1,565,000 bytes, leaving 186 bytes of integration headroom.",
+      "The full proof file passed six tests before an existing long unconditional case was terminated by a temporary 900-second harness default; that default was removed and independently re-reviewed, but the long case was not restarted this turn. The focused exact regression passed repeatedly.",
+      "Focused validation ran on Linux x64; required Windows and arm64 hosts remain for central CI."
+    ],
+    "next_steps": [
+      "Integrate the claimed source and proof test without changing compiler or native code.",
+      "Repair base manifest drift for number-field-class-unit-auto-preflight.cjs and number-field-class-unit-public-projection.cjs, then rerun pnpm test:changed; this lane reached the unit tier after a clean build and precompile but failed only because those base-tracked tests are unclassified.",
+      "Run central platform CI and preserve the package budget during integration."
+    ]
+  }
+}
