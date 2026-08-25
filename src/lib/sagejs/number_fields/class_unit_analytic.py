@@ -3367,35 +3367,46 @@ def _shared_zeta_workspace_key(
     return hashlib.sha256(_canonical_json(body).encode("utf-8")).hexdigest()
 
 
-class _SharedZetaWorkspaceSnapshot:
+class _SharedZetaWorkspaceSnapshot(tuple[Any, ...]):
     """Module-issued immutable cache entry, never serialized as proof data."""
 
-    def __init__(self, token: object, key: str, payload: tuple[Any, ...]) -> None:
+    __slots__ = ()
+
+    def __new__(
+        cls, token: object, key: str, payload: tuple[Any, ...]
+    ) -> _SharedZetaWorkspaceSnapshot:
         if token is not _SHARED_ZETA_WORKSPACE_SNAPSHOT_TOKEN:
             raise TypeError("shared zeta snapshots are module-issued")
-        self.key = str(key)
-        self.payload = payload
-        self.__dict__["_frozen"] = True
+        return tuple.__new__(cls, (str(key), payload))
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        if self.__dict__.get("_frozen", False):
-            raise AttributeError("shared zeta snapshots are immutable")
-        self.__dict__[name] = value
+    @property
+    def key(self) -> str:
+        return self[0]
+
+    @property
+    def payload(self) -> tuple[Any, ...]:
+        return self[1]
 
 
-class _ZetaProofCacheAuthority:
+class _ZetaProofCacheAuthority(tuple[Any, ...]):
     """Module-issued immutable authority for one complete workspace state."""
 
-    def __init__(self, token: object, payload: tuple[Any, ...]) -> None:
+    __slots__ = ()
+
+    def __new__(
+        cls, token: object, owner: Any, payload: tuple[Any, ...]
+    ) -> _ZetaProofCacheAuthority:
         if token is not _ZETA_PROOF_CACHE_AUTHORITY_TOKEN:
             raise TypeError("zeta proof-cache authorities are module-issued")
-        self.payload = payload
-        self.__dict__["_frozen"] = True
+        return tuple.__new__(cls, (owner, payload))
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        if self.__dict__.get("_frozen", False):
-            raise AttributeError("zeta proof-cache authorities are immutable")
-        self.__dict__[name] = value
+    @property
+    def owner(self) -> Any:
+        return self[0]
+
+    @property
+    def payload(self) -> tuple[Any, ...]:
+        return self[1]
 
 
 def _build_bf_plan_readable(
@@ -3667,7 +3678,9 @@ class ZetaLogResidueWorkspace:
             tuple[str, int, int, int, int, int], tuple[RegulatorEnclosure, str]
         ] = {}
         self._proof_cache_authority = _ZetaProofCacheAuthority(
-            _ZETA_PROOF_CACHE_AUTHORITY_TOKEN, self._proof_cache_snapshot()
+            _ZETA_PROOF_CACHE_AUTHORITY_TOKEN,
+            self,
+            self._proof_cache_snapshot(),
         )
         self._shared_cache_key = (
             _shared_zeta_workspace_key(discriminant, degree, splitting_provider)
@@ -3714,7 +3727,9 @@ class ZetaLogResidueWorkspace:
         if token is not _ZETA_PROOF_CACHE_AUTHORITY_TOKEN:
             raise TypeError("zeta proof-cache authority issuance is module-private")
         self._proof_cache_authority = _ZetaProofCacheAuthority(
-            _ZETA_PROOF_CACHE_AUTHORITY_TOKEN, self._proof_cache_snapshot()
+            _ZETA_PROOF_CACHE_AUTHORITY_TOKEN,
+            self,
+            self._proof_cache_snapshot(),
         )
 
     def _shared_snapshot(self) -> tuple[Any, ...]:
@@ -3756,6 +3771,7 @@ class ZetaLogResidueWorkspace:
         authority = self._proof_cache_authority
         if (
             type(authority) is not _ZetaProofCacheAuthority
+            or authority.owner is not self
             or authority.payload != self._proof_cache_snapshot()
         ):
             raise AnalyticCertificationError("the zeta proof cache was mutated")

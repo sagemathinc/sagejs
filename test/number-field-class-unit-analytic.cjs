@@ -785,6 +785,14 @@ try:
     raise AssertionError("a paired cache/authority mutation was accepted")
 except AttributeError:
     pass
+assert not hasattr(issued_authority, "__dict__")
+try:
+    object.__setattr__(
+        issued_authority, "payload", workspace._proof_cache_snapshot()
+    )
+    raise AssertionError("object.__setattr__ mutated a cache authority")
+except (AttributeError, TypeError):
+    pass
 assert_cache_tamper_rejected("splitting record")
 workspace._records[record_key] = saved_record
 
@@ -852,6 +860,38 @@ try:
         workspace=hostile_workspace,
     )
     raise AssertionError("a reentrant callback mutation entered the proof cache")
+except AnalyticCertificationError:
+    pass
+
+# A frozen authority is identity-bound to its workspace.  Transplanting a
+# complete, internally consistent cache from another field cannot relabel its
+# zeta interval with this field's discriminant.
+provider_5 = quadratic_provider(5)
+provider_13 = quadratic_provider(13)
+workspace_5 = ZetaLogResidueWorkspace(5, 2, provider_5)
+workspace_13 = ZetaLogResidueWorkspace(13, 2, provider_13)
+clean_5 = zeta_log_residue_bound(
+    5, 2, provider_5, absolute_error="0.125", precision_bits=96,
+    limits=ZetaLogResidueLimits(maximum_prime_bound=20000), workspace=workspace_5,
+)
+clean_13 = zeta_log_residue_bound(
+    13, 2, provider_13, absolute_error="0.125", precision_bits=96,
+    limits=ZetaLogResidueLimits(maximum_prime_bound=20000), workspace=workspace_13,
+)
+assert clean_5.ball.to_dict() != clean_13.ball.to_dict()
+workspace_5.covered_stop = workspace_13.covered_stop
+for cache_name in (
+    "_records", "_plans", "_primes", "_thresholds", "_finite_terms",
+):
+    setattr(workspace_5, cache_name, getattr(workspace_13, cache_name))
+workspace_5._proof_cache_authority = workspace_13._proof_cache_authority
+try:
+    zeta_log_residue_bound(
+        5, 2, provider_5, absolute_error="0.125", precision_bits=96,
+        limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+        workspace=workspace_5,
+    )
+    raise AssertionError("a foreign workspace authority was transplanted")
 except AnalyticCertificationError:
     pass
 
