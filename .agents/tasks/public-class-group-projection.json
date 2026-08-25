@@ -78,14 +78,55 @@
       "commit": "b1c5f8660b407dd0e22f271530d9dce1f5d2e9f0",
       "workspace_fingerprint": "21a3fdc8782c2488bd2b431f1930c62c9cdd2c9fb28d46e23a9b62a16077715f",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-public-projection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 47.689,
+      "started_at": "2026-08-25T18:28:46.958Z",
+      "commit": "6916d0f4f3b9a73a1d08d48c2be026e11d6905dd",
+      "workspace_fingerprint": "dbbe04661bedc76efadad9c55ac0d553c52cbe5caf32d99c8b61ae94e50a178d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.726,
+      "started_at": "2026-08-25T18:29:44.776Z",
+      "commit": "6916d0f4f3b9a73a1d08d48c2be026e11d6905dd",
+      "workspace_fingerprint": "dbbe04661bedc76efadad9c55ac0d553c52cbe5caf32d99c8b61ae94e50a178d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 869.942,
+      "started_at": "2026-08-25T18:30:43.633Z",
+      "commit": "6916d0f4f3b9a73a1d08d48c2be026e11d6905dd",
+      "workspace_fingerprint": "dbbe04661bedc76efadad9c55ac0d553c52cbe5caf32d99c8b61ae94e50a178d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.35,
+      "started_at": "2026-08-25T18:45:20.617Z",
+      "commit": "6916d0f4f3b9a73a1d08d48c2be026e11d6905dd",
+      "workspace_fingerprint": "dbbe04661bedc76efadad9c55ac0d553c52cbe5caf32d99c8b61ae94e50a178d",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Adds a transactional context-owned canonical projection for reusable conditional public class groups. The ordinary adapter and full verification run once, then each hit returns a fresh lightweight view; ideal shells are materialized lazily and explicit verify/proof replay reconstructs the ordinary detached path. C4 repeat observation measured 10.69ms median over 1000 views with byte-equivalent proof payloads and full verification.",
+    "summary": "Adds a transactional context-owned canonical projection for reusable conditional public class groups. The ordinary adapter and full verification run once, then each hit returns a fresh lightweight view with its own immutable capsule; ideal shells are materialized lazily and explicit verify/proof replay reconstructs fresh detached saturation and relation authority. C4 repeat observation measured 11.06ms median over 1000 views with byte-equivalent proof payloads and full verification.",
     "risks": [
       "This is intentionally only a repeat-observation slice: the prepared-context first adapter remains 5.78s and is not claimed as improved.",
       "Only reusable proof=False general engine results participate; unconditional, callback, cancellation, checkpoint, custom, specialized, and interposed paths remain cold.",
-      "Retaining 1000 views costs about 50MB of ordinary wrapper ownership; 1000 discarded views return below the post-engine RSS baseline after explicit GC."
+      "Retaining 1000 views costs about 64MB of ordinary wrapper ownership; 1000 discarded views return below the post-engine RSS baseline after explicit GC.",
+      "The repaired source raises number-field-global-arithmetic to 1,558,921 bytes; architecture validation is integration-pending on the centrally authorized 1,565,000-byte package-budget ratchet."
     ],
     "next_steps": [
       "Independently audit transactional publication, exact-type replacement failure, canonical mutation isolation, and explicit full replay.",

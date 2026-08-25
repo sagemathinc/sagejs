@@ -6550,11 +6550,15 @@ def class_group(
                 # The adapter publishes only after its independent `verify()` replay.
                 adapted = adapter(result)
                 projection = maps.seal_public_class_group_projection(adapted)
+                # Constructing the first view performs the exact projection-type
+                # check before the context can publish anything.  A replaced
+                # helper therefore owns only this reservation and retry remains
+                # cold and atomic.
+                answer = maps.public_class_group_projection_view(projection)
                 if finish(live_token, projection, commit=True) is not True:
                     raise ArithmeticError(
                         "the public class-group projection failed publication"
                     )
-                answer = maps.public_class_group_projection_view(projection)
             except BaseException:
                 finish(live_token, commit=False)
                 raise
