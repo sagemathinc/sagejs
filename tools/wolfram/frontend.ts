@@ -204,16 +204,123 @@ const PYTHON_KEYWORDS = new Set([
   "while", "with", "yield",
 ]);
 
+/**
+ * Wolfram heads that lower to `_wolfram.<Head>` instead of a bare global
+ * name. A head lands here rather than in `directHeads` whenever the
+ * Wolfram argument order, defaults, or return shape genuinely differs from
+ * the Sage global it is built on -- `_wolfram.py` (`src/lib/wolfram.py`)
+ * carries the small adapter that bridges the difference. Heads whose
+ * Wolfram call shape is already an exact 1:1 match for an existing Sage
+ * global (same name, same argument order) go in `directHeads` instead and
+ * never need an entry here.
+ */
+const RUNTIME_HEADS = new Set([
+  "Dimensions",
+  "FactorInteger",
+  "Head",
+  "Length",
+  "Prime",
+  "Range",
+  // `GCD` is variadic in Wolfram; Sage's `gcd` takes a pair or a single
+  // iterable, so the positional arguments are collected into a list first.
+  "GCD",
+  // `DivisorSigma[k, n]` puts the exponent first; Sage's `sigma(n, k)`
+  // puts it second.
+  "DivisorSigma",
+  // `IntegerExponent[n, b]` defaults `b` to 10; Sage's `valuation` has no
+  // default and always requires the base.
+  "IntegerExponent",
+  // `Quotient`/`Mod` have no bare-global Sage equivalent: Sage.js integers
+  // use `//`/`%` as operators, not named functions.
+  "Quotient",
+  "Mod",
+  // `QuotientRemainder[m, n]` returns a two-element list; Sage's `divmod`
+  // returns a tuple.
+  "QuotientRemainder",
+  // `Divisible[m, n]` is true iff `n` divides `m` -- the reverse argument
+  // order of the `Integer.divides` method it is built on.
+  "Divisible",
+  // `SquareFreeQ`, `PrimeNu`, and `PrimeOmega` have no bare-global Sage
+  // equivalent; they call an `Integer` method or fold over `factor()`.
+  "SquareFreeQ",
+  "PrimeNu",
+  "PrimeOmega",
+  // `IntegerDigits[n, b, len]` orders digits most-significant first, the
+  // reverse of Sage's `digits()`, and supports Wolfram's fixed-width
+  // padding/truncation via the optional `len`.
+  "IntegerDigits",
+  "IntegerLength",
+]);
+
+/**
+ * The maximum number of positional arguments accepted by every integer
+ * arithmetic head added alongside `RUNTIME_HEADS` above (both the ones
+ * routed there and the ones that are an exact `directHeads` match).
+ * Wolfram documents real options on several of these -- for example
+ * `PrimeQ[n, GaussianIntegers -> True]`, `FactorInteger[n, GaussianIntegers
+ * -> True]`, and the same option on `Divisors`, `PrimeNu`, `PrimeOmega`, and
+ * `SquareFreeQ` -- and Sage.js has no Gaussian-integer path to honor them.
+ * Rather than silently ignoring an option (answering as though it were
+ * absent), any argument beyond a head's documented positional form is
+ * refused by name below. `GCD` is intentionally absent: it is variadic.
+ */
+const INTEGER_ARITHMETIC_MAX_ARGS: Record<string, number> = {
+  Divisors: 1,
+  DivisorSigma: 2,
+  FactorInteger: 1,
+  EulerPhi: 1,
+  MoebiusMu: 1,
+  PrimeQ: 1,
+  NextPrime: 1,
+  PowerMod: 3,
+  Binomial: 2,
+  Factorial: 1,
+  IntegerExponent: 2,
+  Quotient: 2,
+  QuotientRemainder: 2,
+  Mod: 2,
+  Divisible: 2,
+  SquareFreeQ: 1,
+  PrimeNu: 1,
+  PrimeOmega: 1,
+  IntegerDigits: 3,
+  IntegerLength: 2,
+};
+
+/**
+ * The minimum number of positional arguments for the heads in
+ * `INTEGER_ARITHMETIC_MAX_ARGS` above, for the few whose Sage.js
+ * implementation defaults a trailing argument (`IntegerExponent[n]`,
+ * `IntegerDigits[n]`, and `IntegerLength[n]` all default their base to 10).
+ * Every other head in that table takes only required positional arguments,
+ * so its minimum equals its maximum and does not need an entry here. Below
+ * the minimum, the underlying Python call would otherwise fail with a raw
+ * `TypeError` for a missing argument instead of a `WolframSyntaxError`.
+ */
+const INTEGER_ARITHMETIC_MIN_ARGS: Record<string, number> = {
+  IntegerExponent: 1,
+  IntegerDigits: 1,
+  IntegerLength: 1,
+};
+
 class SageLowerer {
   private readonly names = new Map<string, string>();
   private readonly plotVariables = new Set<string>();
   private readonly directHeads: Record<string, string> = {
     Abs: "abs",
+    Binomial: "binomial",
     Cos: "cos",
+    Divisors: "divisors",
+    EulerPhi: "euler_phi",
     Exp: "exp",
+    Factorial: "factorial",
     Log: "log",
+    MoebiusMu: "moebius",
+    NextPrime: "next_prime",
     Plot: "plot",
+    PowerMod: "power_mod",
     PrimePi: "prime_pi",
+    PrimeQ: "is_prime",
     Sin: "sin",
     Sqrt: "sqrt",
     Tan: "tan",
@@ -406,12 +513,32 @@ class SageLowerer {
           .join(", ")
       })`;
     }
+    const maxArguments = INTEGER_ARITHMETIC_MAX_ARGS[head];
+    if (maxArguments !== undefined && expression.arguments.length > maxArguments) {
+      // Rule expressions are lowered only inside plot and graphics option
+      // lists, so an option like `GaussianIntegers -> True` has nowhere to
+      // go here. Say so rather than dropping the option silently.
+      throw new WolframSyntaxError(
+        `${head} options are not supported yet: Rule expressions do not ` +
+          `lower to keyword arguments outside plot options`,
+        expression.span,
+      );
+    }
+    if (maxArguments !== undefined) {
+      const minArguments = INTEGER_ARITHMETIC_MIN_ARGS[head] ?? maxArguments;
+      if (expression.arguments.length < minArguments) {
+        const expected = minArguments === maxArguments
+          ? `${minArguments} argument${minArguments === 1 ? "" : "s"}`
+          : `${minArguments} to ${maxArguments} arguments`;
+        throw new WolframSyntaxError(
+          `${head} expects ${expected}, got ${expression.arguments.length}`,
+          expression.span,
+        );
+      }
+    }
     const direct = this.directHeads[head];
     const target = direct ?? (
-      ["Dimensions", "FactorInteger", "Head", "Length", "Prime", "Range"]
-        .includes(head)
-        ? `_wolfram.${head}`
-        : this.name(head)
+      RUNTIME_HEADS.has(head) ? `_wolfram.${head}` : this.name(head)
     );
     return `${target}(${
       expression.arguments.map((argument) => this.expression(argument))

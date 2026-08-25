@@ -110,6 +110,103 @@ def table(
     return [function(value) for value in wolfram_range(start, stop, step)]
 
 
+# ---------------------------------------------------------------------------
+# Integer arithmetic heads.
+#
+# Most Wolfram integer-arithmetic heads (`Divisors`, `EulerPhi`, `MoebiusMu`,
+# `PrimeQ`, `NextPrime`, `PowerMod`, `Binomial`, `Factorial`) call an
+# existing Sage.js global with the exact same name and argument order, so
+# `tools/wolfram/frontend.ts` lowers them straight to that global through
+# `directHeads` -- no wrapper needed here.  The functions below exist only
+# for the heads whose Wolfram argument order, defaults, or return shape
+# genuinely differ from their Sage counterpart.
+# ---------------------------------------------------------------------------
+
+
+def gcd_all(*values: Any) -> Any:
+    """`GCD[a, b, ...]` -- Wolfram's `GCD` is variadic; Sage's `gcd` takes an
+    explicit pair or a single iterable, so the positional arguments are
+    collected into a list before delegating."""
+    return sage.gcd(list(values))
+
+
+def divisor_sigma(k: Any, n: Any) -> Any:
+    """`DivisorSigma[k, n]` -- Wolfram puts the exponent first; Sage's
+    `sigma(n, k)` puts it second."""
+    return sage.sigma(n, k)
+
+
+def integer_exponent(n: Any, b: Any = 10) -> Any:
+    """`IntegerExponent[n, b]` -- defaults `b` to 10; Sage's `valuation` has
+    no default and always requires the base explicitly."""
+    return sage.valuation(n, b)
+
+
+def quotient(m: Any, n: Any) -> Any:
+    """`Quotient[m, n]` -- floor division, matching Sage's `//`. Wolfram
+    documents floor semantics for negative arguments, the same convention
+    Sage.js integers already use, so no special casing is needed."""
+    return m // n
+
+
+def quotient_remainder(m: Any, n: Any) -> list[Any]:
+    """`QuotientRemainder[m, n]` -- Wolfram returns a two-element list;
+    Sage's `divmod` returns a tuple."""
+    q, r = divmod(m, n)
+    return [q, r]
+
+
+def mod(m: Any, n: Any) -> Any:
+    """`Mod[m, n]` -- floor modulus, matching Sage's `%`."""
+    return m % n
+
+
+def divisible(m: Any, n: Any) -> bool:
+    """`Divisible[m, n]` -- true iff `n` divides `m`, the reverse argument
+    order of `n.divides(m)`."""
+    return n.divides(m)
+
+
+def squarefree_q(n: Any) -> bool:
+    """`SquareFreeQ[n]`."""
+    return n.is_squarefree()
+
+
+def prime_nu(n: Any) -> int:
+    """`PrimeNu[n]` -- the number of distinct prime factors."""
+    return len(sage.prime_divisors(n))
+
+
+def prime_omega(n: Any) -> int:
+    """`PrimeOmega[n]` -- the number of prime factors counted with
+    multiplicity."""
+    total = 0
+    for _prime_factor, exponent in sage.factor(n):
+        total += exponent
+    return total
+
+
+def integer_digits(n: Any, b: Any = 10, length: Any = None) -> list[Any]:
+    """`IntegerDigits[n, b, len]` -- most-significant digit first (the
+    reverse of Sage's `digits()`), ignoring the sign of `n`. With `len`,
+    the result is padded with leading zeros, or truncated to its least
+    significant `len` digits, exactly like Wolfram's fixed-width form."""
+    magnitude = n if n >= 0 else -n
+    least_significant = magnitude.digits(b)
+    most_significant = list(reversed(least_significant)) if least_significant else [0]
+    if length is None:
+        return most_significant
+    if len(most_significant) < length:
+        return [0] * (length - len(most_significant)) + most_significant
+    return most_significant[len(most_significant) - length :]
+
+
+def integer_length(n: Any, b: Any = 10) -> int:
+    """`IntegerLength[n, b]` -- the number of base-`b` digits of `abs(n)`."""
+    magnitude = n if n >= 0 else -n
+    return len(magnitude.digits(b))
+
+
 FactorInteger = factor_integer
 Dimensions = dimensions
 Head = head
@@ -117,6 +214,18 @@ Length = length
 Prime = prime
 Range = wolfram_range
 Table = table
+GCD = gcd_all
+DivisorSigma = divisor_sigma
+IntegerExponent = integer_exponent
+Quotient = quotient
+QuotientRemainder = quotient_remainder
+Mod = mod
+Divisible = divisible
+SquareFreeQ = squarefree_q
+PrimeNu = prime_nu
+PrimeOmega = prime_omega
+IntegerDigits = integer_digits
+IntegerLength = integer_length
 
 
 class _GraphicsDirective:

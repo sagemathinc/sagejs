@@ -193,6 +193,12 @@ function examplesForEntry(entry, sources) {
         _partitionsbase: "partitions",
         partitions_n: "partitions",
         partitions_all: "partitions",
+        // `builtins.py` already binds the name `Integer` to Sage's
+        // integer-literal constructor (`Integer(12)`), so the class that
+        // holds the `Integer.*` method docstrings is named
+        // `_IntegerMethods` instead; this maps it back to `integer` the
+        // same way the partition/graph classes above are normalized.
+        _integermethods: "integer",
       }[ownerParts.at(-2).toLowerCase()] ?? ownerParts.at(-2).toLowerCase();
       return parts.length > 1 && parts.at(-2).toLowerCase() === normalizedOwner;
     });

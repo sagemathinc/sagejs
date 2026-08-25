@@ -6007,8 +6007,11 @@ def ρσ_factor(value: Any) -> Any:
     JavaScript `number` inputs must be safe integers. Sage integer literals
     automatically use `BigInt` when necessary.
     """
-    if _builtins_member_is_function(value, "factor"):
-        return _builtins_call_member(value, "factor", [])
+    # A `number`/`bigint` value now carries its own `factor` method (see the
+    # `Integer.factor` registration near the end of this module), so the
+    # integer path is selected before the member-dispatch fallback below.
+    # Checking the member first, as this function used to, would find that
+    # very method and recurse into `ρσ_factor` forever.
     if runtime.strict_equal(runtime.jstype(value), "number"):
         if not runtime.number.isSafeInteger(value):
             raise TypeError(
@@ -6016,6 +6019,8 @@ def ρσ_factor(value: Any) -> Any:
             )
         value = runtime.bigint(value)
     elif not runtime.strict_equal(runtime.jstype(value), "bigint"):
+        if _builtins_member_is_function(value, "factor"):
+            return _builtins_call_member(value, "factor", [])
         raise TypeError("factor() requires an integer")
 
     result = runtime.flint_backend().factor(value)
@@ -6041,19 +6046,24 @@ def ρσ_gcd(
         for value in values:
             answer = runtime.integer_bigint(ρσ_gcd(answer, value))
         return runtime.normalize_integer(answer)
-    if (
-        runtime.strict_equal(runtime.jstype(left), "number")
-        or runtime.strict_equal(runtime.jstype(left), "bigint")
-    ) and (
-        runtime.strict_equal(runtime.jstype(right), "number")
-        or runtime.strict_equal(runtime.jstype(right), "bigint")
-    ):
+    left_is_integer = runtime.strict_equal(
+        runtime.jstype(left), "number"
+    ) or runtime.strict_equal(runtime.jstype(left), "bigint")
+    right_is_integer = runtime.strict_equal(
+        runtime.jstype(right), "number"
+    ) or runtime.strict_equal(runtime.jstype(right), "bigint")
+    if left_is_integer and right_is_integer:
         return runtime.normalize_integer(
             runtime.flint_backend().gcd(runtime.bigint(left), runtime.bigint(right))
         )
-    if _builtins_member_is_function(left, "gcd"):
+    # `number`/`bigint` values now carry their own `gcd` method (see
+    # `Integer.gcd` near the end of this module).  Dispatching to that
+    # member when the *other* side is not an integer would call straight
+    # back into `ρσ_gcd` with the same arguments, so the member fallback
+    # below is only reached for the side that is not itself an integer.
+    if not left_is_integer and _builtins_member_is_function(left, "gcd"):
         return _builtins_call_member(left, "gcd", [right])
-    if _builtins_member_is_function(right, "gcd"):
+    if not right_is_integer and _builtins_member_is_function(right, "gcd"):
         return _builtins_call_member(right, "gcd", [left])
     raise TypeError("gcd() is not defined for these arguments")
 
@@ -6331,9 +6341,13 @@ def discrete_log(
 
 
 def ρσ_divisors(value: Any) -> Any:
-    if _builtins_member_is_function(value, "divisors"):
-        return _builtins_call_member(value, "divisors", [])
+    # As in `ρσ_factor`, a `number`/`bigint` value now carries its own
+    # `divisors` method (see `Integer.divisors` near the end of this
+    # module), so the integer path is selected before the member-dispatch
+    # fallback to avoid recursing back into this function forever.
     if not runtime.is_exact_integer(value):
+        if _builtins_member_is_function(value, "divisors"):
+            return _builtins_call_member(value, "divisors", [])
         raise TypeError("divisors() requires an integer")
     integer = runtime.integer_bigint(value)
     if runtime.strict_equal(integer, runtime.bigint(0)):
@@ -7541,6 +7555,931 @@ def _builtins_integer_nbits(self: Any) -> _Int:
     return len(binary)
 
 
+# ---------------------------------------------------------------------------
+# `sage.rings.integer.Integer` method surface.
+#
+# Sage users type `n.divisors()`, `n.factor()`, `n.gcd(m)` far more often
+# than the equivalent global functions.  Most of the arithmetic already
+# exists above as a global function; the methods below are thin wrappers
+# that attach that same arithmetic to `number`/`bigint` values as real
+# methods, matching `sage.rings.integer.Integer`.  A handful of methods
+# (`isqrt`, `exact_log`, `nth_root`, `squarefree_part`, `is_squarefree`,
+# `trailing_zero_bits`, `str`, `binary`, `hex`, `oct`) have no existing
+# global counterpart and are implemented here directly; adding new *global*
+# functions for them is deliberately out of scope for this change.
+# ---------------------------------------------------------------------------
+
+
+def _builtins_bigint_string(value: Any, radix: Any) -> _Str:
+    """Return `value.toString(radix)` for a bigint, using V8's native conversion."""
+    return runtime.reflect.apply(
+        runtime.reflect.get(
+            runtime.reflect.get(runtime.bigint, "prototype"),
+            "toString",
+        ),
+        value,
+        [radix],
+    )
+
+
+def _builtins_ordinal_suffix(value: Any) -> _Str:
+    """Return the English ordinal suffix ('st', 'nd', 'rd', or 'th') for a nonnegative bigint."""
+    last_two = runtime.number(runtime.native_mod(value, runtime.bigint(100)))
+    if 11 <= last_two <= 13:
+        return "th"
+    last_digit = last_two % 10
+    if last_digit == 1:
+        return "st"
+    if last_digit == 2:
+        return "nd"
+    if last_digit == 3:
+        return "rd"
+    return "th"
+
+
+def _builtins_bigint_sqrt_floor(value: Any) -> Any:
+    """Return `floor(sqrt(value))` for a nonnegative bigint, by Newton's method."""
+    if value < runtime.bigint(2):
+        return value
+    estimate = value
+    candidate = runtime.native_div(
+        runtime.native_add(estimate, runtime.bigint(1)), runtime.bigint(2)
+    )
+    while candidate < estimate:
+        estimate = candidate
+        candidate = runtime.native_div(
+            runtime.native_add(estimate, runtime.native_div(value, estimate)),
+            runtime.bigint(2),
+        )
+    return estimate
+
+
+def _builtins_bigint_nth_root_floor(value: Any, degree: Any) -> Any:
+    """Return `floor(value ** (1/degree))` for a nonnegative bigint `value` and integer `degree >= 1`."""
+    if value == runtime.bigint(0):
+        return runtime.bigint(0)
+    if degree == runtime.bigint(1):
+        return value
+    # A bit-length-based initial guess keeps the first Newton step from
+    # computing `estimate ** (degree - 1)` on a wildly oversized estimate.
+    bit_length = _builtins_integer_nbits(value)
+    exponent = runtime.number(degree)
+    initial_bits = (bit_length + exponent - 1) // exponent + 1
+    estimate = runtime.native_lshift(runtime.bigint(1), runtime.bigint(initial_bits))
+    degree_minus_one = runtime.native_sub(degree, runtime.bigint(1))
+    while True:
+        powered = estimate**degree_minus_one
+        candidate = runtime.native_div(
+            runtime.native_add(
+                runtime.native_mul(degree_minus_one, estimate),
+                runtime.native_div(value, powered),
+            ),
+            degree,
+        )
+        if candidate >= estimate:
+            break
+        estimate = candidate
+    # Newton's method can land one unit off for integer roots; a direct
+    # exact check in each direction is cheap and removes any doubt.
+    while (estimate + runtime.bigint(1)) ** degree <= value:
+        estimate += runtime.bigint(1)
+    while estimate**degree > value:
+        estimate -= runtime.bigint(1)
+    return estimate
+
+
+class _IntegerMethods:
+    """
+    Method-only home for the `sage.rings.integer.Integer` method surface.
+
+    Sage.js integers are ordinary JavaScript `number`/`bigint` primitives,
+    not instances of this class; it exists purely so each method's name and
+    docstring live beside a class named `Integer` in the eyes of the
+    reference-documentation generator (documented as `Integer.gcd`,
+    `Integer.divisors`, ...), the same convention `combinat.py` uses for
+    `Partition`. The class itself is named `_IntegerMethods`, not
+    `Integer`, only because `Integer` is already bound above to Sage's
+    integer-literal constructor (`Integer(12)`); the reference-example
+    extractor's owner-name normalization (`scripts/reference-examples.cjs`)
+    maps `_IntegerMethods` back to `integer` to bridge the two names. Every
+    method below is the real, sole implementation; the attachment loop near
+    the end of this module reads each one off this class's prototype, wraps
+    it with `runtime.native_method`, and installs it on both
+    `runtime.number` and `runtime.bigint` prototypes so it is reachable
+    from an actual integer.
+    """
+
+    def isqrt(self) -> Any:
+        """
+        Return the truncated integer square root, `floor(sqrt(self))`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 17
+        sage: n.isqrt()
+        4
+        sage: (16).isqrt()
+        4
+        sage: (0).isqrt()
+        0
+        ```
+
+        Sage raises for negative input, and Sage.js matches that:
+
+        ```sage
+        sage: (-1).isqrt()
+        Traceback (most recent call last):
+        ...
+        ValueError: isqrt() of a negative number is not defined
+        ```
+        """
+        value = runtime.bigint(self)
+        if value < runtime.bigint(0):
+            raise ValueError("isqrt() of a negative number is not defined")
+        return runtime.normalize_integer(_builtins_bigint_sqrt_floor(value))
+
+    def exact_log(self, m: Any) -> _Int:
+        """
+        Return the exact value of `floor(log(self, m))`, computed without floating point.
+
+        ### Examples
+
+        ```sage
+        sage: n = 100
+        sage: n.exact_log(3)
+        4
+        sage: (8).exact_log(2)
+        3
+        sage: (1).exact_log(5)
+        0
+        ```
+
+        `self` must be positive and `m` must be at least 2:
+
+        ```sage
+        sage: (0).exact_log(2)
+        Traceback (most recent call last):
+        ...
+        ValueError: exact_log() requires a positive number
+        sage: (8).exact_log(1)
+        Traceback (most recent call last):
+        ...
+        ValueError: exact_log() requires the base to be at least 2
+        ```
+        """
+        if not runtime.is_exact_integer(m):
+            raise TypeError("exact_log() requires an integer base")
+        value = runtime.bigint(self)
+        base = runtime.integer_bigint(m)
+        if value <= runtime.bigint(0):
+            raise ValueError("exact_log() requires a positive number")
+        if base < runtime.bigint(2):
+            raise ValueError("exact_log() requires the base to be at least 2")
+        if value < base:
+            return 0
+        # Double the exponent until `base ** upper` overshoots `value`, then
+        # binary search the bracket.  Every intermediate value is exact.
+        lower = 1
+        upper = 2
+        upper_power = base * base
+        while upper_power <= value:
+            lower = upper
+            upper *= 2
+            upper_power = upper_power * upper_power
+        while upper - lower > 1:
+            middle = (lower + upper) // 2
+            if base ** runtime.bigint(middle) <= value:
+                lower = middle
+            else:
+                upper = middle
+        return lower
+
+    def nth_root(
+        self,
+        n: Any,
+        truncate_mode: _Bool = False,
+    ) -> Any:
+        """
+        Return the `n`-th root of `self`.
+
+        With `truncate_mode=False` (the default), the root must be exact or a
+        `ValueError` is raised.  With `truncate_mode=True`, this instead returns
+        a pair `(root, exact)`, where `root` is `floor(self ** (1/n))` (for
+        `self >= 0`) and `exact` records whether that root is exact.
+
+        ### Examples
+
+        ```sage
+        sage: n = 8
+        sage: n.nth_root(3)
+        2
+        sage: (-8).nth_root(3)
+        -2
+        sage: (10).nth_root(3, truncate_mode=True)
+        (2, False)
+        ```
+
+        An inexact root without `truncate_mode` raises:
+
+        ```sage
+        sage: (10).nth_root(3)
+        Traceback (most recent call last):
+        ...
+        ValueError: 10 is not a perfect 3rd power
+        ```
+
+        An even root of a negative number has no real value in the integers:
+
+        ```sage
+        sage: (-4).nth_root(2)
+        Traceback (most recent call last):
+        ...
+        ValueError: cannot take an even root of a negative number
+        ```
+        """
+        if not runtime.is_exact_integer(n):
+            raise TypeError("nth_root() requires an integer degree")
+        degree = runtime.integer_bigint(n)
+        if degree <= runtime.bigint(0):
+            raise ValueError("nth_root() degree must be positive")
+        value = runtime.bigint(self)
+        negative = value < runtime.bigint(0)
+        if negative:
+            if runtime.native_mod(degree, runtime.bigint(2)) == runtime.bigint(0):
+                raise ValueError("cannot take an even root of a negative number")
+            magnitude = runtime.native_neg(value)
+        else:
+            magnitude = value
+        root = _builtins_bigint_nth_root_floor(magnitude, degree)
+        exact = root**degree == magnitude
+        if negative:
+            root = runtime.native_neg(root)
+        if truncate_mode:
+            return runtime.math_tuple([runtime.normalize_integer(root), exact])
+        if not exact:
+            raise ValueError(
+                str(self)
+                + " is not a perfect "
+                + str(degree)
+                + _builtins_ordinal_suffix(degree)
+                + " power"
+            )
+        return runtime.normalize_integer(root)
+
+    def squarefree_part(self) -> Any:
+        """
+        Return the squarefree part of `self`: the unique squarefree integer `p`
+        such that `self == p * s * s` for some integer `s`, keeping the sign of
+        `self`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 12
+        sage: n.squarefree_part()
+        3
+        sage: (-12).squarefree_part()
+        -3
+        sage: (0).squarefree_part()
+        0
+        ```
+        """
+        value = runtime.bigint(self)
+        if value == runtime.bigint(0):
+            return 0
+        negative = value < runtime.bigint(0)
+        magnitude = runtime.native_neg(value) if negative else value
+        answer = runtime.bigint(1)
+        for prime, exponent in ρσ_factor(magnitude):
+            if exponent % 2 == 1:
+                answer = runtime.native_mul(answer, runtime.integer_bigint(prime))
+        if negative:
+            answer = runtime.native_neg(answer)
+        return runtime.normalize_integer(answer)
+
+    def is_squarefree(self) -> _Bool:
+        """
+        Return whether `self` is not divisible by any perfect square other than 1.
+
+        ### Examples
+
+        ```sage
+        sage: n = 10
+        sage: n.is_squarefree()
+        True
+        sage: (12).is_squarefree()
+        False
+        sage: (1).is_squarefree()
+        True
+        sage: (0).is_squarefree()
+        False
+        ```
+        """
+        value = runtime.bigint(self)
+        if value == runtime.bigint(0):
+            return False
+        magnitude = runtime.native_neg(value) if value < runtime.bigint(0) else value
+        if magnitude == runtime.bigint(1):
+            return True
+        for _prime, exponent in ρσ_factor(magnitude):
+            if exponent > 1:
+                return False
+        return True
+
+    def trailing_zero_bits(self) -> _Int:
+        """
+        Return the number of trailing zero bits in `abs(self)`'s binary
+        representation (its 2-adic valuation), or 0 for `self == 0`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 12
+        sage: n.trailing_zero_bits()
+        2
+        sage: (7).trailing_zero_bits()
+        0
+        sage: (0).trailing_zero_bits()
+        0
+        ```
+        """
+        value = runtime.bigint(self)
+        if value == runtime.bigint(0):
+            return 0
+        magnitude = runtime.native_neg(value) if value < runtime.bigint(0) else value
+        count = 0
+        while runtime.native_mod(magnitude, runtime.bigint(2)) == runtime.bigint(0):
+            magnitude = runtime.native_div(magnitude, runtime.bigint(2))
+            count += 1
+        return count
+
+    def str(self, base: Any = 10) -> _Str:
+        """
+        Return `self` written in the given `base` (2 to 36), without a prefix.
+
+        ### Examples
+
+        ```sage
+        sage: n = 255
+        sage: n.str(16)
+        ff
+        sage: (-255).str(16)
+        -ff
+        sage: (12).str()
+        12
+        ```
+        """
+        radix = runtime.integer_bigint(base)
+        if radix < runtime.bigint(2) or radix > runtime.bigint(36):
+            raise ValueError("str() base must be between 2 and 36")
+        return _builtins_bigint_string(runtime.bigint(self), runtime.number(radix))
+
+    def binary(self) -> _Str:
+        """
+        Return the binary digits of `self` as a string, without a `0b` prefix.
+
+        ### Examples
+
+        ```sage
+        sage: n = 10
+        sage: n.binary()
+        1010
+        ```
+        """
+        return self.str(2)
+
+    def hex(self) -> _Str:
+        """
+        Return the hexadecimal digits of `self` as a string, without a `0x` prefix.
+
+        ### Examples
+
+        ```sage
+        sage: n = 12
+        sage: n.hex()
+        c
+        ```
+        """
+        return self.str(16)
+
+    def oct(self) -> _Str:
+        """
+        Return the octal digits of `self` as a string, without a `0o` prefix.
+
+        ### Examples
+
+        ```sage
+        sage: n = 8
+        sage: n.oct()
+        10
+        ```
+        """
+        return self.str(8)
+
+    def gcd(self, other: Any) -> Any:
+        """
+        Return the greatest common divisor of `self` and `other`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 12
+        sage: n.gcd(18)
+        6
+        sage: (-12).gcd(18)
+        6
+        sage: (0).gcd(5)
+        5
+        ```
+        """
+        return ρσ_gcd(self, other)
+
+    def xgcd(self, other: Any) -> Any:
+        """
+        Return `(g, s, t)` with `g = gcd(self, other) = s * self + t * other`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 6
+        sage: n.xgcd(4)
+        (2, 1, -1)
+        ```
+        """
+        return xgcd(self, other)
+
+    def factor(self) -> Any:
+        """
+        Return the factorization of `self` as a Sage-style factorization object.
+
+        ### Examples
+
+        ```sage
+        sage: n = 2026
+        sage: n.factor()
+        2 * 1013
+        ```
+
+        `factor()` is not defined for zero. (FLINT rejects zero with a
+        native `RangeError` rather than a Python exception class; catching
+        it as `RangeError` or plain `Exception` both work.)
+
+        ```sage
+        sage: (0).factor()
+        Traceback (most recent call last):
+        ...
+        RangeError: cannot factor zero
+        ```
+        """
+        return ρσ_factor(self)
+
+    def divisors(self) -> Any:
+        """
+        Return the positive divisors of `self` in increasing order.
+
+        ### Examples
+
+        ```sage
+        sage: n = 12
+        sage: n.divisors()
+        [1, 2, 3, 4, 6, 12]
+        sage: (-12).divisors()
+        [1, 2, 3, 4, 6, 12]
+        ```
+        """
+        return ρσ_divisors(self)
+
+    def prime_divisors(self) -> Any:
+        """
+        Return the distinct prime divisors of `self`, in increasing order.
+
+        ### Examples
+
+        ```sage
+        sage: n = 12
+        sage: n.prime_divisors()
+        [2, 3]
+        ```
+        """
+        return ρσ_prime_divisors(self)
+
+    def prime_factors(self) -> Any:
+        """
+        Return the distinct prime divisors of `self`; an alias for
+        `prime_divisors()`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 12
+        sage: n.prime_factors()
+        [2, 3]
+        ```
+        """
+        return self.prime_divisors()
+
+    def is_prime(self) -> _Bool:
+        """
+        Return whether `self` is prime.
+
+        ### Examples
+
+        ```sage
+        sage: n = 13
+        sage: n.is_prime()
+        True
+        sage: (12).is_prime()
+        False
+        sage: (-13).is_prime()
+        False
+        ```
+        """
+        return ρσ_is_prime(self)
+
+    def is_prime_power(self) -> _Bool:
+        """
+        Return whether `self` is a positive power of a single prime.
+
+        ### Examples
+
+        ```sage
+        sage: n = 8
+        sage: n.is_prime_power()
+        True
+        sage: (12).is_prime_power()
+        False
+        ```
+        """
+        return is_prime_power(self)
+
+    def next_prime(self) -> Any:
+        """
+        Return the smallest prime strictly greater than `self`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 10
+        sage: n.next_prime()
+        11
+        ```
+        """
+        return ρσ_next_prime(self)
+
+    def previous_prime(self) -> Any:
+        """
+        Return the largest prime strictly smaller than `self`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 10
+        sage: n.previous_prime()
+        7
+        ```
+
+        There is no prime below 2:
+
+        ```sage
+        sage: (2).previous_prime()
+        Traceback (most recent call last):
+        ...
+        ValueError: no previous prime
+        ```
+        """
+        return previous_prime(self)
+
+    def valuation(self, p: Any) -> Any:
+        """
+        Return the largest power of `p` dividing `self` (the `p`-adic valuation).
+
+        ### Examples
+
+        ```sage
+        sage: n = 72
+        sage: n.valuation(3)
+        2
+        ```
+
+        The valuation of zero is undefined:
+
+        ```sage
+        sage: (0).valuation(3)
+        Traceback (most recent call last):
+        ...
+        ValueError: valuation of zero is infinite
+        ```
+        """
+        return valuation(self, p)
+
+    def binomial(self, k: Any) -> Any:
+        """
+        Return the binomial coefficient `C(self, k)`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 5
+        sage: n.binomial(2)
+        10
+        ```
+        """
+        return binomial(self, k)
+
+    def factorial(self) -> Any:
+        """
+        Return `self!`, the factorial of `self`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 5
+        sage: n.factorial()
+        120
+        ```
+
+        The factorial of a negative integer is undefined:
+
+        ```sage
+        sage: (-1).factorial()
+        Traceback (most recent call last):
+        ...
+        ValueError: factorial() is not defined for negative integers
+        ```
+        """
+        return factorial(self)
+
+    def euler_phi(self) -> Any:
+        """
+        Return Euler's totient `phi(self)`, the count of integers in `[1, self]`
+        coprime to `self`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 9
+        sage: n.euler_phi()
+        6
+        ```
+        """
+        return euler_phi(self)
+
+    def sigma(self, k: Any = 1) -> Any:
+        """
+        Return the sum of the `k`-th powers of the positive divisors of `self`
+        (the default `k=1` is the ordinary sum-of-divisors function).
+
+        ### Examples
+
+        ```sage
+        sage: n = 28
+        sage: n.sigma()
+        56
+        sage: n.sigma(0)
+        6
+        ```
+
+        `sigma()` is not defined for zero:
+
+        ```sage
+        sage: (0).sigma()
+        Traceback (most recent call last):
+        ...
+        ValueError: sigma() is not defined for zero
+        ```
+        """
+        return sigma(self, k)
+
+    def moebius(self) -> Any:
+        """
+        Return the Möbius function `mu(self)`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 30
+        sage: n.moebius()
+        -1
+        sage: (12).moebius()
+        0
+        sage: (1).moebius()
+        1
+        ```
+        """
+        return moebius(self)
+
+    def kronecker(self, other: Any) -> Any:
+        """
+        Return the Kronecker symbol `(self / other)`.
+
+        Unlike `jacobi()`, the Kronecker symbol is defined for every integer
+        `other`, including even and negative values.
+
+        ### Examples
+
+        ```sage
+        sage: n = 5
+        sage: n.kronecker(11)
+        1
+        ```
+        """
+        return kronecker(self, other)
+
+    def jacobi(self, other: Any) -> Any:
+        """
+        Return the Jacobi symbol `(self / other)`.
+
+        Sage requires `other` to be odd; `kronecker()` lifts that restriction.
+
+        ### Examples
+
+        ```sage
+        sage: n = 5
+        sage: n.jacobi(21)
+        1
+        ```
+
+        An even second argument is rejected:
+
+        ```sage
+        sage: (5).jacobi(4)
+        Traceback (most recent call last):
+        ...
+        ValueError: jacobi symbol not defined for even b
+        ```
+        """
+        if not runtime.is_exact_integer(other):
+            raise TypeError("jacobi() requires an integer")
+        modulus = runtime.integer_bigint(other)
+        if runtime.native_mod(modulus, runtime.bigint(2)) == runtime.bigint(0):
+            raise ValueError("jacobi symbol not defined for even b")
+        return kronecker(self, other)
+
+    def inverse_mod(self, m: Any) -> Any:
+        """
+        Return the inverse of `self` modulo `m`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 3
+        sage: n.inverse_mod(4000)
+        2667
+        ```
+
+        An inverse exists only when `self` and `m` are coprime:
+
+        ```sage
+        sage: (2).inverse_mod(4)
+        Traceback (most recent call last):
+        ...
+        ZeroDivisionError: inverse does not exist
+        ```
+        """
+        return inverse_mod(self, m)
+
+    def powermod(self, exponent: Any, modulus: Any) -> Any:
+        """
+        Return `self ** exponent` modulo `modulus`, computed by fast modular
+        exponentiation. A negative `exponent` uses the modular inverse of `self`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 11
+        sage: n.powermod(156, 1237)
+        153
+        ```
+        """
+        return power_mod(self, exponent, modulus)
+
+    def odd_part(self) -> Any:
+        """
+        Return `self` with all factors of 2 removed.
+
+        ### Examples
+
+        ```sage
+        sage: n = 24
+        sage: n.odd_part()
+        3
+        ```
+        """
+        return odd_part(self)
+
+    def prime_to_m_part(self, m: Any) -> Any:
+        """
+        Return the largest divisor of `self` that is coprime to `m`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 60
+        sage: n.prime_to_m_part(6)
+        5
+        ```
+        """
+        return prime_to_m_part(self, m)
+
+    def numerator(self) -> Any:
+        """
+        Return `self`, the numerator of an integer viewed as a rational number.
+
+        ### Examples
+
+        ```sage
+        sage: n = 7
+        sage: n.numerator()
+        7
+        ```
+        """
+        return numerator(self)
+
+    def denominator(self) -> Any:
+        """
+        Return 1, the denominator of an integer viewed as a rational number.
+
+        ### Examples
+
+        ```sage
+        sage: n = 7
+        sage: n.denominator()
+        1
+        ```
+        """
+        return denominator(self)
+
+    def quo_rem(self, other: Any) -> Any:
+        """
+        Return `(self // other, self % other)`, using the same floor-division
+        convention as `//` and `%` elsewhere in Sage.js.
+
+        ### Examples
+
+        ```sage
+        sage: n = 17
+        sage: n.quo_rem(5)
+        (3, 2)
+        sage: (-17).quo_rem(5)
+        (-4, 3)
+        ```
+        """
+        return ρσ_divmod(self, other)
+
+    def sign(self) -> _Int:
+        """
+        Return -1, 0, or 1 according to whether `self` is negative, zero, or positive.
+
+        ### Examples
+
+        ```sage
+        sage: n = -5
+        sage: n.sign()
+        -1
+        sage: (0).sign()
+        0
+        sage: (5).sign()
+        1
+        ```
+        """
+        value = runtime.bigint(self)
+        if value < runtime.bigint(0):
+            return -1
+        if value > runtime.bigint(0):
+            return 1
+        return 0
+
+    def divides(self, other: Any) -> _Bool:
+        """
+        Return whether `self` divides `other`.
+
+        As a special case, `0.divides(0)` is `True`, while `0.divides(n)` is
+        `False` for every nonzero `n`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 3
+        sage: n.divides(12)
+        True
+        sage: (5).divides(12)
+        False
+        sage: (0).divides(0)
+        True
+        sage: (0).divides(5)
+        False
+        ```
+        """
+        if not runtime.is_exact_integer(other):
+            raise TypeError("divides() requires an integer")
+        divisor = runtime.bigint(self)
+        dividend = runtime.integer_bigint(other)
+        if divisor == runtime.bigint(0):
+            return dividend == runtime.bigint(0)
+        return runtime.native_mod(dividend, divisor) == runtime.bigint(0)
+
+
 def _builtins_extreme(
     positional: Any,
     keywords: Any,
@@ -8664,6 +9603,240 @@ runtime.reflect.set(
     "bit_length",
     _integer_nbits_native,
 )
+
+# The rest of `sage.rings.integer.Integer`'s method surface, implemented as
+# real methods on the `_IntegerMethods` class above (see its docstring for
+# why it isn't named `Integer`).  This set is large enough that writing out
+# an explicit `reflect.set` pair per method (as `byte_strings.py` already
+# does for its own bulk method attachment) would mostly be noise; the loop
+# below performs the exact same two `reflect.set` calls per method, just
+# without repeating them by hand.
+
+
+def _integer_class_method(name: str) -> Any:
+    """
+    Return an unbound `_IntegerMethods` method by name.
+
+    Ordinary `getattr` is used deliberately instead of
+    `runtime.reflect.get(_IntegerMethods, "prototype")`: for a method whose
+    name shadows a Python builtin (`str`, `hex`, `oct`), the low-level JS
+    `Reflect.get` walk instead finds an inherited base-prototype `str`
+    binding, while ordinary Python attribute access correctly finds this
+    class's own method.
+    """
+    return getattr(_IntegerMethods, name)
+
+
+_INTEGER_METHOD_NAMES = [
+    "gcd",
+    "xgcd",
+    "factor",
+    "divisors",
+    "prime_divisors",
+    "prime_factors",
+    "is_prime",
+    "is_prime_power",
+    "next_prime",
+    "previous_prime",
+    "valuation",
+    "binomial",
+    "factorial",
+    "euler_phi",
+    "sigma",
+    "moebius",
+    "kronecker",
+    "jacobi",
+    "inverse_mod",
+    "powermod",
+    "odd_part",
+    "prime_to_m_part",
+    "numerator",
+    "denominator",
+    "quo_rem",
+    "sign",
+    "divides",
+    "isqrt",
+    "exact_log",
+    "nth_root",
+    "squarefree_part",
+    "is_squarefree",
+    "trailing_zero_bits",
+    "str",
+    "binary",
+    "hex",
+    "oct",
+]
+for _integer_method_name in _INTEGER_METHOD_NAMES:
+    _integer_method_native = runtime.native_method(
+        _integer_class_method(_integer_method_name)
+    )
+    runtime.reflect.set(
+        runtime.reflect.get(runtime.number, "prototype"),
+        _integer_method_name,
+        _integer_method_native,
+    )
+    runtime.reflect.set(
+        runtime.reflect.get(runtime.bigint, "prototype"),
+        _integer_method_name,
+        _integer_method_native,
+    )
+
+
+_INTEGER_METHOD_DOCS = [
+    ["Integer.gcd", "the greatest common divisor with another integer"],
+    ["Integer.xgcd", "the extended Euclidean algorithm's Bezout coefficients"],
+    ["Integer.factor", "the prime factorization"],
+    ["Integer.divisors", "every positive divisor, in increasing order"],
+    ["Integer.prime_divisors", "the distinct prime divisors, in increasing order"],
+    ["Integer.prime_factors", "an alias for `prime_divisors`"],
+    ["Integer.is_prime", "whether the integer is prime"],
+    ["Integer.is_prime_power", "whether the integer is a positive power of one prime"],
+    ["Integer.next_prime", "the smallest prime strictly greater than the integer"],
+    ["Integer.previous_prime", "the largest prime strictly smaller than the integer"],
+    ["Integer.valuation", "the p-adic valuation"],
+    ["Integer.binomial", "a binomial coefficient"],
+    ["Integer.factorial", "the factorial"],
+    ["Integer.euler_phi", "Euler's totient function"],
+    ["Integer.sigma", "the sum of the k-th powers of the positive divisors"],
+    ["Integer.moebius", "the Moebius function"],
+    ["Integer.kronecker", "the Kronecker symbol"],
+    ["Integer.jacobi", "the Jacobi symbol"],
+    ["Integer.inverse_mod", "the modular inverse"],
+    ["Integer.powermod", "modular exponentiation"],
+    ["Integer.odd_part", "the integer with every factor of 2 removed"],
+    ["Integer.prime_to_m_part", "the largest divisor coprime to m"],
+    ["Integer.numerator", "the numerator, which is the integer itself"],
+    ["Integer.denominator", "the denominator, which is always 1"],
+    ["Integer.quo_rem", "the floor-division quotient and remainder"],
+    ["Integer.sign", "-1, 0, or 1 according to the integer's sign"],
+    ["Integer.divides", "whether the integer divides another integer"],
+    ["Integer.isqrt", "the truncated integer square root"],
+    ["Integer.exact_log", "the exact floor of a logarithm, without floating point"],
+    ["Integer.nth_root", "an exact or truncated n-th root"],
+    ["Integer.squarefree_part", "the squarefree part, keeping the integer's sign"],
+    [
+        "Integer.is_squarefree",
+        "whether no perfect square other than 1 divides the integer",
+    ],
+    ["Integer.trailing_zero_bits", "the number of trailing zero bits"],
+    ["Integer.str", "the digits of the integer in a given base"],
+    ["Integer.binary", "the binary digits, without a `0b` prefix"],
+    ["Integer.hex", "the hexadecimal digits, without a `0x` prefix"],
+    ["Integer.oct", "the octal digits, without a `0o` prefix"],
+]
+
+
+def _integer_method_value(name: str) -> Any:
+    """Return an attached `Integer` method by name, from `runtime.number`'s prototype."""
+    prototype = runtime.reflect.get(runtime.number, "prototype")
+    return runtime.reflect.get(prototype, name)
+
+
+def _register_integer_method_docs() -> None:
+    for record in _INTEGER_METHOD_DOCS:
+        name = record[0]
+        method_name = name.split(".")[1]
+        value = _integer_method_value(method_name)
+        # Prefer the method's own documentation; the table entry above is
+        # only the one-line summary used when a method carries no docstring.
+        authored = runtime.undefined
+        if value is not runtime.undefined and value is not None:
+            authored = runtime.reflect.get(value, "__doc__")
+        text = record[1] if authored is runtime.undefined or not authored else authored
+        runtime.register_doc(
+            name,
+            value,
+            {
+                "kind": "method",
+                "module": "sage.rings.integer",
+                "signature": name + "()",
+                "doc": text,
+                "tags": ["arithmetic", "integers"],
+                "backends": ["FLINT"],
+                "sage_compatibility": {
+                    "status": "compatible",
+                    "notes": (
+                        "Matches the documented SageMath `sage.rings.integer.Integer` "
+                        "behavior for the supported inputs.  Raised exception "
+                        "*messages* are Sage.js's own wording, not transcribed "
+                        "from Sage; exception *types* match."
+                    ),
+                },
+                "provenance": [
+                    {
+                        "kind": "sage-derived",
+                        "source": "SageMath `sage.rings.integer.Integer`",
+                        "url": (
+                            "https://doc.sagemath.org/html/en/reference/"
+                            "rings_standard/sage/rings/integer.html"
+                        ),
+                        "license": "GPL-2.0-or-later",
+                    },
+                ],
+                "limitations": [],
+            },
+        )
+
+
+def _register_is_prime_power_compatibility_note() -> None:
+    # `is_prime_power`'s behavior at 1 genuinely diverges from SageMath (see
+    # this method's docstring), so it needs its own `sage_compatibility`
+    # entry instead of the generic "compatible" one every other `Integer`
+    # method above shares. Registering it here, as a second, unconditional
+    # call after the generic loop, keeps that loop free of any per-name
+    # branching: a plain `==` string comparison at module load time, before
+    # `containers.py` (later in `core-runtime`'s load order) has defined
+    # `ρσ_equals`, breaks the self-hosting compiler bootstrap.
+    name = "Integer.is_prime_power"
+    value = _integer_method_value("is_prime_power")
+    authored = runtime.undefined
+    if value is not runtime.undefined and value is not None:
+        authored = runtime.reflect.get(value, "__doc__")
+    fallback = "whether the integer is a positive power of one prime"
+    text = fallback if authored is runtime.undefined or not authored else authored
+    runtime.register_doc(
+        name,
+        value,
+        {
+            "kind": "method",
+            "module": "sage.rings.integer",
+            "signature": name + "()",
+            "doc": text,
+            "tags": ["arithmetic", "integers"],
+            "backends": ["FLINT"],
+            "sage_compatibility": {
+                "status": "partial",
+                "notes": (
+                    "Matches the documented SageMath `sage.rings.integer.Integer` "
+                    "behavior for the supported inputs, except at 1: SageMath "
+                    "(since sage-6.6, ticket #16878) returns `False` for "
+                    "`(1).is_prime_power()`, while Sage.js currently returns "
+                    "`True`. Which convention Sage.js should adopt is an open "
+                    "question tracked in sagejs#56; this method's behavior at "
+                    "1 is not settled and may change. Raised exception "
+                    "*messages* are Sage.js's own wording, not transcribed "
+                    "from Sage; exception *types* match."
+                ),
+            },
+            "provenance": [
+                {
+                    "kind": "sage-derived",
+                    "source": "SageMath `sage.rings.integer.Integer`",
+                    "url": (
+                        "https://doc.sagemath.org/html/en/reference/"
+                        "rings_standard/sage/rings/integer.html"
+                    ),
+                    "license": "GPL-2.0-or-later",
+                },
+            ],
+            "limitations": [],
+        },
+    )
+
+
+_register_integer_method_docs()
+_register_is_prime_power_compatibility_note()
+
 runtime.reflect.set(runtime.global_object, "true", True)
 runtime.reflect.set(runtime.global_object, "false", False)
 runtime.reflect.set(runtime.global_object, "ρσ_py_true", True)

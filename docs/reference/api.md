@@ -4959,6 +4959,1228 @@ sage: S.vertex_list()
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
 
+## `Integer.binary`
+
+```sage
+Integer.binary()
+```
+
+Return the binary digits of `self` as a string, without a `0b` prefix.
+
+### Examples
+
+```sage
+sage: n = 10
+sage: n.binary()
+1010
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.binomial`
+
+```sage
+Integer.binomial()
+```
+
+Return the binomial coefficient `C(self, k)`.
+
+### Examples
+
+```sage
+sage: n = 5
+sage: n.binomial(2)
+10
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.denominator`
+
+```sage
+Integer.denominator()
+```
+
+Return 1, the denominator of an integer viewed as a rational number.
+
+### Examples
+
+```sage
+sage: n = 7
+sage: n.denominator()
+1
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.divides`
+
+```sage
+Integer.divides()
+```
+
+Return whether `self` divides `other`.
+
+As a special case, `0.divides(0)` is `True`, while `0.divides(n)` is
+`False` for every nonzero `n`.
+
+### Examples
+
+```sage
+sage: n = 3
+sage: n.divides(12)
+True
+sage: (5).divides(12)
+False
+sage: (0).divides(0)
+True
+sage: (0).divides(5)
+False
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.divisors`
+
+```sage
+Integer.divisors()
+```
+
+Return the positive divisors of `self` in increasing order.
+
+### Examples
+
+```sage
+sage: n = 12
+sage: n.divisors()
+[1, 2, 3, 4, 6, 12]
+sage: (-12).divisors()
+[1, 2, 3, 4, 6, 12]
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.euler_phi`
+
+```sage
+Integer.euler_phi()
+```
+
+Return Euler's totient `phi(self)`, the count of integers in `[1, self]`
+coprime to `self`.
+
+### Examples
+
+```sage
+sage: n = 9
+sage: n.euler_phi()
+6
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.exact_log`
+
+```sage
+Integer.exact_log()
+```
+
+Return the exact value of `floor(log(self, m))`, computed without floating point.
+
+### Examples
+
+```sage
+sage: n = 100
+sage: n.exact_log(3)
+4
+sage: (8).exact_log(2)
+3
+sage: (1).exact_log(5)
+0
+```
+
+`self` must be positive and `m` must be at least 2:
+
+```sage
+sage: (0).exact_log(2)
+Traceback (most recent call last):
+...
+ValueError: exact_log() requires a positive number
+sage: (8).exact_log(1)
+Traceback (most recent call last):
+...
+ValueError: exact_log() requires the base to be at least 2
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.factor`
+
+```sage
+Integer.factor()
+```
+
+Return the factorization of `self` as a Sage-style factorization object.
+
+### Examples
+
+```sage
+sage: n = 2026
+sage: n.factor()
+2 * 1013
+```
+
+`factor()` is not defined for zero. (FLINT rejects zero with a
+native `RangeError` rather than a Python exception class; catching
+it as `RangeError` or plain `Exception` both work.)
+
+```sage
+sage: (0).factor()
+Traceback (most recent call last):
+...
+RangeError: cannot factor zero
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.factorial`
+
+```sage
+Integer.factorial()
+```
+
+Return `self!`, the factorial of `self`.
+
+### Examples
+
+```sage
+sage: n = 5
+sage: n.factorial()
+120
+```
+
+The factorial of a negative integer is undefined:
+
+```sage
+sage: (-1).factorial()
+Traceback (most recent call last):
+...
+ValueError: factorial() is not defined for negative integers
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.gcd`
+
+```sage
+Integer.gcd()
+```
+
+Return the greatest common divisor of `self` and `other`.
+
+### Examples
+
+```sage
+sage: n = 12
+sage: n.gcd(18)
+6
+sage: (-12).gcd(18)
+6
+sage: (0).gcd(5)
+5
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.hex`
+
+```sage
+Integer.hex()
+```
+
+Return the hexadecimal digits of `self` as a string, without a `0x` prefix.
+
+### Examples
+
+```sage
+sage: n = 12
+sage: n.hex()
+c
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.inverse_mod`
+
+```sage
+Integer.inverse_mod()
+```
+
+Return the inverse of `self` modulo `m`.
+
+### Examples
+
+```sage
+sage: n = 3
+sage: n.inverse_mod(4000)
+2667
+```
+
+An inverse exists only when `self` and `m` are coprime:
+
+```sage
+sage: (2).inverse_mod(4)
+Traceback (most recent call last):
+...
+ZeroDivisionError: inverse does not exist
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.is_prime`
+
+```sage
+Integer.is_prime()
+```
+
+Return whether `self` is prime.
+
+### Examples
+
+```sage
+sage: n = 13
+sage: n.is_prime()
+True
+sage: (12).is_prime()
+False
+sage: (-13).is_prime()
+False
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.is_prime_power`
+
+```sage
+Integer.is_prime_power()
+```
+
+Return whether `self` is a positive power of a single prime.
+
+### Examples
+
+```sage
+sage: n = 8
+sage: n.is_prime_power()
+True
+sage: (12).is_prime_power()
+False
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: partial — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs, except at 1: SageMath (since sage-6.6, ticket #16878) returns `False` for `(1).is_prime_power()`, while Sage.js currently returns `True`. Which convention Sage.js should adopt is an open question tracked in sagejs#56; this method's behavior at 1 is not settled and may change. Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.is_squarefree`
+
+```sage
+Integer.is_squarefree()
+```
+
+Return whether `self` is not divisible by any perfect square other than 1.
+
+### Examples
+
+```sage
+sage: n = 10
+sage: n.is_squarefree()
+True
+sage: (12).is_squarefree()
+False
+sage: (1).is_squarefree()
+True
+sage: (0).is_squarefree()
+False
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.isqrt`
+
+```sage
+Integer.isqrt()
+```
+
+Return the truncated integer square root, `floor(sqrt(self))`.
+
+### Examples
+
+```sage
+sage: n = 17
+sage: n.isqrt()
+4
+sage: (16).isqrt()
+4
+sage: (0).isqrt()
+0
+```
+
+Sage raises for negative input, and Sage.js matches that:
+
+```sage
+sage: (-1).isqrt()
+Traceback (most recent call last):
+...
+ValueError: isqrt() of a negative number is not defined
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.jacobi`
+
+```sage
+Integer.jacobi()
+```
+
+Return the Jacobi symbol `(self / other)`.
+
+Sage requires `other` to be odd; `kronecker()` lifts that restriction.
+
+### Examples
+
+```sage
+sage: n = 5
+sage: n.jacobi(21)
+1
+```
+
+An even second argument is rejected:
+
+```sage
+sage: (5).jacobi(4)
+Traceback (most recent call last):
+...
+ValueError: jacobi symbol not defined for even b
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.kronecker`
+
+```sage
+Integer.kronecker()
+```
+
+Return the Kronecker symbol `(self / other)`.
+
+Unlike `jacobi()`, the Kronecker symbol is defined for every integer
+`other`, including even and negative values.
+
+### Examples
+
+```sage
+sage: n = 5
+sage: n.kronecker(11)
+1
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.moebius`
+
+```sage
+Integer.moebius()
+```
+
+Return the Möbius function `mu(self)`.
+
+### Examples
+
+```sage
+sage: n = 30
+sage: n.moebius()
+-1
+sage: (12).moebius()
+0
+sage: (1).moebius()
+1
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.next_prime`
+
+```sage
+Integer.next_prime()
+```
+
+Return the smallest prime strictly greater than `self`.
+
+### Examples
+
+```sage
+sage: n = 10
+sage: n.next_prime()
+11
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.nth_root`
+
+```sage
+Integer.nth_root()
+```
+
+Return the `n`-th root of `self`.
+
+With `truncate_mode=False` (the default), the root must be exact or a
+`ValueError` is raised.  With `truncate_mode=True`, this instead returns
+a pair `(root, exact)`, where `root` is `floor(self ** (1/n))` (for
+`self >= 0`) and `exact` records whether that root is exact.
+
+### Examples
+
+```sage
+sage: n = 8
+sage: n.nth_root(3)
+2
+sage: (-8).nth_root(3)
+-2
+sage: (10).nth_root(3, truncate_mode=True)
+(2, False)
+```
+
+An inexact root without `truncate_mode` raises:
+
+```sage
+sage: (10).nth_root(3)
+Traceback (most recent call last):
+...
+ValueError: 10 is not a perfect 3rd power
+```
+
+An even root of a negative number has no real value in the integers:
+
+```sage
+sage: (-4).nth_root(2)
+Traceback (most recent call last):
+...
+ValueError: cannot take an even root of a negative number
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.numerator`
+
+```sage
+Integer.numerator()
+```
+
+Return `self`, the numerator of an integer viewed as a rational number.
+
+### Examples
+
+```sage
+sage: n = 7
+sage: n.numerator()
+7
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.oct`
+
+```sage
+Integer.oct()
+```
+
+Return the octal digits of `self` as a string, without a `0o` prefix.
+
+### Examples
+
+```sage
+sage: n = 8
+sage: n.oct()
+10
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.odd_part`
+
+```sage
+Integer.odd_part()
+```
+
+Return `self` with all factors of 2 removed.
+
+### Examples
+
+```sage
+sage: n = 24
+sage: n.odd_part()
+3
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.powermod`
+
+```sage
+Integer.powermod()
+```
+
+Return `self ** exponent` modulo `modulus`, computed by fast modular
+exponentiation. A negative `exponent` uses the modular inverse of `self`.
+
+### Examples
+
+```sage
+sage: n = 11
+sage: n.powermod(156, 1237)
+153
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.previous_prime`
+
+```sage
+Integer.previous_prime()
+```
+
+Return the largest prime strictly smaller than `self`.
+
+### Examples
+
+```sage
+sage: n = 10
+sage: n.previous_prime()
+7
+```
+
+There is no prime below 2:
+
+```sage
+sage: (2).previous_prime()
+Traceback (most recent call last):
+...
+ValueError: no previous prime
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.prime_divisors`
+
+```sage
+Integer.prime_divisors()
+```
+
+Return the distinct prime divisors of `self`, in increasing order.
+
+### Examples
+
+```sage
+sage: n = 12
+sage: n.prime_divisors()
+[2, 3]
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.prime_factors`
+
+```sage
+Integer.prime_factors()
+```
+
+Return the distinct prime divisors of `self`; an alias for
+`prime_divisors()`.
+
+### Examples
+
+```sage
+sage: n = 12
+sage: n.prime_factors()
+[2, 3]
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.prime_to_m_part`
+
+```sage
+Integer.prime_to_m_part()
+```
+
+Return the largest divisor of `self` that is coprime to `m`.
+
+### Examples
+
+```sage
+sage: n = 60
+sage: n.prime_to_m_part(6)
+5
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.quo_rem`
+
+```sage
+Integer.quo_rem()
+```
+
+Return `(self // other, self % other)`, using the same floor-division
+convention as `//` and `%` elsewhere in Sage.js.
+
+### Examples
+
+```sage
+sage: n = 17
+sage: n.quo_rem(5)
+(3, 2)
+sage: (-17).quo_rem(5)
+(-4, 3)
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.sigma`
+
+```sage
+Integer.sigma()
+```
+
+Return the sum of the `k`-th powers of the positive divisors of `self`
+(the default `k=1` is the ordinary sum-of-divisors function).
+
+### Examples
+
+```sage
+sage: n = 28
+sage: n.sigma()
+56
+sage: n.sigma(0)
+6
+```
+
+`sigma()` is not defined for zero:
+
+```sage
+sage: (0).sigma()
+Traceback (most recent call last):
+...
+ValueError: sigma() is not defined for zero
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.sign`
+
+```sage
+Integer.sign()
+```
+
+Return -1, 0, or 1 according to whether `self` is negative, zero, or positive.
+
+### Examples
+
+```sage
+sage: n = -5
+sage: n.sign()
+-1
+sage: (0).sign()
+0
+sage: (5).sign()
+1
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.squarefree_part`
+
+```sage
+Integer.squarefree_part()
+```
+
+Return the squarefree part of `self`: the unique squarefree integer `p`
+such that `self == p * s * s` for some integer `s`, keeping the sign of
+`self`.
+
+### Examples
+
+```sage
+sage: n = 12
+sage: n.squarefree_part()
+3
+sage: (-12).squarefree_part()
+-3
+sage: (0).squarefree_part()
+0
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.str`
+
+```sage
+Integer.str()
+```
+
+Return `self` written in the given `base` (2 to 36), without a prefix.
+
+### Examples
+
+```sage
+sage: n = 255
+sage: n.str(16)
+ff
+sage: (-255).str(16)
+-ff
+sage: (12).str()
+12
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.trailing_zero_bits`
+
+```sage
+Integer.trailing_zero_bits()
+```
+
+Return the number of trailing zero bits in `abs(self)`'s binary
+representation (its 2-adic valuation), or 0 for `self == 0`.
+
+### Examples
+
+```sage
+sage: n = 12
+sage: n.trailing_zero_bits()
+2
+sage: (7).trailing_zero_bits()
+0
+sage: (0).trailing_zero_bits()
+0
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.valuation`
+
+```sage
+Integer.valuation()
+```
+
+Return the largest power of `p` dividing `self` (the `p`-adic valuation).
+
+### Examples
+
+```sage
+sage: n = 72
+sage: n.valuation(3)
+2
+```
+
+The valuation of zero is undefined:
+
+```sage
+sage: (0).valuation(3)
+Traceback (most recent call last):
+...
+ValueError: valuation of zero is infinite
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.xgcd`
+
+```sage
+Integer.xgcd()
+```
+
+Return `(g, s, t)` with `g = gcd(self, other) = s * self + t * other`.
+
+### Examples
+
+```sage
+sage: n = 6
+sage: n.xgcd(4)
+(2, 1, -1)
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
 ## `is_prime`
 
 ```sage
