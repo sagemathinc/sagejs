@@ -348,6 +348,8 @@ async function main() {
       modes: ["resident object cold", "resident prepared-context warm"],
       dyadicWorkspace:
         "one lexical 48-entry NativeIntegerVector per point; packed proof rows remain canonical",
+      exactLogRangeReduction:
+        "nearest power of two; absolute atanh argument below (sqrt(2)-1)/(sqrt(2)+1)",
     },
     sagejs: await sageRows(),
     magma: runMagma ? magmaRows() : { available: false, reason: "pass --magma" },

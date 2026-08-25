@@ -423,8 +423,14 @@ def _height_atanh_log_bounds(
     numerator: int, denominator: int, scale: int
 ) -> tuple[int, int]:
     """Enclose `2*atanh(numerator/denominator)` at exact scale."""
-    if numerator < 0 or denominator <= numerator or scale <= 0:
+    if denominator <= 0 or numerator <= -denominator or numerator >= denominator:
         return (1, 0)
+    if scale <= 0:
+        return (1, 0)
+    sign = 1
+    if numerator < 0:
+        numerator = -numerator
+        sign = -1
     if numerator == 0:
         return (0, 0)
     lower = 0
@@ -449,6 +455,8 @@ def _height_atanh_log_bounds(
         if tail_numerator < tail_denominator:
             # Every term is positive and the omitted geometric majorant is
             # strictly below one unit at `scale`.
+            if sign < 0:
+                return (-(upper + 1), -lower)
             return (lower, upper + 1)
         numerator_power = next_numerator_power
         denominator_power = next_denominator_power
@@ -476,6 +484,13 @@ def _positive_dyadic_log_bounds(
         while power > numerator:
             power = power // 2
             exponent = exponent - 1
+    # Choose the nearest power of two. Comparing squares avoids an irrational
+    # threshold and puts the atanh argument in
+    # `[-(sqrt(2)-1)/(sqrt(2)+1), +(sqrt(2)-1)/(sqrt(2)+1)]`, roughly halving
+    # the number of exact series terms required by the former `[1,2)` range.
+    if numerator * numerator > 2 * power * power:
+        power = power * 2
+        exponent = exponent + 1
     normalized_lower, normalized_upper = _height_atanh_log_bounds(
         numerator - power, numerator + power, work_scale
     )
@@ -503,10 +518,11 @@ def dyadic_log_interval_batch(
 
     Input row `(a,b)` denotes `[a/2^input_precision_bits,
     b/2^input_precision_bits]`; the output row uses denominator
-    `2^output_precision_bits`. Monotone power-of-two range reduction places
-    the atanh argument in `[0,1/3]`. The positive series has an explicit
-    geometric remainder below one work unit, and twenty guard bits are rounded
-    down/up exactly at publication.
+    `2^output_precision_bits`. Nearest-power-of-two range reduction places the
+    absolute atanh argument below
+    `(sqrt(2)-1)/(sqrt(2)+1)`. The signed series has an explicit geometric
+    remainder below one work unit, and twenty guard bits are rounded down/up
+    exactly at publication.
     """
     maximum_precision: uint64 = 4096
     maximum_intervals: uint64 = 1048576
