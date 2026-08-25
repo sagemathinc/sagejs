@@ -140,7 +140,9 @@ def print_class(output):
                         output.print(', "' + name + '", {value: ')
                         self.name.print(output)
                         output.print(
-                            ".prototype." + name + ", configurable: true"
+                            ".prototype."
+                            + name
+                            + ", configurable: true"
                             + ", writable: true, enumerable: false})"
                         )
                     else:
