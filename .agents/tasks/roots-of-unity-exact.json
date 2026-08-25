@@ -4,7 +4,7 @@
   "id": "roots-of-unity-exact",
   "title": "Exact general roots of unity",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Implement a bounded replayable exact roots-of-unity producer for higher-degree totally imaginary number fields, completing cyclotomic quartic class/unit computations without polynomial allowlists",
   "base_commit": "483116bb12acdb6f0aec03f993a9be1a42e89b36",
@@ -131,15 +131,15 @@
     }
   ],
   "handoff": {
-    "summary": "Adds a general exact roots-of-unity producer with a universal phi exponent, certified residue-field upper bounds, deterministic generators, bounded embedding-box exhaustion, and authenticated replayable certificates. The proof-authority follow-up removes mutable positive verification caches, makes proof status immutable, adds strict detached JSON reconstruction with full mathematical replay, and declines embedding setup before work when the rigorous 3^degree minimum box exceeds policy. Exact completion covers cyclotomic and translated quartics, including class/unit completion for x^4 + 1, while retaining real-place and imaginary-quadratic behavior.",
+    "summary": "Adds a general exact roots-of-unity producer with a universal phi exponent, certified residue-field upper bounds, deterministic generators, bounded embedding-box exhaustion, and authenticated replayable certificates. The proof-authority follow-ups remove mutable positive verification caches, make proof status immutable, add strict detached JSON reconstruction with full mathematical replay, preflight every caller-controlled aggregate shape before traversal, and decline embedding setup before work when the rigorous 3^degree minimum box exceeds policy. Exact completion covers cyclotomic and translated quartics, including class/unit completion for x^4 + 1, while retaining real-place and imaginary-quadratic behavior.",
     "risks": [
-      "This lane's old package manifest reports 1,420,179 source bytes against a 1,400,000-byte lazy budget. The integration branch already carries a 1,450,000-byte number-field-global-arithmetic budget; architecture:check must be rerun after cherry-pick.",
+      "This lane's old package manifest reports 1,420,179 source bytes against a 1,400,000-byte lazy budget. The cumulative integration source owns 1,462,140 bytes after terminal-proof reuse and this producer, within the narrowly raised 1,475,000-byte number-field-global-arithmetic budget.",
       "Exact embedding-box exhaustion is deliberately capped and can return an honest incomplete result for fields whose certified coordinate box exceeds max_candidates; residue-field certification is the normal fast path.",
-      "The full native suite passed on the initial exact producer commit before the pure-Python proof-authority follow-up. The integration lane is responsible for the cumulative native receipt and explicitly requested no redundant broad native rerun here."
+      "The full native suite passed on the initial exact producer commit before the pure-Python proof-authority follow-ups. The cumulative integration branch passed the full native suite immediately before this disjoint ordinary-Python roots producer; focused, strict, and architecture validation must cover the integrated source."
     ],
     "next_steps": [
-      "Cherry-pick both roots commits into class-group and rerun pnpm architecture:check under the integration branch's 1,450,000-byte narrow lazy budget.",
-      "Record the integration branch's cumulative native validation after the proof-authority follow-up is present.",
+      "Keep the three reviewed roots commits together and retain the 1,475,000-byte package ratchet verified by cumulative architecture checks.",
+      "Record focused roots, strict, and architecture validation on the cumulative integration source.",
       "Use the certificate payload and roots benchmark when profiling higher-degree class/unit completion; do not promote capped fallback results to complete."
     ]
   }
