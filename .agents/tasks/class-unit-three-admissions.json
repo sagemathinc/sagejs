@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-unit-three-admissions",
+  "title": "Amortize reduced ideal relation search",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Select and validate a generic fixed three-admissions-per-reduced-ideal policy for evidence-supported number-field degree/signature bands while preserving exact class/unit semantics, deterministic checkpoints, and measured non-regression gates.",
+  "base_commit": "2b4902e4c8dffc7b5ca2fd64fef8c6f3288542ee",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "test/class-unit-groups-three-admissions.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "Hecke 0.40 BSD NfOrd/Clgp.jl and Clgp/Main_LLL.jl clean-room design observations",
+    "agents/competitive-class-and-unit-groups-strategy.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing exact Sage.js relation/presentation/hR/saturation replay",
+      "Sage/PARI and pinned C4/quartic expected outputs"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
