@@ -37,6 +37,7 @@ DEFAULT_CUBIC_SATURATION_RELATION_BATCH = 12
 MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 
 _CUBIC_RELATION_SEED_UNREAD = object()
+_TERMINAL_SATURATION_CLONE_TOKEN = object()
 
 
 def _factor_base_proof_status(plan: Any) -> str:
@@ -354,14 +355,28 @@ class ClassUnitSaturationRecord:
         analytic_module: Any = None,
         analytic_workspace: Any = None,
         reason: str = "",
+        _trusted_terminal_snapshot: Any = None,
     ) -> None:
+        trusted_terminal = bool(
+            isinstance(_trusted_terminal_snapshot, tuple)
+            and len(_trusted_terminal_snapshot) == 3
+            and _trusted_terminal_snapshot[0] is _TERMINAL_SATURATION_CLONE_TOKEN
+        )
         self.original_units = tuple(original_units)
         self.units = tuple(units)
         self.index_bound = max(1, int(index_bound))
         self.required_primes = tuple(sorted({int(value) for value in required_primes}))
         self.remaining_index_bound = max(1, int(remaining_index_bound))
-        self.attempts = tuple(_component_payload(value) for value in attempts)
-        self.analytic_validation = _component_payload(analytic_validation)
+        self._attempts = (
+            tuple(attempts)
+            if trusted_terminal
+            else tuple(_component_payload(value) for value in attempts)
+        )
+        self._analytic_validation = (
+            analytic_validation
+            if trusted_terminal
+            else _component_payload(analytic_validation)
+        )
         self._analytic_certificate = analytic_certificate
         standard_certificate_type = getattr(
             analytic_module, "UnitSaturationIndexCertificate", None
@@ -406,12 +421,12 @@ class ClassUnitSaturationRecord:
         )
         self._analytic_module = analytic_module
         self._analytic_workspace = analytic_workspace
-        self.rigorous = bool(self.analytic_validation.get("rigorous"))
+        self.rigorous = bool(self._analytic_validation.get("rigorous"))
         self.complete = bool(
             self.rigorous
             and self._analytic_certificate is not None
-            and int(self.analytic_validation.get("lower_index", 0)) == 1
-            and int(self.analytic_validation.get("upper_index", 0)) == 1
+            and int(self._analytic_validation.get("lower_index", 0)) == 1
+            and int(self._analytic_validation.get("upper_index", 0)) == 1
             and self.remaining_index_bound == 1
         )
         self.saturated = self.complete
@@ -421,8 +436,30 @@ class ClassUnitSaturationRecord:
         self._live_authentication_available = bool(
             live_parent_payload_consumed and analytic_workspace is not None
         )
-        body = self._body_dict()
-        self.content_sha256 = _canonical_payload_hash(body)
+        if _trusted_terminal_snapshot is None:
+            body = self._body_dict()
+            self._canonical_body_json = json.dumps(
+                body,
+                allow_nan=False,
+                ensure_ascii=True,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            self.content_sha256 = hashlib.sha256(
+                self._canonical_body_json.encode("utf-8")
+            ).hexdigest()
+        else:
+            token, body_json, content_sha256 = _trusted_terminal_snapshot
+            if (
+                token is not _TERMINAL_SATURATION_CLONE_TOKEN
+                or not isinstance(body_json, str)
+                or not isinstance(content_sha256, str)
+                or hashlib.sha256(body_json.encode("utf-8")).hexdigest()
+                != content_sha256
+            ):
+                raise TypeError("a trusted terminal saturation snapshot is malformed")
+            self._canonical_body_json = body_json
+            self.content_sha256 = content_sha256
 
     def _unit_payload(self, unit: Any) -> Any:
         encode = getattr(unit, "to_dict", None)
@@ -435,6 +472,16 @@ class ClassUnitSaturationRecord:
             [int(coordinate._numerator), int(coordinate._denominator)]
             for coordinate in coordinates
         ]
+
+    @property
+    def attempts(self) -> tuple[Any, ...]:
+        """Return a detached view of bounded saturation diagnostics."""
+        return tuple(_component_payload(value) for value in self._attempts)
+
+    @property
+    def analytic_validation(self) -> dict[str, Any]:
+        """Return a detached view of the rigorous final index interval."""
+        return _component_payload(self._analytic_validation)
 
     def _body_dict(self) -> dict[str, Any]:
         original_payloads = [self._unit_payload(unit) for unit in self.original_units]
@@ -453,8 +500,8 @@ class ClassUnitSaturationRecord:
             "index_bound": self.index_bound,
             "required_primes": list(self.required_primes),
             "remaining_index_bound": self.remaining_index_bound,
-            "attempts": list(self.attempts),
-            "analytic_validation": self.analytic_validation,
+            "attempts": list(self._attempts),
+            "analytic_validation": self._analytic_validation,
             "analytic_certificate": self._analytic_certificate_payload,
             "original_units": original_payloads,
             "units": unit_payloads,
@@ -514,9 +561,9 @@ class ClassUnitSaturationRecord:
                 self.remaining_index_bound
             ):
                 return False
-            if int(self.analytic_validation.get("lower_index", 0)) != int(
+            if int(self._analytic_validation.get("lower_index", 0)) != int(
                 self.remaining_index_bound
-            ) or int(self.analytic_validation.get("upper_index", 0)) != int(
+            ) or int(self._analytic_validation.get("upper_index", 0)) != int(
                 self.remaining_index_bound
             ):
                 return False
@@ -4479,7 +4526,7 @@ class ClassUnitGroupEngine:
             index_bound=record.index_bound,
             remaining_index_bound=record.remaining_index_bound,
             required_primes=record.required_primes,
-            attempts=len(record.attempts),
+            attempts=len(record._attempts),
             rigorous=record.rigorous,
         )
         return collector, presentation, units, torsion, regulator, index, record
@@ -5142,19 +5189,201 @@ def _clone_engine_class_group_for_unconditional_proof(group: Any) -> Any:
     )
 
 
-def _clone_unit_group_for_unconditional_proof(group: Any) -> UnitGroupComputation:
-    """Clone a unit result so the conditional cache remains unchanged."""
-    if type(group) is not UnitGroupComputation or not group.complete:
-        raise TypeError("a terminal proof upgrade needs the standard complete units")
-    return UnitGroupComputation(
-        group.torsion,
-        group.generators,
-        group.unit_rank,
-        complete=True,
-        regulator=group.regulator_enclosure,
-        reason=group.reason,
+def _clone_factored_terminal_units(field: Any, payloads: Any) -> tuple[Any, ...]:
+    """Reconstruct immutable exact units from a private terminal snapshot."""
+    factored_module = _optional_module("sagejs.number_fields.factored_elements")
+    factored_type = getattr(factored_module, "FactoredNumberFieldElement", None)
+    if factored_type is None or not isinstance(payloads, list):
+        raise TypeError("a terminal proof upgrade needs canonical factored units")
+    return tuple(factored_type.from_dict(field, payload) for payload in payloads)
+
+
+def _clone_terminal_torsion(field: Any, payload: Any) -> Any:
+    """Reconstruct roots of unity without sharing the conditional shell."""
+    if not isinstance(payload, dict):
+        raise TypeError("a terminal torsion snapshot must be a dictionary")
+    factored_module = _optional_module("sagejs.number_fields.factored_elements")
+    units_module = _optional_module("sagejs.number_fields.units")
+    decode = getattr(factored_module, "_element_from_payload", None)
+    torsion_type = getattr(units_module, "RootsOfUnityResult", None)
+    raw_elements = payload.get("elements")
+    if (
+        not callable(decode)
+        or not callable(torsion_type)
+        or not isinstance(raw_elements, list)
+    ):
+        raise TypeError("the canonical torsion decoder is unavailable")
+    answer = torsion_type(
+        [decode(field, value) for value in raw_elements],
+        decode(field, payload.get("generator")),
+        _integer(payload.get("order"), "terminal torsion order"),
+        payload.get("complete") is True,
+        str(payload.get("reason")),
+    )
+    verify = getattr(answer, "verify", None)
+    if (
+        _value(answer, ("proof_status",), None) != payload.get("proof_status")
+        or not callable(verify)
+        or not verify()
+    ):
+        raise ArithmeticError("the cloned terminal torsion failed exact replay")
+    return answer
+
+
+def _clone_terminal_regulator(payload: Any, analytic_module: Any) -> Any:
+    """Reconstruct a rigorous regulator enclosure from exact endpoints."""
+    if not isinstance(payload, dict) or not isinstance(payload.get("ball"), dict):
+        raise TypeError("a terminal regulator snapshot must be a dictionary")
+    ball_payload = payload["ball"]
+    ball_type = getattr(analytic_module, "RealBall", None)
+    regulator_type = getattr(analytic_module, "RegulatorEnclosure", None)
+    endpoint = getattr(analytic_module, "_decimal_rational", None)
+    if (
+        not callable(ball_type)
+        or not callable(regulator_type)
+        or not callable(endpoint)
+    ):
+        raise TypeError("the canonical regulator decoder is unavailable")
+    ball = ball_type(
+        ball_payload.get("lower"),
+        ball_payload.get("upper"),
+        precision_bits=_integer(
+            ball_payload.get("precision_bits"), "terminal regulator precision"
+        ),
+        rigorous=ball_payload.get("rigorous") is True,
+        source=str(ball_payload.get("source")),
+    )
+    answer = regulator_type(
+        ball,
+        _integer(payload.get("unit_rank"), "terminal regulator rank"),
+        payload.get("precision_history", ()),
+        weighted_complex_places=payload.get("weighted_complex_places") is True,
+        determinant_widths=tuple(
+            endpoint(value) for value in payload.get("determinant_widths", ())
+        ),
+    )
+    encode = getattr(answer, "to_dict", None)
+    if not callable(encode) or encode() != payload:
+        raise ArithmeticError("the cloned terminal regulator changed its enclosure")
+    return answer
+
+
+def _clone_terminal_saturation(
+    field: Any,
+    order: Any,
+    source: Any,
+    payload: Any,
+    *,
+    body_json: str,
+    content_sha256: str,
+) -> ClassUnitSaturationRecord:
+    """Reconstruct semantic saturation authority, excluding mutable workspaces."""
+    if type(source) is not ClassUnitSaturationRecord or not isinstance(payload, dict):
+        raise TypeError("a terminal proof fork needs standard saturation evidence")
+    analytic_module = getattr(source, "_analytic_module", None)
+    certificate_type = getattr(analytic_module, "UnitSaturationIndexCertificate", None)
+    if certificate_type is None:
+        raise TypeError("the terminal unit-index certificate decoder is unavailable")
+    original_units = _clone_factored_terminal_units(
+        field, payload.get("original_units")
+    )
+    units = _clone_factored_terminal_units(field, payload.get("units"))
+    certificate = certificate_type.from_dict(payload.get("analytic_certificate"))
+    answer = ClassUnitSaturationRecord(
+        field,
+        order,
+        original_units,
+        units,
+        index_bound=_integer(payload.get("index_bound"), "terminal index bound"),
+        required_primes=payload.get("required_primes", ()),
+        remaining_index_bound=_integer(
+            payload.get("remaining_index_bound"), "terminal remaining index"
+        ),
+        attempts=getattr(source, "_attempts", ()),
+        analytic_validation=getattr(source, "_analytic_validation", {}),
+        analytic_certificate=certificate,
+        analytic_generation_verifier=getattr(
+            source, "_analytic_generation_verifier", None
+        ),
+        # Producer artifacts and workspaces are acceleration state.  The
+        # detached final index-one certificate is the semantic authority.
+        producer_artifacts=(),
+        analytic_module=analytic_module,
+        analytic_workspace=None,
+        reason=str(payload.get("reason")),
+        _trusted_terminal_snapshot=(
+            _TERMINAL_SATURATION_CLONE_TOKEN,
+            body_json,
+            content_sha256,
+        ),
+    )
+    return answer
+
+
+def _clone_terminal_unit_authority(
+    field: Any,
+    order: Any,
+    source_group: Any,
+    source_saturation: Any,
+    snapshot: Any,
+) -> tuple[tuple[Any, ...], UnitGroupComputation, ClassUnitSaturationRecord]:
+    """Clone every mutable unit-side component from authenticated payloads."""
+    if (
+        type(source_group) is not UnitGroupComputation
+        or not source_group.complete
+        or not isinstance(snapshot, dict)
+    ):
+        raise TypeError("a terminal proof upgrade needs standard complete units")
+    body_json = snapshot.get("saturation_body_json")
+    content_sha256 = snapshot.get("saturation_content_sha256")
+    if (
+        not isinstance(body_json, str)
+        or not isinstance(content_sha256, str)
+        or hashlib.sha256(body_json.encode("utf-8")).hexdigest() != content_sha256
+    ):
+        raise ArithmeticError("the retained saturation snapshot is malformed")
+    certificate = getattr(source_saturation, "_analytic_certificate", None)
+    encode_certificate = getattr(certificate, "to_dict", None)
+    if not callable(encode_certificate):
+        raise TypeError("the terminal unit-index certificate is unavailable")
+    saturation_payload = {
+        "schema": "sagejs.number-fields/class-unit-saturation-v1",
+        "index_bound": snapshot.get("saturation_index_bound"),
+        "required_primes": snapshot.get("saturation_required_primes"),
+        "remaining_index_bound": snapshot.get("saturation_remaining_index_bound"),
+        "attempts": list(getattr(source_saturation, "_attempts", ())),
+        "analytic_validation": getattr(source_saturation, "_analytic_validation", {}),
+        "analytic_certificate": encode_certificate(),
+        "original_units": [
+            unit.to_dict() for unit in getattr(source_saturation, "original_units", ())
+        ],
+        "units": [unit.to_dict() for unit in getattr(source_saturation, "units", ())],
+        "rigorous": snapshot.get("saturation_rigorous"),
+        "complete": snapshot.get("saturation_complete"),
+        "saturated": snapshot.get("saturation_saturated"),
+        "reason": snapshot.get("saturation_reason"),
+        "content_sha256": content_sha256,
+    }
+    units = _clone_factored_terminal_units(field, saturation_payload["units"])
+    saturation = _clone_terminal_saturation(
+        field,
+        order,
+        source_saturation,
+        saturation_payload,
+        body_json=body_json,
+        content_sha256=content_sha256,
+    )
+    analytic_module = getattr(source_saturation, "_analytic_module", None)
+    unit_group = UnitGroupComputation(
+        _clone_terminal_torsion(field, snapshot.get("torsion")),
+        units,
+        _integer(snapshot.get("unit_rank"), "terminal unit rank"),
+        complete=snapshot.get("unit_complete") is True,
+        regulator=_clone_terminal_regulator(snapshot.get("regulator"), analytic_module),
+        reason=str(snapshot.get("unit_reason")),
         proof_status=EXACT_UNCONDITIONAL,
     )
+    return units, unit_group, saturation
 
 
 def _terminal_dependency_hashes_for_policies(
@@ -5294,6 +5523,9 @@ def _upgrade_cached_conditional_result(
     material = issued[1]
     if not isinstance(material, dict):
         return None
+    finish_terminal_upgrade = getattr(context, "_finish_live_terminal_upgrade", None)
+    if not callable(finish_terminal_upgrade):
+        return None
     engine = ClassUnitGroupEngine(
         field,
         proof=True,
@@ -5302,6 +5534,7 @@ def _upgrade_cached_conditional_result(
         seed=seed,
     )
     if engine.order is not getattr(context, "order", None):
+        finish_terminal_upgrade(live_token, commit=False)
         return None
     engine.context = forked_context
     source_group = material["class_group"]
@@ -5318,9 +5551,16 @@ def _upgrade_cached_conditional_result(
         or getattr(source_group, "_relation_reconstructor", None) is not collector
         or getattr(source_group, "_presentation", None) is not presentation
     ):
+        finish_terminal_upgrade(live_token, commit=False)
         return None
     group = _clone_engine_class_group_for_unconditional_proof(source_group)
-    unit_group = _clone_unit_group_for_unconditional_proof(source_units)
+    units, unit_group, cloned_saturation = _clone_terminal_unit_authority(
+        field,
+        engine.order,
+        source_units,
+        saturation,
+        material.get("terminal_semantic_snapshot"),
+    )
     engine.stages = [
         stage for stage in source.stages if stage.name not in ("proof", "terminal")
     ]
@@ -5330,9 +5570,14 @@ def _upgrade_cached_conditional_result(
         )
     )
     if conditional_dependencies != source.proof_dependency_hashes:
+        finish_terminal_upgrade(live_token, commit=False)
         return None
     engine._proof_dependency_hashes = unconditional_dependencies
-    proof_records = engine._unconditional_proof_pass(group)
+    try:
+        proof_records = engine._unconditional_proof_pass(group)
+    except Exception:
+        finish_terminal_upgrade(live_token, commit=False)
+        raise
     engine._stage(
         "proof",
         "complete",
@@ -5354,12 +5599,12 @@ def _upgrade_cached_conditional_result(
         theorem="Minkowski ideal-class theorem",
         assumptions=(),
         units=units,
-        saturation_record=saturation,
+        saturation_record=cloned_saturation,
         class_group=group,
         unit_group=unit_group,
         diagnostics=diagnostics,
     )
-    return ClassUnitComputation(
+    answer = ClassUnitComputation(
         field,
         proof_status=EXACT_UNCONDITIONAL,
         complete=True,
@@ -5371,10 +5616,13 @@ def _upgrade_cached_conditional_result(
         tentative_invariants=group.invariants(),
         context=forked_context,
         diagnostics=diagnostics,
-        saturation_record=saturation,
+        saturation_record=cloned_saturation,
         proof_progress=engine._proof_progress,
         proof_dependency_hashes=engine._proof_dependency_hashes,
     )
+    if finish_terminal_upgrade(live_token, commit=True) is not True:
+        return None
+    return answer
 
 
 def _class_number_projection_cache_key(
@@ -5448,6 +5696,7 @@ def class_unit_context(
         and checkpoint is None
         and resume_from is None
         and checkpoint_controller is None
+        and max_checkpoint_bytes is None
         and components is None
     )
     cache_key = (
@@ -5467,24 +5716,40 @@ def class_unit_context(
             tuple(sorted(selected_limits.to_dict().items())),
         )
         conditional = cache.get(conditional_key)
+        upgraded = None
         try:
-            upgraded = _upgrade_cached_conditional_result(
-                field,
-                conditional,
-                algorithm=algorithm,
-                limits=selected_limits,
-                seed=seed,
-            )
-        except (
-            AttributeError,
-            ImportError,
-            KeyError,
-            RuntimeError,
-            TypeError,
-            ValueError,
-            ArithmeticError,
-        ):
-            upgraded = None
+            try:
+                upgraded = _upgrade_cached_conditional_result(
+                    field,
+                    conditional,
+                    algorithm=algorithm,
+                    limits=selected_limits,
+                    seed=seed,
+                )
+            except (
+                AttributeError,
+                ImportError,
+                KeyError,
+                RuntimeError,
+                TypeError,
+                ValueError,
+                ArithmeticError,
+            ):
+                upgraded = None
+        finally:
+            if upgraded is None:
+                conditional_context = getattr(conditional, "context", None)
+                release = getattr(
+                    conditional_context, "_finish_live_terminal_upgrade", None
+                )
+                context_module = _optional_module(
+                    "sagejs.number_fields.class_unit_context"
+                )
+                live_token = getattr(
+                    context_module, "_LIVE_CLASS_UNIT_CONTEXT_TOKEN", None
+                )
+                if callable(release) and live_token is not None:
+                    release(live_token, commit=False)
         if upgraded is not None:
             cache[cache_key] = upgraded
             return upgraded
@@ -5542,24 +5807,7 @@ def class_group(
     """Return the proved ordinary ideal class group of `field`."""
     del names
     proof_value = True if proof is None else bool(proof)
-    use_cache = (
-        cancelled is None
-        and progress is None
-        and checkpoint is None
-        and resume_from is None
-        and checkpoint_controller is None
-        and max_checkpoint_bytes is None
-    )
     selected_limits = ClassUnitEngineLimits(**limits)
-    cache_key = (
-        proof_value,
-        algorithm,
-        0,
-        tuple(sorted(selected_limits.to_dict().items())),
-    )
-    public_cache = getattr(field, "_class_unit_public_group_cache", None)
-    if use_cache and isinstance(public_cache, dict) and cache_key in public_cache:
-        return public_cache[cache_key]
     result = class_unit_context(
         field,
         proof=proof_value,
@@ -5576,7 +5824,7 @@ def class_group(
     if not isinstance(raw_group, _EngineClassGroup):
         answer = raw_group
         verify = getattr(answer, "verify", None)
-        if use_cache and (not callable(verify) or verify() is not True):
+        if not callable(verify) or verify() is not True:
             raise ArithmeticError("the public class group failed exact verification")
     else:
         maps = __import__(
@@ -5585,11 +5833,6 @@ def class_group(
         adapter = maps.class_group_from_engine_result
         # The adapter publishes only after its independent `verify()` replay.
         answer = adapter(result)
-    if use_cache:
-        if not isinstance(public_cache, dict):
-            public_cache = {}
-            field._class_unit_public_group_cache = public_cache
-        public_cache[cache_key] = answer
     return answer
 
 
