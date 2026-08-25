@@ -73,7 +73,7 @@ int main(void)
 }
 `;
 
-test("live exact vectors clean up transactionally under ASan and UBSan", {
+test("live exact vectors clean up transactionally under platform sanitizers", {
   skip: process.platform === "win32" ? "sanitizer harness is Unix-only" : false,
 }, async () => {
   const source = readFileSync(sourcePath, "utf8");
@@ -85,6 +85,13 @@ test("live exact vectors clean up transactionally under ASan and UBSan", {
     writeFileSync(join(temporary, "kernel_core.h"), core.header);
     writeFileSync(join(temporary, "harness.c"), harness);
     const executable = join(temporary, "live-vector-sanitizer");
+    // On current macOS arm64, Apple's ASan runtime can deadlock in dyld while
+    // installing its malloc interceptor, before `main()` executes.  UBSan
+    // still exercises the generated core there; Linux retains the combined
+    // ASan+UBSan and leak-detection gate.
+    const sanitizerFlags = process.platform === "darwin"
+      ? ["-fsanitize=undefined"]
+      : ["-fsanitize=address,undefined"];
     const compile = spawnSync(process.env.CC || "cc", [
       "-std=c11",
       "-O1",
@@ -94,7 +101,7 @@ test("live exact vectors clean up transactionally under ASan and UBSan", {
       "-Werror",
       "-Wno-error=unused-function",
       "-fno-omit-frame-pointer",
-      "-fsanitize=address,undefined",
+      ...sanitizerFlags,
       `-I${temporary}`,
       `-I${join(prefix, "include")}`,
       join(temporary, "kernel_core.c"),
@@ -103,7 +110,7 @@ test("live exact vectors clean up transactionally under ASan and UBSan", {
       "-lm",
       "-o",
       executable,
-    ], { cwd: root, encoding: "utf8" });
+    ], { cwd: root, encoding: "utf8", timeout: 120_000 });
     assert.equal(
       compile.status,
       0,
@@ -113,11 +120,12 @@ test("live exact vectors clean up transactionally under ASan and UBSan", {
       cwd: root,
       encoding: "utf8",
       env: sanitizerEnvironment({ strictStringChecks: true }),
+      timeout: 120_000,
     });
     assert.equal(
       run.status,
       0,
-      `sanitizer harness failed:\n${run.stdout}${run.stderr}`,
+      `sanitizer harness failed: ${run.error?.message || ""}\n${run.stdout}${run.stderr}`,
     );
   } finally {
     rmSync(temporary, { recursive: true, force: true });
