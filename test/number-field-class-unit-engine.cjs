@@ -1825,6 +1825,59 @@ try:
 except engine.components.analytic.AnalyticCertificationError:
     pass
 
+# An exact-halving sequence is not enough: every nonfinal entry must have been
+# genuinely inconclusive.  Error 1/2 already decides this index, so a retained
+# 1/4 refinement cannot be admitted as the producer's adaptive history.
+overrefined_zeta = engine.components.analytic.zeta_log_residue_bound(
+    int(engine.order.discriminant()),
+    int(K.degree()),
+    engine.order.splitting_records,
+    absolute_error="1/4",
+    precision_bits=96,
+    limits=engine.components.analytic.ZetaLogResidueLimits(
+        maximum_prime_bound=20000,
+        maximum_precision_bits=256,
+    ),
+    workspace=engine._analytic_workspace,
+)
+overrefined_zeta.hr_index_absolute_error_history = ("1", "1/2", "1/4")
+overrefined_index = engine.components.analytic.validate_hr_index(
+    signature=(2, 0),
+    discriminant=int(engine.order.discriminant()),
+    class_number=1,
+    roots_of_unity=int(torsion.order),
+    regulator=live_regulator,
+    zeta_log_residue=overrefined_zeta,
+    precision_bits=96,
+)
+assert overrefined_index.unique_index == 2
+try:
+    engine.components.analytic.certify_unit_saturation_index(
+        K,
+        engine.order,
+        initial_units,
+        class_number=1,
+        roots_of_unity=int(torsion.order),
+        precision_bits=96,
+        maximum_precision_bits=256,
+        zeta_absolute_error="1/4",
+        zeta_absolute_error_history=("1", "1/2", "1/4"),
+        zeta_limits=engine.components.analytic.ZetaLogResidueLimits(
+            maximum_prime_bound=20000,
+            maximum_precision_bits=256,
+        ),
+        workspace=engine._analytic_workspace,
+        generation_evidence=generation_evidence,
+        generation_verifier=verify_generation,
+        proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
+        _precomputed_regulator=live_regulator,
+        _precomputed_zeta_log_residue=overrefined_zeta,
+        _precomputed_index=overrefined_index,
+    )
+    raise AssertionError("a refinement after a decisive hR index was issued")
+except engine.components.analytic.AnalyticCertificationError:
+    pass
+
 # A cache poisoned after analytic computation but before certificate issuance
 # cannot become live semantic authority, even on the precomputed fast path.
 preseal_ball = next(iter(engine._analytic_workspace._finite_terms.values()))[0]

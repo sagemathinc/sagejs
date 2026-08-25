@@ -5874,6 +5874,65 @@ def certify_unit_saturation_index(
                 raise AnalyticCertificationError(
                     "the precomputed hR index does not match its configuration"
                 )
+            replayed_zeta: ZetaLogResidueEnclosure | None = None
+            replayed_index: HRIndexValidationResult | None = None
+            for position, requested_error in enumerate(selected_zeta_history):
+                replayed_zeta = zeta_log_residue_bound(
+                    int(order.discriminant()),
+                    int(field.degree()),
+                    order.splitting_records,
+                    absolute_error=requested_error,
+                    precision_bits=configured_zeta_precision,
+                    limits=configured_zeta_limits,
+                    workspace=selected_workspace,
+                )
+                try:
+                    replayed_index = validate_hr_index(
+                        signature=(signature[0], signature[1]),
+                        discriminant=int(order.discriminant()),
+                        class_number=int(class_number),
+                        roots_of_unity=int(roots_of_unity),
+                        regulator=regulator,
+                        zeta_log_residue=replayed_zeta,
+                        precision_bits=configured_hr_precision,
+                    )
+                except AnalyticCertificationError as error:
+                    if str(error) != _HR_NO_POSITIVE_INTEGER:
+                        raise
+                    replayed_index = None
+                decisive = bool(
+                    replayed_index is not None
+                    and replayed_index.rigorous
+                    and replayed_index.unique_index is not None
+                )
+                if position + 1 < len(selected_zeta_history):
+                    if decisive:
+                        raise AnalyticCertificationError(
+                            "the precomputed zeta history refined after a decisive hR index"
+                        )
+                    continue
+                if not decisive:
+                    raise AnalyticPrecisionError(
+                        "the precomputed zeta history has no decisive final hR index"
+                    )
+            if replayed_zeta is None or replayed_index is None:
+                raise AnalyticCertificationError(
+                    "the precomputed zeta history did not replay"
+                )
+            if _unit_index_proof_payload(
+                regulator,
+                replayed_zeta,
+                replayed_index,
+                selected_zeta_history,
+            ) != _unit_index_proof_payload(
+                regulator,
+                zeta,
+                index,
+                selected_zeta_history,
+            ):
+                raise AnalyticCertificationError(
+                    "the precomputed analytic proof does not match history replay"
+                )
             index_bound = int(index.unique_index)
             proof = _unit_index_proof_payload(
                 regulator, zeta, index, selected_zeta_history
