@@ -10,6 +10,9 @@ const { checkAbi, wasmFiles } = require("../scripts/wasm-abi-allowlist.cjs");
 const {
   resolveToolchain,
 } = require("../../wasm-toolchain/scripts/toolchain.cjs");
+const {
+  embeddedBuildPath,
+} = require("../../../tools/reproducible-generated-paths.cjs");
 
 const dist = join(__dirname, "..", "dist");
 const tracked = join(__dirname, "..", "release", "wasm-abi-allowlist.json");
@@ -54,5 +57,23 @@ test("production modules do not embed checkout or prepared-toolchain paths", () 
         `${filename} embeds ${prefix.toString("utf8")}`,
       );
     }
+  }
+});
+
+test("no signed production asset embeds checkout or prepared-toolchain paths", () => {
+  const toolchain = resolveToolchain({ root: repositoryRoot });
+  const manifest = JSON.parse(
+    readFileSync(join(dist, "production-manifest.json"), "utf8"),
+  );
+  for (const asset of manifest.assets) {
+    const embedded = embeddedBuildPath(
+      readFileSync(join(dist, asset.path), "latin1"),
+      [repositoryRoot, toolchain.root],
+    );
+    assert.equal(
+      embedded,
+      null,
+      `${asset.path} embeds ${embedded?.root ?? "a local build path"}`,
+    );
   }
 });
