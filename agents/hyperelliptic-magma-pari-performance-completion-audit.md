@@ -119,7 +119,7 @@ the repository-wide external-toolchain dependency audit passes.
 
 Fresh exact native/dynamic receipts pass on Linux x64, Linux ARM64, macOS
 ARM64, and Windows x64. The authenticated browser artifact has identity
-`sha256:5303e00246f8f890f230aa50df66554ac2b5548a972639731e27e00e2a60d5ce`
+`sha256:eeb42af4162e79ec92ad14264235d7e7f8cf6e7be5f06ca26503dbef63da0e35`
 on every platform. Portable Cantor and Kummer digests agree on all four hosts;
 Linux additionally passes the standalone comparison. ASAN, UBSAN, LSAN,
 cache-corruption, bounded-output, cancellation, worker-recovery, package-load,
