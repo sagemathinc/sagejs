@@ -5216,9 +5216,7 @@ def n_is_prime(value: uint64) -> bool: ...
     ],
     effects=Effects(pure=True, allocates=True),
     result=Direct(),
-    # The WebAssembly build does not carry FLINT's arithmetic module; hosts
-    # without it keep the portable pentagonal recurrence.
-    wasm=False,
+    wasm=True,
 )
 def arith_number_of_partitions(size: uint64) -> Integer: ...
 

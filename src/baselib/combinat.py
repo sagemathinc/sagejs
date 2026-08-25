@@ -6,11 +6,10 @@ every count is exact.  A combinatorial class therefore answers `cardinality`
 without materializing its members, iterates in Sage's documented order, and
 supports the `rank`/`unrank` pair so a member can be addressed by position.
 
-Counting and addressing share one memoized recursion over the largest
-remaining part, so `cardinality`, `unrank`, `rank`, and `random_element` all
-agree by construction.  Unconstrained counts instead use Euler's pentagonal
-number recurrence, which stays exact for arguments far beyond the range where
-enumeration is practical.
+Constrained counting and addressing share one bounded dynamic-programming
+table, so `cardinality`, `unrank`, `rank`, and `random_element` all agree by
+construction.  Unconstrained counts use FLINT's Rademacher implementation;
+Euler's pentagonal recurrence remains an explicit exact capability fallback.
 
 ### Provenance
 
@@ -65,6 +64,13 @@ import sagejs.runtime as runtime
 # stays exact for cardinalities far above the double-precision range.
 _COMBINAT_RANDOM_WORD = 1073741824
 
+# The triangular size table stores arbitrary-precision counts and persists on
+# a cached `Partitions(n)` parent.  One million cells is already a substantial
+# long-lived allocation, while covering all ranking/sampling workloads through
+# n=1,412.  Larger requests fail before allocating; cardinality remains
+# available through FLINT and enumeration remains streaming.
+_PARTITION_TABLE_MAX_CELLS = 1000000
+
 
 class _CombinatPositiveInfinity:
     def __repr__(self) -> str:
@@ -95,8 +101,9 @@ class _CombinatState:
         self.partition_counts = [runtime.bigint(1)]
         self.partitions_all: Any = None
         self.partitions_by_size = {}
-        # None until a host is probed for FLINT's arithmetic module.
+        # None until the generated backend's declared operation is inspected.
         self.native_counts: Any = None
+        self.last_count_route: Any = None
 
 
 _combinat_state = _CombinatState()
@@ -126,17 +133,24 @@ def _partition_extend_counts(limit: int) -> None:
 
 
 def _partition_count_native(value: int) -> Any:
-    """Return `p(value)` from FLINT, or `runtime.undefined` when unavailable."""
-    if _combinat_state.native_counts is False:
+    """Return `p(value)` from declared FLINT, or undefined when absent.
+
+    Capability absence is checked before calling the generated declaration.
+    Once the operation exists, every binding, marshalling, and FLINT failure
+    propagates.  In particular, a broken accelerator can never silently and
+    permanently turn a large count into the much slower recurrence.
+    """
+    backend = runtime.flint_backend()
+    operation = runtime.reflect.get(backend, "numberOfPartitions")
+    available = runtime.jstype(operation) == "function"
+    _combinat_state.native_counts = available
+    if not available:
+        _combinat_state.last_count_route = "portable-capability-unavailable"
         return runtime.undefined
-    try:
-        module = __import__("sagejs.ffi.flint", fromlist=["flint"])
-        answer = module.arith_number_of_partitions(value)
-    except Exception:
-        # A host without the arithmetic module keeps the portable recurrence.
-        _combinat_state.native_counts = False
-        return runtime.undefined
-    _combinat_state.native_counts = True
+
+    module = __import__("sagejs.ffi.flint", fromlist=["flint"])
+    answer = module.arith_number_of_partitions(value)
+    _combinat_state.last_count_route = "declared-flint"
     return answer
 
 
@@ -146,14 +160,21 @@ def _partition_count_portable(value: int) -> Any:
     return _combinat_state.partition_counts[value]
 
 
+def _partition_exact_integer(value: Any, name: str) -> int:
+    """Return one exact machine integer or reject coercive truncation."""
+    if not runtime.is_exact_integer(value):
+        raise TypeError(name + " must be an integer")
+    return int(value)
+
+
 def _partition_count(value: int) -> Any:
     """
     Return the exact number of partitions of `value`.
 
     FLINT evaluates the Hardy-Ramanujan-Rademacher formula, which stays fast
     for arguments far past the reach of the recurrence.  The pentagonal
-    recurrence remains the portable answer, and both are exact, so a host
-    without FLINT differs in speed and not in results.
+    recurrence remains the explicit capability-unavailable answer, and both
+    are exact, so an exceptional host differs in speed and not in results.
     """
     native = _partition_count_native(value)
     if native is not runtime.undefined:
@@ -381,8 +402,11 @@ class Partition(sage.Element):
             [1, 2, 1, 0, 0]
         ```
         """
+        minimum = _partition_exact_integer(minimum_length, "minimum_length")
+        if minimum < 0:
+            raise ValueError("minimum_length must be nonnegative")
         largest = self._entries[0] if self._entries else 0
-        width = largest if largest > minimum_length else minimum_length
+        width = largest if largest > minimum else minimum
         counts = [0] * width
         for part in self._entries:
             counts[part - 1] += 1
@@ -418,8 +442,8 @@ class Partition(sage.Element):
             1
         ```
         """
-        index_row = int(row)
-        index_column = int(column)
+        index_row = _partition_exact_integer(row, "row")
+        index_column = _partition_exact_integer(column, "column")
         if (
             index_row < 0
             or index_row >= len(self._entries)
@@ -608,7 +632,7 @@ class Partitions_all(_PartitionsBase):
             [[], [1], [2], [1, 1], [3]]
         ```
         """
-        position = int(index)
+        position = _partition_exact_integer(index, "a rank")
         if position < 0:
             raise ValueError("a rank must be nonnegative")
         size = 0
@@ -725,27 +749,41 @@ class Partitions_n(_PartitionsBase):
         """
         Return `f[m][k]`, the partitions of `m` into parts in `[min_part, k]`.
 
-        Filling the table iteratively costs one big-integer addition per cell.
-        The memoized recursion it replaces spent most of its time in dictionary
-        traffic rather than arithmetic, and dictionary writes are an order of
-        magnitude more expensive here than writing to a list.
+        Filling the triangular table iteratively costs one big-integer addition
+        per useful cell.  A reviewed work ceiling rejects quadratic persistent
+        allocations before any table row is created.
         """
         if self._table is not None:
             return self._table
         size = self._size
         bound = self._max_part if self._max_part < size else size
+        # Sum `min(bound, remaining) + 1` without allocating any rows.
+        if size <= bound:
+            cells = (size + 1) * (size + 2) // 2
+        else:
+            cells = (bound + 1) * (bound + 2) // 2
+            cells += (size - bound) * (bound + 1)
+        if cells > _PARTITION_TABLE_MAX_CELLS:
+            raise RuntimeError(
+                "partition ranking table requires "
+                + str(cells)
+                + " cells, exceeding the reviewed maximum "
+                + str(_PARTITION_TABLE_MAX_CELLS)
+            )
         table = []
         for remaining in range(size + 1):
-            row = [runtime.bigint(0)] * (bound + 1)
+            row_bound = bound if bound < remaining else remaining
+            row = [runtime.bigint(0)] * (row_bound + 1)
             if remaining == 0:
-                for part in range(bound + 1):
+                for part in range(row_bound + 1):
                     row[part] = runtime.bigint(1)
             table.append(row)
         for part in range(self._min_part, bound + 1):
-            for remaining in range(1, size + 1):
+            for remaining in range(part, size + 1):
                 total = table[remaining][part - 1]
-                if part <= remaining:
-                    total = runtime.native_add(total, table[remaining - part][part])
+                previous = remaining - part
+                previous_bound = part if part < previous else previous
+                total = runtime.native_add(total, table[previous][previous_bound])
                 table[remaining][part] = total
         self._table = table
         return table
@@ -873,9 +911,10 @@ class Partitions_n(_PartitionsBase):
         """
         Return the exact number of partitions in this class.
 
-        The unconstrained count uses Euler's pentagonal number recurrence, so
-        it stays exact and fast well beyond the range where listing the
-        partitions is practical.
+        The unconstrained count uses FLINT's exact Rademacher implementation,
+        so it stays fast well beyond the range where listing the partitions is
+        practical.  Hosts that explicitly lack the declared operation retain
+        the exact pentagonal recurrence.
 
         ### Examples
 
@@ -1018,6 +1057,8 @@ class Partitions_n(_PartitionsBase):
             [3, 1, 1]
         ```
         """
+        if not runtime.is_exact_integer(index):
+            raise TypeError("a rank must be an integer")
         position = runtime.bigint(index)
         if runtime.native_lt(position, runtime.bigint(0)):
             raise ValueError("a rank must be nonnegative")
@@ -1206,30 +1247,30 @@ def Partitions(size: Any = None, **constraints: Any) -> Any:
     parts_in = None
     given = _combinat_setting(constraints, "min_part")
     if given is not None:
-        min_part = int(given)
+        min_part = _partition_exact_integer(given, "min_part")
         if min_part < 1:
             raise ValueError("min_part must be positive")
     given = _combinat_setting(constraints, "max_part")
     if given is not None:
-        max_part = int(given)
+        max_part = _partition_exact_integer(given, "max_part")
         if max_part < 0:
             raise ValueError("max_part must be nonnegative")
     given = _combinat_setting(constraints, "length")
     if given is not None:
         if "min_length" in supplied or "max_length" in supplied:
             raise ValueError("length cannot be combined with min_length/max_length")
-        min_length = int(given)
+        min_length = _partition_exact_integer(given, "length")
         max_length = min_length
         if min_length < 0:
             raise ValueError("length must be nonnegative")
     given = _combinat_setting(constraints, "min_length")
     if given is not None:
-        min_length = int(given)
+        min_length = _partition_exact_integer(given, "min_length")
         if min_length < 0:
             raise ValueError("min_length must be nonnegative")
     given = _combinat_setting(constraints, "max_length")
     if given is not None:
-        max_length = int(given)
+        max_length = _partition_exact_integer(given, "max_length")
         if max_length < 0:
             raise ValueError("max_length must be nonnegative")
     given = _combinat_setting(constraints, "parts_in")
@@ -1261,8 +1302,10 @@ def number_of_partitions(size: Any) -> Any:
     r"""
     Return the number of partitions of a nonnegative integer.
 
-    The value comes from Euler's pentagonal number recurrence, which is exact
-    and fast far past the point where listing partitions is possible.
+    The value comes from FLINT's exact Hardy-Ramanujan-Rademacher
+    implementation in production native and WebAssembly hosts.  A host that
+    explicitly lacks the declared capability retains Euler's exact pentagonal
+    recurrence; binding and execution failures are never hidden by fallback.
 
     ### Input
 
@@ -1328,9 +1371,10 @@ _RANKING_PROVENANCE = {
 _SHARED_MEMO_PROVENANCE = {
     "kind": "sagejs-original",
     "source": (
-        "One memoized recursion over the largest remaining part serves "
-        "cardinality, rank, unrank, and random_element, so the four agree by "
-        "construction rather than by separate implementation"
+        "One bounded triangular count table over the largest remaining part "
+        "serves constrained cardinality, rank, unrank, and random_element, "
+        "so the four agree by construction rather than by separate "
+        "implementations"
     ),
 }
 _ANDREWS_REFERENCE = {
@@ -1401,13 +1445,18 @@ _ENUMERATION_LIMITATION = (
     "avoid enumeration."
 )
 _COUNTING_LIMITATION = (
-    "Counting uses FLINT's Hardy-Ramanujan-Rademacher implementation where it "
-    "is available, and the pentagonal recurrence otherwise.  The recurrence "
-    "computes every partition number below its argument, so a host without "
-    "FLINT answers large arguments far more slowly; both paths are exact.  "
-    "The first count in a process also pays about 150 ms to bind the native "
-    "routine, after which a count costs a few milliseconds at any argument.  "
-    "See `bench/compare-partitions.cjs`."
+    "Production native and WebAssembly hosts use FLINT's exact "
+    "Hardy-Ramanujan-Rademacher implementation.  Only explicit capability "
+    "absence selects the pentagonal recurrence; binding or execution failures "
+    "propagate.  The recurrence computes every smaller partition number and "
+    "is therefore intentionally rejected by release route telemetry for large "
+    "workloads.  See `bench/compare-partitions.cjs`."
+)
+_RANKING_LIMITATION = (
+    "Ranking, unranking, and random selection retain a triangular table of "
+    "arbitrary-precision completion counts.  Requests above the reviewed "
+    "one-million-cell persistent-work ceiling raise `RuntimeError` before "
+    "allocating; cardinality and streaming enumeration remain available."
 )
 
 _register_combinat_doc(
@@ -1434,7 +1483,7 @@ _register_combinat_doc(
         _KREHER_STINSON_REFERENCE,
         _NIJENHUIS_WILF_REFERENCE,
     ],
-    [_ENUMERATION_LIMITATION, _COUNTING_LIMITATION],
+    [_ENUMERATION_LIMITATION, _COUNTING_LIMITATION, _RANKING_LIMITATION],
 )
 _register_combinat_doc(
     "number_of_partitions",

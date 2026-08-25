@@ -30,6 +30,11 @@
             "median": 77.77003200000001
           }
         },
+        "partition-count-1000000": {
+          "warm_ms": {
+            "median": 23.011679000000186
+          }
+        },
         "cubic-number-field-zeta-1000": {
           "warm_ms": {
             "median": 49.91970099997707
@@ -138,6 +143,11 @@
         "exact-matrix-kernel": {
           "warm_ms": {
             "median": 23.025000002235174
+          }
+        },
+        "partition-count-1000000": {
+          "warm_ms": {
+            "median": 14.365000009536743
           }
         },
         "cubic-number-field-zeta-1000": {
@@ -250,6 +260,11 @@
             "median": 53.23999999999978
           }
         },
+        "partition-count-1000000": {
+          "warm_ms": {
+            "median": 35.039999999999964
+          }
+        },
         "cubic-number-field-zeta-1000": {
           "warm_ms": {
             "median": 89.72000000000025
@@ -360,6 +375,11 @@
             "median": 32.159999999999854
           }
         },
+        "partition-count-1000000": {
+          "warm_ms": {
+            "median": 28.480000000000018
+          }
+        },
         "cubic-number-field-zeta-1000": {
           "warm_ms": {
             "median": 92.07999999999993
@@ -464,6 +484,9 @@
         "exact-matrix-kernel": {
           "warm_median_ratio": 0.518918510151254
         },
+        "partition-count-1000000": {
+          "warm_median_ratio": 0.624248235408491
+        },
         "cubic-number-field-zeta-1000": {
           "warm_median_ratio": 1.3338629778949282
         },
@@ -528,6 +551,9 @@
         "exact-matrix-kernel": {
           "warm_median_ratio": 1.354013421415033
         },
+        "partition-count-1000000": {
+          "warm_median_ratio": 1.5227050577230667
+        },
         "cubic-number-field-zeta-1000": {
           "warm_median_ratio": 1.8347025813573115
         },
@@ -591,6 +617,9 @@
       "operations": {
         "exact-matrix-kernel": {
           "warm_median_ratio": 0.7848394850651439
+        },
+        "partition-count-1000000": {
+          "warm_median_ratio": 1.237632421345691
         },
         "cubic-number-field-zeta-1000": {
           "warm_median_ratio": 2.3161651709228153

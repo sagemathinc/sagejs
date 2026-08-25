@@ -19312,7 +19312,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {

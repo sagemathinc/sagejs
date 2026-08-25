@@ -13,6 +13,15 @@
       "timeout_ms": 60000
     },
     {
+      "id": "partition-count-1000000",
+      "family": "enumerative-combinatorics",
+      "requires": [
+        { "id": "ffi:flint:arith_number_of_partitions", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "value=number_of_partitions(10^6)\nprint(len(str(value)),value%10^12)",
+      "timeout_ms": 60000
+    },
+    {
       "id": "cubic-number-field-zeta-1000",
       "family": "number-fields",
       "requires": [

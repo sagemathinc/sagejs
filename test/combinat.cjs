@@ -102,6 +102,51 @@ test("counting agrees across the FLINT and portable paths", async () => {
   });
 });
 
+test("partition counting falls back only for explicit capability absence", async () => {
+  await withSage(async (session) => {
+    assert.equal(
+      (
+        await evaluated(session, [
+          "import sagejs.runtime as rt",
+          "backend = rt.flint_backend()",
+          "native_count = rt.reflect.get(backend, 'numberOfPartitions')",
+          "rt.reflect.set(backend, 'numberOfPartitions', rt.undefined)",
+          "try:",
+          "    portable = number_of_partitions(250)",
+          "finally:",
+          "    rt.reflect.set(backend, 'numberOfPartitions', native_count)",
+          "[portable == Partitions(250)._portable_cardinality(),",
+          " number_of_partitions(250) == portable]",
+        ])
+      ).repr,
+      "[True, True]",
+    );
+  });
+
+  await withSage(async (session) => {
+    assert.equal(
+      (
+        await evaluated(session, [
+          "import sagejs.runtime as rt",
+          "backend = rt.flint_backend()",
+          "native_count = rt.reflect.get(backend, 'numberOfPartitions')",
+          "broken = rt.reflect.get(backend, 'ffiFmpqMatrixRandbits')",
+          "rt.reflect.set(backend, 'numberOfPartitions', broken)",
+          "propagated = False",
+          "try:",
+          "    number_of_partitions(250)",
+          "except Exception:",
+          "    propagated = True",
+          "finally:",
+          "    rt.reflect.set(backend, 'numberOfPartitions', native_count)",
+          "propagated",
+        ])
+      ).repr,
+      "True",
+    );
+  });
+});
+
 test("partition classes honor the supported constraints", async () => {
   await withSage(async (session) => {
     assert.equal(
@@ -151,6 +196,57 @@ test("partition classes honor the supported constraints", async () => {
         ])
       ).repr,
       "[1, 0, 0, 1, 0, 0, 1, 0, 0, 1]",
+    );
+  });
+});
+
+test("partition constraints and indices require exact integers", async () => {
+  await withSage(async (session) => {
+    assert.equal(
+      (
+        await evaluated(session, [
+          "def rejects(call):",
+          "    try:",
+          "        call()",
+          "    except TypeError:",
+          "        return True",
+          "    return False",
+          "checks = [",
+          "    lambda: Partitions(5, min_part=1.5),",
+          "    lambda: Partitions(5, max_part=3.5),",
+          "    lambda: Partitions(5, length=2.5),",
+          "    lambda: Partitions(5, min_length=1.5),",
+          "    lambda: Partitions(5, max_length=4.5),",
+          "    lambda: Partitions(5).unrank(1.5),",
+          "    lambda: Partitions().unrank(1.5),",
+          "    lambda: Partition([3, 1]).hook_length(0.5, 0),",
+          "    lambda: Partition([3, 1]).hook_length(0, 0.5),",
+          "    lambda: Partition([3, 1]).to_exp(4.5),",
+          "]",
+          "[rejects(call) for call in checks] == [True] * len(checks)",
+        ])
+      ).repr,
+      "True",
+    );
+  });
+});
+
+test("partition ranking tables reject excessive persistent work", async () => {
+  await withSage(async (session) => {
+    assert.equal(
+      (
+        await evaluated(session, [
+          "cls = Partitions(10000)",
+          "message = ''",
+          "try:",
+          "    cls.unrank(1)",
+          "except RuntimeError as error:",
+          "    message = str(error)",
+          "[message.startswith('partition ranking table requires 50015001 cells'),",
+          " cls._table is None, cls.cardinality() == number_of_partitions(10000)]",
+        ])
+      ).repr,
+      "[True, True, True]",
     );
   });
 });

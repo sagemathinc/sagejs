@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "efb5a9ec8a2a92551fce706237c6e76f46764bf47a16a326ad96fb9b334a8369",
+  "source_sha256": "697bc6b13aee3680cb14f351a24c10c308703a7fae5717495687dc5ba608a858",
   "counts": {
     "total": 1007,
     "by_kind": {
@@ -14,14 +14,14 @@
     },
     "by_disposition": {
       "compiled-source": 47,
-      "desktop-only": 43,
-      "generated-wasm": 320,
+      "desktop-only": 42,
+      "generated-wasm": 321,
       "portable-fallback": 552,
       "shared-core": 45
     },
     "by_status": {
-      "available": 549,
-      "desktop-only": 43,
+      "available": 550,
+      "desktop-only": 42,
       "fallback": 415
     }
   },
@@ -144,6 +144,9 @@
     ],
     "numpy-vertical-slice": [
       "specialist:numpy-ts"
+    ],
+    "partition-count-and-ranking": [
+      "ffi:flint:arith_number_of_partitions"
     ],
     "python-float-underscore-separators": [
       "specialist:capability-report-api"
@@ -862,14 +865,19 @@
     {
       "id": "ffi:flint:arith_number_of_partitions",
       "family": "flint",
-      "disposition": "desktop-only",
-      "status": "desktop-only",
-      "fallback": "source-transparent-mathematical-kernel",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-unavailable-pentagonal-recurrence",
       "wasm_module": "flint",
       "public_consumers": [
-        "sagejs.ffi.flint"
+        "number_of_partitions",
+        "Partitions.cardinality"
       ],
-      "explanation": "Partition counting uses FLINT where it is available and an exact pentagonal recurrence otherwise; both answers are identical."
+      "explanation": "Large partition counts use FLINT's exact Rademacher implementation in native and WebAssembly builds. Release telemetry requires the declared FLINT route so an accidental recurrence fallback fails validation.",
+      "resource_limits": {
+        "reviewed_release_input": 1000000,
+        "boundary_crossings": 1
+      }
     },
     {
       "id": "ffi:flint:dirichlet_group_init",
