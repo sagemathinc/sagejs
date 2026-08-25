@@ -56,10 +56,7 @@ jobs:
           node packages/wasm-toolchain/scripts/toolchain.cjs prepare
           node packages/wasm-toolchain/scripts/probe.cjs
           pnpm build
-          if ! pnpm --dir packages/flint-wasm build; then
-            node packages/flint-wasm/scripts/wasm-abi-allowlist.cjs --write
-            pnpm --dir packages/flint-wasm build
-          fi
+          pnpm --dir packages/flint-wasm build
           node packages/flint-wasm/scripts/production-receipt.cjs validate
           node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
             --headers website/live/_headers
@@ -72,7 +69,6 @@ jobs:
           name: wasm-candidate-build
           path: |
             packages/flint-wasm/dist
-            packages/flint-wasm/release/wasm-abi-allowlist.json
             build/wasm-candidate-artifact.json
           if-no-files-found: error
 
