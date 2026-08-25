@@ -1083,7 +1083,8 @@ function spawn(executable, args, source, timeoutSeconds, env = {}) {
     );
   }
   const rssMarker = "SAGEJS_CLASS_UNIT_MAX_RSS_KIB|";
-  const started = process.hrtime.bigint();
+  const elapsedMarker = "SAGEJS_CLASS_UNIT_ELAPSED_SECONDS|";
+  const supervisorStarted = process.hrtime.bigint();
   // GNU timeout, without --foreground, owns a separate foreground process group
   // for the measured command. TERM followed by KILL therefore reaches the time
   // wrapper and every benchmark descendant instead of orphaning the real CAS.
@@ -1093,7 +1094,7 @@ function spawn(executable, args, source, timeoutSeconds, env = {}) {
     `${timeoutSeconds}s`,
     GNU_TIME,
     "-f",
-    `${rssMarker}%M`,
+    `${rssMarker}%M\n${elapsedMarker}%e`,
     executable,
     ...args,
   ], {
@@ -1109,10 +1110,21 @@ function spawn(executable, args, source, timeoutSeconds, env = {}) {
   const rssMatches = [...(run.stderr || "").matchAll(
     new RegExp(`${rssMarker.replaceAll("|", "\\|")}(\\d+)`, "g"),
   )];
+  const elapsedMatches = [...(run.stderr || "").matchAll(
+    new RegExp(`${elapsedMarker.replaceAll("|", "\\|")}([0-9]+(?:\\.[0-9]+)?)`, "g"),
+  )];
   const peakRssKib = rssMatches.length === 1 ? Number(rssMatches[0][1]) : null;
+  const measuredElapsed = elapsedMatches.length === 1 ? Number(elapsedMatches[0][1]) : null;
+  const supervisorElapsed = Number(process.hrtime.bigint() - supervisorStarted) / 1e9;
   return {
     run,
-    process_total_seconds: Number(process.hrtime.bigint() - started) / 1e9,
+    // GNU time starts immediately before exec'ing the benchmark, so this
+    // excludes the process-group supervisor's own startup cost from cold
+    // boundaries. The outer clock is retained only for failed/timed-out runs.
+    process_total_seconds:
+      Number.isFinite(measuredElapsed) && measuredElapsed > 0
+        ? measuredElapsed
+        : supervisorElapsed,
     process_peak_rss_bytes: Number.isSafeInteger(peakRssKib) && peakRssKib > 0
       ? peakRssKib * 1024
       : null,
