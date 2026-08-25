@@ -78,6 +78,33 @@ def _positive(value: Any, name: str) -> int:
     return answer
 
 
+def _initial_relation_admissions_per_ideal(
+    signature: Sequence[int], factor_base_size: int
+) -> int:
+    """Choose a fixed relation-search batch from field-level evidence.
+
+    Cubics retain one admission per reduced ideal.  Signature `(1, 2)`
+    fields with nonempty factor bases amortize the exact ideal embedding and
+    LLL plan across three admissions.  Empty-factor-base unit searches and all
+    other signatures retain the conservative batch of two.  This is the
+    clean-room analogue of Hecke's context-owned reuse of a reduced-ideal
+    search; exact admission and completion checks are unchanged.
+    """
+    if len(signature) != 2:
+        raise ValueError("a number-field signature must have two entries")
+    real_places = _integer(signature[0], "real signature places")
+    complex_places = _integer(signature[1], "complex signature places")
+    base_size = _integer(factor_base_size, "factor-base size")
+    if real_places < 0 or complex_places < 0 or base_size < 0:
+        raise ValueError("signature entries and factor-base size must be nonnegative")
+    degree = real_places + 2 * complex_places
+    if degree == 3:
+        return 1
+    if (real_places, complex_places) == (1, 2) and base_size > 0:
+        return 3
+    return 2
+
+
 def _product(values: Iterable[int]) -> int:
     answer = 1
     for value in values:
@@ -1462,6 +1489,7 @@ class ClassUnitGroupEngine:
         self._phase_timings: dict[str, float] = {}
         self._resource_usage: dict[str, Any] = {
             "relation_attempts": 0,
+            "initial_relations_per_ideal": 0,
             "relation_candidates": 0,
             "ideals_tested": 0,
             "relations": 0,
@@ -2351,6 +2379,17 @@ class ClassUnitGroupEngine:
         unit_rank: int = 0,
     ) -> int:
         """Search one ideal while retaining bounded exact partial relations."""
+        raw_admission_cap = getattr(search, "_absolute_admission_cap", None)
+        admission_cap = (
+            None
+            if raw_admission_cap is None
+            else _integer(raw_admission_cap, "maximum admissions")
+        )
+        if admission_cap is not None:
+            if admission_cap < 0:
+                raise ValueError("maximum admissions must be nonnegative")
+            if admission_cap == 0:
+                return 0
         search.state.ideals_tested += 1
         admitted = 0
         independent_admitted = 0
@@ -2442,7 +2481,9 @@ class ClassUnitGroupEngine:
                     independent_admitted += 1
                 search.state.relations_admitted += 1
                 progress = independent_admitted if stop_after_independent else admitted
-                if progress >= stop_after:
+                if progress >= stop_after or (
+                    admission_cap is not None and admitted >= admission_cap
+                ):
                     break
             elif steering_ticket is not None and steering is not None:
                 steering.abort_candidate(steering_ticket)
@@ -3214,6 +3255,11 @@ class ClassUnitGroupEngine:
             self._check_cancelled()
             if attempts >= self.limits.max_relation_attempts:
                 break
+            remaining_relation_capacity = self.limits.max_relations - len(
+                collector.records
+            )
+            if remaining_relation_capacity <= 0:
+                break
             search.max_candidates_per_ideal = min(
                 self.limits.max_candidates_per_ideal,
                 8 * coefficient_bound,
@@ -3250,6 +3296,7 @@ class ClassUnitGroupEngine:
                     steering=steering if steering_active else None,
                 )
             before = len(collector.records)
+            search._absolute_admission_cap = remaining_relation_capacity
             search_options: dict[str, Any] = {"stop_after": relations_per_ideal}
             if independent_relations_per_ideal:
                 search_options["stop_after_independent"] = True
@@ -5098,14 +5145,12 @@ class ClassUnitGroupEngine:
                     size=len(factor_base),
                     reused_cubic_seed=True,
                 )
-            # In cubic fields, retaining a second smooth witness from the same
-            # short-vector enumeration costs more exact ideal admission and
-            # replay work than it saves in lattice setup.  The stopping rule
-            # below still requires full relation rank, the full logarithmic
-            # unit rank, and rigorous index one.  Other degrees keep two
-            # admissions per ideal because their LLL/enumeration setup is the
-            # dominant cost and should be amortized across useful witnesses.
-            initial_relations_per_ideal = 1 if int(self.field.degree()) == 3 else 2
+            initial_relations_per_ideal = _initial_relation_admissions_per_ideal(
+                signature, len(factor_base)
+            )
+            self._resource_usage["initial_relations_per_ideal"] = (
+                initial_relations_per_ideal
+            )
             if relation_seed is None:
                 collector, presentation = self._relations(
                     factor_base,
