@@ -1,0 +1,108 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-unit-steering",
+  "title": "General Unit Steering",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement and validate post-class-rank norm-first subfactor-base steering so x^4-x-1 completes class and unit computation within 64 attempts and 10 seconds without regressing the C4 quintic",
+  "base_commit": "f0b22e48f2f74b8044dc5d4f8b1fd935a7483c8c",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_group_relations.py",
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "test/class-group-relations-steering.cjs",
+    "test/class-unit-groups-steering.cjs",
+    "bench/number-field-unit-steering.sage"
+  ],
+  "dependencies": [],
+  "references": [
+    "Hecke.jl 0.40 ClassGrpCtx and NfFactorBase (BSD-3-Clause; clean-room design reference)",
+    "PARI/GP buch2.c and related number-field class/unit algorithms (GPL; clean-room design reference only)"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "PARI/GP bnfinit/bnfcertify",
+      "SageMath NumberField class_group/unit_group/regulator"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.017,
+      "started_at": "2026-08-25T09:07:13.554Z",
+      "commit": "f0b22e48f2f74b8044dc5d4f8b1fd935a7483c8c",
+      "workspace_fingerprint": "dcbdce8346d3ff8e8d06eaacdb32c7398463c301064c61bc4d6d8b04cc279bfe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 879.779,
+      "started_at": "2026-08-25T09:07:51.935Z",
+      "commit": "f0b22e48f2f74b8044dc5d4f8b1fd935a7483c8c",
+      "workspace_fingerprint": "dcbdce8346d3ff8e8d06eaacdb32c7398463c301064c61bc4d6d8b04cc279bfe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/class-group-relations-steering.cjs test/class-unit-groups-steering.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.949,
+      "started_at": "2026-08-25T09:22:41.821Z",
+      "commit": "f0b22e48f2f74b8044dc5d4f8b1fd935a7483c8c",
+      "workspace_fingerprint": "dcbdce8346d3ff8e8d06eaacdb32c7398463c301064c61bc4d6d8b04cc279bfe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.854,
+      "started_at": "2026-08-25T09:23:01.110Z",
+      "commit": "f0b22e48f2f74b8044dc5d4f8b1fd935a7483c8c",
+      "workspace_fingerprint": "dcbdce8346d3ff8e8d06eaacdb32c7398463c301064c61bc4d6d8b04cc279bfe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bin/sagejs bench/number-field-unit-steering.sage",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.583,
+      "started_at": "2026-08-25T09:23:12.623Z",
+      "commit": "f0b22e48f2f74b8044dc5d4f8b1fd935a7483c8c",
+      "workspace_fingerprint": "dcbdce8346d3ff8e8d06eaacdb32c7398463c301064c61bc4d6d8b04cc279bfe",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented producer-only fixed distinct-rational-p subfactor-base steering after exact class rank, exact norm screening before valuations, bounded numerical log filtering, append-only exact dependency deltas, and zero-width unit relation extensions. Steering caches are non-authoritative and absent from checkpoints: resume rescans the authenticated collector/presentation once, reconstructs the exact logarithm basis and dependency cursor, and restores the coefficient schedule from ideals_tested. Context-owned issuance snapshots, identity binding, cancellation, hostile mutation, checkpoint parity, and outer-hash tampering are tested. Frozen f0 baseline x^4-x-1 exhausted 64 attempts in 11.39s public / 10.72s relations at log rank 1/2; retained G1 completes in 1 attempt, 7 candidates, and 2 exact rows, with warm prepared-field samples 0.250-0.252s public / 0.144-0.145s relations after a 0.917s first observation. The C4 quintic remains exact at 10 attempts, 20 candidates, 21 rows, invariants (4,), rank 2, torsion 2, and rigorous regulator, with 0.925-1.026s relation samples versus the frozen 1.117s relation baseline. Implementation source deltas are +17,123 bytes in class_group_relations.py and +7,627 bytes in class_unit_groups.py (+24,750 total); the built number-field-global-arithmetic package grows only 1,254 bytes to 1,449,049/1,450,000 and all architecture ratchets pass.",
+    "risks": [
+      "The isolated lane is based on the required frozen f0b22e48 benchmark commit and must be rebased onto the latest integration head before merge.",
+      "pnpm test:changed reaches the unit tier but fails the test-manifest registry because this narrow lane cannot claim the shared test registry; the same report also lists several tests added by other lanes since f0. The integration lane must register the two new steering tests.",
+      "The broader exact engine comparison has four known failures on both this lane (37 pass, 4 fail) and an exact detached f0 control (26 pass, the same 4 fail): specialized/public class_group adapter verification, a fake hR saturation record assertion, and terminal reuse. These are not G1 regressions.",
+      "A Julia comparator briefly overlapped an early native build/precompile stage. It ended before the native performance gates; all later matrix and polynomial performance thresholds passed, so no performance receipt was invalidated."
+    ],
+    "next_steps": [
+      "Rebase onto the latest origin/class-group integration head, register the two focused tests in the shared test manifest, and rerun focused, strict, architecture, parallel, and changed-file validation.",
+      "Run the central number-field corpus and platform matrix, especially Windows x64 and Linux ARM64, before automatic policy expansion beyond this fixed G1 slice.",
+      "Keep candidate/log state as steering only; any future adaptive subfactor-base rotation must earn a separate measured gate and preserve authenticated replay semantics."
+    ]
+  }
+}

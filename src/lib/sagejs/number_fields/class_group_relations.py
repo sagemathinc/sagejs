@@ -51,6 +51,8 @@ _VALIDATED_FACTOR_BASE_TOKEN = object()
 _LIVE_VERIFIED_RELATION_PREFIX_TOKEN = object()
 _INTEGRAL_RELATION_RECORD_TOKEN = object()
 _VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN = object()
+_RELATION_STEERING_CONTEXT_TOKEN = object()
+_RELATION_STEERING_LOG_REJECT_LIMIT = 8
 _U64_MASK = (1 << 64) - 1
 _IDEAL_REDUCTION_STATE_KEYS = {
     "schema",
@@ -3006,6 +3008,407 @@ class RelationSearchState:
             ideals_tested=payload["ideals_tested"],
             relations_admitted=payload["relations_admitted"],
         )
+
+
+class _RelationSteeringCandidate:
+    """One uncommitted producer-local candidate observation."""
+
+    def __init__(
+        self,
+        context: _RelationSteeringContext,
+        key: str,
+        logarithms: tuple[Any, ...] | None,
+    ) -> None:
+        self.context = context
+        self.key = key
+        self.logarithms = logarithms
+
+
+class _RelationDependencyTransaction:
+    """An append-only exact-presentation delta awaiting producer commit."""
+
+    def __init__(
+        self,
+        context: _RelationSteeringContext,
+        row_count: int,
+        dependency_count: int,
+        dependencies: tuple[tuple[int, ...], ...],
+    ) -> None:
+        self.context = context
+        self.row_count = row_count
+        self.dependency_count = dependency_count
+        self.dependencies = dependencies
+
+
+def _independent_tail_dependencies(
+    dependencies: tuple[tuple[int, ...], ...], start: int
+) -> tuple[tuple[int, ...], ...]:
+    """Choose an exact basis for dependency directions using appended rows."""
+    pivots: dict[int, list[int]] = {}
+    answer: list[tuple[int, ...]] = []
+    for dependency in dependencies:
+        row = [int(value) for value in dependency[start:]]
+        if not any(row):
+            continue
+        for pivot in sorted(pivots):
+            if row[pivot] == 0:
+                continue
+            left = pivots[pivot][pivot]
+            right = row[pivot]
+            row = [
+                left * value - right * basis_value
+                for value, basis_value in zip(row, pivots[pivot], strict=True)
+            ]
+        pivot = next((index for index, value in enumerate(row) if value), None)
+        if pivot is None:
+            continue
+        common = 0
+        for value in row:
+            remainder = abs(value)
+            while remainder:
+                common, remainder = remainder, common % remainder
+        if common > 1:
+            row = [value // common for value in row]
+        if row[pivot] < 0:
+            row = [-value for value in row]
+        pivots[pivot] = row
+        answer.append(dependency)
+    return tuple(answer)
+
+
+class _RelationSteeringContext:
+    """Private producer-only state for post-class-rank unit discovery.
+
+    The context owns no mathematical authority.  It is identity-bound to one
+    exact collector and its replayable search state, and only chooses source
+    ideals, rejects impossible norms, and remembers producer observations.
+    Every retained row still enters through `ExactRelationCollector`, every
+    exact presentation remains authoritative, and final regulator/index
+    certification is unchanged.
+
+    The fixed subfactor base contains at most one prime ideal above each
+    rational prime.  This is the clean-room analogue of the small subfactor
+    bases used to steer unit discovery in Hecke 0.40; no Hecke source was
+    copied.  Random choices consume the existing `RelationSearchState` only,
+    so checkpoint replay needs no second PRNG or schema extension.
+    """
+
+    def __init__(
+        self,
+        collector: Any,
+        search_state: RelationSearchState,
+        *,
+        _producer_token: Any = None,
+    ) -> None:
+        if _producer_token is not _RELATION_STEERING_CONTEXT_TOKEN:
+            raise TypeError("relation steering is producer-only")
+        if not isinstance(collector, ExactRelationCollector):
+            raise TypeError("relation steering requires an exact collector")
+        if not isinstance(search_state, RelationSearchState):
+            raise TypeError("relation steering requires a relation-search state")
+        self._collector = collector
+        self._search_state = search_state
+        self._binding = (collector, search_state)
+        partition: dict[int, list[int]] = {}
+        for index, prime_ideal in enumerate(collector.factor_base):
+            rational_prime = int(prime_ideal.rational_prime())
+            partition.setdefault(rational_prime, []).append(index)
+        self.rational_prime_partition = tuple(
+            (rational_prime, tuple(partition[rational_prime]))
+            for rational_prime in sorted(partition)
+        )
+        self.subfactor_indices = tuple(
+            min(
+                indices,
+                key=lambda index: (
+                    sage.QQ(collector.factor_base[index].norm()),
+                    int(collector.factor_base[index].residue_class_degree()),
+                    index,
+                ),
+            )
+            for _rational_prime, indices in self.rational_prime_partition
+        )
+        self._allowed_rational_primes = tuple(
+            rational_prime for rational_prime, _indices in self.rational_prime_partition
+        )
+        self._candidate_issuance: tuple[Any, str, tuple[Any, ...] | None] | None = None
+        self._provisional_unit_logarithms: list[tuple[Any, ...]] = []
+        self._unit_log_filter_enabled = True
+        self._consecutive_unit_log_rejects = 0
+        self._dependency_row_count = 0
+        self._dependency_count = 0
+        self._dependency_issuance: (
+            tuple[Any, int, int, tuple[tuple[int, ...], ...]] | None
+        ) = None
+        self._statistics = {
+            "activations": 0,
+            "subfactor_ideal_requests": 0,
+            "norm_screen_requests": 0,
+            "norm_screen_rejects": 0,
+            "norm_unit_candidates": 0,
+            "valuation_candidates": 0,
+            "unit_log_rank_rejects": 0,
+            "unit_log_stall_fallbacks": 0,
+            "unit_log_filter_fallbacks": 0,
+            "candidate_commits": 0,
+            "dependency_transactions": 0,
+            "dependency_transforms_offered": 0,
+            "dependency_transforms_selected": 0,
+            "dependency_commits": 0,
+            "dependency_aborts": 0,
+            "stale_dependency_scans": 0,
+            "zero_width_extensions": 0,
+        }
+
+    def matches(self, collector: Any, search_state: Any) -> bool:
+        return collector is self._binding[0] and search_state is self._binding[1]
+
+    def _require_binding(self) -> None:
+        if (
+            self._collector is not self._binding[0]
+            or self._search_state is not self._binding[1]
+        ):
+            raise RuntimeError("relation steering lost its producer binding")
+
+    @property
+    def factor_base_size(self) -> int:
+        return len(self._collector.factor_base)
+
+    @property
+    def provisional_unit_logarithms(self) -> tuple[tuple[Any, ...], ...]:
+        return tuple(self._provisional_unit_logarithms)
+
+    @property
+    def provisional_unit_rank(self) -> int:
+        return len(self._provisional_unit_logarithms)
+
+    def source_row(self, coefficient_bound: int) -> tuple[tuple[int, ...], str]:
+        """Return one fixed-subfactor-base product row using the shared PRNG."""
+        self._require_binding()
+        self._statistics["activations"] += 1
+        self._statistics["subfactor_ideal_requests"] += 1
+        width = self.factor_base_size
+        if width == 0:
+            return (), "post-class-rank-unit-ideal"
+        indices = self.subfactor_indices
+        row = [0] * width
+        count = min(2, len(indices))
+        start = int(self._search_state.next_u64() % len(indices))
+        chosen = [indices[start]]
+        if count == 2:
+            offset = 1 + int(self._search_state.next_u64() % (len(indices) - 1))
+            chosen.append(indices[(start + offset) % len(indices)])
+        bound = max(1, int(coefficient_bound))
+        for index in chosen:
+            row[index] = 1 + int(self._search_state.next_u64() % min(2, bound))
+        return tuple(row), "post-class-rank-distinct-p-subfactor-product"
+
+    def screen_norm(self, norm: Any) -> Any | None:
+        """Return an exact smooth norm, or reject before ideal valuations."""
+        self._require_binding()
+        self._statistics["norm_screen_requests"] += 1
+        value = sage.QQ(norm)
+        if value == 0:
+            self._statistics["norm_screen_rejects"] += 1
+            return None
+        numerator = abs(int(value._numerator))
+        denominator = int(value._denominator)
+        for rational_prime in self._allowed_rational_primes:
+            while numerator % rational_prime == 0:
+                numerator //= rational_prime
+            while denominator % rational_prime == 0:
+                denominator //= rational_prime
+        if numerator != 1 or denominator != 1:
+            self._statistics["norm_screen_rejects"] += 1
+            return None
+        if abs(int(value._numerator)) == int(value._denominator):
+            self._statistics["norm_unit_candidates"] += 1
+        self._statistics["valuation_candidates"] += 1
+        return value if value >= 0 else -value
+
+    def begin_candidate(
+        self,
+        element: Any,
+        *,
+        logarithms: tuple[Any, ...] | None = None,
+        logarithmically_independent: bool = True,
+    ) -> _RelationSteeringCandidate | None:
+        """Reserve an exact candidate without mutating retained steering state."""
+        self._require_binding()
+        if self._candidate_issuance is not None:
+            raise RuntimeError("a relation-steering candidate is still open")
+        key = _content_hash(
+            _element_payload(self._collector.order.number_field(), element)
+        )
+        if (
+            logarithms is not None
+            and self._unit_log_filter_enabled
+            and not logarithmically_independent
+        ):
+            self._statistics["unit_log_rank_rejects"] += 1
+            self._consecutive_unit_log_rejects += 1
+            if self._consecutive_unit_log_rejects < _RELATION_STEERING_LOG_REJECT_LIMIT:
+                return None
+            self._unit_log_filter_enabled = False
+            self._statistics["unit_log_filter_fallbacks"] += 1
+            self._statistics["unit_log_stall_fallbacks"] += 1
+        else:
+            self._consecutive_unit_log_rejects = 0
+        retained_logarithms = logarithms if self._unit_log_filter_enabled else None
+        ticket = _RelationSteeringCandidate(self, key, retained_logarithms)
+        self._candidate_issuance = (ticket, key, retained_logarithms)
+        return ticket
+
+    def commit_candidate(self, ticket: _RelationSteeringCandidate) -> None:
+        self._require_binding()
+        if (
+            not isinstance(ticket, _RelationSteeringCandidate)
+            or ticket.context is not self
+        ):
+            raise TypeError("a steering candidate belongs to another context")
+        issuance = self._candidate_issuance
+        if issuance is None or issuance[0] is not ticket:
+            raise ValueError("a steering candidate is not the open transaction")
+        if issuance[1:] != (ticket.key, ticket.logarithms):
+            raise ValueError("a steering candidate was mutated before commit")
+        if ticket.logarithms is not None:
+            self._provisional_unit_logarithms.append(ticket.logarithms)
+        self._candidate_issuance = None
+        self._statistics["candidate_commits"] += 1
+
+    def abort_candidate(self, ticket: _RelationSteeringCandidate) -> None:
+        if (
+            not isinstance(ticket, _RelationSteeringCandidate)
+            or ticket.context is not self
+        ):
+            raise TypeError("a steering candidate belongs to another context")
+        issuance = self._candidate_issuance
+        if issuance is None or issuance[0] is not ticket:
+            raise ValueError("a steering candidate is not abortable")
+        self._candidate_issuance = None
+
+    def synchronize_exact_unit_logarithms(
+        self, logarithms: Iterable[Iterable[Any]]
+    ) -> None:
+        """Replace transient candidate logs with the authenticated exact basis."""
+        if self._candidate_issuance is not None:
+            raise RuntimeError("cannot synchronize logs during candidate admission")
+        self._provisional_unit_logarithms = [tuple(row) for row in logarithms]
+        self._unit_log_filter_enabled = True
+        self._consecutive_unit_log_rejects = 0
+
+    def reconcile_unit_rank(self, observed_rank: int, target_rank: int) -> None:
+        """Disable numerical prefiltering if exact dependencies expose a stall."""
+        observed = _checked_nonnegative(observed_rank, "observed unit rank")
+        target = _checked_nonnegative(target_rank, "target unit rank")
+        if (
+            self._unit_log_filter_enabled
+            and self.provisional_unit_rank >= target
+            and observed < target
+        ):
+            self._unit_log_filter_enabled = False
+            self._consecutive_unit_log_rejects = 0
+            self._statistics["unit_log_filter_fallbacks"] += 1
+
+    def note_zero_width_extensions(self, count: int) -> None:
+        self._statistics["zero_width_extensions"] += _checked_nonnegative(
+            count, "zero-width relation extensions"
+        )
+
+    def begin_dependency_update(
+        self, presentation: Any
+    ) -> _RelationDependencyTransaction:
+        """Select only exact dependency directions created by appended rows."""
+        self._require_binding()
+        if self._dependency_issuance is not None:
+            raise RuntimeError("a relation dependency transaction is still open")
+        row_count = int(presentation.row_count)
+        raw_dependencies = tuple(
+            tuple(int(value) for value in dependency)
+            for dependency in presentation.dependency_transforms
+        )
+        if row_count < self._dependency_row_count:
+            raise ValueError("a relation presentation is not append-only")
+        if len(raw_dependencies) < self._dependency_count:
+            raise ValueError("a relation dependency space unexpectedly shrank")
+        if row_count == self._dependency_row_count:
+            selected: tuple[tuple[int, ...], ...] = ()
+            self._statistics["stale_dependency_scans"] += 1
+        elif self._dependency_row_count == 0:
+            selected = raw_dependencies
+        else:
+            selected = _independent_tail_dependencies(
+                raw_dependencies, self._dependency_row_count
+            )
+            expected = len(raw_dependencies) - self._dependency_count
+            if len(selected) != expected:
+                raise ArithmeticError(
+                    "new relation rows did not expose the expected dependency quotient"
+                )
+        self._statistics["dependency_transactions"] += 1
+        self._statistics["dependency_transforms_offered"] += len(raw_dependencies)
+        self._statistics["dependency_transforms_selected"] += len(selected)
+        transaction = _RelationDependencyTransaction(
+            self, row_count, len(raw_dependencies), selected
+        )
+        self._dependency_issuance = (
+            transaction,
+            row_count,
+            len(raw_dependencies),
+            selected,
+        )
+        return transaction
+
+    def commit_dependency_update(
+        self, transaction: _RelationDependencyTransaction
+    ) -> None:
+        self._require_binding()
+        if (
+            not isinstance(transaction, _RelationDependencyTransaction)
+            or transaction.context is not self
+        ):
+            raise TypeError("a dependency update belongs to another context")
+        issuance = self._dependency_issuance
+        if issuance is None or issuance[0] is not transaction:
+            raise ValueError("a dependency update is not the open transaction")
+        if issuance[1:] != (
+            transaction.row_count,
+            transaction.dependency_count,
+            transaction.dependencies,
+        ):
+            raise ValueError("a dependency update was mutated before commit")
+        self._dependency_row_count = transaction.row_count
+        self._dependency_count = transaction.dependency_count
+        self._dependency_issuance = None
+        self._statistics["dependency_commits"] += 1
+
+    def abort_dependency_update(
+        self, transaction: _RelationDependencyTransaction
+    ) -> None:
+        if (
+            not isinstance(transaction, _RelationDependencyTransaction)
+            or transaction.context is not self
+        ):
+            raise TypeError("a dependency update belongs to another context")
+        issuance = self._dependency_issuance
+        if issuance is None or issuance[0] is not transaction:
+            raise ValueError("a committed dependency update cannot be aborted")
+        self._dependency_issuance = None
+        self._statistics["dependency_aborts"] += 1
+
+    def diagnostics(self) -> dict[str, Any]:
+        return {
+            **self._statistics,
+            "rational_prime_partition": tuple(
+                (prime, indices) for prime, indices in self.rational_prime_partition
+            ),
+            "subfactor_indices": self.subfactor_indices,
+            "provisional_unit_rank": self.provisional_unit_rank,
+            "unit_log_filter_enabled": self._unit_log_filter_enabled,
+            "consecutive_unit_log_rejects": self._consecutive_unit_log_rejects,
+            "dependency_row_count": self._dependency_row_count,
+            "dependency_count": self._dependency_count,
+        }
 
 
 class IdealReductionState:
