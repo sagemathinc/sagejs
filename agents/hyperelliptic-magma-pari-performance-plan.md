@@ -17,6 +17,20 @@ The final-source Linux receipts and failed-gate evidence are in
 mathematical source `a680c04d` with framed bundle digest `36495206...73e1`;
 later benchmark/test commits do not change that bundle.
 
+The final cross-platform source freeze is `a9d83f82`. Its report is
+`bench/hyperelliptic/cross-platform/results/report-a9d83f82.md`, with raw
+Linux x64, Linux ARM64, macOS ARM64, and Windows x64 native/dynamic/Wasm
+receipts and 24 normalized policy receipts beside it. The framed mathematical
+bundle remains `36495206...73e1`.
+
+The final release assembly was then republished with the verified allowlist and
+273-function Wasm coverage document included. Its local production artifact is
+`54dde110...9cfce`; all 273 functions compile, no production function is
+unsupported, and the direct, public Node-Wasm, and browser package tests pass.
+The immutable cross-platform receipt artifact remains separately identified in
+the raw receipts because enabling the release policy changes package metadata,
+not the frozen mathematical source.
+
 The outcome is intentionally workload-specific:
 
 The literal phase-by-phase exit-criterion review is maintained in
@@ -46,24 +60,25 @@ The two declared mathematical optimization misses for this freeze are the
 small-coefficient ordinary rational-addition row and genus-2 object-cold
 rank-2/rank-4 proof assembly. Phase 9 is separately marked as a source-current
 acceptance regression, not folded into those two measured representation
-floors. No automatic native entry is enabled until the final four-platform
-refresh authenticates this source bundle.
+floors. The final four-platform refresh authenticates and enables only the six
+exact `GF(1009)` genus-2/genus-3 Cantor add, scalar, and progression envelopes;
+all unmatched automatic requests continue to fail closed to exact fallback.
 
-Windows x64, Linux ARM64, and macOS ARM64 native receipts agree on exact
+Linux x64, Windows x64, Linux ARM64, and macOS ARM64 native receipts agree on exact
 local-factor, Kummer, Cantor, scalar, and progression digests. Their
 authenticated Wasm receipts keep portable overhead, capability failures,
 cancellation, and recovery visible rather than importing Linux competitor
-timings. Linux ARM64's raw fixed Cantor boundary is 1.043x/1.036x the identical
+timings. Linux ARM64's final raw fixed Cantor boundary is 1.052x/1.041x the identical
 genus-2/genus-3 standalone core. Windows has no supported POSIX standalone
 contract, and macOS records the GNU/ELF-only standalone linker harness as
 unavailable rather than inventing a ratio.
 
-The recommended first implementation project is **native public Cantor and
-Kummer arithmetic for genus 2 and 3**.  This is the highest-fan-out performance
-work presently available: it accelerates ordinary divisor operations, element
+The completed foundation is **native public Cantor and Kummer arithmetic for
+genus 2 and 3**. It now accelerates ordinary divisor operations, element
 orders, group structures and maps, genus-3 local-factor certification,
 rational torsion and saturation, and height calculations without changing
-their mathematical contracts.
+their mathematical contracts. Further representation-heavy optimization is
+deferred until the live exact-workspace compiler slice has been evaluated.
 
 This document is deliberately broader than that first project.  It defines a
 measured program for making Sage.js competitive with Magma and PARI across the

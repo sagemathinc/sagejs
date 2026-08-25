@@ -4,7 +4,7 @@
   "totals": {
     "registered_kernels": 47,
     "production_kernels": 40,
-    "compiled_functions": 270,
+    "compiled_functions": 273,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -175,9 +175,9 @@
       "id": "hyperelliptic-cantor-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 8,
+      "compiled_functions": 11,
       "fallback_functions": 0,
-      "total_functions": 8,
+      "total_functions": 11,
       "fallback_reasons": []
     },
     {

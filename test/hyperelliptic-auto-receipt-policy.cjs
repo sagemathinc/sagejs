@@ -199,7 +199,7 @@ function exactQuery(bundleSha = null) {
   };
 }
 
-test("the checked-in release policy fails closed after the native ABI change", () => {
+test("the checked-in release policy authenticates the final native ABI receipts", () => {
   const raw = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
@@ -209,13 +209,13 @@ test("the checked-in release policy fails closed after the native ABI change", (
   });
   assert.equal(policy.enabled, true);
   assert.equal(policy.entries.length, 6);
-  assert.equal(policy.verified_receipts.length, 0);
-  assert.equal(
+  assert.equal(policy.verified_receipts.length, 24);
+  assert.deepEqual(
     policy.source_bundle.sha256,
     "36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1",
   );
   assert(Object.isFrozen(policy));
-  assert.equal(
+  assert.deepEqual(
     queryAutoReceiptPolicy(policy, {
       platform: "linux-x64",
       backend: "prime-cantor",
@@ -234,9 +234,37 @@ test("the checked-in release policy fails closed after the native ABI change", (
         scalar_bits: 0,
         resource_bytes: 200096,
       },
-    }).reason,
-    "unreceipted-fallback",
+    }),
+    {
+      selected: true,
+      reason: "exact-receipt-policy-match",
+      entry_id: "prime-cantor-g2-add-a9d-v1",
+      backend: "prime-cantor",
+    },
   );
+  const nearby = {
+    platform: "linux-x64",
+    backend: "prime-cantor",
+    operation: "add",
+    source_bundle_sha256: policy.source_bundle.sha256,
+    model: {
+      kind: "exact-fingerprint",
+      fingerprint:
+        "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234",
+    },
+    workload: {
+      prime: 1009,
+      interval_start: 1009,
+      interval_stop: 1009,
+      batch_items: 999,
+      scalar_bits: 0,
+      resource_bytes: 200096,
+    },
+  };
+  assert.deepEqual(queryAutoReceiptPolicy(policy, nearby), {
+    selected: false,
+    reason: "unreceipted-fallback",
+  });
   assert.deepEqual(
     policy.entries.map((entry) => [entry.backend, entry.operation]),
     [
