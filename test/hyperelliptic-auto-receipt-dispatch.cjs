@@ -401,12 +401,8 @@ test("absent policy preserves development auto while release policy gates misses
   const release = parseSageJson(runSage(selectorWitness));
   assert.equal(release.decision.allowed, false);
   assert.equal(release.decision.reason, "unreceipted-fallback");
-  assert.equal(release.matched_decision.allowed, true);
-  assert.equal(release.matched_decision.reason, "exact-receipt-policy-match");
-  assert.equal(
-    release.matched_decision.entry_id,
-    "prime-cantor-g2-add-b1-v1",
-  );
+  assert.equal(release.matched_decision.allowed, false);
+  assert.equal(release.matched_decision.reason, "unreceipted-fallback");
   assert.deepEqual(release.prepared, ["reference", "unreceipted-fallback"]);
   assert.equal(release.rational_auto, "exhaustive");
   assert.equal(release.kummer_selected, false);
@@ -470,12 +466,12 @@ test("the release policy retains six exact Cantor envelopes but fails closed", (
   const candidate = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
-  assert.equal(candidate.enabled, false);
+  assert.equal(candidate.enabled, true);
   assert.equal(candidate.entries.length, 6);
-  assert(candidate.entries.every((entry) => entry.enabled));
+  assert(candidate.entries.every((entry) => !entry.enabled));
   assert.equal(
     candidate.source_bundle.sha256,
-    "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e",
+    "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
   );
   assert.deepEqual(
     [...new Set(candidate.entries.map((entry) => entry.backend))],

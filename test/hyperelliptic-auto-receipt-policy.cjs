@@ -207,12 +207,12 @@ test("the checked-in release policy fails closed after the native ABI change", (
     root: ROOT,
     sourceCommit: raw.source_bundle.source_commit,
   });
-  assert.equal(policy.enabled, false);
+  assert.equal(policy.enabled, true);
   assert.equal(policy.entries.length, 6);
   assert.equal(policy.verified_receipts.length, 0);
   assert.equal(
     policy.source_bundle.sha256,
-    "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e",
+    "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
   );
   assert(Object.isFrozen(policy));
   assert.equal(
@@ -235,7 +235,7 @@ test("the checked-in release policy fails closed after the native ABI change", (
         resource_bytes: 200096,
       },
     }).reason,
-    "policy-disabled",
+    "unreceipted-fallback",
   );
   assert.deepEqual(
     policy.entries.map((entry) => [entry.backend, entry.operation]),

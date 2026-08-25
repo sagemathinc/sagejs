@@ -1,7 +1,7 @@
 {
   "$schema": "./hyperelliptic-auto-receipt-policy.schema.json",
   "schema": "sagejs.hyperelliptic-auto-receipt-policy/v1",
-  "enabled": false,
+  "enabled": true,
   "required_platforms": [
     "linux-x64",
     "linux-arm64",
@@ -59,13 +59,13 @@
       "tools/runtime-bootstrap.ts",
       "tools/task-evaluator.ts"
     ],
-    "sha256": "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e",
-    "source_commit": "b25ffdd128cb19d95c979133349fb205a40f26e4"
+    "sha256": "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
+    "source_commit": "960d287bcf673090119f12e4c8670b456d73532e"
   },
   "entries": [
     {
       "id": "prime-cantor-g2-add-b1-v1",
-      "enabled": true,
+      "enabled": false,
       "backend": "prime-cantor",
       "operation": "add",
       "platforms": [
@@ -74,7 +74,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e",
+      "source_bundle_sha256": "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
       "corpus": {
         "id": "phase10-primary-cantor-b1-v1",
         "path": "bench/hyperelliptic/cross-platform/run.cjs",
@@ -197,7 +197,7 @@
     },
     {
       "id": "prime-cantor-g2-scalar-b1-v1",
-      "enabled": true,
+      "enabled": false,
       "backend": "prime-cantor",
       "operation": "scalar",
       "platforms": [
@@ -206,7 +206,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e",
+      "source_bundle_sha256": "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
       "corpus": {
         "id": "phase10-primary-cantor-b1-v1",
         "path": "bench/hyperelliptic/cross-platform/run.cjs",
@@ -329,7 +329,7 @@
     },
     {
       "id": "prime-cantor-g2-progression-b1-v1",
-      "enabled": true,
+      "enabled": false,
       "backend": "prime-cantor",
       "operation": "progression",
       "platforms": [
@@ -338,7 +338,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e",
+      "source_bundle_sha256": "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
       "corpus": {
         "id": "phase10-primary-cantor-b1-v1",
         "path": "bench/hyperelliptic/cross-platform/run.cjs",
@@ -461,7 +461,7 @@
     },
     {
       "id": "prime-cantor-g3-add-b1-v1",
-      "enabled": true,
+      "enabled": false,
       "backend": "prime-cantor",
       "operation": "add",
       "platforms": [
@@ -470,7 +470,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e",
+      "source_bundle_sha256": "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
       "corpus": {
         "id": "phase10-primary-cantor-b1-v1",
         "path": "bench/hyperelliptic/cross-platform/run.cjs",
@@ -593,7 +593,7 @@
     },
     {
       "id": "prime-cantor-g3-scalar-b1-v1",
-      "enabled": true,
+      "enabled": false,
       "backend": "prime-cantor",
       "operation": "scalar",
       "platforms": [
@@ -602,7 +602,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e",
+      "source_bundle_sha256": "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
       "corpus": {
         "id": "phase10-primary-cantor-b1-v1",
         "path": "bench/hyperelliptic/cross-platform/run.cjs",
@@ -725,7 +725,7 @@
     },
     {
       "id": "prime-cantor-g3-progression-b1-v1",
-      "enabled": true,
+      "enabled": false,
       "backend": "prime-cantor",
       "operation": "progression",
       "platforms": [
@@ -734,7 +734,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e",
+      "source_bundle_sha256": "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
       "corpus": {
         "id": "phase10-primary-cantor-b1-v1",
         "path": "bench/hyperelliptic/cross-platform/run.cjs",
