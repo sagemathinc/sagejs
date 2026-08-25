@@ -177,6 +177,45 @@ rejected_detached(nested_unknown)
 wrong_field = NumberField(x**4 - x**2 + 1, "wrong_field")
 rejected_detached(json.loads(json.dumps(payload)), wrong_field)
 
+# Every caller-controlled list shape is rejected by length before decoding.
+# Reuse one adversarial allocation so this checks the verifier's incremental
+# time and resident-memory behavior rather than charging payload construction.
+million_entries = [None] * 1000000
+oversized_shapes = []
+for top_level_key in (
+    "universal_prime_powers",
+    "generator_coordinates",
+    "coefficient_bounds",
+    "prime_records",
+):
+    changed = dict(payload)
+    changed[top_level_key] = million_entries
+    oversized_shapes.append(changed)
+oversized_nested = dict(payload)
+oversized_nested_records = list(payload["prime_records"])
+oversized_nested_record = dict(oversized_nested_records[0])
+oversized_nested_record["factors"] = million_entries
+oversized_nested_records[0] = oversized_nested_record
+oversized_nested["prime_records"] = oversized_nested_records
+oversized_shapes.append(oversized_nested)
+
+def resident_pages():
+    try:
+        with open("/proc/self/statm") as statm:
+            return int(statm.read().split()[1])
+    except (OSError, ValueError):
+        return None
+
+pages_before = resident_pages()
+oversized_started = time.time()
+for oversized_shape in oversized_shapes:
+    rejected_detached(oversized_shape)
+oversized_elapsed = time.time() - oversized_started
+pages_after = resident_pages()
+assert oversized_elapsed < 5
+if pages_before is not None and pages_after is not None:
+    assert pages_after - pages_before < 8192  # Less than 32 MiB at 4 KiB/page.
+
 # Existing real-place and imaginary-quadratic semantics remain exact.
 real = roots_of_unity(NumberField(x**3 - 2, "r"))
 gaussian = roots_of_unity(NumberField(x**2 + 1, "i"))
