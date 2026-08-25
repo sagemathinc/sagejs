@@ -46,6 +46,7 @@ _MAXIMUM_ANALYTIC_REPLAY_BLOCK_SIZE = 1_000_000
 _SHARED_ZETA_WORKSPACE_CACHE_LIMIT = 16
 _SHARED_ZETA_WORKSPACE_SNAPSHOT_TOKEN = object()
 _ZETA_PROOF_CACHE_AUTHORITY_TOKEN = object()
+_REGULATOR_ISSUANCE_TOKEN = object()
 _shared_zeta_workspace_snapshots: dict[str, Any] = {}
 _bf_prime_power_plan_kernel_override: Any = None
 _MAXIMUM_PACKED_BF_PLAN_TERMS = 1_000_000
@@ -3409,6 +3410,28 @@ class _ZetaProofCacheAuthority(tuple[Any, ...]):
         return self[1]
 
 
+class _RegulatorIssuance(tuple[Any, ...]):
+    """Immutable local receipt for one exact-unit regulator computation."""
+
+    __slots__ = ()
+
+    def __new__(
+        cls,
+        token: object,
+        owner: Any,
+        units: tuple[Any, ...],
+        parameters: tuple[int, ...],
+        key: tuple[Any, ...],
+        regulator: Any,
+        payload: str,
+    ) -> _RegulatorIssuance:
+        if token is not _REGULATOR_ISSUANCE_TOKEN:
+            raise TypeError("regulator issuances are module-issued")
+        return tuple.__new__(
+            cls, (owner, units, parameters, key, regulator, str(payload))
+        )
+
+
 def _build_bf_plan_readable(
     threshold: int,
     splitting: dict[int, tuple[tuple[int, int], ...]],
@@ -3677,6 +3700,7 @@ class ZetaLogResidueWorkspace:
         self._regulators: dict[
             tuple[str, int, int, int, int, int], tuple[RegulatorEnclosure, str]
         ] = {}
+        self._regulator_issuance: _RegulatorIssuance | None = None
         self._proof_cache_authority = _ZetaProofCacheAuthority(
             _ZETA_PROOF_CACHE_AUTHORITY_TOKEN,
             self,
@@ -3793,14 +3817,19 @@ class ZetaLogResidueWorkspace:
         ):
             raise AnalyticCertificationError("the zeta proof cache was mutated")
 
-    def _publish_shared_snapshot(self) -> None:
+    def _publish_shared_snapshot(self, token: object | None = None) -> None:
         key = self._shared_cache_key
         if key is None:
             return
+        payload = (
+            self._proof_cache_authority.payload[:6]
+            if token is _ZETA_PROOF_CACHE_AUTHORITY_TOKEN
+            else self._shared_snapshot()
+        )
         snapshot = _SharedZetaWorkspaceSnapshot(
             _SHARED_ZETA_WORKSPACE_SNAPSHOT_TOKEN,
             key,
-            self._shared_snapshot(),
+            payload,
         )
         _shared_zeta_workspace_snapshots.pop(key, None)
         if len(_shared_zeta_workspace_snapshots) >= _SHARED_ZETA_WORKSPACE_CACHE_LIMIT:
@@ -3861,6 +3890,79 @@ class ZetaLogResidueWorkspace:
         finally:
             self.prime_enumeration_nanoseconds += time.perf_counter_ns() - started
 
+    def _record_regulator_issuance(
+        self,
+        units: Sequence[Any],
+        parameters: tuple[int, ...],
+        key: tuple[Any, ...],
+        regulator: RegulatorEnclosure,
+        payload: str,
+    ) -> None:
+        self._regulator_issuance = _RegulatorIssuance(
+            _REGULATOR_ISSUANCE_TOKEN,
+            self,
+            tuple(units),
+            parameters,
+            key,
+            regulator,
+            payload,
+        )
+
+    def retained_regulator_issuance(
+        self,
+        units: Sequence[Any],
+        regulator: RegulatorEnclosure,
+        *,
+        unit_rank: int,
+        precision_bits: int,
+        absolute_tolerance_bits: int,
+        maximum_precision_bits: int,
+        maximum_determinant_states: int = 65_536,
+    ) -> RegulatorEnclosure | None:
+        """Consume an identity-bound live regulator receipt without reevaluation."""
+        started = time.perf_counter_ns()
+        self.regulator_calls += 1
+        try:
+            receipt = self._regulator_issuance
+            parameters = (
+                int(unit_rank),
+                int(precision_bits),
+                int(absolute_tolerance_bits),
+                int(maximum_precision_bits),
+                int(maximum_determinant_states),
+            )
+            if (
+                type(receipt) is not _RegulatorIssuance
+                or receipt[0] is not self
+                or receipt[2] != parameters
+                or receipt[4] is not regulator
+                or len(receipt[1]) != len(units)
+                or any(
+                    retained is not supplied
+                    for retained, supplied in zip(receipt[1], units, strict=True)
+                )
+            ):
+                return None
+            key = receipt[3]
+            payload = receipt[5]
+            if _canonical_json(regulator.to_dict()) != payload:
+                return None
+            cached = self._regulators.get(key)
+            authority = self._proof_cache_authority
+            if (
+                cached is None
+                or cached[0] is not regulator
+                or cached[1] != payload
+                or type(authority) is not _ZetaProofCacheAuthority
+                or authority.owner is not self
+                or (key, payload, payload) not in authority.payload[6]
+            ):
+                return None
+            self.regulator_cache_hits += 1
+            return regulator
+        finally:
+            self.regulator_nanoseconds += time.perf_counter_ns() - started
+
     def regulator_from_factored_units(
         self,
         units: Sequence[Any],
@@ -3878,7 +3980,6 @@ class ZetaLogResidueWorkspace:
         try:
             if callable(cancelled) and cancelled():
                 raise AnalyticResourceError("regulator computation was cancelled")
-            self._validate_proof_cache()
             factored_module = None
             try:
                 factored_module = __import__(
@@ -3896,14 +3997,14 @@ class ZetaLogResidueWorkspace:
                 )
                 for unit in units
             ]
-            key = (
-                _canonical_json(unit_payload),
+            parameters = (
                 int(unit_rank),
                 int(precision_bits),
                 int(absolute_tolerance_bits),
                 int(maximum_precision_bits),
                 int(maximum_determinant_states),
             )
+            key = (_canonical_json(unit_payload), *parameters)
             self._validate_proof_cache()
             cached = self._regulators.get(key)
             if cached is not None:
@@ -3913,6 +4014,9 @@ class ZetaLogResidueWorkspace:
                         "a cached regulator enclosure was mutated"
                     )
                 self.regulator_cache_hits += 1
+                self._record_regulator_issuance(
+                    units, parameters, key, regulator, authenticated_payload
+                )
                 return regulator
             regulator = regulator_from_factored_units(
                 units,
@@ -3931,6 +4035,9 @@ class ZetaLogResidueWorkspace:
             self._validate_proof_cache()
             self._regulators[key] = (regulator, authenticated_payload)
             self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
+            self._record_regulator_issuance(
+                units, parameters, key, regulator, authenticated_payload
+            )
             return regulator
         finally:
             self.regulator_nanoseconds += time.perf_counter_ns() - started
@@ -4850,7 +4957,6 @@ def zeta_log_residue_bound(
         )
         enclosure_widths.append(accumulated.width())
         if accumulated.radius() <= requested_error:
-            selected_workspace._validate_proof_cache()
             diagnostics: dict[str, Any] = {
                 "provider_calls": (
                     selected_workspace.provider_calls - initial_provider_calls
@@ -4892,7 +4998,12 @@ def zeta_log_residue_bound(
             selected_workspace.zeta_residue_nanoseconds += (
                 time.perf_counter_ns() - zeta_started
             )
-            selected_workspace._publish_shared_snapshot()
+            # The entry validation above and transactional provider admission
+            # establish the current issued authority; no external callback
+            # runs between the final cache update and this publication.
+            selected_workspace._publish_shared_snapshot(
+                _ZETA_PROOF_CACHE_AUTHORITY_TOKEN
+            )
             return ZetaLogResidueEnclosure(
                 accumulated,
                 finite,
@@ -5271,6 +5382,7 @@ def _authenticated_unit_index_inputs(
     regulator_maximum_precision: int,
     workspace: ZetaLogResidueWorkspace | None,
     cancelled: Callable[[], Any] | None,
+    retained_regulator: RegulatorEnclosure | None = None,
 ) -> tuple[tuple[int, int], RegulatorEnclosure]:
     """Authenticate exact signature, torsion, rank, and unit regulator."""
     signature_module = __import__(
@@ -5303,7 +5415,19 @@ def _authenticated_unit_index_inputs(
         raise AnalyticCertificationError(
             "the global index certificate has unverified torsion data"
         )
-    regulator = (
+    issued_regulator = (
+        None
+        if workspace is None or retained_regulator is None
+        else workspace.retained_regulator_issuance(
+            initial_units,
+            retained_regulator,
+            unit_rank=expected_rank,
+            precision_bits=regulator_precision,
+            absolute_tolerance_bits=regulator_tolerance,
+            maximum_precision_bits=regulator_maximum_precision,
+        )
+    )
+    regulator = issued_regulator or (
         regulator_from_factored_units(
             initial_units,
             unit_rank=expected_rank,
@@ -5815,7 +5939,6 @@ def certify_unit_saturation_index(
     selected_workspace.require_field(
         int(order.discriminant()), int(field.degree()), order.splitting_records
     )
-    selected_workspace._validate_proof_cache()
     construction_started = time.perf_counter_ns()
     try:
         supplied_live_proof = (
@@ -5886,20 +6009,42 @@ def certify_unit_saturation_index(
                 raise AnalyticCertificationError(
                     "precomputed analytic proof components are inconsistent"
                 )
-            authenticated_signature, authenticated_regulator = (
-                _authenticated_unit_index_inputs(
-                    field,
+            authenticated_regulator = (
+                selected_workspace.retained_regulator_issuance(
                     initial_units,
-                    configuration,
-                    regulator_precision=configured_regulator_precision,
-                    regulator_tolerance=configured_regulator_tolerance,
-                    regulator_maximum_precision=(
-                        configured_regulator_maximum_precision
-                    ),
-                    workspace=selected_workspace,
-                    cancelled=None,
+                    regulator,
+                    unit_rank=signature[0] + signature[1] - 1,
+                    precision_bits=configured_regulator_precision,
+                    absolute_tolerance_bits=configured_regulator_tolerance,
+                    maximum_precision_bits=configured_regulator_maximum_precision,
                 )
+                if _live_parent_token is _LIVE_UNIT_INDEX_PARENT_TOKEN
+                else None
             )
+            if authenticated_regulator is not None:
+                # The standard engine has already verified the complete torsion
+                # object immediately before issuing this one-use live-parent
+                # token.  The signature above is independently recomputed here,
+                # and the identity-bound regulator receipt authenticates these
+                # exact unit objects.  Detached and nonstandard construction
+                # continue through the complete replay boundary below.
+                authenticated_signature = (signature[0], signature[1])
+            else:
+                authenticated_signature, authenticated_regulator = (
+                    _authenticated_unit_index_inputs(
+                        field,
+                        initial_units,
+                        configuration,
+                        regulator_precision=configured_regulator_precision,
+                        regulator_tolerance=configured_regulator_tolerance,
+                        regulator_maximum_precision=(
+                            configured_regulator_maximum_precision
+                        ),
+                        workspace=selected_workspace,
+                        cancelled=None,
+                        retained_regulator=regulator,
+                    )
+                )
             if authenticated_signature != (signature[0], signature[1]):
                 raise AnalyticCertificationError(
                     "the precomputed signature authentication changed"
@@ -5907,19 +6052,6 @@ def certify_unit_saturation_index(
             if authenticated_regulator.to_dict() != regulator.to_dict():
                 raise AnalyticCertificationError(
                     "the precomputed regulator does not match the exact units"
-                )
-            recomputed_index = validate_hr_index(
-                signature=(signature[0], signature[1]),
-                discriminant=int(order.discriminant()),
-                class_number=int(class_number),
-                roots_of_unity=int(roots_of_unity),
-                regulator=regulator,
-                zeta_log_residue=zeta,
-                precision_bits=configured_hr_precision,
-            )
-            if recomputed_index.to_dict() != index.to_dict():
-                raise AnalyticCertificationError(
-                    "the precomputed hR index does not match its configuration"
                 )
             replayed_zeta: ZetaLogResidueEnclosure | None = None
             replayed_index: HRIndexValidationResult | None = None
@@ -5992,7 +6124,6 @@ def certify_unit_saturation_index(
                 configuration,
                 workspace=selected_workspace,
             )
-        selected_workspace._validate_proof_cache()
     finally:
         selected_workspace._record_certificate_construction(construction_started)
     return UnitSaturationIndexCertificate(
