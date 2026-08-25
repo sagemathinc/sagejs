@@ -439,6 +439,7 @@ for output_precision in (64,128,256):
     input_scale = 2**input_precision
     hostile_endpoints = [
         input_scale, input_scale,
+        7*input_scale//5-1, 7*input_scale//5+1,
         3*input_scale//2-1, 3*input_scale//2+1,
         input_scale*2**257+123456789, input_scale*2**257+123456999,
         input_scale//2**257-1, input_scale//2**257+1,
