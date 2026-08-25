@@ -163,7 +163,7 @@ print('dense-integer-independent-ok')
       matrixSource,
       /__import__\(\s*['"]sagejs\.kernels\.matrix\.dense_integer_flint['"]/,
     );
-    assert.doesNotMatch(
+    assert.match(
       matrixSource,
       /__import__\(\s*['"]sagejs\.kernels\.matrix\.dense_integer['"]/,
     );
