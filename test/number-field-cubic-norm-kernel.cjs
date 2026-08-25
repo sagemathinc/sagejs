@@ -8,7 +8,12 @@ const test = require("node:test");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
-const sagejs = join(root, "bin", "sagejs");
+const sagejs = process.execPath;
+const sagejsArguments = [
+  join(root, "bin", process.platform === "win32" ? "sagejs-source.cjs" : "sagejs"),
+  "--python",
+  "-",
+];
 
 function run(executable, args, source, timeout = 120_000) {
   const result = spawnSync(executable, args, {
@@ -20,6 +25,10 @@ function run(executable, args, source, timeout = 120_000) {
   if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return result.stdout.trim();
+}
+
+function runSagejs(source, timeout = 120_000) {
+  return run(sagejs, sagejsArguments, source, timeout);
 }
 
 const kernelDifferential = String.raw`
@@ -174,9 +183,7 @@ test("packed cubic norm obstruction matches ordinary Python", () => {
     ],
     "",
   );
-  const output = run(
-    sagejs,
-    ["--python", "-"],
+  const output = runSagejs(
     `${kernelDifferential}\nfrom sagejs.native import is_compiled\nprint(is_compiled(packed), is_compiled(obstruction_packed))\n`,
   );
   assert.equal(output, "True True");
@@ -191,22 +198,18 @@ test("packed cubic integral relation sieve matches ordinary Python", () => {
     ],
     "",
   );
-  const output = run(
-    sagejs,
-    ["--python", "-"],
+  const output = runSagejs(
     `${relationSieveDifferential}\nfrom sagejs.native import is_compiled\nprint(is_compiled(coefficient_packed), is_compiled(candidate_packed), is_compiled(row_packed))\n`,
   );
   assert.equal(output, "True True True");
 });
 
 test("bounded cubic factorization matches the generic modular oracle", () => {
-  run(sagejs, ["--python", "-"], cubicFactorDifferential);
+  runSagejs(cubicFactorDifferential);
 });
 
 test("packed cubic collector reuses its authenticated factor-base snapshot", () => {
-  const output = run(
-    sagejs,
-    ["--python", "-"],
+  const output = runSagejs(
     String.raw`
 from sagejs.number_fields import class_group_factor_base as factor_bases
 from sagejs.number_fields import class_group_relations as relations
@@ -353,9 +356,7 @@ print("authenticated-packed-factor-base-ok")
 });
 
 test("cubic class-number obstruction agrees with the readable search", () => {
-  const output = run(
-    sagejs,
-    ["--python", "-"],
+  const output = runSagejs(
     String.raw`
 import sagejs.number_fields.cubic_class_number as cubic
 from sagejs.number_fields import class_group_factor_base as factor_bases

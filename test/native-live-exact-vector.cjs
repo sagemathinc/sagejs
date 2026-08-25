@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
 const { readFileSync, mkdtempSync, rmSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
@@ -31,6 +32,16 @@ const selectionReceipt = {
     },
   },
 };
+
+function runCompiledWitness(modulePath, source, ...arguments_) {
+  const result = spawnSync(
+    process.execPath,
+    ["-e", source, modulePath, ...arguments_],
+    { encoding: "utf8", timeout: 120_000 },
+  );
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+}
 
 test("live exact vectors have one lexical GMP ownership implementation", async () => {
   const source = readFileSync(sourcePath, "utf8");
@@ -65,7 +76,10 @@ test("live exact vectors have one lexical GMP ownership implementation", async (
   const cacheRoot = mkdtempSync(join(tmpdir(), "sagejs-live-vector-"));
   try {
     const compiled = await compileKernel({ sourcePath, cacheRoot });
-    const module = require(compiled.modulePath);
+    runCompiledWitness(compiled.modulePath, String.raw`
+"use strict";
+const assert = require("node:assert/strict");
+const module = require(process.argv[1]);
     assert.deepEqual(module.live_addmul.liveExactWorkspace, {
       count: 1,
       scopes: [{
@@ -134,6 +148,7 @@ test("live exact vectors have one lexical GMP ownership implementation", async (
         /NativeIntegerVector index out of range/,
       );
     }
+`);
   } finally {
     rmSync(cacheRoot, { recursive: true, force: true });
   }
@@ -198,7 +213,13 @@ test("automatic selection is limited to its authenticated workload", async () =>
       functions: ["live_addmul"],
       automaticSelections: { live_addmul: selectionReceipt },
     });
-    const module = require(compiled.modulePath);
+    runCompiledWitness(
+      compiled.modulePath,
+      String.raw`
+"use strict";
+const assert = require("node:assert/strict");
+const module = require(process.argv[1]);
+const selectionReceipt = JSON.parse(process.argv[2]);
     const inside = [1n, 4096n, 2n, 3n, 5n, 7n];
     const outside = [2n, 4096n, 2n, 3n, 5n, 7n];
     assert.equal(module.live_addmul.backendFor(...inside), "gmp");
@@ -214,6 +235,9 @@ test("automatic selection is limited to its authenticated workload", async () =>
       /read only|readonly|Cannot assign/,
     );
     assert.equal(module.live_addmul.backendFor(...outside), "bigint");
+`,
+      JSON.stringify(selectionReceipt),
+    );
     assert.deepEqual(compiled.automaticSelections, {
       live_addmul: selectionReceipt,
     });
