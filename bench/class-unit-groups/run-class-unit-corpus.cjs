@@ -879,7 +879,7 @@ function gpAdapterSource(records, proof, boundary, samples) {
     calibration_bnf = bnfinit(calibration_nf, 1);
     ${proof ? "if(!bnfcertify(calibration_bnf), error(\"calibration bnfcertify returned false\"));" : ""}
     calibration_ms = max(1, getwalltime() - calibration_started);
-    iterations = min(10000, max(2, ceil(1200 / calibration_ms))),
+    iterations = min(10000, max(2, ceil(2000 / calibration_ms))),
     iterations = 1
   );
   field_ms = 0;
