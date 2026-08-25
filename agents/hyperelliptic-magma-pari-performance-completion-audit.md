@@ -74,6 +74,32 @@ linker contracts rather than inventing ratios. Linux x64 is the only row used
 for Magma/PARI comparisons, which remain in their separate equal-contract
 receipts.
 
+## Main-branch integration refresh
+
+The candidate was merged with current `main` and re-frozen at
+`6aaa460afe6615ce599193cc4fb93e603c473b3e`. The authenticated source-bundle
+digest is now
+`fcd9122e2b010345fd148f9bec7e7d562cd664ead132b4106351d819f8992e09`.
+The mathematical implementation is unchanged from `b1a05935`; the bundle
+change consists of current-main browser packaging integration plus the reviewed
+eager-core compression ceilings required by the combined artifact.
+
+Fresh dynamic/native and authenticated Wasm receipts were collected from the
+exact integrated revision on Linux x64, Linux ARM64, macOS ARM64, and Windows
+x64. Exact local-factor, Cantor, Kummer, and materialization digests agree
+across all four hosts. The refreshed durable evidence is:
+
+- four-platform report:
+  `bench/hyperelliptic/cross-platform/results/report-6aaa460a.md`;
+- raw primary and portable receipts:
+  `bench/hyperelliptic/cross-platform/results/*-6aaa460a*.json`;
+- normalized evidence and 24 receipt documents:
+  `bench/hyperelliptic/cross-platform/results/policy-6aaa460a/`.
+
+The earlier `b1a05935` evidence remains historical candidate evidence. The
+generated release allowlist now authenticates only the integrated `6aaa460a`
+bundle and retains the same six exact automatic-selection envelopes.
+
 ## Post-candidate priorities
 
 1. Record the pinned Phase-9 analytic receipt and process-cold rank-three map

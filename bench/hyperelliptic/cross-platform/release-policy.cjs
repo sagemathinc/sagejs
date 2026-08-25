@@ -19,25 +19,25 @@ const {
 
 const root = resolve(__dirname, "..", "..", "..");
 const results = join(__dirname, "results");
-const policyDirectory = join(results, "policy-b1a05935");
+const policyDirectory = join(results, "policy-6aaa460a");
 const policyPath = join(
   root,
   "architecture",
   "hyperelliptic-auto-receipt-policy.json",
 );
-const sourceCommit = "b1a059358d8a4325ef5be9998feb55a7a27db0fa";
+const sourceCommit = "6aaa460afe6615ce599193cc4fb93e603c473b3e";
 const sourceBundleSha =
-  "4e35043ffea8c3818639eaccc500de3c054c882806080aca7db34402f1e38f46";
+  "fcd9122e2b010345fd148f9bec7e7d562cd664ead132b4106351d819f8992e09";
 const harnessPath = "bench/hyperelliptic/cross-platform/run.cjs";
 const modelFingerprints = Object.freeze({
   2: "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234",
   3: "4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279",
 });
 const platformFiles = Object.freeze({
-  "linux-x64": "linux-x64-b1a05935",
-  "linux-arm64": "linux-arm64-b1a05935",
-  "darwin-arm64": "macos-arm64-b1a05935",
-  "win32-x64": "windows-x64-b1a05935",
+  "linux-x64": "linux-x64-6aaa460a",
+  "linux-arm64": "linux-arm64-6aaa460a",
+  "darwin-arm64": "macos-arm64-6aaa460a",
+  "win32-x64": "windows-x64-6aaa460a",
 });
 const platforms = Object.freeze(Object.keys(platformFiles));
 
@@ -186,7 +186,7 @@ function main() {
   for (const platform of platforms.slice(1)) {
     assert.deepEqual(receipts[platform].cross_mode_exact, referenceExact);
   }
-  const cachePath = join(results, "linux-x64-b1a05935-cache-corruption.stdout");
+  const cachePath = join(results, "linux-x64-6aaa460a-cache-corruption.stdout");
   assert.match(
     readFileSync(cachePath, "utf8"),
     /receipt validation detects changed production assets/,
@@ -197,7 +197,7 @@ function main() {
       "artifact identity binds layout and content",
     ]),
   );
-  const sanitizerPath = join(results, "linux-x64-b1a05935-cantor-sanitizers.json");
+  const sanitizerPath = join(results, "linux-x64-6aaa460a-cantor-sanitizers.json");
   const sanitizer = readJson(sanitizerPath);
   assert.equal(sanitizer.schema, "sagejs.hyperelliptic-cantor-sanitizers/v1");
   assert.deepEqual(
