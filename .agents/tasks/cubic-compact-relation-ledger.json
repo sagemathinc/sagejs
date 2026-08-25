@@ -1,0 +1,74 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-compact-relation-ledger",
+  "title": "Cubic Compact Relation Ledger",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Keep cubic factor-base rows and modular presentation state compact through stopping, publish canonical relation records once, preserve detached payloads exactly, and remove at least 5% end-to-end without regressions.",
+  "base_commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number.py",
+    "src/lib/sagejs/number_fields/cubic_relation_ledger.py",
+    "src/lib/sagejs/number_fields/class_group_relations.py",
+    "test/number-field-cubic-compact-relation-ledger.cjs",
+    "bench/class-unit-groups/compare-lmfdb-class-numbers.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/number-field-cubic-compact-relation-ledger.cjs",
+    "node --test test/number-field-class-group-relations.cjs",
+    "node --test test/number-field-global-arithmetic.cjs",
+    "node --test test/number-field-cubic-norm-kernel.cjs",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-cubic-compact-relation-ledger.cjs test/number-field-class-group-relations.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.86,
+      "started_at": "2026-08-25T05:10:11.405Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "458c5024dda28c6291031fa2f8a549e11496cf819b27551c96e8d881477b2f19",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 31.422,
+      "started_at": "2026-08-25T05:10:17.965Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "458c5024dda28c6291031fa2f8a549e11496cf819b27551c96e8d881477b2f19",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Stages exact cubic rows and presentation authority until obstruction success, publishes records transactionally once, defers live-only identity/reconstruction/canonical encoding, and handles the empty factor base directly while preserving the detached payload exactly.",
+    "risks": [
+      "The 411344bb package-byte ratchet predates this lane; central revision 3e70d55e raises the global-arithmetic budget and is required for the full architecture:check gate."
+    ],
+    "next_steps": [
+      "Run the cumulative exact A/B corpus after integration; local five-sample timings are directional because the clean 411 baseline receipt was produced separately."
+    ]
+  }
+}

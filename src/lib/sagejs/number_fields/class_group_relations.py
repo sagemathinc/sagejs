@@ -1182,6 +1182,7 @@ class ExactRelationCollector:
         max_factor_powers: int = DEFAULT_FACTOR_POWER_CACHE_SIZE,
         max_admission_receipts: int = DEFAULT_ADMISSION_RECEIPT_CACHE_SIZE,
         _validated_token: Any = None,
+        _deferred_reconstructor_token: Any = None,
     ) -> None:
         self.order = order
         supplied_factors = tuple(factor_base)
@@ -1203,12 +1204,27 @@ class ExactRelationCollector:
         self._factor_base_norms = tuple(
             sage.QQ(prime_ideal.norm()) for prime_ideal in self.factor_base
         )
-        self._reconstructor = FactorBaseIdealReconstructor(
-            order,
-            self.factor_base,
-            max_rows=max_reconstructed_ideals,
-            max_powers=max_factor_powers,
-            _validated_token=_VALIDATED_FACTOR_BASE_TOKEN,
+        deferred_reconstructor = (
+            _deferred_reconstructor_token is _VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
+        )
+        if _deferred_reconstructor_token is not None and not deferred_reconstructor:
+            raise TypeError("deferred relation reconstruction is producer-only")
+        self._reconstructor_limits = (
+            _checked_nonnegative(
+                max_reconstructed_ideals, "reconstruction row cache size"
+            ),
+            _checked_nonnegative(max_factor_powers, "factor-power cache size"),
+        )
+        self._reconstructor: FactorBaseIdealReconstructor | None = (
+            None
+            if deferred_reconstructor
+            else FactorBaseIdealReconstructor(
+                order,
+                self.factor_base,
+                max_rows=self._reconstructor_limits[0],
+                max_powers=self._reconstructor_limits[1],
+                _validated_token=_VALIDATED_FACTOR_BASE_TOKEN,
+            )
         )
         self.rank_screen = ModularRankScreen(len(self.factor_base), rank_prime)
         self.records: list[RelationRecord] = []
@@ -1217,6 +1233,7 @@ class ExactRelationCollector:
         self._order_basis: tuple[Any, ...] | None = None
         self._order_basis_coefficients: tuple[tuple[Any, ...], ...] | None = None
         self._keys: set[str] = set()
+        self._deferred_identity_keys = False
         self.max_admission_receipts = _checked_nonnegative(
             max_admission_receipts, "admission receipt cache size"
         )
@@ -1299,11 +1316,22 @@ class ExactRelationCollector:
 
     def reconstruct_factor_base_ideal(self, row: Iterable[int]) -> Any:
         """Reconstruct one row through this collector's bounded exact cache."""
-        return self._reconstructor.reconstruct(row)
+        return self._ensure_reconstructor().reconstruct(row)
 
     def reconstruction_diagnostics(self) -> dict[str, int]:
         """Return bounded-cache occupancy and reuse counters."""
-        return self._reconstructor.diagnostics()
+        return self._ensure_reconstructor().diagnostics()
+
+    def _ensure_reconstructor(self) -> FactorBaseIdealReconstructor:
+        if self._reconstructor is None:
+            self._reconstructor = FactorBaseIdealReconstructor(
+                self.order,
+                self.factor_base,
+                max_rows=self._reconstructor_limits[0],
+                max_powers=self._reconstructor_limits[1],
+                _validated_token=_VALIDATED_FACTOR_BASE_TOKEN,
+            )
+        return self._reconstructor
 
     def empty_verified_sibling(self) -> "ExactRelationCollector":
         """Return a fresh collector over this authenticated factor base.
@@ -1314,12 +1342,13 @@ class ExactRelationCollector:
         validated by this collector.  Detached callers still enter through the
         public constructor and perform full factor-base validation.
         """
+        reconstructor = self._ensure_reconstructor()
         return ExactRelationCollector(
             self.order,
             self.factor_base,
             rank_prime=self.rank_screen.prime,
-            max_reconstructed_ideals=self._reconstructor.max_rows,
-            max_factor_powers=self._reconstructor.max_powers,
+            max_reconstructed_ideals=reconstructor.max_rows,
+            max_factor_powers=reconstructor.max_powers,
             max_admission_receipts=self.max_admission_receipts,
             _validated_token=_VALIDATED_FACTOR_BASE_TOKEN,
         )
@@ -1343,6 +1372,9 @@ class ExactRelationCollector:
             raise TypeError("verified factor-base rebinding is producer-only")
         if self.context is not None:
             raise ValueError("a contextual relation collector cannot be rebound")
+        if self._deferred_identity_keys:
+            raise ValueError("deferred relation identities must be finalized first")
+        reconstructor = self._ensure_reconstructor()
         factors = tuple(factor_base)
         if len(factors) != len(self.factor_base):
             raise ValueError("a rebound factor base has the wrong width")
@@ -1350,8 +1382,8 @@ class ExactRelationCollector:
             self.order,
             factors,
             rank_prime=self.rank_screen.prime,
-            max_reconstructed_ideals=self._reconstructor.max_rows,
-            max_factor_powers=self._reconstructor.max_powers,
+            max_reconstructed_ideals=reconstructor.max_rows,
+            max_factor_powers=reconstructor.max_powers,
             max_admission_receipts=self.max_admission_receipts,
             _validated_token=_VALIDATED_FACTOR_BASE_TOKEN,
         )
@@ -1419,13 +1451,32 @@ class ExactRelationCollector:
                 Any,
             ]
         ],
+        *,
+        defer_identity_keys: bool = False,
     ) -> tuple[RelationAdmission, ...]:
         records = tuple(
             self._integral_generator_record_from_payload(
-                witness_payload, row, norm, provenance
+                witness_payload,
+                row,
+                norm,
+                provenance,
             )
             for _values, row, provenance, witness_payload, norm in normalized
         )
+        if defer_identity_keys:
+            if self.context is not None or self.records or self._keys:
+                raise ValueError(
+                    "deferred relation publication needs an empty private collector"
+                )
+            admissions: list[RelationAdmission] = []
+            for record in records:
+                independent, pivot = self.rank_screen.add(record.row)
+                admission = RelationAdmission(record, independent, pivot)
+                self.records.append(record)
+                self.admissions.append(admission)
+                admissions.append(admission)
+            self._deferred_identity_keys = True
+            return tuple(admissions)
         new_keys: dict[str, bool] = {}
         for record in records:
             key = record.live_identity_key()
@@ -1436,6 +1487,21 @@ class ExactRelationCollector:
             self._store_verified(record, identity_key=key)
             for record, key in zip(records, new_keys, strict=True)
         )
+
+    def _finalize_deferred_identity_keys(self, *, _validated_token: Any = None) -> None:
+        """Build mutation-sensitive hashes only when a retained seed is consumed."""
+        if _validated_token is not _VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN:
+            raise TypeError("deferred relation identity finalization is producer-only")
+        if not self._deferred_identity_keys:
+            return
+        keys = tuple(record.live_identity_key() for record in self.records)
+        if len(set(keys)) != len(keys):
+            raise ValueError("a deferred exact relation record is duplicated")
+        self._keys = set(keys)
+        for record, key in zip(self.records, keys, strict=True):
+            self._remember_admission_receipt(record, identity_key=key)
+        self._ensure_reconstructor()
+        self._deferred_identity_keys = False
 
     def admit_witness(
         self,
@@ -1868,12 +1934,16 @@ class ExactRelationCollector:
         proposals: Iterable[tuple[Iterable[int], Iterable[int], dict[str, Any] | None]],
         *,
         _validated_token: Any = None,
+        _deferred_token: Any = None,
     ) -> tuple[RelationAdmission, ...]:
         """Retain exact rows already proved by an identity-bound live producer."""
         if _validated_token is not _VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN:
             raise TypeError("validated integral relation admission is producer-only")
         if not isinstance(authority, _ValidatedIntegralRelationBatch):
             raise TypeError("validated integral relation authority has the wrong type")
+        deferred = _deferred_token is _VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
+        if _deferred_token is not None and not deferred:
+            raise TypeError("deferred integral relation publication is producer-only")
         authorized = authority.authorize(self.order, self.factor_base, proposals)
         if not authorized:
             return ()
@@ -1908,7 +1978,10 @@ class ExactRelationCollector:
                     norm,
                 )
             )
-        admissions = self._store_integral_payload_records(normalized)
+        admissions = self._store_integral_payload_records(
+            normalized,
+            defer_identity_keys=deferred,
+        )
         self._admission_receipt_statistics["integral_norm_certificates"] += len(
             admissions
         )
