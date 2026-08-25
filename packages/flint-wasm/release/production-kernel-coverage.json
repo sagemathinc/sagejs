@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 43,
-    "production_kernels": 36,
-    "compiled_functions": 254,
+    "registered_kernels": 47,
+    "production_kernels": 40,
+    "compiled_functions": 273,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -23,9 +23,9 @@
       "id": "buchmann-lenstra-row-hnf-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 6,
+      "compiled_functions": 9,
       "fallback_functions": 0,
-      "total_functions": 6,
+      "total_functions": 9,
       "fallback_reasons": []
     },
     {
@@ -54,9 +54,9 @@
       "id": "dense-integer-flint-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 15,
+      "compiled_functions": 17,
       "fallback_functions": 0,
-      "total_functions": 15,
+      "total_functions": 17,
       "fallback_reasons": []
     },
     {
@@ -175,9 +175,9 @@
       "id": "hyperelliptic-cantor-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 8,
+      "compiled_functions": 11,
       "fallback_functions": 0,
-      "total_functions": 8,
+      "total_functions": 11,
       "fallback_reasons": []
     },
     {
@@ -208,6 +208,15 @@
       "fallback_reasons": []
     },
     {
+      "id": "number-field-bdf-interval-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
+      "fallback_reasons": []
+    },
+    {
       "id": "number-field-composite-analysis-production",
       "production": true,
       "status": "available",
@@ -217,7 +226,34 @@
       "fallback_reasons": []
     },
     {
+      "id": "number-field-cubic-norm-obstruction-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 2,
+      "fallback_functions": 0,
+      "total_functions": 2,
+      "fallback_reasons": []
+    },
+    {
+      "id": "number-field-cubic-relation-sieve-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 3,
+      "fallback_functions": 0,
+      "total_functions": 3,
+      "fallback_reasons": []
+    },
+    {
       "id": "number-field-discriminant-prefactor-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
+      "fallback_reasons": []
+    },
+    {
+      "id": "number-field-element-valuations-production",
       "production": true,
       "status": "available",
       "compiled_functions": 1,
@@ -247,9 +283,9 @@
       "id": "number-field-zeta-coefficients-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 3,
+      "compiled_functions": 6,
       "fallback_functions": 0,
-      "total_functions": 3,
+      "total_functions": 6,
       "fallback_reasons": []
     },
     {
@@ -377,9 +413,9 @@
       "id": "prime-ideal-candidate-materializer-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 1,
+      "compiled_functions": 2,
       "fallback_functions": 0,
-      "total_functions": 1,
+      "total_functions": 2,
       "fallback_reasons": []
     },
     {

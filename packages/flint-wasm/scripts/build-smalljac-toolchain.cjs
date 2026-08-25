@@ -118,6 +118,16 @@ function extractedDirectory(root, archive) {
   return directories[0];
 }
 
+function reproducibleSourceFlags(sourceRoot) {
+  const source = resolve(sourceRoot);
+  const canonical = "/sagejs/native-source";
+  return [
+    `-ffile-prefix-map=${source}=${canonical}`,
+    `-fdebug-prefix-map=${source}=${canonical}`,
+    `-fmacro-prefix-map=${source}=${canonical}`,
+  ];
+}
+
 function compileArchive({
   clang,
   llvmAr,
@@ -144,6 +154,7 @@ function compileArchive({
       "-fvisibility=hidden",
       "-std=gnu99",
       "-DSAGEJS_FFPOLY_PORTABLE=1",
+      ...reproducibleSourceFlags(sourceRoot),
       ...includes.flatMap((directory) => ["-I", directory]),
       "-c",
       join(sourceRoot, sourceName),
@@ -256,4 +267,9 @@ if (require.main === module) {
   });
 }
 
-module.exports = { buildSmalljacToolchain, ffpolySources, smalljacSources };
+module.exports = {
+  buildSmalljacToolchain,
+  ffpolySources,
+  reproducibleSourceFlags,
+  smalljacSources,
+};

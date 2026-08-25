@@ -39,6 +39,70 @@ function run(source) {
   }
 }
 
+test("packed BDF interval assembly matches exact scalar endpoints", () => {
+  const output = run(String.raw`
+import sagejs.number_fields.bl_composite_kernel as kernels
+import sagejs.number_fields.class_group_factor_base as factor_bases
+from sagejs.native import is_compiled
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+saved = factor_bases._bdf_interval_kernel_override
+packed_kernel = kernels.packed_bdf_interval_in_place
+dynamic_kernel = getattr(packed_kernel, "__sagejs_native_source__", packed_kernel)
+
+for candidate in (2, 4, 8, 16, 12, 10, 11):
+    scalar_field = NumberField(x**3 - x**2 + 7*x + 8, "s" + str(candidate))
+    scalar_order = scalar_field.maximal_order()
+    factor_bases._bdf_interval_kernel_override = False
+    scalar = factor_bases._BDFEvaluator(scalar_order, 100).inequality(
+        candidate, 3, 1, 4027, 64
+    )
+    for index, kernel in enumerate((dynamic_kernel, packed_kernel)):
+        packed_field = NumberField(
+            x**3 - x**2 + 7*x + 8,
+            "p" + str(candidate) + str(index),
+        )
+        factor_bases._bdf_interval_kernel_override = kernel
+        packed = factor_bases._BDFEvaluator(
+            packed_field.maximal_order(), 100
+        ).inequality(candidate, 3, 1, 4027, 64)
+        assert packed[0] == scalar[0]
+        assert packed[1].to_dict() == scalar[1].to_dict()
+        assert packed[2].to_dict() == scalar[2].to_dict()
+
+factor_bases._bdf_interval_kernel_override = False
+scalar_field = NumberField(x**3 - x**2 + 7*x + 8, "scalar")
+scalar_bound = factor_bases.bdf_bound(scalar_field.maximal_order())
+factor_bases._bdf_interval_kernel_override = packed_kernel
+packed_field = NumberField(x**3 - x**2 + 7*x + 8, "packed")
+packed_bound = factor_bases.bdf_bound(packed_field.maximal_order())
+factor_bases._bdf_interval_kernel_override = saved
+assert packed_bound.to_dict() == scalar_bound.to_dict()
+
+# A floating search hint is never accepted as evidence.  Deliberately wrong
+# low and high hints must reproduce the same exact interval certificate.
+saved_hint = factor_bases._bdf_search_hint_override
+for hint in (2, 11, 100):
+    factor_bases._bdf_search_hint_override = hint
+    hinted_field = NumberField(x**3 - x**2 + 7*x + 8, "hint" + str(hint))
+    hinted_bound = factor_bases.bdf_bound(
+        hinted_field.maximal_order(), max_bound=100
+    )
+    assert hinted_bound.to_dict() == scalar_bound.to_dict()
+factor_bases._bdf_search_hint_override = saved_hint
+assert packed_bound.bound == 11
+assert packed_bound.interval.to_dyadic_dict(64) == {
+    "scale_bits": 64,
+    "lower_numerator": 4305529790576860134,
+    "upper_numerator": 4305529790576860135,
+}
+assert is_compiled(packed_kernel)
+print("packed-bdf-exact")
+`);
+  assert.equal(output, "packed-bdf-exact");
+});
+
 test("exact factor-base bounds and norm streams match Sage/PARI/Magma fixtures", () => {
   assert.equal(fixture.systems.sage_pari.status, "executed");
   assert.match(fixture.systems.magma.command, /ClassGroup\(O\)/);
@@ -332,14 +396,14 @@ assert quintic_plan.estimated_rational_primes == 19
 assert quintic_plan.estimated_prime_ideals == 95
 assert quintic_plan.progress()["splitting_scan_complete"] is False
 assert quintic_plan.progress()["materialized_prime_ideals"] == 0
-original_prime_from_ideal = factor_bases._prime_ideals._prime_from_ideal
+original_prime_candidate = factor_bases._prime_ideals._dedekind_kummer_prime_candidate
 factor_calls = []
 prime_ideal_constructions = []
-def tracked_prime_from_ideal(*args, **kwargs):
+def tracked_prime_candidate(*args, **kwargs):
     prime_ideal_constructions.append(int(args[1]))
-    return original_prime_from_ideal(*args, **kwargs)
+    return original_prime_candidate(*args, **kwargs)
 factor_bases._prime_ideals.factor_rational_prime = tracked_factor
-factor_bases._prime_ideals._prime_from_ideal = tracked_prime_from_ideal
+factor_bases._prime_ideals._dedekind_kummer_prime_candidate = tracked_prime_candidate
 try:
     construction_started = time.perf_counter()
     interrupted_stream = prime_ideal_norm_stream(quintic_plan)
@@ -356,7 +420,7 @@ try:
     cache_seconds = time.perf_counter() - cache_started
 finally:
     factor_bases._prime_ideals.factor_rational_prime = original_factor
-    factor_bases._prime_ideals._prime_from_ideal = original_prime_from_ideal
+    factor_bases._prime_ideals._dedekind_kummer_prime_candidate = original_prime_candidate
 quintic_compact = [
     {
         "p": record.rational_prime,
@@ -459,18 +523,18 @@ for case in fixture["high_degree_cases"]:
     prepared.append((case, order))
 
 original_factor = factor_bases._prime_ideals.factor_rational_prime
-original_prime_from_ideal = factor_bases._prime_ideals._prime_from_ideal
+original_prime_candidate = factor_bases._prime_ideals._dedekind_kummer_prime_candidate
 factor_calls = []
 prime_ideal_constructions = []
 def tracked_factor(order, prime, *args, **kwargs):
     factor_calls.append(int(prime))
     return original_factor(order, prime, *args, **kwargs)
-def tracked_prime_from_ideal(*args, **kwargs):
+def tracked_prime_candidate(*args, **kwargs):
     prime_ideal_constructions.append(int(args[1]))
-    return original_prime_from_ideal(*args, **kwargs)
+    return original_prime_candidate(*args, **kwargs)
 
 factor_bases._prime_ideals.factor_rational_prime = tracked_factor
-factor_bases._prime_ideals._prime_from_ideal = tracked_prime_from_ideal
+factor_bases._prime_ideals._dedekind_kummer_prime_candidate = tracked_prime_candidate
 plans_and_records = []
 started = time.perf_counter()
 try:
@@ -514,7 +578,7 @@ try:
     replay_seconds = time.perf_counter() - replay_started
 finally:
     factor_bases._prime_ideals.factor_rational_prime = original_factor
-    factor_bases._prime_ideals._prime_from_ideal = original_prime_from_ideal
+    factor_bases._prime_ideals._dedekind_kummer_prime_candidate = original_prime_candidate
 
 # Only p=2 in the transformed sextic divides its equation-order index.  The
 # compact scan must use and cache one complete finite-algebra decomposition
@@ -671,9 +735,9 @@ direct = factor_bases._Interval(direct_lower.lower, direct_upper.upper)
 assert anchored.lower <= direct.upper and direct.lower <= anchored.upper
 
 # Both auto and explicit GRH selection must test the cheap exact Minkowski
-# floor first.  At cutoff two it is no larger than either conditional search's
-# minimum, so no BDF call is permitted and the returned proof state is
-# assumption-free.  The cached Minkowski result itself remains unmodified.
+# floor first.  Tiny bounds have at most the rational primes 2 and 3, so the
+# assumption-free base is preferred without paying for BDF.  The cached
+# Minkowski result itself remains unmodified.
 original_bdf = factor_bases.bdf_bound
 def unexpected_bdf(*_args, **_kwargs):
     raise AssertionError("the small unconditional cutoff entered BDF search")
@@ -684,6 +748,15 @@ try:
     auto_records = build_factor_base(auto_plan)
     auto_seconds = time.perf_counter() - auto_started
     explicit_grh = grh_bound(order, max_bdf_bound=10000)
+    comparison_x = R.gen()
+    comparison_field = NumberField(
+        comparison_x**3 + 4 * comparison_x - 1, "b"
+    )
+    comparison_order = comparison_field.maximal_order()
+    comparison_plan = factor_base_plan(
+        comparison_order, proof=False, theorem="auto"
+    )
+    comparison_records = build_factor_base(comparison_plan)
 finally:
     factor_bases.bdf_bound = original_bdf
 
@@ -694,10 +767,15 @@ assert auto_plan.theorem == explicit_grh.theorem == "Minkowski"
 assert auto_plan.assumptions == explicit_grh.assumptions == ()
 assert auto_plan.bound_result is not minkowski
 assert auto_plan.bound_result.details["selection"] == (
-    "unconditional-bound-at-grh-search-minimum"
+    "unconditional-small-minkowski-bound"
 )
+assert auto_plan.bound_result.details["automatic_minkowski_bound_limit"] == 4
 assert auto_plan.bound_result.details["grh_search_minimum"] == 2
 assert "selection" not in minkowski.details
+assert comparison_plan.bound == 4
+assert comparison_plan.theorem == "Minkowski"
+assert comparison_plan.assumptions == ()
+assert len(comparison_records) == 3
 compact = [
     {
         "p": record.rational_prime,
@@ -708,6 +786,37 @@ compact = [
     for record in auto_records
 ]
 assert compact == case["minkowski_factor_base"]
+
+# A classical rational enclosure decides ordinary Minkowski floors without
+# evaluating the high-height Machin interval.  Its endpoints contain the
+# independent direct exact-rational construction.  A deliberately near-
+# integer imaginary quadratic bound still enters the full precision loop.
+coarse_pi = factor_bases._Interval(
+    factor_bases._Rational(333, 106), factor_bases._Rational(355, 113)
+)
+direct_pi = factor_bases._pi_scalar_interval(256)
+assert coarse_pi.lower < direct_pi.lower < direct_pi.upper < coarse_pi.upper
+saved_pi_interval = factor_bases._pi_interval
+def forbidden_pi_interval(bits):
+    raise AssertionError("a coarse Minkowski decision evaluated Machin pi")
+factor_bases._pi_interval = forbidden_pi_interval
+coarse_x = R.gen()
+coarse_field = NumberField(
+    coarse_x**3 - coarse_x**2 - 6 * coarse_x - 12, "coarse"
+)
+assert minkowski_bound(coarse_field.maximal_order()).bound == 9
+factor_bases._pi_interval = saved_pi_interval
+
+pi_calls = [0]
+def counted_pi_interval(bits):
+    pi_calls[0] += 1
+    return saved_pi_interval(bits)
+factor_bases._pi_interval = counted_pi_interval
+near_x = R.gen()
+near_integer = NumberField(near_x**2 + 1481, "near")
+assert minkowski_bound(near_integer.maximal_order()).bound == 48
+factor_bases._pi_interval = saved_pi_interval
+assert pi_calls[0] >= 1
 assert len(auto_records) == benchmark["auto_factor_base_size"]
 assert auto_seconds < benchmark["maximum_auto_factor_base_seconds"]
 

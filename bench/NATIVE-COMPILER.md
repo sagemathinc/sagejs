@@ -1,6 +1,6 @@
-# Native Kernel v22
+# Native Kernel v23
 
-Native Kernel v22 asks whether selected Sage.js library functions can compile
+Native Kernel v23 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v22 is currently a source-tree development feature and uses the
+Native Kernel v23 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -462,6 +462,40 @@ pnpm run bench:native:cowasm
 For the matched real-number comparison against SageMath, see
 [`MPFR-BENCHMARK.md`](MPFR-BENCHMARK.md).
 
+## Lexical live exact vectors
+
+V23 introduces the first slice of the native mathematical machine model:
+`NativeIntegerVector` is a compiler-owned exact workspace scoped by an ordinary
+Python `with` statement. Its initialized GMP entries remain live across loop
+iterations, so `addmul` and `submul` lower directly to `mpz_addmul` and
+`mpz_submul` instead of importing and exporting a packed `IntegerBuffer` slot
+for every update. Capacity and a deterministic semantic memory charge are
+explicit source arguments. All exits clear the workspace exactly once.
+
+The same source has a checked list-based CPython fallback, a BigInt JavaScript
+fallback with `try/finally`, and the host-isolated GMP C core used by native and
+Wasm. Functions owning a workspace use one GMP implementation: word execution
+promotes before allocation and tagged callers cross a one-time conversion
+bridge. The workspace is acceleration state, never canonical or serialized
+authority, and cannot be passed, returned, aliased, or used after its lexical
+scope.
+
+The neutral witness is
+[`native_live_exact_vector.py`](native_live_exact_vector.py). This is
+deliberately not yet a general arena, resizable container, or owned aggregate
+result. The production relation-admission witness and its stage-resolved
+receipt determine which additional storage feature is implemented next.
+
+The first production-shaped witness is
+`packed_factor_base_rows_in_place` in
+`sagejs.number_fields.bl_composite_kernel`. Its order-basis matrix-vector
+accumulation keeps one exact vector live across the complete authenticated
+cubic relation-row batch and publishes only completed coordinates back to the
+canonical `IntegerBuffer` evidence. The surrounding candidate generation,
+authority validation, relation-record construction, public scalar observation,
+bulk certificate gather, and detached replay are measured separately by
+[`native-machine-model-c0.py`](class-unit-groups/native-machine-model-c0.py).
+
 ## Performance
 
 Run the comparative benchmark with:
@@ -647,7 +681,7 @@ coefficient lists and more involved structured state make it the next honest
 compiler-capability test rather than a reason to introduce a hidden native
 Tate implementation.
 
-## Deliberate v20 limits
+## Deliberate v23 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements
@@ -670,7 +704,8 @@ accumulating unconnected AST cases.
 
 The architectural seams are now present: ordinary Python decorator markers,
 typed IR, escape-aware native
-storage, independent backends, a JavaScript fallback, a versioned shared
+storage, lexical live-exact workspaces, independent backends, a JavaScript
+fallback, a versioned shared
 element ABI, standard runtime results, and deterministic compilation caching.
 
 A matched comparison against warmed Julia 1.12.6, including independent GCC

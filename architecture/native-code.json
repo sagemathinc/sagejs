@@ -53,6 +53,13 @@
       "rationale": "Standalone handwritten-C oracle copied from p1.c for the source-transparent Heilbronn compiler pilot."
     },
     {
+      "path": "bench/native-live-exact-vector-reference.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "native-compiler",
+      "rationale": "Standalone GMP ceiling for the lexical live-exact vector addmul witness; it is compiled only by the benchmark and is not linked into Sage.js."
+    },
+    {
       "path": "bench/number-field-order-resource-witness.c",
       "category": "benchmark-reference",
       "review_status": "accepted",

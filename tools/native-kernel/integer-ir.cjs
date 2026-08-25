@@ -30,6 +30,7 @@ const TYPE_ALIASES = new Map([
 const INT64_BUFFER_TYPES = new Set(["Int64Buffer", "Int64Record"]);
 const EXACT_BUFFER_TYPES = new Set([...INT64_BUFFER_TYPES, "IntegerBuffer"]);
 const BORROWED_BUFFER_TYPES = new Set([...EXACT_BUFFER_TYPES, "UInt64Buffer"]);
+const LIVE_INTEGER_VECTOR_TYPE = "NativeIntegerVector";
 const INTEGER_BINARY = new Map([
   ["+", "add"],
   ["-", "sub"],
@@ -351,8 +352,120 @@ function createContext(
     symbolAliases: new Map(),
     usedForeignResources,
     variables,
+    activeIntegerVectors: new Set(),
     fn,
   };
+}
+
+function liveIntegerVectorName(node, context) {
+  expect(
+    context,
+    node,
+    nodeType(node) === "AST_SymbolRef" &&
+      context.variables.get(node.name) === LIVE_INTEGER_VECTOR_TYPE,
+    "live exact-vector operation requires a NativeIntegerVector local",
+  );
+  expect(
+    context,
+    node,
+    context.activeIntegerVectors.has(node.name) &&
+      context.initialized.has(node.name),
+    `NativeIntegerVector ${node.name} is outside its lexical scope`,
+  );
+  return node.name;
+}
+
+function lowerLiveVectorIndex(node, context, operations) {
+  const literal = integerLiteral(node);
+  const value = literal !== undefined && literal >= 0n &&
+      literal <= 18446744073709551615n
+    ? emitUint64Constant(context, node, operations, literal)
+    : lowerExpression(node, context, operations);
+  expect(
+    context,
+    node,
+    value.type === "uint64" || value.type === "Integer",
+    "NativeIntegerVector index must be an exact integer",
+  );
+  return value;
+}
+
+function liveVectorMethod(call) {
+  return nodeType(call) === "AST_Call" &&
+    nodeType(call.expression) === "AST_Dot" &&
+    nodeType(call.expression.expression) === "AST_SymbolRef"
+    ? {
+        owner: call.expression.expression,
+        method: call.expression.property,
+      }
+    : undefined;
+}
+
+function lowerLiveVectorMethodStatement(call, context) {
+  const method = liveVectorMethod(call);
+  expect(
+    context,
+    call,
+    method !== undefined,
+    "native expression statements are unsupported; host callbacks are prohibited",
+  );
+  const vector = liveIntegerVectorName(method.owner, context);
+  const args = array(call.args);
+  const operations = [];
+  if (method.method === "addmul" || method.method === "submul") {
+    expect(
+      context,
+      call,
+      args.length === 3,
+      `NativeIntegerVector.${method.method}() requires index, left, and right`,
+    );
+    const index = lowerLiveVectorIndex(args[0], context, operations);
+    const left = coerceInteger(
+      lowerExpression(args[1], context, operations),
+      context,
+      args[1],
+      operations,
+    );
+    const right = coerceInteger(
+      lowerExpression(args[2], context, operations),
+      context,
+      args[2],
+      operations,
+    );
+    operations.push({
+      kind: `integer.vector.${method.method}`,
+      vector,
+      index: index.name,
+      indexType: index.type,
+      left: left.name,
+      right: right.name,
+    });
+    return operations;
+  }
+  if (method.method === "swap") {
+    expect(
+      context,
+      call,
+      args.length === 2,
+      "NativeIntegerVector.swap() requires two indices",
+    );
+    const left = lowerLiveVectorIndex(args[0], context, operations);
+    const right = lowerLiveVectorIndex(args[1], context, operations);
+    operations.push({
+      kind: "integer.vector.swap",
+      vector,
+      left: left.name,
+      leftType: left.type,
+      right: right.name,
+      rightType: right.type,
+    });
+    return operations;
+  }
+  fail(
+    context,
+    call,
+    `unsupported NativeIntegerVector method ${method.method}`,
+  );
 }
 
 function ensureVariable(context, node, name, type) {
@@ -737,6 +850,19 @@ function lowerCall(node, context, operations) {
 
   if (name === "len") {
     expect(context, node, args.length === 1, "len() requires one argument");
+    if (
+      nodeType(args[0]) === "AST_SymbolRef" &&
+      context.variables.get(args[0].name) === LIVE_INTEGER_VECTOR_TYPE
+    ) {
+      const vector = liveIntegerVectorName(args[0], context);
+      const target = temporary(context, node, "uint64");
+      operations.push({
+        kind: "integer.vector.length",
+        target,
+        vector,
+      });
+      return { name: target, type: "uint64" };
+    }
     const buffer = lowerExpression(args[0], context, operations);
     expect(
       context,
@@ -969,6 +1095,12 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
     expect(
       context,
       node,
+      type !== LIVE_INTEGER_VECTOR_TYPE,
+      "NativeIntegerVector owners cannot be copied, passed, or returned",
+    );
+    expect(
+      context,
+      node,
       context.initialized.has(name),
       `native value ${node.name} may be uninitialized`,
     );
@@ -997,6 +1129,26 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
     };
   }
   if (nodeType(node) === "AST_ItemAccess") {
+    const liveVectorType = nodeType(node.expression) === "AST_SymbolRef"
+      ? context.variables.get(node.expression.name)
+      : undefined;
+    if (liveVectorType === LIVE_INTEGER_VECTOR_TYPE) {
+      const vector = liveIntegerVectorName(node.expression, context);
+      const index = lowerLiveVectorIndex(
+        node.property,
+        context,
+        operations,
+      );
+      const target = temporary(context, node, "Integer");
+      operations.push({
+        kind: "integer.vector.get",
+        target,
+        vector,
+        index: index.name,
+        indexType: index.type,
+      });
+      return { name: target, type: "Integer" };
+    }
     const bufferType = nodeType(node.expression) === "AST_SymbolRef"
       ? context.variables.get(node.expression.name)
       : undefined;
@@ -1310,6 +1462,55 @@ function assignScalar(targetNode, value, context, operations) {
 
 function lowerBufferAssignment(item, right, operator, context) {
   const operations = [];
+  const liveVectorType = nodeType(item.expression) === "AST_SymbolRef"
+    ? context.variables.get(item.expression.name)
+    : undefined;
+  if (liveVectorType === LIVE_INTEGER_VECTOR_TYPE) {
+    const vector = liveIntegerVectorName(item.expression, context);
+    const index = lowerLiveVectorIndex(item.property, context, operations);
+    let value = coerceInteger(
+      lowerExpression(right, context, operations),
+      context,
+      right,
+      operations,
+    );
+    if (operator !== "=") {
+      const arithmetic = INTEGER_BINARY.get(
+        operator.endsWith("=") ? operator.slice(0, -1) : "",
+      );
+      expect(
+        context,
+        item,
+        arithmetic !== undefined,
+        `unsupported indexed augmented operator ${operator}`,
+      );
+      const current = temporary(context, item, "Integer");
+      operations.push({
+        kind: "integer.vector.get",
+        target: current,
+        vector,
+        index: index.name,
+        indexType: index.type,
+      });
+      const target = temporary(context, item, "Integer");
+      operations.push({
+        kind: "integer.binary",
+        operation: arithmetic,
+        target,
+        left: current,
+        right: value.name,
+      });
+      value = { name: target, type: "Integer" };
+    }
+    operations.push({
+      kind: "integer.vector.set",
+      vector,
+      index: index.name,
+      indexType: index.type,
+      value: value.name,
+    });
+    return operations;
+  }
   const buffer = lowerExpression(item.expression, context, operations);
   expect(
     context,
@@ -1689,18 +1890,106 @@ function lowerStatements(statements, context) {
   for (const statement of statements) {
     if (nodeType(statement) === "AST_SimpleStatement") {
       if (nodeType(statement.body) === "AST_Call") {
-        const operations = [];
-        lowerExpression(statement.body, context, operations);
-        fail(
+        const method = liveVectorMethod(statement.body);
+        if (method === undefined) {
+          const operations = [];
+          lowerExpression(statement.body, context, operations);
+          fail(
+            context,
+            statement,
+            "native expression statements are unsupported; " +
+              "host callbacks are prohibited",
+          );
+        }
+        const operations = lowerLiveVectorMethodStatement(
+          statement.body,
           context,
-          statement,
-          "native expression statements are unsupported; " +
-            "host callbacks are prohibited",
         );
+        annotateOperations(operations, sourceSpan(statement, context.filename));
+        result.push(...operations);
+        continue;
       }
       const operations = lowerAssignment(statement, context);
       annotateOperations(operations, sourceSpan(statement, context.filename));
       result.push(...operations);
+      continue;
+    }
+    if (nodeType(statement) === "AST_With") {
+      context.scalarCoercions = new Map();
+      const clauses = array(statement.clauses);
+      expect(
+        context,
+        statement,
+        statement.is_async !== true && clauses.length === 1,
+        "NativeIntegerVector requires one synchronous with clause",
+      );
+      expect(
+        context,
+        statement,
+        context.activeIntegerVectors.size === 0,
+        "nested NativeIntegerVector scopes are not supported in this slice",
+      );
+      const clause = clauses[0];
+      const constructor = clause.expression;
+      const constructorArgs = array(constructor?.args);
+      expect(
+        context,
+        constructor,
+        nodeType(constructor) === "AST_Call" &&
+          nodeType(constructor.expression) === "AST_SymbolRef" &&
+          constructor.expression.name === LIVE_INTEGER_VECTOR_TYPE &&
+          constructorArgs.length === 2 &&
+          array(constructor.args?.kwarg_items).length === 0 &&
+          !constructor.args?.starargs,
+        "NativeIntegerVector() requires capacity and memory_limit",
+      );
+      expect(
+        context,
+        clause.alias,
+        nodeType(clause.alias) === "AST_SymbolAlias" &&
+          isCIdentifier(clause.alias.name),
+        "NativeIntegerVector owner must be a simple local name",
+      );
+      const owner = clause.alias.name;
+      expect(
+        context,
+        clause.alias,
+        !context.variables.has(owner),
+        `NativeIntegerVector owner ${owner} shadows an existing native value`,
+      );
+      const setup = [];
+      const capacity = lowerUint64Operand(
+        constructorArgs[0],
+        context,
+        setup,
+      );
+      const memoryLimit = lowerUint64Operand(
+        constructorArgs[1],
+        context,
+        setup,
+      );
+      expect(
+        context,
+        constructor,
+        capacity.type === "uint64" && memoryLimit.type === "uint64",
+        "NativeIntegerVector capacity and memory_limit must be uint64",
+      );
+      ensureVariable(context, clause.alias, owner, LIVE_INTEGER_VECTOR_TYPE);
+      context.initialized.add(owner);
+      context.activeIntegerVectors.add(owner);
+      const body = lowerBlock(statement.body, context);
+      context.activeIntegerVectors.delete(owner);
+      context.initialized.delete(owner);
+      const operation = {
+        kind: "integer.vector.scope",
+        owner,
+        capacity: capacity.name,
+        memoryLimit: memoryLimit.name,
+        setup,
+        body,
+      };
+      annotateOperations([operation], sourceSpan(statement, context.filename));
+      result.push(operation);
       continue;
     }
     if (nodeType(statement) === "AST_Return") {
@@ -1884,7 +2173,8 @@ function containsReturn(statements) {
         (containsReturn(statement.body) ||
           containsReturn(statement.alternative))) ||
       ((statement.kind === "while" || statement.kind === "loop.range" ||
-        statement.kind === "loop.range_exact") &&
+        statement.kind === "loop.range_exact" ||
+        statement.kind === "integer.vector.scope") &&
         containsReturn(statement.body))
     ) {
       return true;

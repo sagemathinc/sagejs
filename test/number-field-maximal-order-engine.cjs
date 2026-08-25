@@ -14,6 +14,40 @@ const vector429 = JSON.parse(
   ),
 ).cases.find((item) => item.id === "pari-round4-vector-429");
 
+test("compact maximal orders defer unrelated fallback modules", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "import sagejs.number_fields.maximal_order_engine as engine",
+        "loads = []",
+        "helpers = ['_buchmann_lenstra_module', '_composite_local_merge_module', '_composite_field_analysis_module', '_maximal_order_certification_module', '_local_parallel_module', '_local_parallel_worker_module', '_order_resource_module']",
+        "originals = {name: getattr(engine, name) for name in helpers}",
+        "def counted(name):",
+        "    def load():",
+        "        loads.append(name)",
+        "        return originals[name]()",
+        "    return load",
+        "for name in helpers:",
+        "    setattr(engine, name, counted(name))",
+        "R.<x> = QQ[]",
+        "K.<a> = NumberField(x^3 - x^2 - 6*x - 12)",
+        "O = K.maximal_order()",
+        "before = list(loads)",
+        "certificate = O.maximality_certificate()",
+        "after = sorted(set(loads))",
+        "[O.discriminant(), before, certificate['certified'], after]",
+      ].join("\n"),
+    );
+    assert.equal(
+      result.repr,
+      "[-1083, [], True, ['_maximal_order_certification_module']]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("the public maximal-order path is lazy, certified, and cache-safe", async () => {
   const source = readFileSync(
     join(root, "src", "baselib", "number_fields.py"),

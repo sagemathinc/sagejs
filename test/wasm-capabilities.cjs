@@ -30,12 +30,12 @@ test("all current Wasm-relevant capability kinds are reviewed", () => {
   const result = validateManifest(manifest);
   const counts = Object.groupBy(result.capabilities, (item) => item.kind);
   assert.equal(counts["napi-export"].length, 320);
-  assert.equal(counts["declared-ffi-function"].length, 437);
+  assert.equal(counts["declared-ffi-function"].length, 439);
   assert.equal(counts["declared-ffi-resource"].length, 32);
-  assert.equal(counts["production-kernel"].length, 43);
-  assert.equal(counts["runtime-intrinsic"].length, 141);
+  assert.equal(counts["production-kernel"].length, 47);
+  assert.equal(counts["runtime-intrinsic"].length, 142);
   assert.equal(counts["specialist-capability"].length, 25);
-  assert.equal(result.capabilities.length, 998);
+  assert.equal(result.capabilities.length, 1005);
   const expectedProductionClosure = Object.values(productionCapabilities.modules)
     .flatMap((module) => module.capabilities)
     .sort();

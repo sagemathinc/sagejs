@@ -390,3 +390,26 @@ test("browser-safe loader marshals bounded Float64 buffers and results", async (
     /Float64 arguments require a JavaScript number or Python numeric value/,
   );
 });
+
+test("automatic selection receipts are part of the authenticated pack identity", async () => {
+  const source = manifest();
+  const receipt = {
+    schema: "sagejs.native-selection-receipt/v1",
+    receiptId: "loader-selection-witness",
+    domain: "loader selection authentication witness",
+    operation: routes[0][2],
+    evidence: ["tools/native-kernel/test/wasm-pack-loader.cjs"],
+    workload: { arguments: {} },
+  };
+  source.kernels[0].automaticSelections = {
+    [routes[0][2]]: structuredClone(receipt),
+  };
+  source.packs[0].identity.modules[0].automaticSelections = {
+    [routes[0][2]]: structuredClone(receipt),
+  };
+  source.kernels[0].automaticSelections[routes[0][2]].domain = "forged domain";
+  await assert.rejects(
+    runtime(source),
+    /route metadata differs from authenticated gmp pack/,
+  );
+});

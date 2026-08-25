@@ -112,8 +112,8 @@
           "web-tree-sitter.wasm"
         ],
         "maximumCompressedDelta": {
-          "gzipBytes": 12350000,
-          "brotliBytes": 6900000
+          "gzipBytes": 13000000,
+          "brotliBytes": 7250000
         }
       },
       {
@@ -171,7 +171,7 @@
         "dependencies": ["eager-core"],
         "assets": ["native-kernels/kernel-gmp.wasm"],
         "maximumCompressedDelta": {
-          "gzipBytes": 500000,
+          "gzipBytes": 550000,
           "brotliBytes": 320000
         }
       },

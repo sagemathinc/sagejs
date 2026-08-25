@@ -32,9 +32,18 @@ import types
 
 sagejs = types.ModuleType("sagejs")
 number_fields = types.ModuleType("sagejs.number_fields")
+ffi_package = types.ModuleType("sagejs.ffi")
+ffi_flint = types.ModuleType("sagejs.ffi.flint")
+def unavailable_integer_log_sqrt_balls(*_args):
+    raise RuntimeError("declared FLINT is unavailable in the CPython oracle")
+ffi_flint.integer_log_sqrt_balls_packed = unavailable_integer_log_sqrt_balls
+ffi_package.flint = ffi_flint
 sagejs.number_fields = number_fields
+sagejs.ffi = ffi_package
 sys.modules["sagejs"] = sagejs
 sys.modules["sagejs.number_fields"] = number_fields
+sys.modules["sagejs.ffi"] = ffi_package
+sys.modules["sagejs.ffi.flint"] = ffi_flint
 for dependency_name, dependency_path in [
     ("sagejs.native", ${JSON.stringify(nativePath)}),
     ("sagejs.number_fields.zeta_coefficient_kernel", ${JSON.stringify(zetaKernelPath)}),
@@ -62,6 +71,22 @@ fixture = json.loads(${JSON.stringify(JSON.stringify(fixture))})
     encoding: "utf8",
     timeout,
   });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  return result.stdout.trim();
+}
+
+function runSagejs(witness, timeout = 120_000) {
+  const result = spawnSync(
+    process.execPath,
+    [join(root, "bin/sagejs"), "--python", "-"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      input: witness,
+      timeout,
+    },
+  );
   if (result.error) throw result.error;
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   return result.stdout.trim();
@@ -357,9 +382,21 @@ assert kernel_field.diagnostics()["bf_dyadic_kernel_fallbacks"] == 0
 assert len(new_finite.source) < 512
 assert "exact outward integer transcendental rounding" in new_finite.source
 assert kernel_field.diagnostics()["bf_transcendental_kernel_successes"] == 1
+module._shared_integer_log_endpoints.clear()
+module._shared_integer_sqrt_endpoints.clear()
+module._shared_bf_packed_layouts.clear()
+zeta_kernel_module = sys.modules[
+    "sagejs.number_fields.zeta_coefficient_kernel"
+]
+zeta_kernel_module.assemble_bf_integer_transcendental_endpoints_flint = None
+fallback_field = IntervalBallField(128)
+fallback_finite = module._bf_finite_term(new_plan, fallback_field)
+assert fallback_field.diagnostics()["bf_flint_transcendental_calls"] == 0
+assert fallback_field.diagnostics()["bf_transcendental_kernel_successes"] == 1
+assert fallback_finite.to_dict() == scalar_finite.to_dict()
 repeat_field = IntervalBallField(128)
 repeat_finite = module._bf_finite_term(new_plan, repeat_field)
-assert repeat_finite.to_dict() == new_finite.to_dict()
+assert repeat_finite.to_dict() == fallback_finite.to_dict()
 repeat_diagnostics = repeat_field.diagnostics()
 assert repeat_diagnostics["bf_packed_layout_cache_hits"] == 1
 assert repeat_diagnostics["bf_transcendental_kernel_calls"] == 0
@@ -393,15 +430,36 @@ assert fallback.to_dict() == scalar_finite.to_dict()
 assert fallback_field.diagnostics()["bf_dyadic_kernel_calls"] == 0
 assert fallback_field.diagnostics()["bf_dyadic_kernel_fallbacks"] == 1
 
+owned_generation = {"generation": "focused-provenance-test"}
 certificate = UnitSaturationIndexCertificate(
     {"field": "focused-provenance-test"},
     [],
     {},
     1,
     {"finite_term": new_finite.to_dict()},
-    {"generation": "focused-provenance-test"},
+    owned_generation,
     "exact-relations-conditional-grh",
 )
+assert certificate._authenticated_body_matches()
+assert certificate._consume_live_parent_payload(
+    module._LIVE_UNIT_INDEX_PARENT_TOKEN
+) is None
+live_certificate = UnitSaturationIndexCertificate(
+    {"field": "focused-live-parent-test"},
+    [],
+    {},
+    1,
+    {"finite_term": new_finite.to_dict()},
+    {"generation": "focused-live-parent-test"},
+    "exact-relations-conditional-grh",
+    _live_parent_token=module._LIVE_UNIT_INDEX_PARENT_TOKEN,
+)
+assert live_certificate._consume_live_parent_payload(
+    module._LIVE_UNIT_INDEX_PARENT_TOKEN
+) == live_certificate.to_dict()
+assert live_certificate._consume_live_parent_payload(
+    module._LIVE_UNIT_INDEX_PARENT_TOKEN
+) is None
 original_certificate_payload = certificate.to_dict()
 mutated = certificate.to_dict()
 mutated["analytic_proof"]["finite_term"]["source"] = "forged-provenance"
@@ -410,6 +468,10 @@ assert certificate.to_dict() == original_certificate_payload
 exposed_generation = certificate.generation_evidence
 exposed_generation["generation"] = "another-forgery"
 assert certificate.to_dict() == original_certificate_payload
+owned_generation["generation"] = "mutated-after-construction"
+assert not certificate._authenticated_body_matches()
+owned_generation["generation"] = "focused-provenance-test"
+assert certificate._authenticated_body_matches()
 try:
     UnitSaturationIndexCertificate.from_dict(mutated)
     raise AssertionError("a finite-term provenance mutation retained authority")
@@ -572,6 +634,68 @@ def quadratic_provider(discriminant):
         return records
     return provider
 
+# The maximal-order provider may expose the same exact local factors in the
+# private packed shape used by zeta-coefficient construction.  The analytic
+# workspace must validate that shape without touching the nested-record
+# fallback, and reject even a one-prime reordering.
+class PackedProvider:
+    def __init__(self):
+        self.public_calls = 0
+        self.packed_calls = 0
+        self.primes = [2, 3, 5]
+    def splitting_records(self, _start, _stop):
+        self.public_calls += 1
+        raise AssertionError("the packed splitting path fell back")
+    def _zeta_factor_degree_data(self, start, stop):
+        self.packed_calls += 1
+        return {
+            "degree": 2,
+            "intervalStart": start,
+            "intervalStop": stop,
+            "completePrimeInterval": True,
+            "primes": list(self.primes),
+            "factorCounts": [1, 2, 1],
+            "exponents": [1, 0, 1, 1, 2, 0],
+            "degrees": [2, 0, 1, 1, 1, 0],
+        }
+
+packed_provider = PackedProvider()
+packed_workspace = ZetaLogResidueWorkspace(
+    5, 2, packed_provider.splitting_records
+)
+assert packed_workspace.splitting_types([2, 3, 5], 4096) == {
+    2: ((1, 2),),
+    3: ((1, 1), (1, 1)),
+    5: ((2, 1),),
+}
+assert packed_provider.packed_calls == 1
+assert packed_provider.public_calls == 0
+packed_provider.primes = [2, 5, 3]
+try:
+    module._packed_splitting_block(
+        packed_provider.splitting_records, 2, 6, [2, 3, 5], 2
+    )
+    raise AssertionError("reordered packed splitting data was accepted")
+except AnalyticCertificationError:
+    pass
+
+# Floating-point cutoff location is only a proposal: the accelerated search
+# must reproduce the exact minimal threshold and its outward interval, while
+# using exactly two certified evaluations on representative quadratic and
+# cubic discriminants.
+for discriminant, degree, maximum in ((5, 2, 20000), (283, 3, 1000000), (1083, 3, 1000000)):
+    target = RationalEndpoint(1, 16)
+    accelerated_model = module._BFErrorModel(
+        discriminant, degree, IntervalBallField(96)
+    )
+    exact_model = module._BFErrorModel(discriminant, degree, IntervalBallField(96))
+    accelerated = module._bf_threshold(accelerated_model, target, maximum)
+    exact = module._bf_threshold_exact(exact_model, target, maximum)
+    assert accelerated[0] == exact[0]
+    assert accelerated[1].to_dict() == exact[1].to_dict()
+    assert accelerated_model.evaluations == 2
+    assert exact_model.evaluations > accelerated_model.evaluations
+
 for field in fixture["fields"][:2]:
     enclosure = zeta_log_residue_bound(
         field["discriminant"],
@@ -619,7 +743,7 @@ warm_zeta = zeta_log_residue_bound(
 )
 assert len(provider_calls) == calls_after_cold
 assert warm_zeta.diagnostics["provider_calls"] == 0
-assert warm_zeta.diagnostics["splitting_cache_hits"] == 1
+assert warm_zeta.diagnostics["splitting_cache_hits"] == 0
 assert warm_zeta.diagnostics["prime_enumeration_cache_hits"] == 1
 assert warm_zeta.diagnostics["prime_power_plan_cache_hits"] == 1
 assert warm_zeta.diagnostics["threshold_cache_hits"] == 1
@@ -720,11 +844,38 @@ validation = validate_hr_index(
 assert validation.rigorous and validation.index_one
 assert validation.lower_index == validation.upper_index == 1
 
+# The fused exact endpoint sum must reproduce the former scalar formula's
+# final hR index ball.  The scalar expression remains an independent readable
+# oracle for both the true and deliberately inflated tentative class numbers.
+def scalar_hr_index(class_number):
+    precision = 128
+    field = IntervalBallField(precision)
+    log_two = field.log_integer(2)
+    log_prefactor = (
+        RealBall(2, precision_bits=precision) * log_two
+        - field.log_integer(2)
+        - field.log_integer(5) / RealBall(2, precision_bits=precision)
+    )
+    algebraic = (
+        log_prefactor
+        + field.log_integer(class_number)
+        + field.log(regulator.ball)
+    )
+    log_index = algebraic - zeta.ball
+    return field.exp(log_index)
+
+scalar_validation = scalar_hr_index(1)
+assert validation.index_ball.lower == scalar_validation.lower
+assert validation.index_ball.upper == scalar_validation.upper
+
 forged = validate_hr_index(
     signature=(2, 0), discriminant=5, class_number=2, roots_of_unity=2,
     regulator=regulator, zeta_log_residue=zeta, precision_bits=128,
 )
 assert forged.rigorous and forged.unique_index == 2 and not forged.index_one
+scalar_forged = scalar_hr_index(2)
+assert forged.index_ball.lower == scalar_forged.lower
+assert forged.index_ball.upper == scalar_forged.upper
 
 try:
     zeta_log_residue_bound(
@@ -737,4 +888,88 @@ except AnalyticCertificationError:
 print("analytic-index-ok")
 `, 180_000);
   assert.equal(output, "analytic-index-ok");
+});
+
+test("declared FLINT integer balls agree with independent rigorous endpoints", () => {
+  const output = runSagejs(String.raw`
+import sagejs.native as native_module
+import sagejs.number_fields.class_unit_analytic as analytic_module
+import sagejs.number_fields.zeta_coefficient_kernel as kernel_module
+from sagejs.number_fields.class_unit_analytic import (
+    IntervalBallField,
+    _dyadic_mantissas,
+    _primes_below,
+)
+
+assert _primes_below(30) == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
+
+splitting = {
+    2: ((1, 1), (1, 2)),
+    3: ((3, 1),),
+    5: ((1, 3),),
+    7: ((1, 1), (1, 1), (1, 1)),
+}
+readable_plan = analytic_module._build_bf_plan_readable(99, splitting)
+packed_plan = analytic_module._build_bf_plan_kernel(99, splitting)
+assert packed_plan is not None
+assert packed_plan.terms == readable_plan.terms
+assert packed_plan.raw_terms == readable_plan.raw_terms
+plan_kernel = kernel_module.assemble_bf_prime_power_plan_in_place
+assert native_module.is_compiled(plan_kernel)
+
+saved_plan_override = analytic_module._bf_prime_power_plan_kernel_override
+analytic_module._bf_prime_power_plan_kernel_override = False
+try:
+    fallback_plan = analytic_module._build_bf_plan(99, splitting)
+finally:
+    analytic_module._bf_prime_power_plan_kernel_override = saved_plan_override
+assert fallback_plan.terms == readable_plan.terms
+assert fallback_plan.raw_terms == readable_plan.raw_terms
+
+flint_kernel = kernel_module.assemble_bf_integer_transcendental_endpoints_flint
+source_kernel = kernel_module.assemble_bf_integer_transcendental_endpoints
+assert native_module.is_compiled(flint_kernel)
+assert native_module.is_compiled(source_kernel)
+values = list(range(1, 34)) + [1009, 4093, 8191, 24039, 999983]
+for precision in [64, 96, 128, 160, 256]:
+    packed_values = native_module.kernel_integer_buffer(flint_kernel, values)
+    flint_output = native_module.kernel_integer_zeros(
+        flint_kernel, 4 * len(values), 8
+    )
+    source_output = native_module.kernel_integer_zeros(
+        source_kernel, 4 * len(values), 8
+    )
+    assert flint_kernel(flint_output, packed_values, precision)
+    source_values = native_module.kernel_integer_buffer(source_kernel, values)
+    assert source_kernel(source_output, source_values, precision)
+    flint_endpoints = native_module.integer_buffer_values(flint_output)
+    source_endpoints = native_module.integer_buffer_values(source_output)
+    field = IntervalBallField(precision)
+    for index, value in enumerate(values):
+        offset = 4 * index
+        log_lower, log_upper = _dyadic_mantissas(
+            field.log_integer(value), precision
+        )
+        sqrt_lower, sqrt_upper = _dyadic_mantissas(
+            field.sqrt_integer(value), precision
+        )
+        assert flint_endpoints[offset] <= log_upper
+        assert log_lower <= flint_endpoints[offset + 1]
+        assert flint_endpoints[offset + 2] <= sqrt_upper
+        assert sqrt_lower <= flint_endpoints[offset + 3]
+        assert flint_endpoints[offset] <= source_endpoints[offset + 1]
+        assert source_endpoints[offset] <= flint_endpoints[offset + 1]
+        assert flint_endpoints[offset + 2] <= source_endpoints[offset + 3]
+        assert source_endpoints[offset + 2] <= flint_endpoints[offset + 3]
+
+bad_values = native_module.kernel_integer_buffer(flint_kernel, [0])
+bad_output = native_module.kernel_integer_zeros(flint_kernel, 4, 8)
+try:
+    flint_kernel(bad_output, bad_values, 128)
+    raise AssertionError("FLINT accepted a nonpositive integer")
+except ValueError:
+    pass
+print("ok")
+`);
+  assert.equal(output, "ok");
 });

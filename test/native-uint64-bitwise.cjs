@@ -329,7 +329,7 @@ except OverflowError as error:
 
 test("uint64 bitwise IR is canonical, typed, and inspectable", async () => {
   const ir = await lowerSource(source, "uint64-bitwise.py");
-  assert.equal(ir.version, 22);
+  assert.equal(ir.version, 23);
   const operations = ir.functions.flatMap((fn) => walkOperations(fn.body));
   assert.deepEqual(
     new Set(operations
@@ -468,7 +468,7 @@ test("uint64 native, JavaScript, and CPython paths agree", async () => {
 
     const explanation = await explainKernel({ sourcePath });
     assert.equal(explanation.eligible, true);
-    assert.equal(explanation.version, 22);
+    assert.equal(explanation.version, 23);
     for (const fn of explanation.functions) {
       assert.deepEqual(fn.analysis.uint64, semantics, fn.name);
     }

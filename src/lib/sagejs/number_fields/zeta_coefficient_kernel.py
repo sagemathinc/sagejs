@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from sagejs.ffi.flint import integer_log_sqrt_balls_packed
 from sagejs.native import IntegerBuffer, UInt64Buffer, native, uint64
 
 
@@ -242,6 +243,130 @@ def assemble_bf_integer_transcendental_endpoints(
 
 
 @native
+def assemble_bf_integer_transcendental_endpoints_flint(
+    output: IntegerBuffer,
+    values: IntegerBuffer,
+    precision_bits: uint64,
+) -> bool:
+    """Batch rigorous integer log/square-root balls through declared FLINT.
+
+    The declaration adapts both compiler-owned buffers to lexical FLINT
+    matrices.  Arb performs the transcendental work, while the portable
+    same-source kernel above remains the exact fallback when the foreign
+    capability is unavailable.
+    """
+    one: uint64 = 1
+    return integer_log_sqrt_balls_packed(
+        output,
+        values,
+        len(output),
+        len(values),
+        one,
+        precision_bits,
+    )
+
+
+@native
+def assemble_bf_dyadic_layout(
+    output: IntegerBuffer,
+    raw_endpoints: IntegerBuffer,
+    value_indices: IntegerBuffer,
+    term_data: IntegerBuffer,
+    term_count: uint64,
+    precision_bits: uint64,
+) -> bool:
+    """Assemble the finite-sum endpoint layout without host objects.
+
+    `raw_endpoints` contains one four-entry FLINT/Arb row per distinct integer.
+    `value_indices` selects the threshold, threshold/9, 3*threshold, and then
+    one norm for each prime-power term.  This kernel performs only exact
+    outward dyadic multiplication and permutation.
+    """
+    maximum_precision: uint64 = 1
+    maximum_precision = maximum_precision << 14
+    if (
+        precision_bits < 2
+        or precision_bits > maximum_precision
+        or len(raw_endpoints) % 4 != 0
+        or len(value_indices) != term_count + 3
+        or len(term_data) != 4 * term_count
+        or len(output) != 8 + 4 * term_count
+    ):
+        return False
+    raw_count = len(raw_endpoints) // 4
+    if raw_count == 0:
+        return False
+    for index in range(len(value_indices)):
+        if value_indices[index] < 0 or value_indices[index] >= raw_count:
+            return False
+    scale = 1
+    for _bit in range(precision_bits):
+        scale *= 2
+
+    threshold_offset = 4 * value_indices[0]
+    ninth_offset = 4 * value_indices[1]
+    three_threshold_offset = 4 * value_indices[2]
+    if (
+        raw_endpoints[threshold_offset + 2] <= 0
+        or raw_endpoints[threshold_offset + 3] < raw_endpoints[threshold_offset + 2]
+        or raw_endpoints[threshold_offset + 1] < raw_endpoints[threshold_offset]
+        or raw_endpoints[ninth_offset + 2] <= 0
+        or raw_endpoints[ninth_offset + 3] < raw_endpoints[ninth_offset + 2]
+        or raw_endpoints[ninth_offset + 1] < raw_endpoints[ninth_offset]
+        or raw_endpoints[three_threshold_offset + 1]
+        < raw_endpoints[three_threshold_offset]
+    ):
+        return False
+    scale_zero_lower, scale_zero_upper = _dyadic_multiply(
+        raw_endpoints[threshold_offset + 2],
+        raw_endpoints[threshold_offset + 3],
+        raw_endpoints[threshold_offset],
+        raw_endpoints[threshold_offset + 1],
+        scale,
+    )
+    output[0] = scale_zero_lower
+    output[1] = scale_zero_upper
+    scale_one_lower, scale_one_upper = _dyadic_multiply(
+        raw_endpoints[ninth_offset + 2],
+        raw_endpoints[ninth_offset + 3],
+        raw_endpoints[ninth_offset],
+        raw_endpoints[ninth_offset + 1],
+        scale,
+    )
+    output[2] = scale_one_lower
+    output[3] = scale_one_upper
+    output[4] = raw_endpoints[threshold_offset + 2]
+    output[5] = raw_endpoints[threshold_offset + 3]
+    output[6] = raw_endpoints[three_threshold_offset]
+    output[7] = raw_endpoints[three_threshold_offset + 1]
+
+    for term_index in range(term_count):
+        source_offset = 4 * value_indices[term_index + 3]
+        output_offset = 8 + 4 * term_index
+        exponent = term_data[4 * term_index + 3]
+        if (
+            raw_endpoints[source_offset] <= 0
+            or raw_endpoints[source_offset + 1] < raw_endpoints[source_offset]
+            or exponent < 1
+        ):
+            return False
+        output[output_offset] = raw_endpoints[source_offset]
+        output[output_offset + 1] = raw_endpoints[source_offset + 1]
+        if exponent % 2:
+            if (
+                raw_endpoints[source_offset + 2] <= 0
+                or raw_endpoints[source_offset + 3] < raw_endpoints[source_offset + 2]
+            ):
+                return False
+            output[output_offset + 2] = raw_endpoints[source_offset + 2]
+            output[output_offset + 3] = raw_endpoints[source_offset + 3]
+        else:
+            output[output_offset + 2] = scale
+            output[output_offset + 3] = scale
+    return True
+
+
+@native
 def assemble_bf_dyadic_finite_term(
     output: IntegerBuffer,
     term_data: IntegerBuffer,
@@ -381,6 +506,173 @@ def assemble_bf_dyadic_finite_term(
 
 
 @native
+def assemble_bf_prime_power_plan_in_place(
+    metadata: IntegerBuffer,
+    output: IntegerBuffer,
+    workspace: IntegerBuffer,
+    primes: UInt64Buffer,
+    factor_counts: UInt64Buffer,
+    factor_exponents: UInt64Buffer,
+    factor_degrees: UInt64Buffer,
+    degree: uint64,
+    threshold: uint64,
+    emit: uint64,
+) -> bool:
+    """Build the exact aggregated Belabas--Friedman term plan.
+
+    The first pass (`emit=0`) writes `(term_count, raw_term_count)` to
+    `metadata`.  The second pass writes canonical
+    `(multiplicity, scale_index, norm, exponent)` rows to `output`.  One
+    threshold-sized caller workspace stores the coefficient of each prime
+    norm, so the kernel never allocates dynamic mathematical objects.
+    """
+    maximum_threshold: uint64 = 1000000
+    maximum_degree: uint64 = 64
+    if (
+        len(metadata) != 2
+        or threshold < 9
+        or threshold > maximum_threshold
+        or degree < 1
+        or degree > maximum_degree
+        or emit > 1
+        or len(factor_counts) != len(primes)
+        or len(factor_exponents) != len(primes) * degree
+        or len(factor_degrees) != len(factor_exponents)
+        or len(workspace) != threshold
+    ):
+        return False
+
+    for index in range(len(workspace)):
+        workspace[index] = 0
+
+    previous_prime: uint64 = 0
+    for row in range(len(primes)):
+        prime = primes[row]
+        count = factor_counts[row]
+        if (
+            prime < 2
+            or prime >= threshold
+            or prime <= previous_prime
+            or count < 1
+            or count > degree
+        ):
+            return False
+        previous_prime = prime
+        workspace[prime] -= 1
+        local_degree = 0
+        for factor_index in range(degree):
+            offset = row * degree + factor_index
+            ramification = factor_exponents[offset]
+            residue_degree = factor_degrees[offset]
+            if factor_index >= count:
+                if ramification != 0 or residue_degree != 0:
+                    return False
+            else:
+                if (
+                    ramification < 1
+                    or ramification > degree
+                    or residue_degree < 1
+                    or residue_degree > degree
+                ):
+                    return False
+                local_degree += ramification * residue_degree
+                norm: uint64 = 1
+                for _power_index in range(residue_degree):
+                    if norm < threshold:
+                        if norm > (threshold - 1) // prime:
+                            norm = threshold
+                        else:
+                            norm = norm * prime
+                if norm < threshold:
+                    workspace[norm] += 1
+        if local_degree != degree:
+            return False
+
+    term_count = 0
+    raw_term_count = 0
+    nine: uint64 = 9
+    ninth: uint64 = threshold // nine
+    for scale_index in range(2):
+        cutoff: uint64 = threshold
+        if scale_index == 1:
+            cutoff = ninth
+        for row in range(len(primes)):
+            prime = primes[row]
+            if prime < cutoff:
+                power = prime
+                while power < cutoff:
+                    raw_term_count += 1
+                    if power > (cutoff - 1) // prime:
+                        power = cutoff
+                    else:
+                        power = power * prime
+                count = factor_counts[row]
+                for factor_index in range(count):
+                    offset = row * degree + factor_index
+                    residue_degree = factor_degrees[offset]
+                    norm: uint64 = 1
+                    for _norm_index in range(residue_degree):
+                        if norm < cutoff:
+                            if norm > (cutoff - 1) // prime:
+                                norm = cutoff
+                            else:
+                                norm = norm * prime
+                    if norm < cutoff:
+                        power = norm
+                        while power < cutoff:
+                            raw_term_count += 1
+                            if power > (cutoff - 1) // norm:
+                                power = cutoff
+                            else:
+                                power = power * norm
+        for norm_index in range(2, cutoff):
+            multiplicity = workspace[norm_index]
+            if scale_index == 1:
+                multiplicity = -multiplicity
+            if multiplicity != 0:
+                power = norm_index
+                while power < cutoff:
+                    term_count += 1
+                    if power > (cutoff - 1) // norm_index:
+                        power = cutoff
+                    else:
+                        power = power * norm_index
+
+    metadata[0] = term_count
+    metadata[1] = raw_term_count
+    if emit == 0:
+        return True
+    if len(output) != 4 * term_count:
+        return False
+
+    output_row = 0
+    for scale_index in range(2):
+        cutoff: uint64 = threshold
+        if scale_index == 1:
+            cutoff = ninth
+        for norm_index in range(2, cutoff):
+            multiplicity = workspace[norm_index]
+            if scale_index == 1:
+                multiplicity = -multiplicity
+            if multiplicity != 0:
+                exponent = 1
+                power = norm_index
+                while power < cutoff:
+                    offset = 4 * output_row
+                    output[offset] = multiplicity
+                    output[offset + 1] = scale_index
+                    output[offset + 2] = norm_index
+                    output[offset + 3] = exponent
+                    output_row += 1
+                    exponent += 1
+                    if power > (cutoff - 1) // norm_index:
+                        power = cutoff
+                    else:
+                        power = power * norm_index
+    return output_row == term_count
+
+
+@native
 def assemble_zeta_coefficients_from_factors(
     output: IntegerBuffer,
     local: IntegerBuffer,
@@ -392,6 +684,7 @@ def assemble_zeta_coefficients_from_factors(
 ) -> bool:
     """Fill `output[n-1]` directly from packed residue degrees."""
     bound = len(output)
+    one: uint64 = 1
     if (
         bound < 1
         or degree < 1
@@ -439,16 +732,21 @@ def assemble_zeta_coefficients_from_factors(
         for exponent in range(1, maximum_exponent + 1):
             local_coefficient = local[exponent]
             if local_coefficient != 0:
-                largest_base = bound // power
-                for base in range(1, largest_base + 1):
+                largest_base: uint64 = bound // power
+                base: uint64 = one
+                while base <= largest_base:
                     if base % prime != 0 and output[base - 1] != 0:
                         output[base * power - 1] = output[base - 1] * local_coefficient
+                    base = base + one
             power = power * prime
     return True
 
 
 __all__ = [
+    "assemble_bf_dyadic_layout",
     "assemble_bf_dyadic_finite_term",
     "assemble_bf_integer_transcendental_endpoints",
+    "assemble_bf_integer_transcendental_endpoints_flint",
+    "assemble_bf_prime_power_plan_in_place",
     "assemble_zeta_coefficients_from_factors",
 ]

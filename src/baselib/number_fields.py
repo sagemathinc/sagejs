@@ -106,13 +106,6 @@ def _nf_class_groups_module() -> Any:
     )
 
 
-def _nf_cubic_class_number_module() -> Any:
-    return _nf_lazy_import(
-        "__sagejs_nf_cubic_class_number_module__",
-        "sagejs.number_fields.cubic_class_number",
-    )
-
-
 def _nf_class_unit_groups_module() -> Any:
     return _nf_lazy_import(
         "__sagejs_nf_class_unit_groups_module__",
@@ -1451,6 +1444,17 @@ class NumberFieldIdeal:
         # collection.  The canonical lattice never changes, so its inverse
         # coordinate matrix is safe to compute lazily once per ideal.
         self._membership_inverse_cache = runtime.undefined
+        self._relative_basis_matrix_cache = runtime.undefined
+        self._is_integral_cache = runtime.undefined
+        self._norm_cache = runtime.undefined
+        # Packed exact kernels consume the same immutable canonical HNF rows.
+        # Cache their common-denominator integer representation lazily so
+        # relation candidates do not repack every factor-base power.
+        self._packed_basis_cache = runtime.undefined
+        # Prime decomposition and residue-map replay repeatedly reduce the
+        # same immutable ideal lattice modulo its rational prime.  Retain a
+        # few frozen row spaces locally; private callers receive fresh lists.
+        self._mod_p_subspace_cache: dict[int, Any] = {}
         if len(self._basis_rows) not in [0, self._field.degree()]:
             raise ValueError("a nonzero number-field ideal must have full rank")
         if len(self._basis_rows) and _check_closed:
@@ -1492,20 +1496,20 @@ class NumberFieldIdeal:
     def basis_matrix(self) -> Any:
         return _nf_global("matrix")(sage.QQ, self._basis_rows)
 
-    def __contains__(self, value: object) -> bool:
+    def _relative_basis_matrix(self) -> Any:
+        """Return this immutable lattice in its order's integral basis."""
         try:
-            element = self._field(value)
-        except Exception:
-            return False
-        if len(self._basis_rows) == 0:
-            return element.is_zero()
-        row = _nf_coordinates(element, self._field.degree())
-        if self._membership_inverse_cache is runtime.undefined:
-            self._membership_inverse_cache = self.basis_matrix().inverse()
-        coordinates = (
-            _nf_global("vector")(sage.QQ, row) * self._membership_inverse_cache
-        )
-        return all(value._denominator == 1 for value in coordinates)
+            cached = self._relative_basis_matrix_cache
+        except AttributeError:
+            # A source checkout may temporarily reuse an older runtime object.
+            cached = runtime.undefined
+        if cached is runtime.undefined:
+            cached = self.basis_matrix() * self._order._basis_inverse_matrix()
+            self._relative_basis_matrix_cache = cached
+        return cached
+
+    def __contains__(self, value: object) -> bool:
+        return _nf_ideal_arithmetic_module().ideal_contains_element(self, value)
 
     def contains_ideal(self, other: NumberFieldIdeal) -> bool:
         return _nf_ideal_arithmetic_module().ideal_contains(self, other)
@@ -1517,16 +1521,32 @@ class NumberFieldIdeal:
         return len(self._basis_rows) == 0
 
     def is_integral(self) -> bool:
-        return all(element in self._order for element in self.basis())
+        if self._is_integral_cache is runtime.undefined:
+            relative = self._relative_basis_matrix()
+            integral = True
+            for row in relative.rows():
+                if not all(value._denominator == 1 for value in row):
+                    integral = False
+                    break
+            self._is_integral_cache = integral
+        return bool(self._is_integral_cache)
 
     def norm(self) -> Any:
         if self.is_zero():
             return 0
-        relative = self.basis_matrix() * self._order.basis_matrix().inverse()
-        determinant = relative.determinant()
-        if determinant < 0:
-            determinant = -determinant
-        return determinant
+        try:
+            cached = self._norm_cache
+        except AttributeError:
+            # A source checkout may reuse a runtime bootstrap built before
+            # this immutable cache slot was introduced.
+            cached = runtime.undefined
+        if cached is runtime.undefined:
+            relative = self._relative_basis_matrix()
+            cached = relative.determinant()
+            if cached < 0:
+                cached = -cached
+            self._norm_cache = cached
+        return cached
 
     absolute_norm = norm
 
@@ -1578,11 +1598,7 @@ class NumberFieldIdeal:
         if isinstance(other, NumberFieldIdeal):
             if other._order is not self._order:
                 raise TypeError("ideals must belong to the same order")
-            rows = []
-            for left in self.basis():
-                for right in other.basis():
-                    rows.append(_nf_coordinates(left * right, self._field.degree()))
-            return NumberFieldIdeal(self._order, rows, _check_closed=False)
+            return _nf_ideal_arithmetic_module().ideal_product(self, other)
         scalar = self._field(other)
         return NumberFieldIdeal(
             self._order,
@@ -1673,6 +1689,21 @@ class NumberFieldIdeal:
             and other._basis_rows == self._basis_rows
         )
 
+    @classmethod
+    def _from_canonical_basis_rows(
+        cls, order: NumberFieldOrder, rows: list[list[Any]]
+    ) -> NumberFieldIdeal:
+        """Construct from a producer-owned canonical full-rank row HNF."""
+        degree = order.degree()
+        rational_rows = [[sage.QQ(value) for value in row] for row in rows]
+        if len(rational_rows) != degree or any(
+            len(row) != degree for row in rational_rows
+        ):
+            raise ValueError("canonical ideal rows must be a square full-rank basis")
+        answer = cls(order, [], _check_closed=False)
+        answer._basis_rows = rational_rows
+        return answer
+
     def __repr__(self) -> str:
         if self.is_zero():
             return "Fractional ideal (0)"
@@ -1700,6 +1731,7 @@ class NumberFieldOrder(sage.Parent):
     ) -> None:
         self._field = field
         self._basis_rows_cache: Any = None
+        self._basis_inverse_cache: Any = None
         self._authenticated_basis_projection: Any = None
         if authenticated_basis is not runtime.undefined:
             if check_closure:
@@ -1736,6 +1768,7 @@ class NumberFieldOrder(sage.Parent):
         self._maximal_order_local_evidence = runtime.undefined
         self._maximal_order_trace = runtime.undefined
         self._discriminant_cache = runtime.undefined
+        self._cubic_norm_form_coefficients_cache = runtime.undefined
         self._kind = "NumberFieldOrder"
         self._construction = runtime.undefined
 
@@ -1768,6 +1801,7 @@ class NumberFieldOrder(sage.Parent):
     @_basis_rows.setter
     def _basis_rows(self, rows: list[list[Any]]) -> None:
         self._basis_rows_cache = rows
+        self._basis_inverse_cache = None
 
     def number_field(self) -> NumberFieldParent:
         return self._field
@@ -1781,6 +1815,12 @@ class NumberFieldOrder(sage.Parent):
 
     def basis_matrix(self) -> Any:
         return _nf_global("matrix")(sage.QQ, self._basis_rows)
+
+    def _basis_inverse_matrix(self) -> Any:
+        """Return the immutable order basis inverse used by lattice tests."""
+        if self._basis_inverse_cache is None:
+            self._basis_inverse_cache = self.basis_matrix().inverse()
+        return self._basis_inverse_cache
 
     def degree(self) -> int:
         return self._field.degree()
@@ -1796,9 +1836,9 @@ class NumberFieldOrder(sage.Parent):
             element = self._field(value)
         except Exception:
             return False
-        return _nf_row_in_lattice(
-            _nf_coordinates(element, self.degree()), self._basis_rows
-        )
+        row = _nf_global("vector")(sage.QQ, _nf_coordinates(element, self.degree()))
+        coordinates = row * self._basis_inverse_matrix()
+        return all(value._denominator == 1 for value in coordinates)
 
     def discriminant(self) -> Any:
         if self._discriminant_cache is not runtime.undefined:
@@ -2031,7 +2071,10 @@ class NumberFieldParent(sage.Parent):
         self._real_quadratic_backend_cache = runtime.undefined
         self._real_quadratic_class_number_cache = runtime.undefined
         self._real_quadratic_narrow_class_number_cache = runtime.undefined
-        self._bounded_cubic_class_number_artifact = runtime.undefined
+        # This cache is consumed by an independently compiled lazy module.
+        # JavaScript `undefined` is treated as a missing Python attribute at
+        # that boundary, so use an ordinary optional value here.
+        self._bounded_cubic_class_number_artifact = None
         self._class_group_cache = runtime.undefined
         self._narrow_class_group_cache = runtime.undefined
         self._zeta_function_cache = runtime.map()
@@ -2877,26 +2920,9 @@ class NumberFieldParent(sage.Parent):
         if self._is_tutorial_cubic():
             return 1
         if self.degree() == 3 and algorithm == "auto" and len(limits) == 0:
-            cubic_class_numbers = _nf_cubic_class_number_module()
-            artifact = self._bounded_cubic_class_number_artifact
-            uncached = artifact is runtime.undefined
-            if uncached:
-                artifact = cubic_class_numbers.bounded_cubic_minkowski_class_number(
-                    self
-                )
-            if artifact.complete:
-                matcher = getattr(
-                    cubic_class_numbers,
-                    "authenticated_cubic_class_number_result_matches",
-                    None,
-                )
-                if not callable(matcher) or not matcher(artifact, self):
-                    raise ArithmeticError(
-                        "cached cubic class-number evidence lost authentication"
-                    )
-                if uncached:
-                    self._bounded_cubic_class_number_artifact = artifact
-                return int(artifact.order())
+            return _nf_class_unit_groups_module().cubic_class_number_projection(
+                self, proof=proof
+            )
         if self.degree() == 2:
             routing = self.quadratic_class_group_plan(algorithm, **limits)
             if routing.backend == "minkowski-triviality":
