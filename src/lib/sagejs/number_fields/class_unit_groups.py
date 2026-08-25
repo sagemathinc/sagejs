@@ -38,6 +38,7 @@ MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 
 _CUBIC_RELATION_SEED_UNREAD = object()
 _TERMINAL_SATURATION_CLONE_TOKEN = object()
+_CLASS_UNIT_ENGINE_CACHE_ENTRY_TOKEN = object()
 
 
 def _factor_base_proof_status(plan: Any) -> str:
@@ -1076,6 +1077,135 @@ class ClassUnitComputation:
                 + ")"
             )
         return "Incomplete class/unit computation (" + self.reason + ")"
+
+
+class _ClassUnitEngineCacheEntry:
+    """Identity- and policy-bound authority for one live engine result."""
+
+    __slots__ = (
+        "__token",
+        "__field",
+        "__order",
+        "__requested_proof",
+        "__algorithm",
+        "__seed",
+        "__limits_key",
+        "__result",
+        "__context",
+        "__result_algorithm",
+        "__proof_status",
+        "__complete",
+        "__context_proof_state",
+        "__context_proof_hash",
+        "__context_limits",
+        "__context_limits_hash",
+    )
+
+    def __init__(
+        self,
+        token: Any,
+        field: Any,
+        order: Any,
+        requested_proof: bool,
+        algorithm: str,
+        seed: int,
+        limits_key: tuple[tuple[str, int], ...],
+        result: ClassUnitComputation,
+    ) -> None:
+        if token is not _CLASS_UNIT_ENGINE_CACHE_ENTRY_TOKEN:
+            raise TypeError("class/unit engine cache entries are producer-owned")
+        if type(result) is not ClassUnitComputation:
+            raise TypeError("a class/unit engine cache entry needs a standard result")
+        context = result.context
+        proof_state = getattr(context, "proof_state", None)
+        proof_hash = getattr(proof_state, "stable_hash", None)
+        context_limits = getattr(context, "limits", None)
+        limits_hash = getattr(context_limits, "stable_hash", None)
+        if (
+            context is None
+            or proof_state is None
+            or not callable(proof_hash)
+            or context_limits is None
+            or not callable(limits_hash)
+            or result.field is not field
+            or getattr(context, "field", None) is not field
+            or getattr(context, "order", None) is not order
+            or getattr(context, "algorithm", None) != algorithm
+            or getattr(context, "random_seed", None) != int(seed)
+            or getattr(proof_state, "label", None) != result.proof_status
+            or (
+                bool(requested_proof)
+                and result.complete
+                and result.proof_status != EXACT_UNCONDITIONAL
+            )
+        ):
+            raise TypeError("a cached class/unit result lost its producer bindings")
+        self.__token = token
+        self.__field = field
+        self.__order = order
+        self.__requested_proof = bool(requested_proof)
+        self.__algorithm = str(algorithm)
+        self.__seed = int(seed)
+        self.__limits_key = tuple(limits_key)
+        self.__result = result
+        self.__context = context
+        self.__result_algorithm = result.algorithm
+        self.__proof_status = result.proof_status
+        self.__complete = result.complete
+        self.__context_proof_state = proof_state
+        self.__context_proof_hash = str(proof_hash())
+        self.__context_limits = context_limits
+        self.__context_limits_hash = str(limits_hash())
+
+    def matching_result(
+        self,
+        field: Any,
+        order: Any,
+        requested_proof: bool,
+        algorithm: str,
+        seed: int,
+        limits_key: tuple[tuple[str, int], ...],
+    ) -> ClassUnitComputation | None:
+        """Return the live result only while every issued binding still holds."""
+        try:
+            result = self.__result
+            context = self.__context
+            proof_state = self.__context_proof_state
+            context_limits = self.__context_limits
+            if (
+                self.__token is not _CLASS_UNIT_ENGINE_CACHE_ENTRY_TOKEN
+                or self.__field is not field
+                or self.__order is not order
+                or self.__requested_proof is not bool(requested_proof)
+                or self.__algorithm != algorithm
+                or self.__seed != int(seed)
+                or self.__limits_key != tuple(limits_key)
+                or type(result) is not ClassUnitComputation
+                or result is not self.__result
+                or result.field is not field
+                or result.context is not context
+                or result.algorithm != self.__result_algorithm
+                or result.proof_status != self.__proof_status
+                or result.complete is not self.__complete
+                or getattr(context, "field", None) is not field
+                or getattr(context, "order", None) is not order
+                or getattr(context, "algorithm", None) != algorithm
+                or getattr(context, "random_seed", None) != int(seed)
+                or getattr(context, "proof_state", None) is not proof_state
+                or getattr(proof_state, "label", None) != result.proof_status
+                or str(proof_state.stable_hash()) != self.__context_proof_hash
+                or getattr(context, "limits", None) is not context_limits
+                or str(context_limits.stable_hash()) != self.__context_limits_hash
+                or (
+                    bool(requested_proof)
+                    and result.complete
+                    and result.proof_status != EXACT_UNCONDITIONAL
+                )
+            ):
+                return None
+            return result
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return None
 
 
 _CLASS_NUMBER_PROJECTION_TOKEN = object()
@@ -5851,6 +5981,60 @@ def _class_number_projection_cache_key(
     )
 
 
+def _class_unit_engine_limits_key(
+    limits: ClassUnitEngineLimits,
+) -> tuple[tuple[str, int], ...]:
+    return tuple(sorted(limits.to_dict().items()))
+
+
+def _cached_class_unit_engine_result(
+    cache: Any,
+    cache_key: tuple[Any, ...],
+    field: Any,
+    order: Any,
+    requested_proof: bool,
+    algorithm: str,
+    seed: int,
+    limits_key: tuple[tuple[str, int], ...],
+) -> ClassUnitComputation | None:
+    if not isinstance(cache, dict):
+        return None
+    entry = cache.get(cache_key)
+    if type(entry) is not _ClassUnitEngineCacheEntry:
+        return None
+    return entry.matching_result(
+        field,
+        order,
+        requested_proof,
+        algorithm,
+        seed,
+        limits_key,
+    )
+
+
+def _retain_class_unit_engine_result(
+    cache: dict[Any, Any],
+    cache_key: tuple[Any, ...],
+    field: Any,
+    order: Any,
+    requested_proof: bool,
+    algorithm: str,
+    seed: int,
+    limits_key: tuple[tuple[str, int], ...],
+    result: ClassUnitComputation,
+) -> None:
+    cache[cache_key] = _ClassUnitEngineCacheEntry(
+        _CLASS_UNIT_ENGINE_CACHE_ENTRY_TOKEN,
+        field,
+        order,
+        requested_proof,
+        algorithm,
+        seed,
+        limits_key,
+        result,
+    )
+
+
 def _cached_class_number_projection(
     field: Any, cache_key: tuple[Any, ...], proof: bool
 ) -> _ClassNumberProjection | None:
@@ -5914,23 +6098,48 @@ def class_unit_context(
         and max_checkpoint_bytes is None
         and components is None
     )
+    limits_key = _class_unit_engine_limits_key(selected_limits)
     cache_key = (
         proof_value,
         algorithm,
         seed,
-        tuple(sorted(selected_limits.to_dict().items())),
+        limits_key,
     )
     cache = getattr(field, "_class_unit_engine_cache", None)
-    if use_cache and isinstance(cache, dict) and cache_key in cache:
-        return cache[cache_key]
+    cache_order = field.maximal_order() if use_cache else None
+    cached = (
+        _cached_class_unit_engine_result(
+            cache,
+            cache_key,
+            field,
+            cache_order,
+            proof_value,
+            algorithm,
+            seed,
+            limits_key,
+        )
+        if use_cache
+        else None
+    )
+    if cached is not None:
+        return cached
     if use_cache and proof_value and isinstance(cache, dict):
         conditional_key = (
             False,
             algorithm,
             seed,
-            tuple(sorted(selected_limits.to_dict().items())),
+            limits_key,
         )
-        conditional = cache.get(conditional_key)
+        conditional = _cached_class_unit_engine_result(
+            cache,
+            conditional_key,
+            field,
+            cache_order,
+            False,
+            algorithm,
+            seed,
+            limits_key,
+        )
         upgraded = None
         try:
             try:
@@ -5966,7 +6175,17 @@ def class_unit_context(
                 if callable(release) and live_token is not None:
                     release(live_token, commit=False)
         if upgraded is not None:
-            cache[cache_key] = upgraded
+            _retain_class_unit_engine_result(
+                cache,
+                cache_key,
+                field,
+                cache_order,
+                proof_value,
+                algorithm,
+                seed,
+                limits_key,
+                upgraded,
+            )
             return upgraded
     if (
         use_cache
@@ -5981,7 +6200,17 @@ def class_unit_context(
             if not isinstance(cache, dict):
                 cache = {}
                 field._class_unit_engine_cache = cache
-            cache[cache_key] = result
+            _retain_class_unit_engine_result(
+                cache,
+                cache_key,
+                field,
+                cache_order,
+                proof_value,
+                algorithm,
+                seed,
+                limits_key,
+                result,
+            )
             return result
     result = compute_class_unit_group(
         field,
@@ -6001,7 +6230,17 @@ def class_unit_context(
         if not isinstance(cache, dict):
             cache = {}
             field._class_unit_engine_cache = cache
-        cache[cache_key] = result
+        _retain_class_unit_engine_result(
+            cache,
+            cache_key,
+            field,
+            cache_order,
+            proof_value,
+            algorithm,
+            seed,
+            limits_key,
+            result,
+        )
     return result
 
 
@@ -6180,9 +6419,19 @@ def cubic_class_number_projection(field: Any, proof: bool | None = None) -> int:
         proof_value,
         "auto",
         0,
-        tuple(sorted(engine.limits.to_dict().items())),
+        _class_unit_engine_limits_key(engine.limits),
     )
-    cache[cache_key] = result
+    _retain_class_unit_engine_result(
+        cache,
+        cache_key,
+        field,
+        engine.order,
+        proof_value,
+        "auto",
+        0,
+        _class_unit_engine_limits_key(engine.limits),
+        result,
+    )
     return answer
 
 

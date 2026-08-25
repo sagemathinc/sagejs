@@ -86,6 +86,92 @@ print(answer)
   );
 });
 
+test("class/unit engine cache binds producer identity and full policy", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "a")
+limits = ClassUnitEngineLimits()
+limits_key = _class_unit_engine_limits_key(limits)
+false_key = (False, "auto", 0, limits_key)
+true_key = (True, "auto", 0, limits_key)
+
+first = class_unit_context(K, proof=False)
+cache = K._class_unit_engine_cache
+entry = cache[false_key]
+assert type(entry) is _ClassUnitEngineCacheEntry
+assert class_unit_context(K, proof=False) is first
+order = K.maximal_order()
+assert _cached_class_unit_engine_result(
+    cache, false_key, K, order, False, "auto", 0, limits_key
+) is first
+assert _cached_class_unit_engine_result(
+    cache, false_key, K, order, True, "auto", 0, limits_key
+) is None
+assert _cached_class_unit_engine_result(
+    cache, false_key, K, order, False, "minkowski", 0, limits_key
+) is None
+assert _cached_class_unit_engine_result(
+    cache, false_key, K, order, False, "auto", 1, limits_key
+) is None
+other_limits = ClassUnitEngineLimits(max_relation_attempts=513)
+assert _cached_class_unit_engine_result(
+    cache,
+    false_key,
+    K,
+    order,
+    False,
+    "auto",
+    0,
+    _class_unit_engine_limits_key(other_limits),
+) is None
+
+# The original vulnerability was a raw conditional result injected under the
+# proof=True tuple key.  A raw value is never cache authority now.
+first.proof_status = EXACT_RELATIONS_CONDITIONAL_GRH
+cache[true_key] = first
+proved = class_unit_context(K, proof=True)
+assert proved is not first
+assert proved.complete and proved.proof_status == EXACT_UNCONDITIONAL
+
+# Entries are instance-bound even for two fields with identical polynomials.
+L = NumberField(x - 1, "b")
+L._class_unit_engine_cache = {false_key: entry}
+other_field = class_unit_context(L, proof=False)
+assert other_field is not first
+assert other_field.field is L
+
+# Later mutation of either result state or its context identity invalidates the
+# typed entry and causes an ordinary producer recomputation.
+M = NumberField(x - 1, "c")
+mutated = class_unit_context(M, proof=False)
+mutated.complete = False
+recomputed = class_unit_context(M, proof=False)
+assert recomputed is not mutated and recomputed.complete
+recomputed.context = proved.context
+again = class_unit_context(M, proof=False)
+assert again is not recomputed and again.context.field is M
+
+# A valid entry moved under a different seed/limit policy also declines.
+policy_entry = M._class_unit_engine_cache[false_key]
+seed_key = (False, "auto", 1, limits_key)
+M._class_unit_engine_cache[seed_key] = policy_entry
+seeded = class_unit_context(M, proof=False, seed=1)
+assert seeded is not again
+limited_key = (
+    False,
+    "auto",
+    0,
+    _class_unit_engine_limits_key(other_limits),
+)
+M._class_unit_engine_cache[limited_key] = policy_entry
+limited = class_unit_context(M, proof=False, max_relation_attempts=513)
+assert limited is not again
+print("ok")
+`);
+  assert.equal(output, "ok");
+});
+
 test("missing general producers and cancellation remain explicitly incomplete", () => {
   const output = run(String.raw`
 class MissingComponents:
