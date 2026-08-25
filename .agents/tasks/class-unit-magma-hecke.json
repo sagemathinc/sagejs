@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-unit-magma-hecke",
+  "title": "Class Unit Magma Hecke Comparators",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement actual exact four-boundary Magma and pinned Hecke 0.40 class/unit corpus comparator adapters with authenticated evidence and focused documentation/tests.",
+  "base_commit": "dc2aa03d1c6c3920b264d671ed44d192697831ea",
+  "claims": [
+    "bench/class-unit-groups/run-class-unit-corpus.cjs",
+    "bench/class-unit-groups/class-unit-evidence-schema.cjs",
+    "bench/class-unit-groups/README.md",
+    "test/number-field-class-unit-corpus.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/competitive-class-and-unit-groups-strategy.md",
+    "bench/class-unit-groups/high_degree_magma.m",
+    "bench/class-unit-groups/high_degree_hecke_oracle.jl"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "lmfdb",
+      "magma",
+      "hecke",
+      "direct-gp"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

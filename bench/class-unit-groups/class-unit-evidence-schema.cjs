@@ -29,6 +29,7 @@ const ACHIEVED_PROOF_SEMANTICS = Object.freeze([
   "exact-unconditional",
 ]);
 const REQUESTED_OUTPUT = "class-invariants-unit-summary-regulator";
+const SEPARATE_VERIFICATION_SYSTEMS = new Set(["direct-gp", "hecke"]);
 const SAMPLE_PHASES = Object.freeze([
   "initialization",
   "field_construction",
@@ -1100,7 +1101,8 @@ function performanceEvidenceAccepted(report, options = {}) {
           sample.phases_seconds.field_construction !== null) &&
         (!["process-cold", "release-cold"].includes(result.boundary) ||
           sample.phases_seconds.initialization !== null) &&
-        (result.system !== "direct-gp" || result.requested_proof !== "unconditional" ||
+        (!SEPARATE_VERIFICATION_SYSTEMS.has(result.system) ||
+          result.requested_proof !== "unconditional" ||
           sample.phases_seconds.verification !== null) &&
         (!(["kernel-warm", "field-cold"].includes(result.boundary) &&
             sample.elapsed_seconds < 0.01) ||

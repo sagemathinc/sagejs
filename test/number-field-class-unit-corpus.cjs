@@ -406,6 +406,123 @@ test("the runner defaults to receipt-eligible sampling and all boundaries", () =
   ]);
 });
 
+test("Magma and pinned Hecke adapters encode proof and warm-batch contracts", () => {
+  const record = fixture.records.find((item) => item.label === "3.1.1083.1");
+  const magmaConditional = runner.magmaAdapterSource(
+    [record], false, "kernel-warm", 1,
+  );
+  const magmaUnconditional = runner.magmaAdapterSource(
+    [record], true, "field-cold", 1,
+  );
+  assert.match(magmaConditional, /proof_name := "GRH"/);
+  assert.match(magmaUnconditional, /proof_name := "Full"/);
+  assert.match(magmaConditional, /target_batch_seconds := persistent select 1\.2/);
+  assert.match(magmaConditional, /chunk_fields := \[\* \*\]/);
+  assert.match(magmaConditional, /ClassGroup\(current_O : Proof := proof_name\)/);
+  assert.match(magmaConditional, /SAGEJS_CLASS_UNIT_MAGMA_DONE\|1/);
+
+  const heckeConditional = runner.heckeAdapterSource(
+    [record], false, "kernel-warm", 1,
+  );
+  const heckeUnconditional = runner.heckeAdapterSource(
+    [record], true, "field-cold", 1,
+  );
+  assert.match(heckeConditional, /const SAGEJS_PROOF_GRH = true/);
+  assert.match(heckeUnconditional, /const SAGEJS_PROOF_GRH = false/);
+  assert.match(heckeUnconditional, /class_group\(order; GRH=true\)/);
+  assert.match(heckeUnconditional, /class_group\(order; GRH=false\)/);
+  assert.match(heckeUnconditional, /class_context\.GRH/);
+  assert.match(heckeUnconditional, /BigFloat\(regulator_value, RoundDown\)/);
+  assert.match(heckeUnconditional, /SAGEJS_TARGET_BATCH_SECONDS = .*1\.2/);
+  assert.match(heckeUnconditional, /for warm_index in 1:8/);
+  assert.match(heckeUnconditional, /SAGEJS_CLASS_UNIT_HECKE_DONE\|1/);
+});
+
+test("Magma and Hecke payloads fail closed and preserve proof phases", () => {
+  const magmaStdout = [
+    "SAGEJS_CLASS_UNIT_MAGMA|3.1.1083.1|0|0.02|1.2|60|0|0.02||3|[3]|1|2|2.6290729598739134|0",
+    "SAGEJS_CLASS_UNIT_MAGMA_DONE|1",
+    "",
+  ].join("\n");
+  const magma = runner.parseMagmaPayload({
+    error: null, status: 0, stderr: "", stdout: magmaStdout,
+  });
+  assert.equal(magma.length, 1);
+  assert.equal(
+    magma[0].answer._achieved_proof_semantics,
+    "exact-relations-conditional-grh",
+  );
+  assert.equal(magma[0].phases_seconds.verification, null);
+  const magmaFields = magmaStdout.split("\n")[0].split("|");
+  for (const [fieldIndex, replacement, message] of [
+    [3, "NaN", /elapsed time/],
+    [5, "0", /iteration count/],
+    [2, "0.5", /sample index/],
+    [14, "2", /proof certificate token/],
+    [1, "", /invalid label/],
+    [11, "-1", /unit rank/],
+  ]) {
+    const changed = [...magmaFields];
+    changed[fieldIndex] = replacement;
+    assert.throws(
+      () => runner.parseMagmaPayload({
+        error: null,
+        status: 0,
+        stderr: "",
+        stdout: `${changed.join("|")}\nSAGEJS_CLASS_UNIT_MAGMA_DONE|1\n`,
+      }),
+      message,
+    );
+  }
+  assert.throws(
+    () => runner.parseMagmaPayload({
+      error: null,
+      status: 0,
+      stderr: "",
+      stdout: magmaStdout.replace("SAGEJS_CLASS_UNIT_MAGMA_DONE|1", ""),
+    }),
+    /completion sentinel/,
+  );
+
+  const interval =
+    "interval:27957099049804147741435228720093373517/10633823966279326983230456482242756608:" +
+    "55914198099608295482870457440186747035/21267647932558653966460912964485513216:127";
+  const heckeStdout = [
+    `SAGEJS_CLASS_UNIT_HECKE|3.1.1083.1|0|0.03|1.2|40|0.001|0.027|0.002|3|[3]|1|2|${interval}|1`,
+    "SAGEJS_CLASS_UNIT_HECKE_DONE|1",
+    "",
+  ].join("\n");
+  const hecke = runner.parseHeckePayload({
+    error: null, status: 0, stderr: "", stdout: heckeStdout,
+  });
+  assert.equal(hecke[0].answer._achieved_proof_semantics, "exact-unconditional");
+  assert.equal(hecke[0].answer.regulator.kind, "interval");
+  assert.equal(hecke[0].answer.regulator.rigorous, true);
+  assert.equal(hecke[0].answer.regulator.precision_bits, 127);
+  assert.equal(hecke[0].phases_seconds.verification, 0.002);
+  assert.throws(
+    () => runner.parseHeckePayload({
+      error: null,
+      status: 0,
+      stderr: "",
+      stdout:
+        heckeStdout.replace(interval, "interval:2/1:1/1:127"),
+    }),
+    /unordered or nonpositive regulator bounds/,
+  );
+
+  const encoded = Buffer.from("proof audit failed", "utf8").toString("hex");
+  const errorPayload = runner.parseHeckePayload({
+    error: null,
+    status: 0,
+    stderr: "",
+    stdout:
+      `SAGEJS_CLASS_UNIT_HECKE_ERROR|3.1.1083.1|0|hex:${encoded}\n` +
+      "SAGEJS_CLASS_UNIT_HECKE_DONE|1\n",
+  });
+  assert.equal(errorPayload[0].reason, "proof audit failed");
+});
+
 test("rounded LMFDB regulator cells accept a valid narrow rigorous interval", () => {
   const expected = fixture.records.find((record) => record.label === "3.1.23.1");
   const answer = {
@@ -494,7 +611,7 @@ test("runner fixture loading invokes the full checksum validator", () => {
   fs.rmSync(temporary, { recursive: true, force: true });
 });
 
-test("direct GP identity binds its resolved GMP library", {
+test("external comparator identities bind their mathematical runtimes", {
   skip: process.platform !== "linux",
 }, () => {
   const options = runner.parseArguments([
@@ -504,14 +621,47 @@ test("direct GP identity binds its resolved GMP library", {
     "--limit",
     "1",
   ]);
-  const gp = runner.detectTools(options)["direct-gp"];
-  if (gp.status !== "available") return;
-  assert.match(gp.libraries.gmp, /^libgmp[^@]*@sha256:[0-9a-f]{64}$/);
-  assert.ok(
-    gp.artifacts.some((artifact) =>
-      artifact.role.startsWith("dynamic-library-") && /libgmp/.test(artifact.path)
-    ),
-  );
+  const tools = runner.detectTools(options);
+  const gp = tools["direct-gp"];
+  if (gp.status === "available") {
+    assert.match(gp.libraries.gmp, /^libgmp[^@]*@sha256:[0-9a-f]{64}$/);
+    assert.ok(
+      gp.artifacts.some((artifact) =>
+        artifact.role.startsWith("dynamic-library-") && /libgmp/.test(artifact.path)
+      ),
+    );
+  }
+  const magma = tools.magma;
+  if (magma.status === "available") {
+    assert.equal(magma.execution_mode, "authenticated-magma-runtime");
+    assert.ok(magma.artifacts.some((artifact) => artifact.role === "runtime-executable"));
+    assert.ok(magma.artifacts.some((artifact) => artifact.role === "magma-package-tree"));
+  }
+  const hecke = tools.hecke;
+  if (hecke.status === "available") {
+    assert.equal(hecke.execution_mode, "authenticated-pinned-hecke");
+    assert.match(hecke.version, /Hecke 0\.40\./);
+    assert.match(hecke.version, /git [0-9a-f]{40}/);
+    assert.match(hecke.libraries.flint, /^FLINT_jll-.*@sha256:[0-9a-f]{64}$/);
+    assert.match(hecke.libraries.gmp, /^GMP_jll-.*@sha256:[0-9a-f]{64}$/);
+    for (const role of [
+      "hecke-source-tree",
+      "nemo-source-tree",
+      "abstractalgebra-source-tree",
+      "loaded-package-image-",
+      "loaded-package-cache-",
+      "loaded-shared-library-",
+    ]) {
+      assert.ok(hecke.artifacts.some((artifact) => artifact.role.startsWith(role)), role);
+    }
+    assert.ok(hecke.artifacts.some((artifact) => /libopenblas/.test(artifact.path)));
+    assert.ok(hecke.artifacts.some((artifact) => artifact.role === "mpfr-library"));
+    assert.equal(
+      new Set(hecke.artifacts.map((artifact) => artifact.role)).size,
+      hecke.artifacts.length,
+      "authenticated artifact roles must be unique",
+    );
+  }
 });
 
 test("measured-process timeout kills the benchmark process group", {
