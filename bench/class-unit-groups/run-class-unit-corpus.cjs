@@ -54,6 +54,9 @@ const REGULATOR_CONTRACT = Object.freeze({
 const GNU_TIME = process.platform === "linux" && fs.existsSync("/usr/bin/time")
   ? "/usr/bin/time"
   : null;
+const GNU_TIMEOUT = process.platform === "linux" && fs.existsSync("/usr/bin/timeout")
+  ? "/usr/bin/timeout"
+  : null;
 
 function usage() {
   return `Usage: node ${path.relative(ROOT, __filename)} [options]
@@ -61,8 +64,9 @@ function usage() {
 Run a versioned subset of the stratified cubic class/unit corpus. An actual
 evidence run is accepted only from a clean Git source tree. Sub-10ms direct-GP
 kernel and field samples are means of independent-field batches lasting at
-least one second; every sample records its batch size, child peak RSS, and
-available phase times.
+least one second; every sample records its batch size, scoped process peak RSS,
+and available phase times. Timing acceptance and per-operation memory
+acceptance are reported separately.
 
 Corpus and measurement options:
   --tier TIER            smoke, tune, holdout, or all (default: smoke)
@@ -320,6 +324,120 @@ function fileArtifact(role, filename) {
   return { role, path: displayedPath(absolute), sha256: sha256File(absolute) };
 }
 
+function dynamicLibraryInventory(executables) {
+  if (process.platform !== "linux") return { artifacts: [], libraries: [] };
+  const ldd = resolveExecutable("ldd");
+  if (!ldd) throw new Error("exact Linux tool identity requires ldd");
+  const librariesByPath = new Map();
+  for (const executable of executables) {
+    const run = childProcess.spawnSync(ldd, [executable], {
+      cwd: ROOT,
+      encoding: "utf8",
+      maxBuffer: 4 * 1024 * 1024,
+      timeout: 20_000,
+    });
+    if (run.error || run.status !== 0) {
+      throw new Error(
+        `ldd failed for ${executable}: ${run.error?.message || run.stderr || `exit ${run.status}`}`,
+      );
+    }
+    for (const line of String(run.stdout || "").split(/\r?\n/)) {
+      const match = /^\s*([^\s]+)\s+=>\s+(\/[^\s]+)\s+\(/.exec(line) ||
+        /^\s*(\/[^\s]+)\s+\(/.exec(line);
+      if (!match) continue;
+      const soname = match.length === 3 ? match[1] : path.basename(match[1]);
+      const filename = match.length === 3 ? match[2] : match[1];
+      if (!fs.existsSync(filename)) continue;
+      const absolute = fs.realpathSync(filename);
+      if (!librariesByPath.has(absolute)) librariesByPath.set(absolute, { soname, path: absolute });
+    }
+  }
+  const libraries = [...librariesByPath.values()].sort((left, right) =>
+    left.path.localeCompare(right.path)
+  );
+  return {
+    libraries,
+    artifacts: libraries.map((library, index) =>
+      fileArtifact(`dynamic-library-${String(index).padStart(3, "0")}`, library.path)
+    ),
+  };
+}
+
+function exactLibraryIdentity(inventory, pattern) {
+  const library = inventory.libraries.find((entry) => pattern.test(entry.soname));
+  if (!library) return null;
+  return `${library.soname}@sha256:${sha256File(library.path)}`;
+}
+
+function sageRuntimeIdentity(executable) {
+  const marker = "SAGEJS_SAGE_RUNTIME|";
+  const source = `import json, sys
+import sage.all
+import cypari2
+import cypari2.gen
+import cypari2.pari_instance
+import sage.rings.real_arb
+import sage.rings.polynomial.polynomial_integer_dense_flint
+print(${JSON.stringify(marker)} + json.dumps({
+    "python-runtime": sys.executable,
+    "sage-entrypoint": sage.all.__file__,
+    "cypari-entrypoint": cypari2.__file__,
+    "cypari-gen-extension": cypari2.gen.__file__,
+    "cypari-instance-extension": cypari2.pari_instance.__file__,
+    "arb-extension": sage.rings.real_arb.__file__,
+    "flint-extension": sage.rings.polynomial.polynomial_integer_dense_flint.__file__,
+}, sort_keys=True))
+`;
+  const result = probe(executable, ["-python", "-"], { input: source });
+  const line = result.stdout.split(/\r?\n/).find((item) => item.startsWith(marker));
+  if (!result.ok || !line) {
+    throw new Error(result.error || result.stderr || "Sage runtime identity probe emitted no marker");
+  }
+  let paths;
+  try {
+    paths = JSON.parse(line.slice(marker.length));
+  } catch (error) {
+    throw new Error(`Sage runtime identity probe emitted invalid JSON: ${error.message}`);
+  }
+  const expectedRoles = [
+    "arb-extension",
+    "cypari-entrypoint",
+    "cypari-gen-extension",
+    "cypari-instance-extension",
+    "flint-extension",
+    "python-runtime",
+    "sage-entrypoint",
+  ];
+  if (JSON.stringify(Object.keys(paths).sort()) !== JSON.stringify(expectedRoles)) {
+    throw new Error("Sage runtime identity probe omitted a required runtime component");
+  }
+  for (const [role, filename] of Object.entries(paths)) {
+    if (typeof filename !== "string" || !fs.statSync(filename, { throwIfNoEntry: false })?.isFile()) {
+      throw new Error(`Sage runtime identity ${role} is not an existing file`);
+    }
+  }
+  const dynamic = dynamicLibraryInventory([
+    paths["python-runtime"],
+    paths["arb-extension"],
+    paths["cypari-gen-extension"],
+    paths["cypari-instance-extension"],
+    paths["flint-extension"],
+  ]);
+  return {
+    artifacts: [
+      fileArtifact("launcher", executable),
+      ...expectedRoles.map((role) => fileArtifact(role, paths[role])),
+      ...dynamic.artifacts,
+    ],
+    libraries: {
+      arb: exactLibraryIdentity(dynamic, /^libarb(?:[-.]|$)/i),
+      flint: exactLibraryIdentity(dynamic, /^libflint(?:[-.]|$)/i),
+      gmp: exactLibraryIdentity(dynamic, /^libgmp(?:[-.]|$)/i),
+      pari: exactLibraryIdentity(dynamic, /^libpari(?:[-.]|$)/i),
+    },
+  };
+}
+
 function treeArtifact(role, directory) {
   const absolute = fs.realpathSync(directory);
   const records = [];
@@ -500,10 +618,22 @@ function detectTools(options) {
     const pariProbe = probe(sage.executable, ["-python", "-"], {
       input: 'from sage.all import pari\nprint("SAGEJS_PARI_VERSION|" + str(pari("version()")))\n',
     });
-    sage.artifacts = [fileArtifact("executable", sage.executable)];
-    sage.libraries = nullLibraries({
-      pari: /SAGEJS_PARI_VERSION\|([^\r\n]+)/.exec(pariProbe.stdout)?.[1] || "unreported",
-    });
+    try {
+      const runtime = sageRuntimeIdentity(sage.executable);
+      const pariVersion = /SAGEJS_PARI_VERSION\|([^\r\n]+)/.exec(pariProbe.stdout)?.[1] ||
+        "unreported";
+      sage.artifacts = runtime.artifacts;
+      sage.libraries = nullLibraries({
+        ...runtime.libraries,
+        pari: runtime.libraries.pari
+          ? `${pariVersion}; ${runtime.libraries.pari}`
+          : pariVersion,
+      });
+      sage.execution_mode = "authenticated-sage-runtime";
+    } catch (error) {
+      sage.status = "unavailable";
+      sage.reason = error.message;
+    }
   }
 
   const gp = executableTool("direct-gp", options.gp, (executable) => {
@@ -518,8 +648,21 @@ function detectTools(options) {
   });
   gp.argv_prefix = gp.executable ? [gp.executable, "-fq"] : null;
   if (gp.status === "available") {
-    gp.artifacts = [fileArtifact("executable", gp.executable)];
-    gp.libraries = nullLibraries({ pari: gp.version });
+    try {
+      const dynamic = dynamicLibraryInventory([gp.executable]);
+      const gmp = exactLibraryIdentity(dynamic, /^libgmp(?:[-.]|$)/i);
+      if (process.platform === "linux" && !gmp) {
+        throw new Error("direct GP identity did not resolve its GMP dependency");
+      }
+      gp.artifacts = [fileArtifact("executable", gp.executable), ...dynamic.artifacts];
+      gp.libraries = nullLibraries({
+        gmp,
+        pari: `${gp.version}; integrated-executable-sha256:${sha256File(gp.executable)}`,
+      });
+    } catch (error) {
+      gp.status = "unavailable";
+      gp.reason = error.message;
+    }
   }
 
   const magma = executableTool("magma", options.magma, (executable) => {
@@ -604,6 +747,7 @@ function evidenceTool(name, tool) {
     : null;
   const artifacts = [...(tool.artifacts || [])];
   if (available && GNU_TIME) artifacts.push(fileArtifact("measurement-wrapper", GNU_TIME));
+  if (available && GNU_TIMEOUT) artifacts.push(fileArtifact("timeout-supervisor", GNU_TIMEOUT));
   return createToolFingerprint(name, {
     status: available ? "ok" : "unavailable",
     executable: available ? tool.executable : null,
@@ -874,40 +1018,44 @@ function gpAdapterSource(records, proof, boundary, samples) {
     warm_nf = nfinit(f);
     warm_bnf = bnfinit(warm_nf, 1);
     ${proof ? "if(!bnfcertify(warm_bnf), error(\"warm bnfcertify returned false\"));" : ""}
-    calibration_nf = nfinit(f);
-    calibration_started = getwalltime();
-    calibration_bnf = bnfinit(calibration_nf, 1);
-    ${proof ? "if(!bnfcertify(calibration_bnf), error(\"calibration bnfcertify returned false\"));" : ""}
-    calibration_ms = max(1, getwalltime() - calibration_started);
-    iterations = min(10000, max(2, ceil(2000 / calibration_ms))),
-    iterations = 1
   );
   field_ms = 0;
   computation_ms = 0;
   verification_ms = 0;
-  if(${boundary === "kernel-warm" ? 1 : 0},
-    nfs = vector(iterations, i, nfinit(f));
+  answer_no = 0;
+  answer_cyc = [];
+  answer_unit_rank = 0;
+  answer_torsion = 0;
+  answer_regulator = 0;
+  certified = ${proof ? 1 : 0};
+  iterations = 0;
+  target_batch_ms = 0;
+  if(persistent, target_batch_ms = 1200);
+  while(iterations == 0 || (persistent && (${boundary === "kernel-warm"
+    ? "computation_ms + verification_ms"
+    : "field_ms + computation_ms + verification_ms"}) < target_batch_ms),
+    if(iterations >= 100000, error("GP microbatch exceeded its iteration safety limit"));
+    iterations += 1;
+    i = iterations;
+    my(field_started, current_nf, computation_started, current_bnf, verification_started);
+    field_started = getwalltime();
+    current_nf = nfinit(f);
+    if(${boundary === "kernel-warm" ? 0 : 1}, field_ms += getwalltime() - field_started);
     computation_started = getwalltime();
-    bnfs = vector(iterations, i, bnfinit(nfs[i], 1));
-    computation_ms = getwalltime() - computation_started;
-    answer_nf = nfs[iterations],
-    bnfs = vector(iterations, i,
-      my(field_started = getwalltime(), current_nf, computation_started, current_bnf);
-      current_nf = nfinit(f);
-      field_ms += getwalltime() - field_started;
-      computation_started = getwalltime();
-      current_bnf = bnfinit(current_nf, 1);
-      computation_ms += getwalltime() - computation_started;
-      if(i == iterations, answer_nf = current_nf);
-      current_bnf
+    current_bnf = bnfinit(current_nf, 1);
+    computation_ms += getwalltime() - computation_started;
+    if(${proof ? 1 : 0},
+      verification_started = getwalltime();
+      if(!bnfcertify(current_bnf), error("bnfcertify returned false"));
+      verification_ms += getwalltime() - verification_started
+    );
+    if(i == iterations,
+      answer_no = current_bnf.no;
+      answer_cyc = current_bnf.cyc;
+      answer_unit_rank = current_nf.sign[1] + current_nf.sign[2] - 1;
+      answer_torsion = current_bnf.tu[1];
+      answer_regulator = current_bnf.reg
     )
-  );
-  if(${proof ? 1 : 0},
-    verification_started = getwalltime();
-    for(i = 1, iterations, if(!bnfcertify(bnfs[i]), error("bnfcertify returned false")));
-    verification_ms = getwalltime() - verification_started;
-    certified = 1,
-    certified = 0
   );
   batch_ms = ${boundary === "kernel-warm"
     ? "computation_ms + verification_ms"
@@ -918,9 +1066,8 @@ function gpAdapterSource(records, proof, boundary, samples) {
   field_seconds = field_ms / iterations / 1000.;
   computation_seconds = computation_ms / iterations / 1000.;
   verification_seconds = verification_ms / iterations / 1000.;
-  bnf = bnfs[iterations];
   if(elapsed <= 0, error("GP wall timer resolution was insufficient"));
-  print("${GP_PAYLOAD_PREFIX}${prefix}|", elapsed, "|", batch_seconds, "|", iterations, "|", field_seconds, "|", computation_seconds, "|", verification_seconds, "|", bnf.no, "|", bnf.cyc, "|", answer_nf.sign[1] + answer_nf.sign[2] - 1, "|", bnf.tu[1], "|", bnf.reg, "|", certified);
+  print("${GP_PAYLOAD_PREFIX}${prefix}|", elapsed, "|", batch_seconds, "|", iterations, "|", field_seconds, "|", computation_seconds, "|", verification_seconds, "|", answer_no, "|", answer_cyc, "|", answer_unit_rank, "|", answer_torsion, "|", answer_regulator, "|", certified);
 };
 iferr(${functionName}(), E, print("${GP_ERROR_PREFIX}${prefix}|", E));`);
     }
@@ -930,17 +1077,32 @@ iferr(${functionName}(), E, print("${GP_ERROR_PREFIX}${prefix}|", E));`);
 }
 
 function spawn(executable, args, source, timeoutSeconds, env = {}) {
-  if (!GNU_TIME) {
-    throw new Error("performance evidence requires GNU /usr/bin/time for child peak RSS");
+  if (!GNU_TIME || !GNU_TIMEOUT) {
+    throw new Error(
+      "performance evidence requires GNU /usr/bin/time and /usr/bin/timeout",
+    );
   }
   const rssMarker = "SAGEJS_CLASS_UNIT_MAX_RSS_KIB|";
   const started = process.hrtime.bigint();
-  const run = childProcess.spawnSync(GNU_TIME, ["-f", `${rssMarker}%M`, executable, ...args], {
+  // GNU timeout, without --foreground, owns a separate foreground process group
+  // for the measured command. TERM followed by KILL therefore reaches the time
+  // wrapper and every benchmark descendant instead of orphaning the real CAS.
+  const run = childProcess.spawnSync(GNU_TIMEOUT, [
+    "--signal=TERM",
+    "--kill-after=2s",
+    `${timeoutSeconds}s`,
+    GNU_TIME,
+    "-f",
+    `${rssMarker}%M`,
+    executable,
+    ...args,
+  ], {
     cwd: ROOT,
     encoding: "utf8",
     input: source,
     env: { ...process.env, ...env },
-    timeout: timeoutSeconds * 1000,
+    // This is a last-resort guard around the process-group supervisor itself.
+    timeout: (timeoutSeconds + 5) * 1000,
     killSignal: "SIGKILL",
     maxBuffer: 64 * 1024 * 1024,
   });
@@ -951,7 +1113,7 @@ function spawn(executable, args, source, timeoutSeconds, env = {}) {
   return {
     run,
     process_total_seconds: Number(process.hrtime.bigint() - started) / 1e9,
-    peak_rss_bytes: Number.isSafeInteger(peakRssKib) && peakRssKib > 0
+    process_peak_rss_bytes: Number.isSafeInteger(peakRssKib) && peakRssKib > 0
       ? peakRssKib * 1024
       : null,
   };
@@ -983,11 +1145,19 @@ function decoratePayload(payload) {
   });
 }
 
+function failedExecution(run, system) {
+  const error = new Error(
+    `${system} failed: ${run.error?.message || `exit ${run.status}`}\n${run.stderr || ""}`,
+  );
+  if (run.status === 124 || run.error?.code === "ETIMEDOUT") {
+    error.terminalStatus = "timeout";
+  }
+  return error;
+}
+
 function parsePythonPayload(run, system) {
   if (run.error || run.status !== 0) {
-    throw new Error(
-      `${system} failed: ${run.error?.message || `exit ${run.status}`}\n${run.stderr || ""}`,
-    );
+    throw failedExecution(run, system);
   }
   const line = (run.stdout || "").split(/\r?\n/).findLast((item) =>
     item.startsWith(PAYLOAD_PREFIX)
@@ -998,9 +1168,7 @@ function parsePythonPayload(run, system) {
 
 function parseGpPayload(run) {
   if (run.error || run.status !== 0) {
-    throw new Error(
-      `direct-gp failed: ${run.error?.message || `exit ${run.status}`}\n${run.stderr || ""}`,
-    );
+    throw failedExecution(run, "direct-gp");
   }
   const payload = [];
   for (const line of (run.stdout || "").split(/\r?\n/)) {
@@ -1188,6 +1356,7 @@ function aggregateJob(
   expected,
   processTotalSeconds = null,
   processPeakRssBytes = null,
+  rssScope = "case-process-peak",
 ) {
   const identityErrors = [];
   const indices = new Set();
@@ -1280,7 +1449,9 @@ function aggregateJob(
       elapsed_seconds: sample.elapsed_seconds,
       batch_elapsed_seconds: sample.batch_elapsed_seconds || sample.elapsed_seconds,
       iteration_count: sample.iteration_count || 1,
-      peak_rss_bytes: sample.peak_rss_bytes || processPeakRssBytes,
+      process_peak_rss_bytes:
+        sample.process_peak_rss_bytes || processPeakRssBytes,
+      rss_scope: sample.rss_scope || rssScope,
       phases_seconds: sample.phases_seconds || {
         initialization: null,
         field_construction: null,
@@ -1339,7 +1510,8 @@ function runPersistentGroup(system, proof, boundary, jobs, recordsByLabel, tool,
     payload.filter((sample) => sample.label === job.label),
     recordsByLabel.get(job.label),
     executed.process_total_seconds,
-    executed.peak_rss_bytes,
+    executed.process_peak_rss_bytes,
+    "case-process-peak",
   ));
 }
 
@@ -1394,7 +1566,8 @@ function runFreshJob(job, expected, tool, timeoutSeconds) {
         ...item,
         sample,
         elapsed_seconds: executed.process_total_seconds,
-        peak_rss_bytes: executed.peak_rss_bytes,
+        process_peak_rss_bytes: executed.process_peak_rss_bytes,
+        rss_scope: "single-operation-process-peak",
         phases_seconds: {
           initialization: initializationSeconds,
           field_construction: item.phases_seconds?.field_construction ?? null,
@@ -1403,6 +1576,13 @@ function runFreshJob(job, expected, tool, timeoutSeconds) {
         },
       });
     } catch (error) {
+      if (error.terminalStatus === "timeout") {
+        return {
+          ...terminalResult(job, error.message),
+          status: "timeout",
+          process_total_seconds: processTotalSeconds,
+        };
+      }
       samples.push({
         sample,
         status: "error",
@@ -1412,7 +1592,14 @@ function runFreshJob(job, expected, tool, timeoutSeconds) {
       });
     }
   }
-  return aggregateJob(job, samples, expected, processTotalSeconds, null);
+  return aggregateJob(
+    job,
+    samples,
+    expected,
+    processTotalSeconds,
+    null,
+    "single-operation-process-peak",
+  );
 }
 
 function runPlan(plan, records, options) {
@@ -1434,7 +1621,7 @@ function runPlan(plan, records, options) {
   );
   const grouped = new Map();
   for (const job of persistent) {
-    const key = `${job.system}|${job.requested_proof}|${job.boundary}`;
+    const key = `${job.system}|${job.requested_proof}|${job.boundary}|${job.label}`;
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key).push(job);
   }
@@ -1454,7 +1641,7 @@ function runPlan(plan, records, options) {
     } catch (error) {
       results.push(...jobs.map((job) => ({
         ...terminalResult(job),
-        status: "error",
+        status: error.terminalStatus === "timeout" ? "timeout" : "error",
         reason: error.message,
       })));
     }
@@ -1548,4 +1735,5 @@ module.exports = {
   pythonAdapterSource,
   proofModes,
   runPlan,
+  spawnMeasuredProcess: spawn,
 };
