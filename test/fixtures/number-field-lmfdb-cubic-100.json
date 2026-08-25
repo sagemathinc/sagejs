@@ -1,0 +1,3705 @@
+{
+  "schema": "sagejs.number-fields/lmfdb-cubic-stratified-corpus-v2",
+  "description": "Versioned LMFDB cubic class/unit performance corpus with smoke, tuning, and held-out tiers.",
+  "source": {
+    "table": "nf_fields",
+    "api_options": "https://beta.lmfdb.org/api/options",
+    "api_stats": "https://beta.lmfdb.org/api/stats",
+    "license": "CC-BY-SA-4.0",
+    "columns": [
+      "label",
+      "degree",
+      "coeffs",
+      "r2",
+      "disc_sign",
+      "disc_abs",
+      "disc_rad",
+      "index",
+      "monogenic",
+      "galt",
+      "galois_label",
+      "num_ram",
+      "class_number",
+      "class_group",
+      "regulator",
+      "torsion_order",
+      "used_grh",
+      "narrow_class_number",
+      "narrow_class_group",
+      "unit_signature_rank"
+    ]
+  },
+  "snapshot": {
+    "captured_at": "2026-08-25T04:18:55.342Z",
+    "selection_seed": ":sagejs-cubic-100-v1",
+    "selection_sql": "COPY (\nWITH legacy(label, selection_rank) AS (\n  VALUES\n    ('3.1.23.1', 1),\n    ('3.1.59.1', 2),\n    ('3.1.283.1', 3),\n    ('3.1.588.1', 4),\n    ('3.1.1083.1', 5),\n    ('3.1.1371.1', 6),\n    ('3.1.1563.1', 7),\n    ('3.1.2856.1', 8),\n    ('3.1.4027.2', 9),\n    ('3.1.5448.1', 10)\n), base AS (\n  SELECT f.label, f.r2,\n         CASE WHEN f.disc_abs <= 10000 THEN 'd0-le-1e4'\n              WHEN f.disc_abs <= 100000 THEN 'd1-1e4-1e5'\n              WHEN f.disc_abs <= 1000000 THEN 'd2-1e5-1e6'\n              ELSE 'd3-1e6-1e7' END AS discriminant_band,\n         CASE WHEN f.class_number = 1 THEN 'h0-trivial'\n              WHEN jsonb_array_length(f.class_group) > 1 THEN 'h3-noncyclic'\n              WHEN f.class_number <= 4 THEN 'h1-cyclic-small'\n              ELSE 'h2-cyclic-large' END AS class_band\n    FROM nf_fields f\n    LEFT JOIN legacy USING (label)\n   WHERE f.degree = 3\n     AND f.disc_abs <= 10000000\n     AND legacy.label IS NULL\n     AND f.label <> '3.3.961.1'\n), ranked AS (\n  SELECT base.*,\n         row_number() OVER (\n           PARTITION BY r2, discriminant_band, class_band\n           ORDER BY md5(label || ':sagejs-cubic-100-v1'), label\n         ) AS selection_rank\n    FROM base\n), selected AS (\n  SELECT label, 'smoke'::text AS role, 'legacy-smoke'::text AS stratum,\n         selection_rank::bigint\n    FROM legacy\n  UNION ALL\n  SELECT label,\n         CASE WHEN selection_rank <= 2 THEN 'tune' ELSE 'holdout' END AS role,\n         'r2-' || r2::text || ':' || discriminant_band || ':' || class_band AS stratum,\n         selection_rank\n    FROM ranked\n   WHERE selection_rank <= 3\n  UNION ALL\n  SELECT '3.3.961.1', 'holdout', 'canary:totally-real-index-2', 1::bigint\n), records AS (\n  SELECT json_build_object(\n           'role', selected.role,\n           'stratum', selected.stratum,\n           'selection_rank', selected.selection_rank::integer\n         ) AS selection,\n         f.label, f.degree,\n         ARRAY(SELECT coefficient::text FROM unnest(f.coeffs) coefficient)\n           AS coefficients,\n         f.disc_sign,\n         f.disc_abs::text AS discriminant_absolute,\n         f.r2,\n         (f.degree - f.r2 - 1)::integer AS unit_rank,\n         f.disc_rad::text AS discriminant_radical,\n         f.index::text AS equation_order_index,\n         f.monogenic,\n         f.galt AS galois_transitive_group,\n         f.galois_label,\n         f.num_ram AS ramified_prime_count,\n         f.class_number::text AS class_number,\n         ARRAY(SELECT invariant FROM jsonb_array_elements_text(f.class_group) invariant)\n           AS class_group,\n         f.regulator::text AS regulator,\n         f.torsion_order,\n         f.used_grh,\n         f.narrow_class_number::text AS narrow_class_number,\n         CASE WHEN f.narrow_class_group IS NULL THEN NULL ELSE\n           ARRAY(SELECT invariant::text FROM unnest(f.narrow_class_group) invariant)\n         END AS narrow_class_group,\n         f.unit_signature_rank\n    FROM selected\n    JOIN nf_fields f USING (label)\n   ORDER BY f.degree, f.disc_abs, f.label\n)\nSELECT row_to_json(records) FROM records\n) TO STDOUT;\n",
+    "canonical_ordering": [
+      "degree",
+      "disc_abs",
+      "label"
+    ],
+    "discriminant_absolute_maximum": "10000000"
+  },
+  "tiers": {
+    "smoke": 10,
+    "tune": 60,
+    "holdout": 30,
+    "policy": "Tune only on smoke+tune. Observe holdout after an optimization decision is frozen."
+  },
+  "checksums": {
+    "labels_sha256": "5f184acd2c4523fc9bffd6da8b4490bb20674157f4a02eae29d464f7d033828a",
+    "source_records_sha256": "4f073fc00defbc141a0466016ec9893f550256c4748a44043b732136d8e4fe3b",
+    "records_sha256": "5ec41c9d82626576f6680506802518b50cf381c70e65d778ad2e52a9f21ca95d",
+    "selection_sql_sha256": "86e7261347789c4817c891b4bb59563b59b0ceff5fe95ec48ed57dd4fe7de6de",
+    "source_columns_sha256": "d7f6b695c0bca4e45956791605f9240f602eba6a08351e30e2732d1958ca8f50"
+  },
+  "records": [
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "legacy-smoke",
+        "selection_rank": 1
+      },
+      "label": "3.1.23.1",
+      "degree": 3,
+      "coefficients": [
+        "1",
+        "0",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "23",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "23",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "0.281199574323",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "legacy-smoke",
+        "selection_rank": 2
+      },
+      "label": "3.1.59.1",
+      "degree": 3,
+      "coefficients": [
+        "-1",
+        "2",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "59",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "59",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "0.790985720639",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "legacy-smoke",
+        "selection_rank": 3
+      },
+      "label": "3.1.283.1",
+      "degree": 3,
+      "coefficients": [
+        "-1",
+        "4",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "283",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "283",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "1.40134232731",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d0-le-1e4:h0-trivial",
+        "selection_rank": 2
+      },
+      "label": "3.1.499.1",
+      "degree": 3,
+      "coefficients": [
+        "-3",
+        "4",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "499",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "499",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "3.87380401228",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "legacy-smoke",
+        "selection_rank": 4
+      },
+      "label": "3.1.588.1",
+      "degree": 3,
+      "coefficients": [
+        "1",
+        "5",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "588",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "42",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "3",
+      "class_group": [
+        "3"
+      ],
+      "regulator": "1.65400419943",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "3",
+      "narrow_class_group": [
+        "3"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "canary:totally-real-index-2",
+        "selection_rank": 1
+      },
+      "label": "3.3.961.1",
+      "degree": 3,
+      "coefficients": [
+        "8",
+        "-10",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "961",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "31",
+      "equation_order_index": "2",
+      "monogenic": -1,
+      "galois_transitive_group": 1,
+      "galois_label": "3T1",
+      "ramified_prime_count": 1,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "12.1957819126",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "legacy-smoke",
+        "selection_rank": 5
+      },
+      "label": "3.1.1083.1",
+      "degree": 3,
+      "coefficients": [
+        "-12",
+        "-6",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "1083",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "57",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "3",
+      "class_group": [
+        "3"
+      ],
+      "regulator": "2.62907295987",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "3",
+      "narrow_class_group": [
+        "3"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "legacy-smoke",
+        "selection_rank": 6
+      },
+      "label": "3.1.1371.1",
+      "degree": 3,
+      "coefficients": [
+        "6",
+        "3",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "1371",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "1371",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "4",
+      "class_group": [
+        "4"
+      ],
+      "regulator": "2.13833439909",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "4"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d0-le-1e4:h0-trivial",
+        "selection_rank": 3
+      },
+      "label": "3.3.1396.1",
+      "degree": 3,
+      "coefficients": [
+        "5",
+        "-7",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "1396",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "698",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "8.14646414913",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "legacy-smoke",
+        "selection_rank": 7
+      },
+      "label": "3.1.1563.1",
+      "degree": 3,
+      "coefficients": [
+        "-6",
+        "7",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "1563",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "1563",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "5",
+      "class_group": [
+        "5"
+      ],
+      "regulator": "2.04883295994",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "5",
+      "narrow_class_group": [
+        "5"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d0-le-1e4:h1-cyclic-small",
+        "selection_rank": 1
+      },
+      "label": "3.1.1732.1",
+      "degree": 3,
+      "coefficients": [
+        "-8",
+        "1",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "1732",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "866",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "5.98916865333",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d0-le-1e4:h1-cyclic-small",
+        "selection_rank": 1
+      },
+      "label": "3.3.2597.1",
+      "degree": 3,
+      "coefficients": [
+        "8",
+        "-9",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "2597",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "371",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "3",
+      "class_group": [
+        "3"
+      ],
+      "regulator": "4.79599055536",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "6",
+      "narrow_class_group": [
+        "6"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "legacy-smoke",
+        "selection_rank": 8
+      },
+      "label": "3.1.2856.1",
+      "degree": 3,
+      "coefficients": [
+        "-21",
+        "9",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "2856",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "714",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 4,
+      "class_number": "7",
+      "class_group": [
+        "7"
+      ],
+      "regulator": "2.81566371405",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "7",
+      "narrow_class_group": [
+        "7"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d0-le-1e4:h1-cyclic-small",
+        "selection_rank": 2
+      },
+      "label": "3.1.3559.1",
+      "degree": 3,
+      "coefficients": [
+        "-9",
+        "7",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "3559",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "3559",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "2.332208746",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "legacy-smoke",
+        "selection_rank": 9
+      },
+      "label": "3.1.4027.2",
+      "degree": 3,
+      "coefficients": [
+        "8",
+        "7",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "4027",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "4027",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "6",
+      "class_group": [
+        "6"
+      ],
+      "regulator": "2.4565437641",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "6",
+      "narrow_class_group": [
+        "6"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d0-le-1e4:h2-cyclic-large",
+        "selection_rank": 2
+      },
+      "label": "3.1.4031.1",
+      "degree": 3,
+      "coefficients": [
+        "-20",
+        "11",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "4031",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "4031",
+      "equation_order_index": "2",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "7",
+      "class_group": [
+        "7"
+      ],
+      "regulator": "4.26446324886",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "7",
+      "narrow_class_group": [
+        "7"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d0-le-1e4:h1-cyclic-small",
+        "selection_rank": 3
+      },
+      "label": "3.3.4312.1",
+      "degree": 3,
+      "coefficients": [
+        "8",
+        "-16",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "4312",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "154",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "3",
+      "class_group": [
+        "3"
+      ],
+      "regulator": "7.2288617767",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "3",
+      "narrow_class_group": [
+        "3"
+      ],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d0-le-1e4:h0-trivial",
+        "selection_rank": 1
+      },
+      "label": "3.3.4364.1",
+      "degree": 3,
+      "coefficients": [
+        "27",
+        "-19",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "4364",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "2182",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "25.7480852778",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d0-le-1e4:h1-cyclic-small",
+        "selection_rank": 3
+      },
+      "label": "3.1.4648.1",
+      "degree": 3,
+      "coefficients": [
+        "-30",
+        "-17",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "4648",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "1162",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "11.6761406286",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d0-le-1e4:h0-trivial",
+        "selection_rank": 3
+      },
+      "label": "3.1.5356.1",
+      "degree": 3,
+      "coefficients": [
+        "-28",
+        "4",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "5356",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "2678",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "13.0168672906",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "legacy-smoke",
+        "selection_rank": 10
+      },
+      "label": "3.1.5448.1",
+      "degree": 3,
+      "coefficients": [
+        "30",
+        "-14",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "5448",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "1362",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "8",
+      "class_group": [
+        "8"
+      ],
+      "regulator": "3.80219929162",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "8",
+      "narrow_class_group": [
+        "8"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d0-le-1e4:h3-noncyclic",
+        "selection_rank": 1
+      },
+      "label": "3.1.6571.1",
+      "degree": 3,
+      "coefficients": [
+        "-16",
+        "-9",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "6571",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "6571",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "5.59886067845",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d0-le-1e4:h3-noncyclic",
+        "selection_rank": 2
+      },
+      "label": "3.1.6883.1",
+      "degree": 3,
+      "coefficients": [
+        "-30",
+        "-19",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "6883",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "6883",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "4.78887832256",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d0-le-1e4:h1-cyclic-small",
+        "selection_rank": 2
+      },
+      "label": "3.3.6885.1",
+      "degree": 3,
+      "coefficients": [
+        "-1",
+        "-12",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "6885",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "255",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "3",
+      "class_group": [
+        "3"
+      ],
+      "regulator": "8.95099631133",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "6",
+      "narrow_class_group": [
+        "6"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d0-le-1e4:h2-cyclic-large",
+        "selection_rank": 3
+      },
+      "label": "3.1.7560.1",
+      "degree": 3,
+      "coefficients": [
+        "-16",
+        "18",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "7560",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "210",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 4,
+      "class_number": "5",
+      "class_group": [
+        "5"
+      ],
+      "regulator": "6.87631892392",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "5",
+      "narrow_class_group": [
+        "5"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d0-le-1e4:h2-cyclic-large",
+        "selection_rank": 1
+      },
+      "label": "3.1.7907.1",
+      "degree": 3,
+      "coefficients": [
+        "-21",
+        "-10",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "7907",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "7907",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "5",
+      "class_group": [
+        "5"
+      ],
+      "regulator": "6.80464156051",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "5",
+      "narrow_class_group": [
+        "5"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d0-le-1e4:h0-trivial",
+        "selection_rank": 2
+      },
+      "label": "3.3.8372.1",
+      "degree": 3,
+      "coefficients": [
+        "-7",
+        "-21",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "8372",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "4186",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 4,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "26.3194872813",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d0-le-1e4:h0-trivial",
+        "selection_rank": 1
+      },
+      "label": "3.1.9708.1",
+      "degree": 3,
+      "coefficients": [
+        "-17",
+        "11",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "9708",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "4854",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "20.588965025",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d1-1e4-1e5:h0-trivial",
+        "selection_rank": 3
+      },
+      "label": "3.1.15180.1",
+      "degree": 3,
+      "coefficients": [
+        "45",
+        "25",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "15180",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "7590",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 5,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "37.7074039989",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d1-1e4-1e5:h0-trivial",
+        "selection_rank": 1
+      },
+      "label": "3.3.18604.1",
+      "degree": 3,
+      "coefficients": [
+        "-18",
+        "-36",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "18604",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "9302",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "94.6474937294",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d1-1e4-1e5:h0-trivial",
+        "selection_rank": 2
+      },
+      "label": "3.1.24327.1",
+      "degree": 3,
+      "coefficients": [
+        "-60",
+        "3",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "24327",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "2703",
+      "equation_order_index": "2",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "90.6612987262",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d1-1e4-1e5:h3-noncyclic",
+        "selection_rank": 1
+      },
+      "label": "3.3.26569.1",
+      "degree": 3,
+      "coefficients": [
+        "169",
+        "-54",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "26569",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "163",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 1,
+      "galois_label": "3T1",
+      "ramified_prime_count": 1,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "6.44373488223",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d1-1e4-1e5:h1-cyclic-small",
+        "selection_rank": 2
+      },
+      "label": "3.1.27355.2",
+      "degree": 3,
+      "coefficients": [
+        "-150",
+        "35",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "27355",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "27355",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "3",
+      "class_group": [
+        "3"
+      ],
+      "regulator": "14.8996986492",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "3",
+      "narrow_class_group": [
+        "3"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d1-1e4-1e5:h0-trivial",
+        "selection_rank": 3
+      },
+      "label": "3.3.27409.1",
+      "degree": 3,
+      "coefficients": [
+        "-1",
+        "-19",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "27409",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "27409",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "13.3836886735",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d1-1e4-1e5:h0-trivial",
+        "selection_rank": 1
+      },
+      "label": "3.1.30495.1",
+      "degree": 3,
+      "coefficients": [
+        "-5",
+        "20",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "30495",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "30495",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 4,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "30.9943727223",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d1-1e4-1e5:h1-cyclic-small",
+        "selection_rank": 3
+      },
+      "label": "3.3.33452.1",
+      "degree": 3,
+      "coefficients": [
+        "38",
+        "-24",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "33452",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "16726",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "43.5879201579",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "4"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d1-1e4-1e5:h3-noncyclic",
+        "selection_rank": 3
+      },
+      "label": "3.3.35537.1",
+      "degree": 3,
+      "coefficients": [
+        "-57",
+        "-34",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "35537",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "35537",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "8.339830008",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "8",
+      "narrow_class_group": [
+        "2",
+        "4"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d1-1e4-1e5:h1-cyclic-small",
+        "selection_rank": 2
+      },
+      "label": "3.3.45205.1",
+      "degree": 3,
+      "coefficients": [
+        "-80",
+        "-41",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "45205",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "45205",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "27.2446268686",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "4"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d1-1e4-1e5:h3-noncyclic",
+        "selection_rank": 3
+      },
+      "label": "3.1.46727.1",
+      "degree": 3,
+      "coefficients": [
+        "41",
+        "2",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "46727",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "46727",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "3.54710709253",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d1-1e4-1e5:h1-cyclic-small",
+        "selection_rank": 1
+      },
+      "label": "3.3.50437.1",
+      "degree": 3,
+      "coefficients": [
+        "4",
+        "-23",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "50437",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "50437",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "22.9641429861",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d1-1e4-1e5:h1-cyclic-small",
+        "selection_rank": 3
+      },
+      "label": "3.1.51116.1",
+      "degree": 3,
+      "coefficients": [
+        "-50",
+        "-16",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "51116",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "25558",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "19.1191028426",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d1-1e4-1e5:h1-cyclic-small",
+        "selection_rank": 1
+      },
+      "label": "3.1.58060.3",
+      "degree": 3,
+      "coefficients": [
+        "-19",
+        "39",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "58060",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "29030",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "3",
+      "class_group": [
+        "3"
+      ],
+      "regulator": "18.8050329551",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "3",
+      "narrow_class_group": [
+        "3"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d1-1e4-1e5:h3-noncyclic",
+        "selection_rank": 2
+      },
+      "label": "3.1.58924.1",
+      "degree": 3,
+      "coefficients": [
+        "-91",
+        "-9",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "58924",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "29462",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "19.7407169489",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d1-1e4-1e5:h2-cyclic-large",
+        "selection_rank": 1
+      },
+      "label": "3.1.64063.1",
+      "degree": 3,
+      "coefficients": [
+        "-224",
+        "-65",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "64063",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "64063",
+      "equation_order_index": "2",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "9",
+      "class_group": [
+        "9"
+      ],
+      "regulator": "20.7231434685",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "9",
+      "narrow_class_group": [
+        "9"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d1-1e4-1e5:h2-cyclic-large",
+        "selection_rank": 2
+      },
+      "label": "3.3.65144.1",
+      "degree": 3,
+      "coefficients": [
+        "119",
+        "-51",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "65144",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "16286",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "5",
+      "class_group": [
+        "5"
+      ],
+      "regulator": "27.3243320881",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "10",
+      "narrow_class_group": [
+        "10"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d1-1e4-1e5:h3-noncyclic",
+        "selection_rank": 1
+      },
+      "label": "3.1.68399.1",
+      "degree": 3,
+      "coefficients": [
+        "49",
+        "4",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "68399",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "68399",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "3.61816293331",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d1-1e4-1e5:h3-noncyclic",
+        "selection_rank": 2
+      },
+      "label": "3.3.76729.1",
+      "degree": 3,
+      "coefficients": [
+        "-236",
+        "-92",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "76729",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "277",
+      "equation_order_index": "2",
+      "monogenic": -1,
+      "galois_transitive_group": 1,
+      "galois_label": "3T1",
+      "ramified_prime_count": 1,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "35.7664882467",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d1-1e4-1e5:h2-cyclic-large",
+        "selection_rank": 2
+      },
+      "label": "3.1.79163.1",
+      "degree": 3,
+      "coefficients": [
+        "388",
+        "-21",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "79163",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "79163",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "9",
+      "class_group": [
+        "9"
+      ],
+      "regulator": "6.14620544183",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "9",
+      "narrow_class_group": [
+        "9"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d1-1e4-1e5:h2-cyclic-large",
+        "selection_rank": 1
+      },
+      "label": "3.3.82028.1",
+      "degree": 3,
+      "coefficients": [
+        "-190",
+        "-83",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "82028",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "41014",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "5",
+      "class_group": [
+        "5"
+      ],
+      "regulator": "27.9033964906",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "5",
+      "narrow_class_group": [
+        "5"
+      ],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d1-1e4-1e5:h0-trivial",
+        "selection_rank": 2
+      },
+      "label": "3.3.86696.1",
+      "degree": 3,
+      "coefficients": [
+        "-178",
+        "-66",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "86696",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "21674",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "112.766119491",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d1-1e4-1e5:h2-cyclic-large",
+        "selection_rank": 3
+      },
+      "label": "3.3.87933.1",
+      "degree": 3,
+      "coefficients": [
+        "-92",
+        "-76",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "87933",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "87933",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "7",
+      "class_group": [
+        "7"
+      ],
+      "regulator": "19.4140084952",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "14",
+      "narrow_class_group": [
+        "14"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d1-1e4-1e5:h2-cyclic-large",
+        "selection_rank": 3
+      },
+      "label": "3.1.93612.1",
+      "degree": 3,
+      "coefficients": [
+        "-396",
+        "-60",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "93612",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "46806",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 4,
+      "class_number": "7",
+      "class_group": [
+        "7"
+      ],
+      "regulator": "13.663061927",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "7",
+      "narrow_class_group": [
+        "7"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d2-1e5-1e6:h1-cyclic-small",
+        "selection_rank": 3
+      },
+      "label": "3.3.239124.3",
+      "degree": 3,
+      "coefficients": [
+        "-90",
+        "-84",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "239124",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "119562",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "3",
+      "class_group": [
+        "3"
+      ],
+      "regulator": "100.846657329",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "3",
+      "narrow_class_group": [
+        "3"
+      ],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d2-1e5-1e6:h0-trivial",
+        "selection_rank": 3
+      },
+      "label": "3.1.239675.1",
+      "degree": 3,
+      "coefficients": [
+        "-95",
+        "-10",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "239675",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "47935",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "83.815853517",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d2-1e5-1e6:h1-cyclic-small",
+        "selection_rank": 2
+      },
+      "label": "3.3.243324.1",
+      "degree": 3,
+      "coefficients": [
+        "-440",
+        "-111",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "243324",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "4506",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "3",
+      "class_group": [
+        "3"
+      ],
+      "regulator": "112.034309219",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "6",
+      "narrow_class_group": [
+        "6"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d2-1e5-1e6:h2-cyclic-large",
+        "selection_rank": 3
+      },
+      "label": "3.1.263115.1",
+      "degree": 3,
+      "coefficients": [
+        "-525",
+        "-60",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "263115",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "29235",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "9",
+      "class_group": [
+        "9"
+      ],
+      "regulator": "17.9801787192",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "9",
+      "narrow_class_group": [
+        "9"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d2-1e5-1e6:h2-cyclic-large",
+        "selection_rank": 2
+      },
+      "label": "3.1.289739.4",
+      "degree": 3,
+      "coefficients": [
+        "-104",
+        "21",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "289739",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "289739",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "9",
+      "class_group": [
+        "9"
+      ],
+      "regulator": "5.31274471527",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "9",
+      "narrow_class_group": [
+        "9"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d2-1e5-1e6:h2-cyclic-large",
+        "selection_rank": 1
+      },
+      "label": "3.3.309804.1",
+      "degree": 3,
+      "coefficients": [
+        "-116",
+        "-76",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "309804",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "154902",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 4,
+      "class_number": "5",
+      "class_group": [
+        "5"
+      ],
+      "regulator": "69.520804802",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "10",
+      "narrow_class_group": [
+        "10"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d2-1e5-1e6:h0-trivial",
+        "selection_rank": 2
+      },
+      "label": "3.1.312836.1",
+      "degree": 3,
+      "coefficients": [
+        "220",
+        "-12",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "312836",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "156418",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "214.784188522",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d2-1e5-1e6:h1-cyclic-small",
+        "selection_rank": 1
+      },
+      "label": "3.1.352623.2",
+      "degree": 3,
+      "coefficients": [
+        "-343",
+        "-9",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "352623",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "352623",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "3",
+      "class_group": [
+        "3"
+      ],
+      "regulator": "30.6910892897",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "3",
+      "narrow_class_group": [
+        "3"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d2-1e5-1e6:h3-noncyclic",
+        "selection_rank": 2
+      },
+      "label": "3.1.386699.3",
+      "degree": 3,
+      "coefficients": [
+        "592",
+        "-84",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "386699",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "16813",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "12",
+      "class_group": [
+        "2",
+        "6"
+      ],
+      "regulator": "5.97618339664",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "12",
+      "narrow_class_group": [
+        "2",
+        "6"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d2-1e5-1e6:h1-cyclic-small",
+        "selection_rank": 2
+      },
+      "label": "3.1.430888.3",
+      "degree": 3,
+      "coefficients": [
+        "-630",
+        "-137",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "430888",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "107722",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "3",
+      "class_group": [
+        "3"
+      ],
+      "regulator": "106.197322097",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "3",
+      "narrow_class_group": [
+        "3"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d2-1e5-1e6:h2-cyclic-large",
+        "selection_rank": 3
+      },
+      "label": "3.3.637437.1",
+      "degree": 3,
+      "coefficients": [
+        "-398",
+        "-175",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "637437",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "637437",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "5",
+      "class_group": [
+        "5"
+      ],
+      "regulator": "74.8798249044",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "10",
+      "narrow_class_group": [
+        "10"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d2-1e5-1e6:h0-trivial",
+        "selection_rank": 2
+      },
+      "label": "3.3.718257.1",
+      "degree": 3,
+      "coefficients": [
+        "561",
+        "-218",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "718257",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "718257",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "280.369358505",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d2-1e5-1e6:h2-cyclic-large",
+        "selection_rank": 2
+      },
+      "label": "3.3.732788.3",
+      "degree": 3,
+      "coefficients": [
+        "365",
+        "-113",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "732788",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "366394",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "6",
+      "class_group": [
+        "6"
+      ],
+      "regulator": "57.2932896716",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "6",
+      "narrow_class_group": [
+        "6"
+      ],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d2-1e5-1e6:h1-cyclic-small",
+        "selection_rank": 3
+      },
+      "label": "3.1.742200.1",
+      "degree": 3,
+      "coefficients": [
+        "372",
+        "-48",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "742200",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "37110",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 4,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "255.972727712",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d2-1e5-1e6:h0-trivial",
+        "selection_rank": 1
+      },
+      "label": "3.1.769263.1",
+      "degree": 3,
+      "coefficients": [
+        "-923",
+        "-159",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "769263",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "769263",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "158.129462059",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d2-1e5-1e6:h0-trivial",
+        "selection_rank": 3
+      },
+      "label": "3.3.876257.1",
+      "degree": 3,
+      "coefficients": [
+        "11",
+        "-60",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "876257",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "876257",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "233.073868461",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d2-1e5-1e6:h3-noncyclic",
+        "selection_rank": 2
+      },
+      "label": "3.3.883764.1",
+      "degree": 3,
+      "coefficients": [
+        "-1246",
+        "-252",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "883764",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "7014",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 4,
+      "class_number": "9",
+      "class_group": [
+        "3",
+        "3"
+      ],
+      "regulator": "38.2955429184",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "18",
+      "narrow_class_group": [
+        "3",
+        "6"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d2-1e5-1e6:h3-noncyclic",
+        "selection_rank": 1
+      },
+      "label": "3.3.885492.1",
+      "degree": 3,
+      "coefficients": [
+        "-1698",
+        "-270",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "885492",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "5466",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "71.4308968441",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "8",
+      "narrow_class_group": [
+        "2",
+        "4"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d2-1e5-1e6:h3-noncyclic",
+        "selection_rank": 3
+      },
+      "label": "3.1.928648.1",
+      "degree": 3,
+      "coefficients": [
+        "-1294",
+        "82",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "928648",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "33166",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 4,
+      "class_number": "24",
+      "class_group": [
+        "2",
+        "12"
+      ],
+      "regulator": "13.3176620342",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "24",
+      "narrow_class_group": [
+        "2",
+        "12"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d2-1e5-1e6:h3-noncyclic",
+        "selection_rank": 3
+      },
+      "label": "3.3.966397.2",
+      "degree": 3,
+      "coefficients": [
+        "-171",
+        "-76",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "966397",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "50863",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "9",
+      "class_group": [
+        "3",
+        "3"
+      ],
+      "regulator": "72.1224103512",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "18",
+      "narrow_class_group": [
+        "3",
+        "6"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d2-1e5-1e6:h1-cyclic-small",
+        "selection_rank": 1
+      },
+      "label": "3.3.977157.1",
+      "degree": 3,
+      "coefficients": [
+        "-1697",
+        "-270",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "977157",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "108573",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "134.470549934",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "4"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d2-1e5-1e6:h2-cyclic-large",
+        "selection_rank": 1
+      },
+      "label": "3.1.982948.1",
+      "degree": 3,
+      "coefficients": [
+        "-988",
+        "262",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "982948",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "491474",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "11",
+      "class_group": [
+        "11"
+      ],
+      "regulator": "33.1177043401",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "11",
+      "narrow_class_group": [
+        "11"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d2-1e5-1e6:h0-trivial",
+        "selection_rank": 1
+      },
+      "label": "3.3.985208.1",
+      "degree": 3,
+      "coefficients": [
+        "-86",
+        "-251",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "985208",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "246302",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 4,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "617.974307653",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d2-1e5-1e6:h3-noncyclic",
+        "selection_rank": 1
+      },
+      "label": "3.1.993211.1",
+      "degree": 3,
+      "coefficients": [
+        "-384",
+        "-97",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "993211",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "993211",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "8",
+      "class_group": [
+        "2",
+        "4"
+      ],
+      "regulator": "21.8417354455",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "8",
+      "narrow_class_group": [
+        "2",
+        "4"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d3-1e6-1e7:h3-noncyclic",
+        "selection_rank": 3
+      },
+      "label": "3.3.1165460.1",
+      "degree": 3,
+      "coefficients": [
+        "1061",
+        "-191",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "1165460",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "582730",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 4,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "97.4895920508",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "8",
+      "narrow_class_group": [
+        "2",
+        "4"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d3-1e6-1e7:h1-cyclic-small",
+        "selection_rank": 3
+      },
+      "label": "3.3.1179372.4",
+      "degree": 3,
+      "coefficients": [
+        "-220",
+        "-222",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "1179372",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "589686",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 4,
+      "class_number": "3",
+      "class_group": [
+        "3"
+      ],
+      "regulator": "244.523418973",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "6",
+      "narrow_class_group": [
+        "6"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d3-1e6-1e7:h1-cyclic-small",
+        "selection_rank": 2
+      },
+      "label": "3.1.1339399.1",
+      "degree": 3,
+      "coefficients": [
+        "408",
+        "50",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "1339399",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "1339399",
+      "equation_order_index": "2",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "200.360750335",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d3-1e6-1e7:h2-cyclic-large",
+        "selection_rank": 1
+      },
+      "label": "3.3.1636968.1",
+      "degree": 3,
+      "coefficients": [
+        "-374",
+        "-226",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "1636968",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "409242",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "5",
+      "class_group": [
+        "5"
+      ],
+      "regulator": "202.988686015",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "5",
+      "narrow_class_group": [
+        "5"
+      ],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d3-1e6-1e7:h0-trivial",
+        "selection_rank": 3
+      },
+      "label": "3.1.1701023.1",
+      "degree": 3,
+      "coefficients": [
+        "-251",
+        "-1",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "1701023",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "1701023",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "78.889299418",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d3-1e6-1e7:h0-trivial",
+        "selection_rank": 1
+      },
+      "label": "3.3.1824632.1",
+      "degree": 3,
+      "coefficients": [
+        "926",
+        "-390",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "1824632",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "456158",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "706.84178566",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d3-1e6-1e7:h0-trivial",
+        "selection_rank": 1
+      },
+      "label": "3.1.1874751.1",
+      "degree": 3,
+      "coefficients": [
+        "-949",
+        "-123",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "1874751",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "1874751",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "131.645438017",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d3-1e6-1e7:h0-trivial",
+        "selection_rank": 2
+      },
+      "label": "3.1.2056580.1",
+      "degree": 3,
+      "coefficients": [
+        "1647",
+        "25",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "2056580",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "1028290",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "1258.04357515",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d3-1e6-1e7:h1-cyclic-small",
+        "selection_rank": 2
+      },
+      "label": "3.3.2087657.1",
+      "degree": 3,
+      "coefficients": [
+        "-1444",
+        "-368",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "2087657",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "160589",
+      "equation_order_index": "2",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "3",
+      "class_group": [
+        "3"
+      ],
+      "regulator": "580.532239183",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "6",
+      "narrow_class_group": [
+        "6"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d3-1e6-1e7:h2-cyclic-large",
+        "selection_rank": 3
+      },
+      "label": "3.1.2119411.1",
+      "degree": 3,
+      "coefficients": [
+        "-2200",
+        "-281",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "2119411",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "2119411",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "5",
+      "class_group": [
+        "5"
+      ],
+      "regulator": "136.480450755",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "5",
+      "narrow_class_group": [
+        "5"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d3-1e6-1e7:h1-cyclic-small",
+        "selection_rank": 1
+      },
+      "label": "3.1.2227259.1",
+      "degree": 3,
+      "coefficients": [
+        "140",
+        "239",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "2227259",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "2227259",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 1,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "203.13825061",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d3-1e6-1e7:h0-trivial",
+        "selection_rank": 2
+      },
+      "label": "3.3.2356968.1",
+      "degree": 3,
+      "coefficients": [
+        "-2376",
+        "-390",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "2356968",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "589242",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "1285.3044946",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d3-1e6-1e7:h3-noncyclic",
+        "selection_rank": 2
+      },
+      "label": "3.3.2390785.1",
+      "degree": 3,
+      "coefficients": [
+        "581",
+        "-136",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "2390785",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "2390785",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "57.7402807862",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "8",
+      "narrow_class_group": [
+        "2",
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d3-1e6-1e7:h2-cyclic-large",
+        "selection_rank": 2
+      },
+      "label": "3.1.2557943.1",
+      "degree": 3,
+      "coefficients": [
+        "-3389",
+        "10",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "2557943",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "2557943",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "5",
+      "class_group": [
+        "5"
+      ],
+      "regulator": "16.6891436698",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "5",
+      "narrow_class_group": [
+        "5"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d3-1e6-1e7:h2-cyclic-large",
+        "selection_rank": 3
+      },
+      "label": "3.3.2563772.1",
+      "degree": 3,
+      "coefficients": [
+        "114",
+        "-88",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "2563772",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "1281886",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "11",
+      "class_group": [
+        "11"
+      ],
+      "regulator": "80.9934377306",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "22",
+      "narrow_class_group": [
+        "22"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d3-1e6-1e7:h0-trivial",
+        "selection_rank": 3
+      },
+      "label": "3.3.2650717.1",
+      "degree": 3,
+      "coefficients": [
+        "-900",
+        "-393",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "2650717",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "2650717",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "1067.63970435",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 2
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d3-1e6-1e7:h1-cyclic-small",
+        "selection_rank": 1
+      },
+      "label": "3.3.2719309.1",
+      "degree": 3,
+      "coefficients": [
+        "244",
+        "-99",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "2719309",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "2719309",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "313.619038114",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "8",
+      "narrow_class_group": [
+        "2",
+        "4"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d3-1e6-1e7:h1-cyclic-small",
+        "selection_rank": 3
+      },
+      "label": "3.1.2796123.1",
+      "degree": 3,
+      "coefficients": [
+        "-1122",
+        "-143",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "2796123",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "2796123",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "4",
+      "class_group": [
+        "4"
+      ],
+      "regulator": "152.659927847",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "4"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d3-1e6-1e7:h3-noncyclic",
+        "selection_rank": 1
+      },
+      "label": "3.3.2989441.2",
+      "degree": 3,
+      "coefficients": [
+        "-1665",
+        "-576",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "2989441",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "1729",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 1,
+      "galois_label": "3T1",
+      "ramified_prime_count": 3,
+      "class_number": "9",
+      "class_group": [
+        "3",
+        "3"
+      ],
+      "regulator": "89.0338875893",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "9",
+      "narrow_class_group": [
+        "3",
+        "3"
+      ],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d3-1e6-1e7:h3-noncyclic",
+        "selection_rank": 1
+      },
+      "label": "3.1.2998856.1",
+      "degree": 3,
+      "coefficients": [
+        "-1134",
+        "378",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "2998856",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "749714",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 3,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "277.962826109",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d3-1e6-1e7:h2-cyclic-large",
+        "selection_rank": 2
+      },
+      "label": "3.3.3020781.1",
+      "degree": 3,
+      "coefficients": [
+        "-3288",
+        "-431",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "3020781",
+      "r2": 0,
+      "unit_rank": 2,
+      "discriminant_radical": "3020781",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 4,
+      "class_number": "10",
+      "class_group": [
+        "10"
+      ],
+      "regulator": "64.8940051511",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "10",
+      "narrow_class_group": [
+        "10"
+      ],
+      "unit_signature_rank": 3
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d3-1e6-1e7:h3-noncyclic",
+        "selection_rank": 2
+      },
+      "label": "3.1.3344727.1",
+      "degree": 3,
+      "coefficients": [
+        "-617",
+        "176",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "3344727",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "3344727",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 2,
+      "class_number": "8",
+      "class_group": [
+        "2",
+        "4"
+      ],
+      "regulator": "32.2130350566",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "8",
+      "narrow_class_group": [
+        "2",
+        "4"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d3-1e6-1e7:h3-noncyclic",
+        "selection_rank": 3
+      },
+      "label": "3.1.6086340.1",
+      "degree": 3,
+      "coefficients": [
+        "-1224",
+        "153",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "6086340",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "6630",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 5,
+      "class_number": "54",
+      "class_group": [
+        "3",
+        "18"
+      ],
+      "regulator": "18.2854960425",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "54",
+      "narrow_class_group": [
+        "3",
+        "18"
+      ],
+      "unit_signature_rank": 1
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d3-1e6-1e7:h2-cyclic-large",
+        "selection_rank": 1
+      },
+      "label": "3.1.8085420.2",
+      "degree": 3,
+      "coefficients": [
+        "-6106",
+        "-192",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "8085420",
+      "r2": 1,
+      "unit_rank": 1,
+      "discriminant_radical": "149730",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "3T2",
+      "ramified_prime_count": 6,
+      "class_number": "21",
+      "class_group": [
+        "21"
+      ],
+      "regulator": "39.72648154817478",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "21",
+      "narrow_class_group": [
+        "21"
+      ],
+      "unit_signature_rank": 1
+    }
+  ]
+}
