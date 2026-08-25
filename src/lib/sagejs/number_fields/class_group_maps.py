@@ -171,13 +171,7 @@ def _canonical_payload(value: Any, purpose: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise TypeError(purpose + " must serialize to a dictionary")
     try:
-        text = json.dumps(
-            value,
-            allow_nan=False,
-            ensure_ascii=True,
-            separators=(",", ":"),
-            sort_keys=True,
-        )
+        text = _canonical_json(value)
         payload = json.loads(text)
     except (TypeError, ValueError) as error:
         raise TypeError(purpose + " must be JSON-safe") from error
@@ -187,14 +181,17 @@ def _canonical_payload(value: Any, purpose: str) -> dict[str, Any]:
 
 
 def _payload_hash(payload: dict[str, Any]) -> str:
-    text = json.dumps(
-        payload,
+    return hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(
+        value,
         allow_nan=False,
         ensure_ascii=True,
         separators=(",", ":"),
         sort_keys=True,
     )
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def _authenticated_payload(payload: dict[str, Any]) -> bool:
@@ -966,6 +963,8 @@ class IdealClassGroup:
         self._presentation_evidence = presentation_evidence
         self._proof_record = proof_record
         self._proof_context = proof_context
+        self._projection_core: Any = None
+        self._projection_ideals_materialized = True
         self._relation_count = (
             None
             if relation_count is None
@@ -1061,6 +1060,9 @@ class IdealClassGroup:
 
     @property
     def proof_record(self) -> Any:
+        projection = self._projection_core
+        if projection is not None:
+            return projection.proof_record()
         return self._proof_record
 
     def ideal_order(self) -> Any:
@@ -1091,6 +1093,9 @@ class IdealClassGroup:
         return self._generators
 
     def gens_ideals(self) -> tuple[Any, ...]:
+        projection = self._projection_core
+        if projection is not None:
+            projection.materialize_view_ideals(self)
         return self._generator_ideals
 
     def from_coordinates(self, coordinates: Any) -> IdealClassElement:
@@ -1104,6 +1109,9 @@ class IdealClassGroup:
         return self.from_coordinates(self.discrete_log(ideal).coordinates)
 
     def representative_ideal(self, coordinates: Any) -> Any:
+        projection = self._projection_core
+        if projection is not None:
+            projection.materialize_view_ideals(self)
         element = IdealClassElement(self, coordinates)
         answer = self._order.ideal(1)
         for coordinate, ideal in zip(
@@ -1169,6 +1177,9 @@ class IdealClassGroup:
 
     def proof_payload(self) -> dict[str, Any]:
         """Serialize the attached conditional or unconditional proof record."""
+        projection = self._projection_core
+        if projection is not None:
+            return projection.proof_payload()
         if self._proof_record is None:
             raise ValueError("the class group has no attached completeness proof")
         if isinstance(self._proof_record, ConditionalGRHProofRecord):
@@ -1195,6 +1206,9 @@ class IdealClassGroup:
         self, payload: dict[str, Any], *, cancelled: Any = None
     ) -> bool:
         """Decode and independently replay one serialized completeness proof."""
+        projection = self._projection_core
+        if projection is not None:
+            return projection.verify_proof_payload(self, payload, cancelled=cancelled)
         try:
             if _cancelled(cancelled):
                 return False
@@ -1309,6 +1323,9 @@ class IdealClassGroup:
         return free_rank is None or int(free_rank) == 0
 
     def verify(self) -> bool:
+        projection = self._projection_core
+        if projection is not None:
+            return projection.verify_view(self)
         try:
             if proof_label(self._proof_status) not in COMPLETE_PROOF_LABELS:
                 return False
@@ -1327,6 +1344,246 @@ class IdealClassGroup:
             return True
         except (TypeError, ValueError, ArithmeticError, AttributeError, IndexError):
             return False
+
+
+class _SealedIdealClassGroupProjection:
+    __slots__ = (
+        "_generator_payloads",
+        "_presentation_json",
+        "_proof_payload_json",
+        "_metadata",
+        "_witness_generators",
+        "_sealed",
+    )
+
+    def __init__(self, source: IdealClassGroup) -> None:
+        if type(source) is not IdealClassGroup:
+            raise TypeError("a public projection needs an ordinary exact group")
+        ideal_module = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+        )
+        generator_payloads = tuple(
+            _canonical_json(ideal_module.serialize_ideal(ideal))
+            for ideal in source._generator_ideals
+        )
+        witness_generators = []
+        for witness in source._relation_witnesses:
+            generator = witness.generator
+            encoder = getattr(generator, "to_dict", None)
+            decoder = getattr(type(generator), "from_dict", None)
+            if not callable(encoder) or not callable(decoder):
+                raise TypeError(
+                    "a projected principal witness needs canonical serialization"
+                )
+            witness_generators.append(
+                (type(generator), _canonical_json(encoder()), witness.source)
+            )
+        presentation_encoder = getattr(source._presentation_evidence, "to_dict", None)
+        if not callable(presentation_encoder):
+            raise TypeError("a public projection needs a replayable presentation")
+        proof_payload = source.proof_payload()
+        if not isinstance(source._proof_record, ConditionalGRHProofRecord):
+            raise TypeError("only conditional public projections are reusable")
+        object.__setattr__(self, "_generator_payloads", generator_payloads)
+        object.__setattr__(self, "_witness_generators", tuple(witness_generators))
+        object.__setattr__(
+            self, "_presentation_json", _canonical_json(presentation_encoder())
+        )
+        object.__setattr__(self, "_proof_payload_json", _canonical_json(proof_payload))
+        object.__setattr__(
+            self,
+            "_metadata",
+            (
+                source._order,
+                source._invariants,
+                source._proof_status,
+                source._algorithm,
+                source._factor_base_theorem,
+                source._factor_base_bound,
+                source._relation_count,
+                source._ideal_log,
+                source._proof_context,
+            ),
+        )
+        object.__setattr__(self, "_sealed", True)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_sealed", False):
+            raise AttributeError("a public class-group projection is immutable")
+        object.__setattr__(self, name, value)
+
+    def _ideals(self) -> tuple[Any, ...]:
+        ideal_module = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+        )
+        return tuple(
+            ideal_module.ideal_from_dict(self._metadata[0], json.loads(payload))
+            for payload in self._generator_payloads
+        )
+
+    def proof_record(self) -> ConditionalGRHProofRecord:
+        return ConditionalGRHProofRecord.from_dict(self.proof_payload())
+
+    def proof_payload(self) -> dict[str, Any]:
+        return json.loads(self._proof_payload_json)
+
+    def new_view(self) -> IdealClassGroup:
+        order, invariants, status, algorithm, theorem, bound, count, ideal_log, _ = (
+            self._metadata
+        )
+        answer = IdealClassGroup.__new__(IdealClassGroup)
+        answer._order = order
+        answer._invariants = invariants
+        answer._generator_ideals = ()
+        answer._relation_witnesses = ()
+        answer._ideal_log = ideal_log
+        answer._proof_status = status
+        answer._algorithm = algorithm
+        answer._factor_base_theorem = theorem
+        answer._factor_base_bound = bound
+        answer._presentation_evidence = None
+        answer._proof_record = None
+        answer._proof_context = None
+        answer._relation_count = count
+        answer._generators = tuple(
+            IdealClassElement(
+                answer,
+                [1 if index == position else 0 for index in range(len(invariants))],
+            )
+            for position in range(len(invariants))
+        )
+        answer._one = IdealClassElement(answer, [0 for _value in invariants])
+        answer._map = IdealClassMap(answer)
+        answer._projection_core = self
+        answer._projection_ideals_materialized = False
+        return answer
+
+    def materialize_view_ideals(self, view: IdealClassGroup) -> None:
+        if view._projection_core is not self:
+            raise ArithmeticError("a projected class group changed its receipt")
+        if not view._projection_ideals_materialized:
+            view._generator_ideals = self._ideals()
+            view._projection_ideals_materialized = True
+
+    def _full_group(self) -> IdealClassGroup:
+        matrix_module = __import__(
+            "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
+        )
+        (
+            order,
+            invariants,
+            status,
+            algorithm,
+            theorem,
+            bound,
+            count,
+            ideal_log,
+            context,
+        ) = self._metadata
+        ideals = self._ideals()
+        witnesses = []
+        field = order.number_field()
+        for invariant, ideal, (generator_type, payload, source) in zip(
+            invariants, ideals, self._witness_generators, strict=True
+        ):
+            generator = generator_type.from_dict(field, json.loads(payload))
+            witnesses.append(
+                PrincipalIdealWitness(
+                    _ideal_power(ideal, invariant), generator, source=source
+                )
+            )
+        presentation = matrix_module.RelationPresentation.from_dict(
+            json.loads(self._presentation_json)
+        )
+        return IdealClassGroup(
+            order,
+            invariants,
+            ideals,
+            witnesses,
+            ideal_log,
+            proof_status=status,
+            algorithm=algorithm,
+            factor_base_theorem=theorem,
+            factor_base_bound=bound,
+            presentation_evidence=presentation,
+            proof_record=self.proof_record(),
+            proof_context=context,
+            relation_count=count,
+        )
+
+    def _matches_view(self, view: IdealClassGroup) -> bool:
+        try:
+            self.materialize_view_ideals(view)
+            ideal_module = __import__(
+                "sagejs.number_fields.ideal_arithmetic",
+                fromlist=["ideal_arithmetic"],
+            )
+            payloads = tuple(
+                _canonical_json(ideal_module.serialize_ideal(ideal))
+                for ideal in view._generator_ideals
+            )
+            (
+                order,
+                invariants,
+                status,
+                algorithm,
+                theorem,
+                bound,
+                count,
+                ideal_log,
+                _,
+            ) = self._metadata
+            return bool(
+                view._order is order
+                and view._invariants == invariants
+                and view._proof_status == status
+                and view._algorithm == algorithm
+                and view._factor_base_theorem == theorem
+                and view._factor_base_bound == bound
+                and view._relation_count == count
+                and view._ideal_log is ideal_log
+                and payloads == self._generator_payloads
+                and len(view._generators) == len(invariants)
+                and all(generator.parent() is view for generator in view._generators)
+                and view._one.parent() is view
+                and view._map.domain() is view
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+    def verify_view(self, view: IdealClassGroup) -> bool:
+        if not self._matches_view(view):
+            return False
+        try:
+            return self._full_group().verify() is True
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+    def verify_proof_payload(
+        self,
+        view: IdealClassGroup,
+        payload: dict[str, Any],
+        *,
+        cancelled: Any = None,
+    ) -> bool:
+        if not self._matches_view(view):
+            return False
+        try:
+            return self._full_group().verify_proof_payload(payload, cancelled=cancelled)
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+
+def seal_public_class_group_projection(
+    source: IdealClassGroup,
+) -> _SealedIdealClassGroupProjection:
+    return _SealedIdealClassGroupProjection(source)
+
+
+def public_class_group_projection_view(projection: Any) -> IdealClassGroup:
+    if type(projection) is not _SealedIdealClassGroupProjection:
+        raise ArithmeticError("the public class-group projection changed type")
+    return projection.new_view()
 
 
 def class_group_from_context(context: Any) -> IdealClassGroup:
@@ -2402,4 +2659,6 @@ __all__ = [
     "PrincipalityResult",
     "class_group_from_engine_result",
     "class_group_from_context",
+    "public_class_group_projection_view",
+    "seal_public_class_group_projection",
 ]
