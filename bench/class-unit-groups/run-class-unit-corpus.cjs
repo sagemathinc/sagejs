@@ -2001,7 +2001,7 @@ function regulatorCell(regulator) {
   throw new Error("unsupported regulator observation");
 }
 
-function answersEquivalent(left, right) {
+function discreteAnswersEqual(left, right) {
   for (const key of [
     "class_number",
     "class_group_invariant_factors",
@@ -2010,11 +2010,18 @@ function answersEquivalent(left, right) {
   ]) {
     if (JSON.stringify(left?.[key]) !== JSON.stringify(right?.[key])) return false;
   }
-  try {
-    return cellsOverlap(regulatorCell(left.regulator), regulatorCell(right.regulator));
-  } catch {
-    return false;
+  return true;
+}
+
+function commonRegulatorCell(answers) {
+  const cells = answers.map((answer) => regulatorCell(answer.regulator));
+  let lower = cells[0].lower;
+  let upper = cells[0].upper;
+  for (const cell of cells.slice(1)) {
+    if (compareRationals(cell.lower, lower) > 0) lower = cell.lower;
+    if (compareRationals(cell.upper, upper) < 0) upper = cell.upper;
   }
+  return compareRationals(lower, upper) <= 0 ? { lower, upper } : null;
 }
 
 function correctnessMismatches(answer, expected, regulatorContract = REGULATOR_CONTRACT) {
@@ -2154,23 +2161,47 @@ function aggregateJob(
     return { achieved, answer, mismatches };
   });
   const achieved = analyzed[0].achieved;
-  const answer = analyzed[0].answer;
+  let answer = analyzed[0].answer;
   const mismatches = analyzed.flatMap((item, index) =>
     item.mismatches.map((mismatch) => `sample-${index}:${mismatch}`)
   );
-  const answerFingerprint = fingerprint(answer);
   for (const [index, item] of analyzed.entries()) {
     if (item.achieved !== achieved) mismatches.push(`sample-${index}:proof-disagreement`);
-    if (!answersEquivalent(item.answer, answer)) {
+    if (!discreteAnswersEqual(item.answer, answer)) {
       mismatches.push(`sample-${index}:answer-disagreement`);
     }
   }
+  let regulatorConsensus = null;
+  try {
+    regulatorConsensus = commonRegulatorCell(analyzed.map((item) => item.answer));
+  } catch {
+    // The individual correctness checks above report malformed observations.
+  }
+  if (!regulatorConsensus) mismatches.push("regulator-observations-have-empty-intersection");
   if (mismatches.length > 0) {
     return {
       ...terminalResult(job, `correctness mismatch: ${mismatches.join(",")}`),
       status: "error",
     };
   }
+  if (analyzed.every((item) =>
+    item.answer.regulator.kind === "interval" && item.answer.regulator.rigorous === true
+  )) {
+    answer = {
+      ...answer,
+      regulator: {
+        kind: "interval",
+        lower: rationalText(regulatorConsensus.lower),
+        upper: rationalText(regulatorConsensus.upper),
+        precision_bits: Math.min(...analyzed.map(
+          (item) => item.answer.regulator.precision_bits,
+        )),
+        rigorous: true,
+      },
+    };
+  }
+  const answerFingerprint = fingerprint(answer);
+  const sampleAnswersFingerprint = fingerprint(analyzed.map((item) => item.answer));
   const elapsed = successful.map((sample) => sample.elapsed_seconds);
   return {
     system: job.system,
@@ -2225,6 +2256,7 @@ function aggregateJob(
       matched: true,
       digests: {
         answer_sha256: fingerprint(answer),
+        sample_answers_sha256: sampleAnswersFingerprint,
         expected_projection_sha256: fingerprint({
           class_number: expected.class_number,
           class_group_invariant_factors: expected.class_group,

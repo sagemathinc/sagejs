@@ -617,17 +617,53 @@ test("job aggregation rejects duplicate identities and every bad retained sample
     precision_bits: 100,
     rigorous: true,
   };
+  const overlapping = runner.aggregateJob(job, rigorous, expected, 7, 1024);
   assert.equal(
-    runner.aggregateJob(job, rigorous, expected, 7, 1024).status,
+    overlapping.status,
     "ok",
     "independent rigorous enclosures may differ while overlapping",
   );
+  assert.equal(
+    overlapping.answer.regulator.lower,
+    "1405997871614809/5000000000000000",
+  );
+  assert.equal(
+    overlapping.answer.regulator.upper,
+    "5623991486459237/20000000000000000",
+  );
+  assert.match(overlapping.correctness.digests.sample_answers_sha256, /^[0-9a-f]{64}$/);
   const disjoint = clone(rigorous);
   disjoint[1].answer.regulator.lower = "2811995743231/10000000000000";
   disjoint[1].answer.regulator.upper = "17574973395197/62500000000000";
   assert.match(
     runner.aggregateJob(job, disjoint, expected, 7, 1024).reason,
-    /sample-1:answer-disagreement/,
+    /regulator-observations-have-empty-intersection/,
+  );
+
+  const bridged = clone(rigorous);
+  const interval = (lower, upper) => ({
+    kind: "interval",
+    lower,
+    upper,
+    precision_bits: 100,
+    rigorous: true,
+  });
+  bridged[0].answer.regulator = interval(
+    "2811995743225/10000000000000",
+    "562399148647/2000000000000",
+  );
+  bridged[1].answer.regulator = interval(
+    "1405997871613/5000000000000",
+    "2811995743227/10000000000000",
+  );
+  bridged[2].answer.regulator = interval(
+    "2811995743233/10000000000000",
+    "1405997871617/5000000000000",
+  );
+  assert.match(
+    runner.aggregateJob(job, bridged, expected, 7, 1024).reason,
+    /regulator-observations-have-empty-intersection/,
+    "pairwise bridges must not conceal an empty global intersection",
   );
 });
 
