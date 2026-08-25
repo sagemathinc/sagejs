@@ -215,6 +215,34 @@ assert not retry_source.context._live_artifacts.terminal_upgrade_issued
 retried = T.class_unit_group(proof=True)
 assert retried.diagnostics.get("terminal_upgrade") is not None
 
+# A retained prime ideal is an identity-bound shell around mutable exact HNF
+# data.  Its complete canonical serialization is sealed before publication, so
+# hostile lattice mutation rejects the terminal fork before the proof suffix.
+F = NumberField(x**3 - x**2 - 6*x - 12, "f")
+factor_source = F.class_unit_group(proof=False)
+assert factor_source.proof_status == "exact-relations-conditional-grh"
+factor_live = factor_source.context._live_artifacts
+factor = factor_source.conditional_factor_base[0]
+original_basis = factor._basis_rows
+factor._basis_rows = F.maximal_order().ideal(1)._basis_rows
+proof_suffix_calls = 0
+def forbidden_factor_suffix(self, group):
+    global proof_suffix_calls
+    proof_suffix_calls += 1
+    raise AssertionError("tampered factor base reached the proof suffix")
+engine_module.ClassUnitGroupEngine._unconditional_proof_pass = forbidden_factor_suffix
+try:
+    rejected = engine_module._upgrade_cached_conditional_result(
+        F, factor_source, algorithm="auto", limits=limits, seed=0
+    )
+    assert rejected is None
+finally:
+    engine_module.ClassUnitGroupEngine._unconditional_proof_pass = original_proof_pass
+    factor._basis_rows = original_basis
+assert proof_suffix_calls == 0
+assert not factor_live.terminal_upgrade_reserved
+assert not factor_live.terminal_upgrade_issued
+
 print("terminal-reuse", conditional_seconds, upgrade_seconds)
 `);
   assert.match(output, /^terminal-reuse /);
