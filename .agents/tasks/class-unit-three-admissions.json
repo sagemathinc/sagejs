@@ -4,7 +4,7 @@
   "id": "class-unit-three-admissions",
   "title": "Amortize reduced ideal relation search",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Select and validate a generic fixed three-admissions-per-reduced-ideal policy for evidence-supported number-field degree/signature bands while preserving exact class/unit semantics, deterministic checkpoints, and measured non-regression gates.",
   "base_commit": "2b4902e4c8dffc7b5ca2fd64fef8c6f3288542ee",
@@ -73,11 +73,11 @@
     "risks": [
       "Automatic p3 selection deliberately excludes every unmeasured signature; future expansion requires its own matched evidence.",
       "The first focused receipt is invalid because an interrupted, origin/main-scoped test:changed build left ignored runtime artifacts inconsistent; a clean rebuild followed by a passing focused receipt at the identical commit and workspace fingerprint.",
-      "The cumulative pnpm test:native gate is integration-pending by parent coordination so terminal reuse and p3 are validated together once."
+      "The cumulative integration pnpm test:native run passed every correctness, FFI, lifecycle, resource, and native-kernel stage. Its final unrelated dense-GF(p) construct_500 microbenchmark measured 8.01--9.23 ms against an 8.00 ms budget on isolated reruns; the integer, rational, and polynomial performance gates passed."
     ],
     "next_steps": [
-      "Integrate exact source commit 7d58f169 and run one cumulative pnpm test:native receipt.",
-      "Retain only if the integrated C4 and quartic gates reproduce the recorded matched measurements."
+      "Preserve the integrated C4 and quartic performance receipts while expanding the corpus.",
+      "Track the unrelated dense-GF(p) construction-budget flake separately; do not weaken its threshold as part of class/unit work."
     ]
   }
 }

@@ -267,6 +267,7 @@ assert conditional.complete
 assert conditional.proof_status == "exact-relations-conditional-grh"
 assert conditional.class_number() == 4
 assert conditional.class_group().invariants() == (4,)
+conditional_relation_count = len(conditional.conditional_relation_records)
 conditional_torsion = conditional.unit_group().torsion
 assert conditional_torsion.verify(force_replay=True)
 limits = engine_module.ClassUnitEngineLimits()
@@ -334,7 +335,7 @@ assert unconditional.class_group().invariants() == (4,)
 assert unconditional.diagnostics["terminal_upgrade"] == {
     "schema": "sagejs.number-fields/class-unit-terminal-upgrade-v1",
     "reused_factor_base_size": 6,
-    "reused_relation_count": 21,
+    "reused_relation_count": conditional_relation_count,
     "reused_presentation": True,
     "reused_units": 2,
     "reused_saturation": True,

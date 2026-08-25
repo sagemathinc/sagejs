@@ -71,6 +71,7 @@ const unit = [
 
 const integration = [
   "test/class-group-relations-steering.cjs",
+  "test/class-unit-groups-three-admissions.cjs",
   "test/class-unit-groups-steering.cjs",
   "test/number-field-class-group-factor-base.cjs",
   "test/number-field-class-group-maps-proof.cjs",

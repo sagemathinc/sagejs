@@ -4,7 +4,7 @@
   "id": "roots-terminal-certificate-clone",
   "title": "Roots Terminal Certificate Clone",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Preserve and replay authenticated roots-of-unity certificates across class/unit conditional-to-unconditional terminal upgrades",
   "base_commit": "2b4902e4c8dffc7b5ca2fd64fef8c6f3288542ee",
@@ -72,11 +72,11 @@
     "summary": "Restores authenticated conditional-to-unconditional terminal reuse after the exact roots-of-unity producer landed. The terminal semantic seal now binds the complete roots certificate payload and identity, terminal cloning reconstructs it with strict field-relative detached replay, and the full fork/clone/proof/publication path releases its one-shot lease on every unsuccessful exit. The C4 quintic regression covers hostile torsion mutation, certificate mutation and replacement, induced decoder failure with retry, independent cloned authority, exact public verification, and detached proof replay.",
     "risks": [
       "The pre-existing full terminal-reuse test currently spends more than 210 seconds in its first x^6-x-1 conditional discovery on this integration base and exceeds its unchanged 120-second subprocess cap before reaching terminal-clone logic; the new bounded C4 test is run by name pattern.",
-      "The arithmetic-algebra lane requires pnpm test:native. Integration explicitly requested one cumulative native run only after this change and p3 are combined, so that receipt is integration-pending rather than duplicated here.",
+      "The cumulative integration pnpm test:native run passed every correctness, FFI, lifecycle, resource, and native-kernel stage. Its final unrelated dense-GF(p) construct_500 microbenchmark measured 8.01--9.23 ms against an 8.00 ms budget on isolated reruns; the integer, rational, and polynomial performance gates passed.",
       "Terminal reuse is an authority and correctness repair, not the next major speedup: three isolated C4 pairs saved a median 0.791 seconds, 24.526 seconds reused versus 25.225 seconds cold."
     ],
     "next_steps": [
-      "Cherry-pick this lane together with p3 and run the exact cumulative pnpm test:native gate once.",
+      "Keep the combined terminal-reuse and p3 revision together in subsequent corpus measurements.",
       "Keep detached verification independent and uncached; optimize the measured Minkowski proof suffix separately."
     ]
   }
