@@ -42,11 +42,23 @@ const SYSTEMS = Object.freeze([
   "hecke",
   "oscar",
 ]);
-const IMPLEMENTED_SYSTEMS = new Set(["sagejs", "sage-pari", "direct-gp"]);
+const IMPLEMENTED_SYSTEMS = new Set([
+  "sagejs",
+  "sage-pari",
+  "direct-gp",
+  "magma",
+  "hecke",
+]);
 const ROLES = new Set(["smoke", "tune", "holdout"]);
 const PAYLOAD_PREFIX = "SAGEJS_CLASS_UNIT_CORPUS|";
 const GP_PAYLOAD_PREFIX = "SAGEJS_CLASS_UNIT_GP|";
 const GP_ERROR_PREFIX = "SAGEJS_CLASS_UNIT_GP_ERROR|";
+const MAGMA_PAYLOAD_PREFIX = "SAGEJS_CLASS_UNIT_MAGMA|";
+const MAGMA_ERROR_PREFIX = "SAGEJS_CLASS_UNIT_MAGMA_ERROR|";
+const MAGMA_DONE_PREFIX = "SAGEJS_CLASS_UNIT_MAGMA_DONE|";
+const HECKE_PAYLOAD_PREFIX = "SAGEJS_CLASS_UNIT_HECKE|";
+const HECKE_ERROR_PREFIX = "SAGEJS_CLASS_UNIT_HECKE_ERROR|";
+const HECKE_DONE_PREFIX = "SAGEJS_CLASS_UNIT_HECKE_DONE|";
 const REGULATOR_CONTRACT = Object.freeze({
   minimum_decimal_digits: 10,
   require_rigorous: false,
@@ -93,9 +105,9 @@ Tool overrides:
   --julia-depot PATH     pinned Julia depot
   --help                 show this text
 
-Magma, Hecke, and Oscar are inventoried precisely but their corpus execution
-adapters are not yet implemented here. Selecting one records an explicit
-unsupported terminal state and makes the run fail closed.`;
+Magma and pinned Hecke 0.40 have exact corpus adapters. Oscar remains
+inventory-only: selecting it records an explicit unsupported terminal state
+and makes the run fail closed.`;
 }
 
 function parseList(value, label) {
@@ -520,6 +532,217 @@ function nullLibraries(overrides = {}) {
   return { arb: null, compiler: null, flint: null, gmp: null, pari: null, ...overrides };
 }
 
+function magmaRuntimeIdentity(executable) {
+  const artifacts = [fileArtifact("launcher", executable)];
+  const siblingRuntime = `${executable}.exe`;
+  const runtime = fs.statSync(siblingRuntime, { throwIfNoEntry: false })?.isFile()
+    ? fs.realpathSync(siblingRuntime)
+    : executable;
+  if (runtime === executable) {
+    throw new Error(
+      "Magma comparator requires its authenticated launcher next to magma.exe",
+    );
+  }
+  artifacts.push(fileArtifact("runtime-executable", runtime));
+  const installationRoot = path.dirname(path.dirname(executable));
+  const packageDirectory = path.join(installationRoot, "package");
+  if (!fs.statSync(packageDirectory, { throwIfNoEntry: false })?.isDirectory()) {
+    throw new Error("Magma launcher identity did not resolve its required package tree");
+  }
+  artifacts.push(treeArtifact("magma-package-tree", packageDirectory));
+  // The supported Magma 2.18 distribution is a shell launcher around a
+  // statically linked runtime. If a deployment supplies a dynamic runtime,
+  // bind its entire resolved shared-library set as well.
+  const header = fs.readFileSync(runtime).subarray(0, 4);
+  let dynamic = { artifacts: [], libraries: [] };
+  if (header.equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46]))) {
+    const ldd = probe(resolveExecutable("ldd"), [runtime]);
+    if (ldd.ok) dynamic = dynamicLibraryInventory([runtime]);
+  }
+  return {
+    artifacts: [...artifacts, ...dynamic.artifacts],
+    libraries: nullLibraries({
+      gmp: exactLibraryIdentity(dynamic, /^libgmp(?:[-.]|$)/i),
+    }),
+  };
+}
+
+function heckeRuntimeIdentity(executable, project, juliaDepot) {
+  if (!fs.statSync(juliaDepot, { throwIfNoEntry: false })?.isDirectory()) {
+    throw new Error(`pinned Hecke identity requires Julia depot ${juliaDepot}`);
+  }
+  const marker = "SAGEJS_HECKE_RUNTIME|";
+  const source = `using Hecke
+import Nemo, AbstractAlgebra, FLINT_jll, GMP_jll, MPFR_jll, Libdl
+items = [
+    "julia-version" => string(VERSION),
+    "hecke-version" => string(pkgversion(Hecke)),
+    "nemo-version" => string(pkgversion(Nemo)),
+    "abstractalgebra-version" => string(pkgversion(AbstractAlgebra)),
+    "flint-jll-version" => string(pkgversion(FLINT_jll)),
+    "gmp-jll-version" => string(pkgversion(GMP_jll)),
+    "mpfr-jll-version" => string(pkgversion(MPFR_jll)),
+    "hecke-entrypoint" => pathof(Hecke),
+    "nemo-entrypoint" => pathof(Nemo),
+    "abstractalgebra-entrypoint" => pathof(AbstractAlgebra),
+    "flint-library" => FLINT_jll.libflint_path,
+    "gmp-library" => GMP_jll.libgmp_path,
+    "mpfr-library" => MPFR_jll.libmpfr_path,
+    "system-image" => unsafe_string(Base.JLOptions().image_file),
+]
+for (key, value) in items
+    println(${JSON.stringify(marker)}, key, "|", value)
+end
+library_paths = sort!(unique!(filter(
+    path -> isabspath(path) && isfile(path) && occursin(".so", basename(path)),
+    Libdl.dllist(),
+)))
+for library_path in library_paths
+    if occursin("/compiled/v", library_path) && endswith(library_path, ".so")
+        cache_path = library_path
+        println(${JSON.stringify(marker)}, "compiled-cache|", cache_path)
+    end
+    println(${JSON.stringify(marker)}, "loaded-library|", library_path)
+end
+`;
+  const result = probe(
+    executable,
+    [
+      "--startup-file=no",
+      "--history-file=no",
+      "--threads=1",
+      "--compiled-modules=yes",
+      "--pkgimages=yes",
+      `--project=${project.path}`,
+      "-",
+    ],
+    {
+      input: source,
+      env: {
+        JULIA_DEPOT_PATH: juliaDepot,
+        JULIA_LOAD_PATH: "@:@stdlib",
+        JULIA_PKG_OFFLINE: "true",
+      },
+      timeout: 120_000,
+    },
+  );
+  if (!result.ok) {
+    throw new Error(result.error || result.stderr || "Hecke runtime identity probe failed");
+  }
+  const fields = {};
+  const compiledCaches = [];
+  const loadedLibraries = [];
+  for (const line of result.stdout.split(/\r?\n/)) {
+    if (!line.startsWith(marker)) continue;
+    const separator = line.indexOf("|", marker.length);
+    if (separator < 0) throw new Error("Hecke runtime identity emitted a malformed marker");
+    const key = line.slice(marker.length, separator);
+    const value = line.slice(separator + 1);
+    if (key === "compiled-cache") compiledCaches.push(value);
+    else if (key === "loaded-library") loadedLibraries.push(value);
+    else fields[key] = value;
+  }
+  const required = [
+    "julia-version",
+    "hecke-version",
+    "nemo-version",
+    "abstractalgebra-version",
+    "flint-jll-version",
+    "gmp-jll-version",
+    "mpfr-jll-version",
+    "hecke-entrypoint",
+    "nemo-entrypoint",
+    "abstractalgebra-entrypoint",
+    "flint-library",
+    "gmp-library",
+    "mpfr-library",
+    "system-image",
+  ];
+  if (required.some((key) => !fields[key])) {
+    throw new Error("Hecke runtime identity probe omitted a required component");
+  }
+  if (!/^0\.40\./.test(fields["hecke-version"])) {
+    throw new Error(`Hecke comparator requires pinned Hecke 0.40, got ${fields["hecke-version"]}`);
+  }
+  if (process.platform === "linux" && compiledCaches.length === 0) {
+    throw new Error("Hecke runtime identity did not resolve a loaded compiled package image");
+  }
+  if (process.platform === "linux" && loadedLibraries.length === 0) {
+    throw new Error("Hecke runtime identity did not resolve its loaded shared libraries");
+  }
+  const fileRoles = ["flint-library", "gmp-library", "mpfr-library", "system-image"];
+  for (const role of fileRoles) {
+    if (!fs.statSync(fields[role], { throwIfNoEntry: false })?.isFile()) {
+      throw new Error(`Hecke runtime identity ${role} is not an existing file`);
+    }
+  }
+  const sourceRoles = ["hecke-entrypoint", "nemo-entrypoint", "abstractalgebra-entrypoint"];
+  for (const role of sourceRoles) {
+    if (!fs.statSync(fields[role], { throwIfNoEntry: false })?.isFile()) {
+      throw new Error(`Hecke runtime identity ${role} is not an existing file`);
+    }
+  }
+  const dynamic = dynamicLibraryInventory([executable]);
+  const sourceIdentity = collectGitSourceIdentity({ root: project.path });
+  if (sourceIdentity.clean !== true) {
+    throw new Error("pinned Hecke comparator source tree is dirty");
+  }
+  const compiledArtifacts = [];
+  for (const [cacheIndex, cache] of [...new Set(compiledCaches)].sort().entries()) {
+    if (!fs.statSync(cache, { throwIfNoEntry: false })?.isFile()) {
+      throw new Error(`Hecke loaded cache image does not exist: ${cache}`);
+    }
+    const suffix = String(cacheIndex).padStart(3, "0");
+    compiledArtifacts.push(fileArtifact(`loaded-package-image-${suffix}`, cache));
+    const ji = cache.replace(/\.so$/, ".ji");
+    if (fs.statSync(ji, { throwIfNoEntry: false })?.isFile()) {
+      compiledArtifacts.push(fileArtifact(`loaded-package-cache-${suffix}`, ji));
+    }
+  }
+  const loadedLibraryArtifacts = [...new Set(loadedLibraries)].sort().map(
+    (library, libraryIndex) => {
+      if (!fs.statSync(library, { throwIfNoEntry: false })?.isFile()) {
+        throw new Error(`Hecke loaded library does not exist: ${library}`);
+      }
+      return fileArtifact(
+        `loaded-shared-library-${String(libraryIndex).padStart(3, "0")}`,
+        library,
+      );
+    },
+  );
+  const flintIdentity =
+    `FLINT_jll-${fields["flint-jll-version"]}@sha256:${sha256File(fields["flint-library"])}`;
+  const gmpIdentity =
+    `GMP_jll-${fields["gmp-jll-version"]}@sha256:${sha256File(fields["gmp-library"])}`;
+  return {
+    version:
+      `Julia ${fields["julia-version"]}; Hecke ${fields["hecke-version"]}; ` +
+      `Nemo ${fields["nemo-version"]}; AbstractAlgebra ${fields["abstractalgebra-version"]}`,
+    artifacts: [
+      fileArtifact("julia-executable", executable),
+      fileArtifact("julia-system-image", fields["system-image"]),
+      fileArtifact("project-toml", project.project_toml),
+      ...(project.manifest_toml ? [fileArtifact("manifest-toml", project.manifest_toml)] : []),
+      ...sourceRoles.map((role) =>
+        treeArtifact(role.replace("entrypoint", "source-tree"), path.dirname(fields[role]))
+      ),
+      ...compiledArtifacts,
+      ...loadedLibraryArtifacts,
+      fileArtifact("flint-library", fields["flint-library"]),
+      fileArtifact("gmp-library", fields["gmp-library"]),
+      fileArtifact("mpfr-library", fields["mpfr-library"]),
+      ...dynamic.artifacts,
+    ],
+    libraries: nullLibraries({
+      arb: `integrated-with-${flintIdentity}`,
+      compiler: `Julia ${fields["julia-version"]}`,
+      flint: flintIdentity,
+      gmp: gmpIdentity,
+    }),
+    source_identity: sourceIdentity,
+  };
+}
+
 function executableTool(name, requested, versionProbe) {
   const executable = resolveExecutable(requested);
   if (!executable) {
@@ -679,8 +902,15 @@ function detectTools(options) {
   });
   magma.argv_prefix = magma.executable ? [magma.executable, "-b"] : null;
   if (magma.status === "available") {
-    magma.artifacts = [fileArtifact("executable", magma.executable)];
-    magma.libraries = nullLibraries();
+    try {
+      const runtime = magmaRuntimeIdentity(magma.executable);
+      magma.artifacts = runtime.artifacts;
+      magma.libraries = runtime.libraries;
+      magma.execution_mode = "authenticated-magma-runtime";
+    } catch (error) {
+      magma.status = "unavailable";
+      magma.reason = error.message;
+    }
   }
 
   const julia = executableTool("julia", options.julia, (executable) => {
@@ -697,14 +927,23 @@ function detectTools(options) {
   const juliaDepot = path.resolve(options.juliaDepot);
   const juliaDepotAvailable = fs.statSync(juliaDepot, { throwIfNoEntry: false })?.isDirectory() || false;
   function juliaFamily(name, project) {
-    const available = julia.status === "available" && project.status === "available";
+    const available = julia.status === "available" && project.status === "available" &&
+      (name !== "hecke" || juliaDepotAvailable);
     const answer = {
       name,
       status: available ? "available" : "unavailable",
       requested_executable: options.julia,
       executable: julia.executable,
       argv_prefix: available
-        ? [julia.executable, "--startup-file=no", `--project=${project.path}`]
+        ? [
+            julia.executable,
+            "--startup-file=no",
+            "--history-file=no",
+            "--threads=1",
+            "--compiled-modules=yes",
+            "--pkgimages=yes",
+            `--project=${project.path}`,
+          ]
         : null,
       version: available
         ? `${julia.version}; ${project.package} ${project.package_version || "unknown"}`
@@ -712,11 +951,29 @@ function detectTools(options) {
       project,
       julia_depot: juliaDepot,
       julia_depot_available: juliaDepotAvailable,
-      reason: available ? null : julia.reason || project.reason,
+      reason: available
+        ? null
+        : julia.reason || project.reason ||
+          (name === "hecke" ? `Julia depot is unavailable: ${juliaDepot}` : null),
     };
     if (available) {
-      answer.artifacts = [fileArtifact("executable", julia.executable)];
-      answer.libraries = nullLibraries();
+      if (name === "hecke") {
+        try {
+          const runtime = heckeRuntimeIdentity(julia.executable, project, juliaDepot);
+          answer.version =
+            `${runtime.version}; git ${runtime.source_identity.commit}; ` +
+            `tree ${runtime.source_identity.tree}`;
+          answer.artifacts = runtime.artifacts;
+          answer.libraries = runtime.libraries;
+          answer.execution_mode = "authenticated-pinned-hecke";
+        } catch (error) {
+          answer.status = "unavailable";
+          answer.reason = error.message;
+        }
+      } else {
+        answer.artifacts = [fileArtifact("executable", julia.executable)];
+        answer.libraries = nullLibraries();
+      }
     }
     return answer;
   }
@@ -810,7 +1067,8 @@ function invocationFor(system, boundary, tools) {
   if (system === "sagejs") return [tool.executable, "--python", "<generated-adapter.py>"];
   if (system === "sage-pari") return [tool.executable, "-python", "<generated-adapter.py>"];
   if (system === "direct-gp") return [tool.executable, "-fq", "<generated-adapter.gp>"];
-  if (system === "magma") return [tool.executable, "-b", "<not-implemented>"];
+  if (system === "magma") return [tool.executable, "-b", "<generated-adapter.m>"];
+  if (system === "hecke") return [...tool.argv_prefix, "-", "<generated-adapter.jl>"];
   return [...tool.argv_prefix, "<not-implemented>"];
 }
 
@@ -1076,6 +1334,291 @@ iferr(${functionName}(), E, print("${GP_ERROR_PREFIX}${prefix}|", E));`);
   return `${statements.join("\n")}\n`;
 }
 
+function integralVector(values, system) {
+  return `[${values.map((value) => {
+    if (!/^-?\d+$/.test(value)) throw new Error(`nonintegral ${system} coefficient ${value}`);
+    return value;
+  }).join(",")}]`;
+}
+
+function magmaAdapterSource(records, proof, boundary, samples) {
+  const statements = [
+    "SetSeed(1);",
+    "SetColumns(1024);",
+    "Qx<x> := PolynomialRing(Rationals());",
+    `proof_name := ${JSON.stringify(proof ? "Full" : "GRH")};`,
+    `persistent := ${["kernel-warm", "field-cold"].includes(boundary) ? "true" : "false"};`,
+    `include_field := ${boundary === "kernel-warm" ? "false" : "true"};`,
+    `certified := ${proof ? 1 : 0};`,
+    `function FreshOrder(coefficients)
+  f := &+[ Rationals()!coefficients[i + 1] * x^i : i in [0..#coefficients - 1] ];
+  K := NumberField(f);
+  O := MaximalOrder(K);
+  return K, O;
+end function;`,
+    `function IntegerSequenceText(values)
+  if #values eq 0 then
+    return "[]";
+  end if;
+  return "[" cat Join([ IntegerToString(Integers()!value) : value in values ], ",") cat "]";
+end function;`,
+    `function RealText(value)
+  return Sprintf("%.17o", RealField(30)!value);
+end function;`,
+  ];
+  let jobIndex = 0;
+  for (const record of records) {
+    if (!/^[0-9.]+$/.test(record.label)) throw new Error(`unsafe Magma label ${record.label}`);
+    const coefficients = integralVector(record.coefficients, "Magma");
+    for (let sample = 0; sample < samples; sample += 1) {
+      const prefix = `${record.label}|${sample}`;
+      const procedureName = `SagejsClassUnitJob${jobIndex++}`;
+      statements.push(`procedure ${procedureName}()
+  try
+    coefficients := ${coefficients};
+    if persistent then
+      warm_K, warm_O := FreshOrder(coefficients);
+      warm_C, warm_mC := ClassGroup(warm_O : Proof := proof_name);
+      warm_U, warm_mU := UnitGroup(warm_O);
+      warm_regulator := Regulator(warm_O);
+    end if;
+    field_seconds := 0.0;
+    computation_seconds := 0.0;
+    answer_no := 0;
+    answer_cyc := [];
+    answer_unit_rank := 0;
+    answer_torsion := 0;
+    answer_regulator := "";
+    iterations := 0;
+    target_batch_seconds := persistent select 1.2 else 0.0;
+    chunk_size := persistent select 8 else 1;
+    repeat
+      if iterations ge 100000 then
+        error "Magma microbatch exceeded its iteration safety limit";
+      end if;
+      chunk_fields := [* *];
+      chunk_orders := [* *];
+      field_started := Realtime();
+      for chunk_index in [1..chunk_size] do
+        current_K, current_O := FreshOrder(coefficients);
+        Append(~chunk_fields, current_K);
+        Append(~chunk_orders, current_O);
+      end for;
+      chunk_field_seconds := Realtime() - field_started;
+      if include_field then
+        field_seconds +:= chunk_field_seconds;
+      end if;
+      computation_started := Realtime();
+      for chunk_index in [1..chunk_size] do
+        current_K := chunk_fields[chunk_index];
+        current_O := chunk_orders[chunk_index];
+        current_C, current_mC := ClassGroup(current_O : Proof := proof_name);
+        current_U, current_mU := UnitGroup(current_O);
+        current_T := TorsionSubgroup(current_U);
+        answer_no := #current_C;
+        answer_cyc := Invariants(current_C);
+        answer_unit_rank := UnitRank(current_O);
+        answer_torsion := #current_T;
+        answer_regulator := Sprintf("%.30o", RealField(40)!Regulator(current_O));
+      end for;
+      chunk_computation_seconds := Realtime() - computation_started;
+      computation_seconds +:= chunk_computation_seconds;
+      iterations +:= chunk_size;
+      batch_seconds := field_seconds + computation_seconds;
+      if persistent and chunk_field_seconds + chunk_computation_seconds lt 0.2 and
+          chunk_size lt 256 then
+        chunk_size := Minimum(2 * chunk_size, 256);
+      end if;
+    until not persistent or batch_seconds ge target_batch_seconds;
+    if persistent and batch_seconds lt 1.0 then
+      error "Magma microbatch did not reach one second";
+    end if;
+    elapsed := batch_seconds / iterations;
+    if persistent and elapsed le 0 then
+      error "Magma wall timer resolution was insufficient";
+    end if;
+    line := ${JSON.stringify(MAGMA_PAYLOAD_PREFIX + prefix + "|")} cat
+      RealText(elapsed) cat "|" cat RealText(batch_seconds) cat "|" cat
+      IntegerToString(iterations) cat "|" cat RealText(field_seconds / iterations) cat "|" cat
+      RealText(computation_seconds / iterations) cat "||" cat
+      IntegerToString(Integers()!answer_no) cat "|" cat IntegerSequenceText(answer_cyc) cat "|" cat
+      IntegerToString(answer_unit_rank) cat "|" cat IntegerToString(Integers()!answer_torsion) cat "|" cat
+      answer_regulator cat "|" cat IntegerToString(certified);
+    print line;
+  catch error_value
+    reason := SubstituteString(SubstituteString(Sprint(error_value), "|", "/"), "\n", " ");
+    print ${JSON.stringify(MAGMA_ERROR_PREFIX + prefix + "|")} cat reason;
+  end try;
+end procedure;
+${procedureName}();`);
+    }
+  }
+  statements.push(`print ${JSON.stringify(MAGMA_DONE_PREFIX + records.length * samples)};`);
+  statements.push("quit;");
+  return `${statements.join("\n")}\n`;
+}
+
+function heckeAdapterSource(records, proof, boundary, samples, sampleBase = 0) {
+  const recordsLiteral = records.map((record) => {
+    if (!/^[0-9.]+$/.test(record.label)) throw new Error(`unsafe Hecke label ${record.label}`);
+    const coefficients = integralVector(record.coefficients, "Hecke");
+    return `(${JSON.stringify(record.label)}, BigInt${coefficients})`;
+  }).join(",\n    ");
+  return `using Hecke
+using Printf
+using Random
+import Nemo
+
+const SAGEJS_RECORDS = [
+    ${recordsLiteral}
+]
+const SAGEJS_PROOF_GRH = ${proof ? "false" : "true"}
+const SAGEJS_PERSISTENT = ${["kernel-warm", "field-cold"].includes(boundary) ? "true" : "false"}
+const SAGEJS_INCLUDE_FIELD = ${boundary === "kernel-warm" ? "false" : "true"}
+const SAGEJS_CERTIFIED = ${proof ? 1 : 0}
+const SAGEJS_SAMPLES = ${samples}
+const SAGEJS_TARGET_BATCH_SECONDS = SAGEJS_PERSISTENT ? 1.2 : 0.0
+const SAGEJS_QQX, SAGEJS_X = polynomial_ring(QQ, "x"; cached=false)
+
+function sagejs_fresh_order(coefficients, name)
+    polynomial = SAGEJS_QQX(0)
+    for (exponent, coefficient) in enumerate(coefficients)
+        polynomial += ZZ(coefficient) * SAGEJS_X^(exponent - 1)
+    end
+    field, generator = number_field(polynomial, name; cached=false)
+    return field, maximal_order(field)
+end
+
+function sagejs_rational_text(value::Rational{BigInt})
+    return string(numerator(value)) * "/" * string(denominator(value))
+end
+
+function sagejs_materialize(order, class_group_value, unit_group_value, regulator_value)
+    class_invariants = elementary_divisors(class_group_value)
+    unit_invariants = elementary_divisors(unit_group_value)
+    rank = Hecke.unit_group_rank(order)
+    length(unit_invariants) == rank + 1 || error("unexpected Hecke unit invariant shape")
+    all(iszero, unit_invariants[2:end]) || error("unexpected nonfree Hecke unit invariant")
+    lower = setprecision(BigFloat, 256) do
+        BigFloat(regulator_value, RoundDown)
+    end
+    upper = setprecision(BigFloat, 256) do
+        BigFloat(regulator_value, RoundUp)
+    end
+    lower_rational = Rational{BigInt}(lower)
+    upper_rational = Rational{BigInt}(upper)
+    interval = "interval:" * sagejs_rational_text(lower_rational) * ":" *
+        sagejs_rational_text(upper_rational) * ":" * string(precision(parent(regulator_value)))
+    return (
+        string(Hecke.order(class_group_value)),
+        "[" * join(string.(class_invariants), ",") * "]",
+        rank,
+        string(Hecke.order(unit_group_value[1])),
+        interval,
+    )
+end
+
+function sagejs_compute(field, order)
+    computation_started = time_ns()
+    class_group_value, class_map = class_group(order; GRH=true)
+    unit_group_value, unit_map = unit_group_fac_elem(order; GRH=true)
+    regulator_value = regulator(order; GRH=true)
+    if SAGEJS_PROOF_GRH
+        answer = sagejs_materialize(
+            order, class_group_value, unit_group_value, regulator_value,
+        )
+        computation_seconds = (time_ns() - computation_started) / 1.0e9
+        return answer, computation_seconds, nothing
+    end
+    computation_seconds = (time_ns() - computation_started) / 1.0e9
+    verification_started = time_ns()
+    class_group_value, class_map = class_group(order; GRH=false)
+    unit_group_value, unit_map = unit_group_fac_elem(order; GRH=false)
+    regulator_value = regulator(order; GRH=false)
+    rank = Hecke.unit_group_rank(order)
+    reduced_order = lll(maximal_order(field))
+    class_context = get_attribute(reduced_order, :ClassGrpCtx)
+    unit_context = get_attribute(reduced_order, :UnitGrpCtx)
+    (class_context === nothing || class_context.GRH) &&
+        error("Hecke class proof-state audit failed")
+    (rank > 0 && (unit_context === nothing || unit_context.GRH)) &&
+        error("Hecke unit proof-state audit failed")
+    answer = sagejs_materialize(
+        order, class_group_value, unit_group_value, regulator_value,
+    )
+    verification_seconds = (time_ns() - verification_started) / 1.0e9
+    return answer, computation_seconds, verification_seconds
+end
+
+for (job_index, (label, coefficients)) in enumerate(SAGEJS_RECORDS)
+    for sample in 0:(SAGEJS_SAMPLES - 1)
+        try
+            Random.seed!(${proof ? 700000001 : 300000001} +
+                1000003 * job_index + 10007 * (sample + ${sampleBase}))
+            if SAGEJS_PERSISTENT
+                # Warm multiple independent fields through the exact requested
+                # proof and interval-publication path. The first few Hecke
+                # invocations can trigger method-specialization work even
+                # after package images have loaded.
+                for warm_index in 1:8
+                    warm_field, warm_order = sagejs_fresh_order(
+                        coefficients,
+                        "sagejs_warm_$(job_index)_$(sample)_$(warm_index)",
+                    )
+                    sagejs_compute(warm_field, warm_order)
+                end
+            end
+            field_seconds = 0.0
+            computation_seconds = 0.0
+            verification_seconds = 0.0
+            answer = nothing
+            iterations = 0
+            batch_seconds = 0.0
+            while iterations == 0 || (SAGEJS_PERSISTENT && batch_seconds < SAGEJS_TARGET_BATCH_SECONDS)
+                iterations >= 100000 && error("Hecke microbatch exceeded its iteration safety limit")
+                iterations += 1
+                field_started = time_ns()
+                field, order = sagejs_fresh_order(
+                    coefficients,
+                    "sagejs_$(job_index)_$(sample)_$(iterations)",
+                )
+                current_field_seconds = (time_ns() - field_started) / 1.0e9
+                if SAGEJS_INCLUDE_FIELD
+                    field_seconds += current_field_seconds
+                end
+                answer, current_computation_seconds, current_verification_seconds =
+                    sagejs_compute(field, order)
+                computation_seconds += current_computation_seconds
+                verification_seconds += something(current_verification_seconds, 0.0)
+                batch_seconds = field_seconds + computation_seconds + verification_seconds
+            end
+            SAGEJS_PERSISTENT && batch_seconds < 1.0 &&
+                error("Hecke microbatch did not reach one second")
+            elapsed = batch_seconds / iterations
+            elapsed > 0 || error("Hecke wall timer resolution was insufficient")
+            fields = [
+                label,
+                string(sample),
+                @sprintf("%.17g", elapsed),
+                @sprintf("%.17g", batch_seconds),
+                string(iterations),
+                @sprintf("%.17g", field_seconds / iterations),
+                @sprintf("%.17g", computation_seconds / iterations),
+                SAGEJS_PROOF_GRH ? "" : @sprintf("%.17g", verification_seconds / iterations),
+                answer[1], answer[2], string(answer[3]), answer[4], answer[5],
+                string(SAGEJS_CERTIFIED),
+            ]
+            println(${JSON.stringify(HECKE_PAYLOAD_PREFIX)}, join(fields, "|"))
+        catch error_value
+            reason = bytes2hex(codeunits(sprint(showerror, error_value)))
+            println(${JSON.stringify(HECKE_ERROR_PREFIX)}, label, "|", sample, "|hex:", reason)
+        end
+    end
+end
+println(${JSON.stringify(HECKE_DONE_PREFIX + records.length * samples)})
+`;
+}
+
 function spawn(executable, args, source, timeoutSeconds, env = {}) {
   if (!GNU_TIME || !GNU_TIMEOUT) {
     throw new Error(
@@ -1178,25 +1721,127 @@ function parsePythonPayload(run, system) {
   return decoratePayload(JSON.parse(line.slice(PAYLOAD_PREFIX.length)));
 }
 
-function parseGpPayload(run) {
+function adapterRegulator(value, system) {
+  const text = value.trim();
+  if (!text.startsWith("interval:")) {
+    const regulator = decimalRegulator(text);
+    if (compareRationals(decimalMetadata(text).value, [0n, 1n]) <= 0) {
+      throw new Error(`${system} emitted a nonpositive regulator`);
+    }
+    return regulator;
+  }
+  const parts = text.split(":");
+  if (parts.length !== 4 || !/^\d+$/.test(parts[3])) {
+    throw new Error(`${system} emitted an invalid regulator interval`);
+  }
+  const lower = rationalParts(parts[1]);
+  const upper = rationalParts(parts[2]);
+  if (compareRationals(lower, [0n, 1n]) <= 0 || compareRationals(lower, upper) > 0) {
+    throw new Error(`${system} emitted unordered or nonpositive regulator bounds`);
+  }
+  const precisionBits = Number(parts[3]);
+  if (!Number.isSafeInteger(precisionBits) || precisionBits < 1) {
+    throw new Error(`${system} emitted an invalid regulator precision`);
+  }
+  return {
+    kind: "interval",
+    lower: parts[1],
+    upper: parts[2],
+    precision_bits: precisionBits,
+    rigorous: true,
+  };
+}
+
+function parseNonnegativeNumberToken(value, system, label) {
+  const normalized = value.replace(/\s+/g, "");
+  if (!/^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(normalized)) {
+    throw new Error(`${system} emitted invalid ${label} ${value}`);
+  }
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`${system} emitted invalid ${label} ${value}`);
+  }
+  return parsed;
+}
+
+function parseNonnegativeIntegerToken(value, system, label, { positive = false } = {}) {
+  const normalized = value.trim();
+  if (!/^(?:0|[1-9]\d*)$/.test(normalized)) {
+    throw new Error(`${system} emitted invalid ${label} ${value}`);
+  }
+  const parsed = Number(normalized);
+  if (!Number.isSafeInteger(parsed) || (positive ? parsed < 1 : parsed < 0)) {
+    throw new Error(`${system} emitted invalid ${label} ${value}`);
+  }
+  return parsed;
+}
+
+function validatePositiveIntegerText(value, system, label) {
+  const normalized = value.trim();
+  if (!/^[1-9]\d*$/.test(normalized)) {
+    throw new Error(`${system} emitted invalid ${label} ${value}`);
+  }
+  return normalized;
+}
+
+function parseDelimitedPayload(run, {
+  system,
+  payloadPrefix,
+  errorPrefix,
+  donePrefix = null,
+}) {
   if (run.error || run.status !== 0) {
-    throw failedExecution(run, "direct-gp");
+    throw failedExecution(run, system);
   }
   const payload = [];
-  for (const line of (run.stdout || "").split(/\r?\n/)) {
-    if (line.startsWith(GP_ERROR_PREFIX)) {
-      const [label, sample, ...reason] = line.slice(GP_ERROR_PREFIX.length).split("|");
+  const lines = (run.stdout || "").split(/\r?\n/);
+  if (donePrefix) {
+    const sentinels = lines.filter((line) => line.startsWith(donePrefix));
+    if (sentinels.length !== 1 ||
+        !/^[1-9]\d*$/.test(sentinels[0].slice(donePrefix.length))) {
+      throw new Error(`${system} omitted its unique authenticated completion sentinel`);
+    }
+    const expectedCount = Number(sentinels[0].slice(donePrefix.length));
+    const observedCount = lines.filter((line) =>
+      line.startsWith(payloadPrefix) || line.startsWith(errorPrefix)
+    ).length;
+    if (observedCount !== expectedCount) {
+      throw new Error(
+        `${system} completion sentinel expected ${expectedCount} samples, got ${observedCount}`,
+      );
+    }
+  }
+  for (const line of lines) {
+    if (line.startsWith(errorPrefix)) {
+      const [label, sample, ...reason] = line.slice(errorPrefix.length).split("|");
+      if (!/^[0-9]+(?:\.[0-9]+)+$/.test(label || "")) {
+        throw new Error(`${system} emitted an invalid error label`);
+      }
+      const sampleIndex = parseNonnegativeIntegerToken(sample, system, "sample index");
+      const rawReason = reason.join("|");
+      let decodedReason = rawReason;
+      if (rawReason.startsWith("hex:")) {
+        const encoded = rawReason.slice(4);
+        if (!/^(?:[0-9a-f]{2})*$/i.test(encoded)) {
+          throw new Error(`${system} emitted an invalid hex-encoded error`);
+        }
+        decodedReason = Buffer.from(encoded, "hex").toString("utf8");
+      }
       payload.push({
         label,
-        sample: Number(sample),
+        sample: sampleIndex,
         status: "error",
         elapsed_seconds: null,
-        reason: reason.join("|"),
+        reason: decodedReason,
         answer: null,
       });
       continue;
     }
-    if (!line.startsWith(GP_PAYLOAD_PREFIX)) continue;
+    if (!line.startsWith(payloadPrefix)) continue;
+    const fields = line.slice(payloadPrefix.length).split("|");
+    if (fields.length !== 14) {
+      throw new Error(`${system} emitted a malformed ${fields.length}-field payload`);
+    }
     const [
       label,
       sample,
@@ -1212,39 +1857,105 @@ function parseGpPayload(run) {
       torsion,
       regulator,
       certified,
-    ] =
-      line.slice(GP_PAYLOAD_PREFIX.length).split("|");
-    const parsedInvariants = invariants === "[]"
+    ] = fields;
+    if (!/^[0-9]+(?:\.[0-9]+)+$/.test(label)) {
+      throw new Error(`${system} emitted an invalid label ${label}`);
+    }
+    const sampleIndex = parseNonnegativeIntegerToken(sample, system, "sample index");
+    const elapsedNumber = parseNonnegativeNumberToken(elapsed, system, "elapsed time");
+    const batchElapsedNumber = parseNonnegativeNumberToken(
+      batchElapsed,
+      system,
+      "batch elapsed time",
+    );
+    const iterationCount = parseNonnegativeIntegerToken(
+      iterations,
+      system,
+      "iteration count",
+      { positive: true },
+    );
+    const fieldNumber = parseNonnegativeNumberToken(
+      fieldSeconds,
+      system,
+      "field-construction time",
+    );
+    const computationNumber = parseNonnegativeNumberToken(
+      computationSeconds,
+      system,
+      "computation time",
+    );
+    if (!/^[01]$/.test(certified.trim())) {
+      throw new Error(`${system} emitted invalid proof certificate token ${certified}`);
+    }
+    const compactInvariants = invariants.replace(/\s+/g, "");
+    if (!/^\[(?:\d+(?:,\d+)*)?\]$/.test(compactInvariants)) {
+      throw new Error(`${system} emitted invalid class invariants ${invariants}`);
+    }
+    const parsedInvariants = compactInvariants === "[]"
       ? []
-      : invariants.slice(1, -1).split(",").map((value) => value.trim());
-    const gpNumber = (value) => Number(value.replace(/\s+/g, ""));
+      : compactInvariants.slice(1, -1).split(",");
+    for (const invariant of parsedInvariants) {
+      validatePositiveIntegerText(invariant, system, "class invariant");
+    }
+    const verification = verificationSeconds.trim() === ""
+      ? null
+      : parseNonnegativeNumberToken(verificationSeconds, system, "verification time");
+    const classNumberText = validatePositiveIntegerText(classNumber, system, "class number");
+    const unitRankNumber = parseNonnegativeIntegerToken(unitRank, system, "unit rank");
+    const torsionText = validatePositiveIntegerText(torsion, system, "torsion order");
     payload.push({
       label,
-      sample: Number(sample),
+      sample: sampleIndex,
       status: "ok",
-      elapsed_seconds: gpNumber(elapsed),
-      batch_elapsed_seconds: gpNumber(batchElapsed),
-      iteration_count: Number(iterations),
+      elapsed_seconds: elapsedNumber,
+      batch_elapsed_seconds: batchElapsedNumber,
+      iteration_count: iterationCount,
       phases_seconds: {
         initialization: null,
-        field_construction: gpNumber(fieldSeconds),
-        computation: gpNumber(computationSeconds),
-        verification: gpNumber(verificationSeconds),
+        field_construction: fieldNumber,
+        computation: computationNumber,
+        verification,
       },
       answer: {
-        class_number: classNumber,
+        class_number: classNumberText,
         class_group_invariant_factors: parsedInvariants,
-        unit_rank: Number(unitRank),
-        torsion_order: torsion,
-        regulator: decimalRegulator(regulator),
-        _achieved_proof_semantics: certified === "1"
+        unit_rank: unitRankNumber,
+        torsion_order: torsionText,
+        regulator: adapterRegulator(regulator, system),
+        _achieved_proof_semantics: certified.trim() === "1"
           ? "exact-unconditional"
           : "exact-relations-conditional-grh",
       },
     });
   }
-  if (payload.length === 0) throw new Error("direct-gp emitted no corpus payload");
+  if (payload.length === 0) throw new Error(`${system} emitted no corpus payload`);
   return payload;
+}
+
+function parseGpPayload(run) {
+  return parseDelimitedPayload(run, {
+    system: "direct-gp",
+    payloadPrefix: GP_PAYLOAD_PREFIX,
+    errorPrefix: GP_ERROR_PREFIX,
+  });
+}
+
+function parseMagmaPayload(run) {
+  return parseDelimitedPayload(run, {
+    system: "magma",
+    payloadPrefix: MAGMA_PAYLOAD_PREFIX,
+    errorPrefix: MAGMA_ERROR_PREFIX,
+    donePrefix: MAGMA_DONE_PREFIX,
+  });
+}
+
+function parseHeckePayload(run) {
+  return parseDelimitedPayload(run, {
+    system: "hecke",
+    payloadPrefix: HECKE_PAYLOAD_PREFIX,
+    errorPrefix: HECKE_ERROR_PREFIX,
+    donePrefix: HECKE_DONE_PREFIX,
+  });
 }
 
 function rationalParts(text) {
@@ -1496,27 +2207,55 @@ function aggregateJob(
   };
 }
 
+function adapterSource(system, records, proof, boundary, samples, sampleBase = 0) {
+  if (system === "direct-gp") return gpAdapterSource(records, proof, boundary, samples);
+  if (system === "magma") return magmaAdapterSource(records, proof, boundary, samples);
+  if (system === "hecke") {
+    return heckeAdapterSource(records, proof, boundary, samples, sampleBase);
+  }
+  return pythonAdapterSource(records, proof, boundary, samples, system);
+}
+
+function adapterExecution(system, tool) {
+  if (system === "sagejs") {
+    return { args: ["--python", "-"], env: { SAGEJS_USE_SOURCE: "1" } };
+  }
+  if (system === "sage-pari") return { args: ["-python", "-"], env: {} };
+  if (system === "direct-gp") return { args: ["-fq"], env: {} };
+  if (system === "magma") return { args: ["-b"], env: {} };
+  if (system === "hecke") {
+    return {
+      args: [...tool.argv_prefix.slice(1), "-"],
+      env: {
+        JULIA_DEPOT_PATH: tool.julia_depot,
+        JULIA_LOAD_PATH: "@:@stdlib",
+        JULIA_PKG_OFFLINE: "true",
+      },
+    };
+  }
+  throw new Error(`${system} has no corpus execution adapter`);
+}
+
+function parseAdapterPayload(system, run) {
+  if (system === "direct-gp") return parseGpPayload(run);
+  if (system === "magma") return parseMagmaPayload(run);
+  if (system === "hecke") return parseHeckePayload(run);
+  return parsePythonPayload(run, system);
+}
+
 function runPersistentGroup(system, proof, boundary, jobs, recordsByLabel, tool, timeoutSeconds) {
   const records = jobs.map((job) => recordsByLabel.get(job.label));
   const uniqueRecords = [...new Map(records.map((record) => [record.label, record])).values()];
-  const source = system === "direct-gp"
-    ? gpAdapterSource(uniqueRecords, proof, boundary, jobs[0].samples)
-    : pythonAdapterSource(uniqueRecords, proof, boundary, jobs[0].samples, system);
-  const args = system === "sagejs"
-    ? ["--python", "-"]
-    : system === "sage-pari"
-      ? ["-python", "-"]
-      : ["-fq"];
+  const source = adapterSource(system, uniqueRecords, proof, boundary, jobs[0].samples);
+  const execution = adapterExecution(system, tool);
   const executed = spawn(
     tool.executable,
-    args,
+    execution.args,
     source,
     timeoutSeconds,
-    system === "sagejs" ? { SAGEJS_USE_SOURCE: "1" } : {},
+    execution.env,
   );
-  const payload = system === "direct-gp"
-    ? parseGpPayload(executed.run)
-    : parsePythonPayload(executed.run, system);
+  const payload = parseAdapterPayload(system, executed.run);
   return jobs.map((job) => aggregateJob(
     job,
     payload.filter((sample) => sample.label === job.label),
@@ -1531,38 +2270,26 @@ function runFreshJob(job, expected, tool, timeoutSeconds) {
   const samples = [];
   let processTotalSeconds = 0;
   for (let sample = 0; sample < job.samples; sample += 1) {
-    const source = job.system === "direct-gp"
-      ? gpAdapterSource(
-          [expected],
-          job.requested_proof === "unconditional",
-          job.boundary,
-          1,
-        )
-      : pythonAdapterSource(
-          [expected],
-          job.requested_proof === "unconditional",
-          job.boundary,
-          1,
-          job.system,
-        );
-    const args = job.system === "sagejs"
-      ? ["--python", "-"]
-      : job.system === "sage-pari"
-        ? ["-python", "-"]
-        : ["-fq"];
+    const source = adapterSource(
+      job.system,
+      [expected],
+      job.requested_proof === "unconditional",
+      job.boundary,
+      1,
+      sample,
+    );
+    const execution = adapterExecution(job.system, tool);
     const executed = spawn(
       tool.executable,
-      args,
+      execution.args,
       source,
       timeoutSeconds,
-      job.tool_id === "sagejs" ? { SAGEJS_USE_SOURCE: "1" } : {},
+      execution.env,
     );
     processTotalSeconds += executed.process_total_seconds;
     let payload;
     try {
-      payload = job.system === "direct-gp"
-        ? parseGpPayload(executed.run)
-        : parsePythonPayload(executed.run, job.system);
+      payload = parseAdapterPayload(job.system, executed.run);
       if (payload.length !== 1 || payload[0].label !== job.label || payload[0].sample !== 0) {
         throw new Error(
           `fresh process must return exactly sample 0 for ${job.label}; got ` +
@@ -1578,6 +2305,8 @@ function runFreshJob(job, expected, tool, timeoutSeconds) {
         ...item,
         sample,
         elapsed_seconds: executed.process_total_seconds,
+        batch_elapsed_seconds: executed.process_total_seconds,
+        iteration_count: 1,
         process_peak_rss_bytes: executed.process_peak_rss_bytes,
         rss_scope: "single-operation-process-peak",
         phases_seconds: {
@@ -1639,7 +2368,7 @@ function runPlan(plan, records, options) {
   }
   for (const jobs of grouped.values()) {
     const first = jobs[0];
-    const tool = boundaryTool(first.system, first.boundary, plan.tools);
+    const tool = boundaryTool(first.system, first.boundary, plan.tool_inventory);
     try {
       results.push(...runPersistentGroup(
         first.system,
@@ -1659,7 +2388,7 @@ function runPlan(plan, records, options) {
     }
   }
   for (const job of fresh) {
-    const tool = boundaryTool(job.system, job.boundary, plan.tools);
+    const tool = boundaryTool(job.system, job.boundary, plan.tool_inventory);
     results.push(runFreshJob(job, recordsByLabel.get(job.label), tool, options.timeoutSeconds));
   }
   const order = new Map(plan.plan.jobs.map((job, index) => [
@@ -1740,9 +2469,13 @@ module.exports = {
   createPlan,
   detectTools,
   gpAdapterSource,
+  heckeAdapterSource,
   loadFixture,
+  magmaAdapterSource,
   parseArguments,
   parseGpPayload,
+  parseHeckePayload,
+  parseMagmaPayload,
   parsePythonPayload,
   pythonAdapterSource,
   proofModes,
