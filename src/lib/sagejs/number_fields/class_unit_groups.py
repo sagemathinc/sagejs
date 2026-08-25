@@ -1482,6 +1482,7 @@ class ClassUnitGroupEngine:
             "relation_independent_log_units": 0,
             "relation_log_steering_resets": 0,
             "relation_log_steering_fallbacks": 0,
+            "relation_steering": {},
             "relation_witness_decode_requests": 0,
             "relation_witness_decode_cache_hits": 0,
             "relation_witness_logarithm_requests": 0,
@@ -1559,6 +1560,7 @@ class ClassUnitGroupEngine:
         self._relation_matrix_accumulator: Any = None
         self._relation_presentation_policy: Any = None
         self._relation_presentation_record_count = 0
+        self._relation_steering_context: Any = None
         self._automorphism_orbit_plans: list[tuple[tuple[Any, ...], Any]] = []
         self._proof_progress: Any = None
         self._proof_dependency_hashes: dict[str, str] = {}
@@ -2288,9 +2290,14 @@ class ClassUnitGroupEngine:
         *,
         saturation_prime: int | None = None,
         target_missing_pivots: bool = False,
+        steering: Any = None,
     ) -> tuple[Any, tuple[int, ...], str]:
         """Choose a targeted product ideal before falling back to the PRNG."""
         width = len(factor_base)
+        if steering is not None:
+            source_row, strategy = steering.source_row(coefficient_bound)
+            ideal = search.collector.reconstruct_factor_base_ideal(source_row)
+            return ideal, source_row, strategy
         if width == 0:
             return self.order.ideal(1), (), "unit-ideal-sweep"
         missing = tuple(search.collector.rank_screen.missing_pivots())
@@ -2340,6 +2347,8 @@ class ClassUnitGroupEngine:
         large_prime_bound: int,
         stop_after: int = 2,
         stop_after_independent: bool = False,
+        steering: Any = None,
+        unit_rank: int = 0,
     ) -> int:
         """Search one ideal while retaining bounded exact partial relations."""
         search.state.ideals_tested += 1
@@ -2355,33 +2364,79 @@ class ClassUnitGroupEngine:
                 "candidate_sequence": sequence,
             }
             candidate_provenance.update(provenance)
-            try:
-                admission = search.collector.admit_witness(
-                    element,
-                    source_ideal=ideal,
-                    source_row=source_row,
-                    integral_generator=element,
-                    provenance=candidate_provenance,
-                )
-            except self.components.relations.RelationNotSmoothError:
-                witness = (
-                    self.components.relations.FactoredPrincipalWitness.from_element(
-                        element
+            steering_ticket = None
+            witness = None
+            if steering is not None:
+                screened_norm = steering.screen_norm(element.norm())
+                if screened_norm is None:
+                    continue
+                logarithms = None
+                independent = True
+                if steering.factor_base_size == 0 and unit_rank > 0:
+                    witness = (
+                        self.components.relations.FactoredPrincipalWitness.from_element(
+                            element
+                        )
                     )
+                    if self.components.factored is not None:
+                        logarithm_witness = self.components.factored.FactoredNumberFieldElement.from_element(
+                            self.field, element
+                        )
+                        logarithms = tuple(
+                            self._unit_logarithms(logarithm_witness, 80)[:-1]
+                        )
+                        provisional = steering.provisional_unit_logarithms
+                        independent = _floating_matrix_rank(
+                            [*provisional, logarithms]
+                        ) > len(provisional)
+                steering_ticket = steering.begin_candidate(
+                    element,
+                    logarithms=logarithms,
+                    logarithmically_independent=independent,
                 )
-                admission = self._try_large_prime_partial(
-                    search.collector,
-                    witness,
-                    ideal,
-                    source_row,
-                    candidate_provenance,
-                    large_prime_bound,
-                )
-            except ValueError as error:
-                if "already admitted" not in str(error):
+                if steering_ticket is None:
+                    continue
+                # No cancellation callback may split exact admission from the
+                # producer-local cursor commit below.
+                try:
+                    self._check_cancelled()
+                except Exception:
+                    steering.abort_candidate(steering_ticket)
                     raise
-                admission = None
+            try:
+                try:
+                    admission = search.collector.admit_witness(
+                        element if witness is None else witness,
+                        source_ideal=ideal,
+                        source_row=source_row,
+                        integral_generator=element,
+                        provenance=candidate_provenance,
+                    )
+                except self.components.relations.RelationNotSmoothError:
+                    witness = (
+                        self.components.relations.FactoredPrincipalWitness.from_element(
+                            element
+                        )
+                    )
+                    admission = self._try_large_prime_partial(
+                        search.collector,
+                        witness,
+                        ideal,
+                        source_row,
+                        candidate_provenance,
+                        large_prime_bound,
+                    )
+                except ValueError as error:
+                    if "already admitted" not in str(error):
+                        raise
+                    admission = None
+            except Exception:
+                if steering_ticket is not None and steering is not None:
+                    steering.abort_candidate(steering_ticket)
+                raise
             if admission is not None:
+                if steering_ticket is not None and steering is not None:
+                    steering.commit_candidate(steering_ticket)
                 admitted += 1
                 if admission.modular_independent:
                     independent_admitted += 1
@@ -2389,6 +2444,8 @@ class ClassUnitGroupEngine:
                 progress = independent_admitted if stop_after_independent else admitted
                 if progress >= stop_after:
                     break
+            elif steering_ticket is not None and steering is not None:
+                steering.abort_candidate(steering_ticket)
         return admitted
 
     def _default_cubic_integral_relation_prefix(
@@ -3051,7 +3108,11 @@ class ClassUnitGroupEngine:
                     presentation,
                     extracted_level="snf",
                 )
-        coefficient_bound = 1
+        restored_attempts = int(getattr(restored_state, "ideals_tested", 0))
+        coefficient_bound = min(
+            self.limits.max_coefficient_bound,
+            1 + restored_attempts // max(1, len(factor_base)),
+        )
         search = relations.LLLRelationSearch(
             collector,
             seed=self.seed,
@@ -3062,6 +3123,56 @@ class ClassUnitGroupEngine:
         )
         self._relation_search_state = search.state
         attempts = int(search.state.ideals_tested)
+        steering: Any = self._relation_steering_context
+        steering_type = getattr(relations, "_RelationSteeringContext", None)
+        steering_token = getattr(relations, "_RELATION_STEERING_CONTEXT_TOKEN", None)
+        if steering is None or not steering.matches(collector, search.state):
+            steering = (
+                steering_type(
+                    collector,
+                    search.state,
+                    _producer_token=steering_token,
+                )
+                if callable(steering_type) and steering_token is not None
+                else None
+            )
+            self._relation_steering_context = steering
+
+        def sync_steering_diagnostics() -> None:
+            if steering is None:
+                return
+            self._resource_usage["relation_steering"] = steering.diagnostics()
+
+        def observed_unit_log_rank(current_presentation: Any) -> int:
+            # Steering caches are deliberately absent from checkpoints.  A
+            # resumed context starts its dependency cursor at zero, rescans
+            # this authenticated exact presentation once, then replaces its
+            # numerical prefilter basis from the engine's exact dependency
+            # units before any new candidate is considered.
+            if steering is None:
+                return self._unit_logarithmic_rank(
+                    collector.records, current_presentation, unit_rank
+                )
+            transaction = steering.begin_dependency_update(current_presentation)
+            try:
+                answer = self._unit_logarithmic_rank(
+                    collector.records,
+                    current_presentation,
+                    unit_rank,
+                    dependency_transforms=transaction.dependencies,
+                )
+            except Exception:
+                steering.abort_dependency_update(transaction)
+                sync_steering_diagnostics()
+                raise
+            steering.commit_dependency_update(transaction)
+            steering.reconcile_unit_rank(answer, unit_rank)
+            steering.synchronize_exact_unit_logarithms(
+                self._relation_independent_logarithms
+            )
+            sync_steering_diagnostics()
+            return answer
+
         # Initial discovery needs a full relation-matrix rank and enough
         # independent logarithmic units.  Extra dependencies are not a proof
         # boundary: rigorous hR index-one certification below proves
@@ -3072,9 +3183,7 @@ class ClassUnitGroupEngine:
             if minimum_dependencies is None
             else max(0, int(minimum_dependencies))
         )
-        unit_log_rank = self._unit_logarithmic_rank(
-            collector.records, presentation, unit_rank
-        )
+        unit_log_rank = observed_unit_log_rank(presentation)
         self._relation_unit_log_rank = unit_log_rank
         self._resource_usage.update(
             {
@@ -3113,10 +3222,17 @@ class ClassUnitGroupEngine:
                 self.limits.max_random_terms, 2 + coefficient_bound
             )
             search.coefficient_bound = coefficient_bound
+            steering_active = bool(
+                steering is not None
+                and int(presentation.rank) == len(factor_base)
+                and unit_log_rank < unit_rank
+            )
             if saturation_prime is None:
                 relation_ideal_options: dict[str, Any] = {}
                 if target_missing_pivots:
                     relation_ideal_options["target_missing_pivots"] = True
+                if steering_active:
+                    relation_ideal_options["steering"] = steering
                 ideal, source_row, strategy = self._relation_ideal(
                     search,
                     factor_base,
@@ -3131,11 +3247,15 @@ class ClassUnitGroupEngine:
                     attempts,
                     coefficient_bound,
                     saturation_prime=saturation_prime,
+                    steering=steering if steering_active else None,
                 )
             before = len(collector.records)
             search_options: dict[str, Any] = {"stop_after": relations_per_ideal}
             if independent_relations_per_ideal:
                 search_options["stop_after_independent"] = True
+            if steering_active:
+                search_options["steering"] = steering
+                search_options["unit_rank"] = unit_rank
             self._search_relation_ideal(
                 search,
                 ideal,
@@ -3161,7 +3281,30 @@ class ClassUnitGroupEngine:
                 if accumulator is not None:
                     for record in collector.records[before:]:
                         accumulator.add_relation(record.row)
-                if policy is not None:
+                zero_width_extended = False
+                if (
+                    steering_active
+                    and steering is not None
+                    and len(factor_base) == 0
+                    and int(getattr(presentation, "row_count", 0)) > 0
+                ):
+                    extend = getattr(
+                        matrix_module,
+                        "extend_relation_presentation_with_duplicate_rows",
+                        None,
+                    )
+                    if callable(extend):
+                        presentation = accept_presentation(
+                            extend(
+                                presentation,
+                                [record.row for record in collector.records[before:]],
+                            )
+                        )
+                        zero_width_extended = True
+                        steering.note_zero_width_extensions(
+                            len(collector.records) - before
+                        )
+                if policy is not None and not zero_width_extended:
                     update = policy_presentation()
                     if update is not None:
                         presentation = update
@@ -3180,9 +3323,16 @@ class ClassUnitGroupEngine:
                         presentation.rank < len(factor_base) and modular_full
                     ):
                         presentation = extract_presentation()
-                unit_log_rank = self._unit_logarithmic_rank(
-                    collector.records, presentation, unit_rank
-                )
+                if (
+                    steering_active
+                    and steering is not None
+                    and len(factor_base) == 0
+                    and self._relation_presentation_record_count
+                    != len(collector.records)
+                ):
+                    update = policy_presentation(force=True)
+                    presentation = extract_presentation() if update is None else update
+                unit_log_rank = observed_unit_log_rank(presentation)
                 self._relation_unit_log_rank = unit_log_rank
             coefficient_bound = min(
                 self.limits.max_coefficient_bound,
@@ -3227,15 +3377,15 @@ class ClassUnitGroupEngine:
                     len(collector.records) - self._relation_presentation_record_count
                 ),
                 search_state=search.state.to_dict(),
+                steering=(None if steering is None else steering.diagnostics()),
             )
         if self._relation_presentation_record_count != len(collector.records):
             update = policy_presentation(force=True)
             presentation = extract_presentation() if update is None else update
-            unit_log_rank = self._unit_logarithmic_rank(
-                collector.records, presentation, unit_rank
-            )
+            unit_log_rank = observed_unit_log_rank(presentation)
             self._relation_unit_log_rank = unit_log_rank
         self._phase_finish("relations", started)
+        sync_steering_diagnostics()
         search_complete = (
             presentation.rank == len(factor_base)
             and len(presentation.dependency_transforms) >= dependency_target
@@ -3271,12 +3421,18 @@ class ClassUnitGroupEngine:
                 self._resource_usage["automorphism_orbit_relations"]
             ),
             search_state=search.state.to_dict(),
+            steering=(None if steering is None else steering.diagnostics()),
         )
         self._bind_context_relations(factor_base, collector, presentation)
         return collector, presentation
 
     def _unit_logarithmic_rank(
-        self, records: Sequence[Any], presentation: Any, unit_rank: int
+        self,
+        records: Sequence[Any],
+        presentation: Any,
+        unit_rank: int,
+        *,
+        dependency_transforms: Sequence[Sequence[int]] | None = None,
     ) -> int:
         """Return a monotone observed rank of exact dependency units.
 
@@ -3314,9 +3470,15 @@ class ClassUnitGroupEngine:
             self._resource_usage["relation_independent_log_units"] = 1
             return 1
         current_rank = len(logarithms)
-        for dependency in presentation.dependency_transforms:
+        dependencies = (
+            presentation.dependency_transforms
+            if dependency_transforms is None
+            else dependency_transforms
+        )
+        for dependency in dependencies:
             if current_rank >= unit_rank:
                 break
+            self._check_cancelled()
             self._resource_usage["relation_dependency_unit_requests"] += 1
             normalized = [int(value) for value in dependency]
             while normalized and normalized[-1] == 0:
@@ -3354,7 +3516,6 @@ class ClassUnitGroupEngine:
                 return self._uncached_unit_logarithmic_rank(
                     record_prefix, presentation, unit_rank
                 )
-            self._relation_seen_dependency_units.add(unit_hash)
             if unit is None:
                 unit = self._combine(record_prefix, dependency)
             # A cubic field has no roots of unity beyond +/-1: every
@@ -3369,6 +3530,7 @@ class ClassUnitGroupEngine:
                 value = evaluator()
                 one = self.field.one()
                 if value != one and value != -one:
+                    self._relation_seen_dependency_units.add(unit_hash)
                     self._relation_exact_rank_one_dependency_key = dependency_key
                     self._relation_independent_dependency_keys.append(dependency_key)
                     self._resource_usage["relation_exact_rank_one_units"] += 1
@@ -3381,6 +3543,7 @@ class ClassUnitGroupEngine:
                 logarithms.append(row)
                 self._relation_independent_dependency_keys.append(dependency_key)
                 current_rank = candidate_rank
+            self._relation_seen_dependency_units.add(unit_hash)
         self._resource_usage["relation_dependency_unit_cache_entries"] = len(
             self._relation_dependency_unit_hashes
         )
