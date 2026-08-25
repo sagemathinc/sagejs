@@ -87,6 +87,44 @@ assert public1.user_marker == "retained mutation semantics"
 assert public1.verify()
 assert cached_public_seconds < max(0.05, first_public_seconds / 10)
 
+public_unconditional0 = K.class_group(proof=True)
+public_unconditional1 = K.class_group(proof=True)
+assert public_unconditional1 is public_unconditional0
+assert public_unconditional0 is not public0
+assert public_unconditional0.proof_status == "exact-unconditional"
+assert public_unconditional0.verify()
+
+# A cold proof=True run must have the same exact mathematical terminal; only
+# its route to that terminal differs.
+saved_engine_cache = K._class_unit_engine_cache
+saved_public_cache = K._class_unit_public_group_cache
+K._class_unit_engine_cache = {}
+K._class_unit_public_group_cache = {}
+cold = K.class_unit_group(proof=True)
+cold_public = K.class_group(proof=True)
+K._class_unit_engine_cache = saved_engine_cache
+K._class_unit_public_group_cache = saved_public_cache
+assert cold.diagnostics.get("terminal_upgrade") is None
+assert cold.proof_status == unconditional.proof_status
+assert cold.class_number() == unconditional.class_number()
+assert cold.class_group().invariants() == unconditional.class_group().invariants()
+assert cold.class_group()._generator_rows == unconditional.class_group()._generator_rows
+assert tuple(ideal.to_dict() for ideal in cold.class_group().gens_ideals()) == tuple(
+    ideal.to_dict() for ideal in unconditional.class_group().gens_ideals()
+)
+assert tuple(unit.to_dict() for unit in cold.units()) == tuple(
+    unit.to_dict() for unit in unconditional.units()
+)
+assert cold.regulator().to_dict() == unconditional.regulator().to_dict()
+assert cold.proof_dependency_hashes == unconditional.proof_dependency_hashes
+assert cold_public.proof_status == public_unconditional0.proof_status
+assert cold_public.invariants() == public_unconditional0.invariants()
+assert cold_public.order() == public_unconditional0.order()
+assert tuple(ideal.to_dict() for ideal in cold_public.gens_ideals()) == tuple(
+    ideal.to_dict() for ideal in public_unconditional0.gens_ideals()
+)
+assert cold_public.verify()
+
 # Progress and changed resource policies bypass the public cache and cannot
 # replace its verified default-policy object.
 events = []
