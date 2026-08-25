@@ -544,6 +544,28 @@
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "readable-exact-controls"],
       "benchmark": "bench:number-field-class-number-lmfdb",
+      "automatic_selection": {
+        "schema": "sagejs.native-selection-receipt/v1",
+        "receipt_id": "native-machine-model-c1-c3-relation-rows",
+        "domain": "cubic relation admission over an authenticated exact factor base",
+        "evidence": [
+          "bench/class-unit-groups/native-machine-model-c0.py",
+          "test/native-live-exact-vector.cjs",
+          "test/native-live-exact-vector-sanitizer.cjs",
+          "test/number-field-cubic-norm-kernel.cjs",
+          "test/wasm-production-native-kernels.cjs"
+        ],
+        "functions": {
+          "packed_factor_base_rows_in_place": {
+            "arguments": {
+              "degree": {"min": 1, "max": 16},
+              "candidate_count": {"min": 1, "max": 4096},
+              "factor_count": {"min": 1, "max": 4096},
+              "prime_power_count": {"min": 1, "max": 4096}
+            }
+          }
+        }
+      },
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {

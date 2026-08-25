@@ -22,6 +22,10 @@ const {
   buildProductionPack,
 } = require("../tools/native-kernel/production-pack.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const {
+  descriptorSelectionReceipts,
+  mergeAutomaticSelections,
+} = require("../tools/native-kernel/automatic-selection.cjs");
 
 const root = resolve(__dirname, "..");
 const manifestPath = join(root, "architecture", "native-kernels.json");
@@ -131,7 +135,12 @@ async function main() {
   for (const descriptor of productionDescriptors) {
     let kernel = productionBySource.get(descriptor.source);
     if (kernel === undefined) {
-      kernel = { ...descriptor, ids: [descriptor.id], functions: [] };
+      kernel = {
+        ...descriptor,
+        ids: [descriptor.id],
+        functions: [],
+        automaticSelections: {},
+      };
       productionBySource.set(descriptor.source, kernel);
     } else {
       kernel.ids.push(descriptor.id);
@@ -144,6 +153,11 @@ async function main() {
       }
       kernel.functions.push(name);
     }
+    mergeAutomaticSelections(
+      kernel.automaticSelections,
+      descriptorSelectionReceipts(descriptor),
+      descriptor.source,
+    );
   }
   const production = [...productionBySource.values()];
 
@@ -185,6 +199,7 @@ async function main() {
       sourceKey: logicalSource,
       cacheRoot: options.cacheRoot,
       functions,
+      automaticSelections: kernel.automaticSelections,
     });
     const actualFunctions = compiled.ir.functions.map((fn) => fn.name);
     const missingFunctions = functions.filter(
@@ -206,6 +221,7 @@ async function main() {
         .digest("hex"),
       nativeAbi: compiled.nativeAbi,
       foreignDeclarations: compiled.foreignDeclarations,
+      automaticSelections: compiled.automaticSelections,
       foreignInputs: compiled.foreignInputs,
       exceptionShields: compiled.exceptionShields,
       ir: compiled.ir,
@@ -255,6 +271,7 @@ async function main() {
       sourceHash: item.sourceHash,
       nativeAbi: item.nativeAbi,
       foreignDeclarations: item.foreignDeclarations,
+      automaticSelections: item.automaticSelections,
     };
     index.sources[item.absoluteSource] = sourceRecord;
     index.logicalSources[item.logicalSource] = sourceRecord;

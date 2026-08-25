@@ -659,6 +659,9 @@ def native(function: Any) -> Any:
                 )
         replacement = function
     else:
+        bind_fallback = getattr(replacement, "__sagejs_native_bind_fallback__", None)
+        if callable(bind_fallback):
+            replacement = bind_fallback(function)
         _copy_metadata(function, replacement)
         _set_metadata(replacement, "__wrapped__", function)
         _set_metadata(replacement, "__sagejs_native_compiled__", True)

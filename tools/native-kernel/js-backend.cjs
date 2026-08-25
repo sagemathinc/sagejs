@@ -710,7 +710,33 @@ function backendDecision(fn) {
   throw new Error(`unsupported exact backend policy ${policy.kind}`);
 }
 
-function emitExactPublicFunction(fn) {
+function automaticSelectionCode(fn, receipt) {
+  if (receipt === undefined) {
+    return { declaration: "", decision: "", metadata: "null" };
+  }
+  const parameters = new Set(fn.params.map((param) => param.name));
+  const conditions = Object.entries(receipt.workload.arguments).flatMap(
+    ([name, bounds]) => {
+      if (!parameters.has(name)) {
+        throw new Error(`${fn.name} selection names unknown argument ${name}`);
+      }
+      const value = `sagejs_native_${name}`;
+      return [
+        `${value} >= ${BigInt(bounds.min)}n`,
+        `${value} <= ${BigInt(bounds.max)}n`,
+      ];
+    },
+  );
+  const args = fn.params.map((param) => `sagejs_native_${param.name}`).join(", ");
+  return {
+    declaration: `function automatic_selection_${fn.name}(${args}) {\n` +
+      `  return ${conditions.join(" && ")};\n}`,
+    decision: `  if (!automatic_selection_${fn.name}(${args})) return "bigint";`,
+    metadata: `deepFreezeAutomaticSelection(${JSON.stringify(receipt)})`,
+  };
+}
+
+function emitExactPublicFunction(fn, automaticSelection) {
   const params = fn.params.map((param) => param.name).join(", ");
   const declaredParams = exactParameters(fn);
   const normalized = fn.params.map((param) =>
@@ -731,7 +757,10 @@ function emitExactPublicFunction(fn) {
   const liveExactWorkspace = JSON.stringify(
     fn.analysis.liveExactWorkspace ?? null,
   );
+  const selection = automaticSelectionCode(fn, automaticSelection);
   return `${emitExactFallback(fn)}
+
+${selection.declaration}
 
 function validate_${fn.name}(${params}) {
 ${fn.params.map(exactValidation).join("\n")}
@@ -743,6 +772,7 @@ function backend_${fn.name}(${args}) {
   }
   if (nativeAddon === null) return "bigint";
   if (integerBackendOverride !== "auto") return integerBackendOverride;
+${selection.decision}
 ${backendDecision(fn)}
 }
 
@@ -786,6 +816,7 @@ ${fn.name}.backendPolicy = Object.freeze(${policy});
 ${fn.name}.effects = Object.freeze(${effects});
 ${fn.name}.taggedInteger = Object.freeze(${taggedInteger});
 ${fn.name}.liveExactWorkspace = ${liveExactWorkspace === "null" ? "null" : `Object.freeze(${liveExactWorkspace})`};
+${fn.name}.automaticSelection = ${selection.metadata};
 ${fn.name}.createInt64Buffer = createInt64Buffer;
 ${fn.name}.createUInt64Buffer = createUInt64Buffer;
 ${fn.name}.createIntegerBuffer = createIntegerBuffer;
@@ -1224,6 +1255,16 @@ const integerBackendOverride =
 if (!["auto", "bigint", "tagged", "gmp"].includes(integerBackendOverride)) {
   throw new RangeError(
     "SAGEJS_NATIVE_INTEGER_BACKEND must be auto, bigint, tagged, or gmp");
+}
+
+function deepFreezeAutomaticSelection(value) {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const nested of Object.values(value)) {
+      deepFreezeAutomaticSelection(nested);
+    }
+    Object.freeze(value);
+  }
+  return value;
 }
 
 ${javascriptRuntime(ir)}
@@ -2041,7 +2082,7 @@ function primeFieldNativeCall(name, args) {
 
 ${ir.functions.map((fn) =>
     fn.kernelKind === "integer"
-      ? emitExactPublicFunction(fn)
+      ? emitExactPublicFunction(fn, options.automaticSelections?.[fn.name])
       : fn.kernelKind === "float64"
         ? emitFloat64PublicFunction(fn)
       : fn.kernelKind === "prime-field-matrix"

@@ -21,9 +21,13 @@ const {
   classifyWasmFunction,
   generateWasmBridge,
 } = require("./wasm-bridge.cjs");
+const {
+  descriptorSelectionReceipts,
+  normalizeAutomaticSelections,
+} = require("./automatic-selection.cjs");
 
 const WASM_PACK_SCHEMA = "sagejs.native-wasm-pack/v1";
-const WASM_PACK_IDENTITY_SCHEMA = "sagejs.native-wasm-pack-identity/v1";
+const WASM_PACK_IDENTITY_SCHEMA = "sagejs.native-wasm-pack-identity/v2";
 
 function sha256File(filename) {
   return createHash("sha256").update(readFileSync(filename)).digest("hex");
@@ -84,6 +88,7 @@ function packIdentity(domain, modules, ownershipAdapter = null) {
       identityHash: module.identity.identityHash,
       foreignDeclarations: module.identity.foreignDeclarations,
       functions: module.functions.map((fn) => fn.name),
+      automaticSelections: module.automaticSelections,
     })),
     resourceAdapters,
     ownershipAdapter: ownershipAdapter === null
@@ -112,6 +117,10 @@ async function inventoryProductionKernels({ root, manifestPath }) {
       functions: kernel.functions,
     });
     const identity = portableKernelIdentity({ ir, sourceHash, logicalSource });
+    const automaticSelections = normalizeAutomaticSelections(
+      descriptorSelectionReceipts(kernel),
+      ir,
+    );
     const functions = kernel.functions.map((name) => {
       const fn = ir.functions.find((candidate) => candidate.name === name);
       if (fn === undefined) {
@@ -156,6 +165,7 @@ async function inventoryProductionKernels({ root, manifestPath }) {
       tests: kernel.benchmark === undefined ? [] : [kernel.benchmark],
       foreignDeclarations: identity.foreignDeclarations,
       functions,
+      automaticSelections,
     };
     inventory.push(record);
     // Every production source is emitted, even when its current public

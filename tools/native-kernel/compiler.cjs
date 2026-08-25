@@ -26,6 +26,9 @@ const { generateJavaScript } = require("./js-backend.cjs");
 const { generateExceptionShims } = require("./ffi-codegen.cjs");
 const { declarationFiles } = require("../ffi/declarations.cjs");
 const { macosDeploymentTarget } = require("../../scripts/darwin-native.cjs");
+const {
+  normalizeAutomaticSelections,
+} = require("./automatic-selection.cjs");
 
 const root = resolve(__dirname, "..", "..");
 const windowsTriplet = "x64-windows-static-md-release";
@@ -798,6 +801,10 @@ async function compileKernel(options) {
   const ir = await lowerSource(source, sourcePath, {
     functions: options.functions,
   });
+  const automaticSelections = normalizeAutomaticSelections(
+    options.automaticSelections ?? {},
+    ir,
+  );
   const foreignInputs = foreignCompilationInputs(ir, { cacheRoot });
   const compatibility = nativeCompatibility(ir, foreignInputs);
   const usesSpecializedPrimeField = ir.functions.some(
@@ -825,6 +832,7 @@ async function compileKernel(options) {
     foreignInputs,
     primeFieldTuning: tuning,
     sourceBoundsChecked,
+    automaticSelections,
     mpfr: "4.2.2",
     mpc: mpcVersion,
   };
@@ -883,6 +891,7 @@ async function compileKernel(options) {
       nativeAbi: compatibility.nativeAbi,
       foreignDeclarations: compatibility.foreignDeclarations,
       foreignInputs,
+      automaticSelections,
       exceptionShields: exceptionShims === null ? [] :
         exceptionShims.functions.map((fn) => fn.call_plan.symbol),
     };
@@ -922,6 +931,7 @@ async function compileKernel(options) {
       cacheKey,
       primeFieldTuning: tuning,
       sourceBoundsChecked,
+      automaticSelections,
       sourceHash,
       sourcePath,
       nativeAbi: compatibility.nativeAbi,
@@ -940,6 +950,7 @@ async function compileKernel(options) {
         foreignInputs,
         primeFieldTuning: tuning,
         sourceBoundsChecked,
+        automaticSelections,
         sourcePath,
         cSourceMap,
         coreSourceMap,
@@ -1003,6 +1014,7 @@ async function compileKernel(options) {
     nativeAbi: compatibility.nativeAbi,
     foreignDeclarations: compatibility.foreignDeclarations,
     foreignInputs,
+    automaticSelections,
     exceptionShields: exceptionShims === null ? [] :
       exceptionShims.functions.map((fn) => fn.call_plan.symbol),
   };

@@ -19,6 +19,9 @@ const ffiDeclarations = require("../tools/ffi/declarations.cjs");
 const ffiBoundaryAudit = require("../tools/ffi/boundary-audit.cjs");
 const ffiNativeExportAudit = require("../tools/ffi/native-export-audit.cjs");
 const {
+  descriptorSelectionReceipts,
+} = require("../tools/native-kernel/automatic-selection.cjs");
+const {
   checkGeneratedClassification,
 } = require("./check-generated-classification.cjs");
 
@@ -271,6 +274,20 @@ function validateKernelRegistry(manifest, options = {}) {
       throw new Error(`${kernel.id} references unknown benchmark ${kernel.benchmark}`);
     }
     const source = readFileSync(filename, "utf8");
+    const automaticSelections = descriptorSelectionReceipts(kernel);
+    for (const receipt of Object.values(automaticSelections)) {
+      for (const evidence of receipt.evidence) {
+        const evidencePath = repositoryPath(
+          evidence,
+          `${kernel.id}.automatic_selection.evidence`,
+        );
+        if (!existsSync(join(root, evidencePath))) {
+          throw new Error(
+            `${kernel.id} selection evidence is missing: ${evidencePath}`,
+          );
+        }
+      }
+    }
     for (const name of kernel.functions) {
       const definition = new RegExp(
         `@native\\s*(?:\\r?\\n)+def\\s+${name}\\s*\\(`,

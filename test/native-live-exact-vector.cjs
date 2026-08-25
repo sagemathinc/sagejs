@@ -17,6 +17,20 @@ const productionSourcePath = resolve(
   __dirname,
   "../src/lib/sagejs/number_fields/bl_composite_kernel.py",
 );
+const selectionReceipt = {
+  schema: "sagejs.native-selection-receipt/v1",
+  receiptId: "native-machine-model-neutral-addmul",
+  domain: "neutral exact-vector compiler witness",
+  operation: "live_addmul",
+  evidence: ["test/native-live-exact-vector.cjs"],
+  workload: {
+    arguments: {
+      capacity: { min: 1, max: 1 },
+      memory_limit: { min: 64, max: 4096 },
+      repetitions: { min: 1, max: 100000 },
+    },
+  },
+};
 
 test("live exact vectors have one lexical GMP ownership implementation", async () => {
   const source = readFileSync(sourcePath, "utf8");
@@ -173,6 +187,39 @@ test("live exact vector owners cannot escape or alias", async () => {
     ),
     /unsupported NativeIntegerVector method close/,
   );
+});
+
+test("automatic selection is limited to its authenticated workload", async () => {
+  const cacheRoot = mkdtempSync(join(tmpdir(), "sagejs-live-vector-gate-"));
+  try {
+    const compiled = await compileKernel({
+      sourcePath,
+      cacheRoot,
+      functions: ["live_addmul"],
+      automaticSelections: { live_addmul: selectionReceipt },
+    });
+    const module = require(compiled.modulePath);
+    const inside = [1n, 4096n, 2n, 3n, 5n, 7n];
+    const outside = [2n, 4096n, 2n, 3n, 5n, 7n];
+    assert.equal(module.live_addmul.backendFor(...inside), "gmp");
+    assert.equal(module.live_addmul.backendFor(...outside), "bigint");
+    assert.equal(module.live_addmul(...inside), 107n);
+    assert.equal(module.live_addmul(...outside), 107n);
+    assert.equal(module.live_addmul.gmp(...outside), 107n);
+    assert.deepEqual(module.live_addmul.automaticSelection, selectionReceipt);
+    assert.throws(
+      () => {
+        module.live_addmul.automaticSelection.workload.arguments.capacity.max = 2;
+      },
+      /read only|readonly|Cannot assign/,
+    );
+    assert.equal(module.live_addmul.backendFor(...outside), "bigint");
+    assert.deepEqual(compiled.automaticSelections, {
+      live_addmul: selectionReceipt,
+    });
+  } finally {
+    rmSync(cacheRoot, { recursive: true, force: true });
+  }
 });
 
 test("the cubic relation row witness keeps exact accumulation live", async () => {

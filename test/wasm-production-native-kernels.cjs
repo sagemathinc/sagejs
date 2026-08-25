@@ -562,7 +562,7 @@ test("number-field Wasm cores execute the same exact sources as fallbacks", {
     const relationMetadata = [0n, 0n, 0n];
     const relationRows = [0n, 0n, 0n, 0n];
     const relationSmooth = [0n, 0n];
-    const relationResult = factorBaseRows(
+    const factorBaseArguments = [
       relationMetadata,
       relationRows,
       relationSmooth,
@@ -579,7 +579,31 @@ test("number-field Wasm cores execute the same exact sources as fallbacks", {
       2n,
       2n,
       2n,
+    ];
+    const relationResult = factorBaseRows(...factorBaseArguments);
+    assert.equal(
+      factorBaseRows.automaticSelectionAccepted(...factorBaseArguments),
+      true,
     );
+    assert.throws(
+      () => {
+        factorBaseRows.automaticSelection.workload.arguments.degree.max = 17;
+      },
+      /read only|readonly|Cannot assign/,
+    );
+    let automaticFallbackCalls = 0;
+    const automaticallySelected =
+      factorBaseRows.__sagejs_native_bind_fallback__((..._arguments) => {
+        automaticFallbackCalls += 1;
+        return "same-source-fallback";
+      });
+    const outsideEnvelope = [...factorBaseArguments];
+    outsideEnvelope[12] = 17n;
+    assert.equal(
+      automaticallySelected(...outsideEnvelope),
+      "same-source-fallback",
+    );
+    assert.equal(automaticFallbackCalls, 1);
     const actual = {
       om: [omResult, words(omWorkspace)],
       composite: String(squareRoot(value)),
