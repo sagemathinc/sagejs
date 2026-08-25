@@ -556,6 +556,48 @@ def _same_integer(interval: _Interval, rounding: str) -> int | None:
     return lower if lower == upper else None
 
 
+def _complex_cubic_minkowski_coarse_interval(
+    discriminant: int,
+) -> tuple[int | None, _Interval]:
+    """Evaluate the coarse complex-cubic Minkowski interval with integers.
+
+    For signature `(1, 1)` the classical coefficient is `8 / 9`.  The coarse
+    enclosure used by `minkowski_bound` is therefore
+
+    `sqrt(D) * [8/9] / [333/106, 355/113]`.
+
+    Construct its two endpoints directly from the 64-bit dyadic square-root
+    enclosure.  This is algebraically identical to the generic interval
+    product, including rational normalization, but avoids building and
+    reducing all of its intermediate rational objects.  Returning `None`
+    for the floor preserves the arbitrary-precision fallback when the coarse
+    interval straddles an integer.
+    """
+    if discriminant < 1:
+        raise ValueError("a complex-cubic discriminant must be positive")
+    bits = 64
+    scale = 1 << bits
+    root = _isqrt(discriminant)
+    if root * root == discriminant:
+        lower_numerator = root * 904
+        lower_denominator = 3195
+        upper_numerator = root * 848
+        upper_denominator = 2997
+    else:
+        dyadic_root = _isqrt(discriminant * scale * scale)
+        lower_numerator = dyadic_root * 904
+        lower_denominator = scale * 3195
+        upper_numerator = (dyadic_root + 1) * 848
+        upper_denominator = scale * 2997
+    lower_floor = lower_numerator // lower_denominator
+    upper_floor = upper_numerator // upper_denominator
+    interval = _Interval(
+        _Rational(lower_numerator, lower_denominator),
+        _Rational(upper_numerator, upper_denominator),
+    )
+    return (lower_floor if lower_floor == upper_floor else None), interval
+
+
 def _as_maximal_order(value: Any) -> Any:
     if hasattr(value, "number_field") and hasattr(value, "is_maximal"):
         if not value.is_maximal():
@@ -651,21 +693,27 @@ def minkowski_bound(value: Any) -> FactorBaseBound:
     if cached is not None:
         return cached
     _order, _field, degree, r1, r2, discriminant = _field_metadata(order)
-    coefficient = _Rational((4**r2) * _factorial(degree), degree**degree)
+    coefficient: _Rational | None = None
     # These classical Archimedean rational bounds are intentionally coarse,
     # but they decide the floor in nearly every small and medium field without
     # constructing a high-height Machin enclosure of pi.  The independent
     # arbitrary-precision path below remains authoritative whenever this
     # interval crosses an integer.
     coarse_bits = 64
-    coarse_pi = _Interval(_Rational(333, 106), _Rational(355, 113))
-    coarse_denominator = _Interval.exact(ONE) if r2 == 0 else coarse_pi.power(r2)
-    coarse_interval = (
-        _sqrt_rational_interval(_Rational(discriminant), coarse_bits)
-        * _Interval.exact(coefficient)
-        / coarse_denominator
-    )
-    coarse_bound = _same_integer(coarse_interval, "floor")
+    if degree == 3 and r1 == 1 and r2 == 1:
+        coarse_bound, coarse_interval = _complex_cubic_minkowski_coarse_interval(
+            discriminant
+        )
+    else:
+        coefficient = _Rational((4**r2) * _factorial(degree), degree**degree)
+        coarse_pi = _Interval(_Rational(333, 106), _Rational(355, 113))
+        coarse_denominator = _Interval.exact(ONE) if r2 == 0 else coarse_pi.power(r2)
+        coarse_interval = (
+            _sqrt_rational_interval(_Rational(discriminant), coarse_bits)
+            * _Interval.exact(coefficient)
+            / coarse_denominator
+        )
+        coarse_bound = _same_integer(coarse_interval, "floor")
     if coarse_bound is not None:
         result = FactorBaseBound(
             "Minkowski",
@@ -684,6 +732,8 @@ def minkowski_bound(value: Any) -> FactorBaseBound:
         )
         _store_bound(order, "minkowski", result)
         return result
+    if coefficient is None:
+        coefficient = _Rational((4**r2) * _factorial(degree), degree**degree)
     for bits in (64, 96, 128, 192, 256, 384, MAX_INTERVAL_BITS):
         pi_power = _Interval.exact(ONE) if r2 == 0 else _pi_interval(bits).power(r2)
         interval = (

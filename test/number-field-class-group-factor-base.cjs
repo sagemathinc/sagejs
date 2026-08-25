@@ -838,6 +838,240 @@ print(json.dumps({
   );
 });
 
+test("complex cubic Minkowski floors use the identical exact coarse interval", () => {
+  const corpus = JSON.parse(
+    readFileSync(
+      join(
+        __dirname,
+        "fixtures",
+        "number-field-lmfdb-cubic-class-numbers.json",
+      ),
+      "utf8",
+    ),
+  );
+  const output = run(String.raw`
+import json
+import sagejs.number_fields.class_group_factor_base as factor_bases
+
+records = json.loads(${JSON.stringify(JSON.stringify(corpus.records))})
+coarse_pi = factor_bases._Interval(
+    factor_bases._Rational(333, 106),
+    factor_bases._Rational(355, 113),
+)
+coefficient = factor_bases._Rational(8, 9)
+generic_sqrt = factor_bases._sqrt_rational_interval
+
+def reference(discriminant):
+    interval = (
+        generic_sqrt(factor_bases._Rational(discriminant), 64)
+        * factor_bases._Interval.exact(coefficient)
+        / coarse_pi
+    )
+    return factor_bases._same_integer(interval, "floor"), interval
+
+discriminants = [
+    int(record["discriminant_absolute"]) for record in records
+]
+discriminants += [1, 2, 3, 4, 10**12 + 39, (1 << 119) + 12345]
+state = 1729
+for _index in range(96):
+    state = (
+        6364136223846793005 * state + 1442695040888963407
+    ) % (1 << 127)
+    discriminants.append(state + 1)
+for bound in range(1, 96):
+    numerator = 9 * 333 * bound
+    denominator = 8 * 106
+    center = numerator * numerator // (denominator * denominator)
+    for delta in range(-2, 3):
+        if center + delta > 0:
+            discriminants.append(center + delta)
+
+declines = 0
+for discriminant in discriminants:
+    expected_bound, expected_interval = reference(discriminant)
+    fast_bound, fast_interval = (
+        factor_bases._complex_cubic_minkowski_coarse_interval(discriminant)
+    )
+    assert fast_bound == expected_bound
+    assert fast_interval.to_dict() == expected_interval.to_dict()
+    if fast_bound is None:
+        declines += 1
+
+# Every pinned complex cubic takes the integer path, but its complete public
+# theorem/bound payload remains byte-for-byte the former generic interval.
+saved_sqrt = generic_sqrt
+def forbidden_sqrt(*_args, **_kwargs):
+    raise AssertionError("a decided complex-cubic floor used the generic square root")
+factor_bases._sqrt_rational_interval = forbidden_sqrt
+try:
+    R = PolynomialRing(QQ, "x")
+    x = R.gen()
+    for index, record in enumerate(records):
+        polynomial = R(0)
+        for exponent in range(len(record["coefficients"])):
+            polynomial += int(record["coefficients"][exponent]) * x**exponent
+        field = NumberField(polynomial, "a" + str(index))
+        order = field.maximal_order()
+        discriminant = abs(int(order.discriminant()))
+        expected_bound, expected_interval = reference(discriminant)
+        result = factor_bases.minkowski_bound(order)
+        expected = factor_bases.FactorBaseBound(
+            "Minkowski",
+            (),
+            expected_bound,
+            3,
+            (1, 1),
+            discriminant,
+            64,
+            expected_interval,
+            {
+                "formula": "floor((4/pi)^r2*n!/n^n*sqrt(abs(D)))",
+                "rounding": "floor-certified-rational-interval",
+                "pi_enclosure": "333/106 < pi < 355/113",
+            },
+        )
+        assert result.to_dict() == expected.to_dict()
+finally:
+    factor_bases._sqrt_rational_interval = saved_sqrt
+
+# A coarse decline must still enter the existing arbitrary-precision path.
+saved_fast = factor_bases._complex_cubic_minkowski_coarse_interval
+saved_pi = factor_bases._pi_interval
+pi_calls = [0]
+def declined(discriminant):
+    _bound, interval = saved_fast(discriminant)
+    return None, interval
+def counted_pi(bits):
+    pi_calls[0] += 1
+    return saved_pi(bits)
+factor_bases._complex_cubic_minkowski_coarse_interval = declined
+factor_bases._pi_interval = counted_pi
+try:
+    fallback_field = NumberField(x**3 + 2*x - 1, "fallback")
+    assert factor_bases.minkowski_bound(fallback_field.maximal_order()).bound == 2
+finally:
+    factor_bases._complex_cubic_minkowski_coarse_interval = saved_fast
+    factor_bases._pi_interval = saved_pi
+assert pi_calls[0] >= 1
+assert declines >= 1
+print(json.dumps({"checked": len(discriminants), "declines": declines}))
+`);
+  const result = JSON.parse(output);
+  assert.ok(result.checked > 500);
+  assert.ok(result.declines > 0);
+});
+
+test("index-prime packed factors retain canonical second generators", () => {
+  const output = run(String.raw`
+import hashlib
+import json
+import sagejs.number_fields.class_group_factor_base as factor_bases
+import sagejs.number_fields.cubic_class_number as cubic
+import sagejs.number_fields.prime_ideals as prime_ideals
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+cases = (
+    (
+        "3.1.1083.1",
+        x**3 - x**2 - 6*x - 12,
+        "2262d9dce3278741e3b73e9d95eb70a2d81c2b86cc3436198cda58efcbfc5456",
+    ),
+    (
+        "3.1.2856.1",
+        x**3 - x**2 + 9*x - 21,
+        "887ede9701973aae1679eb1bf5ae8dcb7093bc42c4af62915fdbc8abfa77fc14",
+    ),
+)
+results = []
+for index, (label, polynomial, expected_hash) in enumerate(cases):
+    field = NumberField(polynomial, "a" + str(index))
+    order = field.maximal_order()
+    plan = factor_bases.factor_base_plan(
+        order, proof=True, theorem="minkowski"
+    )
+    packed = cubic.packed_cubic_factor_records(plan)
+    assert packed is not None
+    assert all(record._second_generator_payload is not None for record in packed)
+    payload = [record.to_dict() for record in packed]
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    assert hashlib.sha256(encoded.encode("utf-8")).hexdigest() == expected_hash
+
+    # Both ordinary materialization and the independently produced generic
+    # factor base must reproduce the exact historical payload.
+    ordinary, _ideals = cubic._materialize_packed_cubic_factor_records(packed)
+    generic_plan = factor_bases.factor_base_plan(
+        order, proof=True, theorem="minkowski"
+    )
+    generic = factor_bases.build_factor_base(generic_plan)
+    assert [record.to_dict() for record in ordinary] == payload
+    assert [record.to_dict() for record in generic] == payload
+
+    # The finite-algebra producer itself supplies the canonical payload.  Once
+    # supplied, constructing a packed record must not redo the modular ideal
+    # generator search at the consumer boundary.
+    prime = 2
+    requested = {
+        residue_degree
+        for residue_degree in range(1, 4)
+        if prime**residue_degree <= int(plan.bound)
+    }
+    table = prime_ideals._modular_table(order, prime)
+    one = [value % prime for value in prime_ideals._order_one_coordinates(order)]
+    candidates = prime_ideals.packed_finite_algebra_candidates(
+        order,
+        prime,
+        prime_ideals.DEFAULT_MAX_PRIMITIVE_CANDIDATES,
+        requested,
+        modular_table=table,
+        one_coordinates=one,
+        packed_order_basis=prime_ideals._packed_candidate_order_basis(order),
+    )
+    assert candidates is not None
+    assert all(candidate.get("second_generator_payload") is not None for candidate in candidates)
+    original_generated = prime_ideals._subspace_ideal_generated_by
+    def forbidden_generated(*_args, **_kwargs):
+        raise AssertionError("a supplied second generator was rediscovered")
+    prime_ideals._subspace_ideal_generated_by = forbidden_generated
+    try:
+        for candidate_index, candidate in enumerate(candidates):
+            retained = cubic.PackedCubicFactorRecord(
+                order,
+                candidate_index,
+                prime,
+                candidate["e"],
+                candidate["f"],
+                candidate["rows"],
+                candidate["subspace"],
+                candidate["presentation"],
+                candidate["second_generator_payload"],
+                candidate["table"],
+                candidate["one"],
+                False,
+            )
+            assert retained._second_generator_payload is not None
+    finally:
+        prime_ideals._subspace_ideal_generated_by = original_generated
+    results.append([label, int(plan.bound), len(payload), expected_hash])
+print(json.dumps(results, separators=(",", ":")))
+`);
+  assert.deepEqual(JSON.parse(output), [
+    [
+      "3.1.1083.1",
+      9,
+      5,
+      "2262d9dce3278741e3b73e9d95eb70a2d81c2b86cc3436198cda58efcbfc5456",
+    ],
+    [
+      "3.1.2856.1",
+      15,
+      6,
+      "887ede9701973aae1679eb1bf5ae8dcb7093bc42c4af62915fdbc8abfa77fc14",
+    ],
+  ]);
+});
+
 test("dyadic BDF compression preserves the h=3 cubic certificate", () => {
   const output = run(String.raw`
 import json
