@@ -7,8 +7,8 @@ const os = require("node:os");
 const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "../..");
-const SCHEMA = "sagejs.number-fields/class-unit-performance-evidence-v1";
-const SCHEMA_VERSION = 1;
+const SCHEMA = "sagejs.number-fields/class-unit-performance-evidence-v2";
+const SCHEMA_VERSION = 2;
 const SHA256 = /^[0-9a-f]{64}$/;
 const GIT_OBJECT = /^[0-9a-f]{40}$/;
 const NAME = /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/;
@@ -311,12 +311,27 @@ function toolPayload(name, tool) {
     project: tool.project,
     version: tool.version,
     executable_sha256: tool.executable_sha256,
+    execution_mode: tool.execution_mode,
+    artifacts: tool.artifacts,
+    libraries: tool.libraries,
     reason: tool.reason,
   };
 }
 
 function createToolFingerprint(name, tool) {
-  const payload = toolPayload(name, tool);
+  const normalized = {
+    ...tool,
+    execution_mode: tool.execution_mode || null,
+    artifacts: tool.artifacts || [],
+    libraries: tool.libraries || {
+      arb: null,
+      compiler: null,
+      flint: null,
+      gmp: null,
+      pari: null,
+    },
+  };
+  const payload = toolPayload(name, normalized);
   return deepFreeze({
     status: payload.status,
     executable: payload.executable,
@@ -324,6 +339,9 @@ function createToolFingerprint(name, tool) {
     project: payload.project,
     version: payload.version,
     executable_sha256: payload.executable_sha256,
+    execution_mode: payload.execution_mode,
+    artifacts: payload.artifacts,
+    libraries: payload.libraries,
     reason: payload.reason,
     fingerprint: fingerprint({ kind: "tool", ...payload }),
   });
@@ -377,6 +395,7 @@ function collectToolFingerprint(options) {
       project,
       version,
       executable_sha256: executableSha256,
+      artifacts: [{ role: "executable", path: executable, sha256: executableSha256 }],
       reason: null,
     });
   } catch (error) {
@@ -461,10 +480,13 @@ function validateTools(filename, tools, systems) {
     identifier(filename, name, `tools key ${name}`);
     const tool = tools[name];
     exactKeys(filename, tool, [
+      "artifacts",
       "argv_prefix",
       "executable",
       "executable_sha256",
+      "execution_mode",
       "fingerprint",
+      "libraries",
       "project",
       "reason",
       "status",
@@ -478,11 +500,41 @@ function validateTools(filename, tools, systems) {
       evidenceError(filename, `tools.${name}.argv_prefix must be a nonempty string list`);
     }
     if (tool.project !== null) nonemptyString(filename, tool.project, `tools.${name}.project`);
+    if (tool.execution_mode !== null) {
+      identifier(filename, tool.execution_mode, `tools.${name}.execution_mode`);
+    }
+    object(filename, tool.libraries, `tools.${name}.libraries`);
+    exactKeys(filename, tool.libraries, [
+      "arb", "compiler", "flint", "gmp", "pari",
+    ], `tools.${name}.libraries`);
+    for (const [library, version] of Object.entries(tool.libraries)) {
+      if (version !== null) {
+        nonemptyString(filename, version, `tools.${name}.libraries.${library}`);
+      }
+    }
+    if (!Array.isArray(tool.artifacts)) {
+      evidenceError(filename, `tools.${name}.artifacts must be a list`);
+    }
+    const artifactRoles = new Set();
+    for (const [artifactIndex, artifact] of tool.artifacts.entries()) {
+      const artifactLabel = `tools.${name}.artifacts[${artifactIndex}]`;
+      exactKeys(filename, artifact, ["path", "role", "sha256"], artifactLabel);
+      identifier(filename, artifact.role, `${artifactLabel}.role`);
+      nonemptyString(filename, artifact.path, `${artifactLabel}.path`);
+      sha256(filename, artifact.sha256, `${artifactLabel}.sha256`);
+      if (artifactRoles.has(artifact.role)) {
+        evidenceError(filename, `tools.${name}.artifacts has duplicate role ${artifact.role}`);
+      }
+      artifactRoles.add(artifact.role);
+    }
     if (tool.status === "ok") {
       nonemptyString(filename, tool.executable, `tools.${name}.executable`);
       nonemptyString(filename, tool.version, `tools.${name}.version`);
       sha256(filename, tool.executable_sha256, `tools.${name}.executable_sha256`);
       if (tool.reason !== null) evidenceError(filename, `tools.${name}.reason must be null when ok`);
+      if (tool.artifacts.length === 0) {
+        evidenceError(filename, `tools.${name}.artifacts must authenticate executed artifacts`);
+      }
     } else {
       for (const key of ["executable", "version", "executable_sha256"]) {
         if (tool[key] !== null) evidenceError(filename, `tools.${name}.${key} must be null when unavailable`);
@@ -498,8 +550,8 @@ function validateTools(filename, tools, systems) {
 
 function validateConfiguration(filename, configuration) {
   exactKeys(filename, configuration, [
-    "boundaries", "requested_output", "requested_proofs", "samples", "systems", "tier",
-    "timeout_seconds",
+    "boundaries", "regulator_contract", "requested_output", "requested_proofs", "samples",
+    "systems", "tier", "timeout_seconds",
   ], "configuration");
   identifier(filename, configuration.tier, "configuration.tier");
   if (configuration.requested_output !== REQUESTED_OUTPUT) {
@@ -527,6 +579,18 @@ function validateConfiguration(filename, configuration) {
   }
   safeInteger(filename, configuration.samples, "configuration.samples", 1);
   positiveNumber(filename, configuration.timeout_seconds, "configuration.timeout_seconds");
+  exactKeys(filename, configuration.regulator_contract, [
+    "minimum_decimal_digits", "require_rigorous",
+  ], "configuration.regulator_contract");
+  safeInteger(
+    filename,
+    configuration.regulator_contract.minimum_decimal_digits,
+    "configuration.regulator_contract.minimum_decimal_digits",
+    1,
+  );
+  if (typeof configuration.regulator_contract.require_rigorous !== "boolean") {
+    evidenceError(filename, "configuration.regulator_contract.require_rigorous must be boolean");
+  }
   return { requestedProofs, systems };
 }
 
@@ -648,13 +712,75 @@ function compareRationals(left, right) {
       : 0;
 }
 
+function powerOfTen(exponent) {
+  return 10n ** BigInt(exponent);
+}
+
+function decimalMetadata(value) {
+  const match = /^(-?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?$/.exec(value);
+  if (!match) throw new Error(`invalid decimal ${value}`);
+  const negative = match[1] === "-";
+  const integer = match[2];
+  const fraction = match[3] || "";
+  const exponent = Number(match[4] || "0");
+  const digits = `${integer}${fraction}`;
+  let numerator = BigInt(digits);
+  if (negative) numerator = -numerator;
+  const scale = fraction.length - exponent;
+  const denominator = scale > 0 ? powerOfTen(scale) : 1n;
+  if (scale < 0) numerator *= powerOfTen(-scale);
+  const radius = scale >= 0
+    ? [1n, 2n * denominator]
+    : [powerOfTen(-scale), 2n];
+  const precisionDigits = digits.replace(/^0+/, "").length || 1;
+  return { value: [numerator, denominator], radius, precisionDigits };
+}
+
+function subtractRationals(left, right) {
+  return [left[0] * right[1] - right[0] * left[1], left[1] * right[1]];
+}
+
+function regulatorSatisfiesContract(regulator, contract) {
+  if (regulator.rigorous !== true && contract.require_rigorous === true) return false;
+  if (regulator.kind === "decimal") {
+    return regulator.precision_digits >= contract.minimum_decimal_digits;
+  }
+  const lower = rationalParts("<regulator contract>", regulator.lower, "lower");
+  const upper = rationalParts("<regulator contract>", regulator.upper, "upper");
+  const width = subtractRationals(upper, lower);
+  const scale = compareRationals(upper, [1n, 1n]) > 0 ? upper : [1n, 1n];
+  const maximumWidth = [scale[0], scale[1] * powerOfTen(contract.minimum_decimal_digits)];
+  return compareRationals(width, maximumWidth) <= 0;
+}
+
 function validateRegulator(filename, regulator, label) {
   object(filename, regulator, label);
   if (regulator.kind === "decimal") {
-    exactKeys(filename, regulator, ["kind", "value"], label);
+    exactKeys(filename, regulator, [
+      "absolute_error_bound", "kind", "precision_digits", "rigorous", "value",
+    ], label);
     if (typeof regulator.value !== "string" || !DECIMAL_REAL.test(regulator.value) ||
         !Number.isFinite(Number(regulator.value)) || Number(regulator.value) <= 0) {
       evidenceError(filename, `${label}.value must be a finite positive canonical decimal real`);
+    }
+    safeInteger(filename, regulator.precision_digits, `${label}.precision_digits`, 1);
+    const errorBound = rationalParts(
+      filename,
+      regulator.absolute_error_bound,
+      `${label}.absolute_error_bound`,
+    );
+    if (compareRationals(errorBound, [0n, 1n]) <= 0) {
+      evidenceError(filename, `${label}.absolute_error_bound must be positive`);
+    }
+    const metadata = decimalMetadata(regulator.value);
+    if (regulator.precision_digits !== metadata.precisionDigits) {
+      evidenceError(filename, `${label}.precision_digits does not match the printed decimal`);
+    }
+    if (compareRationals(errorBound, metadata.radius) !== 0) {
+      evidenceError(filename, `${label}.absolute_error_bound is not its decimal rounding radius`);
+    }
+    if (typeof regulator.rigorous !== "boolean") {
+      evidenceError(filename, `${label}.rigorous must be boolean`);
     }
     return;
   }
@@ -712,22 +838,23 @@ function proofRequestSatisfied(requested, achieved) {
     (requested === "conditional-grh" && achieved === "exact-relations-conditional-grh");
 }
 
-function regulatorSemantics(regulator) {
-  return regulator.kind === "interval"
-    ? {
-        kind: "interval",
-        precision_bits: regulator.precision_bits,
-        rigorous: regulator.rigorous,
-      }
-    : { kind: "decimal", precision_bits: null, rigorous: false };
+function regulatorSemantics(regulatorContract) {
+  return {
+    minimum_decimal_digits: regulatorContract.minimum_decimal_digits,
+    require_rigorous: regulatorContract.require_rigorous,
+  };
 }
 
-function semanticComparisonKey({ achievedProofSemantics, requestedOutput, regulator }) {
+function semanticComparisonKey({
+  achievedProofSemantics,
+  requestedOutput,
+  regulatorContract,
+}) {
   return fingerprint({
-    schema: "sagejs.number-fields/class-unit-semantic-comparison-v1",
+    schema: "sagejs.number-fields/class-unit-semantic-comparison-v2",
     achieved_proof_semantics: achievedProofSemantics,
     requested_output: requestedOutput,
-    regulator: regulatorSemantics(regulator),
+    regulator_contract: regulatorSemantics(regulatorContract),
   });
 }
 
@@ -748,7 +875,7 @@ function validateSemanticParity(
   if (parity.comparison_key !== semanticComparisonKey({
     achievedProofSemantics: achieved,
     requestedOutput: configuration.requested_output,
-    regulator: answer.regulator,
+    regulatorContract: configuration.regulator_contract,
   })) {
     evidenceError(
       filename,
@@ -809,8 +936,32 @@ function validateResults(filename, results, planned, configuration) {
         exactKeys(
           filename,
           sample,
-          ["elapsed_seconds", "peak_rss_bytes", "phases_seconds"],
+          [
+            "achieved_proof_semantics", "answer_sha256", "batch_elapsed_seconds",
+            "elapsed_seconds", "iteration_count", "peak_rss_bytes", "phases_seconds",
+            "sample_index",
+          ],
           sampleLabel,
+        );
+        safeInteger(filename, sample.sample_index, `${sampleLabel}.sample_index`, 0);
+        if (sample.sample_index !== sampleIndex) {
+          evidenceError(filename, `${sampleLabel}.sample_index must equal its retained position`);
+        }
+        safeInteger(filename, sample.iteration_count, `${sampleLabel}.iteration_count`, 1);
+        sha256(filename, sample.answer_sha256, `${sampleLabel}.answer_sha256`);
+        if (sample.achieved_proof_semantics !== result.achieved_proof_semantics) {
+          evidenceError(
+            filename,
+            `${sampleLabel}.achieved_proof_semantics differs from its aggregate result`,
+          );
+        }
+        if (sample.answer_sha256 !== fingerprint(result.answer)) {
+          evidenceError(filename, `${sampleLabel}.answer_sha256 differs from its aggregate answer`);
+        }
+        positiveNumber(
+          filename,
+          sample.batch_elapsed_seconds,
+          `${sampleLabel}.batch_elapsed_seconds`,
         );
         positiveNumber(filename, sample.elapsed_seconds, `${sampleLabel}.elapsed_seconds`);
         if (sample.peak_rss_bytes !== null) {
@@ -822,6 +973,18 @@ function validateResults(filename, results, planned, configuration) {
             filename,
             sample.phases_seconds[phase],
             `${sampleLabel}.phases_seconds.${phase}`,
+          );
+        }
+        if (["kernel-warm", "field-cold"].includes(result.boundary)) {
+          const perIteration = sample.batch_elapsed_seconds / sample.iteration_count;
+          if (!closeEnough(sample.elapsed_seconds, perIteration)) {
+            evidenceError(filename, `${sampleLabel}.elapsed_seconds must be its batch mean`);
+          }
+        } else if (sample.iteration_count !== 1 ||
+                   sample.batch_elapsed_seconds > sample.elapsed_seconds * (1 + 1e-9)) {
+          evidenceError(
+            filename,
+            `${sampleLabel} cold-process timing must contain one inner operation`,
           );
         }
         return sample.elapsed_seconds;
@@ -843,6 +1006,12 @@ function validateResults(filename, results, planned, configuration) {
         }
       }
       validateAnswer(filename, result.answer, `${label}.answer`);
+      if (!regulatorSatisfiesContract(
+        result.answer.regulator,
+        configuration.regulator_contract,
+      )) {
+        evidenceError(filename, `${label}.answer.regulator does not satisfy the requested contract`);
+      }
       validateCorrectness(filename, result.correctness, result.answer, `${label}.correctness`);
       if (!ACHIEVED_PROOF_SEMANTICS.includes(result.achieved_proof_semantics)) {
         evidenceError(filename, `${label}.achieved_proof_semantics is unsupported`);
@@ -899,9 +1068,26 @@ function performanceEvidenceAccepted(report, options = {}) {
       result.semantic_parity?.comparison_key === semanticComparisonKey({
         achievedProofSemantics: result.achieved_proof_semantics,
         requestedOutput: report.configuration.requested_output,
-        regulator: result.answer.regulator,
+        regulatorContract: report.configuration.regulator_contract,
       }) &&
-      (result.answer.regulator.kind !== "interval" || result.answer.regulator.rigorous === true)
+      result.samples.every((sample) =>
+        Number.isSafeInteger(sample.peak_rss_bytes) && sample.peak_rss_bytes > 0 &&
+        sample.phases_seconds.computation !== null &&
+        (result.boundary === "kernel-warm" ||
+          sample.phases_seconds.field_construction !== null) &&
+        (!["process-cold", "release-cold"].includes(result.boundary) ||
+          sample.phases_seconds.initialization !== null) &&
+        (result.system !== "direct-gp" || result.requested_proof !== "unconditional" ||
+          sample.phases_seconds.verification !== null) &&
+        (!(["kernel-warm", "field-cold"].includes(result.boundary) &&
+            sample.elapsed_seconds < 0.01) ||
+          (sample.iteration_count > 1 && sample.batch_elapsed_seconds >= 1))
+      ) &&
+      (report.configuration.regulator_contract.require_rigorous !== true ||
+        result.answer.regulator.rigorous === true) &&
+      (result.answer.regulator.kind !== "decimal" ||
+        result.answer.regulator.precision_digits >=
+          report.configuration.regulator_contract.minimum_decimal_digits)
     );
 }
 
@@ -999,12 +1185,14 @@ module.exports = {
   collectToolFingerprint,
   createHostFingerprint,
   createToolFingerprint,
+  decimalMetadata,
   evidenceFingerprint,
   finalizeClassUnitEvidence,
   fingerprint,
   jobKey,
   performanceEvidenceAccepted,
   proofRequestSatisfied,
+  regulatorSatisfiesContract,
   regulatorSemantics,
   semanticComparisonKey,
   sha256File,

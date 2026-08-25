@@ -185,8 +185,8 @@ function syntheticEvidenceRaw({
     torsion_order: "2",
     regulator: {
       kind: "interval",
-      lower: "1/4",
-      upper: "1/3",
+      lower: "1405997871614809/5000000000000000",
+      upper: "2811995743229619/10000000000000000",
       precision_bits: 100,
       rigorous: true,
     },
@@ -201,6 +201,11 @@ function syntheticEvidenceRaw({
         project: null,
         version: "test-1",
         executable_sha256: String(index + 1).repeat(64),
+        artifacts: [{
+          role: "executable",
+          path: `/opt/test/${name}`,
+          sha256: String(index + 1).repeat(64),
+        }],
         reason: null,
       }),
     ]),
@@ -209,6 +214,10 @@ function syntheticEvidenceRaw({
     tier: "smoke",
     requested_proofs: [requestedProof],
     requested_output: evidence.REQUESTED_OUTPUT,
+    regulator_contract: {
+      minimum_decimal_digits: 10,
+      require_rigorous: false,
+    },
     boundaries: [...evidence.TIMING_BOUNDARIES],
     systems: ["sagejs"],
     samples: 5,
@@ -229,7 +238,7 @@ function syntheticEvidenceRaw({
   const comparisonKey = evidence.semanticComparisonKey({
     achievedProofSemantics: achievedProof,
     requestedOutput: evidence.REQUESTED_OUTPUT,
-    regulator: answer.regulator,
+    regulatorContract: configuration.regulator_contract,
   });
   const results = jobs.map((job) => ({
     system: job.system,
@@ -249,21 +258,26 @@ function syntheticEvidenceRaw({
     boundary: job.boundary,
     status: "ok",
     reason: null,
-    process_total_seconds: 0.1,
-    samples: Array.from({ length: 5 }, () => ({
-      elapsed_seconds: 0.01,
-      peak_rss_bytes: null,
+    process_total_seconds: 0.5,
+    samples: Array.from({ length: 5 }, (_, sampleIndex) => ({
+      sample_index: sampleIndex,
+      answer_sha256: evidence.fingerprint(answer),
+      achieved_proof_semantics: achievedProof,
+      elapsed_seconds: ["process-cold", "release-cold"].includes(job.boundary) ? 0.1 : 0.01,
+      batch_elapsed_seconds: 0.01,
+      iteration_count: 1,
+      peak_rss_bytes: 1024,
       phases_seconds: {
-        initialization: null,
-        field_construction: null,
+        initialization: ["process-cold", "release-cold"].includes(job.boundary) ? 0.08 : null,
+        field_construction: job.boundary === "kernel-warm" ? null : 0,
         computation: 0.01,
         verification: null,
       },
     })),
     summary: {
-      minimum_seconds: 0.01,
-      median_seconds: 0.01,
-      maximum_seconds: 0.01,
+      minimum_seconds: ["process-cold", "release-cold"].includes(job.boundary) ? 0.1 : 0.01,
+      median_seconds: ["process-cold", "release-cold"].includes(job.boundary) ? 0.1 : 0.01,
+      maximum_seconds: ["process-cold", "release-cold"].includes(job.boundary) ? 0.1 : 0.01,
     },
     answer,
     correctness: {
@@ -338,6 +352,15 @@ test("evidence rejects an unconditional request with only conditional proof", ()
   );
 });
 
+test("evidence rejects a retained sample that disagrees with its aggregate answer", () => {
+  const raw = syntheticEvidenceRaw();
+  raw.results[0].samples[2].answer_sha256 = "f".repeat(64);
+  assert.throws(
+    () => evidence.finalizeClassUnitEvidence(raw),
+    /samples\[2\]\.answer_sha256 differs from its aggregate answer/,
+  );
+});
+
 test("the runner defaults to receipt-eligible sampling and all boundaries", () => {
   const options = runner.parseArguments([]);
   assert.equal(options.samples, 5);
@@ -346,4 +369,92 @@ test("the runner defaults to receipt-eligible sampling and all boundaries", () =
     "conditional-grh",
     "unconditional",
   ]);
+});
+
+test("rounded LMFDB regulator cells accept a valid narrow rigorous interval", () => {
+  const expected = fixture.records.find((record) => record.label === "3.1.23.1");
+  const answer = {
+    class_number: expected.class_number,
+    class_group_invariant_factors: expected.class_group,
+    unit_rank: expected.unit_rank,
+    torsion_order: String(expected.torsion_order),
+    regulator: {
+      kind: "interval",
+      lower: "1405997871614809/5000000000000000",
+      upper: "2811995743229619/10000000000000000",
+      precision_bits: 100,
+      rigorous: true,
+    },
+  };
+  assert.deepEqual(runner.correctnessMismatches(answer, expected), []);
+  const far = clone(answer);
+  far.regulator.lower = "29/100";
+  far.regulator.upper = "2900000000000001/10000000000000000";
+  assert.deepEqual(runner.correctnessMismatches(far, expected), ["regulator_interval"]);
+});
+
+test("job aggregation rejects duplicate identities and every bad retained sample", () => {
+  const expected = fixture.records.find((record) => record.label === "3.1.23.1");
+  const job = {
+    system: "direct-gp",
+    tool_id: "direct-gp",
+    case_id: expected.label,
+    label: expected.label,
+    role: "smoke",
+    requested_proof: "conditional-grh",
+    boundary: "kernel-warm",
+    samples: 5,
+  };
+  const answer = {
+    class_number: expected.class_number,
+    class_group_invariant_factors: expected.class_group,
+    unit_rank: expected.unit_rank,
+    torsion_order: String(expected.torsion_order),
+    regulator: {
+      kind: "decimal",
+      value: "0.2811995743229618465",
+      precision_digits: 19,
+      absolute_error_bound: "1/20000000000000000000",
+      rigorous: false,
+    },
+    _achieved_proof_semantics: "exact-relations-conditional-grh",
+  };
+  const samples = Array.from({ length: 5 }, (_, sample) => ({
+    label: expected.label,
+    sample,
+    status: "ok",
+    elapsed_seconds: 0.002,
+    batch_elapsed_seconds: 1.2,
+    iteration_count: 600,
+    phases_seconds: {
+      initialization: null,
+      field_construction: 0,
+      computation: 0.002,
+      verification: 0,
+    },
+    answer: clone(answer),
+  }));
+  assert.equal(runner.aggregateJob(job, samples, expected, 7, 1024).status, "ok");
+  const duplicate = clone(samples);
+  duplicate[4].sample = 3;
+  assert.match(
+    runner.aggregateJob(job, duplicate, expected, 7, 1024).reason,
+    /sample identity mismatch/,
+  );
+  const wrongFirst = clone(samples);
+  wrongFirst[0].answer.class_number = "2";
+  assert.match(
+    runner.aggregateJob(job, wrongFirst, expected, 7, 1024).reason,
+    /sample-0:class_number/,
+  );
+});
+
+test("runner fixture loading invokes the full checksum validator", () => {
+  const temporary = fs.mkdtempSync(path.join(process.env.TMPDIR || "/tmp", "sagejs-cu-fixture-"));
+  const filename = path.join(temporary, "fixture.json");
+  const changed = clone(fixture);
+  changed.records[0].class_number = "2";
+  fs.writeFileSync(filename, `${JSON.stringify(changed)}\n`);
+  assert.throws(() => runner.loadFixture(filename, "smoke", null));
+  fs.rmSync(temporary, { recursive: true, force: true });
 });
