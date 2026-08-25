@@ -2355,7 +2355,6 @@ class CubicMinkowskiClassNumberCertificate:
         self.field = field
         self.proof_status = "exact-unconditional"
         self.source = "exact Minkowski relations with modular cubic norm obstructions"
-        self._encoding_cache: list[tuple[str, ...]] = []
         if _live_token is _LIVE_CUBIC_CERTIFICATE_TOKEN:
             if getattr(_live_presentation, "order", None) is None:
                 raise ValueError(
@@ -2387,7 +2386,7 @@ class CubicMinkowskiClassNumberCertificate:
                 )
             )
             body = self._encoded_body(encoded)
-            self._encoding_cache.append(
+            self._detached_encoding = runtime.object.freeze(
                 encoded + (body, hashlib.sha256(body.encode("utf-8")).hexdigest())
             )
             self._live_semantic_identity = None
@@ -2428,20 +2427,21 @@ class CubicMinkowskiClassNumberCertificate:
         )
 
     def _encoding(self) -> tuple[str, ...]:
-        """Return or materialize the detached canonical body and hash."""
-        if self._encoding_cache:
-            return self._encoding_cache[0]
+        """Encode frozen live semantics or return immutable detached encoding."""
         raw = self._raw_components
-        if not isinstance(raw, tuple) or len(raw) != 6:
+        if isinstance(raw, tuple) and len(raw) == 6:
+            encoded = tuple(_canonical_json(value) for value in raw)
+            body = self._encoded_body(encoded)
+            return encoded + (
+                body,
+                hashlib.sha256(body.encode("utf-8")).hexdigest(),
+            )
+        if raw is not None:
             raise ArithmeticError("a live cubic certificate lost its exact snapshot")
-        encoded = tuple(_canonical_json(value) for value in raw)
-        body = self._encoded_body(encoded)
-        answer = encoded + (
-            body,
-            hashlib.sha256(body.encode("utf-8")).hexdigest(),
-        )
-        self._encoding_cache.append(answer)
-        return answer
+        detached = self._detached_encoding
+        if not isinstance(detached, tuple) or len(detached) != 8:
+            raise ArithmeticError("a detached cubic certificate lost its encoding")
+        return detached
 
     def _raw_component(self, index: int) -> Any:
         raw = self._raw_components
@@ -2450,9 +2450,9 @@ class CubicMinkowskiClassNumberCertificate:
         return _copy_json_value(raw[index])
 
     def _component(self, index: int) -> Any:
-        if self._encoding_cache:
-            return json.loads(self._encoding_cache[0][index])
-        return self._raw_component(index)
+        if isinstance(self._raw_components, tuple):
+            return self._raw_component(index)
+        return json.loads(self._encoding()[index])
 
     @property
     def plan(self) -> dict[str, Any]:
@@ -3545,6 +3545,87 @@ def authenticated_cubic_class_number(result: Any, field: Any) -> int | None:
     return None
 
 
+class _CompactCubicLedgerMutationError(RuntimeError):
+    """A live compact relation transaction changed across a callback."""
+
+
+def _seal_compact_json_value(value: Any) -> tuple[str, Any]:
+    """Store JSON side data in an unambiguously immutable live form."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return "atom", value
+    if isinstance(value, (list, tuple)):
+        return "array", tuple(_seal_compact_json_value(item) for item in value)
+    if isinstance(value, dict):
+        if not all(isinstance(key, str) for key in value):
+            raise TypeError("compact JSON object keys must be strings")
+        return "object", tuple(
+            (key, _seal_compact_json_value(value[key])) for key in sorted(value)
+        )
+    raise TypeError("compact relation metadata must be JSON-safe")
+
+
+def _unseal_compact_json_value(value: tuple[str, Any]) -> Any:
+    """Materialize one owned JSON value at the publication boundary."""
+    tag, payload = value
+    if tag == "atom":
+        return payload
+    if tag == "array":
+        return [_unseal_compact_json_value(item) for item in payload]
+    if tag == "object":
+        return {key: _unseal_compact_json_value(item) for key, item in payload}
+    raise ArithmeticError("a compact JSON seal has an unknown tag")
+
+
+def _compact_cubic_presentation_snapshot(presentation: Any) -> tuple[Any, ...]:
+    """Bind a relation presentation without allocating its detached JSON body."""
+    relation_rows = tuple(
+        (int(row.column_count), tuple(tuple(entry) for entry in row.entries))
+        for row in presentation.relation_rows
+    )
+    return (
+        int(presentation.column_count),
+        relation_rows,
+        int(presentation.row_count),
+        tuple(tuple(int(value) for value in row) for row in presentation.hnf),
+        tuple(
+            tuple(int(value) for value in row)
+            for row in presentation.hnf_left_transform
+        ),
+        tuple(tuple(int(value) for value in row) for row in presentation.smith),
+        tuple(
+            tuple(int(value) for value in row)
+            for row in presentation.smith_left_transform
+        ),
+        tuple(
+            tuple(int(value) for value in row)
+            for row in presentation.smith_right_transform
+        ),
+        tuple(
+            tuple(int(value) for value in row)
+            for row in presentation.smith_right_inverse
+        ),
+        str(presentation.backend),
+        int(presentation.rank),
+        tuple(int(value) for value in presentation.diagonal),
+        int(presentation.free_rank),
+        tuple(int(value) for value in presentation.invariant_positions),
+        tuple(int(value) for value in presentation.invariants),
+        None if presentation.order is None else int(presentation.order),
+        tuple(int(value) for value in presentation.generator_positions),
+        tuple(
+            tuple(int(value) for value in row)
+            for row in presentation.generator_transforms
+        ),
+        tuple(
+            tuple(int(value) for value in row)
+            for row in presentation.dependency_transforms
+        ),
+        tuple(
+            tuple(int(value) for value in row) for row in presentation.unit_transforms
+        ),
+    )
+
+
 class _CompactCubicRelationLedger:
     """Live-only exact rows retained until a cubic proof can finish."""
 
@@ -3562,6 +3643,10 @@ class _CompactCubicRelationLedger:
     ) -> None:
         self.order = order
         self.factor_base = tuple(factor_base)
+        if not all(
+            isinstance(record, PackedCubicFactorRecord) for record in self.factor_base
+        ):
+            raise TypeError("a compact cubic ledger needs packed factor records")
         degree = int(order.degree())
         width = len(self.factor_base)
         entries = []
@@ -3574,7 +3659,10 @@ class _CompactCubicRelationLedger:
                 raise ValueError("a compact cubic relation is not integral")
             if provenance is not None and not isinstance(provenance, dict):
                 raise TypeError("compact cubic provenance must be a dictionary")
-            entries.append((coordinates, row, provenance))
+            owned_provenance = (
+                None if provenance is None else _seal_compact_json_value(provenance)
+            )
+            entries.append((coordinates, row, owned_provenance))
         if len(entries) > int(maximum_relations):
             raise ValueError("a compact cubic relation ledger exceeds its row cap")
         authority_entries = getattr(authority, "entries", None)
@@ -3601,18 +3689,83 @@ class _CompactCubicRelationLedger:
         self.rows = rows
         self.authority = authority
         self.presentation = presentation
-        self.line_specs = tuple(line_specs)
-        self.obstructions = tuple(obstructions)
+        self.line_specs = tuple(
+            _seal_compact_json_value(specification) for specification in line_specs
+        )
+        self.obstructions = tuple(
+            _seal_compact_json_value(obstruction) for obstruction in obstructions
+        )
         if len(self.line_specs) != len(self.obstructions):
             raise ValueError("compact cubic obstruction coverage is incomplete")
+        self._order_authority = order
+        self._factor_authority = self.factor_base
+        self._batch_authority = authority
+        self._authority_entries = authority.entries
+        self._authority_factors = authority.factor_base
+        self._presentation_authority = presentation
+        self._entries_authority = self.entries
+        self._rows_authority = self.rows
+        self._line_specs_authority = self.line_specs
+        self._obstructions_authority = self.obstructions
+        self._semantic_snapshot = self._current_semantic_snapshot()
         self._issued = False
+
+    def _current_semantic_snapshot(self) -> tuple[Any, ...]:
+        return (
+            tuple(
+                record._live_authentication_snapshot() for record in self.factor_base
+            ),
+            _compact_cubic_presentation_snapshot(self.presentation),
+        )
+
+    def validate_semantics(self) -> None:
+        """Fail closed if staged proof semantics changed across user code."""
+        try:
+            authority_factors = tuple(self.authority.factor_base)
+            identities_match = bool(
+                self.order is self._order_authority
+                and self.factor_base is self._factor_authority
+                and self.authority is self._batch_authority
+                and self.presentation is self._presentation_authority
+                and self.entries is self._entries_authority
+                and self.rows is self._rows_authority
+                and self.line_specs is self._line_specs_authority
+                and self.obstructions is self._obstructions_authority
+                and self.authority.order is self.order
+                and self.authority.entries is self._authority_entries
+                and self.authority.factor_base is self._authority_factors
+                and len(authority_factors) == len(self.factor_base)
+                and all(
+                    authorized is retained
+                    for authorized, retained in zip(
+                        authority_factors, self.factor_base, strict=True
+                    )
+                )
+            )
+            matches = identities_match and (
+                self._current_semantic_snapshot() == self._semantic_snapshot
+            )
+        except (AttributeError, ArithmeticError, TypeError, ValueError):
+            matches = False
+        if not matches:
+            raise _CompactCubicLedgerMutationError(
+                "compact cubic relation semantics changed during a callback"
+            )
 
     def row(self, index: int) -> tuple[int, ...]:
         return self.rows[int(index)]
 
-    def publish(self, relation_module: Any) -> tuple[Any, tuple[Any, ...]]:
+    def publish(
+        self, relation_module: Any
+    ) -> tuple[
+        Any,
+        tuple[Any, ...],
+        tuple[dict[str, Any], ...],
+        tuple[dict[str, Any], ...],
+    ]:
         if self._issued:
             raise RuntimeError("a compact cubic relation ledger was already published")
+        self.validate_semantics()
         token = relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
         collector = relation_module.ExactRelationCollector(
             self.order,
@@ -3622,7 +3775,18 @@ class _CompactCubicRelationLedger:
         )
         admissions = collector._admit_validated_integral_order_basis_rows(
             self.authority,
-            self.entries,
+            tuple(
+                (
+                    coordinates,
+                    row,
+                    (
+                        None
+                        if provenance is None
+                        else _unseal_compact_json_value(provenance)
+                    ),
+                )
+                for coordinates, row, provenance in self.entries
+            ),
             _validated_token=token,
             _deferred_token=token,
         )
@@ -3633,8 +3797,14 @@ class _CompactCubicRelationLedger:
             )
         ):
             raise ArithmeticError("compact cubic publication changed a relation")
+        line_specs = tuple(
+            _unseal_compact_json_value(value) for value in self.line_specs
+        )
+        obstructions = tuple(
+            _unseal_compact_json_value(value) for value in self.obstructions
+        )
         self._issued = True
-        return collector, admissions
+        return collector, admissions, line_specs, obstructions
 
 
 def _complete_zero_width_cubic_class_number(
@@ -3792,6 +3962,7 @@ def bounded_cubic_minkowski_class_number(
     live_collector: Any = None
     live_search_state: Any = None
     live_has_partials = False
+    compact_relation_ledger: _CompactCubicRelationLedger | None = None
     total_started = time.perf_counter()
     factor_base_module = __import__(
         "sagejs.number_fields.class_group_factor_base",
@@ -3819,6 +3990,8 @@ def bounded_cubic_minkowski_class_number(
         presentation: Any = None,
         residue_states: int = 0,
     ) -> CubicClassNumberResult:
+        if compact_relation_ledger is not None:
+            compact_relation_ledger.validate_semantics()
         output_factor_base = tuple(factor_base)
         seed_factor_records = tuple(live_factor_records)
         seed_collector = live_collector
@@ -4179,8 +4352,14 @@ def bounded_cubic_minkowski_class_number(
                     tuple(planned_obstructions or ()),
                     maximum_relations=checked_caps["max_relations"],
                 )
+                compact_relation_ledger = ledger
                 _check_cubic_cancelled(cancelled)
-                collector, batch = ledger.publish(relation_module)
+                (
+                    collector,
+                    batch,
+                    planned_line_specs,
+                    planned_obstructions,
+                ) = ledger.publish(relation_module)
                 validated_sieve_batch_used = True
             else:
                 collector = new_relation_collector()
@@ -4568,6 +4747,8 @@ def bounded_cubic_minkowski_class_number(
             presentation=presentation,
         )
     _check_cubic_cancelled(cancelled)
+    if compact_relation_ledger is not None:
+        compact_relation_ledger.validate_semantics()
     reuse_planned_obstructions = bool(
         planned_presentation is presentation
         and planned_line_specs == tuple(line_specs)
@@ -4624,6 +4805,12 @@ def bounded_cubic_minkowski_class_number(
                 )
             obstructions.append(obstruction)
         phase_timings["norm_obstructions"] = time.perf_counter() - obstruction_started
+    if compact_relation_ledger is not None and not reuse_planned_obstructions:
+        # No proof object or deferred live seed may cross the transaction
+        # boundary after callbacks in the fresh-obstruction search changed
+        # staged producer semantics.  The planned-reuse branch has had no
+        # callback since its check immediately above.
+        compact_relation_ledger.validate_semantics()
     encoding_started = time.perf_counter()
     certificate = CubicMinkowskiClassNumberCertificate(
         field,

@@ -60,10 +60,50 @@
       "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
       "workspace_fingerprint": "458c5024dda28c6291031fa2f8a549e11496cf819b27551c96e8d881477b2f19",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-cubic-compact-relation-ledger.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.636,
+      "started_at": "2026-08-25T05:33:20.960Z",
+      "commit": "a506a413b1971f6bfc8993ec33b0368b0d52083a",
+      "workspace_fingerprint": "7cc15cc5eb676e3e6605ebcf7eac5643195206083e5b95d016d7282e5b6a18f2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.246,
+      "started_at": "2026-08-25T05:33:26.209Z",
+      "commit": "a506a413b1971f6bfc8993ec33b0368b0d52083a",
+      "workspace_fingerprint": "7cc15cc5eb676e3e6605ebcf7eac5643195206083e5b95d016d7282e5b6a18f2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-cubic-compact-relation-ledger.cjs test/number-field-class-group-relations.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.664,
+      "started_at": "2026-08-25T05:47:55.224Z",
+      "commit": "a506a413b1971f6bfc8993ec33b0368b0d52083a",
+      "workspace_fingerprint": "fea72aa1ef76883df2686e1a37fa5d989739b2a6cac6a2bb6a9f5c30cd8597dc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.742,
+      "started_at": "2026-08-25T05:48:06.244Z",
+      "commit": "a506a413b1971f6bfc8993ec33b0368b0d52083a",
+      "workspace_fingerprint": "fea72aa1ef76883df2686e1a37fa5d989739b2a6cac6a2bb6a9f5c30cd8597dc",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Stages exact cubic rows and presentation authority until obstruction success, publishes records transactionally once, defers live-only identity/reconstruction/canonical encoding, and handles the empty factor base directly while preserving the detached payload exactly.",
+    "summary": "Stages exact cubic rows and presentation authority until obstruction success, publishes records transactionally once, and handles the empty factor base directly. Immutable tagged side-data seals plus mutation-sensitive packed-factor and presentation snapshots make hostile callbacks fail closed before publication. Live certificate encoding always recomputes from recursively frozen semantics; detached encoding is an immutable eager tuple, so hostile cache or tuple injection is inert while the canonical payload remains exact.",
     "risks": [
       "The 411344bb package-byte ratchet predates this lane; central revision 3e70d55e raises the global-arithmetic budget and is required for the full architecture:check gate."
     ],
