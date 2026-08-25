@@ -4,16 +4,14 @@
   "id": "cubic-compact-relation-ledger",
   "title": "Cubic Compact Relation Ledger",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Keep cubic factor-base rows and modular presentation state compact through stopping, publish canonical relation records once, preserve detached payloads exactly, and remove at least 5% end-to-end without regressions.",
   "base_commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
   "claims": [
     "src/lib/sagejs/number_fields/cubic_class_number.py",
-    "src/lib/sagejs/number_fields/cubic_relation_ledger.py",
     "src/lib/sagejs/number_fields/class_group_relations.py",
-    "test/number-field-cubic-compact-relation-ledger.cjs",
-    "bench/class-unit-groups/compare-lmfdb-class-numbers.cjs"
+    "test/number-field-cubic-compact-relation-ledger.cjs"
   ],
   "dependencies": [],
   "references": [],
@@ -103,12 +101,10 @@
     }
   ],
   "handoff": {
-    "summary": "Stages exact cubic rows and presentation authority until obstruction success, publishes records transactionally once, and handles the empty factor base directly. Immutable tagged side-data seals plus mutation-sensitive packed-factor and presentation snapshots make hostile callbacks fail closed before publication. Live certificate encoding always recomputes from recursively frozen semantics; detached encoding is an immutable eager tuple, so hostile cache or tuple injection is inert while the canonical payload remains exact.",
-    "risks": [
-      "The 411344bb package-byte ratchet predates this lane; central revision 3e70d55e raises the global-arithmetic budget and is required for the full architecture:check gate."
-    ],
+    "summary": "Stages exact cubic rows and presentation authority until obstruction success, publishes records transactionally once, and handles the empty factor base directly. Immutable tagged side-data seals plus mutation-sensitive packed-factor and presentation snapshots make hostile callbacks fail closed before publication. Live certificate encoding always recomputes from recursively frozen semantics; detached encoding is an immutable eager tuple, so hostile cache or tuple injection is inert while the canonical payload remains exact. The cumulative integrated native suite passed at c27081c9.",
+    "risks": [],
     "next_steps": [
-      "Run the cumulative exact A/B corpus after integration; local five-sample timings are directional because the clean 411 baseline receipt was produced separately."
+      "Collect the pending cross-platform receipts and continue profiling the larger-field relation search."
     ]
   }
 }

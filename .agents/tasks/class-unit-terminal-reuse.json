@@ -4,7 +4,7 @@
   "id": "class-unit-terminal-reuse",
   "title": "Class Unit Terminal Reuse",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Reuse exact terminal class/unit authority safely: upgrade a cached conditional computation by running only an authenticated unconditional proof suffix without mutating conditional results or adding a second public object cache.",
   "base_commit": "3e70d55e456bc950b845caaf5f619ed5178df95a",
@@ -110,14 +110,14 @@
     }
   ],
   "handoff": {
-    "summary": "Reuses a sealed conditional class/unit terminal for the existing unconditional Minkowski suffix. Mutable unit, torsion, regulator, and saturation wrappers are reconstructed from private hash-bound authority; a reserve/commit/release lease prevents reentrancy and supports retry after suffix failure. Resource/controller requests including max_checkpoint_bytes bypass reuse. The unsafe second public IdealClassGroup field cache from the source commit is removed.",
+    "summary": "Reuses a sealed conditional class/unit terminal for the existing unconditional Minkowski suffix. Mutable unit, torsion, regulator, and saturation wrappers are reconstructed from private hash-bound authority; a reserve/commit/release lease prevents reentrancy and supports retry after suffix failure. Resource/controller requests including max_checkpoint_bytes bypass reuse. The unsafe second public IdealClassGroup field cache from the source commit is removed. The cumulative integrated native suite passed at c27081c9.",
     "risks": [
       "The live terminal receipt is in-process authority only; detached checkpoints continue through full canonical decoding and verification.",
       "The C4 quintic unconditional suffix remains mathematically expensive (about 27 seconds measured here), although its conditional snapshot overhead is only about 1.4 percent."
     ],
     "next_steps": [
       "Design any future O(1) public IdealClassGroup projection cache as a context-owned immutable-core feature rather than a second unauthenticated field cache.",
-      "Let the corpus integration lane run the broad native suite; this lane intentionally ran focused proof, strict, and architecture receipts only."
+      "Collect the pending cross-platform receipts and optimize the expensive unconditional quintic proof-prime suffix separately."
     ]
   }
 }
