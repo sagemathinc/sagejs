@@ -856,3 +856,72 @@ print("engine-unconditional-proof-ok")
 `);
   assert.equal(output, "engine-unconditional-proof-ok");
 });
+
+test("public unconditional groups replay prime schemas and direct Minkowski evidence", () => {
+  const output = run(String.raw`
+import copy
+
+from sagejs.number_fields.class_group_maps import class_group_from_engine_result
+from sagejs.number_fields.class_unit_groups import class_unit_context
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+
+K6 = NumberField(x**6 - x - 1, "a")
+assert K6.class_number() == 1
+C6 = K6.class_group()
+assert C6.order() == 1 and C6.proof_status == "exact-unconditional"
+payload6 = C6.proof_payload()
+assert C6.verify_proof_payload(payload6)
+assert payload6["prime_records"]
+assert all(
+    record["ideal"]["schema"] == "sagejs.number-fields.prime-ideal.v1"
+    for record in payload6["prime_records"]
+)
+assert all(
+    record["principal_witness"]["ideal"]["schema"]
+    == "sagejs.number-fields.ideal.v1"
+    for record in payload6["prime_records"]
+)
+
+bad_prime = copy.deepcopy(payload6)
+bad_prime["prime_records"][0]["ideal"]["schema"] = "unknown-prime-schema"
+assert not C6.verify_proof_payload(bad_prime)
+bad_ideal = copy.deepcopy(payload6)
+bad_ideal["prime_records"][0]["principal_witness"]["ideal"]["schema"] = (
+    "unknown-ideal-schema"
+)
+assert not C6.verify_proof_payload(bad_ideal)
+
+for proof in (False, True):
+    K3 = NumberField(x**3 + 4*x - 1, "b")
+    C3 = K3.class_group(proof=proof)
+    assert C3.order() == 2 and C3.proof_status == "exact-unconditional"
+    payload3 = C3.proof_payload()
+    assert C3.verify_proof_payload(payload3)
+    assert payload3["proof_progress"]["complete"] is True
+    assert payload3["proof_progress"]["completed_items"] == len(
+        payload3["prime_records"]
+    )
+    assert all(
+        record["ideal"]["schema"] == "sagejs.number-fields.prime-ideal.v1"
+        for record in payload3["prime_records"]
+    )
+    corrupted = copy.deepcopy(payload3)
+    corrupted["prime_records"][0]["ideal"]["schema"] = "unknown-schema"
+    assert not C3.verify_proof_payload(corrupted)
+
+result3 = class_unit_context(K3, proof=True)
+factor_stage = next(stage for stage in result3.stages if stage.name == "factor-base")
+factor_stage.details["bound"] = 100_001
+result3.diagnostics["factor_base_bound"] = 100_001
+try:
+    class_group_from_engine_result(result3)
+    raise AssertionError("an unbounded direct Minkowski replay was accepted")
+except ArithmeticError:
+    pass
+
+print("public-unconditional-replay-ok")
+`);
+  assert.equal(output, "public-unconditional-replay-ok");
+});
