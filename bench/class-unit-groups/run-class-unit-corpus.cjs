@@ -906,7 +906,7 @@ function detectTools(options) {
       const runtime = magmaRuntimeIdentity(magma.executable);
       magma.artifacts = runtime.artifacts;
       magma.libraries = runtime.libraries;
-      magma.execution_mode = "authenticated-magma-runtime";
+      magma.execution_mode = "authenticated-magma-runtime-default-libraries";
     } catch (error) {
       magma.status = "unavailable";
       magma.reason = error.message;
@@ -2284,7 +2284,12 @@ function adapterExecution(system, tool) {
   }
   if (system === "sage-pari") return { args: ["-python", "-"], env: {} };
   if (system === "direct-gp") return { args: ["-fq"], env: {} };
-  if (system === "magma") return { args: ["-b"], env: {} };
+  if (system === "magma") {
+    // An inherited nonempty value makes Magma's launcher bypass its pinned
+    // default library list. Clear it so the authenticated launcher selects
+    // the package-relative defaults recorded by its own hashed source.
+    return { args: ["-b"], env: { MAGMA_LIBRARIES: "" } };
+  }
   if (system === "hecke") {
     return {
       args: [...tool.argv_prefix.slice(1), "-"],

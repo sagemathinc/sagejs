@@ -699,7 +699,10 @@ test("external comparator identities bind their mathematical runtimes", {
   }
   const magma = tools.magma;
   if (magma.status === "available") {
-    assert.equal(magma.execution_mode, "authenticated-magma-runtime");
+    assert.equal(
+      magma.execution_mode,
+      "authenticated-magma-runtime-default-libraries",
+    );
     assert.ok(magma.artifacts.some((artifact) => artifact.role === "runtime-executable"));
     assert.ok(magma.artifacts.some((artifact) => artifact.role === "magma-package-tree"));
   }

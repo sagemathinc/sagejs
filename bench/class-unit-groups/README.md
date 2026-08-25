@@ -89,6 +89,9 @@ bind the actual Magma runtime and package tree, or the Julia system image,
 pinned clean Hecke source, Project/Manifest, loaded Hecke/Nemo package images,
 source trees, and exact FLINT/GMP libraries. Start/end identity rechecks reject
 any source, package-image, executable, or library change during a run.
+Magma runs with inherited `MAGMA_LIBRARIES` cleared, so its authenticated
+launcher selects the package-relative default libraries recorded by that
+launcher rather than an unauthenticated ambient override.
 
 Magma and Hecke are inventoried and selected only when those authenticated
 installations are available. Oscar remains inventory-only in this runner; its
