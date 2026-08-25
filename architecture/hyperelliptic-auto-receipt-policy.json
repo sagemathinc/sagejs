@@ -59,8 +59,8 @@
       "tools/runtime-bootstrap.ts",
       "tools/task-evaluator.ts"
     ],
-    "sha256": "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
-    "source_commit": "960d287bcf673090119f12e4c8670b456d73532e"
+    "sha256": "6715c02a684a1ebfeac30aa6cd2aabe875114a3033f256107de8e7b9406b84ea",
+    "source_commit": "4d15008b2ec405a7fc7d96758c2c62a1540c284b"
   },
   "entries": [
     {
@@ -74,7 +74,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
+      "source_bundle_sha256": "6715c02a684a1ebfeac30aa6cd2aabe875114a3033f256107de8e7b9406b84ea",
       "corpus": {
         "id": "phase10-primary-cantor-b1-v1",
         "path": "bench/hyperelliptic/cross-platform/run.cjs",
@@ -206,7 +206,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
+      "source_bundle_sha256": "6715c02a684a1ebfeac30aa6cd2aabe875114a3033f256107de8e7b9406b84ea",
       "corpus": {
         "id": "phase10-primary-cantor-b1-v1",
         "path": "bench/hyperelliptic/cross-platform/run.cjs",
@@ -338,7 +338,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
+      "source_bundle_sha256": "6715c02a684a1ebfeac30aa6cd2aabe875114a3033f256107de8e7b9406b84ea",
       "corpus": {
         "id": "phase10-primary-cantor-b1-v1",
         "path": "bench/hyperelliptic/cross-platform/run.cjs",
@@ -470,7 +470,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
+      "source_bundle_sha256": "6715c02a684a1ebfeac30aa6cd2aabe875114a3033f256107de8e7b9406b84ea",
       "corpus": {
         "id": "phase10-primary-cantor-b1-v1",
         "path": "bench/hyperelliptic/cross-platform/run.cjs",
@@ -602,7 +602,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
+      "source_bundle_sha256": "6715c02a684a1ebfeac30aa6cd2aabe875114a3033f256107de8e7b9406b84ea",
       "corpus": {
         "id": "phase10-primary-cantor-b1-v1",
         "path": "bench/hyperelliptic/cross-platform/run.cjs",
@@ -734,7 +734,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
+      "source_bundle_sha256": "6715c02a684a1ebfeac30aa6cd2aabe875114a3033f256107de8e7b9406b84ea",
       "corpus": {
         "id": "phase10-primary-cantor-b1-v1",
         "path": "bench/hyperelliptic/cross-platform/run.cjs",
