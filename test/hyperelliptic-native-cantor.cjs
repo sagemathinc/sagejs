@@ -80,6 +80,7 @@ from sagejs.hyperelliptic_curves.jacobian_kernels import (
     packed_cantor_search_progression,
     packed_cantor_search_progressions,
     packed_cantor_scalar_batch,
+    packed_cantor_subtract_batch,
     packed_cantor_sum_batch,
     packed_cantor_validate_batch,
 )
@@ -93,6 +94,7 @@ assert compiled == is_compiled(packed_cantor_negate_batch)
 assert compiled == is_compiled(packed_cantor_progression_batch)
 assert compiled == is_compiled(packed_cantor_search_progression)
 assert compiled == is_compiled(packed_cantor_search_progressions)
+assert compiled == is_compiled(packed_cantor_subtract_batch)
 assert compiled == is_compiled(packed_cantor_sum_batch)
 assert compiled == is_compiled(packed_cantor_validate_batch)
 selected = "native" if compiled else "reference"
@@ -317,6 +319,49 @@ def check_curve(curve, exhaustive):
     )
     assert differences == difference_reference
     assert subtract_diagnostics.operation == "subtract"
+    if compiled:
+        assert len(subtract_diagnostics.statuses) == len(sample)
+    else:
+        raw_differences = [0] * (8 * len(sample))
+        raw_subtract_statuses = [0] * len(sample)
+        assert packed_cantor_subtract_batch(
+            raw_differences,
+            raw_subtract_statuses,
+            list(context.model_coefficients),
+            [word for point in sample for word in context.pack(point)],
+            [word for point in shifted for word in context.pack(point)],
+            len(sample),
+            context.genus,
+            context.prime,
+        )
+        assert tuple(
+            context.unpack(raw_differences[8 * index:8 * index + 8])
+            for index in range(len(sample))
+        ) == difference_reference
+    invalid_subtract_row = list(context.pack(sample[0]))
+    invalid_subtract_row[1] = context.prime
+    rejected_subtract_output = kernel_uint64_buffer(
+        packed_cantor_subtract_batch, [93] * 8
+    )
+    rejected_subtract_status = kernel_uint64_buffer(
+        packed_cantor_subtract_batch, [7]
+    )
+    assert not packed_cantor_subtract_batch(
+        rejected_subtract_output,
+        rejected_subtract_status,
+        kernel_uint64_buffer(
+            packed_cantor_subtract_batch, context.model_coefficients
+        ),
+        kernel_uint64_buffer(packed_cantor_subtract_batch, invalid_subtract_row),
+        kernel_uint64_buffer(
+            packed_cantor_subtract_batch, context.pack(sample[1])
+        ),
+        1,
+        context.genus,
+        context.prime,
+    )
+    assert tuple(int(value) for value in rejected_subtract_output) == (93,) * 8
+    assert tuple(int(value) for value in rejected_subtract_status) == (0,)
     if compiled:
         assert isinstance(negated, PreparedDivisorBatch)
         assert isinstance(differences, PreparedDivisorBatch)
@@ -1143,6 +1188,16 @@ test("prepared packed Cantor arithmetic is exact in dynamic and native modes", (
     assert.doesNotMatch(
       negateBody,
       /native__cantor_negate_one|mpz_|SAGEJS_WORD_PROMOTE/,
+    );
+    const subtractBody = cFunction(
+      core,
+      "int sagejs_kernel_packed_cantor_subtract_batch(",
+    );
+    assert.match(subtractBody, /sagejs_kernel__cantor_negate_one/);
+    assert.match(subtractBody, /sagejs_kernel__cantor_add_one/);
+    assert.doesNotMatch(
+      subtractBody,
+      /native__cantor_(?:negate|add)_one|mpz_|SAGEJS_WORD_PROMOTE/,
     );
     const dynamic = run(process.execPath, [sagejs, program], {
       env: {
