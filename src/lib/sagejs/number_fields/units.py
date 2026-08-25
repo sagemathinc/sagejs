@@ -1,9 +1,9 @@
 """Bounded, proof-status-aware unit computations.
 
-This module provides complete algorithms for fields with a real embedding and
-unit rank zero, for imaginary quadratic roots of unity, and for real quadratic
-fundamental units.  Higher-rank enumeration is deliberately returned as a
-subgroup search: finding independent units is not a saturation proof.
+This module provides complete algorithms for roots of unity, fields with unit
+rank zero, and real quadratic fundamental units.  Higher-rank enumeration is
+deliberately returned as a subgroup search: finding independent units is not a
+saturation proof.
 """
 
 from __future__ import annotations
@@ -17,6 +17,241 @@ from sagejs.number_fields.embeddings import (
     exact_norm_is_unit,
     exact_signature,
 )
+
+_ROOTS_OF_UNITY_CERTIFICATE_TOKEN = object()
+_ROOTS_OF_UNITY_CERTIFICATE_SCHEMA = (
+    "sagejs.number-fields/roots-of-unity-certificate-v1"
+)
+_MAXIMUM_ROOT_OF_UNITY_PRIME = 10_000
+_FAST_ROOT_OF_UNITY_CANDIDATES = 256
+
+
+def _gcd(left: int, right: int) -> int:
+    left = abs(left)
+    right = abs(right)
+    while right:
+        left, right = right, left % right
+    return left
+
+
+def _is_prime(value: int) -> bool:
+    if value < 2:
+        return False
+    if value == 2:
+        return True
+    if value % 2 == 0:
+        return False
+    divisor = 3
+    while divisor * divisor <= value:
+        if value % divisor == 0:
+            return False
+        divisor += 2
+    return True
+
+
+def _prime_divisors(value: int) -> tuple[int, ...]:
+    value = abs(value)
+    answer: list[int] = []
+    divisor = 2
+    while divisor * divisor <= value:
+        if value % divisor == 0:
+            answer.append(divisor)
+            while value % divisor == 0:
+                value //= divisor
+        divisor = 3 if divisor == 2 else divisor + 2
+    if value > 1:
+        answer.append(value)
+    return tuple(answer)
+
+
+def _valuation(value: int, prime: int) -> int:
+    exponent = 0
+    while value % prime == 0:
+        value //= prime
+        exponent += 1
+    return exponent
+
+
+def _universal_torsion_prime_powers(degree: int) -> tuple[tuple[int, int], ...]:
+    """Return prime-power factors of a universal exponent for `mu(K)`.
+
+    If a primitive `m`-th root lies in a degree-`n` field, then
+    `phi(m) | n`.  Thus every `p^a | m` satisfies `p - 1 | n` and
+    `p^(a - 1) | n`.  This gives a finite exact exponent without a table or a
+    search cutoff for inverse Euler phi.
+    """
+    if degree < 1:
+        raise ValueError("a number-field degree must be positive")
+    answer: list[tuple[int, int]] = []
+    for prime in range(2, degree + 2):
+        if _is_prime(prime) and degree % (prime - 1) == 0:
+            exponent = _valuation(degree, prime) + 1
+            answer.append((prime, prime**exponent))
+    return tuple(answer)
+
+
+def _universal_torsion_exponent(degree: int) -> int:
+    answer = 1
+    for _prime, prime_power in _universal_torsion_prime_powers(degree):
+        answer *= prime_power
+    return answer
+
+
+def _element_key(element: Any) -> tuple[tuple[int, int], ...]:
+    return tuple(
+        (int(value._numerator), int(value._denominator))
+        for value in list(element.list())
+    )
+
+
+class RootsOfUnityCertificate:
+    """Authenticated exact exhaustion evidence for roots of unity.
+
+    The fast certificate proves that the exact order of a displayed generator
+    equals an upper bound obtained from certified residue fields.  The bounded
+    fallback certificate exhausts an exact maximal-order coordinate box.  An
+    issuance seal prevents a certificate payload from being changed after the
+    producing computation; verification still replays all mathematical
+    evidence from the field.
+    """
+
+    def __init__(
+        self,
+        kind: str,
+        degree: int,
+        signature: tuple[int, int],
+        universal_prime_powers: tuple[tuple[int, int], ...],
+        universal_exponent: int,
+        generator_coordinates: tuple[tuple[int, int], ...],
+        prime_records: tuple[
+            tuple[int, tuple[tuple[int, int], ...], int, int], ...
+        ] = (),
+        coefficient_bounds: tuple[int, ...] = (),
+        candidates_checked: int = 0,
+        candidate_cap: int = 0,
+        *,
+        _issuance_token: Any = None,
+    ) -> None:
+        if _issuance_token is not _ROOTS_OF_UNITY_CERTIFICATE_TOKEN:
+            raise ValueError("roots-of-unity certificates are producer-issued")
+        if kind not in (
+            "real-place",
+            "imaginary-quadratic-classification",
+            "residue-upper-bound",
+            "embedding-box-exhaustion",
+        ):
+            raise ValueError("unknown roots-of-unity certificate kind")
+        self.kind = kind
+        self.degree = int(degree)
+        self.signature = tuple(int(value) for value in signature)
+        self.universal_prime_powers = tuple(
+            (int(prime), int(prime_power))
+            for prime, prime_power in universal_prime_powers
+        )
+        self.universal_exponent = int(universal_exponent)
+        self.generator_coordinates = tuple(
+            (int(numerator), int(denominator))
+            for numerator, denominator in generator_coordinates
+        )
+        self.prime_records = tuple(
+            (
+                int(prime),
+                tuple(
+                    (int(ramification), int(residue_degree))
+                    for ramification, residue_degree in factors
+                ),
+                int(upper_before),
+                int(upper_after),
+            )
+            for prime, factors, upper_before, upper_after in prime_records
+        )
+        self.coefficient_bounds = tuple(int(value) for value in coefficient_bounds)
+        self.candidates_checked = int(candidates_checked)
+        self.candidate_cap = int(candidate_cap)
+        self.proof_status = "exact"
+        self._issuance_seal = self._payload_tuple()
+        self._verified_result: Any = None
+        self._verified_result_seal: Any = None
+
+    def _payload_tuple(self) -> tuple[Any, ...]:
+        return (
+            self.kind,
+            self.degree,
+            self.signature,
+            self.universal_prime_powers,
+            self.universal_exponent,
+            self.generator_coordinates,
+            self.prime_records,
+            self.coefficient_bounds,
+            self.candidates_checked,
+            self.candidate_cap,
+        )
+
+    def verify(self, result: RootsOfUnityResult, *, force_replay: bool = False) -> bool:
+        if self._issuance_seal != self._payload_tuple():
+            return False
+        try:
+            result_seal = (
+                bool(result.complete),
+                int(result.order),
+                _element_key(result.generator),
+                tuple(_element_key(element) for element in result.elements),
+            )
+        except (TypeError, ValueError, ArithmeticError, AttributeError):
+            return False
+        if (
+            not force_replay
+            and self._verified_result is result
+            and self._verified_result_seal == result_seal
+        ):
+            return True
+        try:
+            verified = _verify_roots_of_unity_certificate(result, self)
+        except (
+            TypeError,
+            ValueError,
+            ArithmeticError,
+            AttributeError,
+            NotImplementedError,
+        ):
+            return False
+        if verified:
+            self._verified_result = result
+            self._verified_result_seal = result_seal
+        return verified
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": _ROOTS_OF_UNITY_CERTIFICATE_SCHEMA,
+            "kind": self.kind,
+            "degree": self.degree,
+            "signature": list(self.signature),
+            "universal_prime_powers": [
+                [prime, prime_power]
+                for prime, prime_power in self.universal_prime_powers
+            ],
+            "universal_exponent": self.universal_exponent,
+            "generator_coordinates": [
+                [numerator, denominator]
+                for numerator, denominator in self.generator_coordinates
+            ],
+            "prime_records": [
+                {
+                    "prime": prime,
+                    "factors": [
+                        {"e": ramification, "f": residue_degree}
+                        for ramification, residue_degree in factors
+                    ],
+                    "upper_before": upper_before,
+                    "upper_after": upper_after,
+                }
+                for prime, factors, upper_before, upper_after in self.prime_records
+            ],
+            "coefficient_bounds": list(self.coefficient_bounds),
+            "candidates_checked": self.candidates_checked,
+            "candidate_cap": self.candidate_cap,
+            "proof_status": self.proof_status,
+        }
 
 
 def _isqrt(value: int) -> int:
@@ -42,6 +277,7 @@ class RootsOfUnityResult:
         order: int,
         complete: bool,
         reason: str,
+        certificate: RootsOfUnityCertificate | None = None,
     ) -> None:
         if order < 1:
             raise ValueError("a roots-of-unity order must be positive")
@@ -50,11 +286,18 @@ class RootsOfUnityResult:
         self.order = order
         self.complete = complete
         self.reason = reason
+        self.certificate = certificate
         self.proof_status = "exact" if complete else "incomplete"
         if complete and len(self.elements) != order:
             raise ValueError("a complete torsion list must have the claimed order")
 
-    def verify(self) -> bool:
+    def verify(self, *, force_replay: bool = False) -> bool:
+        if (
+            not self.complete
+            or type(self.certificate) is not RootsOfUnityCertificate
+            or not self.certificate.verify(self, force_replay=force_replay)
+        ):
+            return False
         expected = _powers(self.generator, self.order)
         if len(_unique(expected)) != self.order:
             return False
@@ -357,20 +600,390 @@ def _powers(generator: Any, order: int) -> list[Any]:
     return answer
 
 
-def roots_of_unity(field: Any) -> RootsOfUnityResult:
-    """Compute complete torsion in certified rank-zero and real-place cases."""
+class _RootsOfUnityResourceLimit(ValueError):
+    pass
+
+
+def _exact_order_dividing(element: Any, exponent: int) -> int:
+    if exponent < 1 or element**exponent != element.parent().one():
+        return 0
+    order = exponent
+    for prime in _prime_divisors(exponent):
+        while order % prime == 0 and element ** (order // prime) == 1:
+            order //= prime
+    return order
+
+
+def _issue_roots_of_unity_certificate(
+    kind: str,
+    field: Any,
+    generator: Any,
+    universal_prime_powers: tuple[tuple[int, int], ...],
+    universal_exponent: int,
+    *,
+    prime_records: tuple[tuple[int, tuple[tuple[int, int], ...], int, int], ...] = (),
+    coefficient_bounds: tuple[int, ...] = (),
+    candidates_checked: int = 0,
+    candidate_cap: int = 0,
+) -> RootsOfUnityCertificate:
+    return RootsOfUnityCertificate(
+        kind,
+        int(field.degree()),
+        exact_signature(field),
+        universal_prime_powers,
+        universal_exponent,
+        _element_key(generator),
+        prime_records,
+        coefficient_bounds,
+        candidates_checked,
+        candidate_cap,
+        _issuance_token=_ROOTS_OF_UNITY_CERTIFICATE_TOKEN,
+    )
+
+
+def _append_unique_element(elements: list[Any], candidate: Any) -> None:
+    if not any(candidate == known for known in elements):
+        elements.append(candidate)
+
+
+def _coordinate_vector_at(index: int, bounds: tuple[int, ...]) -> tuple[int, ...]:
+    coordinates = [0] * len(bounds)
+    for position in range(len(bounds) - 1, -1, -1):
+        width = 2 * bounds[position] + 1
+        coordinates[position] = index % width - bounds[position]
+        index //= width
+    return tuple(coordinates)
+
+
+def _element_from_order_coordinates(
+    field: Any, basis: tuple[Any, ...], coordinates: tuple[int, ...]
+) -> Any:
+    element = field.zero()
+    for index in range(len(basis)):
+        element += coordinates[index] * basis[index]
+    return element
+
+
+def _fast_torsion_candidates(field: Any, maximum_candidates: int) -> tuple[Any, ...]:
+    if maximum_candidates <= 0:
+        return ()
+    order = field.maximal_order()
+    basis = tuple(order.basis())
+    answer: list[Any] = []
+    generator = field.gen()
+    _append_unique_element(answer, generator)
+    if len(answer) < maximum_candidates:
+        _append_unique_element(answer, -generator)
+    for basis_element in basis:
+        if len(answer) >= maximum_candidates:
+            return tuple(answer)
+        _append_unique_element(answer, basis_element)
+        if len(answer) >= maximum_candidates:
+            return tuple(answer)
+        _append_unique_element(answer, -basis_element)
+    bounds = tuple(1 for _index in basis)
+    total = 3 ** len(basis)
+    for candidate_index in range(total):
+        if len(answer) >= maximum_candidates:
+            break
+        coordinates = _coordinate_vector_at(candidate_index, bounds)
+        candidate = _element_from_order_coordinates(field, basis, coordinates)
+        _append_unique_element(answer, candidate)
+    return tuple(answer)
+
+
+def _canonical_torsion_generator(field: Any, generator: Any, order: int) -> Any:
+    """Choose the first primitive element in the producer's fixed ordering."""
+    for candidate in _fast_torsion_candidates(field, _FAST_ROOT_OF_UNITY_CANDIDATES):
+        if _exact_order_dividing(candidate, order) == order:
+            return candidate
+    primitive = [
+        candidate
+        for candidate in _powers(generator, order)
+        if _exact_order_dividing(candidate, order) == order
+    ]
+    if not primitive:
+        raise ArithmeticError("a finite torsion group has no primitive generator")
+    primitive.sort(key=_element_key)
+    return primitive[0]
+
+
+def _next_congruent_prime(start: int, modulus: int) -> int:
+    modulus = max(1, modulus)
+    candidate = max(2, start)
+    if modulus > 1:
+        candidate += (1 - candidate) % modulus
+    while candidate <= _MAXIMUM_ROOT_OF_UNITY_PRIME:
+        if _is_prime(candidate):
+            return candidate
+        candidate += modulus
+    return 0
+
+
+def _residue_torsion_upper_bound(
+    field: Any,
+    initial_upper: int,
+    lower_order: int,
+    maximum_primes: int,
+) -> tuple[
+    int,
+    tuple[tuple[int, tuple[tuple[int, int], ...], int, int], ...],
+]:
+    upper = initial_upper
+    records: list[tuple[int, tuple[tuple[int, int], ...], int, int]] = []
+    if maximum_primes <= 0:
+        return upper, tuple(records)
+    prime_module = __import__(
+        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+    )
+    order = field.maximal_order()
+    candidate = max(2, lower_order + 1)
+    attempts = 0
+    while attempts < maximum_primes and upper != lower_order:
+        prime = _next_congruent_prime(candidate, lower_order)
+        if prime == 0:
+            break
+        candidate = prime + max(1, lower_order)
+        if initial_upper % prime == 0:
+            continue
+        attempts += 1
+        try:
+            decomposition = prime_module.factor_rational_prime(order, prime)
+        except (ValueError, ArithmeticError, NotImplementedError):
+            continue
+        factors = tuple(
+            (
+                int(prime_ideal.ramification_index()),
+                int(prime_ideal.residue_class_degree()),
+            )
+            for prime_ideal in decomposition.prime_ideals()
+        )
+        if not factors:
+            raise ArithmeticError("a prime decomposition has no factors")
+        residue_gcd = factors[0][1]
+        for _ramification, residue_degree in factors[1:]:
+            residue_gcd = _gcd(residue_gcd, residue_degree)
+        previous = upper
+        upper = _gcd(upper, prime**residue_gcd - 1)
+        if upper % lower_order != 0:
+            raise ArithmeticError(
+                "a residue torsion bound excludes a known root of unity"
+            )
+        records.append((prime, factors, previous, upper))
+    return upper, tuple(records)
+
+
+def _embedding_box_roots(
+    field: Any, universal_exponent: int, candidate_cap: int
+) -> tuple[tuple[int, ...], int, Any, int, tuple[Any, ...]]:
+    order = field.maximal_order()
+    basis = tuple(order.basis())
+    roots = _exact_roots(field)
+    embedding_matrix = []
+    for root in roots:
+        embedding_matrix.append(
+            [
+                _evaluate_coefficients(list(basis_element.list()), root)
+                for basis_element in basis
+            ]
+        )
+    inverse = _exact_matrix_inverse(embedding_matrix)
+    coefficient_bounds: list[int] = []
+    total = 1
+    for row in inverse:
+        bound = row[0].abs().parent()(0)
+        for value in row:
+            bound += value.abs()
+        coefficient_bound = _exact_ceiling(bound)
+        coefficient_bounds.append(coefficient_bound)
+        total *= 2 * coefficient_bound + 1
+        if total > candidate_cap:
+            raise _RootsOfUnityResourceLimit(
+                "the exact roots-of-unity coefficient box has "
+                + str(total)
+                + " candidates, exceeding max_candidates="
+                + str(candidate_cap)
+            )
+    bounds = tuple(coefficient_bounds)
+    found: list[Any] = []
+    best_generator = field(-1)
+    best_order = 2
+    for candidate_index in range(total):
+        coordinates = _coordinate_vector_at(candidate_index, bounds)
+        element = _element_from_order_coordinates(field, basis, coordinates)
+        element_order = _exact_order_dividing(element, universal_exponent)
+        if element_order == 0:
+            continue
+        found.append(element)
+        if element_order > best_order:
+            best_generator = element
+            best_order = element_order
+    unique_found = _unique(found)
+    best_generator = _canonical_torsion_generator(field, best_generator, best_order)
+    powers = _powers(best_generator, best_order)
+    if len(unique_found) != best_order or not all(
+        any(power == root for root in unique_found) for power in powers
+    ):
+        raise ArithmeticError("the exact torsion roots did not form one cyclic group")
+    return bounds, total, best_generator, best_order, tuple(unique_found)
+
+
+def _verify_prime_records(
+    field: Any,
+    universal_exponent: int,
+    records: tuple[tuple[int, tuple[tuple[int, int], ...], int, int], ...],
+) -> int:
+    prime_module = __import__(
+        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+    )
+    order = field.maximal_order()
+    upper = universal_exponent
+    for prime, recorded_factors, upper_before, upper_after in records:
+        if prime < 2 or universal_exponent % prime == 0 or upper_before != upper:
+            raise ArithmeticError("invalid residue torsion-bound record")
+        decomposition = prime_module.factor_rational_prime(order, prime)
+        verification = decomposition.verify()
+        if verification.get("certified") is not True:
+            raise ArithmeticError("a residue torsion decomposition failed replay")
+        factors = tuple(
+            (
+                int(prime_ideal.ramification_index()),
+                int(prime_ideal.residue_class_degree()),
+            )
+            for prime_ideal in decomposition.prime_ideals()
+        )
+        if factors != recorded_factors or not factors:
+            raise ArithmeticError("a residue torsion decomposition changed")
+        residue_gcd = factors[0][1]
+        for _ramification, residue_degree in factors[1:]:
+            residue_gcd = _gcd(residue_gcd, residue_degree)
+        upper = _gcd(upper, prime**residue_gcd - 1)
+        if upper != upper_after:
+            raise ArithmeticError("a residue torsion upper bound changed")
+    return upper
+
+
+def _verify_roots_of_unity_certificate(
+    result: RootsOfUnityResult, certificate: RootsOfUnityCertificate
+) -> bool:
+    if type(result) is not RootsOfUnityResult or not result.complete:
+        return False
+    field = result.generator.parent()
+    degree = int(field.degree())
+    signature = exact_signature(field)
+    prime_powers = _universal_torsion_prime_powers(degree)
+    universal_exponent = _universal_torsion_exponent(degree)
+    if (
+        certificate.degree != degree
+        or certificate.signature != signature
+        or certificate.universal_prime_powers != prime_powers
+        or certificate.universal_exponent != universal_exponent
+        or certificate.generator_coordinates != _element_key(result.generator)
+    ):
+        return False
+    if _exact_order_dividing(result.generator, universal_exponent) != result.order:
+        return False
+    expected_elements = _powers(result.generator, result.order)
+    if (
+        len(_unique(expected_elements)) != result.order
+        or len(result.elements) != result.order
+        or not all(
+            result.elements[index] == expected_elements[index]
+            for index in range(result.order)
+        )
+    ):
+        return False
+    if certificate.kind == "real-place":
+        return (
+            (signature[0] > 0 or degree == 1)
+            and result.order == 2
+            and result.generator == field(-1)
+            and not certificate.prime_records
+            and not certificate.coefficient_bounds
+        )
+    if certificate.kind == "imaginary-quadratic-classification":
+        if degree != 2 or signature != (0, 1):
+            return False
+        squarefree, square_root = _quadratic_square_root_element(field)
+        if squarefree == -1:
+            expected_generator = square_root
+            expected_order = 4
+        elif squarefree == -3:
+            expected_generator = (field(1) + square_root) / 2
+            expected_order = 6
+        else:
+            expected_generator = field(-1)
+            expected_order = 2
+        return (
+            result.order == expected_order
+            and result.generator == expected_generator
+            and not certificate.prime_records
+            and not certificate.coefficient_bounds
+        )
+    residue_upper = _verify_prime_records(
+        field, universal_exponent, certificate.prime_records
+    )
+    if certificate.kind == "residue-upper-bound":
+        return (
+            bool(certificate.prime_records)
+            and residue_upper == result.order
+            and not certificate.coefficient_bounds
+            and certificate.candidate_cap >= 0
+        )
+    if certificate.kind != "embedding-box-exhaustion":
+        return False
+    bounds, candidates, generator, order, found = _embedding_box_roots(
+        field, universal_exponent, certificate.candidate_cap
+    )
+    return (
+        bounds == certificate.coefficient_bounds
+        and candidates == certificate.candidates_checked
+        and order == result.order
+        and generator == result.generator
+        and len(found) == result.order
+    )
+
+
+def roots_of_unity(
+    field: Any,
+    *,
+    max_primes: int = 8,
+    max_candidates: int = 100_000,
+) -> RootsOfUnityResult:
+    """Compute roots of unity with replayable exact exhaustion evidence.
+
+    The higher-degree totally imaginary route is deterministic and bounded.
+    It first tries to match an exact generator order with residue-field upper
+    bounds, then exhausts an exact maximal-order embedding box.  Exceeding a
+    resource cap returns honest incomplete torsion.
+    """
+    max_primes = int(max_primes)
+    max_candidates = int(max_candidates)
+    if max_primes < 0 or max_candidates < 0:
+        raise ValueError("roots-of-unity resource caps must be nonnegative")
     r1, r2 = exact_signature(field)
+    degree = int(field.degree())
+    universal_prime_powers = _universal_torsion_prime_powers(degree)
+    universal_exponent = _universal_torsion_exponent(degree)
     minus_one = field(-1)
-    if r1 > 0 or field.degree() == 1:
+    if r1 > 0 or degree == 1:
         # Every root of unity maps to a real root of unity under a real place.
+        certificate = _issue_roots_of_unity_certificate(
+            "real-place",
+            field,
+            minus_one,
+            universal_prime_powers,
+            universal_exponent,
+        )
         return RootsOfUnityResult(
             [field(1), minus_one],
             minus_one,
             2,
             True,
             "a real embedding forces every root of unity to be +1 or -1",
+            certificate,
         )
-    if field.degree() == 2 and r2 == 1:
+    if degree == 2 and r2 == 1:
         squarefree, square_root = _quadratic_square_root_element(field)
         if squarefree == -1:
             generator = square_root
@@ -385,17 +998,113 @@ def roots_of_unity(field: Any) -> RootsOfUnityResult:
             order = 2
             reason = "classification of roots of unity in imaginary quadratic fields"
         elements = _powers(generator, order)
-        result = RootsOfUnityResult(elements, generator, order, True, reason)
-        if not result.verify():
+        certificate = _issue_roots_of_unity_certificate(
+            "imaginary-quadratic-classification",
+            field,
+            generator,
+            universal_prime_powers,
+            universal_exponent,
+        )
+        result = RootsOfUnityResult(
+            elements, generator, order, True, reason, certificate
+        )
+        if not result.verify(force_replay=True):
             raise ArithmeticError("roots-of-unity certificate replay failed")
         return result
-    return RootsOfUnityResult(
-        [field(1), minus_one],
-        minus_one,
-        2,
-        False,
-        "higher-degree totally imaginary torsion has not been exhausted",
+
+    best_generator = minus_one
+    best_order = 2
+    fast_cap = min(max_candidates, _FAST_ROOT_OF_UNITY_CANDIDATES)
+    fast_candidates = _fast_torsion_candidates(field, fast_cap)
+    candidates_checked = 0
+    remaining_offset = 0
+    for candidate_index in range(len(fast_candidates)):
+        candidate = fast_candidates[candidate_index]
+        candidates_checked += 1
+        remaining_offset = candidate_index + 1
+        candidate_order = _exact_order_dividing(candidate, universal_exponent)
+        if candidate_order > best_order:
+            best_generator = candidate
+            best_order = candidate_order
+            # Every number field contains -1, so the full torsion order is
+            # even.  An odd-order root is paired with its deterministic
+            # negative candidate before residue work begins.
+            if best_order > 2 and best_order % 2 == 0:
+                break
+    residue_upper, prime_records = _residue_torsion_upper_bound(
+        field,
+        universal_exponent,
+        best_order,
+        max_primes,
     )
+    if residue_upper != best_order:
+        for candidate_index in range(remaining_offset, len(fast_candidates)):
+            candidate = fast_candidates[candidate_index]
+            candidates_checked += 1
+            candidate_order = _exact_order_dividing(candidate, universal_exponent)
+            if candidate_order > best_order:
+                best_generator = candidate
+                best_order = candidate_order
+            if best_order == residue_upper:
+                break
+    if residue_upper == best_order:
+        best_generator = _canonical_torsion_generator(field, best_generator, best_order)
+        certificate = _issue_roots_of_unity_certificate(
+            "residue-upper-bound",
+            field,
+            best_generator,
+            universal_prime_powers,
+            universal_exponent,
+            prime_records=prime_records,
+            candidates_checked=candidates_checked,
+            candidate_cap=max_candidates,
+        )
+        result = RootsOfUnityResult(
+            _powers(best_generator, best_order),
+            best_generator,
+            best_order,
+            True,
+            "an exact generator attains a certified residue-field upper bound",
+            certificate,
+        )
+        if not result.verify(force_replay=True):
+            raise ArithmeticError("roots-of-unity certificate replay failed")
+        return result
+
+    try:
+        bounds, total, generator, order, _found = _embedding_box_roots(
+            field, universal_exponent, max_candidates
+        )
+    except _RootsOfUnityResourceLimit as error:
+        return RootsOfUnityResult(
+            _powers(best_generator, best_order),
+            best_generator,
+            best_order,
+            False,
+            str(error),
+        )
+    certificate = _issue_roots_of_unity_certificate(
+        "embedding-box-exhaustion",
+        field,
+        generator,
+        universal_prime_powers,
+        universal_exponent,
+        prime_records=prime_records,
+        coefficient_bounds=bounds,
+        candidates_checked=total,
+        candidate_cap=max_candidates,
+    )
+    result = RootsOfUnityResult(
+        _powers(generator, order),
+        generator,
+        order,
+        True,
+        "exact exhaustion of a maximal-order embedding coefficient box",
+        certificate,
+    )
+    if not result.verify(force_replay=True):
+        raise ArithmeticError("roots-of-unity certificate replay failed")
+    return result
 
 
 def _real_quadratic_unit(field: Any, max_y: int) -> tuple[Any, int, int]:

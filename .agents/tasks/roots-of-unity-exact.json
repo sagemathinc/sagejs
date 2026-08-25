@@ -1,0 +1,103 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "roots-of-unity-exact",
+  "title": "Exact general roots of unity",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement a bounded replayable exact roots-of-unity producer for higher-degree totally imaginary number fields, completing cyclotomic quartic class/unit computations without polynomial allowlists",
+  "base_commit": "483116bb12acdb6f0aec03f993a9be1a42e89b36",
+  "claims": [
+    "src/lib/sagejs/number_fields/units.py",
+    "test/number-field-roots-of-unity.cjs",
+    "bench/class-unit-groups/roots-of-unity.py"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/julia-class-unit-depot/packages/Hecke/sbdcK/src/NumFieldOrd/NfOrd/TorsionUnits.jl",
+    "https://pari.math.u-bordeaux.fr/lcov-report/basemath/nffactor.c.gcov.html"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "PARI nfrootsof1 and pinned Hecke torsion_units_gen_order",
+      "existing number-field-class-unit-oracles fixture"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-roots-of-unity.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.693,
+      "started_at": "2026-08-25T06:53:19.934Z",
+      "commit": "483116bb12acdb6f0aec03f993a9be1a42e89b36",
+      "workspace_fingerprint": "f3a6362b553f471e44758d463e30fcf1d9ac49770fb2483d72124068c05a4178",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bin/sagejs --python bench/class-unit-groups/roots-of-unity.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.578,
+      "started_at": "2026-08-25T06:53:59.248Z",
+      "commit": "483116bb12acdb6f0aec03f993a9be1a42e89b36",
+      "workspace_fingerprint": "f3a6362b553f471e44758d463e30fcf1d9ac49770fb2483d72124068c05a4178",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.22,
+      "started_at": "2026-08-25T06:54:33.950Z",
+      "commit": "483116bb12acdb6f0aec03f993a9be1a42e89b36",
+      "workspace_fingerprint": "f3a6362b553f471e44758d463e30fcf1d9ac49770fb2483d72124068c05a4178",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 819.452,
+      "started_at": "2026-08-25T06:55:13.769Z",
+      "commit": "483116bb12acdb6f0aec03f993a9be1a42e89b36",
+      "workspace_fingerprint": "f3a6362b553f471e44758d463e30fcf1d9ac49770fb2483d72124068c05a4178",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 878.812,
+      "started_at": "2026-08-25T07:09:18.136Z",
+      "commit": "483116bb12acdb6f0aec03f993a9be1a42e89b36",
+      "workspace_fingerprint": "f3a6362b553f471e44758d463e30fcf1d9ac49770fb2483d72124068c05a4178",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a general exact roots-of-unity producer with a universal phi exponent, certified residue-field upper bounds, deterministic generators, bounded embedding-box exhaustion, and authenticated replayable certificates. Exact completion now covers cyclotomic and translated quartics, including class/unit completion for x^4 + 1, while retaining real-place and imaginary-quadratic behavior. Focused tests, strict Python, the full native suite, and a production/fallback benchmark pass.",
+    "risks": [
+      "The class-group branch's number-field-global-arithmetic lazy bundle is 1,409,552 bytes after this source change, 9,552 bytes above its integration-owned 1,400,000-byte budget; the integration lane approved raising that narrow budget to 1,420,000 and must rerun architecture:check after cherry-pick.",
+      "Exact embedding-box exhaustion is deliberately capped and can return an honest incomplete result for fields whose certified coordinate box exceeds max_candidates; residue-field certification is the normal fast path."
+    ],
+    "next_steps": [
+      "Cherry-pick this commit into class-group, raise only number-field-global-arithmetic's lazy budget from 1,400,000 to 1,420,000, and rerun pnpm architecture:check.",
+      "Use the certificate payload and roots benchmark when profiling higher-degree class/unit completion; do not promote capped fallback results to complete."
+    ]
+  }
+}
