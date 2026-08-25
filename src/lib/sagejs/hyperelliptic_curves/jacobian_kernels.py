@@ -1264,6 +1264,61 @@ def packed_cantor_negate_batch(
 
 
 @native
+def packed_cantor_subtract_batch(
+    output: UInt64Buffer,
+    statuses: UInt64Buffer,
+    model: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    count: uint64,
+    genus: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Subtract paired packed rows through one exact Cantor crossing."""
+    if (
+        len(output) != count * 8
+        or len(statuses) != count
+        or len(left) != count * 8
+        or len(right) != count * 8
+    ):
+        return False
+    if _validate_packed_model(model, genus, modulus) == 0:
+        return False
+    store = prime_zeros(16 * 52)
+    negative = prime_zeros(8)
+    item: uint64 = 0
+    while item < count:
+        inverted = _cantor_negate_one(
+            negative,
+            0,
+            right,
+            item * 8,
+            model,
+            genus,
+            modulus,
+            store,
+        )
+        if inverted == 0:
+            return False
+        statuses[item] = _cantor_add_one(
+            output,
+            item * 8,
+            left,
+            item * 8,
+            negative,
+            0,
+            model,
+            genus,
+            modulus,
+            store,
+        )
+        if statuses[item] == 0:
+            return False
+        item += 1
+    return True
+
+
+@native
 def packed_cantor_progression_batch(
     output: UInt64Buffer,
     statuses: UInt64Buffer,

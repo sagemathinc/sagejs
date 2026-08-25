@@ -654,6 +654,7 @@ class PreparedJacobianArithmetic:
             packed_cantor_scalar_batch,
             packed_cantor_search_progression,
             packed_cantor_search_progressions,
+            packed_cantor_subtract_batch,
             packed_cantor_sum_batch,
             packed_cantor_validate_batch,
         )
@@ -666,6 +667,7 @@ class PreparedJacobianArithmetic:
         self._search_kernel = packed_cantor_search_progression
         self._multi_search_kernel = packed_cantor_search_progressions
         self._scalar_kernel = packed_cantor_scalar_batch
+        self._subtract_kernel = packed_cantor_subtract_batch
         self._native_available = (
             self.prime is not None
             and is_compiled(self._add_kernel)
@@ -673,6 +675,7 @@ class PreparedJacobianArithmetic:
             and is_compiled(self._sum_kernel)
             and is_compiled(self._progression_kernel)
             and is_compiled(self._scalar_kernel)
+            and is_compiled(self._subtract_kernel)
         )
         self._search_available = self._native_available and is_compiled(
             self._search_kernel
@@ -1576,33 +1579,112 @@ class PreparedJacobianArithmetic:
         materialize: bool = False,
     ) -> Any:
         """Subtract paired divisors without materializing native intermediates."""
-        if diagnostics:
-            negated, negate_record = self.negate_batch(
-                rights,
-                algorithm=algorithm,
-                diagnostics=True,
-            )
-            answer, add_record = self.add_batch(
-                lefts,
-                negated,
-                algorithm=algorithm,
-                diagnostics=True,
-                materialize=materialize,
-            )
-            add_record.operation = "subtract"
-            add_record.pack_ns += negate_record.pack_ns
-            add_record.kernel_ns += negate_record.kernel_ns
-            add_record.unpack_ns += negate_record.unpack_ns
-            add_record.materialization_ns += negate_record.materialization_ns
-            add_record.validation_ns += negate_record.validation_ns
-            return answer, add_record
-        negated = self.negate_batch(rights, algorithm=algorithm)
-        return self.add_batch(
-            lefts,
-            negated,
-            algorithm=algorithm,
-            materialize=materialize,
+        left_is_packed = isinstance(lefts, PreparedDivisorBatch)
+        right_is_packed = isinstance(rights, PreparedDivisorBatch)
+        left_values: Any = lefts if left_is_packed else tuple(lefts)
+        right_values: Any = rights if right_is_packed else tuple(rights)
+        if len(left_values) != len(right_values):
+            raise ValueError("left and right batches must have the same length")
+        count = len(left_values)
+        self._check_batch_size(count)
+        if left_is_packed:
+            left_values._lease_for(self)
+        if right_is_packed:
+            right_values._lease_for(self)
+        selected, reason = self._selection(
+            algorithm,
+            operation="subtract",
+            batch_items=count,
+            resource_bytes=160 + 208 * count,
         )
+        started = time.perf_counter_ns()
+        packed_left = None
+        packed_right = None
+        if selected == "native":
+            packed_left = (
+                left_values._lease_for(self)
+                if left_is_packed
+                else self.prepare_batch(left_values)._lease_for(self)
+            )
+            if right_values is left_values:
+                packed_right = packed_left
+            else:
+                packed_right = (
+                    right_values._lease_for(self)
+                    if right_is_packed
+                    else self.prepare_batch(right_values)._lease_for(self)
+                )
+        else:
+            for value in left_values:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
+            for value in right_values:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
+        pack_ns = time.perf_counter_ns() - started
+        materialization_ns = 0
+        if selected == "reference":
+            started = time.perf_counter_ns()
+            answer: Any = tuple(
+                self._reference_add(left, right._negate_reference())
+                for left, right in zip(left_values, right_values, strict=True)
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            unpack_ns = 0
+            statuses = tuple(100 for _value in answer) if diagnostics else ()
+        else:
+            assert self.prime is not None
+            output = kernel_uint64_zeros(self._subtract_kernel, count * 8)
+            status_buffer = kernel_uint64_zeros(self._subtract_kernel, count)
+            started = time.perf_counter_ns()
+            accepted = self._subtract_kernel(
+                output,
+                status_buffer,
+                kernel_uint64_buffer(self._subtract_kernel, self._model),
+                packed_left,
+                packed_right,
+                count,
+                self.genus,
+                self.prime,
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            if not accepted:
+                raise ArithmeticError(
+                    "the packed Cantor subtraction kernel rejected a validated batch"
+                )
+            statuses = (
+                tuple(int(status_buffer[index]) for index in range(count))
+                if diagnostics
+                else ()
+            )
+            started = time.perf_counter_ns()
+            answer = self._publish_kernel_batch(output, count)
+            unpack_ns = time.perf_counter_ns() - started
+        if materialize:
+            started = time.perf_counter_ns()
+            if isinstance(answer, PreparedDivisorBatch):
+                answer = answer.materialize()
+            else:
+                for divisor_value in answer:
+                    divisor: Any = divisor_value
+                    divisor.uv()
+            materialization_ns = time.perf_counter_ns() - started
+        if not diagnostics:
+            return answer
+        record = PreparedBatchDiagnostics(
+            operation="subtract",
+            requested=self._algorithm if algorithm is None else algorithm,
+            selected=selected,
+            fallback_reason=reason,
+            count=count,
+            pack_ns=pack_ns,
+            kernel_ns=kernel_ns,
+            unpack_ns=unpack_ns,
+            materialization_ns=materialization_ns,
+            validation_ns=0,
+            statuses=statuses,
+        )
+        return answer, record
 
     def progression_batch(
         self,
