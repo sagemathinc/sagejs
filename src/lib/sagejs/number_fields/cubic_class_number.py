@@ -92,6 +92,34 @@ def _freeze_authentication_value(value: Any) -> Any:
     raise TypeError("authentication snapshots require JSON-safe values")
 
 
+def _copy_json_value(value: Any) -> Any:
+    """Detach one JSON value from producer-owned mutable containers."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_copy_json_value(item) for item in value]
+    if isinstance(value, dict):
+        if not all(isinstance(key, str) for key in value):
+            raise TypeError("copied JSON object keys must be strings")
+        return {key: _copy_json_value(item) for key, item in value.items()}
+    raise TypeError("copied certificate values must be JSON-safe")
+
+
+def _freeze_json_value(value: Any) -> Any:
+    """Recursively freeze producer-owned JSON without encoding it."""
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            _freeze_json_value(item)
+        runtime.object.freeze(value)
+    elif isinstance(value, dict):
+        for item in value.values():
+            _freeze_json_value(item)
+        runtime.object.freeze(value)
+    elif value is not None and not isinstance(value, (bool, int, float, str)):
+        raise TypeError("frozen certificate values must be JSON-safe")
+    return value
+
+
 def _check_cubic_cancelled(cancelled: Callable[[], bool] | None) -> None:
     runtime.check_interrupt()
     if cancelled is not None and cancelled():
@@ -2325,53 +2353,44 @@ class CubicMinkowskiClassNumberCertificate:
         ):
             raise ValueError("cubic class-number evidence exceeds replay limits")
         self.field = field
-        self._plan_json = _canonical_json(plan)
-        self._factor_base_json = _canonical_json(factor_base)
-        self._relations_json = _canonical_json(relations)
-        self._presentation_json = _canonical_json(presentation)
-        self._obstructions_json = _canonical_json(obstructions)
-        self._caps_json = _canonical_json(caps)
         self.proof_status = "exact-unconditional"
         self.source = "exact Minkowski relations with modular cubic norm obstructions"
-        # Keep one canonical immutable body instead of reparsing all six
-        # component strings and serializing the resulting tree again whenever
-        # the certificate is hashed or exported.  The explicit key order below
-        # is the lexicographic order used by `_canonical_json`, so this remains
-        # byte-for-byte compatible with the detached certificate format.
-        self._body_json = (
-            '{"caps":'
-            + self._caps_json
-            + ',"factor_base":'
-            + self._factor_base_json
-            + ',"obstructions":'
-            + self._obstructions_json
-            + ',"plan":'
-            + self._plan_json
-            + ',"presentation":'
-            + self._presentation_json
-            + ',"proof_status":'
-            + _canonical_json(self.proof_status)
-            + ',"relations":'
-            + self._relations_json
-            + ',"schema":'
-            + _canonical_json(CUBIC_CLASS_NUMBER_CERTIFICATE_SCHEMA)
-            + "}"
-        )
-        self._content_sha256 = hashlib.sha256(
-            self._body_json.encode("utf-8")
-        ).hexdigest()
+        self._encoding_cache: list[tuple[str, ...]] = []
         if _live_token is _LIVE_CUBIC_CERTIFICATE_TOKEN:
-            serializer = getattr(_live_presentation, "to_dict", None)
-            if (
-                not callable(serializer)
-                or serializer() != presentation
-                or getattr(_live_presentation, "order", None) is None
-            ):
+            if getattr(_live_presentation, "order", None) is None:
                 raise ValueError(
                     "live cubic presentation authority does not match its payload"
                 )
+            self._raw_components = _freeze_json_value(
+                (
+                    plan,
+                    factor_base,
+                    _copy_json_value(relations),
+                    presentation,
+                    obstructions,
+                    caps,
+                )
+            )
+            self._live_semantic_identity: object | None = object()
             self._class_number = int(_live_presentation.order)
         else:
+            self._raw_components = None
+            encoded = tuple(
+                _canonical_json(value)
+                for value in (
+                    plan,
+                    factor_base,
+                    relations,
+                    presentation,
+                    obstructions,
+                    caps,
+                )
+            )
+            body = self._encoded_body(encoded)
+            self._encoding_cache.append(
+                encoded + (body, hashlib.sha256(body.encode("utf-8")).hexdigest())
+            )
+            self._live_semantic_identity = None
             matrix_module = __import__(
                 "sagejs.number_fields.class_group_matrix",
                 fromlist=["class_group_matrix"],
@@ -2386,51 +2405,98 @@ class CubicMinkowskiClassNumberCertificate:
             self._class_number = int(presentation_replay.order)
         runtime.object.freeze(self)
 
+    def _encoded_body(self, encoded: tuple[str, ...]) -> str:
+        """Return the canonical body from already encoded components."""
+        return (
+            '{"caps":'
+            + encoded[5]
+            + ',"factor_base":'
+            + encoded[1]
+            + ',"obstructions":'
+            + encoded[4]
+            + ',"plan":'
+            + encoded[0]
+            + ',"presentation":'
+            + encoded[3]
+            + ',"proof_status":'
+            + _canonical_json(self.proof_status)
+            + ',"relations":'
+            + encoded[2]
+            + ',"schema":'
+            + _canonical_json(CUBIC_CLASS_NUMBER_CERTIFICATE_SCHEMA)
+            + "}"
+        )
+
+    def _encoding(self) -> tuple[str, ...]:
+        """Return or materialize the detached canonical body and hash."""
+        if self._encoding_cache:
+            return self._encoding_cache[0]
+        raw = self._raw_components
+        if not isinstance(raw, tuple) or len(raw) != 6:
+            raise ArithmeticError("a live cubic certificate lost its exact snapshot")
+        encoded = tuple(_canonical_json(value) for value in raw)
+        body = self._encoded_body(encoded)
+        answer = encoded + (
+            body,
+            hashlib.sha256(body.encode("utf-8")).hexdigest(),
+        )
+        self._encoding_cache.append(answer)
+        return answer
+
+    def _raw_component(self, index: int) -> Any:
+        raw = self._raw_components
+        if not isinstance(raw, tuple) or len(raw) != 6:
+            raise ArithmeticError("a live cubic certificate lost its exact snapshot")
+        return _copy_json_value(raw[index])
+
+    def _component(self, index: int) -> Any:
+        if self._encoding_cache:
+            return json.loads(self._encoding_cache[0][index])
+        return self._raw_component(index)
+
     @property
     def plan(self) -> dict[str, Any]:
-        return json.loads(self._plan_json)
+        return self._component(0)
 
     @property
     def factor_base(self) -> list[dict[str, Any]]:
-        return json.loads(self._factor_base_json)
+        return self._component(1)
 
     @property
     def relations(self) -> list[dict[str, Any]]:
-        return json.loads(self._relations_json)
+        return self._component(2)
 
     @property
     def presentation(self) -> dict[str, Any]:
-        return json.loads(self._presentation_json)
+        return self._component(3)
 
     @property
     def obstructions(self) -> list[dict[str, Any]]:
-        return json.loads(self._obstructions_json)
+        return self._component(4)
 
     @property
     def caps(self) -> dict[str, Any]:
-        return json.loads(self._caps_json)
+        return self._component(5)
 
     @property
     def class_number(self) -> int:
         return self._class_number
 
     def _body_dict(self) -> dict[str, Any]:
-        return json.loads(self._body_json)
+        return json.loads(self._encoding()[6])
 
     def to_dict(self) -> dict[str, Any]:
         body = self._body_dict()
-        body["content_sha256"] = self._content_sha256
+        body["content_sha256"] = self._encoding()[7]
         return body
 
     def stable_hash(self) -> str:
-        return self._content_sha256
+        return self._encoding()[7]
 
     def verify(self, *, cancelled: Callable[[], bool] | None = None) -> bool:
         try:
-            if (
-                hashlib.sha256(self._body_json.encode("utf-8")).hexdigest()
-                != self._content_sha256
-            ):
+            encoding = self._encoding()
+            if hashlib.sha256(encoding[6].encode("utf-8")).hexdigest() != encoding[7]:
                 return False
             caps = self.caps
             replay_limits = {
@@ -2943,6 +3009,139 @@ class _AuthenticatedCubicRelationSeed:
             return False
 
 
+class _DeferredCubicRelationSeed:
+    """Private live state whose canonical authentication is checked on demand."""
+
+    def __init__(
+        self,
+        token: object,
+        result: CubicClassNumberResult,
+        plan: Any,
+        factor_records: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        search_state: Any,
+        relation_candidates: tuple[Any, ...],
+        selected_relation_candidates: tuple[Any, ...],
+    ) -> None:
+        if token is not _AUTHENTICATED_CUBIC_RELATION_SEED_TOKEN:
+            raise TypeError("deferred cubic relation seeds are module-issued")
+        if not result.complete or result.certificate is None:
+            raise ValueError("a deferred cubic seed needs a complete exact result")
+        self.result = result
+        self.plan = plan
+        self.factor_records = tuple(factor_records)
+        self.collector = collector
+        self.presentation = presentation
+        self.search_state = search_state
+        self.relation_candidates = tuple(relation_candidates)
+        self.selected_relation_candidates = tuple(selected_relation_candidates)
+        runtime.object.freeze(self)
+
+    def realize(self, result: CubicClassNumberResult) -> Any:
+        """Authenticate retained objects against the immutable certificate."""
+        try:
+            if result is not self.result or not result.complete:
+                return None
+            certificate = result.certificate
+            if type(certificate) is not CubicMinkowskiClassNumberCertificate:
+                return None
+            packed = bool(
+                self.factor_records
+                and isinstance(self.factor_records[0], PackedCubicFactorRecord)
+            )
+            result_factors = (
+                tuple(result.__dict__.get("_packed_factor_records", ()))
+                if packed
+                else tuple(result.factor_base)
+            )
+            if (
+                certificate.field is not result.field
+                or self.plan.order is not result.field.maximal_order()
+                or self.plan.to_dict() != certificate.plan
+                or len(result_factors) != len(self.factor_records)
+                or any(
+                    retained is not supplied
+                    for retained, supplied in zip(
+                        result_factors, self.factor_records, strict=True
+                    )
+                )
+                or [record.to_dict() for record in self.factor_records]
+                != certificate.factor_base
+                or len(self.collector.records) != len(result.relation_records)
+                or any(
+                    retained is not supplied
+                    for retained, supplied in zip(
+                        self.collector.records,
+                        result.relation_records,
+                        strict=True,
+                    )
+                )
+                or [record.to_dict() for record in self.collector.records]
+                != certificate.relations
+                or result.presentation is not self.presentation
+                or self.presentation.to_dict() != certificate.presentation
+            ):
+                return None
+            relation_module = __import__(
+                "sagejs.number_fields.class_group_relations",
+                fromlist=["class_group_relations"],
+            )
+            self.collector._finalize_deferred_identity_keys(
+                _validated_token=(
+                    relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
+                )
+            )
+            _issue_cubic_relation_seed(
+                result,
+                self.plan,
+                self.factor_records,
+                self.collector,
+                self.presentation,
+                self.search_state,
+                self.relation_candidates,
+                self.selected_relation_candidates,
+            )
+            seed = result.__dict__.get("_live_relation_seed")
+            if (
+                type(seed) is _AuthenticatedCubicRelationSeed
+                and seed._source_result is result
+                and seed.field is result.field
+            ):
+                # The constructor captured the mutation-sensitive snapshot
+                # synchronously after the exact deferred comparisons above.
+                # Treat that issuance as this call's authentication receipt;
+                # later observations still recompute `seed.certified`.
+                return seed
+            return None
+        except (AttributeError, ArithmeticError, TypeError, ValueError):
+            return None
+
+
+def _defer_cubic_relation_seed(
+    result: CubicClassNumberResult,
+    plan: Any,
+    factor_records: tuple[Any, ...],
+    collector: Any,
+    presentation: Any,
+    search_state: Any,
+    relation_candidates: tuple[Any, ...] = (),
+    selected_relation_candidates: tuple[Any, ...] = (),
+) -> CubicClassNumberResult:
+    result.__dict__["_deferred_relation_seed"] = _DeferredCubicRelationSeed(
+        _AUTHENTICATED_CUBIC_RELATION_SEED_TOKEN,
+        result,
+        plan,
+        factor_records,
+        collector,
+        presentation,
+        search_state,
+        relation_candidates,
+        selected_relation_candidates,
+    )
+    return result
+
+
 def _issue_cubic_relation_seed(
     result: CubicClassNumberResult,
     plan: Any,
@@ -2978,6 +3177,17 @@ def authenticated_cubic_relation_seed(result: Any, field: Any) -> Any:
     if type(result) is not CubicClassNumberResult or result.field is not field:
         return None
     seed = result.__dict__.get("_live_relation_seed")
+    if seed is None:
+        deferred = result.__dict__.get("_deferred_relation_seed")
+        if type(deferred) is _DeferredCubicRelationSeed:
+            seed = deferred.realize(result)
+        if (
+            type(seed) is _AuthenticatedCubicRelationSeed
+            and seed._source_result is result
+            and seed.field is field
+        ):
+            result.__dict__.pop("_deferred_relation_seed", None)
+            return seed
     if (
         type(seed) is _AuthenticatedCubicRelationSeed
         and seed._source_result is result
@@ -3239,7 +3449,9 @@ class _AuthenticatedCubicClassNumberResult:
         self.class_number = int(certificate.class_number)
         self.minkowski_bound = int(result.minkowski_bound)
         self.proof_status = str(result.proof_status)
-        self.certificate_sha256 = str(certificate.stable_hash())
+        self.certificate_authority = certificate._live_semantic_identity
+        if self.certificate_authority is None:
+            raise ValueError("a live cubic result needs producer certificate authority")
         self.factor_base_size = result._factor_base_size()
         self.relation_count = len(result.relation_records)
         self.__dict__["_source_field"] = result.field
@@ -3268,7 +3480,8 @@ class _AuthenticatedCubicClassNumberResult:
                 and source.certificate is certificate
                 and type(certificate) is CubicMinkowskiClassNumberCertificate
                 and certificate.field is self.__dict__.get("_source_field")
-                and certificate.stable_hash() == self.certificate_sha256
+                and certificate._live_semantic_identity is self.certificate_authority
+                and certificate.class_number == self.class_number
                 and self.proof_status == "exact-unconditional"
                 and self.__dict__.get("_authentication_snapshot")
                 == _authenticated_cubic_class_number_snapshot(self)
@@ -3286,7 +3499,7 @@ def _authenticated_cubic_class_number_snapshot(
         authentication.class_number,
         authentication.minkowski_bound,
         authentication.proof_status,
-        authentication.certificate_sha256,
+        authentication.certificate_authority,
         authentication.factor_base_size,
         authentication.relation_count,
     )
@@ -3330,6 +3543,182 @@ def authenticated_cubic_class_number(result: Any, field: Any) -> int | None:
     except (AttributeError, TypeError, ValueError):
         pass
     return None
+
+
+class _CompactCubicRelationLedger:
+    """Live-only exact rows retained until a cubic proof can finish."""
+
+    def __init__(
+        self,
+        order: Any,
+        factor_base: Iterable[Any],
+        proposals: Iterable[tuple[Iterable[int], Iterable[int], dict[str, Any] | None]],
+        authority: Any,
+        presentation: Any,
+        line_specs: Iterable[dict[str, Any]],
+        obstructions: Iterable[dict[str, Any]],
+        *,
+        maximum_relations: int,
+    ) -> None:
+        self.order = order
+        self.factor_base = tuple(factor_base)
+        degree = int(order.degree())
+        width = len(self.factor_base)
+        entries = []
+        for raw_coordinates, raw_row, provenance in proposals:
+            coordinates = tuple(int(value) for value in raw_coordinates)
+            row = tuple(int(value) for value in raw_row)
+            if len(coordinates) != degree or len(row) != width:
+                raise ValueError("a compact cubic relation has the wrong width")
+            if not any(coordinates) or any(value < 0 for value in row):
+                raise ValueError("a compact cubic relation is not integral")
+            if provenance is not None and not isinstance(provenance, dict):
+                raise TypeError("compact cubic provenance must be a dictionary")
+            entries.append((coordinates, row, provenance))
+        if len(entries) > int(maximum_relations):
+            raise ValueError("a compact cubic relation ledger exceeds its row cap")
+        authority_entries = getattr(authority, "entries", None)
+        if not isinstance(authority_entries, tuple) or len(authority_entries) != len(
+            entries
+        ):
+            raise TypeError("a compact cubic ledger needs complete exact authority")
+        if any(
+            retained[:2] != authorized[:2]
+            for retained, authorized in zip(entries, authority_entries, strict=True)
+        ):
+            raise ValueError("compact cubic rows disagree with exact authority")
+        relation_rows = getattr(presentation, "relation_rows", None)
+        rows = tuple(entry[1] for entry in entries)
+        if (
+            not isinstance(relation_rows, tuple)
+            or tuple(
+                tuple(int(value) for value in row.dense()) for row in relation_rows
+            )
+            != rows
+        ):
+            raise ValueError("compact cubic rows disagree with their presentation")
+        self.entries = tuple(entries)
+        self.rows = rows
+        self.authority = authority
+        self.presentation = presentation
+        self.line_specs = tuple(line_specs)
+        self.obstructions = tuple(obstructions)
+        if len(self.line_specs) != len(self.obstructions):
+            raise ValueError("compact cubic obstruction coverage is incomplete")
+        self._issued = False
+
+    def row(self, index: int) -> tuple[int, ...]:
+        return self.rows[int(index)]
+
+    def publish(self, relation_module: Any) -> tuple[Any, tuple[Any, ...]]:
+        if self._issued:
+            raise RuntimeError("a compact cubic relation ledger was already published")
+        token = relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
+        collector = relation_module.ExactRelationCollector(
+            self.order,
+            self.factor_base,
+            _validated_token=relation_module._VALIDATED_FACTOR_BASE_TOKEN,
+            _deferred_reconstructor_token=token,
+        )
+        admissions = collector._admit_validated_integral_order_basis_rows(
+            self.authority,
+            self.entries,
+            _validated_token=token,
+            _deferred_token=token,
+        )
+        if len(admissions) != len(self.entries) or any(
+            admission.record is not record or record.row != row
+            for admission, record, row in zip(
+                admissions, collector.records, self.rows, strict=True
+            )
+        ):
+            raise ArithmeticError("compact cubic publication changed a relation")
+        self._issued = True
+        return collector, admissions
+
+
+def _complete_zero_width_cubic_class_number(
+    field: Any,
+    plan: Any,
+    checked_caps: dict[str, int],
+    phase_timings: dict[str, float],
+    total_started: float,
+) -> CubicClassNumberResult:
+    """Finish the canonical empty-factor-base proof without relation machinery."""
+    relation_started = time.perf_counter()
+    matrix_module = __import__(
+        "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
+    )
+    presentation = matrix_module.RelationPresentation(
+        0,
+        (),
+        (),
+        (),
+        (),
+        (),
+        (),
+        (),
+        "python",
+    )
+    if presentation.rank != 0 or presentation.order != 1:
+        raise ArithmeticError("the empty relation presentation is not trivial")
+    phase_timings["relations"] = time.perf_counter() - relation_started
+    phase_timings["norm_obstructions"] = 0.0
+    encoding_started = time.perf_counter()
+    certificate = CubicMinkowskiClassNumberCertificate(
+        field,
+        plan=plan.to_dict(),
+        factor_base=[],
+        relations=[],
+        presentation=presentation.to_dict(),
+        obstructions=[],
+        caps=checked_caps,
+        _live_presentation=presentation,
+        _live_token=_LIVE_CUBIC_CERTIFICATE_TOKEN,
+    )
+    if certificate.class_number != 1:
+        raise ArithmeticError("the empty cubic relation quotient is not trivial")
+    phase_timings["certificate_encoding"] = time.perf_counter() - encoding_started
+    phase_timings["total"] = time.perf_counter() - total_started
+    relation_metrics = {
+        "integral_sieve_candidates": 0,
+        "integral_sieve_valuation_limit": 8,
+        "integral_sieve_prefix_proved": 0,
+        "integral_sieve_selected": 0,
+        "integral_sieve_relations": 0,
+        "integral_sieve_validated_batch": 0,
+        "integral_sieve_fallback": 0,
+        "integral_sieve_dependency_candidates": 0,
+        "integral_sieve_dependency_relations": 0,
+        "relation_prefix_finalized_without_search": 1,
+        "presentation_extractions": 1,
+        "relation_attempts": 0,
+        "relation_candidates": 0,
+        "ideals_tested": 0,
+    }
+    result = CubicClassNumberResult(
+        field,
+        True,
+        certificate.source,
+        int(plan.bound),
+        certificate=certificate,
+        factor_base=(),
+        relation_records=(),
+        presentation=presentation,
+        diagnostics={
+            "algorithm": "bounded-cubic-minkowski-p-lines",
+            "phase_timings": dict(phase_timings),
+            "factor_base_size": 0,
+            "relations": 0,
+            "presentation_rank": 0,
+            "quotient_order": 1,
+            "projective_lines": 0,
+            "residue_states": 0,
+            "relation_search": relation_metrics,
+            "caps": dict(checked_caps),
+        },
+    )
+    return _issue_cubic_class_number_result(result)
 
 
 def bounded_cubic_minkowski_class_number(
@@ -3555,6 +3944,12 @@ def bounded_cubic_minkowski_class_number(
         result.diagnostics["relation_seed_size_policy_exceeded"] = True
         return result
 
+    if not factor_base:
+        _check_cubic_cancelled(cancelled)
+        return _complete_zero_width_cubic_class_number(
+            field, plan, checked_caps, phase_timings, total_started
+        )
+
     relation_module = __import__(
         "sagejs.number_fields.class_group_relations",
         fromlist=["class_group_relations"],
@@ -3564,15 +3959,19 @@ def bounded_cubic_minkowski_class_number(
     )
     relation_started = time.perf_counter()
     engine: Any = None
-    collector = relation_module.ExactRelationCollector(
-        order,
-        factor_base,
-        _validated_token=(
-            relation_module._VALIDATED_FACTOR_BASE_TOKEN
-            if factor_base and isinstance(factor_base[0], PackedCubicFactorRecord)
-            else None
-        ),
-    )
+    collector: Any = None
+
+    def new_relation_collector() -> Any:
+        return relation_module.ExactRelationCollector(
+            order,
+            factor_base,
+            _validated_token=(
+                relation_module._VALIDATED_FACTOR_BASE_TOKEN
+                if factor_base and isinstance(factor_base[0], PackedCubicFactorRecord)
+                else None
+            ),
+        )
+
     prime_module = __import__(
         "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
     )
@@ -3639,7 +4038,6 @@ def bounded_cubic_minkowski_class_number(
     planned_obstructions: tuple[dict[str, Any], ...] | None = None
     planned_residue_states = 0
     planned_obstruction_seconds = 0.0
-    planned_factor_snapshot: Any = None
     planned_validated_batch: Any = None
     if sieve_candidates is not None:
         selected_sieve_candidates = _select_cubic_relation_candidates(
@@ -3722,9 +4120,6 @@ def bounded_cubic_minkowski_class_number(
                         planned_obstructions = tuple(candidate_obstructions)
                         planned_residue_states = candidate_states
                         planned_obstruction_seconds = candidate_obstruction_seconds
-                        planned_factor_snapshot = _freeze_authentication_value(
-                            [record.to_dict() for record in factor_records]
-                        )
                         planned_validated_batch = candidate_validated_batch
             except (ArithmeticError, TypeError, ValueError):
                 planned_presentation = None
@@ -3772,23 +4167,43 @@ def bounded_cubic_minkowski_class_number(
                     selected_sieve_candidates,
                 )
             )
-            batch_admit = getattr(collector, "admit_integral_order_basis_rows", None)
-            validated_admit = getattr(
-                collector, "_admit_validated_integral_order_basis_rows", None
-            )
             batch: Any = None
-            if validated_batch is not None and callable(validated_admit):
-                batch = validated_admit(
-                    validated_batch,
+            if planned_presentation is not None and validated_batch is not None:
+                ledger = _CompactCubicRelationLedger(
+                    order,
+                    factor_base,
                     tuple(initial_proposals) + proposals,
-                    _validated_token=(
-                        relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
-                    ),
+                    validated_batch,
+                    planned_presentation,
+                    tuple(planned_line_specs or ()),
+                    tuple(planned_obstructions or ()),
+                    maximum_relations=checked_caps["max_relations"],
                 )
-                validated_sieve_batch_used = batch is not None
-            elif callable(batch_admit):
-                batch = batch_admit(tuple(initial_proposals) + proposals)
+                _check_cubic_cancelled(cancelled)
+                collector, batch = ledger.publish(relation_module)
+                validated_sieve_batch_used = True
+            else:
+                collector = new_relation_collector()
+                batch_admit = getattr(
+                    collector, "admit_integral_order_basis_rows", None
+                )
+                validated_admit = getattr(
+                    collector, "_admit_validated_integral_order_basis_rows", None
+                )
+                if validated_batch is not None and callable(validated_admit):
+                    batch = validated_admit(
+                        validated_batch,
+                        tuple(initial_proposals) + proposals,
+                        _validated_token=(
+                            relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
+                        ),
+                    )
+                    validated_sieve_batch_used = batch is not None
+                elif callable(batch_admit):
+                    batch = batch_admit(tuple(initial_proposals) + proposals)
             if batch is None:
+                if collector is None:
+                    collector = new_relation_collector()
                 relation_module.initial_rational_prime_relations(collector)
                 for coordinates, row, provenance in proposals:
                     # The packed norm only selected this proposal.  Integral
@@ -3830,6 +4245,8 @@ def bounded_cubic_minkowski_class_number(
             planned_line_specs = None
             planned_obstructions = None
             planned_validated_batch = None
+    if collector is None:
+        collector = new_relation_collector()
     if not collector.records:
         initial_batch_method = getattr(
             collector, "admit_integral_order_basis_rows", None
@@ -4155,8 +4572,6 @@ def bounded_cubic_minkowski_class_number(
         planned_presentation is presentation
         and planned_line_specs == tuple(line_specs)
         and planned_obstructions is not None
-        and planned_factor_snapshot
-        == _freeze_authentication_value([record.to_dict() for record in factor_records])
     )
     if reuse_planned_obstructions:
         assert planned_obstructions is not None
@@ -4257,7 +4672,7 @@ def bounded_cubic_minkowski_class_number(
         ),
     )
     if relation_search_state is not None:
-        result = _issue_cubic_relation_seed(
+        result = _defer_cubic_relation_seed(
             result,
             plan,
             tuple(factor_records),
