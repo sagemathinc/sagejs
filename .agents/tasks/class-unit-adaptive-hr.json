@@ -4,10 +4,10 @@
   "id": "class-unit-adaptive-hr",
   "title": "Adaptive rigorous hR completion",
   "lane": "arithmetic-algebra",
-  "status": "blocked",
+  "status": "active",
   "owner": "user",
   "objective": "Use a coarse-first exact zeta error schedule for rigorous hR integer-index decisions, refine only when inconclusive, and bind the authenticated history into live and detached certificates while preserving exact class/unit results",
-  "base_commit": "3144848926d5b448f47f1955d1ceadb0399b2220",
+  "base_commit": "78acff55094c9dbc090da5740fe9179e74601b81",
   "claims": [
     "src/lib/sagejs/number_fields/class_unit_groups.py",
     "src/lib/sagejs/number_fields/class_unit_analytic.py",
@@ -46,11 +46,9 @@
   "handoff": {
     "summary": "Functionally green WIP: exact coarse-first hR completion starts at zeta error 1, halves only for an inconclusive rigorous integer decision, and binds the selected error and complete halving history into live and detached unit-saturation certificates. Focused tests cover a real index-2 refinement, empty-integer refinement, cancellation, resource caps, tamper rejection, detached replay, and exact C4/quartic outputs.",
     "risks": [
-      "The lane intentionally pauses before complete validation and performance receipts because class_unit_groups.py and the engine test overlap the active Minkowski proof-bulk lane.",
       "The worktree production native-kernel pack build was stopped during coordination; final full native-backed tests and matched cold/warm Amdahl measurements remain outstanding."
     ],
     "next_steps": [
-      "After minkowski-proof-bulk-issuance publishes and integrates, rebase this branch onto the resulting class-group revision and resolve the two overlapping files deliberately.",
       "Run full focused, strict, architecture, detached-replay, C4/quartic, and matched cold/warm performance acceptance before review."
     ]
   }
