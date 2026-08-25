@@ -600,6 +600,8 @@ class _LiveClassUnitArtifacts:
         self.terminal_semantic_snapshot: dict[str, Any] | None = None
         self.terminal_upgrade_reserved = False
         self.terminal_upgrade_issued = False
+        self.public_class_group_projection: Any = None
+        self.public_class_group_projection_reserved = False
         self.sealed = False
 
     @staticmethod
@@ -1405,43 +1407,7 @@ class _LiveClassUnitArtifacts:
             or self.terminal_semantic_snapshot is None
         ):
             return None
-        try:
-            source_factors = tuple(getattr(source, "conditional_factor_base", ()))
-            source_relations = tuple(
-                getattr(source, "conditional_relation_records", ())
-            )
-            if (
-                getattr(source, "complete", None) is not True
-                or getattr(source, "proof_status", None) != self.terminal_proof_status
-                or source.class_group() is not self.class_group
-                or source.unit_group() is not self.unit_group
-                or getattr(source, "saturation_record", None)
-                is not self.saturation_record
-                or dict(getattr(source, "proof_dependency_hashes", {}))
-                != self.terminal_dependency_hashes
-                or len(source_factors) != len(self.factor_base)
-                or any(
-                    source_value is not retained
-                    for source_value, retained in zip(
-                        source_factors, self.factor_base, strict=True
-                    )
-                )
-                or len(source_relations) != len(self.relations)
-                or any(
-                    source_value is not retained
-                    for source_value, retained in zip(
-                        source_relations, self.relations, strict=True
-                    )
-                )
-                or getattr(source, "conditional_presentation_evidence", None)
-                is not self.presentation
-                or getattr(self.class_group, "_relation_reconstructor", None)
-                is not self.collector
-                or not self._terminal_identity_matches()
-                or self._capture_terminal_semantics() != self.terminal_semantic_snapshot
-            ):
-                return None
-        except (AttributeError, TypeError, ValueError, ArithmeticError):
+        if not self._terminal_source_matches(source, require_semantic_snapshot=True):
             return None
         self.terminal_upgrade_reserved = True
         return {
@@ -1455,6 +1421,75 @@ class _LiveClassUnitArtifacts:
             "unit_group": self.unit_group,
             "terminal_semantic_snapshot": self.terminal_semantic_snapshot,
         }
+
+    def _terminal_source_matches(
+        self, source: Any, *, require_semantic_snapshot: bool
+    ) -> bool:
+        if (
+            not self.sealed
+            or not self.reusable
+            or self.terminal_proof_status != "exact-relations-conditional-grh"
+            or self.terminal_identity_snapshot is None
+            or self.terminal_semantic_snapshot is None
+        ):
+            return False
+        try:
+            source_factors = tuple(getattr(source, "conditional_factor_base", ()))
+            source_relations = tuple(
+                getattr(source, "conditional_relation_records", ())
+            )
+            return bool(
+                getattr(source, "complete", None) is True
+                and getattr(source, "proof_status", None) == self.terminal_proof_status
+                and source.class_group() is self.class_group
+                and source.unit_group() is self.unit_group
+                and getattr(source, "saturation_record", None) is self.saturation_record
+                and dict(getattr(source, "proof_dependency_hashes", {}))
+                == self.terminal_dependency_hashes
+                and self._same_identity_sequence(source_factors, self.factor_base)
+                and self._same_identity_sequence(source_relations, self.relations)
+                and getattr(source, "conditional_presentation_evidence", None)
+                is self.presentation
+                and getattr(self.class_group, "_relation_reconstructor", None)
+                is self.collector
+                and self._terminal_identity_matches()
+                and (
+                    not require_semantic_snapshot
+                    or self._capture_terminal_semantics()
+                    == self.terminal_semantic_snapshot
+                )
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+    def begin_public_class_group_projection(
+        self, source: Any
+    ) -> tuple[str, Any] | None:
+        if self.public_class_group_projection is not None:
+            if not self._terminal_source_matches(
+                source, require_semantic_snapshot=False
+            ):
+                return None
+            return "published", self.public_class_group_projection
+        if not self._terminal_source_matches(source, require_semantic_snapshot=True):
+            return None
+        if self.public_class_group_projection_reserved:
+            return None
+        self.public_class_group_projection_reserved = True
+        return "reserved", None
+
+    def finish_public_class_group_projection(
+        self, projection: Any = None, *, commit: bool
+    ) -> bool:
+        if not self.public_class_group_projection_reserved:
+            return False
+        self.public_class_group_projection_reserved = False
+        if not commit:
+            return True
+        if projection is None or self.public_class_group_projection is not None:
+            return False
+        self.public_class_group_projection = projection
+        return True
 
     def finish_terminal_upgrade(self, *, commit: bool) -> bool:
         """Commit or release the one synchronous terminal-upgrade lease."""
@@ -1925,6 +1960,27 @@ class ClassUnitGroupContext:
             raise TypeError("terminal proof forks are engine-owned")
         live = self._live_artifacts
         return bool(live is not None and live.finish_terminal_upgrade(commit=commit))
+
+    def _begin_live_public_class_group_projection(
+        self, token: Any, source: Any
+    ) -> tuple[str, Any] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("public class-group projections are engine-owned")
+        live = self._live_artifacts
+        return (
+            None if live is None else live.begin_public_class_group_projection(source)
+        )
+
+    def _finish_live_public_class_group_projection(
+        self, token: Any, projection: Any = None, *, commit: bool
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("public class-group projections are engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.finish_public_class_group_projection(projection, commit=commit)
+        )
 
     def live_diagnostics(self) -> dict[str, Any]:
         """Describe retained in-process state without exposing its authority."""

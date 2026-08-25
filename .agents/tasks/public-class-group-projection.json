@@ -1,0 +1,95 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "public-class-group-projection",
+  "title": "Public Class Group Projection",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Publish a context-owned sealed conditional class-group semantic core transactionally and return fresh lightweight public views with independent verification and detached replay",
+  "base_commit": "b1c5f8660b407dd0e22f271530d9dce1f5d2e9f0",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_context.py",
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "src/lib/sagejs/number_fields/class_group_maps.py",
+    "test/number-field-class-unit-public-projection.cjs",
+    "bench/class-unit-groups/public-class-group-projection.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Current independently verified IdealClassGroup adapter and byte-equivalent conditional proof payload",
+      "C4 quintic exact invariants, proof status, generator relations, explicit verify, and detached proof replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm architecture:check",
+    "node --test test/number-field-class-unit-public-projection.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-class-unit-public-projection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.305,
+      "started_at": "2026-08-25T17:45:28.984Z",
+      "commit": "b1c5f8660b407dd0e22f271530d9dce1f5d2e9f0",
+      "workspace_fingerprint": "21a3fdc8782c2488bd2b431f1930c62c9cdd2c9fb28d46e23a9b62a16077715f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.145,
+      "started_at": "2026-08-25T17:45:56.399Z",
+      "commit": "b1c5f8660b407dd0e22f271530d9dce1f5d2e9f0",
+      "workspace_fingerprint": "21a3fdc8782c2488bd2b431f1930c62c9cdd2c9fb28d46e23a9b62a16077715f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.715,
+      "started_at": "2026-08-25T17:46:38.040Z",
+      "commit": "b1c5f8660b407dd0e22f271530d9dce1f5d2e9f0",
+      "workspace_fingerprint": "21a3fdc8782c2488bd2b431f1930c62c9cdd2c9fb28d46e23a9b62a16077715f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1266.088,
+      "started_at": "2026-08-25T17:47:29.904Z",
+      "commit": "b1c5f8660b407dd0e22f271530d9dce1f5d2e9f0",
+      "workspace_fingerprint": "21a3fdc8782c2488bd2b431f1930c62c9cdd2c9fb28d46e23a9b62a16077715f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a transactional context-owned canonical projection for reusable conditional public class groups. The ordinary adapter and full verification run once, then each hit returns a fresh lightweight view; ideal shells are materialized lazily and explicit verify/proof replay reconstructs the ordinary detached path. C4 repeat observation measured 10.69ms median over 1000 views with byte-equivalent proof payloads and full verification.",
+    "risks": [
+      "This is intentionally only a repeat-observation slice: the prepared-context first adapter remains 5.78s and is not claimed as improved.",
+      "Only reusable proof=False general engine results participate; unconditional, callback, cancellation, checkpoint, custom, specialized, and interposed paths remain cold.",
+      "Retaining 1000 views costs about 50MB of ordinary wrapper ownership; 1000 discarded views return below the post-engine RSS baseline after explicit GC."
+    ],
+    "next_steps": [
+      "Independently audit transactional publication, exact-type replacement failure, canonical mutation isolation, and explicit full replay.",
+      "Treat producer-issued first-public authority as a separate measured lane rather than broadening this repeat-view commit."
+    ]
+  }
+}

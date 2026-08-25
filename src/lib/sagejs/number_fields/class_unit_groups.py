@@ -6518,8 +6518,49 @@ def class_group(
             "sagejs.number_fields.class_group_maps", fromlist=["class_group_maps"]
         )
         adapter = maps.class_group_from_engine_result
-        # The adapter publishes only after its independent `verify()` replay.
-        answer = adapter(result)
+        context_module = __import__(
+            "sagejs.number_fields.class_unit_context",
+            fromlist=["class_unit_context"],
+        )
+        live_token = getattr(context_module, "_LIVE_CLASS_UNIT_CONTEXT_TOKEN", None)
+        begin = getattr(
+            getattr(result, "context", None),
+            "_begin_live_public_class_group_projection",
+            None,
+        )
+        finish = getattr(
+            getattr(result, "context", None),
+            "_finish_live_public_class_group_projection",
+            None,
+        )
+        transaction: Any = (
+            begin(live_token, result)
+            if callable(begin)
+            and callable(finish)
+            and live_token is not None
+            and proof_value is False
+            else None
+        )
+        if transaction is not None and transaction[0] == "published":
+            answer = maps.public_class_group_projection_view(transaction[1])
+        elif transaction is not None and transaction[0] == "reserved":
+            if not callable(finish):
+                raise ArithmeticError("the public projection lost its transaction")
+            try:
+                # The adapter publishes only after its independent `verify()` replay.
+                adapted = adapter(result)
+                projection = maps.seal_public_class_group_projection(adapted)
+                if finish(live_token, projection, commit=True) is not True:
+                    raise ArithmeticError(
+                        "the public class-group projection failed publication"
+                    )
+                answer = maps.public_class_group_projection_view(projection)
+            except BaseException:
+                finish(live_token, commit=False)
+                raise
+        else:
+            # Non-reusable paths retain the independent cold adapter.
+            answer = adapter(result)
     return answer
 
 
