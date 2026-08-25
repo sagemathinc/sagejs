@@ -1546,6 +1546,8 @@ class _SealedIdealClassGroupProjection:
             raise TypeError("a public projection needs an ordinary exact group")
         if not isinstance(source._proof_record, ConditionalGRHProofRecord):
             raise TypeError("only conditional public projections are reusable")
+        if IdealClassGroup.verify(source) is not True:
+            raise ArithmeticError("a public projection source failed exact replay")
         context = source._proof_context
         if type(context) is not _EngineProofReplayContext:
             raise TypeError("a public projection needs the standard replay context")
