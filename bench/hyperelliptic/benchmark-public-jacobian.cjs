@@ -8,7 +8,8 @@ const {
   rmSync,
   writeFileSync,
 } = require("node:fs");
-const { tmpdir } = require("node:os");
+const { createHash } = require("node:crypto");
+const { arch, cpus, platform, release, tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
@@ -733,6 +734,23 @@ try {
   ]);
   const standaloneResult = JSON.parse(run(standalone, []));
   const benchmark = JSON.parse(output);
+  benchmark.source = {
+    commit: run("git", ["rev-parse", "HEAD"]),
+    status: run("git", ["status", "--short"]) === "" ? "clean" : "dirty",
+    harness_sha256: createHash("sha256")
+      .update(readFileSync(__filename))
+      .digest("hex"),
+    kernel_source_sha256: createHash("sha256")
+      .update(readFileSync(source))
+      .digest("hex"),
+  };
+  benchmark.runtime = {
+    node: process.version,
+    platform: platform(),
+    architecture: arch(),
+    release: release(),
+    cpu_model: cpus()[0]?.model || "unknown",
+  };
   benchmark.standalone = {
     compiler: "cc -O3 -fPIC with native bounds-check, frame, section, and link flags",
     contract: "same full compiled source-transparent core; 1000 repeated fixed degree-one pairs",
