@@ -199,7 +199,7 @@ function exactQuery(bundleSha = null) {
   };
 }
 
-test("the checked-in release policy is valid, immutable, and narrow", () => {
+test("the checked-in release policy fails closed after the native ABI change", () => {
   const raw = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
@@ -207,9 +207,9 @@ test("the checked-in release policy is valid, immutable, and narrow", () => {
     root: ROOT,
     sourceCommit: raw.source_bundle.source_commit,
   });
-  assert.equal(policy.enabled, true);
+  assert.equal(policy.enabled, false);
   assert.equal(policy.entries.length, 6);
-  assert.equal(policy.verified_receipts.length, 24);
+  assert.equal(policy.verified_receipts.length, 0);
   assert.equal(
     policy.source_bundle.sha256,
     "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e",
@@ -234,8 +234,8 @@ test("the checked-in release policy is valid, immutable, and narrow", () => {
         scalar_bits: 0,
         resource_bytes: 200096,
       },
-    }).selected,
-    true,
+    }).reason,
+    "policy-disabled",
   );
   assert.deepEqual(
     policy.entries.map((entry) => [entry.backend, entry.operation]),

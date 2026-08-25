@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 124,
+    "classified-native-file": 125,
     "declared-ffi": 439,
     "declared-ffi-resource": 32,
     "napi-export": 320,
@@ -8538,6 +8538,14 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "hyperelliptic-curves"
+    },
+    {
+      "id": "native-file:bench/native-live-exact-vector-reference.c",
+      "kind": "classified-native-file",
+      "path": "bench/native-live-exact-vector-reference.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "native-compiler"
     },
     {
       "id": "native-file:bench/native-p1-heilbronn-reference.c",

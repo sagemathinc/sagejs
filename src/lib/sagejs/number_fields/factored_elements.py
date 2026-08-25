@@ -150,6 +150,9 @@ class FactoredNumberFieldElement:
         # this cache object-local and tiny: the factored element is immutable,
         # while order identity prevents reuse in an unrelated order.
         self._principal_ideal_cache: list[tuple[Any, Any]] = []
+        # Immutable factors make their canonical digest safely reusable.
+        # `to_dict()` still returns a fresh body.
+        self._stable_hash_cache: list[str] = []
         runtime.object.freeze(self)
 
     @classmethod
@@ -252,7 +255,11 @@ class FactoredNumberFieldElement:
             return False
 
     def archimedean_logarithms(
-        self, prec: int = 53, *, workspace: Any = None
+        self,
+        prec: int = 53,
+        *,
+        workspace: Any = None,
+        maximum_places: int | None = None,
     ) -> tuple[Any, ...]:
         """Return rigorous weighted log-absolute-value balls factor by factor."""
         if isinstance(prec, bool) or not isinstance(prec, int) or prec < 2:
@@ -270,21 +277,42 @@ class FactoredNumberFieldElement:
             if callable(cached_archimedean_data)
             else embedding_module.archimedean_data(self._field)
         )
+        place_count = len(data.embeddings)
+        if maximum_places is not None:
+            if (
+                isinstance(maximum_places, bool)
+                or not isinstance(maximum_places, int)
+                or maximum_places < 0
+                or maximum_places > place_count
+            ):
+                raise ValueError("maximum_places is outside the embedding range")
+            place_count = maximum_places
+        embeddings = data.embeddings[:place_count]
         result = [
             analytic_module.RealBall(0, precision_bits=prec)
-            for _embedding in data.embeddings
+            for _embedding in embeddings
         ]
         for factor, exponent in self._factors:
             factor_logs = (
                 _factor_archimedean_logarithms(
-                    self._field, factor, prec, data, analytic_module
+                    self._field,
+                    factor,
+                    prec,
+                    data,
+                    analytic_module,
+                    maximum_places=place_count,
                 )
                 if workspace is None
                 else workspace.factor_logarithms(
-                    self._field, factor, prec, data, analytic_module
+                    self._field,
+                    factor,
+                    prec,
+                    data,
+                    analytic_module,
+                    maximum_places=place_count,
                 )
             )
-            for index, embedding in enumerate(data.embeddings):
+            for index, embedding in enumerate(embeddings):
                 ball = factor_logs[index]
                 weight = exponent * int(embedding.log_weight)
                 result[index] = result[index] + ball * analytic_module.RealBall(
@@ -293,6 +321,27 @@ class FactoredNumberFieldElement:
         return tuple(result)
 
     logarithmic_image = archimedean_logarithms
+
+    def regulator_logarithms(
+        self, prec: int, unit_rank: int, *, workspace: Any = None
+    ) -> tuple[Any, ...]:
+        """Return only the embedding columns consumed by a regulator."""
+        if isinstance(unit_rank, bool) or not isinstance(unit_rank, int):
+            raise TypeError("unit_rank must be an integer")
+        return self.archimedean_logarithms(
+            prec,
+            workspace=workspace,
+            maximum_places=unit_rank,
+        )
+
+    def regulator_cache_key(
+        self,
+    ) -> tuple[tuple[tuple[tuple[int, int], ...], int], ...]:
+        """Return the exact factor payload used by a live regulator cache."""
+        return tuple(
+            (_element_key(self._field, factor), int(exponent))
+            for factor, exponent in self._factors
+        )
 
     def _body_dict(self) -> dict[str, Any]:
         return {
@@ -310,7 +359,12 @@ class FactoredNumberFieldElement:
     def to_dict(self) -> dict[str, Any]:
         """Return a canonical, pointer-independent authenticated payload."""
         body = self._body_dict()
-        body["content_sha256"] = _content_hash(body)
+        if self._stable_hash_cache:
+            content_hash = self._stable_hash_cache[0]
+        else:
+            content_hash = _content_hash(body)
+            self._stable_hash_cache.append(content_hash)
+        body["content_sha256"] = content_hash
         return body
 
     @classmethod
@@ -347,6 +401,8 @@ class FactoredNumberFieldElement:
         return answer
 
     def stable_hash(self) -> str:
+        if self._stable_hash_cache:
+            return self._stable_hash_cache[0]
         return self.to_dict()["content_sha256"]
 
     def __eq__(self, other: object) -> bool:
@@ -375,10 +431,19 @@ class FactoredNumberFieldElement:
 
 
 def _factor_archimedean_logarithms(
-    field: Any, factor: Any, precision: int, data: Any, analytic_module: Any
+    field: Any,
+    factor: Any,
+    precision: int,
+    data: Any,
+    analytic_module: Any,
+    *,
+    maximum_places: int | None = None,
 ) -> tuple[Any, ...]:
     answer = []
-    for embedding in data.embeddings:
+    embeddings = data.embeddings
+    if maximum_places is not None:
+        embeddings = embeddings[:maximum_places]
+    for embedding in embeddings:
         algebraic = embedding(factor)
         enclosure = runtime.flint_backend().qqbarLogAbsBall(
             algebraic._native, precision
@@ -423,7 +488,9 @@ class FactoredLogarithmWorkspace:
             raise ValueError("factor-logarithm cache size must be in 1..4096")
         self._field = field
         self._maximum_entries = maximum_entries
-        self._cache: dict[tuple[int, tuple[tuple[int, int], ...]], tuple[Any, ...]] = {}
+        self._cache: dict[
+            tuple[int, int, tuple[tuple[int, int], ...]], tuple[Any, ...]
+        ] = {}
         self._requests = 0
         self._hits = 0
         self._evictions = 0
@@ -435,18 +502,32 @@ class FactoredLogarithmWorkspace:
         precision: int,
         data: Any,
         analytic_module: Any,
+        *,
+        maximum_places: int | None = None,
     ) -> tuple[Any, ...]:
         if field is not self._field:
             raise TypeError("a factor-logarithm workspace belongs to another field")
         self._requests += 1
         selected_factor = field(factor)
-        key = (precision, _element_key(field, selected_factor))
+        if maximum_places is not None and (
+            isinstance(maximum_places, bool) or not isinstance(maximum_places, int)
+        ):
+            raise TypeError("maximum_places must be an integer")
+        place_count = len(data.embeddings) if maximum_places is None else maximum_places
+        if place_count < 0 or place_count > len(data.embeddings):
+            raise ValueError("maximum_places is outside the embedding range")
+        key = (precision, place_count, _element_key(field, selected_factor))
         cached = self._cache.get(key)
         if cached is not None:
             self._hits += 1
             return cached
         answer = _factor_archimedean_logarithms(
-            field, selected_factor, precision, data, analytic_module
+            field,
+            selected_factor,
+            precision,
+            data,
+            analytic_module,
+            maximum_places=place_count,
         )
         if len(self._cache) >= self._maximum_entries:
             self._cache.pop(next(iter(self._cache)))

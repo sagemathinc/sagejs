@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "a63c41b8e4bcbd6558d9351e383fff24b1f65cd9da855b34db4b56e958d5055e",
+  "source_sha256": "c002fb605c904fa7e68ff5cf8d9623b00e477bd32dea2478d6d9343582a2bd36",
   "counts": {
-    "total": 1005,
+    "total": 1006,
     "by_kind": {
       "declared-ffi-function": 439,
       "declared-ffi-resource": 32,
       "napi-export": 320,
-      "production-kernel": 46,
+      "production-kernel": 47,
       "runtime-intrinsic": 142,
       "specialist-capability": 26
     },
     "by_disposition": {
-      "compiled-source": 46,
+      "compiled-source": 47,
       "desktop-only": 42,
       "generated-wasm": 320,
       "portable-fallback": 552,
       "shared-core": 45
     },
     "by_status": {
-      "available": 548,
+      "available": 549,
       "desktop-only": 42,
       "fallback": 415
     }
@@ -6030,7 +6030,7 @@
         "buchmann-lenstra-row-hnf",
         "number-field-ideal-products"
       ],
-      "explanation": "All 7 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 9 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:compiler-owned-record-witness",
@@ -6066,7 +6066,7 @@
       "public_consumers": [
         "dense-integer-flint"
       ],
-      "explanation": "All 16 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 17 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-integer-production",
@@ -6264,6 +6264,18 @@
       "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
+      "id": "kernel:number-field-bdf-interval-production",
+      "family": "number-field-bdf-interval",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "number-field-factor-base"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
       "id": "kernel:number-field-composite-analysis-production",
       "family": "number-field-composite-analysis",
       "disposition": "compiled-source",
@@ -6285,7 +6297,7 @@
       "public_consumers": [
         "number-field-cubic-class-number"
       ],
-      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:number-field-cubic-relation-sieve-production",
@@ -6357,7 +6369,7 @@
       "public_consumers": [
         "number-field-zeta-coefficients"
       ],
-      "explanation": "All 5 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:p1-heilbronn-production",
@@ -6526,7 +6538,7 @@
       "public_consumers": [
         "prime-ideal-candidate-materializer"
       ],
-      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:sparse-random-matrix-production",

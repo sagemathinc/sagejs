@@ -40,6 +40,70 @@ function run(source) {
   }
 }
 
+test("packed BDF interval assembly matches exact scalar endpoints", () => {
+  const output = run(String.raw`
+import sagejs.number_fields.bl_composite_kernel as kernels
+import sagejs.number_fields.class_group_factor_base as factor_bases
+from sagejs.native import is_compiled
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+saved = factor_bases._bdf_interval_kernel_override
+packed_kernel = kernels.packed_bdf_interval_in_place
+dynamic_kernel = getattr(packed_kernel, "__sagejs_native_source__", packed_kernel)
+
+for candidate in (2, 4, 8, 16, 12, 10, 11):
+    scalar_field = NumberField(x**3 - x**2 + 7*x + 8, "s" + str(candidate))
+    scalar_order = scalar_field.maximal_order()
+    factor_bases._bdf_interval_kernel_override = False
+    scalar = factor_bases._BDFEvaluator(scalar_order, 100).inequality(
+        candidate, 3, 1, 4027, 64
+    )
+    for index, kernel in enumerate((dynamic_kernel, packed_kernel)):
+        packed_field = NumberField(
+            x**3 - x**2 + 7*x + 8,
+            "p" + str(candidate) + str(index),
+        )
+        factor_bases._bdf_interval_kernel_override = kernel
+        packed = factor_bases._BDFEvaluator(
+            packed_field.maximal_order(), 100
+        ).inequality(candidate, 3, 1, 4027, 64)
+        assert packed[0] == scalar[0]
+        assert packed[1].to_dict() == scalar[1].to_dict()
+        assert packed[2].to_dict() == scalar[2].to_dict()
+
+factor_bases._bdf_interval_kernel_override = False
+scalar_field = NumberField(x**3 - x**2 + 7*x + 8, "scalar")
+scalar_bound = factor_bases.bdf_bound(scalar_field.maximal_order())
+factor_bases._bdf_interval_kernel_override = packed_kernel
+packed_field = NumberField(x**3 - x**2 + 7*x + 8, "packed")
+packed_bound = factor_bases.bdf_bound(packed_field.maximal_order())
+factor_bases._bdf_interval_kernel_override = saved
+assert packed_bound.to_dict() == scalar_bound.to_dict()
+
+# A floating search hint is never accepted as evidence.  Deliberately wrong
+# low and high hints must reproduce the same exact interval certificate.
+saved_hint = factor_bases._bdf_search_hint_override
+for hint in (2, 11, 100):
+    factor_bases._bdf_search_hint_override = hint
+    hinted_field = NumberField(x**3 - x**2 + 7*x + 8, "hint" + str(hint))
+    hinted_bound = factor_bases.bdf_bound(
+        hinted_field.maximal_order(), max_bound=100
+    )
+    assert hinted_bound.to_dict() == scalar_bound.to_dict()
+factor_bases._bdf_search_hint_override = saved_hint
+assert packed_bound.bound == 11
+assert packed_bound.interval.to_dyadic_dict(64) == {
+    "scale_bits": 64,
+    "lower_numerator": 4305529790576860134,
+    "upper_numerator": 4305529790576860135,
+}
+assert is_compiled(packed_kernel)
+print("packed-bdf-exact")
+`);
+  assert.equal(output, "packed-bdf-exact");
+});
+
 test("exact factor-base bounds and norm streams match Sage/PARI/Magma fixtures", () => {
   assert.equal(fixture.systems.sage_pari.status, "executed");
   assert.match(fixture.systems.magma.command, /ClassGroup\(O\)/);
@@ -723,6 +787,37 @@ compact = [
     for record in auto_records
 ]
 assert compact == case["minkowski_factor_base"]
+
+# A classical rational enclosure decides ordinary Minkowski floors without
+# evaluating the high-height Machin interval.  Its endpoints contain the
+# independent direct exact-rational construction.  A deliberately near-
+# integer imaginary quadratic bound still enters the full precision loop.
+coarse_pi = factor_bases._Interval(
+    factor_bases._Rational(333, 106), factor_bases._Rational(355, 113)
+)
+direct_pi = factor_bases._pi_scalar_interval(256)
+assert coarse_pi.lower < direct_pi.lower < direct_pi.upper < coarse_pi.upper
+saved_pi_interval = factor_bases._pi_interval
+def forbidden_pi_interval(bits):
+    raise AssertionError("a coarse Minkowski decision evaluated Machin pi")
+factor_bases._pi_interval = forbidden_pi_interval
+coarse_x = R.gen()
+coarse_field = NumberField(
+    coarse_x**3 - coarse_x**2 - 6 * coarse_x - 12, "coarse"
+)
+assert minkowski_bound(coarse_field.maximal_order()).bound == 9
+factor_bases._pi_interval = saved_pi_interval
+
+pi_calls = [0]
+def counted_pi_interval(bits):
+    pi_calls[0] += 1
+    return saved_pi_interval(bits)
+factor_bases._pi_interval = counted_pi_interval
+near_x = R.gen()
+near_integer = NumberField(near_x**2 + 1481, "near")
+assert minkowski_bound(near_integer.maximal_order()).bound == 48
+factor_bases._pi_interval = saved_pi_interval
+assert pi_calls[0] >= 1
 assert len(auto_records) == benchmark["auto_factor_base_size"]
 assert auto_seconds < benchmark["maximum_auto_factor_base_seconds"]
 

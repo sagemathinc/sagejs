@@ -65,7 +65,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 925000,
+      "max_source_bytes": 950000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.native", "sagejs.ffi"],
       "files": [
@@ -179,7 +179,7 @@
       "id": "number-field-algorithms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 1160000,
+      "max_source_bytes": 1200000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -197,7 +197,7 @@
       "id": "number-field-prime-arithmetic",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 90000,
+      "max_source_bytes": 145000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -220,7 +220,7 @@
       "id": "number-field-zeta-functions",
       "layer": 7,
       "startup": "lazy",
-      "max_source_bytes": 150000,
+      "max_source_bytes": 155000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -256,7 +256,7 @@
       "id": "number-field-global-arithmetic",
       "layer": 7,
       "startup": "lazy",
-      "max_source_bytes": 1100000,
+      "max_source_bytes": 1350000,
       "depends_on": [
         "core-runtime",
         "arithmetic",

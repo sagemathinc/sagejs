@@ -106,13 +106,6 @@ def _nf_class_groups_module() -> Any:
     )
 
 
-def _nf_cubic_class_number_module() -> Any:
-    return _nf_lazy_import(
-        "__sagejs_nf_cubic_class_number_module__",
-        "sagejs.number_fields.cubic_class_number",
-    )
-
-
 def _nf_class_unit_groups_module() -> Any:
     return _nf_lazy_import(
         "__sagejs_nf_class_unit_groups_module__",
@@ -1451,7 +1444,9 @@ class NumberFieldIdeal:
         # collection.  The canonical lattice never changes, so its inverse
         # coordinate matrix is safe to compute lazily once per ideal.
         self._membership_inverse_cache = runtime.undefined
+        self._relative_basis_matrix_cache = runtime.undefined
         self._is_integral_cache = runtime.undefined
+        self._norm_cache = runtime.undefined
         # Packed exact kernels consume the same immutable canonical HNF rows.
         # Cache their common-denominator integer representation lazily so
         # relation candidates do not repack every factor-base power.
@@ -1501,20 +1496,20 @@ class NumberFieldIdeal:
     def basis_matrix(self) -> Any:
         return _nf_global("matrix")(sage.QQ, self._basis_rows)
 
-    def __contains__(self, value: object) -> bool:
+    def _relative_basis_matrix(self) -> Any:
+        """Return this immutable lattice in its order's integral basis."""
         try:
-            element = self._field(value)
-        except Exception:
-            return False
-        if len(self._basis_rows) == 0:
-            return element.is_zero()
-        row = _nf_coordinates(element, self._field.degree())
-        if self._membership_inverse_cache is runtime.undefined:
-            self._membership_inverse_cache = self.basis_matrix().inverse()
-        coordinates = (
-            _nf_global("vector")(sage.QQ, row) * self._membership_inverse_cache
-        )
-        return all(value._denominator == 1 for value in coordinates)
+            cached = self._relative_basis_matrix_cache
+        except AttributeError:
+            # A source checkout may temporarily reuse an older runtime object.
+            cached = runtime.undefined
+        if cached is runtime.undefined:
+            cached = self.basis_matrix() * self._order._basis_inverse_matrix()
+            self._relative_basis_matrix_cache = cached
+        return cached
+
+    def __contains__(self, value: object) -> bool:
+        return _nf_ideal_arithmetic_module().ideal_contains_element(self, value)
 
     def contains_ideal(self, other: NumberFieldIdeal) -> bool:
         return _nf_ideal_arithmetic_module().ideal_contains(self, other)
@@ -1527,7 +1522,7 @@ class NumberFieldIdeal:
 
     def is_integral(self) -> bool:
         if self._is_integral_cache is runtime.undefined:
-            relative = self.basis_matrix() * self._order._basis_inverse_matrix()
+            relative = self._relative_basis_matrix()
             integral = True
             for row in relative.rows():
                 if not all(value._denominator == 1 for value in row):
@@ -1539,11 +1534,19 @@ class NumberFieldIdeal:
     def norm(self) -> Any:
         if self.is_zero():
             return 0
-        relative = self.basis_matrix() * self._order.basis_matrix().inverse()
-        determinant = relative.determinant()
-        if determinant < 0:
-            determinant = -determinant
-        return determinant
+        try:
+            cached = self._norm_cache
+        except AttributeError:
+            # A source checkout may reuse a runtime bootstrap built before
+            # this immutable cache slot was introduced.
+            cached = runtime.undefined
+        if cached is runtime.undefined:
+            relative = self._relative_basis_matrix()
+            cached = relative.determinant()
+            if cached < 0:
+                cached = -cached
+            self._norm_cache = cached
+        return cached
 
     absolute_norm = norm
 
@@ -1765,6 +1768,7 @@ class NumberFieldOrder(sage.Parent):
         self._maximal_order_local_evidence = runtime.undefined
         self._maximal_order_trace = runtime.undefined
         self._discriminant_cache = runtime.undefined
+        self._cubic_norm_form_coefficients_cache = runtime.undefined
         self._kind = "NumberFieldOrder"
         self._construction = runtime.undefined
 
@@ -2067,7 +2071,10 @@ class NumberFieldParent(sage.Parent):
         self._real_quadratic_backend_cache = runtime.undefined
         self._real_quadratic_class_number_cache = runtime.undefined
         self._real_quadratic_narrow_class_number_cache = runtime.undefined
-        self._bounded_cubic_class_number_artifact = runtime.undefined
+        # This cache is consumed by an independently compiled lazy module.
+        # JavaScript `undefined` is treated as a missing Python attribute at
+        # that boundary, so use an ordinary optional value here.
+        self._bounded_cubic_class_number_artifact = None
         self._class_group_cache = runtime.undefined
         self._narrow_class_group_cache = runtime.undefined
         self._zeta_function_cache = runtime.map()
@@ -2913,49 +2920,9 @@ class NumberFieldParent(sage.Parent):
         if self._is_tutorial_cubic():
             return 1
         if self.degree() == 3 and algorithm == "auto" and len(limits) == 0:
-            cubic_class_numbers = _nf_cubic_class_number_module()
-            artifact = self._bounded_cubic_class_number_artifact
-            uncached = artifact is runtime.undefined
-            requested_proof = True if proof is None else bool(proof)
-            conditional_decline = bool(
-                not uncached
-                and not artifact.complete
-                and artifact.diagnostics.get(
-                    "relation_seed_size_policy_exceeded", False
-                )
+            return _nf_class_unit_groups_module().cubic_class_number_projection(
+                self, proof=proof
             )
-            producer_ran = uncached or (requested_proof and conditional_decline)
-            if producer_ran:
-                artifact = cubic_class_numbers.bounded_cubic_minkowski_class_number(
-                    self,
-                    max_relation_seed_prime_ideals=(None if requested_proof else 7),
-                )
-            if artifact.complete:
-                matcher = getattr(
-                    cubic_class_numbers,
-                    "authenticated_cubic_class_number_result_matches",
-                    None,
-                )
-                if not callable(matcher) or not matcher(artifact, self):
-                    raise ArithmeticError(
-                        "cached cubic class-number evidence lost authentication"
-                    )
-                if producer_ran:
-                    self._bounded_cubic_class_number_artifact = artifact
-                return int(artifact.order())
-            seed_reader = getattr(
-                cubic_class_numbers, "authenticated_cubic_relation_seed", None
-            )
-            if (
-                producer_ran
-                and callable(seed_reader)
-                and seed_reader(artifact, self) is not None
-            ):
-                self._bounded_cubic_class_number_artifact = artifact
-            elif producer_ran and artifact.diagnostics.get(
-                "relation_seed_size_policy_exceeded", False
-            ):
-                self._bounded_cubic_class_number_artifact = artifact
         if self.degree() == 2:
             routing = self.quadratic_class_group_plan(algorithm, **limits)
             if routing.backend == "minkowski-triviality":

@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 46,
-    "production_kernels": 39,
-    "compiled_functions": 263,
+    "registered_kernels": 47,
+    "production_kernels": 40,
+    "compiled_functions": 270,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -23,9 +23,9 @@
       "id": "buchmann-lenstra-row-hnf-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 7,
+      "compiled_functions": 9,
       "fallback_functions": 0,
-      "total_functions": 7,
+      "total_functions": 9,
       "fallback_reasons": []
     },
     {
@@ -54,9 +54,9 @@
       "id": "dense-integer-flint-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 16,
+      "compiled_functions": 17,
       "fallback_functions": 0,
-      "total_functions": 16,
+      "total_functions": 17,
       "fallback_reasons": []
     },
     {
@@ -208,6 +208,15 @@
       "fallback_reasons": []
     },
     {
+      "id": "number-field-bdf-interval-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
+      "fallback_reasons": []
+    },
+    {
       "id": "number-field-composite-analysis-production",
       "production": true,
       "status": "available",
@@ -220,9 +229,9 @@
       "id": "number-field-cubic-norm-obstruction-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 1,
+      "compiled_functions": 2,
       "fallback_functions": 0,
-      "total_functions": 1,
+      "total_functions": 2,
       "fallback_reasons": []
     },
     {
@@ -274,9 +283,9 @@
       "id": "number-field-zeta-coefficients-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 5,
+      "compiled_functions": 6,
       "fallback_functions": 0,
-      "total_functions": 5,
+      "total_functions": 6,
       "fallback_reasons": []
     },
     {
@@ -404,9 +413,9 @@
       "id": "prime-ideal-candidate-materializer-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 1,
+      "compiled_functions": 2,
       "fallback_functions": 0,
-      "total_functions": 1,
+      "total_functions": 2,
       "fallback_reasons": []
     },
     {

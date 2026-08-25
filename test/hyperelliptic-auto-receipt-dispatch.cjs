@@ -466,11 +466,11 @@ test("trusted startup rejects a provider installed before Sage.js", (context) =>
   assert.match(result.stderr, /existed before trusted startup/);
 });
 
-test("the release policy enables only six exact Cantor envelopes", () => {
+test("the release policy retains six exact Cantor envelopes but fails closed", () => {
   const candidate = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
-  assert.equal(candidate.enabled, true);
+  assert.equal(candidate.enabled, false);
   assert.equal(candidate.entries.length, 6);
   assert(candidate.entries.every((entry) => entry.enabled));
   assert.equal(

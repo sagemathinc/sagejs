@@ -634,6 +634,80 @@ class ModularFactor(ImmutableOMRecord):
     multiplicity: int
 
 
+MAX_CUBIC_ROOT_FACTOR_PRIME = 4096
+
+
+def _divide_cubic_factor_by_linear_root(
+    polynomial: Polynomial, root: int, prime: int
+) -> Polynomial:
+    """Divide a monic modular polynomial by `x - root` exactly."""
+    degree = len(polynomial) - 1
+    if degree < 1:
+        raise ArithmeticError("a constant polynomial has no linear divisor")
+    quotient = [0] * degree
+    quotient[-1] = polynomial[-1] % prime
+    for index in range(degree - 1, 0, -1):
+        quotient[index - 1] = (polynomial[index] + root * quotient[index]) % prime
+    if (polynomial[0] + root * quotient[0]) % prime:
+        raise ArithmeticError("a claimed modular root did not divide")
+    return normalize_polynomial(quotient)
+
+
+def factor_cubic_mod_prime(
+    coefficients: Polynomial, prime: int
+) -> tuple[ModularFactor, ...]:
+    """Factor a bounded monic cubic by exhaustive roots over `F_prime`.
+
+    A reducible cubic has a linear factor, so after removing every root the
+    remaining quadratic or cubic is irreducible.  This is substantially
+    cheaper than entering the generic squarefree/DDF/Cantor--Zassenhaus stack
+    for the small rational primes used by the bounded cubic class-number
+    producer.  Larger inputs retain that generic exact implementation.
+    """
+    modulus = int(prime)
+    if modulus < 2:
+        return factor_mod_prime(coefficients, modulus)
+    reduced = normalize_polynomial(
+        tuple(int(value) % modulus for value in coefficients)
+    )
+    if modulus > MAX_CUBIC_ROOT_FACTOR_PRIME or len(reduced) != 4 or reduced[-1] != 1:
+        return factor_mod_prime(coefficients, modulus)
+    factors: list[ModularFactor] = []
+    remaining = reduced
+    while len(remaining) > 1:
+        root = None
+        for candidate in range(modulus):
+            value = 0
+            for coefficient in reversed(remaining):
+                value = (value * candidate + coefficient) % modulus
+            if value == 0:
+                root = candidate
+                break
+        if root is None:
+            factors.append(ModularFactor(remaining, 1))
+            break
+        linear = ((-root) % modulus, 1)
+        multiplicity = 0
+        while len(remaining) > 1:
+            value = 0
+            for coefficient in reversed(remaining):
+                value = (value * root + coefficient) % modulus
+            if value:
+                break
+            remaining = _divide_cubic_factor_by_linear_root(remaining, root, modulus)
+            multiplicity += 1
+        factors.append(ModularFactor(linear, multiplicity))
+    return tuple(
+        sorted(
+            factors,
+            key=lambda factor: (
+                polynomial_degree(factor.polynomial),
+                factor.polynomial,
+            ),
+        )
+    )
+
+
 @dataclass
 class ResidualFactor(ImmutableOMRecord):
     polynomial: ResidualPolynomial
@@ -2701,6 +2775,7 @@ __all__ = [
     "build_om_type_tree",
     "coefficient_valuation",
     "factor_mod_prime",
+    "factor_cubic_mod_prime",
     "factor_residual_polynomial",
     "gauss_valuation",
     "lower_newton_polygon",

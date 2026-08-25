@@ -43,6 +43,8 @@ _MAXIMUM_SATURATION_REPLAY_STRING = 1_000_000
 _SHARED_ZETA_WORKSPACE_CACHE_LIMIT = 16
 _SHARED_ZETA_WORKSPACE_SNAPSHOT_TOKEN = object()
 _shared_zeta_workspace_snapshots: dict[str, Any] = {}
+_bf_prime_power_plan_kernel_override: Any = None
+_MAXIMUM_PACKED_BF_PLAN_TERMS = 1_000_000
 
 
 def _canonical_json(value: Any) -> str:
@@ -601,6 +603,45 @@ class RealBall:
 
     def __repr__(self) -> str:
         return "[" + str(self.lower) + ", " + str(self.upper) + "]"
+
+
+def _real_ball_linear_combination(
+    terms: Sequence[tuple[RationalEndpoint, RealBall]],
+    *,
+    precision_bits: int,
+    source: str,
+) -> RealBall:
+    """Add exact interval multiples with one final outward rounding.
+
+    Repeated `RealBall` additions are individually rigorous, but each one
+    rounds to the working dyadic scale and allocates another interval tree.
+    A fixed analytic formula may instead combine its exact rational endpoints
+    first and round outwards once.  Negative coefficients reverse the endpoint
+    choice in the usual interval-linear-combination rule.
+    """
+    lower = RationalEndpoint(0)
+    upper = RationalEndpoint(0)
+    rigorous = True
+    zero = RationalEndpoint(0)
+    for coefficient, ball in terms:
+        if not isinstance(coefficient, RationalEndpoint) or not isinstance(
+            ball, RealBall
+        ):
+            raise TypeError("a real-ball linear term needs an exact coefficient")
+        if coefficient < zero:
+            lower += coefficient * ball.upper
+            upper += coefficient * ball.lower
+        else:
+            lower += coefficient * ball.lower
+            upper += coefficient * ball.upper
+        rigorous = rigorous and ball.rigorous
+    return RealBall._arithmetic_result(
+        lower,
+        upper,
+        precision_bits=int(precision_bits),
+        rigorous=rigorous,
+        source=str(source),
+    )
 
 
 def _ball(value: Any, *, precision_bits: int, rigorous: bool) -> RealBall:
@@ -1624,7 +1665,7 @@ def _local_pth_power_obstruction(
     maximal_order = __import__(
         "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
     )
-    table = maximal_order._nf_order_multiplication_table(order)
+    table = maximal_order._nf_order_multiplication_table_frozen(order)
     one = _order_coordinates(order, order.number_field().one())
     target_coordinates = _order_coordinates(order, target)
     degree = len(one)
@@ -3001,12 +3042,23 @@ def regulator_from_factored_units(
     maximum_precision_bits: int = 4096,
     maximum_determinant_states: int = 65_536,
     cancelled: Callable[[], Any] | None = None,
+    logarithm_workspace: Any = None,
 ) -> RegulatorEnclosure:
     """Use factored elements' weighted archimedean-logarithm provider."""
 
     def logarithms(precision: int) -> Sequence[Sequence[Any]]:
         rows = []
         for unit in units:
+            regulator_provider = getattr(unit, "regulator_logarithms", None)
+            if callable(regulator_provider):
+                rows.append(
+                    regulator_provider(
+                        precision,
+                        unit_rank,
+                        workspace=logarithm_workspace,
+                    )
+                )
+                continue
             provider = getattr(unit, "archimedean_logarithms", None)
             if not callable(provider):
                 raise TypeError("a factored unit needs archimedean_logarithms(prec)")
@@ -3060,15 +3112,30 @@ def _is_prime(value: int) -> bool:
 def _primes_below(bound: int) -> list[int]:
     if bound <= 2:
         return []
-    sieve = bytearray(b"\x01") * bound
-    sieve[0:2] = b"\x00\x00"
-    prime = 2
-    while prime * prime < bound:
-        if sieve[prime]:
-            start = prime * prime
-            sieve[start:bound:prime] = b"\x00" * (((bound - 1 - start) // prime) + 1)
-        prime += 1
-    return [value for value in range(2, bound) if sieve[value]]
+    # Reuse Sage.js's canonical exact prime service.  Its retained sieve is
+    # shared with maximal-order splitting, whereas spelling a bytearray sieve
+    # here repeated the same prime enumeration inside every analytic workspace
+    # and lowered poorly through dynamic Python execution.
+    try:
+        base_module = __import__(
+            "sagejs._baselib.number_fields", fromlist=["number_fields"]
+        )
+        prime_range = base_module._nf_global("prime_range")
+        return [int(value) for value in prime_range(int(bound))]
+    except (AttributeError, ImportError):
+        # Keep this mathematical module directly executable under ordinary
+        # CPython, where Sage.js's baselib registry is intentionally absent.
+        sieve = bytearray(b"\x01") * bound
+        sieve[0:2] = b"\x00\x00"
+        prime = 2
+        while prime * prime < bound:
+            if sieve[prime]:
+                start = prime * prime
+                sieve[start:bound:prime] = b"\x00" * (
+                    ((bound - 1 - start) // prime) + 1
+                )
+            prime += 1
+        return [value for value in range(2, bound) if sieve[value]]
 
 
 def _factor_pair(value: Any) -> tuple[int, int]:
@@ -3301,7 +3368,7 @@ class _SharedZetaWorkspaceSnapshot:
         self.__dict__[name] = value
 
 
-def _build_bf_plan(
+def _build_bf_plan_readable(
     threshold: int,
     splitting: dict[int, tuple[tuple[int, int], ...]],
 ) -> _BFPrimePowerPlan:
@@ -3348,6 +3415,161 @@ def _build_bf_plan(
     return _BFPrimePowerPlan(threshold, terms, raw_terms)
 
 
+def _build_bf_plan_kernel(
+    threshold: int,
+    splitting: dict[int, tuple[tuple[int, int], ...]],
+) -> _BFPrimePowerPlan | None:
+    """Build one exact plan through the compiled packed source, or decline."""
+    try:
+        kernel_module = __import__(
+            "sagejs.number_fields.zeta_coefficient_kernel",
+            fromlist=["assemble_bf_prime_power_plan_in_place"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        kernel = _bf_prime_power_plan_kernel_override
+        if kernel is False:
+            return None
+        if kernel is None:
+            kernel = getattr(
+                kernel_module, "assemble_bf_prime_power_plan_in_place", None
+            )
+            is_compiled = getattr(native_module, "is_compiled", None)
+            if (
+                not callable(kernel)
+                or not callable(is_compiled)
+                or not is_compiled(kernel)
+            ):
+                return None
+        elif not callable(kernel):
+            return None
+
+        primes = tuple(sorted(int(prime) for prime in splitting))
+        if not primes:
+            return _BFPrimePowerPlan(threshold, (), 0)
+        first_factors = splitting[primes[0]]
+        degree = sum(int(e) * int(f) for e, f in first_factors)
+        if degree < 1 or degree > 64:
+            return None
+        counts: list[int] = []
+        exponents: list[int] = []
+        degrees: list[int] = []
+        for prime in primes:
+            factors = splitting[prime]
+            if len(factors) < 1 or len(factors) > degree:
+                return None
+            if sum(int(e) * int(f) for e, f in factors) != degree:
+                return None
+            counts.append(len(factors))
+            for e, f in factors:
+                exponents.append(int(e))
+                degrees.append(int(f))
+            for _padding in range(degree - len(factors)):
+                exponents.append(0)
+                degrees.append(0)
+
+        packed_primes = native_module.kernel_uint64_buffer(kernel, primes)
+        packed_counts = native_module.kernel_uint64_buffer(kernel, counts)
+        packed_exponents = native_module.kernel_uint64_buffer(kernel, exponents)
+        packed_degrees = native_module.kernel_uint64_buffer(kernel, degrees)
+        metadata = native_module.kernel_integer_zeros(kernel, 2, 1)
+        workspace = native_module.kernel_integer_zeros(kernel, threshold, 1)
+        scratch = native_module.kernel_integer_zeros(kernel, 1, 1)
+        if not bool(
+            kernel(
+                metadata,
+                scratch,
+                workspace,
+                packed_primes,
+                packed_counts,
+                packed_exponents,
+                packed_degrees,
+                degree,
+                threshold,
+                0,
+            )
+        ):
+            return None
+        metadata_values = native_module.integer_buffer_values(metadata)
+        if len(metadata_values) != 2:
+            return None
+        runtime_module = __import__("sagejs.runtime", fromlist=["runtime"])
+        term_count = runtime_module.number(metadata_values[0])
+        raw_terms = runtime_module.number(metadata_values[1])
+        if (
+            term_count < 0
+            or term_count > _MAXIMUM_PACKED_BF_PLAN_TERMS
+            or raw_terms < term_count
+        ):
+            return None
+        output = native_module.kernel_integer_zeros(kernel, 4 * term_count, 1)
+        if not bool(
+            kernel(
+                metadata,
+                output,
+                workspace,
+                packed_primes,
+                packed_counts,
+                packed_exponents,
+                packed_degrees,
+                degree,
+                threshold,
+                1,
+            )
+        ):
+            return None
+        repeated_metadata = native_module.integer_buffer_values(metadata)
+        if (
+            len(repeated_metadata) != 2
+            or runtime_module.number(repeated_metadata[0]) != term_count
+            or runtime_module.number(repeated_metadata[1]) != raw_terms
+        ):
+            return None
+        flat = native_module.integer_buffer_values(output)
+        if len(flat) != 4 * term_count:
+            return None
+        terms: list[tuple[int, int, int, int]] = []
+        previous_key: tuple[int, int, int] | None = None
+        for index in range(term_count):
+            offset = 4 * index
+            multiplicity = int(flat[offset])
+            scale = int(flat[offset + 1])
+            norm = int(flat[offset + 2])
+            exponent = int(flat[offset + 3])
+            cutoff = threshold if scale == 0 else threshold // 9
+            key = (scale, norm, exponent)
+            if (
+                multiplicity == 0
+                or scale not in (0, 1)
+                or norm < 2
+                or exponent < 1
+                or norm**exponent >= cutoff
+                or (previous_key is not None and key <= previous_key)
+            ):
+                return None
+            previous_key = key
+            terms.append((multiplicity, scale, norm, exponent))
+        return _BFPrimePowerPlan(threshold, terms, raw_terms)
+    except (
+        AttributeError,
+        ImportError,
+        OverflowError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ):
+        return None
+
+
+def _build_bf_plan(
+    threshold: int,
+    splitting: dict[int, tuple[tuple[int, int], ...]],
+) -> _BFPrimePowerPlan:
+    packed = _build_bf_plan_kernel(threshold, splitting)
+    return (
+        packed if packed is not None else _build_bf_plan_readable(threshold, splitting)
+    )
+
+
 class ZetaLogResidueWorkspace:
     """Reusable exact analytic work for one field computation.
 
@@ -3368,6 +3590,7 @@ class ZetaLogResidueWorkspace:
         splitting_provider: Callable[[int, int], Iterable[Any]],
         *,
         share_across_isomorphic_fields: bool = False,
+        factored_logarithm_workspace: Any = None,
     ) -> None:
         discriminant = int(discriminant)
         degree = int(degree)
@@ -3380,6 +3603,7 @@ class ZetaLogResidueWorkspace:
         self.discriminant = discriminant
         self.degree = degree
         self.splitting_provider = splitting_provider
+        self.factored_logarithm_workspace = factored_logarithm_workspace
         self.covered_stop = 2
         self.provider_calls = 0
         self.records_decoded = 0
@@ -3566,7 +3790,23 @@ class ZetaLogResidueWorkspace:
         try:
             if callable(cancelled) and cancelled():
                 raise AnalyticResourceError("regulator computation was cancelled")
-            unit_payload = [_element_payload(_ordinary_unit(unit)) for unit in units]
+            factored_module = None
+            try:
+                factored_module = __import__(
+                    "sagejs.number_fields.factored_elements",
+                    fromlist=["factored_elements"],
+                )
+            except ImportError:
+                pass
+            factored_type = getattr(factored_module, "FactoredNumberFieldElement", None)
+            unit_payload = [
+                (
+                    ["factored", unit.regulator_cache_key()]
+                    if factored_type is not None and isinstance(unit, factored_type)
+                    else ["ordinary", _element_payload(_ordinary_unit(unit))]
+                )
+                for unit in units
+            ]
             key = (
                 _canonical_json(unit_payload),
                 int(unit_rank),
@@ -3592,6 +3832,7 @@ class ZetaLogResidueWorkspace:
                 maximum_precision_bits=maximum_precision_bits,
                 maximum_determinant_states=maximum_determinant_states,
                 cancelled=cancelled,
+                logarithm_workspace=self.factored_logarithm_workspace,
             )
             self._regulators[key] = (
                 regulator,
@@ -3686,6 +3927,23 @@ class ZetaLogResidueWorkspace:
             plan = _build_bf_plan(threshold, splitting)
             self._plans[threshold] = plan
             return plan
+        finally:
+            self.prime_power_plan_nanoseconds += time.perf_counter_ns() - started
+
+    def cached_prime_power_plan(self, threshold: int) -> _BFPrimePowerPlan | None:
+        """Return an already authenticated plan for the exact cutoff.
+
+        Plans enter this workspace only after complete splitting coverage and
+        local-degree validation, or through the module-issued shared snapshot
+        bound to the exact field and maximal order.  A cache miss deliberately
+        returns `None`; callers must then rebuild splitting data normally.
+        """
+        started = time.perf_counter_ns()
+        try:
+            cached = self._plans.get(int(threshold))
+            if cached is not None:
+                self.plan_cache_hits += 1
+            return cached
         finally:
             self.prime_power_plan_nanoseconds += time.perf_counter_ns() - started
 
@@ -4469,10 +4727,14 @@ def zeta_log_residue_bound(
         )
         threshold_evaluations += evaluations
         primes = selected_workspace.rational_primes_below(threshold)
-        splitting = selected_workspace.splitting_types(
-            primes, resource_limits.splitting_block_size
-        )
-        plan = selected_workspace.prime_power_plan(threshold, splitting)
+        cached_plan = selected_workspace.cached_prime_power_plan(threshold)
+        if cached_plan is None:
+            splitting = selected_workspace.splitting_types(
+                primes, resource_limits.splitting_block_size
+            )
+            plan = selected_workspace.prime_power_plan(threshold, splitting)
+        else:
+            plan = cached_plan
         finite, interval_diagnostics = selected_workspace.finite_term(plan, precision)
         answer = finite.add_error(tail.upper)
         accumulated = (
@@ -4626,16 +4888,18 @@ def validate_hr_index(
         raise AnalyticCertificationError("the regulator ball must be provably positive")
     field = IntervalBallField(int(precision_bits))
     log_two = field.log_integer(2)
-    log_prefactor = (
-        RealBall(r1, precision_bits=precision_bits) * log_two
-        + RealBall(r2, precision_bits=precision_bits)
-        * (log_two + field.log(field.pi()))
-        - field.log_integer(roots_of_unity)
-        - field.log_integer(abs(discriminant))
-        / RealBall(2, precision_bits=precision_bits)
-    )
-    algebraic = (
-        log_prefactor + field.log_integer(class_number) + field.log(regulator_ball)
+    log_pi = field.log(field.pi())
+    algebraic = _real_ball_linear_combination(
+        (
+            (RationalEndpoint(r1 + r2), log_two),
+            (RationalEndpoint(r2), log_pi),
+            (RationalEndpoint(-1), field.log_integer(roots_of_unity)),
+            (RationalEndpoint(-1, 2), field.log_integer(abs(discriminant))),
+            (RationalEndpoint(1), field.log_integer(class_number)),
+            (RationalEndpoint(1), field.log(regulator_ball)),
+        ),
+        precision_bits=precision_bits,
+        source="analytic class-number formula; one-step exact linear combination",
     )
     log_index = algebraic - residue_ball
     index_ball = field.exp(log_index)
@@ -4800,6 +5064,9 @@ def _compute_unit_index_proof(
     return int(index.unique_index), _unit_index_proof_payload(regulator, zeta, index)
 
 
+_LIVE_UNIT_INDEX_PARENT_TOKEN = object()
+
+
 class UnitSaturationIndexCertificate:
     """Hash-bound analytic proof of the initial missing class/unit index."""
 
@@ -4814,6 +5081,7 @@ class UnitSaturationIndexCertificate:
         proof_status: str,
         generation_verifier: Callable[..., Any] | None = None,
         workspace: ZetaLogResidueWorkspace | None = None,
+        _live_parent_token: Any = None,
     ) -> None:
         selected_index_bound = int(index_bound)
         selected_proof_status = str(proof_status)
@@ -4824,7 +5092,7 @@ class UnitSaturationIndexCertificate:
             "exact-relations-conditional-grh",
         ):
             raise ValueError("a global index certificate needs an exact proof status")
-        body = {
+        body: dict[str, Any] = {
             "schema": "sagejs.number-fields.unit-saturation-index-certificate.v1",
             "field_order_identity": field_order_identity,
             "initial_units": list(initial_units),
@@ -4834,13 +5102,14 @@ class UnitSaturationIndexCertificate:
             "generation_evidence": generation_evidence,
             "proof_status": selected_proof_status,
         }
-        # One canonical snapshot provides both mutation isolation and the
-        # authenticated byte sequence.  Structural copying is materially
-        # cheaper than sending this large exact-integer tree through the
-        # runtime JSON parser, while the canonical serialization above still
-        # validates and authenticates the complete payload.
+        # Retain the assembled body instead of walking this large exact-integer
+        # tree a second time.  The canonical byte snapshot below is immutable,
+        # and `_authenticated_body_matches()` detects changes to any retained
+        # input before live or detached verification consumes it.  Public
+        # accessors and `to_dict()` still return structural copies, so callers
+        # cannot mutate a valid certificate through the supported API.
         self._body_json = _canonical_json(body)
-        snapshot = _json_clone(body)
+        snapshot = body
         self._body_snapshot = snapshot
         self._field_order_identity = snapshot["field_order_identity"]
         self._initial_units = snapshot["initial_units"]
@@ -4854,6 +5123,49 @@ class UnitSaturationIndexCertificate:
         ).hexdigest()
         self._generation_verifier = generation_verifier
         self._workspace = workspace
+        self._live_parent_authority_available = bool(
+            _live_parent_token is _LIVE_UNIT_INDEX_PARENT_TOKEN
+        )
+
+    def _authenticated_body_matches(self) -> bool:
+        """Fail closed if any retained input changed after construction."""
+        try:
+            encoded = _canonical_json(self._body_snapshot)
+            return bool(
+                encoded == self._body_json
+                and hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+                == self._content_sha256
+            )
+        except (TypeError, ValueError, ArithmeticError):
+            return False
+
+    def _trusted_parent_payload_view(self) -> dict[str, Any]:
+        """Return a non-escaping view for one authenticated parent record.
+
+        This private boundary deliberately avoids a second eager traversal of
+        the certificate tree.  The parent must copy before exposing it; any
+        accidental mutation of the shared nested values invalidates both
+        authenticated bodies and therefore fails closed.
+        """
+        if not self._authenticated_body_matches():
+            raise AnalyticCertificationError(
+                "global unit-index certificate body changed after construction"
+            )
+        payload = dict(self._body_snapshot)
+        payload["content_sha256"] = self._content_sha256
+        return payload
+
+    def _consume_live_parent_payload(self, token: Any) -> dict[str, Any] | None:
+        """Transfer the just-built canonical body to its live parent once."""
+        if (
+            token is not _LIVE_UNIT_INDEX_PARENT_TOKEN
+            or not self._live_parent_authority_available
+        ):
+            return None
+        self._live_parent_authority_available = False
+        payload = dict(self._body_snapshot)
+        payload["content_sha256"] = self._content_sha256
+        return payload
 
     @property
     def field_order_identity(self) -> dict[str, Any]:
@@ -4949,6 +5261,8 @@ class UnitSaturationIndexCertificate:
     ) -> bool:
         replay_started = time.perf_counter_ns()
         try:
+            if not self._authenticated_body_matches():
+                return False
             hr_payload = self._analytic_proof["hr_index"]
             lower_index = _payload_integer(
                 hr_payload["lower_index"], "authenticated hR lower index"
@@ -5031,6 +5345,7 @@ def certify_unit_saturation_index(
     _precomputed_regulator: Any = None,
     _precomputed_zeta_log_residue: Any = None,
     _precomputed_index: Any = None,
+    _live_parent_token: Any = None,
 ) -> UnitSaturationIndexCertificate:
     """Construct a replayable analytic index certificate for exact units.
 
@@ -5149,6 +5464,7 @@ def certify_unit_saturation_index(
         proof_status,
         generation_verifier,
         selected_workspace,
+        _live_parent_token=_live_parent_token,
     )
 
 

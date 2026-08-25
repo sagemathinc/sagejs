@@ -36,8 +36,6 @@ MAX_UNCONDITIONAL_CUBIC_RELATION_SEED_SIZE = 10
 DEFAULT_CUBIC_SATURATION_RELATION_BATCH = 12
 MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 
-_AUTHENTICATED_CLASS_UNIT_SATURATION_TOKEN = object()
-_AUTHENTICATED_ENGINE_CLASS_GROUP_TOKEN = object()
 _CUBIC_RELATION_SEED_UNREAD = object()
 
 
@@ -128,6 +126,40 @@ def _canonical_payload_hash(payload: Any) -> str:
         separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+_GENERATION_EVIDENCE_KEYS = {
+    "schema",
+    "proof_status",
+    "theorem",
+    "assumptions",
+    "bound",
+    "factor_base",
+    "relations",
+    "presentation",
+}
+
+_LIVE_SATURATION_RECORD_TOKEN = object()
+
+
+def _generation_evidence_digests(evidence: Any) -> tuple[str, str, str]:
+    if (
+        not isinstance(evidence, dict)
+        or set(evidence) != _GENERATION_EVIDENCE_KEYS
+        or evidence.get("schema")
+        != "sagejs.number-fields/class-generation-authority-v1"
+    ):
+        raise ValueError("invalid generation evidence")
+    names = ("factor_base", "relations", "presentation")
+    digests = tuple(_canonical_payload_hash(evidence[name]) for name in names)
+    root = {
+        key: evidence[key]
+        for key in ("proof_status", "theorem", "assumptions", "bound")
+    }
+    root["schema"] = "sagejs.number-fields/class-generation-authority-digest-v1"
+    for name, digest in zip(names, digests, strict=True):
+        root[name + "_sha256"] = digest
+    return _canonical_payload_hash(root), digests[1], digests[2]
 
 
 def _saturation_diagnostic_summary(record: Any) -> dict[str, Any]:
@@ -334,11 +366,35 @@ class ClassUnitSaturationRecord:
         standard_certificate_type = getattr(
             analytic_module, "UnitSaturationIndexCertificate", None
         )
+        live_parent_payload_consumed = False
         if (
             standard_certificate_type is not None
             and type(analytic_certificate) is standard_certificate_type
         ):
-            self._analytic_certificate_payload = analytic_certificate.to_dict()
+            consume_payload = getattr(
+                analytic_certificate, "_consume_live_parent_payload", None
+            )
+            live_parent_token = getattr(
+                analytic_module, "_LIVE_UNIT_INDEX_PARENT_TOKEN", None
+            )
+            trusted_payload = (
+                consume_payload(live_parent_token)
+                if callable(consume_payload) and live_parent_token is not None
+                else None
+            )
+            live_parent_payload_consumed = trusted_payload is not None
+            if trusted_payload is None:
+                detached_payload = getattr(
+                    analytic_certificate, "_trusted_parent_payload_view", None
+                )
+                trusted_payload = (
+                    detached_payload() if callable(detached_payload) else None
+                )
+            if trusted_payload is None:
+                raise TypeError(
+                    "the standard analytic certificate has no parent payload view"
+                )
+            self._analytic_certificate_payload = trusted_payload
         else:
             self._analytic_certificate_payload = _component_payload(
                 analytic_certificate
@@ -362,6 +418,9 @@ class ClassUnitSaturationRecord:
         self.reason = str(reason)
         self._field = field
         self._order = order
+        self._live_authentication_available = bool(
+            live_parent_payload_consumed and analytic_workspace is not None
+        )
         body = self._body_dict()
         self.content_sha256 = _canonical_payload_hash(body)
 
@@ -378,6 +437,17 @@ class ClassUnitSaturationRecord:
         ]
 
     def _body_dict(self) -> dict[str, Any]:
+        original_payloads = [self._unit_payload(unit) for unit in self.original_units]
+        same_units = len(self.original_units) == len(self.units)
+        if same_units:
+            for index in range(len(self.original_units)):
+                if self.original_units[index] is not self.units[index]:
+                    same_units = False
+                    break
+        if same_units:
+            unit_payloads = list(original_payloads)
+        else:
+            unit_payloads = [self._unit_payload(unit) for unit in self.units]
         return {
             "schema": "sagejs.number-fields/class-unit-saturation-v1",
             "index_bound": self.index_bound,
@@ -386,20 +456,39 @@ class ClassUnitSaturationRecord:
             "attempts": list(self.attempts),
             "analytic_validation": self.analytic_validation,
             "analytic_certificate": self._analytic_certificate_payload,
-            "original_units": [
-                self._unit_payload(unit) for unit in self.original_units
-            ],
-            "units": [self._unit_payload(unit) for unit in self.units],
+            "original_units": original_payloads,
+            "units": unit_payloads,
             "rigorous": self.rigorous,
             "complete": self.complete,
             "saturated": self.saturated,
             "reason": self.reason,
         }
 
+    def _consume_live_authentication(self, token: Any, field: Any, order: Any) -> bool:
+        """Consume the uninterrupted constructor-to-context authority once."""
+        accepted = bool(
+            token is _LIVE_SATURATION_RECORD_TOKEN
+            and self._live_authentication_available
+            and field is self._field
+            and order is self._order
+            and self.complete
+            and self.rigorous
+            and self.saturated
+            and self.remaining_index_bound == 1
+        )
+        self._live_authentication_available = False
+        return accepted
+
+    def _discard_live_authentication(self, token: Any) -> None:
+        """Revoke unused live authority before the record can escape."""
+        if token is not _LIVE_SATURATION_RECORD_TOKEN:
+            raise TypeError("live saturation authentication is engine-owned")
+        self._live_authentication_available = False
+
     def to_dict(self) -> dict[str, Any]:
         payload = self._body_dict()
         payload["content_sha256"] = self.content_sha256
-        return payload
+        return _component_payload(payload)
 
     def verify(
         self,
@@ -477,147 +566,44 @@ class ClassUnitSaturationRecord:
         return self.complete
 
 
-def _saturation_record_live_snapshot(record: Any) -> tuple[Any, ...]:
-    """Snapshot the critical state crossing one synchronous engine boundary.
+def _standard_live_saturation_record_is_valid(
+    record: Any, field: Any, order: Any
+) -> bool:
+    """Validate the canonical producer before context-owned live reuse.
 
-    The authority is consumed before the engine returns the record, so this
-    state does not need to duplicate the large serialized certificate.  It
-    binds every mathematical decision used at the terminal check plus the
-    identities of the standard objects which made those decisions.  The
-    public verifier remains the only reusable or detached verifier.
+    The shared context permits reuse only when no callback, cancellation hook,
+    or checkpoint can interpose before the terminal check.  Detached and
+    interposed computations still execute `ClassUnitSaturationRecord.verify`.
     """
-    if type(record) is not ClassUnitSaturationRecord:
-        raise TypeError("a live saturation record must have the exact record type")
-    certificate = record._analytic_certificate
-    analytic_proof = certificate._analytic_proof
-    hr_index = analytic_proof["hr_index"]
-    return (
-        record.content_sha256,
-        record.index_bound,
-        record.required_primes,
-        record.remaining_index_bound,
-        id(record.attempts),
-        id(record.analytic_validation),
-        int(record.analytic_validation["lower_index"]),
-        int(record.analytic_validation["upper_index"]),
-        bool(record.analytic_validation["rigorous"]),
-        record.rigorous,
-        record.complete,
-        record.saturated,
-        record.reason,
-        id(certificate),
-        certificate._body_json,
-        certificate._content_sha256,
-        id(certificate._body_snapshot),
-        id(certificate._field_order_identity),
-        id(certificate._initial_units),
-        id(certificate._configuration),
-        id(analytic_proof),
-        id(certificate._generation_evidence),
-        certificate._index_bound,
-        certificate._proof_status,
-        int(hr_index["lower_index"]),
-        int(hr_index["upper_index"]),
-        int(hr_index["unique_index"]),
-        bool(hr_index["rigorous"]),
-        bool(analytic_proof["regulator"]["rigorous"]),
-        bool(analytic_proof["zeta_log_residue"]["rigorous"]),
-        id(record._analytic_generation_verifier),
-        id(record._analytic_module),
-        id(record._analytic_workspace),
-        tuple(id(unit) for unit in record.original_units),
-        tuple(id(unit) for unit in record.units),
-        tuple(
-            (
-                id(artifact),
-                tuple(id(unit) for unit in before),
-                id(torsion),
-                id(generation_verifier),
-            )
-            for artifact, before, torsion, generation_verifier in record._producer_artifacts
-        ),
-    )
-
-
-class _AuthenticatedClassUnitSaturationRecord:
-    """One non-serializable authority issued at the live engine boundary."""
-
-    def __init__(self, token: object, record: ClassUnitSaturationRecord) -> None:
-        if token is not _AUTHENTICATED_CLASS_UNIT_SATURATION_TOKEN:
-            raise TypeError("live saturation authorities are module-issued")
+    try:
+        if type(record) is not ClassUnitSaturationRecord:
+            return False
         analytic = _optional_module("sagejs.number_fields.class_unit_analytic")
         certificate_type = getattr(analytic, "UnitSaturationIndexCertificate", None)
         workspace_type = getattr(analytic, "ZetaLogResidueWorkspace", None)
-        if (
-            record._analytic_module is not analytic
-            or type(record._analytic_certificate) is not certificate_type
-            or type(record._analytic_workspace) is not workspace_type
-            or not record.complete
-            or not record.rigorous
-            or record.remaining_index_bound != 1
-        ):
-            raise ValueError(
-                "only a complete standard analytic saturation record can be sealed"
+        certificate = record._analytic_certificate
+        consume_live = getattr(record, "_consume_live_authentication", None)
+        return bool(
+            record._analytic_module is analytic
+            and record._field is field
+            and record._order is order
+            and type(certificate) is certificate_type
+            and type(record._analytic_workspace) is workspace_type
+            and record.complete
+            and record.rigorous
+            and record.saturated
+            and record.remaining_index_bound == 1
+            and int(certificate._index_bound) == record.remaining_index_bound
+            and callable(record._analytic_generation_verifier)
+            and callable(consume_live)
+            and consume_live(
+                _LIVE_SATURATION_RECORD_TOKEN,
+                field,
+                order,
             )
-        self.__dict__["_record"] = record
-        self.__dict__["_field"] = record._field
-        self.__dict__["_order"] = record._order
-        self.__dict__["_snapshot"] = _saturation_record_live_snapshot(record)
-        self.__dict__["_frozen"] = True
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        if self.__dict__.get("_frozen", False):
-            raise AttributeError("live saturation authorities are immutable")
-        self.__dict__[name] = value
-
-    def consume(self, field: Any, order: Any) -> bool:
-        try:
-            if self.__dict__.get("_consumed", False):
-                return False
-            record = self.__dict__.get("_record")
-            accepted = bool(
-                type(record) is ClassUnitSaturationRecord
-                and record._field is field
-                and record._order is order
-                and self.__dict__.get("_field") is field
-                and self.__dict__.get("_order") is order
-                and record.complete
-                and record.rigorous
-                and record.remaining_index_bound == 1
-                and self.__dict__.get("_snapshot")
-                == _saturation_record_live_snapshot(record)
-            )
-            self.__dict__["_consumed"] = True
-            return accepted
-        except (AttributeError, TypeError, ValueError, ArithmeticError):
-            self.__dict__["_consumed"] = True
-            return False
-
-
-def _issue_live_saturation_record(record: ClassUnitSaturationRecord) -> bool:
-    """Attach a private live authority when the canonical producer was used."""
-    try:
-        authority = _AuthenticatedClassUnitSaturationRecord(
-            _AUTHENTICATED_CLASS_UNIT_SATURATION_TOKEN, record
         )
     except (AttributeError, TypeError, ValueError, ArithmeticError):
         return False
-    record.__dict__["_live_authentication"] = authority
-    return True
-
-
-def _authenticated_live_saturation_record_matches(
-    record: Any, field: Any, order: Any
-) -> bool:
-    """Recognize unchanged live evidence without detached arithmetic replay."""
-    if type(record) is not ClassUnitSaturationRecord:
-        return False
-    authority = record.__dict__.pop("_live_authentication", None)
-    return bool(
-        type(authority) is _AuthenticatedClassUnitSaturationRecord
-        and authority.__dict__.get("_record") is record
-        and authority.consume(field, order)
-    )
 
 
 class UnitGroupComputation:
@@ -947,96 +933,6 @@ class _EngineClassGroup:
         except (KeyError, AttributeError, TypeError, ValueError, ArithmeticError):
             return False
 
-    def _verify_live_construction(self, token: object) -> bool:
-        """Authenticate the exact producer state without generic map replay.
-
-        The engine has just built each generator ideal from its authenticated
-        factor-base row.  Factoring that same ideal through the public map is
-        a useful detached check, but it repeats exact ideal arithmetic at the
-        live producer boundary.  Here we instead bind the retained collector,
-        its admission receipts, the verified presentation, and every
-        generator ideal to the exact row which constructed it.  Public and
-        detached calls to `verify()` continue to exercise the generic ideal
-        maps above.
-        """
-        if token is not _AUTHENTICATED_ENGINE_CLASS_GROUP_TOKEN:
-            return False
-        try:
-            collector = self._relation_reconstructor
-            if (
-                collector is None
-                or getattr(collector, "order", None) is not self._order
-            ):
-                return False
-            retained_factors = tuple(getattr(collector, "factor_base", ()))
-            if len(retained_factors) != len(self._factor_base) or any(
-                retained is not supplied
-                for retained, supplied in zip(
-                    retained_factors, self._factor_base, strict=True
-                )
-            ):
-                return False
-            retained_relations = tuple(getattr(collector, "records", ()))
-            if len(retained_relations) != len(self._relations) or any(
-                retained is not supplied
-                for retained, supplied in zip(
-                    retained_relations, self._relations, strict=True
-                )
-            ):
-                return False
-            if not self._presentation.verify():
-                return False
-            presentation_rows = tuple(
-                tuple(int(value) for value in row.dense())
-                for row in self._presentation.relation_rows
-            )
-            relation_rows = tuple(
-                tuple(int(value) for value in record.row) for record in self._relations
-            )
-            if relation_rows != presentation_rows:
-                return False
-            verify_admission = getattr(collector, "verify_admission_receipt", None)
-            if not callable(verify_admission) or not all(
-                verify_admission(self._order, self._factor_base, record)
-                for record in self._relations
-            ):
-                return False
-
-            positions = tuple(self._presentation.invariant_positions)
-            expected_rows = tuple(
-                tuple(
-                    int(value)
-                    for value in self._presentation.smith_right_inverse[position]
-                )
-                for position in positions
-            )
-            if expected_rows != self._generator_rows:
-                return False
-            reconstruct = getattr(collector, "reconstruct_factor_base_ideal", None)
-            if not callable(reconstruct):
-                return False
-            if len(self._generator_ideals) != len(self._generator_rows):
-                return False
-            for index, (row, ideal) in enumerate(
-                zip(self._generator_rows, self._generator_ideals, strict=True)
-            ):
-                if reconstruct(row) != ideal:
-                    return False
-                coordinates = tuple(
-                    int(value) for value in self._presentation.class_coordinates(row)
-                )
-                expected_coordinates = tuple(
-                    1 if coordinate == index else 0
-                    for coordinate in range(len(self._invariants))
-                )
-                if coordinates != expected_coordinates:
-                    return False
-                if self._gens[index].order() != self._invariants[index]:
-                    return False
-            return True
-        except (KeyError, AttributeError, TypeError, ValueError, ArithmeticError):
-            return False
-
 
 class ClassUnitComputation:
     """Terminal result; incomplete states never expose a proved class group."""
@@ -1147,6 +1043,141 @@ class ClassUnitComputation:
         return "Incomplete class/unit computation (" + self.reason + ")"
 
 
+_CLASS_NUMBER_PROJECTION_TOKEN = object()
+
+
+class _ClassNumberProjection:
+    """One live rigorous scalar projection with a resumable engine suffix."""
+
+    def __init__(
+        self,
+        token: object,
+        engine: Any,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        units: tuple[Any, ...],
+        torsion: Any,
+        regulator: Any,
+        index: Any,
+        unit_rank: int,
+        proof_status: str,
+    ) -> None:
+        if token is not _CLASS_NUMBER_PROJECTION_TOKEN:
+            raise TypeError("class-number projections are engine-issued")
+        if proof_status not in (
+            EXACT_UNCONDITIONAL,
+            EXACT_RELATIONS_CONDITIONAL_GRH,
+        ):
+            raise ValueError("a class-number projection needs an exact proof status")
+        if (
+            int(getattr(presentation, "rank", -1)) != len(factor_base)
+            or getattr(presentation, "order", None) is None
+            or not bool(getattr(index, "rigorous", False))
+            or not bool(getattr(index, "index_one", False))
+            or int(getattr(index, "lower_index", 0)) != 1
+            or int(getattr(index, "upper_index", 0)) != 1
+            or len(units) != int(unit_rank)
+            or getattr(plan, "order", None) is not engine.order
+            or not engine._context_relation_stage_authenticated(collector, presentation)
+        ):
+            raise ArithmeticError(
+                "a class-number projection needs a live exact index-one stage"
+            )
+        live_proof = engine._context_analytic_proof()
+        if (
+            live_proof is None
+            or len(live_proof) != 6
+            or any(
+                retained is not supplied
+                for retained, supplied in zip(live_proof[0], units, strict=True)
+            )
+            or int(live_proof[1]) != int(presentation.order)
+            or int(live_proof[2]) != int(getattr(torsion, "order", 0))
+            or live_proof[3] is not regulator
+            or live_proof[5] is not index
+        ):
+            raise ArithmeticError(
+                "a class-number projection lost its live analytic authority"
+            )
+        self.field = engine.field
+        self.order = engine.order
+        self.class_number = int(presentation.order)
+        self.proof_status = str(proof_status)
+        self._engine = engine
+        self._continuation = (
+            plan,
+            tuple(factor_base),
+            collector,
+            presentation,
+            tuple(units),
+            torsion,
+            regulator,
+            index,
+            int(unit_rank),
+            str(proof_status),
+        )
+        self._completed: ClassUnitComputation | None = None
+        self.__dict__["_authentication_snapshot"] = (
+            id(self.field),
+            id(self.order),
+            self.class_number,
+            self.proof_status,
+            id(self._engine),
+            tuple(id(value) for value in self._continuation),
+        )
+        self.__dict__["_frozen"] = True
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if self.__dict__.get("_frozen", False):
+            raise AttributeError("class-number projections are immutable")
+        self.__dict__[name] = value
+
+    def _authentication_matches(self) -> bool:
+        try:
+            return self.__dict__.get("_authentication_snapshot") == (
+                id(self.field),
+                id(self.order),
+                self.class_number,
+                self.proof_status,
+                id(self._engine),
+                tuple(id(value) for value in self._continuation),
+            )
+        except (AttributeError, TypeError, ValueError):
+            return False
+
+    def matches(self, field: Any, proof: bool) -> bool:
+        return bool(
+            self._authentication_matches()
+            and self.field is field
+            and self.order is field.maximal_order()
+            and (not proof or self.proof_status == EXACT_UNCONDITIONAL)
+            and self._engine.context is not None
+        )
+
+    def finish(self) -> ClassUnitComputation:
+        completed = self._completed
+        if completed is not None:
+            return completed
+        paused_ns = getattr(self._engine, "_projection_pause_started_ns", None)
+        if isinstance(paused_ns, int):
+            self._engine._started_ns += time.perf_counter_ns() - paused_ns
+            self._engine._projection_pause_started_ns = None
+        try:
+            completed = self._engine._finish_class_unit_computation(*self._continuation)
+        except RuntimeError as error:
+            if not _is_cancellation(error):
+                raise
+            completed = self._engine._incomplete("class/unit computation cancelled")
+        except (ImportError, TypeError, ValueError, ArithmeticError) as error:
+            completed = self._engine._incomplete(str(error))
+        if not isinstance(completed, ClassUnitComputation):
+            raise ArithmeticError("a class-number continuation returned no computation")
+        self.__dict__["_completed"] = completed
+        return completed
+
+
 class _Components:
     def __init__(self) -> None:
         self.context = _optional_module("sagejs.number_fields.class_unit_context")
@@ -1240,6 +1271,7 @@ class ClassUnitGroupEngine:
         if not isinstance(self.limits, ClassUnitEngineLimits):
             raise TypeError("limits must be ClassUnitEngineLimits")
         self.seed = _integer(seed, "deterministic seed")
+        self._cancelled_callback_supplied = cancelled is not None
         self.cancelled = (lambda: False) if cancelled is None else cancelled
         if not callable(self.cancelled):
             raise TypeError("cancelled must be callable")
@@ -1247,6 +1279,11 @@ class ClassUnitGroupEngine:
         if self.progress is not None and not callable(self.progress):
             raise TypeError("progress must be callable")
         self.components = _Components() if components is None else components
+        self._context_module = getattr(self.components, "context", None)
+        if self._context_module is None:
+            self._context_module = _optional_module(
+                "sagejs.number_fields.class_unit_context"
+            )
         self._analytic_workspace: Any = None
         self._factored_logarithm_workspace: Any = None
         factored_workspace_type = getattr(
@@ -1261,6 +1298,9 @@ class ClassUnitGroupEngine:
             workspace_options: dict[str, Any] = {}
             if components is None:
                 workspace_options["share_across_isomorphic_fields"] = True
+                workspace_options["factored_logarithm_workspace"] = (
+                    self._factored_logarithm_workspace
+                )
             self._analytic_workspace = workspace_type(
                 int(self.order.discriminant()),
                 int(self.field.degree()),
@@ -1271,7 +1311,7 @@ class ClassUnitGroupEngine:
         if self.checkpoint_controller is None and (
             checkpoint is not None or resume_from is not None
         ):
-            context_module = self.components.context
+            context_module = self._context_module
             if context_module is None:
                 raise ImportError("the class/unit checkpoint controller is unavailable")
             controller_type = getattr(context_module, "ClassUnitCheckpoint", None)
@@ -1343,6 +1383,72 @@ class ClassUnitGroupEngine:
                 component_decoders=decoders,
                 max_checkpoint_bytes=max_checkpoint_bytes,
             )
+        self.context: Any = getattr(self.checkpoint_controller, "context", None)
+        context_module = self._context_module
+        context_type = getattr(context_module, "ClassUnitGroupContext", None)
+        proof_state_type = getattr(context_module, "ClassUnitProofState", None)
+        resource_limits_type = getattr(context_module, "ResourceLimits", None)
+        if (
+            self.context is None
+            and callable(context_type)
+            and proof_state_type is not None
+            and callable(resource_limits_type)
+        ):
+            context_proof_state = proof_state_type.incomplete(
+                "class/unit computation in progress",
+                evidence={
+                    "schema": "sagejs.number-fields/class-unit-request-policy-v1",
+                    "requested_proof": self.proof,
+                },
+            )
+            limit_values = self.limits.to_dict()
+            standard_limit_names = {
+                "max_factor_base_size",
+                "max_relations",
+                "max_partial_relations",
+                "max_relation_attempts",
+                "max_precision_bits",
+                "max_memory_bytes",
+            }
+            extra_limits = {
+                name: limit_values[name]
+                for name in sorted(limit_values)
+                if name not in standard_limit_names
+            }
+            context_limits = resource_limits_type(
+                max_factor_base_size=self.limits.max_factor_base_size,
+                max_relations=self.limits.max_relations,
+                max_partial_relations=self.limits.max_partial_relations,
+                max_relation_attempts=self.limits.max_relation_attempts,
+                max_proof_primes=self.limits.max_factor_base_size,
+                max_precision_bits=self.limits.max_precision_bits,
+                max_checkpoint_bytes=max_checkpoint_bytes,
+                max_memory_bytes=self.limits.max_memory_bytes,
+                extra=extra_limits,
+            )
+            self.context = context_type(
+                self.field,
+                self.order,
+                context_proof_state,
+                algorithm=self.algorithm,
+                limits=context_limits,
+                random_seed=self.seed,
+            )
+        self._live_context_token = getattr(
+            context_module, "_LIVE_CLASS_UNIT_CONTEXT_TOKEN", None
+        )
+        activate_live_context = getattr(self.context, "_activate_live", None)
+        if callable(activate_live_context) and self._live_context_token is not None:
+            activate_live_context(
+                self._live_context_token,
+                reusable=(
+                    self.progress is None
+                    and not self._cancelled_callback_supplied
+                    and self.checkpoint_controller is None
+                ),
+                analytic_workspace=self._analytic_workspace,
+                factored_logarithm_workspace=self._factored_logarithm_workspace,
+            )
         self.stages: list[ClassUnitStage] = []
         self._started_ns = time.perf_counter_ns()
         self._phase_timings: dict[str, float] = {}
@@ -1359,8 +1465,10 @@ class ClassUnitGroupEngine:
             "unit_logarithm_requests": 0,
             "unit_logarithm_cache_hits": 0,
             "relation_log_rank_calls": 0,
+            "relation_exact_rank_one_units": 0,
             "relation_dependency_unit_requests": 0,
             "relation_dependency_unit_cache_hits": 0,
+            "relation_dependency_unit_object_cache_hits": 0,
             "relation_dependency_unit_cache_entries": 0,
             "relation_dependency_units_seen": 0,
             "relation_independent_log_units": 0,
@@ -1371,6 +1479,9 @@ class ClassUnitGroupEngine:
             "relation_witness_logarithm_requests": 0,
             "relation_witness_logarithm_cache_hits": 0,
             "dependency_unit_materializations": 0,
+            "dependency_unit_eager_candidates": 0,
+            "dependency_unit_steering_basis_hits": 0,
+            "unit_live_relation_authority_hits": 0,
             "unit_principal_authority_requests": 0,
             "unit_principal_authority_hits": 0,
             "unit_principal_authority_fallbacks": 0,
@@ -1381,6 +1492,8 @@ class ClassUnitGroupEngine:
             "generation_verification_cache_hits": 0,
             "generation_verification_live_authentication_hits": 0,
             "generation_verification_full_replays": 0,
+            "generation_context_artifact_reuses": 0,
+            "generation_live_relation_payload_hits": 0,
             "generation_reconstruction_calls": 0,
             "generation_reconstruction_cache_hits": 0,
             "generation_admission_receipt_requests": 0,
@@ -1388,13 +1501,24 @@ class ClassUnitGroupEngine:
             "class_group_live_authentication_requests": 0,
             "class_group_live_authentication_hits": 0,
             "class_group_live_authentication_fallback_replays": 0,
+            "class_group_generator_reconstruction_calls": 0,
+            "class_group_generator_reconstruction_cache_hits": 0,
+            "class_group_generator_power_requests": 0,
+            "class_group_generator_power_cache_hits": 0,
             "cubic_relation_seed_uses": 0,
             "cubic_relation_seed_relations": 0,
+            "cubic_relation_seed_materializations": 0,
+            "cubic_relation_seed_dependency_candidates": 0,
+            "cubic_relation_seed_dependency_relations": 0,
             "cubic_factor_base_seed_uses": 0,
+            "cubic_packed_factor_base_uses": 0,
+            "cubic_relation_packed_factor_base_uses": 0,
+            "cubic_verified_factor_base_collector_uses": 0,
             "cubic_integral_sieve_uses": 0,
             "cubic_integral_sieve_candidates": 0,
             "cubic_integral_sieve_relations": 0,
             "cubic_integral_sieve_dependency_relations": 0,
+            "cubic_integral_sieve_validated_batch_uses": 0,
             "cubic_specialized_seed_skips": 0,
             "automorphism_orbit_plans": 0,
             "automorphism_orbit_available_plans": 0,
@@ -1408,19 +1532,19 @@ class ClassUnitGroupEngine:
             "saturation_live_authentication_hits": 0,
             "saturation_live_authentication_fallback_replays": 0,
         }
-        self._generation_verification_cache: dict[str, bool] = {}
-        self._generation_verification_cache_active = True
-        self._live_analytic_proof: tuple[Any, ...] | None = None
         self._unit_logarithm_cache: dict[tuple[int, str], tuple[Any, ...]] = {}
         self._relation_log_record_prefix: tuple[Any, ...] = ()
         self._relation_dependency_unit_hashes: dict[tuple[int, ...], str] = {}
+        self._relation_dependency_units: dict[tuple[int, ...], Any] = {}
         self._relation_seen_dependency_units: set[str] = set()
         self._relation_independent_logarithms: list[tuple[Any, ...]] = []
+        self._relation_independent_dependency_keys: list[tuple[int, ...]] = []
+        self._relation_exact_rank_one_dependency_key: tuple[int, ...] | None = None
+        self._relation_initial_basis_selected = False
         self._relation_witness_cache: dict[int, tuple[Any, str, Any]] = {}
         self._relation_witness_logarithm_cache: dict[
             tuple[int, int], tuple[Any, str, tuple[Any, ...]]
         ] = {}
-        self._authenticated_dependency_units: set[str] = set()
         self._partials: dict[tuple[Any, ...], _LargePrimePartial] = {}
         self._relation_unit_log_rank = 0
         self._relation_search_state: Any = None
@@ -1430,8 +1554,8 @@ class ClassUnitGroupEngine:
         self._automorphism_orbit_plans: list[tuple[tuple[Any, ...], Any]] = []
         self._proof_progress: Any = None
         self._proof_dependency_hashes: dict[str, str] = {}
-        self._saturation_record: Any = None
         self._authenticated_cubic_relation_seed_cache: Any = _CUBIC_RELATION_SEED_UNREAD
+        self._projection_pause_started_ns: int | None = None
 
     def _stage(self, name: str, state: str, **details: Any) -> None:
         if name in self._phase_timings and "elapsed_seconds" not in details:
@@ -1515,6 +1639,318 @@ class ClassUnitGroupEngine:
         if self.checkpoint_controller is not None:
             self.checkpoint_controller.save(force=force)
 
+    def _bind_context_relations(
+        self, factor_base: tuple[Any, ...], collector: Any, presentation: Any
+    ) -> bool:
+        """Publish one exact relation/presentation stage to the live context."""
+        bind = getattr(self.context, "_bind_live_relations", None)
+        relation_token = getattr(
+            self.components.relations,
+            "_LIVE_VERIFIED_RELATION_PREFIX_TOKEN",
+            None,
+        )
+        if (
+            not callable(bind)
+            or self._live_context_token is None
+            or relation_token is None
+        ):
+            return False
+        return bool(
+            bind(
+                self._live_context_token,
+                factor_base,
+                collector,
+                presentation,
+                relation_token,
+            )
+        )
+
+    def _receive_cubic_relation_prefix(
+        self,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        search_state: Any,
+    ) -> bool:
+        """Bind a just-produced cubic prefix directly into this context."""
+        bind = getattr(self.context, "_bind_live_cubic_relation_prefix", None)
+        relation_token = getattr(
+            self.components.relations,
+            "_LIVE_VERIFIED_RELATION_PREFIX_TOKEN",
+            None,
+        )
+        if (
+            not callable(bind)
+            or self._live_context_token is None
+            or relation_token is None
+        ):
+            return False
+        return bool(
+            bind(
+                self._live_context_token,
+                plan,
+                factor_base,
+                collector,
+                presentation,
+                search_state,
+                relation_token,
+            )
+        )
+
+    def _bind_context_factor_base(
+        self,
+        factor_base: Iterable[Any],
+        *,
+        validated: bool,
+        producer_records: Iterable[Any] = (),
+        canonical_records: Iterable[Any] = (),
+    ) -> None:
+        bind = getattr(self.context, "_bind_live_factor_base", None)
+        if callable(bind) and self._live_context_token is not None:
+            bind(
+                self._live_context_token,
+                factor_base,
+                validated=validated,
+                producer_records=producer_records,
+                canonical_records=canonical_records,
+            )
+
+    def _context_factor_base_validated(self, factor_base: Iterable[Any]) -> bool:
+        validated = getattr(self.context, "_live_factor_base_validated", None)
+        return bool(
+            callable(validated)
+            and self._live_context_token is not None
+            and validated(self._live_context_token, factor_base)
+        )
+
+    def _context_packed_factor_base(
+        self, factor_base: Iterable[Any]
+    ) -> tuple[Any, ...] | None:
+        reader = getattr(self.context, "_live_packed_factor_base", None)
+        if not callable(reader) or self._live_context_token is None:
+            return None
+        retained: Any = reader(self._live_context_token, factor_base)
+        return retained
+
+    def _bind_context_analytic_proof(self, proof: Iterable[Any]) -> None:
+        bind = getattr(self.context, "_bind_live_analytic_proof", None)
+        if callable(bind) and self._live_context_token is not None:
+            bind(self._live_context_token, proof)
+
+    def _context_relation_stage_authenticated(
+        self, collector: Any, presentation: Any
+    ) -> bool:
+        authenticate = getattr(self.context, "_live_relation_stage_authenticated", None)
+        return bool(
+            callable(authenticate)
+            and self._live_context_token is not None
+            and authenticate(self._live_context_token, collector, presentation)
+        )
+
+    def _retain_context_dependency_units(
+        self,
+        collector: Any,
+        presentation: Any,
+        dependencies: Iterable[Iterable[int]],
+        units: Iterable[Any],
+        unit_hashes: Iterable[str],
+    ) -> bool:
+        retain = getattr(self.context, "_retain_live_dependency_units", None)
+        return bool(
+            callable(retain)
+            and self._live_context_token is not None
+            and retain(
+                self._live_context_token,
+                collector,
+                presentation,
+                dependencies,
+                units,
+                unit_hashes,
+            )
+        )
+
+    def _context_dependency_unit_authenticated(self, unit: Any) -> bool:
+        authenticate = getattr(
+            self.context, "_live_dependency_unit_authenticated", None
+        )
+        return bool(
+            callable(authenticate)
+            and self._live_context_token is not None
+            and authenticate(self._live_context_token, unit)
+        )
+
+    def _verify_context_class_group_construction(self, group: Any) -> bool:
+        verify = getattr(self.context, "_verify_live_class_group_construction", None)
+        return bool(
+            callable(verify)
+            and self._live_context_token is not None
+            and verify(self._live_context_token, group)
+        )
+
+    def _context_analytic_proof(self) -> tuple[Any, ...] | None:
+        retained = getattr(self.context, "_live_analytic_proof", None)
+        if not callable(retained) or self._live_context_token is None:
+            return None
+        value: Any = retained(self._live_context_token)
+        return None if value is None else tuple(value)
+
+    def _context_generation_dependency_hashes(
+        self, collector: Any, presentation: Any
+    ) -> tuple[str, str] | None:
+        retained = getattr(self.context, "_live_generation_dependency_hashes", None)
+        if not callable(retained) or self._live_context_token is None:
+            return None
+        value: Any = retained(self._live_context_token, collector, presentation)
+        if value is None:
+            return None
+        return str(value[0]), str(value[1])
+
+    def _consume_context_generation_authority(
+        self, cache_key: str, evidence: Any
+    ) -> bool:
+        consume = getattr(self.context, "_consume_live_generation_authority", None)
+        return bool(
+            callable(consume)
+            and self._live_context_token is not None
+            and consume(self._live_context_token, cache_key, evidence)
+        )
+
+    def _context_generation_artifact(
+        self,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        proof_status: str,
+    ) -> tuple[Any, tuple[str, str, str]] | None:
+        retained = getattr(self.context, "_live_generation_artifact", None)
+        if not callable(retained) or self._live_context_token is None:
+            return None
+        value: Any = retained(
+            self._live_context_token,
+            plan,
+            factor_base,
+            collector,
+            presentation,
+            proof_status,
+        )
+        if value is None:
+            return None
+        evidence, hashes = value
+        return evidence, (str(hashes[0]), str(hashes[1]), str(hashes[2]))
+
+    def _context_generation_verification_cached(self, cache_key: str) -> bool:
+        cached = getattr(self.context, "_live_generation_verification_cached", None)
+        return bool(
+            callable(cached)
+            and self._live_context_token is not None
+            and cached(self._live_context_token, cache_key)
+        )
+
+    def _retain_context_generation_verification(self, cache_key: str) -> None:
+        retain = getattr(self.context, "_retain_live_generation_verification", None)
+        if callable(retain) and self._live_context_token is not None:
+            retain(self._live_context_token, cache_key)
+
+    def _deactivate_context_generation_verification(self) -> None:
+        deactivate = getattr(
+            self.context, "_deactivate_live_generation_verification", None
+        )
+        if callable(deactivate) and self._live_context_token is not None:
+            deactivate(self._live_context_token)
+
+    def _bind_context_saturation_record(self, record: Any) -> None:
+        bind = getattr(self.context, "_bind_live_saturation_record", None)
+        if callable(bind) and self._live_context_token is not None:
+            uninterrupted = (
+                self.progress is None
+                and not self._cancelled_callback_supplied
+                and self.checkpoint_controller is None
+            )
+            authenticated = bool(
+                uninterrupted
+                and _standard_live_saturation_record_is_valid(
+                    record, self.field, self.order
+                )
+            )
+            try:
+                bind(
+                    self._live_context_token,
+                    record,
+                    authenticated=authenticated,
+                )
+            finally:
+                if not authenticated:
+                    discard = getattr(record, "_discard_live_authentication", None)
+                    if callable(discard):
+                        discard(_LIVE_SATURATION_RECORD_TOKEN)
+
+    def _consume_context_saturation_record(self, record: Any) -> bool:
+        consume = getattr(self.context, "_consume_live_saturation_record", None)
+        return bool(
+            callable(consume)
+            and self._live_context_token is not None
+            and consume(self._live_context_token, record)
+        )
+
+    def _context_saturation_record(self) -> Any:
+        retained = getattr(self.context, "_live_saturation_record", None)
+        if not callable(retained) or self._live_context_token is None:
+            return None
+        return retained(self._live_context_token)
+
+    def _retain_context_terminal(
+        self,
+        proof_status: str,
+        reason: str,
+        *,
+        theorem: str | None = None,
+        bound: int | None = None,
+        assumptions: Iterable[str] = (),
+        units: Iterable[Any] = (),
+        saturation_record: Any = None,
+        class_group: Any = None,
+        unit_group: Any = None,
+        diagnostics: Any = None,
+    ) -> None:
+        """Seal the live computation state and its detached proof policy."""
+        retain = getattr(self.context, "_retain_live_terminal", None)
+        proof_state_type = getattr(self._context_module, "ClassUnitProofState", None)
+        if (
+            not callable(retain)
+            or proof_state_type is None
+            or self._live_context_token is None
+        ):
+            return
+        selected_assumptions = tuple(str(value) for value in assumptions)
+        proof_state = proof_state_type(
+            proof_status,
+            factor_base_theorem=theorem,
+            factor_base_bound=bound,
+            assumptions=selected_assumptions,
+            reason=(
+                reason
+                if proof_status
+                in (INCOMPLETE_RESOURCE_LIMIT, "heuristic-diagnostic-only")
+                else ""
+            ),
+            evidence={
+                "schema": "sagejs.number-fields/class-unit-terminal-policy-v1",
+                "proof_dependency_hashes": dict(self._proof_dependency_hashes),
+            },
+        )
+        retain(
+            self._live_context_token,
+            proof_state=proof_state,
+            units=units,
+            saturation_record=saturation_record,
+            class_group=class_group,
+            unit_group=unit_group,
+            proof_progress=self._proof_progress,
+            diagnostics={} if diagnostics is None else diagnostics,
+        )
+
     def _incomplete(
         self,
         reason: str,
@@ -1527,6 +1963,15 @@ class ClassUnitGroupEngine:
         self._stage("terminal", "incomplete", reason=reason)
         self._checkpoint_capture({"diagnostics": self._diagnostics(diagnostics)})
         self._checkpoint_save(force=True)
+        terminal_diagnostics = self._diagnostics(diagnostics)
+        saturation_record = self._context_saturation_record()
+        self._retain_context_terminal(
+            INCOMPLETE_RESOURCE_LIMIT,
+            reason,
+            unit_group=unit_group,
+            saturation_record=saturation_record,
+            diagnostics=terminal_diagnostics,
+        )
         return ClassUnitComputation(
             self.field,
             proof_status=INCOMPLETE_RESOURCE_LIMIT,
@@ -1536,8 +1981,9 @@ class ClassUnitGroupEngine:
             stages=self.stages,
             unit_group=unit_group,
             tentative_invariants=invariants,
-            diagnostics=self._diagnostics(diagnostics),
-            saturation_record=self._saturation_record,
+            context=self.context,
+            diagnostics=terminal_diagnostics,
+            saturation_record=saturation_record,
             proof_progress=self._proof_progress,
             proof_dependency_hashes=self._proof_dependency_hashes,
         )
@@ -1622,6 +2068,16 @@ class ClassUnitGroupEngine:
         self._stage("terminal", "complete", class_number=int(classes.order()))
         self._checkpoint_capture({"diagnostics": self._diagnostics()})
         self._checkpoint_save(force=True)
+        terminal_diagnostics = self._diagnostics()
+        self._retain_context_terminal(
+            EXACT_UNCONDITIONAL,
+            "bounded specialized exact algorithm",
+            theorem="bounded specialized exact class/unit theorem",
+            units=factored_units,
+            class_group=classes.group,
+            unit_group=unit_group,
+            diagnostics=terminal_diagnostics,
+        )
         return ClassUnitComputation(
             self.field,
             proof_status=EXACT_UNCONDITIONAL,
@@ -1632,7 +2088,8 @@ class ClassUnitGroupEngine:
             class_group=classes.group,
             unit_group=unit_group,
             tentative_invariants=classes.invariants(),
-            diagnostics=self._diagnostics(),
+            context=self.context,
+            diagnostics=terminal_diagnostics,
         )
 
     def _factor_base(
@@ -1649,8 +2106,55 @@ class ClassUnitGroupEngine:
             max_memory_bytes=self.limits.max_memory_bytes,
         )
         plan.require_feasible()
-        records = module.build_factor_base(plan)
-        primes = tuple(_value(record, ("prime_ideal", "ideal")) for record in records)
+        records: Any = None
+        primes: tuple[Any, ...] = ()
+        packed_records: tuple[Any, ...] = ()
+        packed_factor_base_verified = False
+        if (
+            not proof
+            and int(self.field.degree()) == 3
+            and self.algorithm == "auto"
+            and int(plan.bound) <= 12
+            and module
+            is _optional_module("sagejs.number_fields.class_group_factor_base")
+        ):
+            try:
+                cubic = __import__(
+                    "sagejs.number_fields.cubic_class_number",
+                    fromlist=["cubic_class_number"],
+                )
+                packed = cubic.packed_cubic_factor_records(plan)
+                packed_values: Any = packed
+                materialize = getattr(
+                    cubic,
+                    "materialize_verified_packed_cubic_factor_records",
+                    None,
+                )
+                verified = (
+                    materialize(tuple(packed_values))
+                    if packed is not None and callable(materialize)
+                    else None
+                )
+                if verified is not None:
+                    verified_values: Any = verified
+                    records, primes = verified_values
+                    packed_records = tuple(packed_values)
+                    packed_factor_base_verified = True
+                    self._resource_usage["cubic_packed_factor_base_uses"] += 1
+            except (
+                AttributeError,
+                ArithmeticError,
+                ImportError,
+                TypeError,
+                ValueError,
+            ):
+                records = None
+                primes = ()
+        if records is None:
+            records = module.build_factor_base(plan)
+            primes = tuple(
+                _value(record, ("prime_ideal", "ideal")) for record in records
+            )
         if any(prime is None for prime in primes):
             raise TypeError("factor-base records do not expose exact prime ideals")
         if self.checkpoint_controller is not None:
@@ -1663,8 +2167,16 @@ class ClassUnitGroupEngine:
                         "the checkpoint factor base differs from the deterministic plan"
                     )
                 primes = restored
+                packed_factor_base_verified = False
+                packed_records = ()
             else:
                 self._checkpoint_capture({"factor_base": primes})
+        self._bind_context_factor_base(
+            primes,
+            validated=packed_factor_base_verified,
+            producer_records=packed_records,
+            canonical_records=(records if packed_factor_base_verified else ()),
+        )
         if record_stage:
             self._phase_finish("factor-base", started)
         if record_stage:
@@ -1905,6 +2417,9 @@ class ClassUnitGroupEngine:
             select_dependencies = getattr(
                 cubic, "_select_cubic_dependency_candidates", None
             )
+            validate_batch = getattr(
+                cubic, "_validated_cubic_integral_relation_batch", None
+            )
             if (
                 not callable(propose)
                 or not callable(select)
@@ -1914,57 +2429,112 @@ class ClassUnitGroupEngine:
             coefficient_bound = int(getattr(cubic, "_CUBIC_RELATION_SIEVE_BOUND", 2))
             relations = self.components.relations
             matrix = self.components.matrix
-            trial = relations.ExactRelationCollector(self.order, factor_base)
-            relations.initial_rational_prime_relations(trial)
-            remaining = self.limits.max_relations - len(trial.records)
+            verified_sibling = getattr(collector, "empty_verified_sibling", None)
+            trial: Any = (
+                verified_sibling()
+                if callable(verified_sibling)
+                else relations.ExactRelationCollector(self.order, factor_base)
+            )
+            initial_proposals_reader = getattr(
+                relations, "initial_rational_prime_relation_proposals", None
+            )
+            raw_initial_proposals: Any = (
+                initial_proposals_reader(trial)
+                if callable(initial_proposals_reader)
+                else ()
+            )
+            initial_proposals = tuple(raw_initial_proposals)
+            remaining = self.limits.max_relations - len(initial_proposals)
             if remaining <= 0:
                 return collector
+            packed_factor_base = self._context_packed_factor_base(factor_base)
             candidates: Any = propose(
                 self.order,
                 factor_base,
                 maximum_candidates=remaining,
                 coefficient_bound=coefficient_bound,
+                power_factor_base=packed_factor_base,
                 cancelled=self.cancelled,
             )
             if candidates is None:
                 return collector
+            if packed_factor_base is not None:
+                self._resource_usage["cubic_relation_packed_factor_base_uses"] += 1
             selected: Any = select(
                 matrix,
-                tuple(record.row for record in trial.records),
+                tuple(proposal[1] for proposal in initial_proposals),
                 candidates,
                 len(factor_base),
             )
             if selected is None or len(selected) > remaining:
                 return collector
-            for row, coordinates, _expected_norm in selected:
-                trial.admit_integral_order_basis_row(
-                    coordinates,
-                    row,
-                    provenance={
-                        "algorithm": "packed-cubic-engine-relation-sieve",
-                        "coefficient_bound": coefficient_bound,
-                        "order_basis_coordinates": list(coordinates),
-                    },
-                )
             dependency_candidates: Any = select_dependencies(
                 selected,
                 candidates,
                 unit_rank,
             )
-            remaining = self.limits.max_relations - len(trial.records)
-            if len(dependency_candidates) <= remaining:
-                for row, coordinates, _expected_norm in dependency_candidates:
+            if len(dependency_candidates) > remaining - len(selected):
+                dependency_candidates = ()
+            proposals = tuple(
+                (
+                    coordinates,
+                    row,
+                    {
+                        "algorithm": algorithm,
+                        "coefficient_bound": coefficient_bound,
+                        "order_basis_coordinates": list(coordinates),
+                    },
+                )
+                for algorithm, candidates_group in (
+                    ("packed-cubic-engine-relation-sieve", selected),
+                    ("packed-cubic-engine-unit-seed", dependency_candidates),
+                )
+                for row, coordinates, _expected_norm in candidates_group
+            )
+            batch_admit = getattr(trial, "admit_integral_order_basis_rows", None)
+            validated_admit = getattr(
+                trial, "_admit_validated_integral_order_basis_rows", None
+            )
+            authority = (
+                validate_batch(
+                    relations,
+                    self.order,
+                    factor_base,
+                    initial_proposals,
+                    tuple(selected) + tuple(dependency_candidates),
+                )
+                if callable(validate_batch)
+                else None
+            )
+            batch: Any = (
+                validated_admit(
+                    authority,
+                    initial_proposals + proposals,
+                    _validated_token=(
+                        relations._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
+                    ),
+                )
+                if authority is not None and callable(validated_admit)
+                else (
+                    batch_admit(initial_proposals + proposals)
+                    if callable(batch_admit) and initial_proposals
+                    else None
+                )
+            )
+            if batch is not None and len(batch) != len(initial_proposals + proposals):
+                raise ArithmeticError(
+                    "a packed cubic relation batch returned the wrong row count"
+                )
+            if authority is not None and batch is not None:
+                self._resource_usage["cubic_integral_sieve_validated_batch_uses"] += 1
+            if batch is None:
+                relations.initial_rational_prime_relations(trial)
+                for coordinates, row, provenance in proposals:
                     trial.admit_integral_order_basis_row(
                         coordinates,
                         row,
-                        provenance={
-                            "algorithm": "packed-cubic-engine-unit-seed",
-                            "coefficient_bound": coefficient_bound,
-                            "order_basis_coordinates": list(coordinates),
-                        },
+                        provenance=provenance,
                     )
-            else:
-                dependency_candidates = ()
             self._resource_usage["cubic_integral_sieve_uses"] += 1
             self._resource_usage["cubic_integral_sieve_candidates"] += len(candidates)
             self._resource_usage["cubic_integral_sieve_relations"] += len(selected)
@@ -1980,7 +2550,7 @@ class ClassUnitGroupEngine:
         plan, proof_primes = self._factor_base(proof=True, record_stage=False)
         if tuple(plan.assumptions):
             raise ArithmeticError("the Minkowski proof pass recorded an assumption")
-        context_module = self.components.context
+        context_module = self._context_module
         progress_type: Any = getattr(context_module, "MinkowskiProofProgress", None)
         record_type: Any = getattr(context_module, "MinkowskiProofProgressRecord", None)
         if not callable(progress_type) or not callable(record_type):
@@ -2175,27 +2745,36 @@ class ClassUnitGroupEngine:
         self, group: Any, collector: Any, presentation: Any, saturation: Any
     ) -> dict[str, str]:
         """Hash every exact dependency consumed by proof-prime replay."""
+        retained_hashes = self._context_generation_dependency_hashes(
+            collector, presentation
+        )
+        execution_policy = {
+            "schema": "sagejs.number-fields/class-unit-execution-policy-v1",
+            "requested_proof": self.proof,
+            "algorithm": self.algorithm,
+            "limits": self.limits.to_dict(),
+        }
+        if retained_hashes is not None:
+            relations_body = {
+                "schema": "sagejs.number-fields/proof-relations-v2",
+                "records_sha256": str(retained_hashes[0]),
+            }
+            presentation_dependency = str(retained_hashes[1])
+        else:
+            relations_body = {
+                "schema": "sagejs.number-fields/proof-relations-v1",
+                "records": [_component_payload(record) for record in collector.records],
+            }
+            presentation_body = {
+                "schema": "sagejs.number-fields/proof-presentation-v1",
+                "presentation": _component_payload(presentation),
+            }
+            presentation_dependency = _canonical_payload_hash(presentation_body)
         return {
             "relations": _canonical_payload_hash(
-                {
-                    "schema": "sagejs.number-fields/proof-relations-v1",
-                    "records": [
-                        _component_payload(record) for record in collector.records
-                    ],
-                    "execution_policy": {
-                        "schema": "sagejs.number-fields/class-unit-execution-policy-v1",
-                        "requested_proof": self.proof,
-                        "algorithm": self.algorithm,
-                        "limits": self.limits.to_dict(),
-                    },
-                }
+                {**relations_body, "execution_policy": execution_policy}
             ),
-            "presentation": _canonical_payload_hash(
-                {
-                    "schema": "sagejs.number-fields/proof-presentation-v1",
-                    "presentation": _component_payload(presentation),
-                }
-            ),
+            "presentation": presentation_dependency,
             "generators": _canonical_payload_hash(
                 {
                     "schema": "sagejs.number-fields/proof-generators-v1",
@@ -2218,7 +2797,11 @@ class ClassUnitGroupEngine:
             ):
                 return plan
         planner = getattr(relations, "plan_automorphism_orbits", None)
-        plan = planner(self.field, factor_base) if callable(planner) else None
+        plan = (
+            planner(self.field, factor_base)
+            if callable(planner) and int(self.field.degree()) == 2
+            else None
+        )
         self._automorphism_orbit_plans.append((factor_base, plan))
         self._resource_usage["automorphism_orbit_plans"] += 1
         if plan is not None:
@@ -2317,7 +2900,19 @@ class ClassUnitGroupEngine:
         )
         restored_state = self._relation_search_state
         if collector is None:
-            collector = relations.ExactRelationCollector(self.order, factor_base)
+            collector_options: dict[str, Any] = {}
+            if self._context_factor_base_validated(factor_base):
+                validated_token = getattr(
+                    relations, "_VALIDATED_FACTOR_BASE_TOKEN", None
+                )
+                if validated_token is not None:
+                    collector_options["_validated_token"] = validated_token
+                    self._resource_usage[
+                        "cubic_verified_factor_base_collector_uses"
+                    ] += 1
+            collector = relations.ExactRelationCollector(
+                self.order, factor_base, **collector_options
+            )
             restored_relations = ()
             restored_matrix = None
             if self.checkpoint_controller is not None:
@@ -2363,23 +2958,35 @@ class ClassUnitGroupEngine:
             restored_state = relations.RelationSearchState.from_dict(restored_state)
 
         accumulator_type = getattr(matrix_module, "RelationMatrixAccumulator", None)
-        if self._relation_matrix_accumulator is None and callable(accumulator_type):
-            accumulator: Any = accumulator_type(len(factor_base))
-            for record in collector.records:
-                accumulator.add_relation(record.row)
-            self._relation_matrix_accumulator = accumulator
-
         policy_type = getattr(matrix_module, "DeferredPresentationPolicy", None)
-        if (
-            self._relation_presentation_policy is None
-            and self._relation_matrix_accumulator is not None
-            and callable(policy_type)
-        ):
-            self._relation_presentation_policy = policy_type(
-                len(factor_base),
-                batch_size=self.limits.exact_presentation_batch_size,
-            )
-        policy = self._relation_presentation_policy
+        accumulator: Any = self._relation_matrix_accumulator
+        policy: Any = self._relation_presentation_policy
+
+        def initialize_relation_matrix_tracking() -> None:
+            """Build deferred matrix state only when relation search needs it."""
+            nonlocal accumulator, policy
+            if accumulator is None and callable(accumulator_type):
+                accumulator = accumulator_type(len(factor_base))
+                for retained_record in collector.records:
+                    accumulator.add_relation(retained_record.row)
+                self._relation_matrix_accumulator = accumulator
+            if policy is None and accumulator is not None and callable(policy_type):
+                policy = policy_type(
+                    len(factor_base),
+                    batch_size=self.limits.exact_presentation_batch_size,
+                )
+                self._relation_presentation_policy = policy
+                if (
+                    presentation is not None
+                    and self._relation_presentation_record_count
+                    == len(collector.records)
+                    and int(presentation.rank) == len(factor_base)
+                ):
+                    policy.note_exact_presentation(
+                        accumulator,
+                        presentation,
+                        extracted_level="snf",
+                    )
 
         def accept_presentation(answer: Any, *, policy_recorded: bool = False) -> Any:
             self._relation_presentation_record_count = len(collector.records)
@@ -2472,6 +3079,12 @@ class ClassUnitGroupEngine:
                 "unit_rank_target": unit_rank,
             }
         )
+        if (
+            presentation.rank < len(factor_base)
+            or len(presentation.dependency_transforms) < dependency_target
+            or unit_log_rank < unit_rank
+        ):
+            initialize_relation_matrix_tracking()
         factor_norms = [int(prime.norm()._numerator) for prime in factor_base]
         largest_factor_norm = max(factor_norms) if factor_norms else 2
         large_prime_bound = (
@@ -2652,6 +3265,7 @@ class ClassUnitGroupEngine:
             ),
             search_state=search.state.to_dict(),
         )
+        self._bind_context_relations(factor_base, collector, presentation)
         return collector, presentation
 
     def _unit_logarithmic_rank(
@@ -2689,6 +3303,9 @@ class ClassUnitGroupEngine:
             )
         self._relation_log_record_prefix = record_prefix
         logarithms = self._relation_independent_logarithms
+        if unit_rank == 1 and self._relation_exact_rank_one_dependency_key is not None:
+            self._resource_usage["relation_independent_log_units"] = 1
+            return 1
         current_rank = len(logarithms)
         for dependency in presentation.dependency_transforms:
             if current_rank >= unit_rank:
@@ -2715,8 +3332,10 @@ class ClassUnitGroupEngine:
                     < MAX_RELATION_LOG_STEERING_RECORDS
                 ):
                     self._relation_dependency_unit_hashes[dependency_key] = unit_hash
+                    self._relation_dependency_units[dependency_key] = unit
             else:
                 self._resource_usage["relation_dependency_unit_cache_hits"] += 1
+                unit = self._relation_dependency_units.get(dependency_key)
             if unit_hash in self._relation_seen_dependency_units:
                 continue
             if (
@@ -2731,11 +3350,29 @@ class ClassUnitGroupEngine:
             self._relation_seen_dependency_units.add(unit_hash)
             if unit is None:
                 unit = self._combine(record_prefix, dependency)
+            # A cubic field has no roots of unity beyond +/-1: every
+            # cyclotomic subfield of larger torsion degree has even degree,
+            # which cannot divide three. In signature (1, 1), where the
+            # Dirichlet rank is one, exact comparison with +/-1 therefore
+            # proves full unit rank without evaluating archimedean logs merely
+            # to steer relation collection. The retained factored unit still
+            # enters the rigorous regulator and hR computation normally.
+            evaluator = getattr(unit, "evaluate", None)
+            if unit_rank == 1 and int(self.field.degree()) == 3 and callable(evaluator):
+                value = evaluator()
+                one = self.field.one()
+                if value != one and value != -one:
+                    self._relation_exact_rank_one_dependency_key = dependency_key
+                    self._relation_independent_dependency_keys.append(dependency_key)
+                    self._resource_usage["relation_exact_rank_one_units"] += 1
+                    current_rank = 1
+                    break
             row = tuple(self._unit_logarithms(unit, 80)[:-1])
             candidate = [*logarithms, row]
             candidate_rank = _floating_matrix_rank(candidate)
             if candidate_rank > current_rank:
                 logarithms.append(row)
+                self._relation_independent_dependency_keys.append(dependency_key)
                 current_rank = candidate_rank
         self._resource_usage["relation_dependency_unit_cache_entries"] = len(
             self._relation_dependency_unit_hashes
@@ -2743,7 +3380,10 @@ class ClassUnitGroupEngine:
         self._resource_usage["relation_dependency_units_seen"] = len(
             self._relation_seen_dependency_units
         )
-        self._resource_usage["relation_independent_log_units"] = len(logarithms)
+        self._resource_usage["relation_independent_log_units"] = max(
+            len(logarithms),
+            1 if self._relation_exact_rank_one_dependency_key is not None else 0,
+        )
         return min(unit_rank, current_rank)
 
     def _reset_relation_log_steering(self) -> None:
@@ -2751,14 +3391,21 @@ class ClassUnitGroupEngine:
         if (
             self._relation_log_record_prefix
             or self._relation_dependency_unit_hashes
+            or self._relation_dependency_units
             or self._relation_seen_dependency_units
             or self._relation_independent_logarithms
+            or self._relation_independent_dependency_keys
+            or self._relation_exact_rank_one_dependency_key is not None
         ):
             self._resource_usage["relation_log_steering_resets"] += 1
         self._relation_log_record_prefix = ()
         self._relation_dependency_unit_hashes.clear()
+        self._relation_dependency_units.clear()
         self._relation_seen_dependency_units.clear()
         self._relation_independent_logarithms.clear()
+        self._relation_independent_dependency_keys.clear()
+        self._relation_exact_rank_one_dependency_key = None
+        self._relation_initial_basis_selected = False
 
     def _uncached_unit_logarithmic_rank(
         self, records: Sequence[Any], presentation: Any, unit_rank: int
@@ -2858,10 +3505,96 @@ class ClassUnitGroupEngine:
         unit_rank: int,
     ) -> tuple[tuple[Any, ...], tuple[tuple[int, ...], ...]]:
         """Select dependency rows by cached logs, then materialize only the basis."""
-        logarithms = [
-            list(self._dependency_logarithms(records, dependency, 80)[:-1])
-            for dependency in dependencies
-        ]
+        # Cubic relation prefixes contain only a handful of dependencies.
+        # Relation-rank steering has already materialized and cached several
+        # of these exact units, so forming the remaining candidates once is
+        # cheaper than decoding and summing every witness logarithm again for
+        # every dependency.  Larger presentations retain the streaming path
+        # to avoid materializing a potentially large family of factored units.
+        eager_units: tuple[Any, ...] = ()
+        normalized_dependencies = []
+        for dependency in dependencies:
+            normalized = [int(value) for value in dependency]
+            while normalized and normalized[-1] == 0:
+                normalized.pop()
+            normalized_dependencies.append(tuple(normalized))
+        retained_prefix = tuple(records) == self._relation_log_record_prefix
+        # The relation loop has already found an observed full-rank unit
+        # subgroup.  Use that exact live basis for the first rigorous `hR`
+        # test instead of eagerly minimizing its regulator over every
+        # dependency.  If its certified index is not one, adaptive saturation
+        # calls this method again and deliberately takes the complete
+        # minimum-volume path below.
+        if (
+            not self._relation_initial_basis_selected
+            and retained_prefix
+            and unit_rank > 0
+            and len(self._relation_independent_dependency_keys) >= unit_rank
+        ):
+            dependency_rows: dict[tuple[int, ...], tuple[int, ...]] = {}
+            for dependency, dependency_key in zip(
+                dependencies, normalized_dependencies, strict=True
+            ):
+                dependency_rows.setdefault(
+                    dependency_key, tuple(int(value) for value in dependency)
+                )
+            selected_keys = tuple(
+                self._relation_independent_dependency_keys[:unit_rank]
+            )
+            if all(
+                key in dependency_rows and key in self._relation_dependency_units
+                for key in selected_keys
+            ):
+                self._relation_initial_basis_selected = True
+                self._resource_usage["dependency_unit_steering_basis_hits"] += 1
+                self._resource_usage["relation_dependency_unit_object_cache_hits"] += (
+                    len(selected_keys)
+                )
+                return (
+                    tuple(
+                        self._relation_dependency_units[key] for key in selected_keys
+                    ),
+                    tuple(dependency_rows[key] for key in selected_keys),
+                )
+        retained_complete = bool(
+            retained_prefix
+            and all(
+                dependency in self._relation_dependency_units
+                for dependency in normalized_dependencies
+            )
+        )
+        if len(dependencies) <= 16 and (
+            int(self.field.degree()) == 3 or retained_complete
+        ):
+            selected_units: list[Any] = []
+            materialized = 0
+            for dependency, dependency_key in zip(
+                dependencies, normalized_dependencies, strict=True
+            ):
+                unit = (
+                    self._relation_dependency_units.get(dependency_key)
+                    if retained_prefix
+                    else None
+                )
+                if unit is None:
+                    unit = self._combine(records, dependency)
+                    materialized += 1
+                else:
+                    self._resource_usage[
+                        "relation_dependency_unit_object_cache_hits"
+                    ] += 1
+                selected_units.append(unit)
+            eager_units = tuple(selected_units)
+            self._resource_usage["dependency_unit_eager_candidates"] += len(eager_units)
+            self._resource_usage["dependency_unit_materializations"] += materialized
+            logarithms = [
+                list(self._unit_logarithms(unit, 80)[:-1]) for unit in eager_units
+            ]
+        else:
+            logarithms = [
+                list(self._dependency_logarithms(records, dependency, 80)[:-1])
+                for dependency in dependencies
+            ]
         best: tuple[int, ...] = ()
         best_volume: float | None = None
         checked = 0
@@ -2882,10 +3615,16 @@ class ClassUnitGroupEngine:
         selected_dependencies = tuple(
             tuple(int(value) for value in dependencies[index]) for index in best
         )
-        units = tuple(
-            self._combine(records, dependency) for dependency in selected_dependencies
+        units = (
+            tuple(eager_units[index] for index in best)
+            if eager_units
+            else tuple(
+                self._combine(records, dependency)
+                for dependency in selected_dependencies
+            )
         )
-        self._resource_usage["dependency_unit_materializations"] += len(units)
+        if not eager_units:
+            self._resource_usage["dependency_unit_materializations"] += len(units)
         return units, selected_dependencies
 
     def _decode_relation_witness(self, record: Any) -> Any:
@@ -2920,21 +3659,30 @@ class ClassUnitGroupEngine:
         return self.components.relations.FactoredPrincipalWitness(self.field, factors)
 
     def _independent_units(
-        self, collector: Any, presentation: Any, unit_rank: int
+        self,
+        collector: Any,
+        presentation: Any,
+        unit_rank: int,
     ) -> tuple[Any, ...]:
         started = self._phase_start()
         if unit_rank == 0:
             self._phase_finish("unit-recovery", started)
             self._stage("unit-recovery", "complete", rank=0, candidates=0)
             return ()
-        if not presentation.verify():
-            raise ArithmeticError("the relation presentation failed exact replay")
         records = tuple(collector.records)
         admission_verifier = getattr(collector, "verify_admission_receipt", None)
-        live_relations_authenticated = callable(admission_verifier) and all(
-            admission_verifier(self.order, collector.factor_base, record)
-            for record in records
+        live_relations_authenticated = self._context_relation_stage_authenticated(
+            collector, presentation
         )
+        if live_relations_authenticated:
+            self._resource_usage["unit_live_relation_authority_hits"] += 1
+        else:
+            if not presentation.verify():
+                raise ArithmeticError("the relation presentation failed exact replay")
+            live_relations_authenticated = callable(admission_verifier) and all(
+                admission_verifier(self.order, collector.factor_base, record)
+                for record in records
+            )
         dependencies = tuple(presentation.dependency_transforms)
         for dependency in presentation.dependency_transforms:
             if len(dependency) != len(records):
@@ -2942,21 +3690,43 @@ class ClassUnitGroupEngine:
         units, selected_dependencies = self._select_dependency_unit_basis(
             records, dependencies, unit_rank
         )
-        if live_relations_authenticated:
-            for dependency, unit in zip(selected_dependencies, units, strict=True):
-                relation_row = [0] * len(collector.factor_base)
-                for coefficient, record in zip(dependency, records, strict=True):
-                    if len(record.row) != len(relation_row):
-                        raise ArithmeticError(
-                            "an authenticated relation has the wrong exact width"
-                        )
-                    for index, value in enumerate(record.row):
-                        relation_row[index] += int(coefficient) * int(value)
+        selected_unit_hashes: list[str] = []
+        for dependency, unit in zip(selected_dependencies, units, strict=True):
+            normalized = [int(value) for value in dependency]
+            while normalized and normalized[-1] == 0:
+                normalized.pop()
+            dependency_key = tuple(normalized)
+            unit_hash = (
+                self._relation_dependency_unit_hashes.get(dependency_key)
+                if self._relation_dependency_units.get(dependency_key) is unit
+                else None
+            )
+            if unit_hash is None:
                 stable_hash = getattr(unit, "stable_hash", None)
-                if not any(relation_row) and callable(stable_hash):
-                    if len(self._authenticated_dependency_units) >= 1024:
-                        self._authenticated_dependency_units.pop()
-                    self._authenticated_dependency_units.add(str(stable_hash()))
+                if not callable(stable_hash):
+                    live_relations_authenticated = False
+                    break
+                unit_hash = str(stable_hash())
+            selected_unit_hashes.append(unit_hash)
+        if live_relations_authenticated and not self._retain_context_dependency_units(
+            collector,
+            presentation,
+            selected_dependencies,
+            units,
+            selected_unit_hashes,
+        ):
+            live_relations_authenticated = False
+            if (
+                not presentation.verify()
+                or not callable(admission_verifier)
+                or not all(
+                    admission_verifier(self.order, collector.factor_base, record)
+                    for record in records
+                )
+            ):
+                raise ArithmeticError(
+                    "the relation dependency authority failed exact replay"
+                )
         if not units:
             self._phase_finish("unit-recovery", started)
             self._stage(
@@ -3003,17 +3773,15 @@ class ClassUnitGroupEngine:
         return tuple(candidates[index] for index in best)
 
     def _verify_exact_units(self, units: Sequence[Any]) -> None:
-        one = self.order.ideal(1)
+        one: Any = None
         for unit in units:
             self._resource_usage["unit_principal_authority_requests"] += 1
-            stable_hash = getattr(unit, "stable_hash", None)
-            if (
-                callable(stable_hash)
-                and str(stable_hash()) in self._authenticated_dependency_units
-            ):
+            if self._context_dependency_unit_authenticated(unit):
                 self._resource_usage["unit_principal_authority_hits"] += 1
                 continue
             self._resource_usage["unit_principal_authority_fallbacks"] += 1
+            if one is None:
+                one = self.order.ideal(1)
             if unit.principal_ideal(self.order) != one:
                 raise ArithmeticError("a relation dependency is not an exact unit")
 
@@ -3072,13 +3840,15 @@ class ClassUnitGroupEngine:
             zeta_log_residue=zeta,
             precision_bits=self.limits.precision_bits,
         )
-        self._live_analytic_proof = (
-            tuple(units),
-            int(presentation.order),
-            int(torsion.order),
-            regulator,
-            zeta,
-            index,
+        self._bind_context_analytic_proof(
+            (
+                tuple(units),
+                int(presentation.order),
+                int(torsion.order),
+                regulator,
+                zeta,
+                index,
+            )
         )
         self._phase_finish("analytic-index", started)
         self._stage(
@@ -3114,25 +3884,76 @@ class ClassUnitGroupEngine:
         _defer_live_authentication: bool = False,
     ) -> tuple[dict[str, Any], Any]:
         """Bind the exact class-generation theorem consumed by `h*R`."""
-        evidence = {
-            "schema": "sagejs.number-fields/class-generation-authority-v1",
-            "proof_status": proof_status,
-            "theorem": str(plan.theorem),
-            "assumptions": list(plan.assumptions),
-            "bound": int(plan.bound),
-            "factor_base": [_component_payload(prime) for prime in factor_base],
-            "relations": [_component_payload(record) for record in collector.records],
-            "presentation": _component_payload(presentation),
-        }
-        canonical = _component_payload(evidence)
+        retained_artifact = self._context_generation_artifact(
+            plan, factor_base, collector, presentation, proof_status
+        )
+        if retained_artifact is not None:
+            evidence, retained_hashes = retained_artifact
+            (
+                evidence_sha256,
+                relations_sha256,
+                presentation_sha256,
+            ) = retained_hashes
+            self._resource_usage["generation_context_artifact_reuses"] += 1
+        else:
+            relation_payloads: Any = None
+            context_relation_payloads = getattr(
+                self.context, "_live_relation_payloads", None
+            )
+            if (
+                callable(context_relation_payloads)
+                and self._live_context_token is not None
+            ):
+                try:
+                    live_values: Any = context_relation_payloads(
+                        self._live_context_token, collector, presentation
+                    )
+                    if live_values is not None:
+                        relation_payloads = list(live_values)
+                except (AttributeError, TypeError, ValueError, ArithmeticError):
+                    relation_payloads = None
+            if relation_payloads is None:
+                relation_payloads = [
+                    _component_payload(record) for record in collector.records
+                ]
+            else:
+                self._resource_usage["generation_live_relation_payload_hits"] += 1
+            evidence = {
+                "schema": "sagejs.number-fields/class-generation-authority-v1",
+                "proof_status": proof_status,
+                "theorem": str(plan.theorem),
+                "assumptions": list(plan.assumptions),
+                "bound": int(plan.bound),
+                "factor_base": [_component_payload(prime) for prime in factor_base],
+                "relations": relation_payloads,
+                "presentation": _component_payload(presentation),
+            }
+            (
+                evidence_sha256,
+                relations_sha256,
+                presentation_sha256,
+            ) = _generation_evidence_digests(evidence)
+            bind_generation = getattr(
+                self.context, "_bind_live_generation_evidence", None
+            )
+            if callable(bind_generation) and self._live_context_token is not None:
+                bind_generation(
+                    self._live_context_token,
+                    plan,
+                    factor_base,
+                    collector,
+                    presentation,
+                    proof_status,
+                    evidence,
+                    (evidence_sha256, relations_sha256, presentation_sha256),
+                )
         cache_key = _canonical_payload_hash(
             {
-                "evidence": canonical,
+                "evidence_sha256": evidence_sha256,
                 "class_number": int(presentation.order),
                 "proof_status": proof_status,
             }
         )
-        live_authority_available = True
 
         def verify_generation(
             field: Any,
@@ -3142,7 +3963,6 @@ class ClassUnitGroupEngine:
             supplied_evidence: Any,
             supplied_proof_status: str,
         ) -> bool:
-            nonlocal live_authority_available
             del initial_units
             try:
                 self._resource_usage["generation_verification_calls"] += 1
@@ -3153,9 +3973,8 @@ class ClassUnitGroupEngine:
                 ):
                     return False
                 if (
-                    self._generation_verification_cache_active
-                    and live_authority_available
-                    and supplied_evidence is evidence
+                    supplied_evidence is evidence
+                    and self._consume_context_generation_authority(cache_key, evidence)
                 ):
                     # This first call is made synchronously by this producer,
                     # before the authority escapes.  The plan, factor base,
@@ -3163,18 +3982,15 @@ class ClassUnitGroupEngine:
                     # objects just constructed by the engine.  Consume the
                     # authority once and make every later call authenticate
                     # the canonical payload or perform detached replay.
-                    live_authority_available = False
-                    self._generation_verification_cache[cache_key] = True
                     self._resource_usage[
                         "generation_verification_live_authentication_hits"
                     ] += 1
                     return True
-                if _component_payload(supplied_evidence) != canonical:
+                supplied_payload = _component_payload(supplied_evidence)
+                supplied_sha256, _, _ = _generation_evidence_digests(supplied_payload)
+                if supplied_sha256 != evidence_sha256:
                     return False
-                if (
-                    self._generation_verification_cache_active
-                    and self._generation_verification_cache.get(cache_key) is True
-                ):
+                if self._context_generation_verification_cached(cache_key):
                     self._resource_usage["generation_verification_cache_hits"] += 1
                     return True
                 self._resource_usage["generation_verification_full_replays"] += 1
@@ -3255,8 +4071,7 @@ class ClassUnitGroupEngine:
                             int(after_receipts.get("hits", 0))
                             - int(before_receipts.get("hits", 0))
                         )
-                if self._generation_verification_cache_active:
-                    self._generation_verification_cache[cache_key] = True
+                self._retain_context_generation_verification(cache_key)
                 return True
             except (AttributeError, TypeError, ValueError, ArithmeticError):
                 return False
@@ -3442,8 +4257,20 @@ class ClassUnitGroupEngine:
             "generation_verifier": generation_verifier,
             "proof_status": proof_status,
         }
-        live_proof = self._live_analytic_proof
+        live_proof = self._context_analytic_proof()
         standard_analytic = _optional_module("sagejs.number_fields.class_unit_analytic")
+        if (
+            self.components.analytic is standard_analytic
+            and certificate_factory
+            is getattr(standard_analytic, "certify_unit_saturation_index", None)
+            and self._live_context_token is not None
+            and self.progress is None
+            and not self._cancelled_callback_supplied
+            and self.checkpoint_controller is None
+        ):
+            options["_live_parent_token"] = getattr(
+                standard_analytic, "_LIVE_UNIT_INDEX_PARENT_TOKEN", None
+            )
         if (
             live_proof is not None
             and self.components.analytic is standard_analytic
@@ -3684,8 +4511,7 @@ class ClassUnitGroupEngine:
                 else "bounded saturation did not isolate class/unit index one"
             ),
         )
-        _issue_live_saturation_record(record)
-        self._saturation_record = record
+        self._bind_context_saturation_record(record)
         self._checkpoint_capture({"saturation": record})
         self._stage(
             "saturation",
@@ -3712,10 +4538,46 @@ class ClassUnitGroupEngine:
             tuple(int(value) for value in presentation.smith_right_inverse[position])
             for position in positions
         )
-        reconstruct = self.components.relations.reconstruct_factor_base_ideal
-        generator_ideals = tuple(
-            reconstruct(self.order, factor_base, row) for row in generator_rows
+        live_reconstruct: Any = getattr(
+            collector, "reconstruct_factor_base_ideal", None
         )
+        cold_reconstruct = self.components.relations.reconstruct_factor_base_ideal
+        reconstruction_diagnostics = getattr(
+            collector, "reconstruction_diagnostics", None
+        )
+        before_reconstruction: Any = (
+            reconstruction_diagnostics()
+            if callable(reconstruction_diagnostics)
+            else None
+        )
+
+        def reconstruct(row: Any) -> Any:
+            if callable(live_reconstruct):
+                return live_reconstruct(row)
+            return cold_reconstruct(self.order, factor_base, row)
+
+        generator_ideals = tuple(reconstruct(row) for row in generator_rows)
+        after_reconstruction: Any = (
+            reconstruction_diagnostics()
+            if callable(reconstruction_diagnostics)
+            else None
+        )
+        if isinstance(before_reconstruction, dict) and isinstance(
+            after_reconstruction, dict
+        ):
+            self._resource_usage["class_group_generator_reconstruction_calls"] += int(
+                after_reconstruction.get("row_requests", 0)
+            ) - int(before_reconstruction.get("row_requests", 0))
+            self._resource_usage["class_group_generator_reconstruction_cache_hits"] += (
+                int(after_reconstruction.get("row_hits", 0))
+                - int(before_reconstruction.get("row_hits", 0))
+            )
+            self._resource_usage["class_group_generator_power_requests"] += int(
+                after_reconstruction.get("power_requests", 0)
+            ) - int(before_reconstruction.get("power_requests", 0))
+            self._resource_usage["class_group_generator_power_cache_hits"] += int(
+                after_reconstruction.get("power_hits", 0)
+            ) - int(before_reconstruction.get("power_hits", 0))
         group = _EngineClassGroup(
             self.order,
             presentation.invariants,
@@ -3739,9 +4601,7 @@ class ClassUnitGroupEngine:
             collector,
         )
         self._resource_usage["class_group_live_authentication_requests"] += 1
-        live_verified = group._verify_live_construction(
-            _AUTHENTICATED_ENGINE_CLASS_GROUP_TOKEN
-        )
+        live_verified = self._verify_context_class_group_construction(group)
         if live_verified:
             self._resource_usage["class_group_live_authentication_hits"] += 1
         else:
@@ -3767,6 +4627,12 @@ class ClassUnitGroupEngine:
             is not _CUBIC_RELATION_SEED_UNREAD
         ):
             return self._authenticated_cubic_relation_seed_cache
+        context_reader = getattr(self.context, "_live_cubic_relation_prefix", None)
+        if callable(context_reader) and self._live_context_token is not None:
+            context_prefix = context_reader(self._live_context_token)
+            if context_prefix is not None:
+                self._authenticated_cubic_relation_seed_cache = context_prefix
+                return context_prefix
         artifact = getattr(self.field, "_bounded_cubic_class_number_artifact", None)
         if artifact is None:
             self._authenticated_cubic_relation_seed_cache = None
@@ -3776,8 +4642,31 @@ class ClassUnitGroupEngine:
                 "sagejs.number_fields.cubic_class_number",
                 fromlist=["cubic_class_number"],
             )
-            reader = getattr(module, "authenticated_cubic_relation_seed", None)
-            seed: Any = reader(artifact, self.field) if callable(reader) else None
+            materialize = getattr(
+                module, "materialize_authenticated_cubic_relation_result", None
+            )
+            seed: Any = None
+            if callable(materialize):
+                default_policy = bool(
+                    self.algorithm == "auto"
+                    and self.seed == 0
+                    and self.checkpoint_controller is None
+                    and self.limits.to_dict() == ClassUnitEngineLimits().to_dict()
+                )
+                seed = materialize(
+                    artifact,
+                    self.field,
+                    include_unit_dependencies=default_policy,
+                    cancelled=self.cancelled,
+                )
+                if bool(getattr(seed, "materialized_from_packed", False)):
+                    self._resource_usage["cubic_relation_seed_materializations"] += 1
+                    self._resource_usage[
+                        "cubic_relation_seed_dependency_candidates"
+                    ] += int(getattr(seed, "dependency_candidates", 0))
+                    self._resource_usage[
+                        "cubic_relation_seed_dependency_relations"
+                    ] += int(getattr(seed, "dependency_relations", 0))
             self._authenticated_cubic_relation_seed_cache = seed
             return seed
         except (AttributeError, ImportError, TypeError, ValueError, ArithmeticError):
@@ -3839,7 +4728,170 @@ class ClassUnitGroupEngine:
         except (AttributeError, ImportError, TypeError, ValueError, ArithmeticError):
             return None
 
-    def run(self) -> ClassUnitComputation:
+    def _finish_class_unit_computation(
+        self,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        units: tuple[Any, ...],
+        torsion: Any,
+        regulator: Any,
+        index: Any,
+        unit_rank: int,
+        initial_proof_status: str,
+    ) -> ClassUnitComputation:
+        """Finish the proof objects and maps after one rigorous `hR` stage."""
+        (
+            collector,
+            presentation,
+            units,
+            torsion,
+            regulator,
+            index,
+            saturation_record,
+        ) = self._adaptive_saturation(
+            factor_base,
+            collector,
+            presentation,
+            units,
+            torsion,
+            regulator,
+            index,
+            unit_rank,
+            plan=plan,
+            proof_status=initial_proof_status,
+        )
+        unit_group = UnitGroupComputation(
+            torsion,
+            units,
+            unit_rank,
+            complete=bool(index.index_one),
+            regulator=regulator,
+            reason="rigorous hR index-one validation",
+            proof_status=initial_proof_status,
+            completion_evidence=saturation_record,
+        )
+        try:
+            self._resource_usage["saturation_live_authentication_requests"] += 1
+            live_saturation = self._consume_context_saturation_record(saturation_record)
+            if live_saturation:
+                self._resource_usage["saturation_live_authentication_hits"] += 1
+            else:
+                self._resource_usage[
+                    "saturation_live_authentication_fallback_replays"
+                ] += 1
+            saturation_replayed = bool(
+                saturation_record.complete
+                and (
+                    live_saturation or saturation_record.verify(self.field, self.order)
+                )
+            )
+        finally:
+            # Proof objects used after the computation must replay their
+            # detached evidence instead of inheriting this live-work memo.
+            self._deactivate_context_generation_verification()
+        if not index.index_one or not saturation_replayed:
+            return self._incomplete(
+                (
+                    "bounded saturation did not isolate class/unit index one"
+                    if not index.index_one
+                    else "class/unit index one failed authenticated analytic replay"
+                ),
+                invariants=presentation.invariants,
+                unit_group=unit_group,
+                diagnostics={
+                    "saturation": _saturation_diagnostic_summary(saturation_record),
+                },
+            )
+        group = self._class_group(
+            factor_base,
+            collector,
+            presentation,
+            initial_proof_status,
+            str(plan.theorem),
+        )
+        self._proof_dependency_hashes = self._proof_dependencies(
+            group, collector, presentation, saturation_record
+        )
+        proof_records: tuple[Any, ...] = ()
+        proof_status = initial_proof_status
+        if _needs_unconditional_upgrade(self.proof, initial_proof_status):
+            proof_records = self._unconditional_proof_pass(group)
+            proof_status = EXACT_UNCONDITIONAL
+            group.proof_status = proof_status
+            group.factor_base_theorem = "Minkowski ideal-class theorem"
+            unit_group.proof_status = proof_status
+        self._stage(
+            "proof",
+            "complete",
+            proof_status=proof_status,
+            minkowski_primes=len(proof_records),
+            exact_relations=len(collector.records),
+        )
+        self._phase_finish("total", self._started_ns)
+        self._stage("terminal", "complete", class_number=group.order())
+        self._checkpoint_capture(
+            {
+                "matrix_state": presentation,
+                "proof_progress": self._proof_progress,
+                "diagnostics": self._diagnostics(),
+            }
+        )
+        self._checkpoint_save(force=True)
+        terminal_diagnostics = self._diagnostics(
+            {
+                "factor_base_bound": int(plan.bound),
+                "factor_base_size": len(factor_base),
+                "relations": len(collector.records),
+                "unconditional_prime_records": proof_records,
+                "saturation": _saturation_diagnostic_summary(saturation_record),
+                "proof_dependency_hashes": dict(self._proof_dependency_hashes),
+                "proof_progress": (
+                    None
+                    if self._proof_progress is None
+                    else self._proof_progress.to_dict()
+                ),
+            }
+        )
+        self._retain_context_terminal(
+            proof_status,
+            "exact relations and rigorous class/unit index one",
+            theorem=str(group.factor_base_theorem),
+            bound=(
+                int(plan.bound)
+                if proof_status == EXACT_RELATIONS_CONDITIONAL_GRH or not proof_records
+                else None
+            ),
+            assumptions=(
+                tuple(plan.assumptions)
+                if proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+                else ()
+            ),
+            units=units,
+            saturation_record=saturation_record,
+            class_group=group,
+            unit_group=unit_group,
+            diagnostics=terminal_diagnostics,
+        )
+        return ClassUnitComputation(
+            self.field,
+            proof_status=proof_status,
+            complete=True,
+            reason="exact relations and rigorous class/unit index one",
+            algorithm="buchmann-hecke",
+            stages=self.stages,
+            class_group=group,
+            unit_group=unit_group,
+            tentative_invariants=presentation.invariants,
+            context=self.context,
+            diagnostics=terminal_diagnostics,
+            saturation_record=saturation_record,
+            proof_progress=self._proof_progress,
+            proof_dependency_hashes=self._proof_dependency_hashes,
+        )
+
+    def run(self, *, class_number_only: bool = False) -> Any:
         self._check_cancelled()
         specialized = self._specialized()
         if specialized is not None:
@@ -3866,6 +4918,7 @@ class ClassUnitGroupEngine:
                 plan = relation_seed.plan
                 factor_base = relation_seed.factor_base
                 self._resource_usage["cubic_factor_base_seed_uses"] += 1
+                self._bind_context_factor_base(factor_base, validated=True)
                 self._phase_finish("factor-base", started)
                 self._stage(
                     "factor-base",
@@ -3926,15 +4979,36 @@ class ClassUnitGroupEngine:
                 presentation, units, unit_rank
             )
             initial_proof_status = _factor_base_proof_status(plan)
-            (
-                collector,
-                presentation,
-                units,
-                torsion,
-                regulator,
-                index,
-                saturation_record,
-            ) = self._adaptive_saturation(
+            if (
+                class_number_only
+                and index.index_one
+                and (not self.proof or initial_proof_status == EXACT_UNCONDITIONAL)
+            ):
+                self._phase_finish("class-number-total", self._started_ns)
+                self._stage(
+                    "class-number-projection",
+                    "complete",
+                    class_number=int(presentation.order),
+                    proof_status=initial_proof_status,
+                    rigorous=True,
+                )
+                self._projection_pause_started_ns = time.perf_counter_ns()
+                return _ClassNumberProjection(
+                    _CLASS_NUMBER_PROJECTION_TOKEN,
+                    self,
+                    plan,
+                    factor_base,
+                    collector,
+                    presentation,
+                    units,
+                    torsion,
+                    regulator,
+                    index,
+                    unit_rank,
+                    initial_proof_status,
+                )
+            return self._finish_class_unit_computation(
+                plan,
                 factor_base,
                 collector,
                 presentation,
@@ -3943,119 +5017,8 @@ class ClassUnitGroupEngine:
                 regulator,
                 index,
                 unit_rank,
-                plan=plan,
-                proof_status=initial_proof_status,
-            )
-            unit_group = UnitGroupComputation(
-                torsion,
-                units,
-                unit_rank,
-                complete=bool(index.index_one),
-                regulator=regulator,
-                reason="rigorous hR index-one validation",
-                proof_status=initial_proof_status,
-                completion_evidence=saturation_record,
-            )
-            try:
-                self._resource_usage["saturation_live_authentication_requests"] += 1
-                live_saturation = _authenticated_live_saturation_record_matches(
-                    saturation_record, self.field, self.order
-                )
-                if live_saturation:
-                    self._resource_usage["saturation_live_authentication_hits"] += 1
-                else:
-                    self._resource_usage[
-                        "saturation_live_authentication_fallback_replays"
-                    ] += 1
-                saturation_replayed = bool(
-                    saturation_record.complete
-                    and (
-                        live_saturation
-                        or saturation_record.verify(self.field, self.order)
-                    )
-                )
-            finally:
-                # Proof objects used after the computation must replay their
-                # detached evidence instead of inheriting this live-work memo.
-                self._generation_verification_cache_active = False
-            if not index.index_one or not saturation_replayed:
-                return self._incomplete(
-                    (
-                        "bounded saturation did not isolate class/unit index one"
-                        if not index.index_one
-                        else "class/unit index one failed authenticated analytic replay"
-                    ),
-                    invariants=presentation.invariants,
-                    unit_group=unit_group,
-                    diagnostics={
-                        "saturation": _saturation_diagnostic_summary(saturation_record),
-                    },
-                )
-            group = self._class_group(
-                factor_base,
-                collector,
-                presentation,
                 initial_proof_status,
-                str(plan.theorem),
             )
-            self._proof_dependency_hashes = self._proof_dependencies(
-                group, collector, presentation, saturation_record
-            )
-            proof_records: tuple[Any, ...] = ()
-            proof_status = initial_proof_status
-            if _needs_unconditional_upgrade(self.proof, initial_proof_status):
-                proof_records = self._unconditional_proof_pass(group)
-                proof_status = EXACT_UNCONDITIONAL
-                group.proof_status = proof_status
-                group.factor_base_theorem = "Minkowski ideal-class theorem"
-                unit_group.proof_status = proof_status
-            self._stage(
-                "proof",
-                "complete",
-                proof_status=proof_status,
-                minkowski_primes=len(proof_records),
-                exact_relations=len(collector.records),
-            )
-            self._phase_finish("total", self._started_ns)
-            self._stage("terminal", "complete", class_number=group.order())
-            self._checkpoint_capture(
-                {
-                    "matrix_state": presentation,
-                    "proof_progress": self._proof_progress,
-                    "diagnostics": self._diagnostics(),
-                }
-            )
-            self._checkpoint_save(force=True)
-            result = ClassUnitComputation(
-                self.field,
-                proof_status=proof_status,
-                complete=True,
-                reason="exact relations and rigorous class/unit index one",
-                algorithm="buchmann-hecke",
-                stages=self.stages,
-                class_group=group,
-                unit_group=unit_group,
-                tentative_invariants=presentation.invariants,
-                diagnostics=self._diagnostics(
-                    {
-                        "factor_base_bound": int(plan.bound),
-                        "factor_base_size": len(factor_base),
-                        "relations": len(collector.records),
-                        "unconditional_prime_records": proof_records,
-                        "saturation": _saturation_diagnostic_summary(saturation_record),
-                        "proof_dependency_hashes": dict(self._proof_dependency_hashes),
-                        "proof_progress": (
-                            None
-                            if self._proof_progress is None
-                            else self._proof_progress.to_dict()
-                        ),
-                    }
-                ),
-                saturation_record=saturation_record,
-                proof_progress=self._proof_progress,
-                proof_dependency_hashes=self._proof_dependency_hashes,
-            )
-            return result
         except RuntimeError as error:
             if _is_cancellation(error):
                 return self._incomplete(
@@ -4198,6 +5161,46 @@ def compute_class_unit_group(
 class_unit_group = compute_class_unit_group
 
 
+def _class_number_projection_cache_key(
+    proof: bool, limits: ClassUnitEngineLimits
+) -> tuple[Any, ...]:
+    return (
+        bool(proof),
+        "auto",
+        0,
+        tuple(sorted(limits.to_dict().items())),
+    )
+
+
+def _cached_class_number_projection(
+    field: Any, cache_key: tuple[Any, ...], proof: bool
+) -> _ClassNumberProjection | None:
+    cache = getattr(field, "_class_number_projection_cache", None)
+    if not isinstance(cache, dict):
+        return None
+    projection = cache.get(cache_key)
+    return (
+        projection
+        if isinstance(projection, _ClassNumberProjection)
+        and projection.matches(field, proof)
+        else None
+    )
+
+
+def _retain_class_number_projection(
+    field: Any,
+    projection: _ClassNumberProjection,
+    limits: ClassUnitEngineLimits,
+) -> None:
+    cache = getattr(field, "_class_number_projection_cache", None)
+    if not isinstance(cache, dict):
+        cache = {}
+        field._class_number_projection_cache = cache
+    cache[_class_number_projection_cache_key(False, limits)] = projection
+    if projection.proof_status == EXACT_UNCONDITIONAL:
+        cache[_class_number_projection_cache_key(True, limits)] = projection
+
+
 def class_unit_context(
     field: Any,
     *,
@@ -4240,6 +5243,21 @@ def class_unit_context(
     cache = getattr(field, "_class_unit_engine_cache", None)
     if use_cache and isinstance(cache, dict) and cache_key in cache:
         return cache[cache_key]
+    if (
+        use_cache
+        and int(field.degree()) == 3
+        and algorithm == "auto"
+        and seed == 0
+        and selected_limits.to_dict() == ClassUnitEngineLimits().to_dict()
+    ):
+        projection = _cached_class_number_projection(field, cache_key, proof_value)
+        if projection is not None:
+            result = projection.finish()
+            if not isinstance(cache, dict):
+                cache = {}
+                field._class_unit_engine_cache = cache
+            cache[cache_key] = result
+            return result
     result = compute_class_unit_group(
         field,
         proof=proof_value,
@@ -4298,6 +5316,141 @@ def class_group(
     )
     adapter = maps.class_group_from_engine_result
     return adapter(result)
+
+
+def cubic_class_number_projection(field: Any, proof: bool | None = None) -> int:
+    """Run the default cubic scalar projection through one shared context.
+
+    A bounded class-only producer may finish immediately.  If it instead
+    obtains an exact relation prefix, its synchronous receiver constructs the
+    coupled engine and binds those live objects directly into its
+    `ClassUnitGroupContext`.  Once the exact relation presentation and rigorous
+    `hR` index prove the scalar, the engine retains a sealed continuation rather
+    than eagerly constructing saturation certificates and group maps.  A later
+    class- or unit-group request resumes that same context.  No serialized seed
+    snapshot is needed between the stages; detached artifacts retain the
+    ordinary authenticated replay route.
+    """
+    if int(field.degree()) != 3:
+        raise ValueError("the cubic class-number projection requires degree three")
+    proof_value = True if proof is None else bool(proof)
+    default_limits = ClassUnitEngineLimits()
+    projection_key = _class_number_projection_cache_key(proof_value, default_limits)
+    cached_projection = _cached_class_number_projection(
+        field, projection_key, proof_value
+    )
+    if cached_projection is not None:
+        return int(cached_projection.class_number)
+    cubic = __import__(
+        "sagejs.number_fields.cubic_class_number", fromlist=["cubic_class_number"]
+    )
+    artifact = field._bounded_cubic_class_number_artifact
+    uncached = artifact is None
+    conditional_decline = bool(
+        not uncached
+        and not artifact.complete
+        and artifact.diagnostics.get("relation_seed_size_policy_exceeded", False)
+    )
+    producer_ran = uncached or (proof_value and conditional_decline)
+    engine_holder: list[ClassUnitGroupEngine] = []
+
+    def receive_prefix(
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        search_state: Any,
+    ) -> bool:
+        if engine_holder:
+            return False
+        engine = ClassUnitGroupEngine(field, proof=proof_value, algorithm="auto")
+        if not engine._receive_cubic_relation_prefix(
+            plan,
+            factor_base,
+            collector,
+            presentation,
+            search_state,
+        ):
+            return False
+        engine_holder.append(engine)
+        return True
+
+    if producer_ran:
+        artifact = cubic.bounded_cubic_minkowski_class_number(
+            field,
+            max_relation_seed_prime_ideals=(None if proof_value else 7),
+            _relation_prefix_receiver=receive_prefix,
+        )
+    if artifact is None:
+        raise ArithmeticError(
+            "the bounded cubic class-number producer returned no result"
+        )
+    if artifact.complete:
+        authority_reader = getattr(cubic, "authenticated_cubic_class_number", None)
+        certified_order = (
+            authority_reader(artifact, field) if callable(authority_reader) else None
+        )
+        if certified_order is None:
+            raise ArithmeticError(
+                "cached cubic class-number evidence lost authentication"
+            )
+        if producer_ran:
+            field._bounded_cubic_class_number_artifact = artifact
+        return _integer(certified_order, "certified cubic class number")
+
+    seed_reader = getattr(cubic, "authenticated_cubic_relation_seed", None)
+    has_detached_seed = bool(
+        callable(seed_reader) and seed_reader(artifact, field) is not None
+    )
+    retain_artifact = bool(
+        producer_ran
+        and (
+            engine_holder
+            or has_detached_seed
+            or artifact.diagnostics.get("relation_seed_size_policy_exceeded", False)
+        )
+    )
+    if retain_artifact and not engine_holder:
+        field._bounded_cubic_class_number_artifact = artifact
+    if not engine_holder:
+        # A declined cubic prefix still belongs to the scalar projection
+        # workflow.  Entering the public coupled API here used to call
+        # `run()` without `class_number_only=True`, eagerly constructing the
+        # saturation certificate and class maps that a scalar caller did not
+        # request.  Keep the same live context and stop at the rigorous hR
+        # index-one boundary; a later class/unit request resumes `finish()`.
+        engine_holder.append(
+            ClassUnitGroupEngine(field, proof=proof_value, algorithm="auto")
+        )
+
+    engine = engine_holder[0]
+    result = engine.run(class_number_only=True)
+    if isinstance(result, _ClassNumberProjection):
+        if not result.matches(field, proof_value):
+            raise ArithmeticError("the cubic class-number projection lost authority")
+        if retain_artifact:
+            field._bounded_cubic_class_number_artifact = artifact
+        _retain_class_number_projection(field, result, default_limits)
+        return int(result.class_number)
+    answer = result.class_number()
+    if retain_artifact:
+        # A context-bound prefix is useful only for the uninterrupted run.
+        # Publish its diagnostic artifact after the coupled computation has
+        # actually completed, so an exceptional run cannot leave behind a
+        # non-resumable cache entry with no detached seed.
+        field._bounded_cubic_class_number_artifact = artifact
+    cache = getattr(field, "_class_unit_engine_cache", None)
+    if not isinstance(cache, dict):
+        cache = {}
+        field._class_unit_engine_cache = cache
+    cache_key = (
+        proof_value,
+        "auto",
+        0,
+        tuple(sorted(engine.limits.to_dict().items())),
+    )
+    cache[cache_key] = result
+    return answer
 
 
 def class_number(
@@ -4450,6 +5603,7 @@ __all__ = [
     "UnitGroupComputation",
     "class_group",
     "class_number",
+    "cubic_class_number_projection",
     "class_unit_context",
     "class_unit_group",
     "compute_class_unit_group",

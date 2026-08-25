@@ -23,6 +23,54 @@ MAX_ORDER_MULTIPLICATION_TABLE_CACHE_ENTRIES = 64
 _order_multiplication_table_cache: list[
     tuple[Any, tuple[tuple[tuple[Any, ...], ...], ...]]
 ] = []
+_equation_order_index_cache: list[tuple[Any, int]] = []
+
+
+def _integer_square_root(value: int) -> int:
+    if value < 0:
+        raise ValueError("integer square root needs a nonnegative value")
+    if value < 2:
+        return value
+    estimate = 1 << ((value.bit_length() + 1) // 2)
+    while True:
+        next_estimate = (estimate + value // estimate) // 2
+        if next_estimate >= estimate:
+            return estimate
+        estimate = next_estimate
+
+
+def equation_order_index(order: Any) -> int:
+    """Return the exact index of the integral equation order in `order`.
+
+    For the maximal order `O` and integral equation order `A = ZZ[beta]`,
+    `disc(A) = disc(O) * [O:A]^2`.  Computing this invariant once is enough
+    to decide whether `A` is `p`-maximal for every rational prime: precisely
+    the primes dividing the index need the presentation-independent finite
+    algebra route.
+    """
+    for index, (cached_order, cached_index) in enumerate(_equation_order_index_cache):
+        if cached_order is order:
+            if index:
+                _equation_order_index_cache.append(
+                    _equation_order_index_cache.pop(index)
+                )
+            return cached_index
+    if not order.is_maximal():
+        raise ValueError("an equation-order index requires a certified maximal order")
+    equation_discriminant = abs(
+        int(integral_equation_polynomial(order.number_field()).discriminant())
+    )
+    order_discriminant = abs(int(order.discriminant()))
+    if order_discriminant < 1 or equation_discriminant % order_discriminant:
+        raise ArithmeticError("order discriminants do not give an integral index")
+    index_squared = equation_discriminant // order_discriminant
+    index = _integer_square_root(index_squared)
+    if index < 1 or index * index != index_squared:
+        raise ArithmeticError("order discriminants do not give a square index")
+    if len(_equation_order_index_cache) >= 64:
+        _equation_order_index_cache.pop(0)
+    _equation_order_index_cache.append((order, index))
+    return index
 
 
 def _copy_order_multiplication_table(
@@ -102,17 +150,8 @@ def equation_order_is_p_maximal(
     return obstruction.degree() == 0
 
 
-def _nf_order_multiplication_table(order: Any) -> list[list[list[Any]]]:
-    """Return the integral multiplication table in the order basis."""
-    for index, (cached_order, cached_table) in enumerate(
-        _order_multiplication_table_cache
-    ):
-        if cached_order is order:
-            if index:
-                _order_multiplication_table_cache.append(
-                    _order_multiplication_table_cache.pop(index)
-                )
-            return _copy_order_multiplication_table(cached_table)
+def _nf_order_multiplication_table_reference(order: Any) -> list[list[list[Any]]]:
+    """Construct the integral order table through exact field arithmetic."""
     field = order.number_field()
     degree = field.degree()
     if getattr(field, "_equation_order_cache", None) is order:
@@ -157,6 +196,95 @@ def _nf_order_multiplication_table(order: Any) -> list[list[list[Any]]]:
                     integral_coordinates.append(value._numerator)
                 left_products.append(integral_coordinates)
             table.append(left_products)
+    return table
+
+
+def _nf_order_multiplication_table_packed(order: Any) -> list[list[list[Any]]]:
+    """Construct the same exact table through the shared packed BL kernel."""
+    field = order.number_field()
+    degree = field.degree()
+    polynomial = integral_equation_polynomial(field)
+    coefficients = [int(value) for value in polynomial.list()]
+    scale = int(field._integral_equation_scale_cache)
+    if scale < 1:
+        raise ArithmeticError("an integral-equation scale must be positive")
+
+    # `order._basis_rows` uses powers of the public generator `a`, whereas
+    # `integral_equation_polynomial` is the equation for `beta = scale*a`.
+    # Convert the immutable exact rows once to a common-denominator basis in
+    # powers of beta.  Column `j` therefore acquires the factor `scale^-j`.
+    rational_rows: list[list[Any]] = []
+    denominator = runtime.bigint(1)
+    scale_power = runtime.bigint(1)
+    column_scales: list[Any] = []
+    for _column in range(degree):
+        column_scales.append(scale_power)
+        scale_power *= runtime.bigint(scale)
+    for row in order._basis_rows:
+        transformed = [row[column] / column_scales[column] for column in range(degree)]
+        rational_rows.append(transformed)
+        for value in transformed:
+            denominator = _nf_lcm(denominator, value._denominator)
+    numerator: list[list[int]] = []
+    for row in rational_rows:
+        packed_row: list[int] = []
+        for value in row:
+            scaled = value * denominator
+            if scaled._denominator != 1:
+                raise ArithmeticError("failed to pack an exact maximal-order basis")
+            packed_row.append(int(scaled._numerator))
+        numerator.append(packed_row)
+
+    contracts = __import__(
+        "sagejs.number_fields.maximal_order_contracts",
+        fromlist=["maximal_order_contracts"],
+    )
+    buchmann_lenstra = __import__(
+        "sagejs.number_fields.buchmann_lenstra",
+        fromlist=["buchmann_lenstra"],
+    )
+    basis = contracts.OrderBasis(numerator, int(denominator), canonical=True)
+    return buchmann_lenstra._order_multiplication_table(coefficients, basis)
+
+
+def _nf_order_multiplication_table_frozen(
+    order: Any,
+) -> tuple[tuple[tuple[Any, ...], ...], ...]:
+    """Return the cached immutable integral multiplication table.
+
+    Internal read-only consumers use this boundary so a cached order table is
+    not copied merely to be packed into another immutable representation.  The
+    public internal compatibility helper below still returns a defensive
+    mutable copy for callers that may alter their result.
+    """
+    for index, (cached_order, cached_table) in enumerate(
+        _order_multiplication_table_cache
+    ):
+        if cached_order is order:
+            if index:
+                _order_multiplication_table_cache.append(
+                    _order_multiplication_table_cache.pop(index)
+                )
+            return cached_table
+    field = order.number_field()
+    if getattr(field, "_equation_order_cache", None) is order:
+        # The power-basis recurrence is already linear in the table size and
+        # avoids a packed-boundary setup for the overwhelmingly common case.
+        table = _nf_order_multiplication_table_reference(order)
+    else:
+        try:
+            table = _nf_order_multiplication_table_packed(order)
+        except (
+            ArithmeticError,
+            ImportError,
+            OverflowError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ):
+            # The original readable construction remains the exact capability
+            # fallback for unusual bases or unavailable compiled storage.
+            table = _nf_order_multiplication_table_reference(order)
     if (
         len(_order_multiplication_table_cache)
         >= MAX_ORDER_MULTIPLICATION_TABLE_CACHE_ENTRIES
@@ -166,7 +294,14 @@ def _nf_order_multiplication_table(order: Any) -> list[list[list[Any]]]:
         tuple(tuple(value for value in product) for product in left) for left in table
     )
     _order_multiplication_table_cache.append((order, frozen_table))
-    return _copy_order_multiplication_table(frozen_table)
+    return frozen_table
+
+
+def _nf_order_multiplication_table(order: Any) -> list[list[list[Any]]]:
+    """Return a defensive copy of the integral order multiplication table."""
+    return _copy_order_multiplication_table(
+        _nf_order_multiplication_table_frozen(order)
+    )
 
 
 def _nf_modular_algebra_product(

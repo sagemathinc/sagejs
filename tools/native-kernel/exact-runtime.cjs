@@ -115,6 +115,191 @@ static int sagejs_signed_buffer_index(
     return 1;
 }
 
+#define SAGEJS_NATIVE_INTEGER_VECTOR_ENTRY_CHARGE UINT64_C(32)
+
+typedef struct
+{
+    mpz_t *entries;
+    uint64_t *payload_charges;
+    size_t length;
+    size_t initialized;
+    uint64_t memory_limit;
+    uint64_t charged_bytes;
+} sagejs_native_integer_vector;
+
+static uint64_t sagejs_mpz_payload_charge(const mpz_t value)
+{
+    const size_t bits = mpz_sgn(value) == 0 ? 0 : mpz_sizeinbase(value, 2);
+    if (bits > (size_t) UINT64_MAX - 7)
+        return UINT64_MAX;
+    return (uint64_t) ((bits + 7) / 8);
+}
+
+static void sagejs_native_integer_vector_clear(
+    sagejs_native_integer_vector *vector)
+{
+    if (vector == NULL)
+        return;
+    while (vector->initialized > 0)
+    {
+        vector->initialized -= 1;
+        mpz_clear(vector->entries[vector->initialized]);
+    }
+    free(vector->entries);
+    free(vector->payload_charges);
+    vector->entries = NULL;
+    vector->payload_charges = NULL;
+    vector->length = 0;
+    vector->memory_limit = 0;
+    vector->charged_bytes = 0;
+}
+
+static int sagejs_native_integer_vector_init(
+    sagejs_native_status *status,
+    sagejs_native_integer_vector *vector,
+    uint64_t capacity,
+    uint64_t memory_limit)
+{
+    uint64_t base_charge;
+    size_t index;
+    memset(vector, 0, sizeof(*vector));
+    if (capacity > (uint64_t) SIZE_MAX ||
+        capacity > (uint64_t) (SIZE_MAX / sizeof(mpz_t)) ||
+        capacity > UINT64_MAX / SAGEJS_NATIVE_INTEGER_VECTOR_ENTRY_CHARGE)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeIntegerVector capacity is too large");
+        return 0;
+    }
+    base_charge = capacity * SAGEJS_NATIVE_INTEGER_VECTOR_ENTRY_CHARGE;
+    if (base_charge > memory_limit)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeIntegerVector memory limit exceeded");
+        return 0;
+    }
+    vector->length = (size_t) capacity;
+    vector->memory_limit = memory_limit;
+    vector->charged_bytes = base_charge;
+    if (capacity == 0)
+        return 1;
+    vector->entries = (mpz_t *) calloc((size_t) capacity, sizeof(mpz_t));
+    vector->payload_charges = (uint64_t *) calloc(
+        (size_t) capacity, sizeof(uint64_t));
+    if (vector->entries == NULL || vector->payload_charges == NULL)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+            "NativeIntegerVector allocation failed");
+        sagejs_native_integer_vector_clear(vector);
+        return 0;
+    }
+    for (index = 0; index < (size_t) capacity; index += 1)
+    {
+        mpz_init(vector->entries[index]);
+        vector->initialized += 1;
+    }
+    return 1;
+}
+
+static int sagejs_native_integer_vector_mpz_index(
+    const sagejs_native_integer_vector *vector,
+    const mpz_t index,
+    size_t *position)
+{
+    uint64_t exact = 0;
+    size_t count = 0;
+    if (mpz_sgn(index) < 0 || mpz_sizeinbase(index, 2) > 64)
+        return 0;
+    mpz_export(&exact, &count, -1, sizeof(exact), 0, 0, index);
+    if (count > 1 || exact >= (uint64_t) vector->length)
+        return 0;
+    *position = (size_t) exact;
+    return 1;
+}
+
+static int sagejs_native_integer_vector_reserve_payload(
+    sagejs_native_status *status,
+    sagejs_native_integer_vector *vector,
+    size_t position,
+    uint64_t payload)
+{
+    const uint64_t old_payload = vector->payload_charges[position];
+    const uint64_t retained = vector->charged_bytes - old_payload;
+    if (payload > UINT64_MAX - retained ||
+        retained + payload > vector->memory_limit)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeIntegerVector memory limit exceeded");
+        return 0;
+    }
+    vector->charged_bytes = retained + payload;
+    vector->payload_charges[position] = payload;
+    return 1;
+}
+
+static int sagejs_native_integer_vector_set(
+    sagejs_native_status *status,
+    sagejs_native_integer_vector *vector,
+    size_t position,
+    const mpz_t value)
+{
+    if (!sagejs_native_integer_vector_reserve_payload(
+            status, vector, position, sagejs_mpz_payload_charge(value)))
+        return 0;
+    mpz_set(vector->entries[position], value);
+    return 1;
+}
+
+static int sagejs_native_integer_vector_addmul(
+    sagejs_native_status *status,
+    sagejs_native_integer_vector *vector,
+    size_t position,
+    const mpz_t left,
+    const mpz_t right,
+    int subtract)
+{
+    const size_t current_bits = mpz_sgn(vector->entries[position]) == 0
+        ? 0 : mpz_sizeinbase(vector->entries[position], 2);
+    const size_t left_bits = mpz_sgn(left) == 0 ? 0 : mpz_sizeinbase(left, 2);
+    const size_t right_bits = mpz_sgn(right) == 0 ? 0 : mpz_sizeinbase(right, 2);
+    size_t product_bits = 0;
+    size_t result_bits;
+    uint64_t conservative_payload;
+    if (left_bits != 0 && right_bits != 0)
+    {
+        if (left_bits > SIZE_MAX - right_bits)
+        {
+            sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+                "NativeIntegerVector memory limit exceeded");
+            return 0;
+        }
+        product_bits = left_bits + right_bits;
+    }
+    result_bits = current_bits > product_bits ? current_bits : product_bits;
+    if (result_bits == SIZE_MAX)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeIntegerVector memory limit exceeded");
+        return 0;
+    }
+    result_bits += 1;
+    if (result_bits > (size_t) UINT64_MAX - 7)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeIntegerVector memory limit exceeded");
+        return 0;
+    }
+    conservative_payload = (uint64_t) ((result_bits + 7) / 8);
+    if (!sagejs_native_integer_vector_reserve_payload(
+            status, vector, position, conservative_payload))
+        return 0;
+    if (subtract)
+        mpz_submul(vector->entries[position], left, right);
+    else
+        mpz_addmul(vector->entries[position], left, right);
+    return 1;
+}
+
 #define SAGEJS_WORD_PROMOTE 0
 #define SAGEJS_WORD_OK 1
 #define SAGEJS_WORD_ERROR -1

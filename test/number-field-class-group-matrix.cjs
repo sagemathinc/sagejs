@@ -44,6 +44,7 @@ const behavior = String.raw`
 import copy
 import json
 import time
+import sagejs.number_fields.class_group_matrix as matrix_module
 
 from sagejs.number_fields.class_group_matrix import (
     DeferredPresentationPolicy,
@@ -52,6 +53,7 @@ from sagejs.number_fields.class_group_matrix import (
     RelationMatrixError,
     RelationPresentation,
     SparseRelationRow,
+    extend_relation_presentation_with_duplicate_rows,
     extract_relation_presentation,
     modular_rank_and_pivots,
 )
@@ -69,6 +71,10 @@ def normalized_coordinates(presentation, coordinates):
 for case in fixture['cases']:
     rows = case['rows']
     columns = len(rows[0])
+    dense_support = matrix_module.exact_relation_hnf_support(rows, columns)
+    assert dense_support == matrix_module.exact_relation_hnf_support(
+        [SparseRelationRow(columns, row) for row in rows], columns
+    )
     accumulator = RelationMatrixAccumulator(columns)
     for index, row in enumerate(rows):
         insertion = accumulator.add_relation(
@@ -87,6 +93,16 @@ for case in fixture['cases']:
 
     python = accumulator.presentation(backend='python')
     flint = accumulator.presentation(backend='flint')
+    source = [row.dense() for row in accumulator.rows]
+    packed_forms = matrix_module._packed_flint_forms(source, columns)
+    assert packed_forms == matrix_module._flint_forms(source, columns)
+    saved_forms_override = matrix_module._presentation_forms_kernel_override
+    matrix_module._presentation_forms_kernel_override = False
+    try:
+        legacy_flint = accumulator.presentation(backend='flint')
+    finally:
+        matrix_module._presentation_forms_kernel_override = saved_forms_override
+    assert legacy_flint.to_dict() == flint.to_dict()
     expected_diagonal = tuple(
         value for value in case['elementary_divisors'] if value
     )
@@ -114,6 +130,68 @@ for case in fixture['cases']:
         assert replayed.invariants == presentation.invariants
         assert replayed.generator_transforms == presentation.generator_transforms
         assert replayed.verify()
+
+        if case['name'] == 'cyclic-4-noncanonical' and presentation.backend == 'flint':
+            source = [row.dense() for row in presentation.relation_rows]
+            matrix_replay = matrix_module._packed_relation_presentation_replay(
+                source,
+                [list(row) for row in presentation.hnf],
+                [list(row) for row in presentation.hnf_left_transform],
+                [list(row) for row in presentation.smith],
+                [list(row) for row in presentation.smith_left_transform],
+                [list(row) for row in presentation.smith_right_transform],
+                [list(row) for row in presentation.smith_right_inverse],
+            )
+            assert matrix_replay is True
+            saved_replay_override = matrix_module._presentation_replay_kernel_override
+            matrix_module._presentation_replay_kernel_override = False
+            try:
+                assert presentation.verify()
+            finally:
+                matrix_module._presentation_replay_kernel_override = saved_replay_override
+
+            # Every packed matrix remains proof data.  Native and readable
+            # replay both reject mutations rather than trusting FLINT's output.
+            for matrix_key in (
+                'hnf', 'hnf_left', 'smith', 'smith_left',
+                'smith_right', 'smith_right_inverse',
+            ):
+                forged = copy.deepcopy(presentation.to_dict())
+                forged[matrix_key][0][0] += 1
+                try:
+                    RelationPresentation.from_dict(forged)
+                except (RelationMatrixError, ArithmeticError):
+                    pass
+                else:
+                    raise AssertionError(
+                        'packed presentation replay accepted changed ' + matrix_key
+                    )
+
+        retained_order = presentation.order
+        presentation.order = (
+            2 if retained_order is None else retained_order + 1
+        )
+        assert not presentation.verify()
+        presentation.order = retained_order
+        assert presentation.verify()
+
+        duplicate = extend_relation_presentation_with_duplicate_rows(
+            presentation, (rows[0], rows[0])
+        )
+        assert duplicate.verify()
+        assert duplicate.invariants == presentation.invariants
+        assert duplicate.order == presentation.order
+        assert len(duplicate.dependency_transforms) == (
+            len(presentation.dependency_transforms) + 2
+        )
+        assert [row.dense() for row in duplicate.relation_rows] == rows + [
+            rows[0], rows[0]
+        ]
+        rebuilt_duplicate = extract_relation_presentation(
+            rows + [rows[0], rows[0]], columns, backend=presentation.backend
+        )
+        assert duplicate.invariants == rebuilt_duplicate.invariants
+        assert duplicate.order == rebuilt_duplicate.order
 
         corrupted = copy.deepcopy(presentation.to_dict())
         if corrupted['rows'] and columns:

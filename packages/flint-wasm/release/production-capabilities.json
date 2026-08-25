@@ -416,6 +416,7 @@
         "kernel:genus3-weil-candidate-production",
         "kernel:hyperelliptic-period-edge-batch-production",
         "kernel:hyperelliptic-rational-reduction-production",
+        "kernel:number-field-bdf-interval-production",
         "kernel:number-field-composite-analysis-production",
         "kernel:number-field-cubic-norm-obstruction-production",
         "kernel:number-field-cubic-relation-sieve-production",
