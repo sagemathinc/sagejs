@@ -594,7 +594,128 @@ class _LiveClassUnitArtifacts:
         self.authenticated_dependency_units: list[tuple[Any, str]] = []
         self.class_group: Any = None
         self.unit_group: Any = None
+        self.terminal_proof_status: str | None = None
+        self.terminal_dependency_hashes: dict[str, str] = {}
+        self.terminal_identity_snapshot: dict[str, Any] | None = None
+        self.terminal_upgrade_issued = False
         self.sealed = False
+
+    def _capture_terminal_identity(self) -> dict[str, Any]:
+        """Capture a bounded identity shell around producer-hashed content."""
+        group = self.class_group
+        unit_group = self.unit_group
+        saturation = self.saturation_record
+        collector = self.collector
+        if (
+            group is None
+            or unit_group is None
+            or saturation is None
+            or collector is None
+            or self.presentation is None
+        ):
+            raise ValueError("a terminal upgrade needs complete exact state")
+        return {
+            "factor_base": tuple(self.factor_base),
+            "relations": tuple(self.relations),
+            "presentation": self.presentation,
+            "collector": collector,
+            "collector_factor_base": tuple(getattr(collector, "factor_base", ())),
+            "collector_relations": tuple(getattr(collector, "records", ())),
+            "factored_units": tuple(self.factored_units),
+            "saturation": saturation,
+            "saturation_content_sha256": getattr(saturation, "content_sha256", None),
+            "class_group": group,
+            "group_proof_status": getattr(group, "proof_status", None),
+            "group_theorem": getattr(group, "factor_base_theorem", None),
+            "group_invariants": tuple(getattr(group, "_invariants", ())),
+            "group_generator_rows": tuple(getattr(group, "_generator_rows", ())),
+            "group_generator_ideals": tuple(getattr(group, "_generator_ideals", ())),
+            "group_factor_base": tuple(getattr(group, "_factor_base", ())),
+            "group_relations": tuple(getattr(group, "_relations", ())),
+            "group_relation_reconstructor": getattr(
+                group, "_relation_reconstructor", None
+            ),
+            "group_combine_relations": getattr(group, "_combine_relations", None),
+            "group_factor_over_base": getattr(group, "_factor_over_base", None),
+            "group_reduce_over_base": getattr(group, "_reduce_over_base", None),
+            "group_combine_reduction_witness": getattr(
+                group, "_combine_reduction_witness", None
+            ),
+            "unit_group": unit_group,
+            "unit_proof_status": getattr(unit_group, "proof_status", None),
+            "unit_torsion": getattr(unit_group, "torsion", None),
+            "unit_generators": tuple(getattr(unit_group, "generators", ())),
+            "unit_rank": getattr(unit_group, "unit_rank", None),
+            "unit_complete": getattr(unit_group, "complete", None),
+            "unit_regulator": getattr(unit_group, "regulator_enclosure", None),
+            "unit_reason": getattr(unit_group, "reason", None),
+        }
+
+    @staticmethod
+    def _same_identity_sequence(left: Any, right: Any) -> bool:
+        left_values = tuple(left)
+        right_values = tuple(right)
+        return bool(
+            len(left_values) == len(right_values)
+            and all(
+                left_value is right_value
+                for left_value, right_value in zip(
+                    left_values, right_values, strict=True
+                )
+            )
+        )
+
+    def _terminal_identity_matches(self) -> bool:
+        retained = self.terminal_identity_snapshot
+        if retained is None:
+            return False
+        try:
+            current = self._capture_terminal_identity()
+            for name in (
+                "factor_base",
+                "relations",
+                "collector_factor_base",
+                "collector_relations",
+                "factored_units",
+                "group_generator_ideals",
+                "group_factor_base",
+                "group_relations",
+                "unit_generators",
+            ):
+                if not self._same_identity_sequence(retained[name], current[name]):
+                    return False
+            for name in (
+                "presentation",
+                "collector",
+                "saturation",
+                "class_group",
+                "group_relation_reconstructor",
+                "group_combine_relations",
+                "group_factor_over_base",
+                "group_reduce_over_base",
+                "group_combine_reduction_witness",
+                "unit_group",
+                "unit_torsion",
+                "unit_regulator",
+            ):
+                if retained[name] is not current[name]:
+                    return False
+            return all(
+                retained[name] == current[name]
+                for name in (
+                    "saturation_content_sha256",
+                    "group_proof_status",
+                    "group_theorem",
+                    "group_invariants",
+                    "group_generator_rows",
+                    "unit_proof_status",
+                    "unit_rank",
+                    "unit_complete",
+                    "unit_reason",
+                )
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
 
     def bind_factor_base(
         self,
@@ -1103,6 +1224,8 @@ class _LiveClassUnitArtifacts:
     def retain_terminal(
         self,
         *,
+        proof_status: str | None = None,
+        proof_dependency_hashes: Any = None,
         units: Iterable[Any] = (),
         saturation_record: Any = None,
         class_group: Any = None,
@@ -1121,9 +1244,91 @@ class _LiveClassUnitArtifacts:
             self.saturation_record = saturation_record
         self.class_group = class_group
         self.unit_group = unit_group
+        self.terminal_proof_status = None if proof_status is None else str(proof_status)
+        dependencies = (
+            {} if proof_dependency_hashes is None else dict(proof_dependency_hashes)
+        )
+        if any(
+            not isinstance(name, str) or not isinstance(value, str) or len(value) != 64
+            for name, value in dependencies.items()
+        ):
+            raise ValueError("terminal proof dependency hashes are malformed")
+        self.terminal_dependency_hashes = dependencies
         self.deactivate_generation_verification()
         self.saturation_live_authority_available = False
         self.sealed = True
+        if (
+            self.reusable
+            and self.terminal_proof_status == "exact-relations-conditional-grh"
+            and class_group is not None
+            and unit_group is not None
+            and saturation_record is not None
+        ):
+            try:
+                self.terminal_identity_snapshot = self._capture_terminal_identity()
+            except (AttributeError, TypeError, ValueError, ArithmeticError):
+                # Terminal publication remains valid even if a component
+                # cannot participate in the optional live proof fork.
+                self.terminal_identity_snapshot = None
+
+    def terminal_upgrade_material(self, source: Any) -> dict[str, Any] | None:
+        """Issue one identity- and digest-bound conditional terminal fork."""
+        if (
+            not self.sealed
+            or not self.reusable
+            or self.terminal_upgrade_issued
+            or self.terminal_proof_status != "exact-relations-conditional-grh"
+            or self.terminal_identity_snapshot is None
+        ):
+            return None
+        try:
+            source_factors = tuple(getattr(source, "conditional_factor_base", ()))
+            source_relations = tuple(
+                getattr(source, "conditional_relation_records", ())
+            )
+            if (
+                getattr(source, "complete", None) is not True
+                or getattr(source, "proof_status", None) != self.terminal_proof_status
+                or source.class_group() is not self.class_group
+                or source.unit_group() is not self.unit_group
+                or getattr(source, "saturation_record", None)
+                is not self.saturation_record
+                or dict(getattr(source, "proof_dependency_hashes", {}))
+                != self.terminal_dependency_hashes
+                or len(source_factors) != len(self.factor_base)
+                or any(
+                    source_value is not retained
+                    for source_value, retained in zip(
+                        source_factors, self.factor_base, strict=True
+                    )
+                )
+                or len(source_relations) != len(self.relations)
+                or any(
+                    source_value is not retained
+                    for source_value, retained in zip(
+                        source_relations, self.relations, strict=True
+                    )
+                )
+                or getattr(source, "conditional_presentation_evidence", None)
+                is not self.presentation
+                or getattr(self.class_group, "_relation_reconstructor", None)
+                is not self.collector
+                or not self._terminal_identity_matches()
+            ):
+                return None
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return None
+        self.terminal_upgrade_issued = True
+        return {
+            "factor_base": self.factor_base,
+            "collector": self.collector,
+            "relations": self.relations,
+            "presentation": self.presentation,
+            "units": self.factored_units,
+            "saturation_record": self.saturation_record,
+            "class_group": self.class_group,
+            "unit_group": self.unit_group,
+        }
 
     def diagnostics(self) -> dict[str, Any]:
         return {
@@ -1183,6 +1388,7 @@ class ClassUnitGroupContext:
         diagnostics: Any = None,
         random_seed: int = 0,
         signature: Any = None,
+        _trusted_live_token: Any = None,
     ) -> None:
         if type(proof_state) is not ClassUnitProofState:
             raise TypeError("a class/unit context needs an immutable proof state")
@@ -1224,7 +1430,10 @@ class ClassUnitGroupContext:
         self.precision_history = _checked_precision_history(precision_history)
         self.diagnostics = {} if diagnostics is None else diagnostics
         self._live_artifacts: _LiveClassUnitArtifacts | None = None
-        self._validate_components()
+        if _trusted_live_token is None:
+            self._validate_components()
+        elif _trusted_live_token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live context forks are engine-owned")
 
     def _activate_live(
         self,
@@ -1521,6 +1730,12 @@ class ClassUnitGroupContext:
         live = self._live_artifacts
         if live is not None:
             live.retain_terminal(
+                proof_status=(None if proof_state is None else proof_state.label),
+                proof_dependency_hashes=(
+                    {}
+                    if proof_state is None
+                    else proof_state.evidence.get("proof_dependency_hashes", {})
+                ),
                 units=units,
                 saturation_record=saturation_record,
                 class_group=class_group,
@@ -1540,6 +1755,32 @@ class ClassUnitGroupContext:
             self.proof_progress = proof_progress
         if diagnostics is not None:
             self.diagnostics = diagnostics
+
+    def _fork_live_terminal_for_unconditional_proof(
+        self,
+        token: Any,
+        source: Any,
+        proof_state: ClassUnitProofState,
+    ) -> tuple[ClassUnitGroupContext, dict[str, Any]] | None:
+        """Fork a reusable conditional terminal without exporting authority."""
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("terminal proof forks are engine-owned")
+        if type(proof_state) is not ClassUnitProofState:
+            raise TypeError("a terminal proof fork needs an immutable proof state")
+        live = self._live_artifacts
+        if (
+            live is None
+            or self.proof_state.label != "exact-relations-conditional-grh"
+            or self.proof_state.evidence.get("proof_dependency_hashes", {})
+            != getattr(source, "proof_dependency_hashes", {})
+        ):
+            return None
+        material = live.terminal_upgrade_material(source)
+        if material is None:
+            return None
+        return self.fork_for_proof(
+            proof_state, _live_token=_LIVE_CLASS_UNIT_CONTEXT_TOKEN
+        ), material
 
     def live_diagnostics(self) -> dict[str, Any]:
         """Describe retained in-process state without exposing its authority."""
@@ -1658,7 +1899,9 @@ class ClassUnitGroupContext:
         current[name] = canonical_component(value)
         self.diagnostics = current
 
-    def fork_for_proof(self, proof_state: ClassUnitProofState) -> ClassUnitGroupContext:
+    def fork_for_proof(
+        self, proof_state: ClassUnitProofState, *, _live_token: Any = None
+    ) -> ClassUnitGroupContext:
         """Share exact work in a new context with a separate proof cache key."""
         return ClassUnitGroupContext(
             self.field,
@@ -1679,6 +1922,7 @@ class ClassUnitGroupContext:
             diagnostics=self.diagnostics,
             random_seed=self.random_seed,
             signature=self.signature,
+            _trusted_live_token=_live_token,
         )
 
     def _body_dict(self) -> dict[str, Any]:
