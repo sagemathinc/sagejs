@@ -21,6 +21,8 @@ import json
 import time
 from typing import Any, Callable, Iterable, Sequence
 
+import sagejs.runtime as runtime
+
 EXACT_UNCONDITIONAL = "exact-unconditional"
 EXACT_RELATIONS_CONDITIONAL_GRH = "exact-relations-conditional-grh"
 INCOMPLETE_RESOURCE_LIMIT = "incomplete-resource-limit"
@@ -39,6 +41,39 @@ MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 _CUBIC_RELATION_SEED_UNREAD = object()
 _TERMINAL_SATURATION_CLONE_TOKEN = object()
 _CLASS_UNIT_ENGINE_CACHE_ENTRY_TOKEN = object()
+
+
+def _context_matches_engine_limits(
+    context_limits: Any, limits_key: tuple[tuple[str, int], ...]
+) -> bool:
+    """Compare the exact engine policy with its checkpoint-context projection."""
+    expected = dict(limits_key)
+    standard_names = (
+        "max_factor_base_size",
+        "max_relations",
+        "max_partial_relations",
+        "max_relation_attempts",
+        "max_precision_bits",
+        "max_memory_bytes",
+    )
+    try:
+        if any(
+            getattr(context_limits, name, None) != expected[name]
+            for name in standard_names
+        ):
+            return False
+        if (
+            getattr(context_limits, "max_proof_primes", None)
+            != expected["max_factor_base_size"]
+            or getattr(context_limits, "max_checkpoint_bytes", None) is not None
+            or getattr(context_limits, "max_seconds", None) is not None
+        ):
+            return False
+        return context_limits.extra == {
+            name: expected[name] for name in expected if name not in standard_names
+        }
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return False
 
 
 def _factor_base_proof_status(plan: Any) -> str:
@@ -1127,6 +1162,7 @@ class _ClassUnitEngineCacheEntry:
             or not callable(proof_hash)
             or context_limits is None
             or not callable(limits_hash)
+            or not _context_matches_engine_limits(context_limits, limits_key)
             or result.field is not field
             or getattr(context, "field", None) is not field
             or getattr(context, "order", None) is not order
@@ -1156,6 +1192,7 @@ class _ClassUnitEngineCacheEntry:
         self.__context_proof_hash = str(proof_hash())
         self.__context_limits = context_limits
         self.__context_limits_hash = str(limits_hash())
+        runtime.object.freeze(self)
 
     def matching_result(
         self,
@@ -1196,6 +1233,7 @@ class _ClassUnitEngineCacheEntry:
                 or str(proof_state.stable_hash()) != self.__context_proof_hash
                 or getattr(context, "limits", None) is not context_limits
                 or str(context_limits.stable_hash()) != self.__context_limits_hash
+                or not _context_matches_engine_limits(context_limits, limits_key)
                 or (
                     bool(requested_proof)
                     and result.complete
