@@ -1089,7 +1089,7 @@ test("prepared packed Cantor arithmetic is exact in dynamic and native modes", (
       core,
       "int sagejs_kernel_packed_cantor_sum_batch(",
     );
-    assert.match(sumBody, /word__cantor_add_one/);
+    assert.match(sumBody, /sagejs_kernel__cantor_add_one/);
     assert.doesNotMatch(
       sumBody,
       /native__cantor_add_one|mpz_|SAGEJS_WORD_PROMOTE/,
