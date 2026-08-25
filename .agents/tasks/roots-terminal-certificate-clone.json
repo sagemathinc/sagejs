@@ -1,0 +1,83 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "roots-terminal-certificate-clone",
+  "title": "Roots Terminal Certificate Clone",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Preserve and replay authenticated roots-of-unity certificates across class/unit conditional-to-unconditional terminal upgrades",
+  "base_commit": "2b4902e4c8dffc7b5ca2fd64fef8c6f3288542ee",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "src/lib/sagejs/number_fields/class_unit_context.py",
+    "test/number-field-class-unit-terminal-reuse.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing terminal-reuse exact proof tests",
+      "C4 quintic cold versus conditional-to-unconditional differential"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test --test-name-pattern=\"reuses C4 quintic\" test/number-field-class-unit-terminal-reuse.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test --test-name-pattern=reuses C4 quintic test/number-field-class-unit-terminal-reuse.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 68.693,
+      "started_at": "2026-08-25T12:01:44.343Z",
+      "commit": "2b4902e4c8dffc7b5ca2fd64fef8c6f3288542ee",
+      "workspace_fingerprint": "8c11b54450bc22c95533d11f41c74c49d912421ce3a87362755d976b53494036",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.189,
+      "started_at": "2026-08-25T12:02:57.217Z",
+      "commit": "2b4902e4c8dffc7b5ca2fd64fef8c6f3288542ee",
+      "workspace_fingerprint": "8c11b54450bc22c95533d11f41c74c49d912421ce3a87362755d976b53494036",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.73,
+      "started_at": "2026-08-25T12:03:34.130Z",
+      "commit": "2b4902e4c8dffc7b5ca2fd64fef8c6f3288542ee",
+      "workspace_fingerprint": "8c11b54450bc22c95533d11f41c74c49d912421ce3a87362755d976b53494036",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Restores authenticated conditional-to-unconditional terminal reuse after the exact roots-of-unity producer landed. The terminal semantic seal now binds the complete roots certificate payload and identity, terminal cloning reconstructs it with strict field-relative detached replay, and the full fork/clone/proof/publication path releases its one-shot lease on every unsuccessful exit. The C4 quintic regression covers hostile torsion mutation, certificate mutation and replacement, induced decoder failure with retry, independent cloned authority, exact public verification, and detached proof replay.",
+    "risks": [
+      "The pre-existing full terminal-reuse test currently spends more than 210 seconds in its first x^6-x-1 conditional discovery on this integration base and exceeds its unchanged 120-second subprocess cap before reaching terminal-clone logic; the new bounded C4 test is run by name pattern.",
+      "The arithmetic-algebra lane requires pnpm test:native. Integration explicitly requested one cumulative native run only after this change and p3 are combined, so that receipt is integration-pending rather than duplicated here.",
+      "Terminal reuse is an authority and correctness repair, not the next major speedup: three isolated C4 pairs saved a median 0.791 seconds, 24.526 seconds reused versus 25.225 seconds cold."
+    ],
+    "next_steps": [
+      "Cherry-pick this lane together with p3 and run the exact cumulative pnpm test:native gate once.",
+      "Keep detached verification independent and uncached; optimize the measured Minkowski proof suffix separately."
+    ]
+  }
+}
