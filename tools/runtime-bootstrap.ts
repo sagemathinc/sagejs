@@ -9,6 +9,7 @@
 import { mkdirSync, statSync } from "fs";
 import { homedir } from "os";
 import { dirname, join, resolve } from "path";
+import { createRequire } from "module";
 import { Script } from "vm";
 
 import { markModuleCacheInUse } from "./cache-lease";
@@ -23,6 +24,7 @@ import {
 import type { PythonCompilerFrontend } from "./python/compiler-frontend";
 import {
   loadPrecompiledNativeKernel,
+  isSingleExecutable,
   precompiledLazyModuleCacheDirectory,
   precompiledNativeKernelCacheDirectory,
   readBaselibSource,
@@ -32,7 +34,8 @@ import {
   standardLibraryCacheDirectory,
 } from "./resources";
 import { loadSagejsCapabilityApi } from "./capability-api";
-import { getImportDirs, importPath, libraryPath, sha1sum } from "./utils";
+import { installImmutableUInt64CapsuleRuntime } from "./immutable-uint64-capsule";
+import { basePath, getImportDirs, importPath, libraryPath, sha1sum } from "./utils";
 import {
   beginInitializationTiming,
   finishInitializationTiming,
@@ -117,12 +120,72 @@ function precompiledLazyModuleMatchesSource(
 // `tools/native-kernel/c-backend.cjs`. Production-kernel tests ratchet the two
 // values together. Keeping the expected value in the runtime makes an old
 // cache fail closed even when its Python source has not changed.
-export const NATIVE_KERNEL_ABI_VERSION = 22;
+export const NATIVE_KERNEL_ABI_VERSION = 23;
 
 // A real statement gives the output pipeline a module to which it can attach
 // the generated baselib.  This used to be a RapydScript anonymous-function
 // extension; the authoritative frontend intentionally accepts Python/Sage.
 const BOOTSTRAP_SOURCE = "pass\n";
+const HYPERELLIPTIC_RECEIPT_RUNTIME =
+  "__sagejs_hyperelliptic_auto_receipt_policy__";
+let singleExecutableReceiptRuntime: object | undefined;
+
+export function installHyperellipticAutoReceiptPolicy(): void {
+  if (isSingleExecutable()) {
+    const existing = Reflect.get(globalThis, HYPERELLIPTIC_RECEIPT_RUNTIME);
+    if (singleExecutableReceiptRuntime !== undefined) {
+      if (existing !== singleExecutableReceiptRuntime) {
+        throw new Error("single-executable receipt runtime was replaced");
+      }
+      return;
+    }
+    if (existing !== undefined) {
+      throw new Error("hyperelliptic receipt runtime existed before trusted startup");
+    }
+    const runtime = Object.freeze({
+      schema: "sagejs.hyperelliptic-auto-receipt-runtime/v1",
+      enabled: true,
+      platform: "single-executable-unreceipted",
+      source_bundle_sha256: null,
+      decide(backend: unknown, operation: unknown) {
+        return Object.freeze({
+          schema: "sagejs.hyperelliptic-auto-receipt-runtime/v1",
+          policy_enabled: true,
+          selected: false,
+          reason: "unreceipted-fallback",
+          entry_id: null,
+          backend,
+          operation,
+        });
+      },
+    });
+    Object.defineProperty(globalThis, HYPERELLIPTIC_RECEIPT_RUNTIME, {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: runtime,
+    });
+    singleExecutableReceiptRuntime = runtime;
+    return;
+  }
+  const loader = createRequire(__filename)(
+    join(
+      basePath,
+      "tools",
+      "math-dispatch",
+      "hyperelliptic-auto-receipt-loader.cjs",
+    ),
+  ) as {
+    installCheckedInAutoReceiptPolicy(options: {
+      root: string;
+      target: typeof globalThis;
+    }): unknown;
+  };
+  loader.installCheckedInAutoReceiptPolicy({
+    root: basePath,
+    target: globalThis,
+  });
+}
 
 function cacheDirectory(): string {
   return join(__dirname, "..", "runtime-cache");
@@ -178,6 +241,8 @@ export function runRuntimeBootstrap(
   additionalImportDirs: string[] = [],
   requestedModuleCacheDirectory?: string | false,
 ): void {
+  installHyperellipticAutoReceiptPolicy();
+  installImmutableUInt64CapsuleRuntime();
   if (Reflect.get(globalThis, "__sagejs_capability_api__") === undefined) {
     Reflect.set(globalThis, "__sagejs_capability_api__", loadSagejsCapabilityApi());
   }

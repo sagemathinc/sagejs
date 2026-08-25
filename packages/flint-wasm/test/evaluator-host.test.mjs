@@ -106,6 +106,24 @@ const backendOptions = {
       };
     },
   }),
+  fetchAutoReceiptPolicy: async () => ({
+    ok: true,
+    async json() {
+      return {
+        schema: "sagejs.hyperelliptic-auto-receipt-policy/v1",
+        enabled: false,
+        required_platforms: [
+          "linux-x64",
+          "linux-arm64",
+          "darwin-arm64",
+          "win32-x64",
+        ],
+        source_bundle_contract: { algorithm: "test", paths: [] },
+        source_bundle: null,
+        entries: [],
+      };
+    },
+  }),
 };
 
 test("browser POSIX realpath normalization is rooted and rejects NUL", () => {
@@ -155,6 +173,7 @@ test("a throwing post-worker initialization terminates and restores globals", as
   assert.equal(globalThis.__sagejs_host__, undefined);
   assert.equal(globalThis.__sagejs_output_write__, undefined);
   assert.equal(globalThis.__sagejs_runtime_require__, undefined);
+  assert.equal(globalThis.__sagejs_hyperelliptic_auto_receipt_policy__, undefined);
 });
 
 test("evaluator host shares process.env and separates stdout from stderr", async () => {

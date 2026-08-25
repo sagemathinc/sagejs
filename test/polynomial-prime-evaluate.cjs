@@ -77,6 +77,11 @@ def check(parent, coefficients, value, field_element=False):
 
 F = GF(97)
 check(F, [], F(29), True)
+zero_value = PolynomialRing(F, "z")(0)(F(29))
+assert zero_value * F(2) == F(0)
+integer_mod_zero = Zmod(12)(1)._new_reduced(0)
+assert integer_mod_zero + Zmod(12)(2) == Zmod(12)(2)
+assert integer_mod_zero * Zmod(12)(7) == Zmod(12)(0)
 check(F, [31], -10**100 - 7)
 check(F, [1, 2, 3, 96, 0, 18], F(73), True)
 check(F, [1, 2, 3, 96, 0, 18], -10**100 - 7)

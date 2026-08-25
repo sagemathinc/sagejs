@@ -19,6 +19,7 @@ import { runInThisContext } from "node:vm";
 import { createHash } from "node:crypto";
 
 import { measureInitialization } from "./timing";
+import { configureImmutableUInt64KernelWrapper } from "./immutable-uint64-capsule";
 
 const VIRTUAL_ROOT = normalize("/__sagejs_sea__");
 const COMPILER_ASSET = "compiler/compiler.js";
@@ -179,11 +180,13 @@ export function loadPrecompiledNativeKernel(
 ): unknown {
   if (!isSea()) {
     const resolved = require.resolve(moduleFilename);
-    if (require.cache[resolved]) return require(resolved);
+    if (require.cache[resolved]) {
+      return configureImmutableUInt64KernelWrapper(require(resolved));
+    }
     return measureInitialization(
       "native-kernel",
       sourceLabel,
-      () => require(resolved),
+      () => configureImmutableUInt64KernelWrapper(require(resolved)),
     );
   }
   const key = assetKeyForVirtualPath(moduleFilename);
@@ -255,7 +258,9 @@ export function loadPrecompiledNativeKernel(
     if (!existsSync(outputPack)) {
       writeFileSync(outputPack, packBytes, { mode: 0o700 });
     }
-    const loaded = createRequire(outputModule)(outputModule);
+    const loaded = configureImmutableUInt64KernelWrapper(
+      createRequire(outputModule)(outputModule),
+    );
     nativeKernelModules.set(key, loaded);
     return loaded;
   });

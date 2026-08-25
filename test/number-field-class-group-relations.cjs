@@ -49,6 +49,7 @@ from sagejs.number_fields.class_group_relations import (
     exact_lll_reduce,
     factor_ideal_over_base,
     factor_witness_over_base,
+    initial_rational_prime_relation_proposals,
     initial_rational_prime_relations,
     minkowski_lll_lattice,
     plan_automorphism_orbits,
@@ -94,6 +95,13 @@ assert element_valuations(K(2), ()) == ()
 # bounding valuations instead of taking a second determinant per factor.
 shared_norm_witness = FactoredPrincipalWitness(
     K, ((K(2), 1), (K.gen() + 1, 2))
+)
+single_witness = FactoredPrincipalWitness.from_element(K.gen() + 1)
+assert single_witness.to_dict() == FactoredPrincipalWitness(
+    K, ((K.gen() + 1, 1),)
+).to_dict()
+assert FactoredPrincipalWitness.from_dict(K, single_witness.to_dict()).evaluate() == (
+    K.gen() + 1
 )
 shared_norm_expected = shared_norm_witness.norm()
 element_type = type(K.gen())
@@ -160,6 +168,18 @@ try:
 finally:
     relation_module._validate_factor_base = saved_validate_factor_base
 assert factor_base_validation_calls == 1
+factor_base_validation_calls = 0
+relation_module._validate_factor_base = counted_validate_factor_base
+try:
+    sibling = collector.empty_verified_sibling()
+finally:
+    relation_module._validate_factor_base = saved_validate_factor_base
+assert factor_base_validation_calls == 0
+assert sibling.order is collector.order
+assert sibling.factor_base == collector.factor_base
+assert not sibling.records and not sibling.admissions
+assert sibling.reconstruction_diagnostics()["row_requests"] == 0
+assert sibling.admission_receipt_diagnostics()["entries"] == 0
 order_type = type(O)
 saved_factor_rational_prime = order_type.factor_rational_prime
 def forbidden_refactor(self, rational_prime, *args, **kwargs):
@@ -185,6 +205,82 @@ assert collector_cache["retained_ideal_objects"] <= (
 )
 assert collector.admission_receipt_diagnostics()["integral_norm_certificates"] == len(initial)
 
+# A caller may authenticate the same complete rational-prime relations in one
+# packed batch with later integral proposals.  The coordinate proposals must
+# remain byte-for-byte equivalent to the scalar public helper.
+initial_proposals = initial_rational_prime_relation_proposals(
+    ExactRelationCollector(O, factor_base)
+)
+combined_initial_collector = ExactRelationCollector(O, factor_base)
+combined_initial = combined_initial_collector.admit_integral_order_basis_rows(
+    initial_proposals
+)
+assert combined_initial is not None
+assert [item.record.to_dict() for item in combined_initial] == [
+    item.record.to_dict() for item in initial
+]
+assert combined_initial_collector.admission_receipt_diagnostics()[
+    "integral_batch_calls"
+] == 1
+assert combined_initial_collector.admission_receipt_diagnostics()[
+    "integral_batch_rows"
+] == len(initial)
+
+# A live producer may transfer rows that it has already proved with exact
+# packed arithmetic.  The authority is identity-bound, nonserializable, and
+# accepts only its immutable coordinate/row pairs; every public or detached
+# record still uses the ordinary replay path.
+try:
+    relation_module._ValidatedIntegralRelationBatch(
+        O,
+        factor_base,
+        (((2, 0), initial[0].record.row, 4),),
+    )
+    raise AssertionError("an unsealed relation-batch authority was constructed")
+except TypeError:
+    pass
+validated_authority = relation_module._ValidatedIntegralRelationBatch(
+    O,
+    factor_base,
+    (((2, 0), initial[0].record.row, 4),),
+    _validated_token=relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN,
+)
+assert not hasattr(validated_authority, "to_dict")
+validated_collector = ExactRelationCollector(O, factor_base)
+validated_batch = validated_collector._admit_validated_integral_order_basis_rows(
+    validated_authority,
+    (((2, 0), initial[0].record.row, initial[0].record.provenance),),
+    _validated_token=relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN,
+)
+assert [item.record.to_dict() for item in validated_batch] == [
+    initial[0].record.to_dict()
+]
+assert validated_collector.admission_receipt_diagnostics()[
+    "validated_batch_calls"
+] == 1
+assert validated_collector.admission_receipt_diagnostics()[
+    "validated_batch_rows"
+] == 1
+try:
+    validated_authority.authorize(
+        O,
+        factor_base,
+        (((3, 0), initial[0].record.row, None),),
+    )
+    raise AssertionError("a relation absent from the authority was accepted")
+except ValueError:
+    pass
+other_order = NumberField(R(case["polynomial_low_to_high"]), "b").maximal_order()
+try:
+    validated_authority.authorize(
+        other_order,
+        factor_base,
+        (((2, 0), initial[0].record.row, None),),
+    )
+    raise AssertionError("a relation authority crossed maximal-order identities")
+except TypeError:
+    pass
+
 # Exact order-basis coordinates prove integrality by construction while
 # retaining the identical relation record and detached replay payload.
 coordinate_collector = ExactRelationCollector(O, factor_base)
@@ -208,6 +304,87 @@ try:
     raise AssertionError("a short order-coordinate row was accepted")
 except ValueError:
     pass
+
+# The batched admission boundary recomputes exact norms and independently
+# replays all packed prime-power containments before storing anything.  Its
+# record is identical to scalar admission, unavailable kernels return a clean
+# fallback signal, and a successful-but-corrupt kernel cannot admit a row.
+batch_collector = ExactRelationCollector(O, factor_base)
+canonical_key_calls = 0
+live_identity_calls = 0
+saved_canonical_key = RelationRecord.canonical_key
+saved_live_identity_key = RelationRecord.live_identity_key
+def counted_canonical_key(self):
+    global canonical_key_calls
+    canonical_key_calls += 1
+    return saved_canonical_key(self)
+def counted_live_identity_key(self):
+    global live_identity_calls
+    live_identity_calls += 1
+    return saved_live_identity_key(self)
+RelationRecord.canonical_key = counted_canonical_key
+RelationRecord.live_identity_key = counted_live_identity_key
+try:
+    batch = batch_collector.admit_integral_order_basis_rows((
+        ((2, 0), initial[0].record.row, initial[0].record.provenance),
+    ))
+finally:
+    RelationRecord.canonical_key = saved_canonical_key
+    RelationRecord.live_identity_key = saved_live_identity_key
+assert batch is not None and len(batch) == 1
+assert canonical_key_calls == 1
+assert live_identity_calls == 1
+assert batch[0].record.to_dict() == initial[0].record.to_dict()
+assert batch_collector.admission_receipt_diagnostics()[
+    "integral_norm_certificates"
+] == 1
+assert batch_collector.admission_receipt_diagnostics()["integral_batch_calls"] == 1
+assert batch_collector.admission_receipt_diagnostics()["integral_batch_rows"] == 1
+assert batch_collector.admission_receipt_diagnostics()["integral_batch_fallbacks"] == 0
+
+saved_batch_kernel = relation_module._integral_relation_batch_kernel_override
+relation_module._integral_relation_batch_kernel_override = False
+try:
+    unavailable_collector = ExactRelationCollector(O, factor_base)
+    assert unavailable_collector.admit_integral_order_basis_rows((
+        ((2, 0), initial[0].record.row, initial[0].record.provenance),
+    )) is None
+    assert not unavailable_collector.records
+    assert unavailable_collector.admission_receipt_diagnostics()[
+        "integral_batch_fallbacks"
+    ] == 1
+finally:
+    relation_module._integral_relation_batch_kernel_override = saved_batch_kernel
+
+def corrupt_batch_kernel(metadata, rows, smooth, *arguments):
+    metadata[0] = 1
+    metadata[1] = 1
+    metadata[2] = arguments[-1]
+    smooth[0] = 1
+    return True
+relation_module._integral_relation_batch_kernel_override = corrupt_batch_kernel
+try:
+    corrupt_collector = ExactRelationCollector(O, factor_base)
+    try:
+        corrupt_collector.admit_integral_order_basis_rows((
+            ((2, 0), initial[0].record.row, initial[0].record.provenance),
+        ))
+        raise AssertionError("corrupt packed relation replay was accepted")
+    except RelationNotSmoothError:
+        pass
+    assert not corrupt_collector.records
+finally:
+    relation_module._integral_relation_batch_kernel_override = saved_batch_kernel
+
+oversized_collector = ExactRelationCollector(O, factor_base)
+try:
+    oversized_collector.admit_integral_order_basis_rows((
+        ((1 << 4096, 0), initial[0].record.row, initial[0].record.provenance),
+    ))
+    raise AssertionError("oversized packed integral coordinates were accepted")
+except ValueError:
+    pass
+assert not oversized_collector.records
 
 # Live admission receipts bind the collector's exact order and factor-base
 # objects plus the complete canonical record payload.  Public/detached replay

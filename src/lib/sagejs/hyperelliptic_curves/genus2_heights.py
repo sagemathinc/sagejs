@@ -5,9 +5,9 @@ The production envelope in this module is intentionally explicit.
 * Exact Flynn quartic Kummer duplication supports every checked
   odd-degree genus-2 Mumford divisor over `QQ`, including generalized
   equations `y^2 + h*y = f`.
-* A factorization-free modular-gcd finite local-correction engine and an
-  exact real-place correction iteration implement the practical
-  Müller--Stoll path for primitive integral classical quintics.
+* A factorization-free modular-gcd finite local-correction engine and a
+  normalized outward-rounded real-ball correction iteration implement the
+  practical Müller--Stoll path for primitive integral classical quintics.
 * An automatic, conservative, proved height-difference enclosure is supplied
   for primitive integral classical quintics `y^2=f(x)`.  It combines Stoll's
   root-partition bound at infinity with an audited coefficient bound for the
@@ -21,32 +21,60 @@ labelled numerical reference; a supplied global height-difference assumption
 produces only a conditional enclosure. Even-degree transformations are not
 inferred.
 
-The real-place iterator is exact and projectively gcd-normalized, but its
-coordinate bit size still grows by roughly a factor of four per step. A
-configurable pre-duplication budget prevents accidental runaway work. This is
-therefore a certified bounded-exact path, not yet the arbitrary-precision
-floating/ball archimedean engine of a complete optimized phase exit.
+The production real-place iterator projectively normalizes after every step,
+so it retains four bounded-size balls rather than exponentially growing exact
+coordinates.  The exact path remains available as a deliberately guarded
+small-step differential oracle.
 """
 
 from __future__ import annotations
 
+from time import perf_counter
 from typing import Any, cast
 
 from sagejs.hyperelliptic_curves.genus2_kummer import (
     KummerCoordinates,
     classical_duplication_l1_bound,
-    classical_duplication_raw,
+    classical_duplication_specialized_terms,
     divisor_provenance,
     exact_divisor_capability,
     exact_model_capability,
     kummer_coordinates,
 )
+from sagejs.hyperelliptic_curves.genus2_kummer_height_kernel import (
+    dyadic_kummer_height_recurrence,
+    dyadic_kummer_height_recurrence_batch,
+    dyadic_log_interval_batch,
+    exact_kummer_small_step_batch,
+    modular_kummer_height_recurrence,
+    modular_kummer_height_recurrence_batch,
+)
+from sagejs.native import (
+    integer_buffer_values,
+    is_compiled,
+    kernel_integer_buffer,
+    kernel_integer_zeros,
+    kernel_uint64_buffer,
+)
 from sagejs.number_fields.class_unit_analytic import IntervalBallField, RealBall
+
+try:
+    import sagejs.runtime as _runtime
+except ImportError:
+    _runtime = None
+
+
+def _host_buffer_length(value: int) -> int:
+    if _runtime is None:
+        return int(value)
+    return _runtime.number(value)
 
 
 def _copy_data(value: Any) -> Any:
     """Return a defensive copy of a JSON-like diagnostic record."""
     if isinstance(value, _FrozenDict):
+        return {key: _copy_data(entry) for key, entry in value.items()}
+    if isinstance(value, _EncodedFrozenDict):
         return {key: _copy_data(entry) for key, entry in value.items()}
     if isinstance(value, dict):
         return {key: _copy_data(entry) for key, entry in value.items()}
@@ -55,37 +83,6 @@ def _copy_data(value: Any) -> Any:
     if isinstance(value, list):
         return [_copy_data(entry) for entry in value]
     return value
-
-
-def _copy_ball(value: RealBall) -> RealBall:
-    return RealBall(
-        value.lower,
-        value.upper,
-        precision_bits=value.precision_bits,
-        rigorous=value.rigorous,
-        source=value.source,
-    )
-
-
-def _ball_data(value: RealBall) -> tuple[Any, Any, int, bool, Any]:
-    """Store a ball as immutable exact endpoints and proof metadata."""
-    return (
-        value.lower,
-        value.upper,
-        int(value.precision_bits),
-        bool(value.rigorous),
-        _freeze_data(value.source),
-    )
-
-
-def _ball_from_data(data: tuple[Any, Any, int, bool, Any]) -> RealBall:
-    return RealBall(
-        data[0],
-        data[1],
-        precision_bits=data[2],
-        rigorous=data[3],
-        source=_copy_data(data[4]),
-    )
 
 
 def _same_ball(left: RealBall, right: RealBall) -> bool:
@@ -161,8 +158,127 @@ class _FrozenDict(_SealedRecord):
         return self._items
 
 
+class _EncodedFrozenDict(_SealedRecord):
+    """Immutable dictionary backed by detached tuple/scalar-only data."""
+
+    def __init__(self, encoded_items: tuple[Any, ...]) -> None:
+        self._encoded_items = encoded_items
+        self._seal()
+
+    def __getitem__(self, key: str) -> Any:
+        for stored_key, value in self._encoded_items:
+            if stored_key == key:
+                return _decode_data(value)
+        raise KeyError(key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def items(self) -> tuple[tuple[str, Any], ...]:
+        return tuple((key, _decode_data(value)) for key, value in self._encoded_items)
+
+
+def _encode_data(
+    value: Any,
+    _encoded_type: Any = _EncodedFrozenDict,
+    _frozen_type: Any = _FrozenDict,
+) -> Any:
+    """Detach JSON-like data into recursively immutable primitive tuples."""
+
+    def encode(entry: Any) -> Any:
+        if isinstance(entry, _encoded_type):
+            return ("dict", entry._encoded_items)
+        if isinstance(entry, _frozen_type):
+            return (
+                "dict",
+                tuple((key, encode(item)) for key, item in entry.items()),
+            )
+        if isinstance(entry, dict):
+            return (
+                "dict",
+                tuple((key, encode(item)) for key, item in entry.items()),
+            )
+        if isinstance(entry, (tuple, list)):
+            return ("tuple", tuple(encode(item) for item in entry))
+        return ("scalar", entry)
+
+    return encode(value)
+
+
+def _decode_data(value: Any) -> Any:
+    def decode(entry: Any) -> Any:
+        kind, payload = entry
+        if kind == "dict":
+            return {key: decode(item) for key, item in payload}
+        if kind == "tuple":
+            return tuple(decode(item) for item in payload)
+        return payload
+
+    return decode(value)
+
+
+def _ball_data(
+    value: RealBall, _data_encoder: Any = _encode_data
+) -> tuple[Any, Any, int, bool, Any]:
+    """Store a ball as immutable exact endpoints and proof metadata."""
+    return (
+        (int(value.lower.numerator), int(value.lower.denominator)),
+        (int(value.upper.numerator), int(value.upper.denominator)),
+        int(value.precision_bits),
+        bool(value.rigorous),
+        _data_encoder(value.source),
+    )
+
+
+def _ball_from_data(
+    data: tuple[Any, Any, int, bool, Any],
+    _ball_type: Any = RealBall,
+    _data_decoder: Any = _decode_data,
+) -> RealBall:
+    return _ball_type(
+        str(data[0][0]) + "/" + str(data[0][1]),
+        str(data[1][0]) + "/" + str(data[1][1]),
+        precision_bits=data[2],
+        rigorous=data[3],
+        source=_data_decoder(data[4]),
+    )
+
+
+def _closed_ball_property(data_attribute: str) -> Any:
+    """Return a property whose decoder cannot be replaced through globals."""
+    ball_decoder = _ball_from_data
+
+    def decode_ball(value: Any) -> RealBall:
+        return ball_decoder(getattr(value, data_attribute))
+
+    return property(decode_ball)
+
+
+def _closed_ball_matrix_property() -> Any:
+    ball_decoder = _ball_from_data
+
+    def decode_matrix(value: Any) -> tuple[tuple[RealBall, ...], ...]:
+        return tuple(
+            tuple(ball_decoder(entry) for entry in row) for row in value._matrix_data
+        )
+
+    return property(decode_matrix)
+
+
+def _closed_ball_matrix_getitem() -> Any:
+    ball_decoder = _ball_from_data
+
+    def decode_row(value: Any, index: int) -> tuple[RealBall, ...]:
+        return tuple(ball_decoder(entry) for entry in value._matrix_data[index])
+
+    return decode_row
+
+
 def _freeze_data(value: Any) -> Any:
-    if isinstance(value, _FrozenDict):
+    if isinstance(value, (_FrozenDict, _EncodedFrozenDict)):
         return value
     if isinstance(value, dict):
         return _FrozenDict(value)
@@ -286,6 +402,178 @@ def _coordinate_size_bits_upper(point: KummerCoordinates) -> int:
     )
 
 
+def _ceil_div(numerator: int, denominator: int) -> int:
+    """Return the exact ceiling of an integer quotient."""
+    return -((-numerator) // denominator)
+
+
+def _dyadic_multiply(
+    left: tuple[int, int], right: tuple[int, int], scale: int
+) -> tuple[int, int]:
+    """Multiply two outward dyadic intervals with common denominator `scale`."""
+    products = (
+        left[0] * right[0],
+        left[0] * right[1],
+        left[1] * right[0],
+        left[1] * right[1],
+    )
+    return min(products) // scale, _ceil_div(max(products), scale)
+
+
+def _dyadic_power(value: tuple[int, int], exponent: int, scale: int) -> tuple[int, int]:
+    """Raise a dyadic interval to a nonnegative integer power."""
+    exponent = int(exponent)
+    if exponent < 0:
+        raise ValueError("a dyadic interval power must be nonnegative")
+    answer = (scale, scale)
+    base = value
+    while exponent:
+        if exponent & 1:
+            answer = _dyadic_multiply(answer, base, scale)
+        exponent //= 2
+        if exponent:
+            base = _dyadic_multiply(base, base, scale)
+    return answer
+
+
+def _dyadic_divide_positive(
+    numerator: tuple[int, int], denominator: tuple[int, int], scale: int
+) -> tuple[int, int]:
+    """Divide by a strictly positive dyadic interval, rounding outwards."""
+    denominator_lower, denominator_upper = denominator
+    if denominator_lower <= 0:
+        raise ZeroDivisionError("the dyadic denominator is not separated from zero")
+    lower, upper = numerator
+    if lower >= 0:
+        return (
+            (lower * scale) // denominator_upper,
+            _ceil_div(upper * scale, denominator_lower),
+        )
+    if upper <= 0:
+        return (
+            (lower * scale) // denominator_lower,
+            _ceil_div(upper * scale, denominator_upper),
+        )
+    return (
+        (lower * scale) // denominator_lower,
+        _ceil_div(upper * scale, denominator_lower),
+    )
+
+
+def _dyadic_max_absolute(
+    values: tuple[tuple[int, int], ...],
+) -> tuple[int, int]:
+    """Enclose the maximum absolute value of dyadic numerator intervals."""
+    absolute: list[tuple[int, int]] = []
+    for lower, upper in values:
+        if lower >= 0:
+            absolute.append((lower, upper))
+        elif upper <= 0:
+            absolute.append((-upper, -lower))
+        else:
+            absolute.append((0, max(-lower, upper)))
+    return (
+        max(value[0] for value in absolute),
+        max(value[1] for value in absolute),
+    )
+
+
+def _specialized_duplication_dyadic(
+    coordinates: tuple[
+        tuple[int, int], tuple[int, int], tuple[int, int], tuple[int, int]
+    ],
+    terms: tuple[tuple[tuple[int, int, int, int, int], ...], ...],
+    *,
+    scale: int,
+) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int], tuple[int, int]]:
+    """Evaluate specialized Flynn quartics on fixed-scale dyadic intervals."""
+
+    powers: list[tuple[tuple[int, int], ...]] = []
+    one = (scale, scale)
+    for coordinate in coordinates:
+        row = [one]
+        for _exponent in range(4):
+            row.append(_dyadic_multiply(row[-1], coordinate, scale))
+        powers.append(tuple(row))
+
+    output: list[tuple[int, int]] = []
+    for table in terms:
+        total = (0, 0)
+        for coefficient, exponent1, exponent2, exponent3, exponent4 in table:
+            value = (coefficient * scale, coefficient * scale)
+            for index, exponent in enumerate(
+                (exponent1, exponent2, exponent3, exponent4)
+            ):
+                if exponent:
+                    value = _dyadic_multiply(value, powers[index][exponent], scale)
+            total = (total[0] + value[0], total[1] + value[1])
+        output.append(total)
+    return cast(
+        tuple[tuple[int, int], tuple[int, int], tuple[int, int], tuple[int, int]],
+        tuple(output),
+    )
+
+
+def _validated_specialized_terms(
+    jacobian: Any,
+    supplied: tuple[tuple[tuple[int, int, int, int, int], ...], ...] | None,
+) -> tuple[tuple[tuple[int, int, int, int, int], ...], ...]:
+    """Return the exact model tables, rejecting injected cached quartics."""
+    expected = classical_duplication_specialized_terms(jacobian)
+    if supplied is not None and supplied != expected:
+        raise Genus2HeightCapabilityError(
+            "specialized Flynn tables do not match the exact Jacobian model",
+            {
+                "specialized_quartics": "rejected-model-table-mismatch",
+                "expected_term_counts": tuple(len(table) for table in expected),
+                "supplied_term_counts": tuple(len(table) for table in supplied),
+            },
+        )
+    return expected
+
+
+def _flatten_specialized_terms(
+    terms: tuple[tuple[tuple[int, int, int, int, int], ...], ...],
+) -> tuple[list[int], list[int], list[int], int]:
+    """Return sparse coefficients, exponents, row counts, and coefficient bits."""
+    coefficients: list[int] = []
+    exponents: list[int] = []
+    term_counts: list[int] = []
+    coefficient_bits = 1
+    for table in terms:
+        term_counts.append(len(table))
+        for term in table:
+            coefficient_bits = max(coefficient_bits, abs(term[0]).bit_length())
+            coefficients.append(term[0])
+            exponents.extend(term[1:])
+    return coefficients, exponents, term_counts, coefficient_bits
+
+
+def _validated_context_specialized_terms(context: Any) -> Any:
+    """Replay specialization from the live model before trusting a context."""
+    expected = classical_duplication_specialized_terms(context.jacobian)
+    if context._classical_duplication_terms != expected:
+        raise Genus2HeightCapabilityError(
+            "cached Flynn tables do not match the exact Jacobian model",
+            {"specialized_quartics": "rejected-mutated-height-context"},
+        )
+    return expected
+
+
+def _scaled_tail_steps(bound: RealBall, target_bits: int) -> int:
+    """Return `n` with `width(bound)/4^n <= 2^-target_bits`."""
+    target_bits = int(target_bits)
+    if target_bits < 0:
+        raise ValueError("target height accuracy must be nonnegative")
+    width = bound.width()
+    numerator = int(width.numerator)
+    denominator = int(width.denominator)
+    steps = 0
+    while numerator * (2**target_bits) > denominator * (4**steps):
+        steps += 1
+    return steps
+
+
 class AutomaticHeightBounds(_SealedRecord):
     """A proved two-sided bound for the naive/canonical height correction."""
 
@@ -294,19 +582,15 @@ class AutomaticHeightBounds(_SealedRecord):
         correction_lower: RealBall,
         correction_upper: RealBall,
         diagnostics: dict[str, Any],
+        _ball_encoder: Any = _ball_data,
     ) -> None:
-        self._correction_lower_data = _ball_data(correction_lower)
-        self._correction_upper_data = _ball_data(correction_upper)
+        self._correction_lower_data = _ball_encoder(correction_lower)
+        self._correction_upper_data = _ball_encoder(correction_upper)
         self._diagnostics = _freeze_data(diagnostics)
         self._seal()
 
-    @property
-    def correction_lower(self) -> RealBall:
-        return _ball_from_data(self._correction_lower_data)
-
-    @property
-    def correction_upper(self) -> RealBall:
-        return _ball_from_data(self._correction_upper_data)
+    correction_lower = _closed_ball_property("_correction_lower_data")
+    correction_upper = _closed_ball_property("_correction_upper_data")
 
     @property
     def _correction_lower(self) -> RealBall:
@@ -321,8 +605,13 @@ class AutomaticHeightBounds(_SealedRecord):
         return cast(dict[str, Any], _copy_data(self._diagnostics))
 
     def copy(self) -> AutomaticHeightBounds:
-        return AutomaticHeightBounds(
-            self._correction_lower, self._correction_upper, self._diagnostics
+        # A copy carries theorem data, not an authentication token.  The
+        # closed proof-state wrapper below replays that data against the exact
+        # live model before it can support a rigorous calculation.
+        return type(self)(
+            self.correction_lower,
+            self.correction_upper,
+            self.diagnostics,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -354,26 +643,19 @@ class FiniteHeightCorrectionResult(_SealedRecord):
         tail_bound: RealBall,
         steps: int,
         diagnostics: dict[str, Any],
+        _ball_encoder: Any = _ball_data,
     ) -> None:
-        self._ball_data = _ball_data(ball)
-        self._partial_sum_data = _ball_data(partial_sum)
-        self._tail_bound_data = _ball_data(tail_bound)
+        self._ball_data = _ball_encoder(ball)
+        self._partial_sum_data = _ball_encoder(partial_sum)
+        self._tail_bound_data = _ball_encoder(tail_bound)
         self._steps = int(steps)
         self._diagnostics = _freeze_data(diagnostics)
         self._rigorous = True
         self._seal()
 
-    @property
-    def ball(self) -> RealBall:
-        return _ball_from_data(self._ball_data)
-
-    @property
-    def partial_sum(self) -> RealBall:
-        return _ball_from_data(self._partial_sum_data)
-
-    @property
-    def tail_bound(self) -> RealBall:
-        return _ball_from_data(self._tail_bound_data)
+    ball = _closed_ball_property("_ball_data")
+    partial_sum = _closed_ball_property("_partial_sum_data")
+    tail_bound = _closed_ball_property("_tail_bound_data")
 
     @property
     def _ball(self) -> RealBall:
@@ -416,8 +698,68 @@ class FiniteHeightCorrectionResult(_SealedRecord):
         return "FiniteHeightCorrectionResult(" + repr(self.ball) + ")"
 
 
+class ArchimedeanHeightCorrectionResult(_SealedRecord):
+    """Certified normalized real-place Kummer correction.
+
+    The stored interval encloses `mu_infinity(P)`.  Every iterate is
+    projectively normalized, so coordinate sizes remain bounded independently
+    of the number of duplication steps.
+    """
+
+    def __init__(
+        self,
+        ball: RealBall,
+        partial_sum: RealBall,
+        tail_bound: RealBall,
+        steps: int,
+        diagnostics: dict[str, Any],
+        _ball_encoder: Any = _ball_data,
+    ) -> None:
+        self._ball_data = _ball_encoder(ball)
+        self._partial_sum_data = _ball_encoder(partial_sum)
+        self._tail_bound_data = _ball_encoder(tail_bound)
+        self._steps = int(steps)
+        self._diagnostics = _freeze_data(diagnostics)
+        self._seal()
+
+    ball = _closed_ball_property("_ball_data")
+    partial_sum = _closed_ball_property("_partial_sum_data")
+    tail_bound = _closed_ball_property("_tail_bound_data")
+
+    @property
+    def steps(self) -> int:
+        return self._steps
+
+    @property
+    def diagnostics(self) -> dict[str, Any]:
+        return cast(dict[str, Any], _copy_data(self._diagnostics))
+
+    @property
+    def rigorous(self) -> bool:
+        return self.ball.rigorous
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "sagejs.hyperelliptic.genus2-archimedean-height-correction.v1",
+            "meaning": "mu_infinity(P)",
+            "algorithm": "normalized-certified-real-kummer-iteration",
+            "rigorous": self.rigorous,
+            "steps": self.steps,
+            "enclosure": self.ball.to_dict(),
+            "partial_sum": self.partial_sum.to_dict(),
+            "tail_bound": self.tail_bound.to_dict(),
+            "diagnostics": self.diagnostics,
+        }
+
+    def __repr__(self) -> str:
+        return "ArchimedeanHeightCorrectionResult(" + repr(self.ball) + ")"
+
+
 def automatic_height_bounds(
-    jacobian: Any, *, precision: int = 100
+    jacobian: Any,
+    *,
+    precision: int = 100,
+    _proof_duplication_l1_bound: int | None = None,
 ) -> AutomaticHeightBounds:
     """Return automatic certified bounds for a primitive integral quintic.
 
@@ -514,11 +856,10 @@ def automatic_height_bounds(
     log_infinite_bound = (
         field.log_integer(10) + log_a_bound + log_sqrt_b_bound
     ) * RealBall(2)
-    upper_raw = (
-        field.log_integer(2) * RealBall(4) / RealBall(3)
-        + field.log_integer(abs(discriminant)) / RealBall(3)
-        + log_infinite_bound / RealBall(3)
-    )
+    discriminant_bound = _mueller_stoll_discriminant_bound(f_value)
+    upper_raw = field.log_integer(discriminant_bound) / RealBall(
+        3
+    ) + log_infinite_bound / RealBall(3)
     zero = _zero_ball(precision)
     upper = RealBall(
         zero.lower if upper_raw.lower < zero.lower else upper_raw.lower,
@@ -531,7 +872,16 @@ def automatic_height_bounds(
         ),
     )
 
-    duplication_l1_bound = classical_duplication_l1_bound(jacobian)
+    duplication_l1_bound = (
+        classical_duplication_l1_bound(jacobian)
+        if _proof_duplication_l1_bound is None
+        else int(_proof_duplication_l1_bound)
+    )
+    if duplication_l1_bound < 1:
+        raise Genus2HeightCapabilityError(
+            "the Flynn duplication L1 bound must be positive",
+            {"automatic_bound": "rejected-invalid-duplication-l1-bound"},
+        )
     lower_magnitude = field.log_integer(duplication_l1_bound) / RealBall(3)
     lower = -lower_magnitude
     diagnostics.update(
@@ -540,13 +890,15 @@ def automatic_height_bounds(
             "coefficient_height": str(coefficient_height),
             "leading_coefficient_abs": str(leading),
             "discriminant_abs": str(abs(discriminant)),
+            "mueller_stoll_discriminant_bound": str(discriminant_bound),
             "cauchy_root_radius": str(root_radius),
             "root_pair_count": 10,
             "cross_differences_per_partition": 6,
             "duplication_l1_bound": str(duplication_l1_bound),
             "duplication_l1_audit": "exact-specialized-sparse-term-sum",
             "references": (
-                "Stoll, On the height constant for curves of genus two II, Eq. 7.1",
+                "Stoll, On the height constant for curves of genus two, "
+                "Acta Arith. 90 (1999), Eq. 7.1",
                 "Flynn, The group law on the Jacobian of a curve of genus 2, Appendix C",
                 "Mueller--Stoll, Canonical Heights on Genus Two Jacobians, Sections 10 and 17",
             ),
@@ -562,6 +914,60 @@ def _common_content(values: tuple[int, int, int, int]) -> int:
     return common
 
 
+def _specialized_duplication_mod(
+    coordinates: tuple[int, int, int, int],
+    terms: tuple[tuple[tuple[int, int, int, int, int], ...], ...],
+    modulus: int,
+) -> tuple[int, int, int, int]:
+    """Evaluate specialized Flynn quartics modulo one positive modulus."""
+    powers: list[tuple[int, ...]] = []
+    for coordinate in coordinates:
+        reduced = coordinate % modulus
+        row = [1, reduced]
+        for _exponent in range(2, 5):
+            row.append((row[-1] * reduced) % modulus)
+        powers.append(tuple(row))
+    output: list[int] = []
+    for table in terms:
+        total = 0
+        for coefficient, exponent1, exponent2, exponent3, exponent4 in table:
+            value = coefficient % modulus
+            for index, exponent in enumerate(
+                (exponent1, exponent2, exponent3, exponent4)
+            ):
+                if exponent:
+                    value = (value * powers[index][exponent]) % modulus
+            total = (total + value) % modulus
+        output.append(total)
+    return cast(tuple[int, int, int, int], tuple(output))
+
+
+def _specialized_duplication_exact(
+    coordinates: tuple[int, int, int, int],
+    terms: tuple[tuple[tuple[int, int, int, int, int], ...], ...],
+) -> tuple[int, int, int, int]:
+    """Evaluate specialized Flynn quartics over exact Python integers."""
+    powers: list[tuple[int, ...]] = []
+    for coordinate in coordinates:
+        row = [1, coordinate]
+        for _exponent in range(2, 5):
+            row.append(row[-1] * coordinate)
+        powers.append(tuple(row))
+    output: list[int] = []
+    for table in terms:
+        total = 0
+        for coefficient, exponent1, exponent2, exponent3, exponent4 in table:
+            value = coefficient
+            for index, exponent in enumerate(
+                (exponent1, exponent2, exponent3, exponent4)
+            ):
+                if exponent:
+                    value *= powers[index][exponent]
+            total += value
+        output.append(total)
+    return cast(tuple[int, int, int, int], tuple(output))
+
+
 def _finite_correction_steps(discriminant_bound: int, precision: int) -> int:
     # log(D) < bit_length(D), so this integer test conservatively enforces
     # log(D)/(3*4^steps) <= 2^-precision without a floating comparison.
@@ -574,19 +980,38 @@ def _finite_correction_steps(discriminant_bound: int, precision: int) -> int:
     return steps
 
 
+def _mueller_stoll_discriminant_bound(polynomial: Any) -> int:
+    """Return `D=16*lc(f)^2*|disc(f)|` for `F(X,Z)=Z*f_hom`."""
+    coefficients = _integer_coefficients(polynomial, 6)
+    if coefficients is None or coefficients[5] == 0:
+        raise Genus2HeightCapabilityError(
+            "the Mueller--Stoll finite bound requires an integral quintic",
+            {"finite_correction": "unsupported-discriminant-bound-model"},
+        )
+    return (
+        16
+        * coefficients[5]
+        * coefficients[5]
+        * abs(int(str(polynomial.discriminant())))
+    )
+
+
 def factorization_free_finite_correction(
     divisor: Any,
     *,
     precision: int = 80,
     steps: int | None = None,
+    specialized_terms: tuple[tuple[tuple[int, int, int, int, int], ...], ...]
+    | None = None,
 ) -> FiniteHeightCorrectionResult:
     """Certify the finite height correction without factoring a discriminant.
 
     This is the modular gcd algorithm preceding Müller--Stoll Proposition
     14.1. For a primitive integral quintic, the raw duplication content at
-    every stage divides `D=16*abs(disc(f))`. Working modulo `D^(m+2)` keeps
-    all intermediate integers polynomial in the requested accuracy. The
-    omitted tail is enclosed by `log(D)/(3*4^m)`.
+    every stage divides `D=16*lc(f)^2*abs(disc(f))`, the discriminant of the
+    associated binary sextic `Z*f_hom(X,Z)`. Working modulo `D^(m+2)` keeps all
+    intermediate integers polynomial in the requested accuracy. The omitted
+    tail is enclosed by `log(D)/(3*4^m)`.
     """
     capability = exact_divisor_capability(divisor)
     capability.require()
@@ -615,7 +1040,7 @@ def factorization_free_finite_correction(
         raise Genus2HeightCapabilityError(
             "finite correction requires a squarefree quintic", diagnostics
         )
-    discriminant_bound = 16 * discriminant
+    discriminant_bound = _mueller_stoll_discriminant_bound(f_value)
     if steps is None:
         steps = _finite_correction_steps(discriminant_bound, precision)
     else:
@@ -625,24 +1050,68 @@ def factorization_free_finite_correction(
 
     field = IntervalBallField(precision)
     coordinates = kummer_coordinates(divisor).coordinates()
+    specialized_terms = _validated_specialized_terms(jacobian, specialized_terms)
     partial = _zero_ball(precision, "empty-finite-correction-sum")
-    gcd_values: list[str] = []
+    gcd_integers: list[int] = []
     modulus = discriminant_bound ** (steps + 2)
-    for index in range(steps):
-        raw = classical_duplication_raw(jacobian, coordinates, modulus=modulus)
-        content = _common_content(raw)
-        common = _gcd(discriminant_bound, content)
-        if common == 0:
+    recurrence_backend = "dynamic-python"
+    if is_compiled(modular_kummer_height_recurrence):
+        recurrence_backend = "native-integer-buffer"
+        coefficients, exponents, term_counts, _coefficient_bits = (
+            _flatten_specialized_terms(specialized_terms)
+        )
+        packed_coefficients = kernel_integer_buffer(
+            modular_kummer_height_recurrence, coefficients
+        )
+        packed_exponents = kernel_uint64_buffer(
+            modular_kummer_height_recurrence, exponents
+        )
+        packed_counts = kernel_uint64_buffer(
+            modular_kummer_height_recurrence, term_counts
+        )
+        packed_output = kernel_integer_zeros(
+            modular_kummer_height_recurrence,
+            _host_buffer_length(steps),
+            _host_buffer_length(max(2, (discriminant_bound.bit_length() + 63) // 64)),
+        )
+        status = modular_kummer_height_recurrence(
+            packed_output,
+            packed_coefficients,
+            packed_exponents,
+            packed_counts,
+            coordinates[0],
+            coordinates[1],
+            coordinates[2],
+            coordinates[3],
+            discriminant_bound,
+            modulus,
+            steps,
+        )
+        if status == -1:
+            raise RuntimeError("invalid packed modular Kummer recurrence plan")
+        if status == -2:
             raise ArithmeticError("modular Kummer duplication lost all precision")
-        gcd_values.append(str(common))
+        if status != steps:
+            raise RuntimeError("incomplete packed modular Kummer recurrence")
+        gcd_integers = [int(value) for value in integer_buffer_values(packed_output)]
+    else:
+        for _index in range(steps):
+            raw = _specialized_duplication_mod(coordinates, specialized_terms, modulus)
+            content = _common_content(raw)
+            common = _gcd(discriminant_bound, content)
+            if common == 0:
+                raise ArithmeticError("modular Kummer duplication lost all precision")
+            gcd_integers.append(common)
+            coordinates = cast(
+                tuple[int, int, int, int],
+                tuple(int(value // common) for value in raw),
+            )
+
+    for index, common in enumerate(gcd_integers):
         if common > 1:
             partial = partial + field.log_integer(common) / RealBall(
                 4 ** (index + 1), precision_bits=precision
             )
-        coordinates = cast(
-            tuple[int, int, int, int],
-            tuple(int(value // common) for value in raw),
-        )
 
     tail = field.log_integer(discriminant_bound) / RealBall(
         3 * 4**steps, precision_bits=precision
@@ -659,8 +1128,12 @@ def factorization_free_finite_correction(
             "finite_correction": "certified",
             "discriminant_bound_D": str(discriminant_bound),
             "modulus_exponent": steps + 2,
-            "raw_duplication_gcds": tuple(gcd_values),
+            "raw_duplication_gcds": tuple(str(value) for value in gcd_integers),
+            "recurrence_backend": recurrence_backend,
             "factorization_used": False,
+            "specialized_quartic_term_counts": tuple(
+                len(table) for table in specialized_terms
+            ),
             "tail_formula": "log(D)/(3*4^steps)",
             "reference": (
                 "Mueller--Stoll, Canonical Heights on Genus Two Jacobians, "
@@ -669,6 +1142,296 @@ def factorization_free_finite_correction(
         }
     )
     return FiniteHeightCorrectionResult(ball, partial, tail, steps, diagnostics)
+
+
+def normalized_archimedean_correction(
+    divisor: Any,
+    *,
+    precision: int = 80,
+    steps: int | None = None,
+    target_bits: int | None = None,
+    bounds: AutomaticHeightBounds | None = None,
+    specialized_terms: tuple[tuple[tuple[int, int, int, int, int], ...], ...]
+    | None = None,
+) -> ArchimedeanHeightCorrectionResult:
+    """Certify the real-place correction with bounded projective coordinates.
+
+    This evaluates Flynn's duplication quartics on outward-rounded real
+    intervals and divides every image by its maximum absolute coordinate.
+    Thus the exact-coordinate growth of repeated rational duplication is
+    replaced by a fixed four-ball state.  Stoll's global real-place bound,
+    scaled by `4^-steps`, certifies the omitted tail.
+    """
+    capability = exact_divisor_capability(divisor)
+    capability.require()
+    jacobian = divisor.parent()
+    f_value = jacobian.f()
+    if (
+        not jacobian.h().is_zero()
+        or int(f_value.degree()) != 5
+        or _integer_coefficients(f_value, 6) is None
+    ):
+        diagnostics = dict(capability.diagnostics)
+        diagnostics["archimedean_correction"] = (
+            "unsupported-outside-classical-integral-envelope"
+        )
+        raise Genus2HeightCapabilityError(
+            "normalized certified real correction requires an integral "
+            "classical quintic",
+            diagnostics,
+        )
+    precision = int(precision)
+    if precision < 16:
+        raise ValueError("archimedean-correction precision must be at least 16 bits")
+    if target_bits is not None:
+        target_bits = int(target_bits)
+        if target_bits < 1:
+            raise ValueError("target height accuracy must be positive")
+    if bounds is None:
+        bounds = automatic_height_bounds(jacobian, precision=precision)
+    if bounds.diagnostics.get("automatic_bound") != "certified":
+        raise Genus2HeightCapabilityError(
+            "normalized real correction requires model-bound automatic bounds",
+            bounds.diagnostics,
+        )
+
+    field = IntervalBallField(precision)
+    discriminant_bound = _mueller_stoll_discriminant_bound(f_value)
+    finite_global = field.log_integer(discriminant_bound) / RealBall(
+        3, precision_bits=precision
+    )
+    archimedean_global = RealBall(
+        (bounds.correction_lower - finite_global).lower,
+        bounds.correction_upper.upper,
+        precision_bits=precision,
+        rigorous=True,
+        source="Stoll/Flynn global real-place correction bound",
+    )
+    if steps is None:
+        steps = _scaled_tail_steps(
+            archimedean_global,
+            target_bits if target_bits is not None else precision,
+        )
+    else:
+        steps = int(steps)
+        if steps < 0:
+            raise ValueError("archimedean-correction steps must be nonnegative")
+
+    integer_coordinates = kummer_coordinates(divisor).coordinates()
+    initial_scale = max(abs(value) for value in integer_coordinates)
+    if initial_scale == 0:
+        return ArchimedeanHeightCorrectionResult(
+            _zero_ball(precision),
+            _zero_ball(precision),
+            _zero_ball(precision),
+            0,
+            {
+                "archimedean_correction": "exact-zero-kummer-origin",
+                "bounded_projective_state": True,
+            },
+        )
+    dyadic_scale = 2**precision
+    coordinates = cast(
+        tuple[tuple[int, int], tuple[int, int], tuple[int, int], tuple[int, int]],
+        tuple(
+            (
+                (value * dyadic_scale) // initial_scale,
+                _ceil_div(value * dyadic_scale, initial_scale),
+            )
+            for value in integer_coordinates
+        ),
+    )
+    specialized_terms = _validated_specialized_terms(jacobian, specialized_terms)
+
+    partial = _zero_ball(precision, "empty-archimedean-correction-sum")
+    maximum_state_width_bits = precision
+    scale_enclosures: list[dict[str, str]] = []
+    dyadic_scales: list[tuple[int, int]] = []
+    recurrence_backend = "dynamic-python"
+    if is_compiled(dyadic_kummer_height_recurrence):
+        recurrence_backend = "native-integer-buffer"
+        coefficients, exponents, term_counts, coefficient_bits = (
+            _flatten_specialized_terms(specialized_terms)
+        )
+        packed_state = kernel_integer_buffer(
+            dyadic_kummer_height_recurrence,
+            [endpoint for value in coordinates for endpoint in value],
+        )
+        packed_coefficients = kernel_integer_buffer(
+            dyadic_kummer_height_recurrence, coefficients
+        )
+        packed_exponents = kernel_uint64_buffer(
+            dyadic_kummer_height_recurrence, exponents
+        )
+        packed_counts = kernel_uint64_buffer(
+            dyadic_kummer_height_recurrence, term_counts
+        )
+        word_capacity = max(8, (precision + coefficient_bits + 191) // 64)
+        packed_scratch = kernel_integer_zeros(
+            dyadic_kummer_height_recurrence,
+            _host_buffer_length(48),
+            _host_buffer_length(word_capacity),
+        )
+        packed_output = kernel_integer_zeros(
+            dyadic_kummer_height_recurrence,
+            _host_buffer_length(10 * steps),
+            _host_buffer_length(word_capacity),
+        )
+        status = dyadic_kummer_height_recurrence(
+            packed_output,
+            packed_state,
+            packed_coefficients,
+            packed_exponents,
+            packed_counts,
+            packed_scratch,
+            dyadic_scale,
+            steps,
+        )
+        if status == -1:
+            raise RuntimeError("invalid packed dyadic Kummer recurrence plan")
+        if status == -2:
+            raise Genus2HeightResolutionError(
+                "real Kummer interval iteration could not separate the "
+                "projective image from zero; increase precision",
+                {"precision_bits": precision, "recurrence_backend": recurrence_backend},
+            )
+        if status != steps:
+            raise RuntimeError("incomplete packed dyadic Kummer recurrence")
+        packed_values = integer_buffer_values(packed_output)
+        for index in range(steps):
+            offset = 10 * index
+            image_scale_dyadic = (
+                int(packed_values[offset]),
+                int(packed_values[offset + 1]),
+            )
+            dyadic_scales.append(image_scale_dyadic)
+            coordinate_values = cast(
+                tuple[
+                    tuple[int, int],
+                    tuple[int, int],
+                    tuple[int, int],
+                    tuple[int, int],
+                ],
+                tuple(
+                    (
+                        int(packed_values[offset + 2 + 2 * coordinate]),
+                        int(packed_values[offset + 3 + 2 * coordinate]),
+                    )
+                    for coordinate in range(4)
+                ),
+            )
+            state_width_bits = min(
+                precision - max(0, (value[1] - value[0]).bit_length())
+                for value in coordinate_values
+            )
+            maximum_state_width_bits = min(maximum_state_width_bits, state_width_bits)
+            scale_enclosures.append(
+                {
+                    "step": str(index),
+                    "lower_dyadic_numerator": str(image_scale_dyadic[0]),
+                    "upper_dyadic_numerator": str(image_scale_dyadic[1]),
+                    "dyadic_exponent": str(-precision),
+                }
+            )
+    else:
+        for index in range(steps):
+            raw = _specialized_duplication_dyadic(
+                coordinates,
+                specialized_terms,
+                scale=dyadic_scale,
+            )
+            image_scale_dyadic = _dyadic_max_absolute(raw)
+            if image_scale_dyadic[0] <= 0:
+                raise Genus2HeightResolutionError(
+                    "real Kummer interval iteration could not separate the "
+                    "projective image from zero; increase precision",
+                    {
+                        "step": index,
+                        "precision_bits": precision,
+                        "image_scale_dyadic_numerators": image_scale_dyadic,
+                    },
+                )
+            dyadic_scales.append(image_scale_dyadic)
+            coordinates = cast(
+                tuple[
+                    tuple[int, int],
+                    tuple[int, int],
+                    tuple[int, int],
+                    tuple[int, int],
+                ],
+                tuple(
+                    _dyadic_divide_positive(value, image_scale_dyadic, dyadic_scale)
+                    for value in raw
+                ),
+            )
+            state_width_bits = min(
+                precision - max(0, (value[1] - value[0]).bit_length())
+                for value in coordinates
+            )
+            maximum_state_width_bits = min(maximum_state_width_bits, state_width_bits)
+            scale_enclosures.append(
+                {
+                    "step": str(index),
+                    "lower_dyadic_numerator": str(image_scale_dyadic[0]),
+                    "upper_dyadic_numerator": str(image_scale_dyadic[1]),
+                    "dyadic_exponent": str(-precision),
+                }
+            )
+
+    # log(s0)/4+...+log(s3)/4^4 = log(s0^64*s1^16*s2^4*s3)/4^4.
+    logarithm_block_size = 4
+    for block_start in range(0, steps, logarithm_block_size):
+        block_end = min(steps, block_start + logarithm_block_size)
+        combined = (dyadic_scale, dyadic_scale)
+        for index in range(block_start, block_end):
+            exponent = 4 ** (block_end - index - 1)
+            combined = _dyadic_multiply(
+                combined,
+                _dyadic_power(dyadic_scales[index], exponent, dyadic_scale),
+                dyadic_scale,
+            )
+        combined_ball = RealBall.dyadic_endpoints(
+            combined[0],
+            -precision,
+            combined[1],
+            -precision,
+            precision_bits=precision,
+            source="four-step outward dyadic Kummer scale product",
+        )
+        weight = RealBall(4**block_end, precision_bits=precision)
+        partial = partial - field.log(combined_ball) / weight
+
+    divisor_scale = RealBall(4**steps, precision_bits=precision)
+    tail = archimedean_global / divisor_scale
+    ball = partial + tail
+    return ArchimedeanHeightCorrectionResult(
+        ball,
+        partial,
+        tail,
+        steps,
+        {
+            "archimedean_correction": "certified",
+            "bounded_projective_state": True,
+            "coordinate_storage": "four outward-rounded real balls",
+            "recurrence_backend": recurrence_backend,
+            "specialized_quartic_term_counts": tuple(
+                len(table) for table in specialized_terms
+            ),
+            "scale_logarithm_block_size": logarithm_block_size,
+            "scale_logarithm_evaluations": (steps + logarithm_block_size - 1)
+            // logarithm_block_size,
+            "working_precision_bits": precision,
+            "target_bits": target_bits,
+            "minimum_state_width_bits": maximum_state_width_bits,
+            "scale_enclosures": tuple(scale_enclosures),
+            "tail_formula": "global_real_correction_bound/4^steps",
+            "factorization_used": False,
+            "references": (
+                "Flynn, The group law on the Jacobian of a curve of genus 2, Appendix C",
+                "Mueller--Stoll, Canonical Heights on Genus Two Jacobians, Sections 10 and 17",
+            ),
+        },
+    )
 
 
 class HeightContext:
@@ -684,6 +1447,12 @@ class HeightContext:
             raise ValueError("the exact-coordinate bit budget must be at least 1024")
         self._jacobian = jacobian
         self._max_exact_coordinate_bits = max_exact_coordinate_bits
+        try:
+            self._classical_duplication_terms = classical_duplication_specialized_terms(
+                jacobian
+            )
+        except Exception:
+            self._classical_duplication_terms = None
         try:
             l1_bound = classical_duplication_l1_bound(jacobian)
             self._duplication_overhead_bits_upper = 4 * len(str(l1_bound)) + 8
@@ -703,6 +1472,8 @@ class HeightContext:
         self._automatic_bounds: dict[int, AutomaticHeightBounds | None] = {}
         self._automatic_bound_errors: dict[int, dict[str, Any]] = {}
         self._local_corrections: dict[Any, dict[str, Any]] = {}
+        self._canonical_height_entries = 0
+        self._height_pairing_entries = 0
         self._chain_hits = 0
         self._chain_misses = 0
         self._doublings = 0
@@ -710,6 +1481,14 @@ class HeightContext:
         self._kummer_misses = 0
         self._local_correction_hits = 0
         self._local_correction_misses = 0
+        self._finite_correction_hits = 0
+        self._finite_correction_misses = 0
+        self._archimedean_correction_hits = 0
+        self._archimedean_correction_misses = 0
+        self._canonical_height_hits = 0
+        self._canonical_height_misses = 0
+        self._height_pairing_hits = 0
+        self._height_pairing_misses = 0
 
     @property
     def jacobian(self) -> Any:
@@ -816,14 +1595,59 @@ class HeightContext:
         self._automatic_bounds[precision] = answer
         return None if answer is None else answer.copy()
 
+    def finite_correction(
+        self,
+        divisor: Any,
+        *,
+        precision: int,
+        steps: int,
+    ) -> FiniteHeightCorrectionResult:
+        """Return a certified finite correction."""
+        _validated_context_specialized_terms(self)
+        self._key(divisor)
+        self._finite_correction_misses += 1
+        return factorization_free_finite_correction(
+            divisor,
+            precision=int(precision),
+            steps=int(steps),
+            specialized_terms=self._classical_duplication_terms,
+        )
+
+    def archimedean_correction(
+        self,
+        divisor: Any,
+        *,
+        precision: int,
+        steps: int,
+        bounds: AutomaticHeightBounds,
+        target_bits: int | None,
+    ) -> ArchimedeanHeightCorrectionResult:
+        """Return a certified normalized real-place correction."""
+        _validated_context_specialized_terms(self)
+        self._key(divisor)
+        self._archimedean_correction_misses += 1
+        return normalized_archimedean_correction(
+            divisor,
+            precision=int(precision),
+            steps=int(steps),
+            target_bits=target_bits,
+            bounds=bounds,
+            specialized_terms=self._classical_duplication_terms,
+        )
+
     def diagnostics(self) -> dict[str, Any]:
         return {
             "schema": "sagejs.hyperelliptic.genus2-height-context.v1",
             "archimedean_engine_capability": (
-                "certified-bounded-exact-projective-iteration"
+                "certified-normalized-real-ball-projective-iteration"
             ),
             "max_exact_coordinate_bits": self.max_exact_coordinate_bits,
             "duplication_overhead_bits_upper": self._duplication_overhead_bits_upper,
+            "specialized_quartic_term_counts": (
+                None
+                if self._classical_duplication_terms is None
+                else tuple(len(table) for table in self._classical_duplication_terms)
+            ),
             "chain_cache_entries": len(self._chains),
             "chain_cache_hits": self._chain_hits,
             "chain_cache_misses": self._chain_misses,
@@ -834,6 +1658,20 @@ class HeightContext:
             "local_correction_cache_entries": len(self._local_corrections),
             "local_correction_cache_hits": self._local_correction_hits,
             "local_correction_cache_misses": self._local_correction_misses,
+            "finite_correction_cache_entries": 0,
+            "finite_correction_cache_hits": self._finite_correction_hits,
+            "finite_correction_cache_misses": self._finite_correction_misses,
+            "archimedean_correction_cache_entries": 0,
+            "archimedean_correction_cache_hits": self._archimedean_correction_hits,
+            "archimedean_correction_cache_misses": (
+                self._archimedean_correction_misses
+            ),
+            "canonical_height_cache_entries": self._canonical_height_entries,
+            "canonical_height_cache_hits": self._canonical_height_hits,
+            "canonical_height_cache_misses": self._canonical_height_misses,
+            "height_pairing_cache_entries": self._height_pairing_entries,
+            "height_pairing_cache_hits": self._height_pairing_hits,
+            "height_pairing_cache_misses": self._height_pairing_misses,
             "precision_fields": tuple(sorted(self._fields)),
             "automatic_bound_precisions": tuple(
                 sorted(
@@ -842,12 +1680,181 @@ class HeightContext:
                     if value is not None
                 )
             ),
+            "automatic_bound_proof_state": (
+                "closure-local-structural-model-precision-theorem-sources"
+            ),
+            "automatic_bound_proof_source_capacity": 512,
+            "automatic_bound_egress_registers_source": False,
             "automatic_bound_failures": {
                 str(precision): dict(value)
                 for precision, value in self._automatic_bound_errors.items()
                 if value
             },
         }
+
+
+def _compact_batch_diagnostics_to_dict(
+    payload: Any,
+    _ball_decoder: Any = _ball_from_data,
+    _data_decoder: Any = _decode_data,
+) -> dict[str, Any]:
+    """Materialize verbose local-height diagnostics from primitive proof data."""
+    if payload[0] != "local-height-batch-diagnostics-v1":
+        raise TypeError("invalid compact local-height diagnostics")
+
+    def ball_dictionary(index: int) -> dict[str, Any]:
+        return _ball_decoder(payload[index]).to_dict()
+
+    finite_diagnostics = {
+        "finite_correction": "certified",
+        "discriminant_bound_D": str(payload[11]),
+        "modulus_exponent": payload[12],
+        "raw_duplication_gcds": tuple(str(value) for value in payload[13]),
+        "recurrence_backend": payload[14],
+        "batch_point_count": payload[15],
+        "factorization_used": False,
+        "specialized_quartic_term_counts": payload[16],
+        "tail_formula": "log(D)/(3*4^steps)",
+    }
+    scale_enclosures = tuple(
+        {
+            "step": str(row[0]),
+            "lower_dyadic_numerator": str(row[1]),
+            "upper_dyadic_numerator": str(row[2]),
+            "dyadic_exponent": str(row[3]),
+        }
+        for row in payload[24]
+    )
+    archimedean_diagnostics = {
+        "archimedean_correction": "certified",
+        "bounded_projective_state": True,
+        "coordinate_storage": "four outward-rounded dyadic intervals",
+        "recurrence_backend": payload[14],
+        "batch_point_count": payload[15],
+        "specialized_quartic_term_counts": payload[16],
+        "scale_logarithm_block_size": payload[20],
+        "scale_logarithm_evaluations": payload[21],
+        "scale_logarithm_engine": "exact-outward-atanh-integer-batch",
+        "scale_logarithm_precision_bits": payload[22],
+        "working_precision_bits": payload[3],
+        "target_bits": payload[4],
+        "minimum_state_width_bits": payload[23],
+        "scale_enclosures": scale_enclosures,
+        "tail_formula": "global_real_correction_bound/4^steps",
+        "factorization_used": False,
+    }
+    finite_dictionary = {
+        "schema": "sagejs.hyperelliptic.genus2-finite-height-correction.v1",
+        "meaning": "sum_p mu_p(P)*log(p)",
+        "algorithm": "mueller-stoll-proposition-14.1-factorization-free",
+        "rigorous": True,
+        "steps": payload[12] - 2,
+        "enclosure": ball_dictionary(8),
+        "partial_sum": ball_dictionary(9),
+        "tail_bound": ball_dictionary(10),
+        "diagnostics": finite_diagnostics,
+    }
+    archimedean_dictionary = {
+        "schema": "sagejs.hyperelliptic.genus2-archimedean-height-correction.v1",
+        "meaning": "mu_infinity(P)",
+        "algorithm": "normalized-certified-real-kummer-iteration",
+        "rigorous": True,
+        "steps": payload[12] - 2,
+        "enclosure": ball_dictionary(17),
+        "partial_sum": ball_dictionary(18),
+        "tail_bound": ball_dictionary(19),
+        "diagnostics": archimedean_diagnostics,
+    }
+    return {
+        "algorithm": "mueller-stoll-modular-local-kummer-batch",
+        "requested_algorithm": payload[1],
+        "selected_algorithm": "local",
+        "requested_precision_bits": payload[2],
+        "working_precision_bits": payload[3],
+        "target_bits": payload[4],
+        "achieved_enclosure_width_bits": payload[5],
+        "enclosure_width_bits": payload[5],
+        "initial_naive_height_integer": str(payload[6]),
+        "terminal_limit_approximation": ball_dictionary(7),
+        "finite_correction": finite_dictionary,
+        "archimedean_correction": archimedean_dictionary,
+        "local_corrections": {
+            "status": "certified-partial-sums-and-tails",
+            "finite_partial": ball_dictionary(9),
+            "finite_tail_interval": ball_dictionary(10),
+            "archimedean_partial": ball_dictionary(18),
+            "archimedean_tail_interval": ball_dictionary(19),
+            "raw_duplication_gcds": tuple(str(value) for value in payload[13]),
+            "factorization_used": False,
+            "telescoping_identity": "h_K(P)-hhat(P)=mu_finite(P)+mu_infinity(P)",
+        },
+        "exact_small_step_oracle": {
+            "steps": payload[25],
+            "scale_ratios": tuple(
+                str(value[0]) + "/" + str(value[1]) for value in payload[26]
+            ),
+            "finite_gcds": tuple(str(value) for value in payload[27]),
+            "status": "passed",
+        },
+        "batch": {
+            "point_count": payload[15],
+            "shared_model_specialization": True,
+            "atomic_publication": True,
+            "stage_milliseconds": {
+                "shared_preparation": payload[28][0],
+                "modular_recurrence": payload[28][1],
+                "dyadic_recurrence": payload[28][2],
+                "exact_outward_logarithms": payload[28][3],
+                "exact_small_step_oracle": payload[28][4],
+            },
+        },
+        "asymptotic_state": (
+            "point-major polynomial-size modular state and bounded dyadic balls"
+        ),
+        "context": _data_decoder(payload[29]),
+    }
+
+
+class _DeferredCanonicalDiagnostics(_SealedRecord):
+    """Lazy public view of a compact, primitive local-height proof payload."""
+
+    def __init__(
+        self,
+        payload: Any,
+        context_data: Any = None,
+        _materializer: Any = _compact_batch_diagnostics_to_dict,
+    ) -> None:
+        self._payload = payload
+        self._context_data = payload[29] if context_data is None else context_data
+        self._materializer = _materializer
+        self._seal()
+
+    def primitive_payload(self) -> Any:
+        return self._payload[:29] + (self._context_data,)
+
+    def to_dict(self) -> dict[str, Any]:
+        return self._materializer(self.primitive_payload())
+
+    def get(self, key: str, default: Any = None) -> Any:
+        if key == "selected_algorithm":
+            return "local"
+        if key == "batch":
+            return self.to_dict()["batch"]
+        return self.to_dict().get(key, default)
+
+
+def _closed_canonical_diagnostics_property(
+    _copy_function: Any = _copy_data,
+    _deferred_type: Any = _DeferredCanonicalDiagnostics,
+) -> Any:
+    """Return a canonical-diagnostics property with lexically fixed decoders."""
+
+    def diagnostics(value: Any) -> dict[str, Any]:
+        if isinstance(value._diagnostics, _deferred_type):
+            return value._diagnostics.to_dict()
+        return cast(dict[str, Any], _copy_function(value._diagnostics))
+
+    return property(diagnostics)
 
 
 class CanonicalHeightResult(_SealedRecord):
@@ -862,19 +1869,27 @@ class CanonicalHeightResult(_SealedRecord):
         provenance: dict[str, Any],
         bounds: AutomaticHeightBounds | None,
         diagnostics: dict[str, Any],
+        _encoded_diagnostics: Any = None,
+        _deferred_diagnostics: Any = None,
+        _ball_encoder: Any = _ball_data,
     ) -> None:
-        self._ball_data = _ball_data(ball)
+        self._ball_data = _ball_encoder(ball)
         self._status = str(status)
         self._steps = int(steps)
         self._provenance = _freeze_data(provenance)
         self._bounds = None if bounds is None else bounds.copy()
-        self._diagnostics = _freeze_data(diagnostics)
+        if _deferred_diagnostics is not None:
+            self._diagnostics = _deferred_diagnostics
+        else:
+            self._diagnostics = (
+                _freeze_data(diagnostics)
+                if _encoded_diagnostics is None
+                else _EncodedFrozenDict(_encoded_diagnostics[1])
+            )
         self._rigorous = bool(ball.rigorous)
         self._seal()
 
-    @property
-    def ball(self) -> RealBall:
-        return _ball_from_data(self._ball_data)
+    ball = _closed_ball_property("_ball_data")
 
     @property
     def _ball(self) -> RealBall:
@@ -896,9 +1911,7 @@ class CanonicalHeightResult(_SealedRecord):
     def bounds(self) -> AutomaticHeightBounds | None:
         return None if self._bounds is None else self._bounds.copy()
 
-    @property
-    def diagnostics(self) -> dict[str, Any]:
-        return cast(dict[str, Any], _copy_data(self._diagnostics))
+    diagnostics = _closed_canonical_diagnostics_property()
 
     @property
     def rigorous(self) -> bool:
@@ -943,7 +1956,13 @@ class CanonicalHeightResult(_SealedRecord):
         replay = canonical_height(
             divisor,
             steps=self._steps,
-            precision=self._ball.precision_bits,
+            precision=int(
+                self._diagnostics.get(
+                    "requested_precision_bits", self._ball.precision_bits
+                )
+            ),
+            target_bits=self._diagnostics.get("target_bits"),
+            algorithm=str(self._diagnostics.get("requested_algorithm", "auto")),
             height_difference_bound=height_difference_bound,
             torsion_order=torsion_order,
             context=replay_context,
@@ -983,6 +2002,101 @@ class CanonicalHeightResult(_SealedRecord):
         )
 
 
+def _detached_bound_to_dict(
+    payload: Any,
+    _ball_decoder: Any = _ball_from_data,
+    _data_decoder: Any = _decode_data,
+) -> dict[str, Any]:
+    """Materialize a public automatic-bound dictionary from primitives."""
+    return {
+        "schema": "sagejs.hyperelliptic.genus2-height-bounds.v1",
+        "meaning": "correction_lower <= h_K(P)-hhat(P) <= correction_upper",
+        "correction_lower": _ball_decoder(payload[0]).to_dict(),
+        "correction_upper": _ball_decoder(payload[1]).to_dict(),
+        "diagnostics": _data_decoder(payload[2]),
+    }
+
+
+def _detached_canonical_to_dict(
+    payload: Any,
+    _ball_decoder: Any = _ball_from_data,
+    _data_decoder: Any = _decode_data,
+    _bound_decoder: Any = _detached_bound_to_dict,
+    _compact_decoder: Any = _compact_batch_diagnostics_to_dict,
+) -> dict[str, Any]:
+    """Materialize the documented canonical-height record from primitives."""
+    return {
+        "schema": "sagejs.hyperelliptic.genus2-canonical-height.v1",
+        "normalization": "Cassels-Flynn 2Theta Kummer canonical height",
+        "pairing_convention": "<P,Q>=(hhat(P+Q)-hhat(P)-hhat(Q))/2",
+        "status": payload[1],
+        "rigorous": bool(payload[0][3]),
+        "steps": int(payload[2]),
+        "enclosure": _ball_decoder(payload[0]).to_dict(),
+        "divisor": _data_decoder(payload[3]),
+        "height_bounds": (None if payload[4] is None else _bound_decoder(payload[4])),
+        "diagnostics": (
+            _compact_decoder(payload[5])
+            if payload[5][0] == "local-height-batch-diagnostics-v1"
+            else _data_decoder(payload[5])
+        ),
+    }
+
+
+class _DeferredPairingDiagnostics(_SealedRecord):
+    """Compact primitive backing for verbose off-diagonal height records.
+
+    Pairing construction and authenticated cache publication need only the
+    exact height balls.  The much larger nested `sum_height.to_dict()` records
+    are therefore materialized when public diagnostics are requested, without
+    retaining any caller-reachable proof object in the hidden cache.
+    """
+
+    def __init__(
+        self,
+        base_diagnostics: Any,
+        off_diagonal_payloads: tuple[Any, ...],
+        _data_decoder: Any = _decode_data,
+        _canonical_decoder: Any = _detached_canonical_to_dict,
+    ) -> None:
+        self._base_diagnostics = base_diagnostics
+        self._off_diagonal_payloads = off_diagonal_payloads
+        self._data_decoder = _data_decoder
+        self._canonical_decoder = _canonical_decoder
+        self._seal()
+
+    def to_dict(self) -> dict[str, Any]:
+        output = self._data_decoder(self._base_diagnostics)
+        output["off_diagonal_height_data"] = tuple(
+            {
+                "left": int(entry[0]),
+                "right": int(entry[1]),
+                "sum_height": self._canonical_decoder(entry[2]),
+            }
+            for entry in self._off_diagonal_payloads
+        )
+        return output
+
+    def get(self, key: str, default: Any = None) -> Any:
+        if key == "off_diagonal_height_data":
+            return self.to_dict()[key]
+        return self._data_decoder(self._base_diagnostics).get(key, default)
+
+
+def _closed_pairing_diagnostics_property(
+    _copy_function: Any = _copy_data,
+    _deferred_type: Any = _DeferredPairingDiagnostics,
+) -> Any:
+    """Return a pairing-diagnostics property with lexically fixed decoders."""
+
+    def diagnostics(value: Any) -> dict[str, Any]:
+        if isinstance(value._diagnostics, _deferred_type):
+            return value._diagnostics.to_dict()
+        return cast(dict[str, Any], _copy_function(value._diagnostics))
+
+    return property(diagnostics)
+
+
 def _find_kummer_repeat(chain: tuple[KummerCoordinates, ...]) -> bool:
     seen: set[tuple[int, int, int, int]] = set()
     for point in chain:
@@ -995,6 +2109,907 @@ def _find_kummer_repeat(chain: tuple[KummerCoordinates, ...]) -> bool:
             return True
         seen.add(coordinates)
     return False
+
+
+def _check_height_batch_cancel(cancel: Any, stage: str) -> None:
+    """Stop a proof batch only at an atomic stage boundary."""
+    if cancel is not None and bool(cancel()):
+        raise Genus2HeightResolutionError(
+            "the certified height batch was cancelled",
+            {"cancelled": True, "stage": str(stage)},
+        )
+
+
+def _canonical_heights_uncached_local_batch(
+    divisors: tuple[Any, ...],
+    *,
+    steps: int,
+    precision: int,
+    target_bits: int | None,
+    algorithm: str,
+    context: HeightContext,
+    cancel: Any = None,
+    _proof_bounds: AutomaticHeightBounds | None = None,
+    _proof_terms: tuple[tuple[tuple[int, int, int, int, int], ...], ...] | None = None,
+    _return_payloads: bool = False,
+    _closed_dependencies: tuple[Any, ...] = (
+        perf_counter,
+        CanonicalHeightResult,
+        Genus2HeightCapabilityError,
+        Genus2HeightResolutionError,
+        Genus2HeightResourceLimitError,
+        HeightContext.diagnostics,
+        IntervalBallField,
+        RealBall,
+        _ball_data,
+        _ceil_div,
+        _check_height_batch_cancel,
+        _dyadic_multiply,
+        _dyadic_power,
+        _encode_data,
+        _enclosure_width_bits,
+        _finite_correction_steps,
+        _flatten_specialized_terms,
+        _host_buffer_length,
+        _integer_coefficients,
+        _mueller_stoll_discriminant_bound,
+        _scaled_tail_steps,
+        _zero_ball,
+        divisor_provenance,
+        dyadic_kummer_height_recurrence_batch,
+        dyadic_log_interval_batch,
+        exact_divisor_capability,
+        exact_kummer_small_step_batch,
+        integer_buffer_values,
+        is_compiled,
+        kernel_integer_buffer,
+        kernel_integer_zeros,
+        kernel_uint64_buffer,
+        kummer_coordinates,
+        modular_kummer_height_recurrence_batch,
+    ),
+) -> tuple[Any, ...]:
+    """Compute one proof-atomic batch of previously uncached local heights.
+
+    This private engine shares the exact model specialization, modular plan,
+    dyadic plan, and exact logarithm plan across at most 64 points.  It does
+    not publish cache entries: the closure-owned proof wrapper below validates
+    every returned theorem payload and publishes the complete batch only
+    after this function succeeds.
+    """
+    (
+        perf_counter,
+        CanonicalHeightResult,
+        Genus2HeightCapabilityError,
+        Genus2HeightResolutionError,
+        Genus2HeightResourceLimitError,
+        height_context_diagnostics,
+        IntervalBallField,
+        RealBall,
+        _ball_data,
+        _ceil_div,
+        _check_height_batch_cancel,
+        _dyadic_multiply,
+        _dyadic_power,
+        _encode_data,
+        _enclosure_width_bits,
+        _finite_correction_steps,
+        _flatten_specialized_terms,
+        _host_buffer_length,
+        _integer_coefficients,
+        _mueller_stoll_discriminant_bound,
+        _scaled_tail_steps,
+        _zero_ball,
+        divisor_provenance,
+        dyadic_kummer_height_recurrence_batch,
+        dyadic_log_interval_batch,
+        exact_divisor_capability,
+        exact_kummer_small_step_batch,
+        integer_buffer_values,
+        is_compiled,
+        kernel_integer_buffer,
+        kernel_integer_zeros,
+        kernel_uint64_buffer,
+        kummer_coordinates,
+        modular_kummer_height_recurrence_batch,
+    ) = _closed_dependencies
+    started = perf_counter()
+    values = tuple(divisors)
+    point_count = len(values)
+    if point_count == 0:
+        return ()
+    if point_count > 64:
+        raise Genus2HeightResourceLimitError(
+            "a certified local-height batch supports at most 64 points",
+            {"point_count": point_count, "maximum_point_count": 64},
+        )
+    normalized_steps = int(steps)
+    normalized_precision = int(precision)
+    normalized_target = None if target_bits is None else int(target_bits)
+    normalized_algorithm = str(algorithm)
+    if normalized_algorithm not in ("auto", "local"):
+        raise Genus2HeightCapabilityError(
+            "the batched engine only supports automatic or local heights",
+            {"requested_algorithm": normalized_algorithm},
+        )
+    if normalized_steps < 0:
+        raise ValueError("height doubling steps must be nonnegative")
+    if normalized_precision < 16:
+        raise ValueError("height precision must be at least 16 bits")
+    if normalized_target is not None and normalized_target < 1:
+        raise ValueError("target_bits must be positive")
+    jacobian = values[0].parent()
+    if context.__dict__["_jacobian"] is not jacobian:
+        raise ValueError("the height context belongs to a different Jacobian")
+    for divisor in values:
+        if divisor.parent() is not jacobian:
+            raise ValueError("all batched height points must lie on one Jacobian")
+        exact_divisor_capability(divisor).require()
+
+    _check_height_batch_cancel(cancel, "model-specialization")
+    if _proof_terms is None:
+        raise Genus2HeightCapabilityError(
+            "the batched local height engine requires closure-frozen Flynn tables",
+            {"specialized_quartics": "missing-frozen-proof-tables"},
+        )
+    specialized_terms = _proof_terms
+    f_value = jacobian.f()
+    if (
+        not jacobian.h().is_zero()
+        or int(f_value.degree()) != 5
+        or _integer_coefficients(f_value, 6) is None
+    ):
+        raise Genus2HeightCapabilityError(
+            "the batched local height engine requires an integral classical quintic",
+            {"local_height_batch": "unsupported-model"},
+        )
+    discriminant_bound = _mueller_stoll_discriminant_bound(f_value)
+    working_precision = max(
+        normalized_precision,
+        (
+            normalized_target + 32
+            if normalized_target is not None
+            else normalized_precision
+        ),
+    )
+    field = IntervalBallField(working_precision)
+    if field.__class__ is not IntervalBallField or int(field.precision_bits) != int(
+        working_precision
+    ):
+        raise Genus2HeightCapabilityError(
+            "the proof-grade interval field constructor returned an invalid field",
+            {"interval_field": "rejected-type-or-precision-mismatch"},
+        )
+    bounds = _proof_bounds
+    if bounds is None or bounds.diagnostics.get("automatic_bound") != "certified":
+        raise Genus2HeightCapabilityError(
+            "the batched local height engine requires certified automatic bounds",
+            {} if bounds is None else bounds.diagnostics,
+        )
+    finite_global = field.log_integer(discriminant_bound) / RealBall(
+        3, precision_bits=working_precision
+    )
+    archimedean_global = RealBall(
+        (bounds.correction_lower - finite_global).lower,
+        bounds.correction_upper.upper,
+        precision_bits=working_precision,
+        rigorous=True,
+        source="Stoll/Flynn global real-place correction bound",
+    )
+    selected_steps = normalized_steps
+    if normalized_target is not None:
+        selected_steps = max(
+            selected_steps,
+            _finite_correction_steps(discriminant_bound, normalized_target + 2),
+            _scaled_tail_steps(archimedean_global, normalized_target + 2),
+        )
+        guarded_precision = normalized_target + 4 * selected_steps + 48
+        if working_precision < guarded_precision:
+            working_precision = guarded_precision
+            field = IntervalBallField(working_precision)
+            if field.__class__ is not IntervalBallField or int(
+                field.precision_bits
+            ) != int(working_precision):
+                raise Genus2HeightCapabilityError(
+                    "the proof-grade interval field constructor returned an invalid field",
+                    {"interval_field": "rejected-type-or-precision-mismatch"},
+                )
+    if selected_steps > 1024 or point_count * selected_steps > 16384:
+        raise Genus2HeightResourceLimitError(
+            "the certified local-height batch exceeds its bounded recurrence plan",
+            {
+                "point_count": point_count,
+                "selected_steps": selected_steps,
+                "maximum_steps": 1024,
+                "maximum_point_steps": 16384,
+            },
+        )
+    prepared_at = perf_counter()
+
+    # The context cache is an optimization, not a proof source.  Recompute the
+    # exact Mumford-to-Kummer map from each live divisor so a caller-mutated
+    # `_kummer` dictionary cannot steer a rigorous batch.
+    initial_points = tuple(kummer_coordinates(divisor) for divisor in values)
+    initial_coordinates = tuple(point.coordinates() for point in initial_points)
+    initial_height_integers = tuple(
+        point.naive_height_integer() for point in initial_points
+    )
+    coefficients, exponents, term_counts, coefficient_bits = _flatten_specialized_terms(
+        specialized_terms
+    )
+
+    _check_height_batch_cancel(cancel, "modular-recurrence")
+    modulus = discriminant_bound ** (selected_steps + 2)
+    modular_output = kernel_integer_zeros(
+        modular_kummer_height_recurrence_batch,
+        _host_buffer_length(point_count * selected_steps),
+        _host_buffer_length(max(2, (discriminant_bound.bit_length() + 63) // 64)),
+    )
+    modular_states = kernel_integer_buffer(
+        modular_kummer_height_recurrence_batch,
+        [coordinate for point in initial_coordinates for coordinate in point],
+    )
+    modular_coefficients = kernel_integer_buffer(
+        modular_kummer_height_recurrence_batch, coefficients
+    )
+    modular_exponents = kernel_uint64_buffer(
+        modular_kummer_height_recurrence_batch, exponents
+    )
+    modular_counts = kernel_uint64_buffer(
+        modular_kummer_height_recurrence_batch, term_counts
+    )
+    modular_statuses = kernel_uint64_buffer(
+        modular_kummer_height_recurrence_batch, [0] * point_count
+    )
+    modular_status = modular_kummer_height_recurrence_batch(
+        modular_output,
+        modular_states,
+        modular_coefficients,
+        modular_exponents,
+        modular_counts,
+        modular_statuses,
+        discriminant_bound,
+        modulus,
+        point_count,
+        selected_steps,
+    )
+    if modular_status == -1:
+        raise RuntimeError("invalid packed modular Kummer batch plan")
+    if modular_status == -2:
+        raise ArithmeticError("a modular Kummer batch point lost all precision")
+    if modular_status != point_count:
+        raise RuntimeError("incomplete packed modular Kummer batch recurrence")
+    modular_values = tuple(
+        int(value) for value in integer_buffer_values(modular_output)
+    )
+    modular_rows = tuple(
+        modular_values[index * selected_steps : (index + 1) * selected_steps]
+        for index in range(point_count)
+    )
+    modular_at = perf_counter()
+
+    _check_height_batch_cancel(cancel, "dyadic-recurrence")
+    dyadic_scale = 2**working_precision
+    dyadic_initial: list[int] = []
+    for coordinates, initial_scale in zip(
+        initial_coordinates, initial_height_integers, strict=True
+    ):
+        for coordinate in coordinates:
+            dyadic_initial.append((coordinate * dyadic_scale) // initial_scale)
+            dyadic_initial.append(_ceil_div(coordinate * dyadic_scale, initial_scale))
+    dyadic_state = kernel_integer_buffer(
+        dyadic_kummer_height_recurrence_batch, dyadic_initial
+    )
+    dyadic_coefficients = kernel_integer_buffer(
+        dyadic_kummer_height_recurrence_batch, coefficients
+    )
+    dyadic_exponents = kernel_uint64_buffer(
+        dyadic_kummer_height_recurrence_batch, exponents
+    )
+    dyadic_counts = kernel_uint64_buffer(
+        dyadic_kummer_height_recurrence_batch, term_counts
+    )
+    dyadic_statuses = kernel_uint64_buffer(
+        dyadic_kummer_height_recurrence_batch, [0] * point_count
+    )
+    word_capacity = max(8, (working_precision + coefficient_bits + 191) // 64)
+    dyadic_scratch = kernel_integer_zeros(
+        dyadic_kummer_height_recurrence_batch,
+        _host_buffer_length(48 * point_count),
+        _host_buffer_length(word_capacity),
+    )
+    dyadic_output = kernel_integer_zeros(
+        dyadic_kummer_height_recurrence_batch,
+        _host_buffer_length(10 * point_count * selected_steps),
+        _host_buffer_length(word_capacity),
+    )
+    dyadic_status = dyadic_kummer_height_recurrence_batch(
+        dyadic_output,
+        dyadic_state,
+        dyadic_coefficients,
+        dyadic_exponents,
+        dyadic_counts,
+        dyadic_scratch,
+        dyadic_statuses,
+        dyadic_scale,
+        point_count,
+        selected_steps,
+    )
+    if dyadic_status == -1:
+        raise RuntimeError("invalid packed dyadic Kummer batch plan")
+    if dyadic_status == -2:
+        raise Genus2HeightResolutionError(
+            "a real Kummer batch point could not separate its projective image from zero; increase precision",
+            {
+                "precision_bits": working_precision,
+                "recurrence_backend": "native-integer-buffer-batch",
+            },
+        )
+    if dyadic_status != point_count:
+        raise RuntimeError("incomplete packed dyadic Kummer batch recurrence")
+    dyadic_values = tuple(int(value) for value in integer_buffer_values(dyadic_output))
+    dyadic_at = perf_counter()
+
+    logarithm_block_size = 4
+    # The orbit itself needs dependency-growth guards, whereas its logarithms
+    # are divided by at least 4^4 before entering the height.  Compute their
+    # exact outward endpoints at twelve bits beyond the requested result,
+    # rather than needlessly carrying the much larger orbit precision through
+    # every atanh-series term.  The final enclosure-width check remains the
+    # independent fail-closed proof that this budget reached `target_bits`.
+    logarithm_precision = max(
+        16,
+        (normalized_target if normalized_target is not None else normalized_precision)
+        + 12,
+    )
+    per_point_scales: list[list[tuple[int, int]]] = []
+    per_point_scale_metadata: list[list[tuple[int, int, int, int]]] = []
+    per_point_minimum_width: list[int] = []
+    logarithm_endpoints: list[int] = []
+    logarithm_owners: list[tuple[int, int]] = []
+    for point_index in range(point_count):
+        scales: list[tuple[int, int]] = []
+        metadata: list[tuple[int, int, int, int]] = []
+        minimum_width = working_precision
+        for step_index in range(selected_steps):
+            offset = (point_index * selected_steps + step_index) * 10
+            scale_interval = (dyadic_values[offset], dyadic_values[offset + 1])
+            scales.append(scale_interval)
+            coordinate_intervals = tuple(
+                (
+                    dyadic_values[offset + 2 + 2 * coordinate],
+                    dyadic_values[offset + 3 + 2 * coordinate],
+                )
+                for coordinate in range(4)
+            )
+            minimum_width = min(
+                minimum_width,
+                min(
+                    working_precision - max(0, (upper - lower).bit_length())
+                    for lower, upper in coordinate_intervals
+                ),
+            )
+            metadata.append(
+                (
+                    step_index,
+                    scale_interval[0],
+                    scale_interval[1],
+                    -working_precision,
+                )
+            )
+        per_point_scales.append(scales)
+        per_point_scale_metadata.append(metadata)
+        per_point_minimum_width.append(minimum_width)
+        for block_start in range(0, selected_steps, logarithm_block_size):
+            block_end = min(selected_steps, block_start + logarithm_block_size)
+            combined = (dyadic_scale, dyadic_scale)
+            for step_index in range(block_start, block_end):
+                exponent = 4 ** (block_end - step_index - 1)
+                combined = _dyadic_multiply(
+                    combined,
+                    _dyadic_power(scales[step_index], exponent, dyadic_scale),
+                    dyadic_scale,
+                )
+            logarithm_endpoints.extend(combined)
+            logarithm_owners.append((point_index, block_end))
+
+    block_logarithm_count = len(logarithm_owners)
+    for initial_height in initial_height_integers:
+        exact_endpoint = initial_height * dyadic_scale
+        logarithm_endpoints.extend((exact_endpoint, exact_endpoint))
+    finite_logarithm_integers = [discriminant_bound]
+    for row in modular_rows:
+        for common in row:
+            if common > 1 and common not in finite_logarithm_integers:
+                finite_logarithm_integers.append(common)
+    for finite_integer in finite_logarithm_integers:
+        exact_endpoint = finite_integer * dyadic_scale
+        logarithm_endpoints.extend((exact_endpoint, exact_endpoint))
+
+    _check_height_batch_cancel(cancel, "exact-outward-logarithms")
+    logarithm_input = kernel_integer_buffer(
+        dyadic_log_interval_batch, logarithm_endpoints
+    )
+    logarithm_output = kernel_integer_zeros(
+        dyadic_log_interval_batch,
+        _host_buffer_length(len(logarithm_endpoints)),
+        _host_buffer_length(max(8, (logarithm_precision + 191) // 64)),
+    )
+    if not dyadic_log_interval_batch(
+        logarithm_output,
+        logarithm_input,
+        working_precision,
+        logarithm_precision,
+    ):
+        raise Genus2HeightResolutionError(
+            "the exact outward dyadic logarithm batch did not converge within its bounded series",
+            {
+                "precision_bits": working_precision,
+                "logarithm_precision_bits": logarithm_precision,
+                "interval_count": len(logarithm_owners),
+            },
+        )
+    logarithm_values = tuple(
+        int(value) for value in integer_buffer_values(logarithm_output)
+    )
+    archimedean_partials = [
+        _zero_ball(working_precision, "empty-archimedean-correction-sum")
+        for _point in values
+    ]
+    for logarithm_index, (point_index, block_end) in enumerate(logarithm_owners):
+        log_ball = RealBall.dyadic_endpoints(
+            logarithm_values[2 * logarithm_index],
+            -logarithm_precision,
+            logarithm_values[2 * logarithm_index + 1],
+            -logarithm_precision,
+            precision_bits=working_precision,
+            source="exact atanh-series outward dyadic logarithm",
+        )
+        archimedean_partials[point_index] = archimedean_partials[
+            point_index
+        ] - log_ball / RealBall(4**block_end, precision_bits=working_precision)
+    initial_naive_heights = tuple(
+        RealBall.dyadic_endpoints(
+            logarithm_values[2 * (block_logarithm_count + point_index)],
+            -logarithm_precision,
+            logarithm_values[2 * (block_logarithm_count + point_index) + 1],
+            -logarithm_precision,
+            precision_bits=working_precision,
+            source="exact atanh-series outward initial Kummer-height logarithm",
+        )
+        for point_index in range(point_count)
+    )
+    finite_logarithm_offset = block_logarithm_count + point_count
+    finite_logarithms = {
+        finite_integer: RealBall.dyadic_endpoints(
+            logarithm_values[2 * (finite_logarithm_offset + index)],
+            -logarithm_precision,
+            logarithm_values[2 * (finite_logarithm_offset + index) + 1],
+            -logarithm_precision,
+            precision_bits=working_precision,
+            source="exact atanh-series outward finite-correction logarithm",
+        )
+        for index, finite_integer in enumerate(finite_logarithm_integers)
+    }
+    logarithm_at = perf_counter()
+
+    _check_height_batch_cancel(cancel, "exact-small-step-oracle")
+    oracle_steps = min(2, selected_steps)
+    oracle_states = kernel_integer_buffer(
+        exact_kummer_small_step_batch,
+        [coordinate for point in initial_coordinates for coordinate in point],
+    )
+    oracle_coefficients = kernel_integer_buffer(
+        exact_kummer_small_step_batch, coefficients
+    )
+    oracle_exponents = kernel_uint64_buffer(exact_kummer_small_step_batch, exponents)
+    oracle_counts = kernel_uint64_buffer(exact_kummer_small_step_batch, term_counts)
+    oracle_statuses = kernel_uint64_buffer(
+        exact_kummer_small_step_batch, [0] * point_count
+    )
+    maximum_coordinate_bits = max(
+        1,
+        max(
+            abs(coordinate).bit_length()
+            for point in initial_coordinates
+            for coordinate in point
+        ),
+    )
+    oracle_capacity = max(
+        16,
+        (16 * maximum_coordinate_bits + 8 * coefficient_bits + 511) // 64,
+    )
+    oracle_output = kernel_integer_zeros(
+        exact_kummer_small_step_batch,
+        _host_buffer_length(7 * point_count * oracle_steps),
+        _host_buffer_length(oracle_capacity),
+    )
+    oracle_status = exact_kummer_small_step_batch(
+        oracle_output,
+        oracle_states,
+        oracle_coefficients,
+        oracle_exponents,
+        oracle_counts,
+        oracle_statuses,
+        point_count,
+        oracle_steps,
+    )
+    if oracle_status != point_count:
+        raise Genus2HeightResolutionError(
+            "the exact small-step Kummer batch oracle failed",
+            {"status": oracle_status, "oracle_steps": oracle_steps},
+        )
+    oracle_values = tuple(int(value) for value in integer_buffer_values(oracle_output))
+    oracle_at = perf_counter()
+
+    _check_height_batch_cancel(cancel, "proof-assembly")
+    context.__dict__["_finite_correction_misses"] += point_count
+    context.__dict__["_archimedean_correction_misses"] += point_count
+    finite_tail = finite_logarithms[discriminant_bound] / RealBall(
+        3 * 4**selected_steps, precision_bits=working_precision
+    )
+    finite_tail_ball = RealBall(
+        0,
+        finite_tail.upper,
+        precision_bits=working_precision,
+        rigorous=True,
+        source="Mueller--Stoll finite correction tail",
+    )
+    archimedean_tail = archimedean_global / RealBall(
+        4**selected_steps, precision_bits=working_precision
+    )
+    stage_milliseconds = {
+        "shared_preparation": str((prepared_at - started) * 1000),
+        "modular_recurrence": str((modular_at - prepared_at) * 1000),
+        "dyadic_recurrence": str((dyadic_at - modular_at) * 1000),
+        "exact_outward_logarithms": str((logarithm_at - dyadic_at) * 1000),
+        "exact_small_step_oracle": str((oracle_at - logarithm_at) * 1000),
+    }
+    recurrence_backend = (
+        "native-integer-buffer-batch"
+        if all(
+            is_compiled(function)
+            for function in (
+                modular_kummer_height_recurrence_batch,
+                dyadic_kummer_height_recurrence_batch,
+                exact_kummer_small_step_batch,
+                dyadic_log_interval_batch,
+            )
+        )
+        else "dynamic-python-batch"
+    )
+    compact_bound_payload = None
+    compact_context_payload = None
+    if _return_payloads:
+        compact_bound_payload = (
+            bounds._correction_lower_data,
+            bounds._correction_upper_data,
+            _encode_data(bounds._diagnostics),
+        )
+        compact_context_payload = _encode_data(height_context_diagnostics(context))
+    finite_denominators: dict[int, RealBall] = {}
+    answers: list[Any] = []
+    for point_index, divisor in enumerate(values):
+        finite_partial = _zero_ball(working_precision, "empty-finite-correction-sum")
+        for step_index, common in enumerate(modular_rows[point_index]):
+            if common > 1:
+                common_logarithm = finite_logarithms.get(common)
+                if common_logarithm is None:
+                    raise Genus2HeightResolutionError(
+                        "the finite logarithm batch omitted a modular content",
+                        {"content": str(common)},
+                    )
+                denominator = finite_denominators.get(step_index)
+                if denominator is None:
+                    denominator = RealBall(
+                        4 ** (step_index + 1), precision_bits=working_precision
+                    )
+                    finite_denominators[step_index] = denominator
+                finite_partial = finite_partial + common_logarithm / denominator
+        finite_ball = RealBall(
+            finite_partial.lower,
+            (finite_partial + finite_tail).upper,
+            precision_bits=working_precision,
+            rigorous=True,
+            source="Mueller--Stoll batched factorization-free finite correction",
+        )
+        finite_diagnostics = (
+            {}
+            if _return_payloads
+            else {
+                "finite_correction": "certified",
+                "discriminant_bound_D": str(discriminant_bound),
+                "modulus_exponent": selected_steps + 2,
+                "raw_duplication_gcds": tuple(
+                    str(value) for value in modular_rows[point_index]
+                ),
+                "recurrence_backend": recurrence_backend,
+                "batch_point_count": point_count,
+                "factorization_used": False,
+                "specialized_quartic_term_counts": tuple(
+                    len(table) for table in specialized_terms
+                ),
+                "tail_formula": "log(D)/(3*4^steps)",
+            }
+        )
+        archimedean_partial = archimedean_partials[point_index]
+        archimedean_ball = archimedean_partial + archimedean_tail
+        archimedean_diagnostics = (
+            {}
+            if _return_payloads
+            else {
+                "archimedean_correction": "certified",
+                "bounded_projective_state": True,
+                "coordinate_storage": "four outward-rounded dyadic intervals",
+                "recurrence_backend": recurrence_backend,
+                "batch_point_count": point_count,
+                "specialized_quartic_term_counts": tuple(
+                    len(table) for table in specialized_terms
+                ),
+                "scale_logarithm_block_size": logarithm_block_size,
+                "scale_logarithm_evaluations": (
+                    selected_steps + logarithm_block_size - 1
+                )
+                // logarithm_block_size,
+                "scale_logarithm_engine": "exact-outward-atanh-integer-batch",
+                "scale_logarithm_precision_bits": logarithm_precision,
+                "working_precision_bits": working_precision,
+                "target_bits": normalized_target,
+                "minimum_state_width_bits": per_point_minimum_width[point_index],
+                "scale_enclosures": tuple(
+                    {
+                        "step": str(row[0]),
+                        "lower_dyadic_numerator": str(row[1]),
+                        "upper_dyadic_numerator": str(row[2]),
+                        "dyadic_exponent": str(row[3]),
+                    }
+                    for row in per_point_scale_metadata[point_index]
+                ),
+                "tail_formula": "global_real_correction_bound/4^steps",
+                "factorization_used": False,
+            }
+        )
+        oracle_scales: list[Any] = []
+        oracle_gcds: list[Any] = []
+        seen = {initial_coordinates[point_index]}
+        torsion_step: int | None = None
+        for step_index in range(oracle_steps):
+            offset = (point_index * oracle_steps + step_index) * 7
+            content = oracle_values[offset]
+            source_height = oracle_values[offset + 1]
+            raw_height = oracle_values[offset + 2]
+            normalized = cast(
+                tuple[int, int, int, int],
+                tuple(
+                    oracle_values[offset + 3 + coordinate] for coordinate in range(4)
+                ),
+            )
+            source_power = source_height**4
+            scale_metadata = per_point_scale_metadata[point_index][step_index]
+            scaled_exact = raw_height * dyadic_scale
+            if not (
+                scale_metadata[1] * source_power
+                <= scaled_exact
+                <= scale_metadata[2] * source_power
+            ):
+                raise Genus2HeightResolutionError(
+                    "batched normalized real iteration failed its exact small-step oracle",
+                    {
+                        "point": point_index,
+                        "step": step_index,
+                        "exact_scale_numerator": str(raw_height),
+                        "exact_scale_denominator": str(source_power),
+                    },
+                )
+            if content != modular_rows[point_index][step_index]:
+                raise Genus2HeightResolutionError(
+                    "batched modular finite correction failed its exact small-step oracle",
+                    {
+                        "point": point_index,
+                        "step": step_index,
+                        "exact_primitive_content": str(content),
+                        "modular_content": str(modular_rows[point_index][step_index]),
+                    },
+                )
+            oracle_scales.append(
+                (raw_height, source_power)
+                if _return_payloads
+                else str(raw_height) + "/" + str(source_power)
+            )
+            oracle_gcds.append(content if _return_payloads else str(content))
+            if normalized in seen:
+                torsion_step = step_index + 1
+                break
+            seen.add(normalized)
+        if torsion_step is not None:
+            torsion_ball = _zero_ball(
+                working_precision, "exact-kummer-cycle-torsion-height"
+            )
+            torsion_provenance = divisor_provenance(divisor)
+            torsion_diagnostics = {
+                "torsion_certificate": "repeated-exact-kummer-coordinate",
+                "requested_algorithm": normalized_algorithm,
+                "selected_algorithm": "exact-small-step-torsion-oracle",
+                "requested_precision_bits": normalized_precision,
+                "target_bits": normalized_target,
+                "batch_point_count": point_count,
+                "context": height_context_diagnostics(context),
+            }
+            if _return_payloads:
+                answers.append(
+                    (
+                        _ball_data(torsion_ball),
+                        "exact-torsion-zero",
+                        torsion_step,
+                        _encode_data(torsion_provenance),
+                        None,
+                        _encode_data(torsion_diagnostics),
+                    )
+                )
+            else:
+                answers.append(
+                    CanonicalHeightResult(
+                        torsion_ball,
+                        status="exact-torsion-zero",
+                        steps=torsion_step,
+                        provenance=torsion_provenance,
+                        bounds=None,
+                        diagnostics=torsion_diagnostics,
+                    )
+                )
+            continue
+        initial_naive_height = initial_naive_heights[point_index]
+        raw_ball = initial_naive_height - finite_ball - archimedean_ball
+        local_approximation = (
+            initial_naive_height - finite_partial - archimedean_partial
+        )
+        zero = _zero_ball(working_precision)
+        ball = RealBall(
+            zero.lower if raw_ball.lower < zero.lower else raw_ball.lower,
+            raw_ball.upper,
+            precision_bits=working_precision,
+            rigorous=True,
+            source="batched Mueller--Stoll certified local Kummer correction",
+        )
+        achieved_width_bits = _enclosure_width_bits(ball)
+        if normalized_target is not None and achieved_width_bits < normalized_target:
+            raise Genus2HeightResolutionError(
+                "the certified batched local height did not reach target_bits",
+                {
+                    "point": point_index,
+                    "target_bits": normalized_target,
+                    "achieved_enclosure_width_bits": achieved_width_bits,
+                    "working_precision_bits": working_precision,
+                    "selected_steps": selected_steps,
+                },
+            )
+        provenance = divisor_provenance(divisor)
+        if _return_payloads:
+            compact_diagnostics = (
+                "local-height-batch-diagnostics-v1",
+                normalized_algorithm,
+                normalized_precision,
+                working_precision,
+                normalized_target,
+                achieved_width_bits,
+                initial_height_integers[point_index],
+                _ball_data(local_approximation),
+                _ball_data(finite_ball),
+                _ball_data(finite_partial),
+                _ball_data(finite_tail_ball),
+                discriminant_bound,
+                selected_steps + 2,
+                tuple(modular_rows[point_index]),
+                recurrence_backend,
+                point_count,
+                tuple(len(table) for table in specialized_terms),
+                _ball_data(archimedean_ball),
+                _ball_data(archimedean_partial),
+                _ball_data(archimedean_tail),
+                logarithm_block_size,
+                (selected_steps + logarithm_block_size - 1) // logarithm_block_size,
+                logarithm_precision,
+                per_point_minimum_width[point_index],
+                tuple(per_point_scale_metadata[point_index]),
+                oracle_steps,
+                tuple(oracle_scales),
+                tuple(oracle_gcds),
+                (
+                    stage_milliseconds["shared_preparation"],
+                    stage_milliseconds["modular_recurrence"],
+                    stage_milliseconds["dyadic_recurrence"],
+                    stage_milliseconds["exact_outward_logarithms"],
+                    stage_milliseconds["exact_small_step_oracle"],
+                ),
+                compact_context_payload,
+            )
+            answers.append(
+                (
+                    _ball_data(ball),
+                    "certified-enclosure",
+                    selected_steps,
+                    _encode_data(provenance),
+                    compact_bound_payload,
+                    compact_diagnostics,
+                )
+            )
+            continue
+        finite_dictionary = {
+            "schema": "sagejs.hyperelliptic.genus2-finite-height-correction.v1",
+            "meaning": "sum_p mu_p(P)*log(p)",
+            "algorithm": "mueller-stoll-proposition-14.1-factorization-free",
+            "rigorous": True,
+            "steps": selected_steps,
+            "enclosure": finite_ball.to_dict(),
+            "partial_sum": finite_partial.to_dict(),
+            "tail_bound": finite_tail_ball.to_dict(),
+            "diagnostics": finite_diagnostics,
+        }
+        archimedean_dictionary = {
+            "schema": "sagejs.hyperelliptic.genus2-archimedean-height-correction.v1",
+            "meaning": "mu_infinity(P)",
+            "algorithm": "normalized-certified-real-kummer-iteration",
+            "rigorous": True,
+            "steps": selected_steps,
+            "enclosure": archimedean_ball.to_dict(),
+            "partial_sum": archimedean_partial.to_dict(),
+            "tail_bound": archimedean_tail.to_dict(),
+            "diagnostics": archimedean_diagnostics,
+        }
+        answer_diagnostics = {
+            "algorithm": "mueller-stoll-modular-local-kummer-batch",
+            "requested_algorithm": normalized_algorithm,
+            "selected_algorithm": "local",
+            "requested_precision_bits": normalized_precision,
+            "working_precision_bits": working_precision,
+            "target_bits": normalized_target,
+            "achieved_enclosure_width_bits": achieved_width_bits,
+            "enclosure_width_bits": achieved_width_bits,
+            "initial_naive_height_integer": str(initial_height_integers[point_index]),
+            "terminal_limit_approximation": local_approximation.to_dict(),
+            "finite_correction": finite_dictionary,
+            "archimedean_correction": archimedean_dictionary,
+            "local_corrections": {
+                "status": "certified-partial-sums-and-tails",
+                "finite_partial": finite_partial.to_dict(),
+                "finite_tail_interval": finite_tail_ball.to_dict(),
+                "archimedean_partial": archimedean_partial.to_dict(),
+                "archimedean_tail_interval": archimedean_tail.to_dict(),
+                "raw_duplication_gcds": finite_diagnostics["raw_duplication_gcds"],
+                "factorization_used": False,
+                "telescoping_identity": ("h_K(P)-hhat(P)=mu_finite(P)+mu_infinity(P)"),
+            },
+            "exact_small_step_oracle": {
+                "steps": oracle_steps,
+                "scale_ratios": tuple(oracle_scales),
+                "finite_gcds": tuple(oracle_gcds),
+                "status": "passed",
+            },
+            "batch": {
+                "point_count": point_count,
+                "shared_model_specialization": True,
+                "atomic_publication": True,
+                "stage_milliseconds": stage_milliseconds,
+            },
+            "asymptotic_state": (
+                "point-major polynomial-size modular state and bounded dyadic balls"
+            ),
+            "context": height_context_diagnostics(context),
+        }
+        encoded_diagnostics = _encode_data(answer_diagnostics)
+        answers.append(
+            CanonicalHeightResult(
+                ball,
+                status="certified-enclosure",
+                steps=selected_steps,
+                provenance=provenance,
+                bounds=bounds,
+                diagnostics={},
+                _encoded_diagnostics=encoded_diagnostics,
+            )
+        )
+    _check_height_batch_cancel(cancel, "proof-assembly-complete")
+    return tuple(answers)
 
 
 def _local_correction_breakdown(
@@ -1079,21 +3094,18 @@ def _local_correction_breakdown(
         )
 
     steps = len(chain) - 1
-    discriminant_bound = 16 * abs(int(str(jacobian.f().discriminant())))
+    discriminant_bound = _mueller_stoll_discriminant_bound(jacobian.f())
     finite_tail = field.log_integer(discriminant_bound) / RealBall(
         3 * 4**steps, precision_bits=precision
     )
-    # The automatic lower bound is exactly -log(A_delta)/3. Its scaled
-    # version bounds the remaining real-place tail below. Removing the
-    # finite log(D)/3 contribution from the automatic upper bound gives the
-    # corresponding real-place upper tail.
-    archimedean_tail_lower = bounds.correction_lower / RealBall(
-        4**steps, precision_bits=precision
-    )
-    archimedean_global_upper = bounds.correction_upper - field.log_integer(
-        discriminant_bound
-    ) / RealBall(3, precision_bits=precision)
-    archimedean_tail_upper = archimedean_global_upper / RealBall(
+    # Since total correction is finite+archimedean and the finite correction
+    # lies in [0,log(D)/3], the real-place correction lies in
+    # [total_lower-log(D)/3,total_upper]. Scale that interval for the tail.
+    archimedean_tail_lower = (
+        bounds.correction_lower
+        - field.log_integer(discriminant_bound) / RealBall(3, precision_bits=precision)
+    ) / RealBall(4**steps, precision_bits=precision)
+    archimedean_tail_upper = bounds.correction_upper / RealBall(
         4**steps, precision_bits=precision
     )
     answer = {
@@ -1131,11 +3143,21 @@ def canonical_height(
     *,
     steps: int = 6,
     precision: int = 100,
+    target_bits: int | None = None,
+    algorithm: str = "auto",
     height_difference_bound: Any = None,
     torsion_order: Any = None,
     context: HeightContext | None = None,
 ) -> CanonicalHeightResult:
-    """Compute a genus-2 canonical-height enclosure by exact doubling.
+    """Compute a certified genus-2 canonical-height enclosure.
+
+    For primitive integral classical quintics, `algorithm="auto"` uses the
+    factorization-free finite correction and normalized real-ball Kummer
+    iteration whenever a target accuracy is requested or a long explicit
+    chain would be needed. This path has polynomial-size modular state and
+    four bounded real balls rather than exponentially growing exact
+    coordinates. Small bounded calls retain the cheaper exact oracle;
+    `algorithm="exact"` selects it explicitly.
 
     `height_difference_bound`, when supplied, is treated as an unverified
     caller assumption about `|h_K-hhat|`; exact syntax is required, but syntax
@@ -1147,10 +3169,21 @@ def canonical_height(
     capability.require()
     steps = int(steps)
     precision = int(precision)
+    algorithm = str(algorithm)
+    if algorithm not in ("auto", "local", "exact"):
+        raise ValueError("height algorithm must be 'auto', 'local', or 'exact'")
     if steps < 0:
         raise ValueError("height doubling steps must be nonnegative")
     if precision < 16:
         raise ValueError("height precision must be at least 16 bits")
+    if target_bits is not None:
+        target_bits = int(target_bits)
+        if target_bits < 1:
+            raise ValueError("target_bits must be positive")
+    working_precision = max(
+        precision,
+        (target_bits + 32) if target_bits is not None else precision,
+    )
     if context is None:
         context = HeightContext(divisor.parent())
     elif context.jacobian is not divisor.parent():
@@ -1169,7 +3202,7 @@ def canonical_height(
                 {"torsion_order": str(order)},
             )
         return CanonicalHeightResult(
-            _zero_ball(precision, "verified-torsion-canonical-height"),
+            _zero_ball(working_precision, "verified-torsion-canonical-height"),
             status="exact-torsion-zero",
             steps=0,
             provenance=divisor_provenance(divisor),
@@ -1177,35 +3210,20 @@ def canonical_height(
             diagnostics={
                 "torsion_certificate": "verified-annihilating-multiple",
                 "annihilating_multiple": str(order),
+                "requested_algorithm": algorithm,
+                "selected_algorithm": "verified-torsion",
+                "requested_precision_bits": precision,
+                "target_bits": target_bits,
                 "context": context.diagnostics(),
             },
         )
 
-    chain = context.chain(divisor, steps)
-    if _find_kummer_repeat(chain):
-        return CanonicalHeightResult(
-            _zero_ball(precision, "exact-kummer-cycle-torsion-height"),
-            status="exact-torsion-zero",
-            steps=steps,
-            provenance=divisor_provenance(divisor),
-            bounds=None,
-            diagnostics={
-                "torsion_certificate": "repeated-exact-kummer-coordinate",
-                "context": context.diagnostics(),
-            },
-        )
-
-    terminal = chain[steps]
-    height_integer = terminal.naive_height_integer()
-    field = context.field(precision)
-    naive_height = field.log_integer(height_integer)
-    scale = RealBall(4**steps, precision_bits=precision)
-    terminal_approximation = naive_height / scale
+    field = context.field(working_precision)
     bounds = None
     if height_difference_bound is not None:
         absolute = _exact_ball(
             height_difference_bound,
-            precision,
+            working_precision,
             "caller-supplied-unverified-absolute-height-difference-assumption",
         )
         bounds = AutomaticHeightBounds(
@@ -1218,13 +3236,256 @@ def canonical_height(
             },
         )
     else:
-        bounds = context.automatic_bounds(precision)
+        bounds = context.automatic_bounds(working_precision)
+
+    use_local = (
+        algorithm != "exact"
+        and (algorithm == "local" or target_bits is not None or steps >= 9)
+        and height_difference_bound is None
+        and bounds is not None
+        and bounds.diagnostics.get("automatic_bound") == "certified"
+    )
+    if algorithm == "local" and not use_local:
+        diagnostics = {} if bounds is None else bounds.diagnostics
+        raise Genus2HeightCapabilityError(
+            "the local height engine requires a primitive integral classical quintic",
+            diagnostics,
+        )
+
+    if use_local and bounds is not None:
+        selected_steps = steps
+        discriminant_bound = _mueller_stoll_discriminant_bound(divisor.parent().f())
+        finite_global = field.log_integer(discriminant_bound) / RealBall(
+            3, precision_bits=working_precision
+        )
+        archimedean_global = RealBall(
+            (bounds.correction_lower - finite_global).lower,
+            bounds.correction_upper.upper,
+            precision_bits=working_precision,
+            rigorous=True,
+            source="Stoll/Flynn global real-place correction bound",
+        )
+        if target_bits is not None:
+            selected_steps = max(
+                selected_steps,
+                _finite_correction_steps(discriminant_bound, target_bits + 2),
+                _scaled_tail_steps(archimedean_global, target_bits + 2),
+            )
+            # Straight interval boxes deliberately favor a small, auditable
+            # state over an opaque floating orbit.  Reserve enough guard bits
+            # for dependency growth through the quartic map; without this,
+            # a long iteration may honestly lose separation from the
+            # projective origin even though the asymptotic tail is small.
+            # The fixed-scale dyadic quartic kernel loses at most a few bits
+            # per normalized step on the audited classical envelope.  Four
+            # bits per step plus a 48-bit reserve is both conservative on the
+            # exact/Magma fixtures and materially cheaper than the former
+            # generic-box seven-bit reserve.
+            guarded_precision = target_bits + 4 * selected_steps + 48
+            if working_precision < guarded_precision:
+                working_precision = guarded_precision
+                field = context.field(working_precision)
+                # The automatic endpoints are exact outward rational bounds.
+                # Raising the orbit precision therefore does not require
+                # repeating the root-separation proof: its already certified
+                # endpoint remains valid, and its rounding width is divided
+                # by `4^selected_steps` in the omitted tail.
+        initial = context.kummer(divisor)
+        initial_height_integer = initial.naive_height_integer()
+        initial_naive_height = field.log_integer(initial_height_integer)
+        finite = context.finite_correction(
+            divisor,
+            precision=working_precision,
+            steps=selected_steps,
+        )
+        archimedean = context.archimedean_correction(
+            divisor,
+            precision=working_precision,
+            steps=selected_steps,
+            bounds=bounds,
+            target_bits=target_bits,
+        )
+        raw_ball = initial_naive_height - finite.ball - archimedean.ball
+        local_approximation = (
+            initial_naive_height - finite.partial_sum - archimedean.partial_sum
+        )
+        zero = _zero_ball(working_precision)
+        ball = RealBall(
+            zero.lower if raw_ball.lower < zero.lower else raw_ball.lower,
+            raw_ball.upper,
+            precision_bits=working_precision,
+            rigorous=True,
+            source=(
+                "Mueller--Stoll factorization-free finite correction plus "
+                "normalized certified real Kummer correction"
+            ),
+        )
+        achieved_width_bits = _enclosure_width_bits(ball)
+        if target_bits is not None and achieved_width_bits < target_bits:
+            raise Genus2HeightResolutionError(
+                "the certified local height enclosure did not reach target_bits; "
+                "increase precision",
+                {
+                    "target_bits": target_bits,
+                    "achieved_enclosure_width_bits": achieved_width_bits,
+                    "working_precision_bits": working_precision,
+                    "selected_steps": selected_steps,
+                },
+            )
+
+        oracle_steps = min(2, selected_steps)
+        oracle_coordinates = context.kummer(divisor).coordinates()
+        oracle_seen = {oracle_coordinates}
+        scale_enclosures = archimedean.diagnostics["scale_enclosures"]
+        finite_gcds = finite.diagnostics["raw_duplication_gcds"]
+        oracle_scales: list[str] = []
+        oracle_gcds: list[str] = []
+        oracle_terms = cast(
+            tuple[
+                tuple[tuple[int, int, int, int, int], ...],
+                tuple[tuple[int, int, int, int, int], ...],
+                tuple[tuple[int, int, int, int, int], ...],
+                tuple[tuple[int, int, int, int, int], ...],
+            ],
+            _validated_context_specialized_terms(context),
+        )
+        for index in range(oracle_steps):
+            source_height = max(abs(value) for value in oracle_coordinates)
+            raw_coordinates = _specialized_duplication_exact(
+                oracle_coordinates,
+                oracle_terms,
+            )
+            raw_height = max(abs(value) for value in raw_coordinates)
+            scale_text = str(raw_height) + "/" + str(source_height**4)
+            scale_metadata = scale_enclosures[index]
+            scale_interval = RealBall.dyadic_endpoints(
+                int(scale_metadata["lower_dyadic_numerator"]),
+                int(scale_metadata["dyadic_exponent"]),
+                int(scale_metadata["upper_dyadic_numerator"]),
+                int(scale_metadata["dyadic_exponent"]),
+                precision_bits=working_precision,
+                source="exact small-step dyadic-scale oracle",
+            )
+            if not scale_interval.contains(scale_text):
+                raise Genus2HeightResolutionError(
+                    "normalized real iteration failed its exact small-step oracle",
+                    {"step": index, "exact_scale": scale_text},
+                )
+            content = _common_content(raw_coordinates)
+            if str(content) != finite_gcds[index]:
+                raise Genus2HeightResolutionError(
+                    "modular finite correction failed its exact small-step oracle",
+                    {
+                        "step": index,
+                        "exact_primitive_content": str(content),
+                        "modular_content": finite_gcds[index],
+                    },
+                )
+            oracle_scales.append(scale_text)
+            oracle_gcds.append(str(content))
+            oracle_coordinates = cast(
+                tuple[int, int, int, int],
+                tuple(value // content for value in raw_coordinates),
+            )
+            for value in oracle_coordinates:
+                if value != 0:
+                    if value < 0:
+                        oracle_coordinates = cast(
+                            tuple[int, int, int, int],
+                            tuple(-entry for entry in oracle_coordinates),
+                        )
+                    break
+            if oracle_coordinates in oracle_seen:
+                return CanonicalHeightResult(
+                    _zero_ball(working_precision, "exact-kummer-cycle-torsion-height"),
+                    status="exact-torsion-zero",
+                    steps=index + 1,
+                    provenance=divisor_provenance(divisor),
+                    bounds=None,
+                    diagnostics={
+                        "torsion_certificate": "repeated-exact-kummer-coordinate",
+                        "requested_algorithm": algorithm,
+                        "selected_algorithm": "exact-small-step-torsion-oracle",
+                        "requested_precision_bits": precision,
+                        "target_bits": target_bits,
+                        "context": context.diagnostics(),
+                    },
+                )
+            oracle_seen.add(oracle_coordinates)
+        answer = CanonicalHeightResult(
+            ball,
+            status="certified-enclosure",
+            steps=selected_steps,
+            provenance=divisor_provenance(divisor),
+            bounds=bounds,
+            diagnostics={
+                "algorithm": "mueller-stoll-modular-local-kummer",
+                "requested_algorithm": algorithm,
+                "selected_algorithm": "local",
+                "requested_precision_bits": precision,
+                "working_precision_bits": working_precision,
+                "target_bits": target_bits,
+                "achieved_enclosure_width_bits": achieved_width_bits,
+                "enclosure_width_bits": achieved_width_bits,
+                "initial_naive_height_integer": str(initial_height_integer),
+                "terminal_limit_approximation": local_approximation.to_dict(),
+                "finite_correction": finite.to_dict(),
+                "archimedean_correction": archimedean.to_dict(),
+                "local_corrections": {
+                    "status": "certified-partial-sums-and-tails",
+                    "finite_partial": finite.partial_sum.to_dict(),
+                    "finite_tail_interval": finite.tail_bound.to_dict(),
+                    "archimedean_partial": archimedean.partial_sum.to_dict(),
+                    "archimedean_tail_interval": archimedean.tail_bound.to_dict(),
+                    "raw_duplication_gcds": finite.diagnostics["raw_duplication_gcds"],
+                    "factorization_used": False,
+                    "telescoping_identity": (
+                        "h_K(P)-hhat(P)=mu_finite(P)+mu_infinity(P)"
+                    ),
+                },
+                "exact_small_step_oracle": {
+                    "steps": oracle_steps,
+                    "scale_ratios": tuple(oracle_scales),
+                    "finite_gcds": tuple(oracle_gcds),
+                    "status": "passed",
+                },
+                "asymptotic_state": (
+                    "polynomial-size modular finite state and four bounded real balls"
+                ),
+                "context": context.diagnostics(),
+            },
+        )
+        return answer
+
+    chain = context.chain(divisor, steps)
+    if _find_kummer_repeat(chain):
+        return CanonicalHeightResult(
+            _zero_ball(working_precision, "exact-kummer-cycle-torsion-height"),
+            status="exact-torsion-zero",
+            steps=steps,
+            provenance=divisor_provenance(divisor),
+            bounds=None,
+            diagnostics={
+                "torsion_certificate": "repeated-exact-kummer-coordinate",
+                "requested_algorithm": algorithm,
+                "selected_algorithm": "exact",
+                "requested_precision_bits": precision,
+                "target_bits": target_bits,
+                "context": context.diagnostics(),
+            },
+        )
+
+    terminal = chain[steps]
+    height_integer = terminal.naive_height_integer()
+    naive_height = field.log_integer(height_integer)
+    scale = RealBall(4**steps, precision_bits=working_precision)
+    terminal_approximation = naive_height / scale
 
     if bounds is None:
         ball = RealBall(
             terminal_approximation.lower,
             terminal_approximation.upper,
-            precision_bits=precision,
+            precision_bits=working_precision,
             rigorous=False,
             source=(
                 "repeated-doubling-reference-without-global-height-difference-bound"
@@ -1234,13 +3495,13 @@ def canonical_height(
     else:
         raw_lower = (naive_height - bounds.correction_upper) / scale
         raw_upper = (naive_height - bounds.correction_lower) / scale
-        zero = _zero_ball(precision)
+        zero = _zero_ball(working_precision)
         lower = zero.lower if raw_lower.lower < zero.lower else raw_lower.lower
         conditional = bounds.diagnostics.get("automatic_bound") == "caller-supplied"
         ball = RealBall(
             lower,
             raw_upper.upper,
-            precision_bits=precision,
+            precision_bits=working_precision,
             rigorous=not conditional,
             source=(
                 "exact Kummer repeated doubling plus certified global "
@@ -1265,6 +3526,11 @@ def canonical_height(
             ),
             "scale": str(4**steps),
             "algorithm": "direct-flynn-kummer-quartic-limit",
+            "requested_algorithm": algorithm,
+            "selected_algorithm": "exact",
+            "requested_precision_bits": precision,
+            "working_precision_bits": working_precision,
+            "target_bits": target_bits,
             "projective_normalization": (
                 "primitive-integral-gcd-after-every-exact-duplication"
             ),
@@ -1286,7 +3552,7 @@ def canonical_height(
                 "HeightContext enforces a pre-duplication resource budget"
             ),
             "local_corrections": _local_correction_breakdown(
-                context, chain, bounds, precision
+                context, chain, bounds, working_precision
             ),
             "context": context.diagnostics(),
         },
@@ -1301,20 +3567,33 @@ class HeightPairingResult(_SealedRecord):
         matrix: tuple[tuple[RealBall, ...], ...],
         height_results: tuple[CanonicalHeightResult, ...],
         diagnostics: dict[str, Any],
+        _encoded_diagnostics: Any = None,
+        _deferred_diagnostics: Any = None,
+        _encoded_matrix_data: Any = None,
+        _ball_encoder: Any = _ball_data,
     ) -> None:
-        self._matrix_data = tuple(
-            tuple(_ball_data(entry) for entry in row) for row in matrix
+        self._matrix_data = (
+            tuple(tuple(_ball_encoder(entry) for entry in row) for row in matrix)
+            if _encoded_matrix_data is None
+            else tuple(tuple(entry for entry in row) for row in _encoded_matrix_data)
         )
         self._height_results = tuple(height_results)
-        self._diagnostics = _freeze_data(diagnostics)
-        self._rigorous = all(entry.rigorous for row in self._matrix for entry in row)
+        if _deferred_diagnostics is not None:
+            self._diagnostics = _deferred_diagnostics
+        else:
+            self._diagnostics = (
+                _freeze_data(diagnostics)
+                if _encoded_diagnostics is None
+                else _EncodedFrozenDict(_encoded_diagnostics[1])
+            )
+        self._rigorous = (
+            all(entry.rigorous for row in self._matrix for entry in row)
+            if _encoded_matrix_data is None
+            else all(bool(entry[3]) for row in self._matrix_data for entry in row)
+        )
         self._seal()
 
-    @property
-    def matrix(self) -> tuple[tuple[RealBall, ...], ...]:
-        return tuple(
-            tuple(_ball_from_data(entry) for entry in row) for row in self._matrix_data
-        )
+    matrix = _closed_ball_matrix_property()
 
     @property
     def _matrix(self) -> tuple[tuple[RealBall, ...], ...]:
@@ -1324,9 +3603,7 @@ class HeightPairingResult(_SealedRecord):
     def height_results(self) -> tuple[CanonicalHeightResult, ...]:
         return tuple(self._height_results)
 
-    @property
-    def diagnostics(self) -> dict[str, Any]:
-        return cast(dict[str, Any], _copy_data(self._diagnostics))
+    diagnostics = _closed_pairing_diagnostics_property()
 
     @property
     def rigorous(self) -> bool:
@@ -1377,6 +3654,10 @@ class HeightPairingResult(_SealedRecord):
                 "precision_bits": int(
                     self._diagnostics.get("precision_bits", precision)
                 ),
+                "target_bits": self._diagnostics.get("target_bits"),
+                "requested_algorithm": str(
+                    self._diagnostics.get("requested_algorithm", "auto")
+                ),
                 "context": _copy_data(self._diagnostics.get("context", {})),
             },
         )
@@ -1405,6 +3686,8 @@ class HeightPairingResult(_SealedRecord):
             point_values,
             steps=steps,
             precision=precision,
+            target_bits=self._diagnostics.get("target_bits"),
+            algorithm=str(self._diagnostics.get("requested_algorithm", "auto")),
             height_difference_bound=height_difference_bound,
             context=replay_context,
         )
@@ -1443,8 +3726,7 @@ class HeightPairingResult(_SealedRecord):
             "diagnostics": self.diagnostics,
         }
 
-    def __getitem__(self, index: int) -> tuple[RealBall, ...]:
-        return tuple(_copy_ball(entry) for entry in self._matrix[index])
+    __getitem__ = _closed_ball_matrix_getitem()
 
     def __len__(self) -> int:
         return len(self._matrix)
@@ -1458,10 +3740,14 @@ def height_pairing(
     *,
     steps: int = 6,
     precision: int = 100,
+    target_bits: int | None = None,
+    algorithm: str = "auto",
     height_difference_bound: Any = None,
     context: HeightContext | None = None,
+    cancel: Any = None,
 ) -> HeightPairingResult:
     """Return the symmetric canonical pairing on rational genus-2 divisors."""
+    _check_height_batch_cancel(cancel, "pairing-entry")
     values = tuple(points)
     if not values:
         return HeightPairingResult((), (), {"algorithm": "empty-pairing"})
@@ -1471,16 +3757,21 @@ def height_pairing(
             raise ValueError("all pairing points must lie on the same Jacobian")
     if context is None:
         context = HeightContext(jacobian)
+    elif context.jacobian is not jacobian:
+        raise ValueError("the height context belongs to a different Jacobian")
     diagonal = tuple(
         canonical_height(
             value,
             steps=steps,
             precision=precision,
+            target_bits=target_bits,
+            algorithm=algorithm,
             height_difference_bound=height_difference_bound,
             context=context,
         )
         for value in values
     )
+    _check_height_batch_cancel(cancel, "pairing-diagonal")
     two = RealBall(2, precision_bits=int(precision))
     matrix: list[list[RealBall]] = [
         [_zero_ball(int(precision)) for _right in values] for _left in values
@@ -1489,10 +3780,13 @@ def height_pairing(
     for left, _left_value in enumerate(values):
         matrix[left][left] = diagonal[left].ball
         for right in range(left + 1, len(values)):
+            _check_height_batch_cancel(cancel, "pairing-off-diagonal")
             sum_height = canonical_height(
                 values[left] + values[right],
                 steps=steps,
                 precision=precision,
+                target_bits=target_bits,
+                algorithm=algorithm,
                 height_difference_bound=height_difference_bound,
                 context=context,
             )
@@ -1506,17 +3800,1219 @@ def height_pairing(
                     "sum_height": sum_height.to_dict(),
                 }
             )
-    return HeightPairingResult(
+    answer = HeightPairingResult(
         tuple(tuple(row) for row in matrix),
         diagonal,
         {
             "algorithm": "quadratic-height-polarization",
             "steps": int(steps),
             "precision_bits": int(precision),
+            "target_bits": target_bits,
+            "requested_algorithm": str(algorithm),
             "off_diagonal_height_data": tuple(off_diagonal),
             "context": context.diagnostics(),
         },
     )
+    return answer
+
+
+def _install_height_proof_state(
+    automatic_bounds_function: Any,
+    normalized_archimedean_function: Any,
+    canonical_height_function: Any,
+    height_pairing_function: Any,
+    canonical_height_batch_function: Any,
+) -> tuple[Any, Any, Any, Any]:
+    """Install non-exported proof registries and detached result caches.
+
+    Python module-private names are a naming convention, not an authentication
+    boundary.  The mutable registries and every decision that can preserve
+    `rigorous=True` therefore live only in this closure.  Automatic bounds are
+    authenticated structurally against a bounded set of theorem-source
+    payloads keyed by the complete live model and precision; public copies do
+    not consume proof-state capacity.  A missing source is safely rederived
+    from the captured theorem implementation.  Cached height and pairing
+    payloads contain only integer endpoint pairs and recursively primitive
+    diagnostics, and a fresh sealed public record is reconstructed on every
+    egress.
+    """
+    automatic_sources: list[tuple[Any, int, Any]] = []
+    canonical_records: list[tuple[Any, Any, Any, Any, Any, Any, Any]] = []
+    staged_canonical_records: list[tuple[Any, Any, Any, Any, Any, Any, Any]] = []
+    active_pairing_contexts: list[Any] = []
+    cancellation_callback_contexts: list[Any] = []
+    pairing_records: list[tuple[Any, Any, Any, Any, Any, Any, Any]] = []
+    maximum_records = 512
+
+    automatic_bounds_type = AutomaticHeightBounds
+    canonical_result_type = CanonicalHeightResult
+    deferred_canonical_diagnostics_type = _DeferredCanonicalDiagnostics
+    pairing_result_type = HeightPairingResult
+    deferred_pairing_diagnostics_type = _DeferredPairingDiagnostics
+    height_context_type = HeightContext
+    real_ball_type = RealBall
+    height_context_diagnostics_function = HeightContext.diagnostics
+    encoded_frozen_dict_type = _EncodedFrozenDict
+    frozen_dict_type = _FrozenDict
+    type_function = type
+    rational_pair_function = _rational_pair
+    specialized_terms_function = classical_duplication_specialized_terms
+    ball_from_data_function = _ball_from_data
+    ball_data_function = _ball_data
+    perf_counter_function = perf_counter
+    kummer_dependency_globals = specialized_terms_function.__globals__
+    flynn_table_names = (
+        "_CLASSICAL_DELTA_1",
+        "_CLASSICAL_DELTA_2",
+        "_CLASSICAL_DELTA_3",
+        "_CLASSICAL_DELTA_4",
+    )
+    frozen_flynn_tables = tuple(
+        tuple(tuple(int(value) for value in term) for term in table)
+        for table in (kummer_dependency_globals[name] for name in flynn_table_names)
+    )
+    automatic_dependency_globals = automatic_bounds_function.__globals__
+    automatic_dependency_names = (
+        "AutomaticHeightBounds",
+        "Genus2HeightCapabilityError",
+        "IntervalBallField",
+        "RealBall",
+        "_gcd",
+        "_integer_coefficients",
+        "_mueller_stoll_discriminant_bound",
+        "_zero_ball",
+        "classical_duplication_l1_bound",
+        "exact_model_capability",
+    )
+    automatic_dependency_snapshot = tuple(
+        (name, automatic_dependency_globals.get(name))
+        for name in automatic_dependency_names
+    )
+
+    def validate_automatic_dependencies() -> None:
+        for name, expected in automatic_dependency_snapshot:
+            if automatic_dependency_globals.get(name) is not expected:
+                raise Genus2HeightCapabilityError(
+                    "automatic height-bound theorem dependencies were replaced",
+                    {
+                        "automatic_bound": "rejected-theorem-dependency-rebinding",
+                        "dependency": name,
+                    },
+                )
+        for name, expected in zip(flynn_table_names, frozen_flynn_tables, strict=True):
+            live = kummer_dependency_globals.get(name)
+            try:
+                if live is None:
+                    raise TypeError("missing Flynn table")
+                normalized_live = tuple(
+                    tuple(int(value) for value in term) for term in live
+                )
+            except Exception as error:
+                raise Genus2HeightCapabilityError(
+                    "the canonical Flynn duplication tables were replaced",
+                    {
+                        "specialized_quartics": "rejected-flynn-table-rebinding",
+                        "dependency": name,
+                    },
+                ) from error
+            if normalized_live != expected:
+                raise Genus2HeightCapabilityError(
+                    "the canonical Flynn duplication tables were replaced",
+                    {
+                        "specialized_quartics": "rejected-flynn-table-rebinding",
+                        "dependency": name,
+                    },
+                )
+
+    def frozen_specialized_terms(jacobian: Any) -> Any:
+        """Specialize an installer-frozen copy of Flynn's exact quartics."""
+        validate_automatic_dependencies()
+        f_value = jacobian.f()
+        h_value = jacobian.h()
+        if not h_value.is_zero() or int(f_value.degree()) != 5:
+            raise Genus2HeightCapabilityError(
+                "frozen Flynn specialization requires a classical quintic",
+                {"specialized_quartics": "unsupported-model"},
+            )
+        coefficients: list[int] = []
+        zero = f_value.parent().base_ring()(0)
+        for index in range(6):
+            value = f_value[index] if index <= f_value.degree() else zero
+            numerator, denominator = rational_pair_function(value)
+            if denominator != 1:
+                raise Genus2HeightCapabilityError(
+                    "frozen Flynn specialization requires integral coefficients",
+                    {"specialized_quartics": "unsupported-nonintegral-model"},
+                )
+            coefficients.append(numerator)
+        specialized: list[tuple[tuple[int, int, int, int, int], ...]] = []
+        for table in frozen_flynn_tables:
+            output: list[tuple[int, int, int, int, int]] = []
+            for term in table:
+                coefficient = int(term[0])
+                for index in range(6):
+                    exponent = int(term[index + 5])
+                    if exponent:
+                        coefficient *= coefficients[index] ** exponent
+                if coefficient:
+                    output.append(
+                        (
+                            coefficient,
+                            int(term[1]),
+                            int(term[2]),
+                            int(term[3]),
+                            int(term[4]),
+                        )
+                    )
+            specialized.append(tuple(output))
+        return tuple(specialized)
+
+    def frozen_duplication_l1_bound(jacobian: Any) -> int | None:
+        """Compute the exact L1 norm from closure-frozen specialized terms."""
+        f_value = jacobian.f()
+        if not jacobian.h().is_zero() or int(f_value.degree()) != 5:
+            # The captured theorem rejects these models before consulting its
+            # public convenience L1 helper, preserving its precise capability
+            # diagnostics without making that helper proof-authoritative.
+            return None
+        terms = frozen_specialized_terms(jacobian)
+        return max(1, max(sum(abs(term[0]) for term in table) for table in terms))
+
+    def encode_primitive(value: Any) -> Any:
+        """Encode diagnostics without retaining caller-reachable containers."""
+        if isinstance(value, encoded_frozen_dict_type):
+            return (
+                "dict",
+                tuple(
+                    (key, encode_primitive(decode_primitive(entry)))
+                    for key, entry in value._encoded_items
+                ),
+            )
+        if isinstance(value, frozen_dict_type):
+            return (
+                "dict",
+                tuple((key, encode_primitive(entry)) for key, entry in value.items()),
+            )
+        if isinstance(value, dict):
+            return (
+                "dict",
+                tuple((key, encode_primitive(entry)) for key, entry in value.items()),
+            )
+        if isinstance(value, (tuple, list)):
+            return ("tuple", tuple(encode_primitive(entry) for entry in value))
+        if value is None or isinstance(value, (bool, int, str)):
+            return ("scalar", value)
+        # Height diagnostics are specified to be JSON-like.  Reject an
+        # unexpected mutable scalar rather than retaining it in proof state.
+        raise TypeError("height proof diagnostics must contain primitive data")
+
+    def decode_primitive(value: Any) -> Any:
+        kind, payload = value
+        if kind == "dict":
+            return {key: decode_primitive(entry) for key, entry in payload}
+        if kind == "tuple":
+            return tuple(decode_primitive(entry) for entry in payload)
+        return payload
+
+    def replace_encoded_dictionary(value: Any, key: str, replacement: Any) -> Any:
+        kind, items = value
+        if kind != "dict":
+            raise TypeError("encoded proof diagnostics must be a dictionary")
+        encoded_replacement = encode_primitive(replacement)
+        output = []
+        found = False
+        for stored_key, stored_value in items:
+            if stored_key == key:
+                output.append((stored_key, encoded_replacement))
+                found = True
+            else:
+                output.append((stored_key, stored_value))
+        if not found:
+            output.append((key, encoded_replacement))
+        return ("dict", tuple(output))
+
+    def model_binding(jacobian: Any) -> tuple[Any, ...]:
+        f_value = jacobian.f()
+        h_value = jacobian.h()
+        return (
+            str(f_value.parent().base_ring()),
+            int(jacobian.dimension()),
+            max(int(f_value.degree()), 2 * int(h_value.degree())),
+            tuple(rational_pair_function(value) for value in f_value.list()),
+            tuple(rational_pair_function(value) for value in h_value.list()),
+        )
+
+    def point_binding(divisor: Any) -> Any:
+        u_value, v_value = divisor.uv()
+        return (
+            tuple(rational_pair_function(value) for value in u_value.list()),
+            tuple(rational_pair_function(value) for value in v_value.list()),
+        )
+
+    def validated_context_terms(context: Any) -> Any:
+        expected = frozen_specialized_terms(context.__dict__["_jacobian"])
+        if context.__dict__["_classical_duplication_terms"] != expected:
+            raise Genus2HeightCapabilityError(
+                "cached Flynn tables do not match the exact Jacobian model",
+                {"specialized_quartics": "rejected-mutated-height-context"},
+            )
+        return expected
+
+    def require_exact_context(context: Any) -> None:
+        if type_function(context) is not height_context_type:
+            raise Genus2HeightCapabilityError(
+                "rigorous height proof caches require an exact HeightContext",
+                {"height_proof_context": "rejected-subclass-or-proxy"},
+            )
+
+    def counter_value(context: Any, name: str) -> int:
+        # `require_exact_context` rejects subclasses before this helper is
+        # reachable.  Direct instance-dictionary access therefore cannot
+        # invoke a user-defined counter descriptor or `__setattr__` method.
+        return int(context.__dict__[name])
+
+    def set_counter(context: Any, name: str, value: int) -> None:
+        context.__dict__[name] = int(value)
+
+    def change_counter(context: Any, name: str, increment: int) -> None:
+        set_counter(context, name, counter_value(context, name) + int(increment))
+
+    def detached_ball_data(data: Any) -> tuple[Any, Any, int, bool, Any]:
+        return (
+            (int(data[0][0]), int(data[0][1])),
+            (int(data[1][0]), int(data[1][1])),
+            int(data[2]),
+            bool(data[3]),
+            encode_primitive(decode_primitive(data[4])),
+        )
+
+    def bound_payload(bound: AutomaticHeightBounds) -> tuple[Any, Any, Any]:
+        return (
+            detached_ball_data(bound._correction_lower_data),
+            detached_ball_data(bound._correction_upper_data),
+            encode_primitive(bound._diagnostics),
+        )
+
+    def source_record(binding: Any, precision: int) -> Any:
+        for record in reversed(automatic_sources):
+            if record[0] == binding and record[1] == precision:
+                return record
+        return None
+
+    def register_source(
+        bound: AutomaticHeightBounds, jacobian: Any, precision: int
+    ) -> Any:
+        binding = model_binding(jacobian)
+        payload = bound_payload(bound)
+        diagnostics = decode_primitive(payload[2])
+        if (
+            diagnostics.get("automatic_bound") != "certified"
+            or int(diagnostics.get("precision_bits", -1)) != precision
+            or not payload[0][3]
+            or not payload[1][3]
+        ):
+            raise Genus2HeightCapabilityError(
+                "automatic height-bound theorem returned an invalid proof payload",
+                {"automatic_bound": "rejected-invalid-theorem-payload"},
+            )
+        for index, record in enumerate(automatic_sources):
+            if record[0] == binding and record[1] == precision:
+                automatic_sources[index] = (binding, precision, payload)
+                return payload
+        automatic_sources.append((binding, precision, payload))
+        if len(automatic_sources) > maximum_records:
+            automatic_sources.pop(0)
+        return payload
+
+    def theorem_source(jacobian: Any, precision: int) -> Any:
+        validate_automatic_dependencies()
+        binding = model_binding(jacobian)
+        record = source_record(binding, precision)
+        if record is not None:
+            return record[2]
+        derived = automatic_bounds_function(
+            jacobian,
+            precision=precision,
+            _proof_duplication_l1_bound=frozen_duplication_l1_bound(jacobian),
+        )
+        return register_source(derived, jacobian, precision)
+
+    def bound_is_certified(bound: AutomaticHeightBounds, jacobian: Any) -> bool:
+        if not isinstance(bound, automatic_bounds_type):
+            return False
+        try:
+            payload = bound_payload(bound)
+            diagnostics = decode_primitive(payload[2])
+            precision = int(diagnostics.get("precision_bits", -1))
+            if diagnostics.get("automatic_bound") != "certified" or precision < 16:
+                return False
+            return payload == theorem_source(jacobian, precision)
+        except Exception:
+            return False
+
+    def restore_bound(payload: Any, jacobian: Any) -> AutomaticHeightBounds:
+        candidate = automatic_bounds_type(
+            ball_from_data_function(payload[0]),
+            ball_from_data_function(payload[1]),
+            decode_primitive(payload[2]),
+        )
+        if not bound_is_certified(candidate, jacobian):
+            raise Genus2HeightCapabilityError(
+                "cached automatic bounds no longer match their exact theorem source",
+                {"automatic_bound": "rejected-proof-binding-mismatch"},
+            )
+        return candidate
+
+    def wrapped_automatic_bounds(
+        jacobian: Any, *, precision: int = 100
+    ) -> AutomaticHeightBounds:
+        payload = theorem_source(jacobian, int(precision))
+        return restore_bound(payload, jacobian)
+
+    def wrapped_normalized_archimedean_correction(
+        divisor: Any,
+        *,
+        precision: int = 80,
+        steps: int | None = None,
+        target_bits: int | None = None,
+        bounds: AutomaticHeightBounds | None = None,
+        specialized_terms: Any = None,
+    ) -> ArchimedeanHeightCorrectionResult:
+        jacobian = divisor.parent()
+        checked_bounds = bounds
+        if checked_bounds is None:
+            checked_bounds = wrapped_automatic_bounds(
+                jacobian, precision=int(precision)
+            )
+        if not bound_is_certified(checked_bounds, jacobian):
+            raise Genus2HeightCapabilityError(
+                "normalized real correction requires model-bound automatic bounds",
+                checked_bounds.diagnostics,
+            )
+        return normalized_archimedean_function(
+            divisor,
+            precision=precision,
+            steps=steps,
+            target_bits=target_bits,
+            bounds=checked_bounds,
+            specialized_terms=specialized_terms,
+        )
+
+    def canonical_payload(result: CanonicalHeightResult) -> tuple[Any, ...]:
+        if isinstance(result._diagnostics, deferred_canonical_diagnostics_type):
+            encoded_diagnostics = result._diagnostics.primitive_payload()
+        elif isinstance(result._diagnostics, encoded_frozen_dict_type):
+            encoded_diagnostics = (
+                "dict",
+                tuple(result._diagnostics._encoded_items),
+            )
+        else:
+            encoded_diagnostics = encode_primitive(result._diagnostics)
+        return (
+            detached_ball_data(result._ball_data),
+            str(result._status),
+            int(result._steps),
+            encode_primitive(result._provenance),
+            None if result._bounds is None else bound_payload(result._bounds),
+            encoded_diagnostics,
+        )
+
+    def restore_canonical(
+        payload: Any,
+        jacobian: Any,
+        context: HeightContext,
+        *,
+        authenticate_bound: bool = True,
+    ) -> CanonicalHeightResult:
+        deferred_diagnostics = None
+        encoded_diagnostics = None
+        context_data = encode_primitive(height_context_diagnostics_function(context))
+        if payload[5][0] == "local-height-batch-diagnostics-v1":
+            deferred_diagnostics = deferred_canonical_diagnostics_type(
+                payload[5], context_data
+            )
+        else:
+            encoded_diagnostics = replace_encoded_dictionary(
+                payload[5], "context", height_context_diagnostics_function(context)
+            )
+        bounds = None
+        if payload[4] is not None:
+            if authenticate_bound:
+                bounds = restore_bound(payload[4], jacobian)
+            else:
+                bounds = automatic_bounds_type(
+                    ball_from_data_function(payload[4][0]),
+                    ball_from_data_function(payload[4][1]),
+                    decode_primitive(payload[4][2]),
+                )
+        return canonical_result_type(
+            ball_from_data_function(payload[0]),
+            status=payload[1],
+            steps=payload[2],
+            provenance=decode_primitive(payload[3]),
+            bounds=bounds,
+            diagnostics={},
+            _encoded_diagnostics=encoded_diagnostics,
+            _deferred_diagnostics=deferred_diagnostics,
+        )
+
+    def canonical_payload_with_context(payload: Any, context_data: Any) -> Any:
+        if payload[5][0] == "local-height-batch-diagnostics-v1":
+            diagnostics = payload[5][:29] + (encode_primitive(context_data),)
+        else:
+            diagnostics = replace_encoded_dictionary(
+                payload[5], "context", context_data
+            )
+        return payload[:5] + (diagnostics,)
+
+    def cached_canonical_record(
+        cache_context: HeightContext,
+        divisor: Any,
+        parameters: tuple[Any, ...],
+        *,
+        count_hit: bool,
+        expected_terms: Any = None,
+        exact_model_binding: Any = None,
+        exact_point_binding: Any = None,
+    ) -> Any:
+        if expected_terms is None:
+            expected_terms = validated_context_terms(cache_context)
+        if exact_model_binding is None:
+            exact_model_binding = model_binding(divisor.parent())
+        if exact_point_binding is None:
+            exact_point_binding = point_binding(divisor)
+        for records, published in (
+            (staged_canonical_records, False),
+            (canonical_records, True),
+        ):
+            for record in reversed(records):
+                if (
+                    record[0] is cache_context
+                    and record[2] == parameters
+                    and (record[1] is divisor or record[1] == divisor)
+                ):
+                    if (
+                        record[3] != exact_model_binding
+                        or record[4] != exact_point_binding
+                        or record[5] != expected_terms
+                    ):
+                        raise Genus2HeightCapabilityError(
+                            "cached canonical height derivation does not match the exact request",
+                            {
+                                "canonical_height_cache": "rejected-proof-binding-mismatch",
+                                "parameters": parameters,
+                            },
+                        )
+                    if count_hit and published:
+                        change_counter(cache_context, "_canonical_height_hits", 1)
+                    return record, published
+        return None
+
+    def cached_canonical(
+        cache_context: HeightContext,
+        divisor: Any,
+        parameters: tuple[Any, ...],
+        *,
+        count_hit: bool,
+    ) -> CanonicalHeightResult | None:
+        match = cached_canonical_record(
+            cache_context,
+            divisor,
+            parameters,
+            count_hit=count_hit,
+        )
+        if match is None:
+            return None
+        record, _published = match
+        return restore_canonical(record[6], divisor.parent(), cache_context)
+
+    def canonical_record(
+        cache_context: HeightContext,
+        divisor: Any,
+        parameters: tuple[Any, ...],
+        answer: CanonicalHeightResult,
+    ) -> tuple[Any, ...] | None:
+        if not (
+            answer.rigorous
+            and answer.status == "certified-enclosure"
+            and answer._diagnostics.get("selected_algorithm") == "local"
+        ):
+            return None
+        expected_terms = validated_context_terms(cache_context)
+        if answer._bounds is None or not bound_is_certified(
+            answer._bounds, divisor.parent()
+        ):
+            raise Genus2HeightCapabilityError(
+                "a rigorous local height result lost its automatic-bound proof",
+                {"canonical_height_cache": "rejected-unproved-result-bound"},
+            )
+        return (
+            cache_context,
+            divisor,
+            parameters,
+            model_binding(divisor.parent()),
+            point_binding(divisor),
+            expected_terms,
+            canonical_payload(answer),
+        )
+
+    def canonical_record_from_payload(
+        cache_context: HeightContext,
+        divisor: Any,
+        parameters: tuple[Any, ...],
+        payload: Any,
+        expected_terms: Any,
+        exact_model_binding: Any,
+        expected_bound_payload: Any,
+    ) -> tuple[Any, ...] | None:
+        """Authenticate a closure-produced primitive batch payload directly."""
+        if payload[1] != "certified-enclosure" or not bool(payload[0][3]):
+            return None
+        selected_algorithm = None
+        if payload[5][0] == "local-height-batch-diagnostics-v1":
+            selected_algorithm = "local"
+        elif payload[5][0] == "dict":
+            for key, encoded_value in payload[5][1]:
+                if key == "selected_algorithm":
+                    selected_algorithm = decode_primitive(encoded_value)
+                    break
+        if selected_algorithm != "local" or payload[4] != expected_bound_payload:
+            raise Genus2HeightCapabilityError(
+                "a batched local height payload lost its exact proof binding",
+                {
+                    "canonical_height_cache": "rejected-batch-payload-binding",
+                    "status": payload[1],
+                },
+            )
+        return (
+            cache_context,
+            divisor,
+            parameters,
+            exact_model_binding,
+            point_binding(divisor),
+            expected_terms,
+            payload,
+        )
+
+    def publish_canonical_records(records: tuple[Any, ...]) -> None:
+        """Atomically publish already authenticated detached payloads."""
+        canonical_records.extend(records)
+        for record in records:
+            change_counter(record[0], "_canonical_height_entries", 1)
+        while len(canonical_records) > maximum_records:
+            removed = canonical_records.pop(0)
+            set_counter(
+                removed[0],
+                "_canonical_height_entries",
+                max(0, counter_value(removed[0], "_canonical_height_entries") - 1),
+            )
+
+    def commit_pairing_transaction(
+        new_canonical_records: tuple[Any, ...],
+        new_pairing_record: Any,
+        canonical_misses: int,
+        canonical_hits: int = 0,
+    ) -> None:
+        """Commit detached canonical and pairing records without user code."""
+        next_canonical = canonical_records + list(new_canonical_records)
+        removed_canonical = tuple(
+            next_canonical[: max(0, len(next_canonical) - maximum_records)]
+        )
+        next_canonical = next_canonical[-maximum_records:]
+        next_pairing = pairing_records + [new_pairing_record]
+        removed_pairing = tuple(
+            next_pairing[: max(0, len(next_pairing) - maximum_records)]
+        )
+        next_pairing = next_pairing[-maximum_records:]
+        counter_updates: list[tuple[Any, str, int]] = []
+        for record in new_canonical_records:
+            counter_updates.append((record[0], "_canonical_height_entries", 1))
+        counter_updates.append((new_pairing_record[0], "_height_pairing_entries", 1))
+        for record in removed_canonical:
+            counter_updates.append((record[0], "_canonical_height_entries", -1))
+        for record in removed_pairing:
+            counter_updates.append((record[0], "_height_pairing_entries", -1))
+        counter_updates.append(
+            (new_pairing_record[0], "_canonical_height_misses", canonical_misses)
+        )
+        counter_updates.append(
+            (new_pairing_record[0], "_canonical_height_hits", canonical_hits)
+        )
+        counter_updates.append((new_pairing_record[0], "_height_pairing_misses", 1))
+        prepared_counters: list[tuple[Any, str, int]] = []
+        for update_context, update_name, update_delta in counter_updates:
+            for index, prepared in enumerate(prepared_counters):
+                if prepared[0] is update_context and prepared[1] == update_name:
+                    prepared_counters[index] = (
+                        prepared[0],
+                        prepared[1],
+                        max(0, prepared[2] + update_delta),
+                    )
+                    break
+            else:
+                prepared_counters.append(
+                    (
+                        update_context,
+                        update_name,
+                        max(
+                            0,
+                            counter_value(update_context, update_name) + update_delta,
+                        ),
+                    )
+                )
+        # Both replacement lists are fully allocated before either hidden
+        # registry changes.  Counter values are also fixed integers by this
+        # point.  No callback, theorem derivation, equality/hash operation, or
+        # overridable attribute access occurs after the first slice assignment.
+        canonical_records[:] = next_canonical
+        pairing_records[:] = next_pairing
+        for update_context, update_name, update_value in prepared_counters:
+            set_counter(update_context, update_name, update_value)
+
+    def wrapped_canonical_height(
+        divisor: Any,
+        *,
+        steps: int = 6,
+        precision: int = 100,
+        target_bits: int | None = None,
+        algorithm: str = "auto",
+        height_difference_bound: Any = None,
+        torsion_order: Any = None,
+        context: HeightContext | None = None,
+    ) -> CanonicalHeightResult:
+        normalized_steps = int(steps)
+        normalized_precision = int(precision)
+        normalized_target = None if target_bits is None else int(target_bits)
+        normalized_algorithm = str(algorithm)
+        parameters = (
+            normalized_steps,
+            normalized_precision,
+            normalized_target,
+            normalized_algorithm,
+        )
+        if context is not None:
+            require_exact_context(context)
+            stored_bounds = context.__dict__["_automatic_bounds"]
+            if not isinstance(stored_bounds, dict):
+                raise Genus2HeightCapabilityError(
+                    "the height context automatic-bound cache is invalid",
+                    {"automatic_bound": "rejected-context-cache-representation"},
+                )
+            for stored_bound in stored_bounds.values():
+                if stored_bound is not None and not bound_is_certified(
+                    stored_bound, divisor.parent()
+                ):
+                    raise Genus2HeightCapabilityError(
+                        "the height context contains an unproved automatic bound",
+                        {"automatic_bound": "rejected-context-cache-entry"},
+                    )
+        if context is not None and any(
+            callback_context is context
+            for callback_context in cancellation_callback_contexts
+        ):
+            raise Genus2HeightCapabilityError(
+                "a cancellation callback cannot reenter canonical-height proof state "
+                "on the active context",
+                {"height_proof_transaction": "rejected-same-context-reentrancy"},
+            )
+        eligible = (
+            context is not None
+            and height_difference_bound is None
+            and torsion_order is None
+            and (
+                normalized_algorithm == "local"
+                or normalized_target is not None
+                or normalized_steps >= 9
+            )
+        )
+        if eligible:
+            cache_context = cast(HeightContext, context)
+            if cache_context.__dict__["_jacobian"] is not divisor.parent():
+                raise ValueError("the height context belongs to a different Jacobian")
+            cached = cached_canonical(
+                cache_context, divisor, parameters, count_hit=True
+            )
+            if cached is not None:
+                return cached
+            change_counter(cache_context, "_canonical_height_misses", 1)
+        candidate_bounds: AutomaticHeightBounds | None = None
+        if (
+            context is not None
+            and height_difference_bound is None
+            and torsion_order is None
+        ):
+            cache_context = context
+            working_precision = max(
+                normalized_precision,
+                (
+                    normalized_target + 32
+                    if normalized_target is not None
+                    else normalized_precision
+                ),
+            )
+            candidate_bounds = restore_bound(
+                theorem_source(divisor.parent(), working_precision),
+                divisor.parent(),
+            )
+            if candidate_bounds is not None and not bound_is_certified(
+                candidate_bounds, divisor.parent()
+            ):
+                raise Genus2HeightCapabilityError(
+                    "a rigorous height requires model-bound automatic bounds",
+                    candidate_bounds.diagnostics,
+                )
+            if eligible and candidate_bounds is None:
+                raise Genus2HeightCapabilityError(
+                    "the local height engine requires model-bound automatic bounds",
+                    {},
+                )
+        if eligible and normalized_algorithm != "exact":
+            cache_context = cast(HeightContext, context)
+            answer = canonical_height_batch_function(
+                (divisor,),
+                steps=normalized_steps,
+                precision=normalized_precision,
+                target_bits=normalized_target,
+                algorithm=normalized_algorithm,
+                context=cache_context,
+                _proof_bounds=candidate_bounds,
+                _proof_terms=frozen_specialized_terms(divisor.parent()),
+            )[0]
+        else:
+            proof_context = context
+            if eligible and normalized_algorithm == "exact":
+                proof_context = height_context_type(divisor.parent())
+            answer = canonical_height_function(
+                divisor,
+                steps=steps,
+                precision=precision,
+                target_bits=target_bits,
+                algorithm=algorithm,
+                height_difference_bound=height_difference_bound,
+                torsion_order=torsion_order,
+                context=proof_context,
+            )
+        if eligible:
+            cache_context = cast(HeightContext, context)
+            record = canonical_record(cache_context, divisor, parameters, answer)
+            if record is not None:
+                if any(
+                    active_context is cache_context
+                    for active_context in active_pairing_contexts
+                ):
+                    staged_canonical_records.append(record)
+                else:
+                    publish_canonical_records((record,))
+        return answer
+
+    def pairing_payload(result: HeightPairingResult) -> tuple[Any, ...]:
+        return (
+            tuple(
+                tuple(detached_ball_data(entry) for entry in row)
+                for row in result._matrix_data
+            ),
+            tuple(canonical_payload(value) for value in result._height_results),
+            encode_primitive(result._diagnostics),
+        )
+
+    def restore_pairing(
+        payload: Any, jacobian: Any, context: HeightContext
+    ) -> HeightPairingResult:
+        encoded_diagnostics = replace_encoded_dictionary(
+            payload[2], "context", height_context_diagnostics_function(context)
+        )
+        deferred_diagnostics = None
+        if len(payload) == 4:
+            deferred_diagnostics = deferred_pairing_diagnostics_type(
+                encoded_diagnostics,
+                payload[3],
+            )
+        return pairing_result_type(
+            (),
+            tuple(
+                restore_canonical(
+                    value,
+                    jacobian,
+                    context,
+                    authenticate_bound=(len(payload) != 4),
+                )
+                for value in payload[1]
+            ),
+            {},
+            _encoded_diagnostics=(
+                encoded_diagnostics if deferred_diagnostics is None else None
+            ),
+            _deferred_diagnostics=deferred_diagnostics,
+            _encoded_matrix_data=payload[0],
+        )
+
+    def wrapped_height_pairing(
+        points: Any,
+        *,
+        steps: int = 6,
+        precision: int = 100,
+        target_bits: int | None = None,
+        algorithm: str = "auto",
+        height_difference_bound: Any = None,
+        context: HeightContext | None = None,
+        cancel: Any = None,
+    ) -> HeightPairingResult:
+        _check_height_batch_cancel(cancel, "pairing-proof-entry")
+        values = tuple(points)
+        parameters = (
+            int(steps),
+            int(precision),
+            None if target_bits is None else int(target_bits),
+            str(algorithm),
+        )
+        eligible = (
+            bool(values)
+            and context is not None
+            and height_difference_bound is None
+            and (
+                parameters[3] == "local"
+                or parameters[2] is not None
+                or parameters[0] >= 9
+            )
+        )
+        if context is not None:
+            require_exact_context(context)
+        if context is not None and any(
+            active_context is context for active_context in active_pairing_contexts
+        ):
+            raise Genus2HeightCapabilityError(
+                "a height pairing cannot reenter proof state on its active context",
+                {"height_proof_transaction": "rejected-same-context-reentrancy"},
+            )
+        if not eligible:
+            return height_pairing_function(
+                values,
+                steps=steps,
+                precision=precision,
+                target_bits=target_bits,
+                algorithm=algorithm,
+                height_difference_bound=height_difference_bound,
+                context=context,
+                cancel=cancel,
+            )
+
+        cache_context = cast(HeightContext, context)
+        jacobian = values[0].parent()
+        if cache_context.__dict__["_jacobian"] is not jacobian:
+            raise ValueError("the height context belongs to a different Jacobian")
+        for value in values:
+            if value.parent() is not jacobian:
+                raise ValueError("all pairing points must lie on the same Jacobian")
+        expected_terms = validated_context_terms(cache_context)
+        validate_automatic_dependencies()
+        exact_model_binding = model_binding(jacobian)
+        point_bindings = tuple(point_binding(value) for value in values)
+        for record in reversed(pairing_records):
+            if (
+                record[0] is cache_context
+                and record[2] == parameters
+                and record[1] == values
+            ):
+                if (
+                    record[3] != exact_model_binding
+                    or record[4] != point_bindings
+                    or record[5] != expected_terms
+                ):
+                    raise Genus2HeightCapabilityError(
+                        "cached height pairing derivation does not match the exact request",
+                        {
+                            "height_pairing_cache": "rejected-proof-binding-mismatch",
+                            "ordered_basis_size": len(values),
+                            "parameters": parameters,
+                        },
+                    )
+                change_counter(cache_context, "_height_pairing_hits", 1)
+                return restore_pairing(record[6], jacobian, cache_context)
+
+        counter_snapshot = (
+            counter_value(cache_context, "_canonical_height_entries"),
+            counter_value(cache_context, "_canonical_height_hits"),
+            counter_value(cache_context, "_canonical_height_misses"),
+            counter_value(cache_context, "_height_pairing_entries"),
+            counter_value(cache_context, "_height_pairing_hits"),
+            counter_value(cache_context, "_height_pairing_misses"),
+        )
+        stage_start = len(staged_canonical_records)
+        active_pairing_contexts.append(cache_context)
+        transaction_cancel = cancel
+        if cancel is not None:
+
+            def guarded_transaction_cancel() -> bool:
+                cancellation_callback_contexts.append(cache_context)
+                try:
+                    return bool(cancel())
+                finally:
+                    cancellation_callback_contexts.pop()
+
+            transaction_cancel = guarded_transaction_cancel
+        batch_misses = 0
+        direct_canonical_hits = 0
+        committed = False
+        try:
+            cold_wrapper_started = perf_counter_function()
+            requested_heights: list[Any] = list(values)
+            for left in range(len(values)):
+                for right in range(left + 1, len(values)):
+                    requested_heights.append(values[left] + values[right])
+            requested_heights_ready = perf_counter_function()
+            cache_scan_ready = requested_heights_ready
+            proof_bounds_ready = cache_scan_ready
+            certified_batch_ready = proof_bounds_ready
+            if parameters[3] != "exact":
+                unique_heights: list[Any] = []
+                for value in requested_heights:
+                    if not any(value == stored for stored in unique_heights):
+                        unique_heights.append(value)
+                missing = tuple(
+                    value
+                    for value in unique_heights
+                    if cached_canonical_record(
+                        cache_context,
+                        value,
+                        parameters,
+                        count_hit=False,
+                        expected_terms=expected_terms,
+                        exact_model_binding=exact_model_binding,
+                        exact_point_binding=point_binding(value),
+                    )
+                    is None
+                )
+                cache_scan_ready = perf_counter_function()
+                proof_bounds_ready = cache_scan_ready
+                certified_batch_ready = cache_scan_ready
+                if missing:
+                    proof_precision = max(
+                        parameters[1],
+                        (
+                            parameters[2] + 32
+                            if parameters[2] is not None
+                            else parameters[1]
+                        ),
+                    )
+                    proof_bounds = restore_bound(
+                        theorem_source(jacobian, proof_precision), jacobian
+                    )
+                    proof_bounds_ready = perf_counter_function()
+                    proof_bound_payload = bound_payload(proof_bounds)
+                    batch_answers = canonical_height_batch_function(
+                        missing,
+                        steps=parameters[0],
+                        precision=parameters[1],
+                        target_bits=parameters[2],
+                        algorithm=parameters[3],
+                        context=cache_context,
+                        cancel=transaction_cancel,
+                        _proof_bounds=proof_bounds,
+                        _proof_terms=frozen_specialized_terms(jacobian),
+                        _return_payloads=True,
+                    )
+                    batch_misses = len(missing)
+                    for value, batch_answer in zip(missing, batch_answers, strict=True):
+                        record = canonical_record_from_payload(
+                            cache_context,
+                            value,
+                            parameters,
+                            batch_answer,
+                            expected_terms,
+                            exact_model_binding,
+                            proof_bound_payload,
+                        )
+                        if record is not None:
+                            staged_canonical_records.append(record)
+                        elif batch_answer[1] != "exact-torsion-zero":
+                            raise Genus2HeightCapabilityError(
+                                "a batched local height did not produce an authenticated proof payload",
+                                {
+                                    "status": batch_answer[1],
+                                    "point": point_binding(value),
+                                },
+                            )
+                    certified_batch_ready = perf_counter_function()
+            proof_assembly_started = perf_counter_function()
+            requested_records: list[Any] = []
+            direct_supported = parameters[3] != "exact"
+            if direct_supported:
+                for value in requested_heights:
+                    match = cached_canonical_record(
+                        cache_context,
+                        value,
+                        parameters,
+                        count_hit=False,
+                        expected_terms=expected_terms,
+                        exact_model_binding=exact_model_binding,
+                        exact_point_binding=point_binding(value),
+                    )
+                    if match is None:
+                        direct_supported = False
+                        break
+                    requested_records.append(match)
+            if direct_supported:
+                diagonal_records = tuple(
+                    match[0] for match in requested_records[: len(values)]
+                )
+                direct_canonical_hits = sum(
+                    1 for _record, published in requested_records if published
+                )
+                diagonal_balls = tuple(
+                    ball_from_data_function(record[6][0]) for record in diagonal_records
+                )
+                _check_height_batch_cancel(transaction_cancel, "pairing-diagonal")
+                size = len(values)
+                matrix: list[list[Any]] = [
+                    [None for _right in values] for _left in values
+                ]
+                for index, ball in enumerate(diagonal_balls):
+                    matrix[index][index] = ball
+                off_diagonal_payloads: list[Any] = []
+                two = real_ball_type(2, precision_bits=parameters[1])
+                record_index = size
+                polarization_started = perf_counter_function()
+                context_diagnostics = height_context_diagnostics_function(cache_context)
+                for left in range(size):
+                    for right in range(left + 1, size):
+                        _check_height_batch_cancel(
+                            transaction_cancel, "pairing-off-diagonal"
+                        )
+                        sum_payload = requested_records[record_index][0][6]
+                        record_index += 1
+                        sum_ball = ball_from_data_function(sum_payload[0])
+                        entry = (
+                            sum_ball - diagonal_balls[left] - diagonal_balls[right]
+                        ) / two
+                        matrix[left][right] = entry
+                        matrix[right][left] = entry
+                        off_diagonal_payloads.append(
+                            (
+                                left,
+                                right,
+                                canonical_payload_with_context(
+                                    sum_payload, context_diagnostics
+                                ),
+                            )
+                        )
+                polarization_finished = perf_counter_function()
+                matrix_payload = tuple(
+                    tuple(
+                        detached_ball_data(ball_data_function(entry)) for entry in row
+                    )
+                    for row in matrix
+                )
+                payload_assembly_started = perf_counter_function()
+                pairing_diagnostics = {
+                    "algorithm": "quadratic-height-polarization",
+                    "steps": parameters[0],
+                    "precision_bits": parameters[1],
+                    "target_bits": parameters[2],
+                    "requested_algorithm": parameters[3],
+                    "cold_proof_stages_ms": {
+                        "pairwise_divisor_sums": str(
+                            (requested_heights_ready - cold_wrapper_started) * 1000.0
+                        ),
+                        "authenticated_missing_scan": str(
+                            (cache_scan_ready - requested_heights_ready) * 1000.0
+                        ),
+                        "automatic_bound_authentication": str(
+                            (proof_bounds_ready - cache_scan_ready) * 1000.0
+                        ),
+                        "certified_local_height_batch": str(
+                            (certified_batch_ready - proof_bounds_ready) * 1000.0
+                        ),
+                        "authenticated_record_assembly": str(
+                            (polarization_started - proof_assembly_started) * 1000.0
+                        ),
+                        "direct_primitive_polarization": str(
+                            (polarization_finished - polarization_started) * 1000.0
+                        ),
+                    },
+                    "context": context_diagnostics,
+                }
+                direct_payload = (
+                    matrix_payload,
+                    tuple(record[6] for record in diagonal_records),
+                    encode_primitive(pairing_diagnostics),
+                    tuple(off_diagonal_payloads),
+                )
+                answer = restore_pairing(direct_payload, jacobian, cache_context)
+                _ = payload_assembly_started
+            else:
+                answer = height_pairing_function(
+                    values,
+                    steps=steps,
+                    precision=precision,
+                    target_bits=target_bits,
+                    algorithm=algorithm,
+                    height_difference_bound=height_difference_bound,
+                    context=context,
+                    cancel=transaction_cancel,
+                )
+                direct_payload = pairing_payload(answer)
+            if not answer.rigorous:
+                return answer
+            expected_terms = validated_context_terms(cache_context)
+            pairing_record = (
+                cache_context,
+                values,
+                parameters,
+                model_binding(jacobian),
+                tuple(point_binding(value) for value in values),
+                expected_terms,
+                direct_payload,
+            )
+            _check_height_batch_cancel(transaction_cancel, "pairing-proof-commit")
+            commit_pairing_transaction(
+                tuple(staged_canonical_records[stage_start:]),
+                pairing_record,
+                batch_misses,
+                direct_canonical_hits,
+            )
+            committed = True
+            return answer
+        finally:
+            active_pairing_contexts.pop()
+            del staged_canonical_records[stage_start:]
+            if not committed:
+                counter_names = (
+                    "_canonical_height_entries",
+                    "_canonical_height_hits",
+                    "_canonical_height_misses",
+                    "_height_pairing_entries",
+                    "_height_pairing_hits",
+                    "_height_pairing_misses",
+                )
+                for counter_name, counter in zip(
+                    counter_names, counter_snapshot, strict=True
+                ):
+                    set_counter(cache_context, counter_name, counter)
+
+    return (
+        wrapped_automatic_bounds,
+        wrapped_normalized_archimedean_correction,
+        wrapped_canonical_height,
+        wrapped_height_pairing,
+    )
+
+
+(
+    automatic_height_bounds,
+    normalized_archimedean_correction,
+    canonical_height,
+    height_pairing,
+) = _install_height_proof_state(
+    automatic_height_bounds,
+    normalized_archimedean_correction,
+    canonical_height,
+    height_pairing,
+    _canonical_heights_uncached_local_batch,
+)
+# The proof-grade batch function and its closed dependency tuple are retained
+# only by `_install_height_proof_state`; module-private naming alone is not an
+# authentication boundary in Sage/Python code.
+del _canonical_heights_uncached_local_batch
 
 
 def _interval_determinant(matrix: tuple[tuple[RealBall, ...], ...]) -> RealBall:
@@ -1560,17 +5056,16 @@ class RegulatorResult(_SealedRecord):
         pairing: HeightPairingResult,
         status: str,
         diagnostics: dict[str, Any],
+        _ball_encoder: Any = _ball_data,
     ) -> None:
-        self._ball_data = _ball_data(ball)
+        self._ball_data = _ball_encoder(ball)
         self._pairing = pairing
         self._status = str(status)
         self._diagnostics = _freeze_data(diagnostics)
         self._rigorous = bool(ball.rigorous)
         self._seal()
 
-    @property
-    def ball(self) -> RealBall:
-        return _ball_from_data(self._ball_data)
+    ball = _closed_ball_property("_ball_data")
 
     @property
     def _ball(self) -> RealBall:
@@ -1637,6 +5132,10 @@ class RegulatorResult(_SealedRecord):
             point_values,
             steps=steps,
             precision=precision,
+            target_bits=self._pairing._diagnostics.get("target_bits"),
+            algorithm=str(
+                self._pairing._diagnostics.get("requested_algorithm", "auto")
+            ),
             height_difference_bound=height_difference_bound,
             context=replay_context,
         )
@@ -1675,16 +5174,22 @@ def regulator(
     *,
     steps: int = 6,
     precision: int = 100,
+    target_bits: int | None = None,
+    algorithm: str = "auto",
     height_difference_bound: Any = None,
     context: HeightContext | None = None,
+    cancel: Any = None,
 ) -> RegulatorResult:
     """Return the canonical regulator, rejecting certified degeneracy."""
     pairing = height_pairing(
         points,
         steps=steps,
         precision=precision,
+        target_bits=target_bits,
+        algorithm=algorithm,
         height_difference_bound=height_difference_bound,
         context=context,
+        cancel=cancel,
     )
     determinant = _interval_determinant(pairing.matrix)
     if pairing.rigorous and determinant.contains_zero():
@@ -1725,6 +5230,7 @@ def regulator(
 
 
 __all__ = [
+    "ArchimedeanHeightCorrectionResult",
     "AutomaticHeightBounds",
     "CanonicalHeightResult",
     "FiniteHeightCorrectionResult",
@@ -1737,5 +5243,6 @@ __all__ = [
     "canonical_height",
     "factorization_free_finite_correction",
     "height_pairing",
+    "normalized_archimedean_correction",
     "regulator",
 ]

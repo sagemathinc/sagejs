@@ -22,12 +22,9 @@ from sagejs.native import (
     native,
     uint64,
 )
-from sagejs.number_fields.maximal_order_certification import (
-    _scaled_integral_inverse,
-    check_order_lattice,
-)
 
 _flint_module: Any = None
+_certification_module: Any = None
 
 
 def _field_analysis_flint_module() -> Any:
@@ -36,6 +33,17 @@ def _field_analysis_flint_module() -> Any:
     if _flint_module is None:
         _flint_module = __import__("sagejs.ffi.flint", fromlist=["flint"])
     return _flint_module
+
+
+def _field_analysis_certification_module() -> Any:
+    """Load the ordinary certificate replay only for full evidence decoding."""
+    global _certification_module
+    if _certification_module is None:
+        _certification_module = __import__(
+            "sagejs.number_fields.maximal_order_certification",
+            fromlist=["maximal_order_certification"],
+        )
+    return _certification_module
 
 
 ANALYSIS_COMPLETE_CANDIDATE = 0
@@ -1700,7 +1708,9 @@ def _order_arithmetic(
     polynomial: list[int], numerator: list[list[int]], denominator: int
 ) -> tuple[list[list[list[int]]], list[int]]:
     degree = len(numerator)
-    scaled_inverse = _scaled_integral_inverse(numerator, denominator)
+    scaled_inverse = _field_analysis_certification_module()._scaled_integral_inverse(
+        numerator, denominator
+    )
     if scaled_inverse is None:
         raise ValueError("fixed-point order does not contain the equation order")
     identity = list(scaled_inverse[0])
@@ -1892,7 +1902,9 @@ def _selected_multiplier_rows(
 ) -> list[list[int]]:
     degree = len(table)
     determinant = abs(_determinant(lattice))
-    inverse = _scaled_integral_inverse(lattice, determinant)
+    inverse = _field_analysis_certification_module()._scaled_integral_inverse(
+        lattice, determinant
+    )
     if determinant == 0 or inverse is None:
         raise ValueError("fixed-point radical lattice is singular")
     answer: list[list[int]] = []
@@ -2977,9 +2989,9 @@ def _ordinary_validate_carried_round2_order(
         or final_determinant == 0
         or final_denominator ** len(polynomial[:-1]) != order.index * final_determinant
         or equation_discriminant != order.order_discriminant * order.index**2
-        or not check_order_lattice(polynomial, final_numerator, final_denominator).get(
-            "valid", False
-        )
+        or not _field_analysis_certification_module()
+        .check_order_lattice(polynomial, final_numerator, final_denominator)
+        .get("valid", False)
     ):
         raise ValueError("carried terminal proof has inconsistent order arithmetic")
 

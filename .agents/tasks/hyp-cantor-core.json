@@ -1,0 +1,136 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-cantor-core",
+  "title": "Hyp Cantor Core",
+  "lane": "hyperelliptic-curves",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement prepared packed source-transparent genus-2/3 public Cantor arithmetic and batched scalar operations with the ordinary reference fallback.",
+  "base_commit": "2cd8e0c89be46e556b1d79ca6cd45ac565170351",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/jacobian.py",
+    "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py",
+    "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
+    "test/hyperelliptic-native-cantor.cjs",
+    "bench/hyperelliptic/benchmark-public-jacobian.cjs",
+    "bench/hyperelliptic/competitive/finite-jacobian-magma-contract.cjs"
+  ],
+  "dependencies": [
+    "capsule-compiler-integration",
+    "immutable-capsule-gather"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/hyperelliptic-native-cantor.cjs",
+    "node --test test/hyperelliptic-rational-cantor.cjs",
+    "node bench/hyperelliptic/competitive/finite-jacobian-magma-contract.cjs --no-magma --cheap-iterations 1000 --scalar-iterations 8 --samples 1 --warmups 1 --output /tmp/sagejs-finite-jacobian-contract-smoke.json"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.045,
+      "started_at": "2026-08-23T14:03:45.258Z",
+      "commit": "2cd8e0c89be46e556b1d79ca6cd45ac565170351",
+      "workspace_fingerprint": "c21429164698bb3a9f06f678287cffc76daaf559f912576b8f76fe43a3327b72",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.445,
+      "started_at": "2026-08-23T14:03:52.926Z",
+      "commit": "2cd8e0c89be46e556b1d79ca6cd45ac565170351",
+      "workspace_fingerprint": "c21429164698bb3a9f06f678287cffc76daaf559f912576b8f76fe43a3327b72",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.039,
+      "started_at": "2026-08-23T14:04:29.013Z",
+      "commit": "2cd8e0c89be46e556b1d79ca6cd45ac565170351",
+      "workspace_fingerprint": "c21429164698bb3a9f06f678287cffc76daaf559f912576b8f76fe43a3327b72",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-native-cantor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 113.276,
+      "started_at": "2026-08-23T14:05:02.405Z",
+      "commit": "2cd8e0c89be46e556b1d79ca6cd45ac565170351",
+      "workspace_fingerprint": "c21429164698bb3a9f06f678287cffc76daaf559f912576b8f76fe43a3327b72",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-rational-cantor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.216,
+      "started_at": "2026-08-23T14:06:56.316Z",
+      "commit": "2cd8e0c89be46e556b1d79ca6cd45ac565170351",
+      "workspace_fingerprint": "c21429164698bb3a9f06f678287cffc76daaf559f912576b8f76fe43a3327b72",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1006.28,
+      "started_at": "2026-08-23T14:07:52.061Z",
+      "commit": "2cd8e0c89be46e556b1d79ca6cd45ac565170351",
+      "workspace_fingerprint": "c21429164698bb3a9f06f678287cffc76daaf559f912576b8f76fe43a3327b72",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/hyperelliptic/competitive/finite-jacobian-magma-contract.cjs --no-magma --cheap-iterations 1000 --scalar-iterations 8 --samples 1 --warmups 1 --output /tmp/sagejs-finite-jacobian-contract-smoke.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.716,
+      "started_at": "2026-08-23T16:23:51.465Z",
+      "commit": "d26489ac4d119fc0482675ddf7634e73b2c2d342",
+      "workspace_fingerprint": "d138ca31ccfa0d3804eead8da1542b68792ef93aa258c20ac63edf7f8603193f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implements ordinary-Python, source-transparent prepared Cantor arithmetic for odd-degree one-infinity genus-2/3 Jacobians over supported odd prime fields. The public context provides exact canonical row packing/fingerprints, dynamic/native add, double, scalar, negate, subtract, sum, progression and fused BSGS batches, exact fallback/status diagnostics, resource limits, lazy Kummer composition, and opaque owner-bound packed batches. Native read-only consumers borrow authenticated capsule storage without copying; dynamic/public consumers get explicit owned copies. Lazy divisors are owner-registered before escape, while already-materialized divisors always derive and validate their row from `(u,v)`, closing capsule transplant, owner-rebound, and split-brain attacks. Finite-field divisor pickle state serializes only validated mathematical model and `(u,v)` data, never opaque storage. Exhaustive small-field, collision/general-h, current-kernel, CPython, compiled, scalar, fused-search, mutation-isolation, serialization, and public Jacobian differentials pass, together with the retained QQ smoke on the required integration base. The final local p=1009 1,000-item receipt is 2.954/3.762ms retained add, 9.275/8.504ms registered ordinary-public add, 0.678/0.963s retained 256-bit scalar, and 0.222/0.237s after forced add materialization for genus 2/3. Authenticated gathering prepares 1,000 already-registered public divisors in 1.624/1.500ms and cached prepared batches in 0.026/0.021ms. The raw addon is 1.049x/1.047x the exact same-source standalone genus-2/3 core under production bounds/link flags and matched 10-warmup plus 9-by-50-call samples, closing the 1.15x boundary gate with identical digests. A new p=1009 Magma contract harness pins representative genus-2/3 operands and exact canonical add/double/256-bit-scalar rows, rejects timer-zero or <=10ms Magma samples, and records ordinary public-object gathering, retained batches, and forced Mumford materialization independently; its no-Magma local smoke and 10,000-add/64-scalar scaling run agree exactly with the reference law.",
+    "risks": [
+      "The exact v1 domain is deliberately limited to odd-degree one-infinity models, odd prime fields, genus 2/3, and p <= 2^32-1. Even-degree divisors need a versioned weight/infinity coordinate and an additional v slot and are rejected rather than misencoded.",
+      "The plan's truly fresh pack/unpack criterion remains open. Preparing 1,000 distinct, unregistered, checked public divisors costs 0.823/0.876s because the boundary conservatively repeats the Mumford relation validation; constructing and preparing them costs 2.461/2.610s. Eager per-owner constructor capsules shifted the same work into construction, regressed constructor-only timing by about 21%, and did not materially improve the paired total, so that misleading optimization was reverted. Registered kernel/public results and explicit retained batches are separate faster contracts and are not relabeled as fresh input.",
+      "Same-host Magma 1,000-element 256-bit scalar parity, quiet bench-1 acceptance, Windows x64, Linux arm64, and macOS arm64 receipts remain integration work; no competitiveness claim is made from the noisy local host alone.",
+      "Forced publication of 1,000 polynomial `(u,v)` objects still costs about 0.22-0.24s and dominates materialized batches; the opaque retained contract deliberately avoids that cost until demanded.",
+      "The recorded broad `pnpm test:native` run passed its production build, native integration, FFLAS, graph, M4RI, FFI, sanitizer, production-kernel, and matrix stages, then failed at the final out-of-claim `test/dense-rational-migration.cjs:321` expectation: the compiler now reports the source-correct `integer-buffer-values` backend where the stale ratchet expects `tagged`. Integration accepted this shared compiler-test mismatch for correction and final rerun on the merged root.",
+      "The Magma source/parser and full 100,000-cheap/1,000-scalar acceptance receipt still require the authorized quiet `bench-1` run. Local timing is diagnostic only and no Magma-relative claim is made before that receipt."
+    ],
+    "next_steps": [
+      "Integrate the compiler prerequisite commits first, then the complete implementation and benchmark receipt from this branch, retaining the production registrations and strict/native package split maintained by integration.",
+      "Design a lightweight authenticated validated-construction provenance only if it improves the exact combined construction-plus-first-prepare contract without slowing constructor-only or internal `check=False` paths; the rejected eager-capsule experiment is the baseline.",
+      "After authorization, run the versioned finite-Jacobian contract harness on quiet `bench-1` with its 100,000-cheap/1,000-scalar defaults, require every Magma sample to exceed 10ms and every canonical digest to match, and check in the exact receipt before making a Magma-relative claim; then validate the dynamic fallback across Windows x64, Linux arm64, and macOS arm64.",
+      "Keep legacy in-core FLINT BSGS first for genus-3 certification until the fused source-transparent progression wins an end-to-end consumer benchmark; the exact fused kernel remains a fallback/challenger.",
+      "Verify and update the shared dense-rational backend-explain ratchet on the merged compiler root, then rerun `pnpm test:native`; no finite Cantor failure occurred in the recorded broad run."
+    ]
+  }
+}

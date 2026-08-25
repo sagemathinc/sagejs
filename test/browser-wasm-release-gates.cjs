@@ -69,6 +69,18 @@ test("release artifact receipts validate hashes, Wasm magic, compression, and re
     assert.equal(report.files.length, 2);
     assert.equal(report.source_revision, "fixture");
     assert.deepEqual(compareArtifacts(report, inspectProductionArtifact(right)), []);
+    const crossPlatform = {
+      ...inspectProductionArtifact(right),
+      build_receipt_sha256: "platform-specific-receipt",
+    };
+    assert.deepEqual(
+      compareArtifacts(report, crossPlatform, { includeBuildReceipt: false }),
+      [],
+    );
+    assert.deepEqual(
+      compareArtifacts(report, crossPlatform),
+      ["build receipt bytes differ"],
+    );
     fs.appendFileSync(path.join(right, "kernel.mjs"), "// drift\n");
     assert.throws(() => inspectProductionArtifact(right), /digest/);
   } finally {

@@ -198,7 +198,7 @@ class RationalField(Field):
         return (
             getattr(value, "_parent", None) is self
             or runtime.is_exact_integer(value)
-            or runtime.jstype(value) == "number"
+            or isinstance(value, float)
             or getattr(
                 getattr(value, "_parent", None),
                 "_kind",
@@ -739,7 +739,7 @@ class CoercionModel:
     def parentOf(self, value: Any) -> Parent:
         if is_exact_integer(value):
             return ZZ
-        if runtime.jstype(value) == "number":
+        if isinstance(value, float):
             return runtime.reflect.get(runtime.global_object, "RDF")
         if (
             value is not None

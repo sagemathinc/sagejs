@@ -8,7 +8,7 @@ without a matching artifact execute these same ordinary Python bodies.
 
 from __future__ import annotations
 
-from sagejs.native import IntegerBuffer, native, uint64
+from sagejs.native import IntegerBuffer, NativeIntegerVector, native, uint64
 
 
 @native
@@ -203,6 +203,309 @@ def packed_cubic_norm_form_target_slice(
                 if value == positive_target or value == negative_target:
                     return represented
     return absent
+
+
+@native
+def packed_cubic_norm_form_first_obstruction_in_place(
+    metadata: IntegerBuffer,
+    coefficients: IntegerBuffer,
+    ideal_norm: int,
+    max_modulus: uint64,
+    remaining_states: uint64,
+) -> bool:
+    """Find the first prime modulus obstructing a ternary cubic norm.
+
+    `metadata` receives the accounted residue states, the first obstructing
+    prime (or zero), that prime's cube, and a completion flag.  State
+    accounting deliberately charges the full cube for every tested modulus,
+    even when a represented target is found early, matching the readable
+    verifier's immutable work budget.
+    """
+    maximum_modulus: uint64 = 257
+    valid = (
+        len(metadata) == 4
+        and len(coefficients) == 10
+        and ideal_norm > 0
+        and max_modulus >= 2
+        and max_modulus <= maximum_modulus
+    )
+    if not valid:
+        return False
+    metadata[0] = 0
+    metadata[1] = 0
+    metadata[2] = 0
+    metadata[3] = 0
+    one: uint64 = 1
+    modulus: uint64 = 2
+    while modulus <= max_modulus:
+        prime = True
+        divisor: uint64 = 2
+        while prime and divisor * divisor <= modulus:
+            if modulus % divisor == 0:
+                prime = False
+            divisor = divisor + one
+        if prime:
+            states = modulus * modulus * modulus
+            if metadata[0] + states > remaining_states:
+                return True
+            c300 = coefficients[0] % modulus
+            c030 = coefficients[1] % modulus
+            c003 = coefficients[2] % modulus
+            c210 = coefficients[3] % modulus
+            c201 = coefficients[4] % modulus
+            c120 = coefficients[5] % modulus
+            c021 = coefficients[6] % modulus
+            c102 = coefficients[7] % modulus
+            c012 = coefficients[8] % modulus
+            c111 = coefficients[9] % modulus
+            positive_target = ideal_norm % modulus
+            negative_target = (-ideal_norm) % modulus
+            represented = False
+            x: uint64 = 0
+            while not represented and x < modulus:
+                y: uint64 = 0
+                while not represented and y < modulus:
+                    z: uint64 = 0
+                    while not represented and z < modulus:
+                        value = (
+                            c300 * x * x * x
+                            + c030 * y * y * y
+                            + c003 * z * z * z
+                            + c210 * x * x * y
+                            + c201 * x * x * z
+                            + c120 * x * y * y
+                            + c021 * y * y * z
+                            + c102 * x * z * z
+                            + c012 * y * z * z
+                            + c111 * x * y * z
+                        ) % modulus
+                        if value == positive_target or value == negative_target:
+                            represented = True
+                        z = z + one
+                    y = y + one
+                x = x + one
+            metadata[0] += states
+            if not represented:
+                metadata[1] = modulus
+                metadata[2] = states
+                metadata[3] = 1
+                return True
+        modulus = modulus + one
+    metadata[3] = 1
+    return True
+
+
+def _packed_integer_gcd(left: int, right: int) -> int:
+    a = left
+    if a < 0:
+        a = -a
+    b = right
+    if b < 0:
+        b = -b
+    while b != 0:
+        remainder = a % b
+        a = b
+        b = remainder
+    return a
+
+
+def _packed_rational_normalize(numerator: int, denominator: int) -> tuple[int, int]:
+    if denominator == 0:
+        return (0, 0)
+    if denominator < 0:
+        numerator = -numerator
+        denominator = -denominator
+    common = _packed_integer_gcd(numerator, denominator)
+    if common == 0:
+        return (0, 1)
+    return (numerator // common, denominator // common)
+
+
+def _packed_rational_add(
+    left_numerator: int,
+    left_denominator: int,
+    right_numerator: int,
+    right_denominator: int,
+) -> tuple[int, int]:
+    common = _packed_integer_gcd(left_denominator, right_denominator)
+    if common == 0:
+        return (0, 0)
+    left_scale = right_denominator // common
+    right_scale = left_denominator // common
+    return _packed_rational_normalize(
+        left_numerator * left_scale + right_numerator * right_scale,
+        left_denominator * left_scale,
+    )
+
+
+def _packed_rational_subtract(
+    left_numerator: int,
+    left_denominator: int,
+    right_numerator: int,
+    right_denominator: int,
+) -> tuple[int, int]:
+    return _packed_rational_add(
+        left_numerator,
+        left_denominator,
+        -right_numerator,
+        right_denominator,
+    )
+
+
+@native
+def packed_bdf_interval_in_place(
+    output: IntegerBuffer,
+    terms: IntegerBuffer,
+    constants: IntegerBuffer,
+    scale: int,
+    degree: uint64,
+    real_places: uint64,
+    term_count: uint64,
+) -> bool:
+    """Assemble the exact BDF inequality from dyadic primitive intervals.
+
+    `terms` packs `(log(N)_lower, log(N)_upper, sqrt(q)_lower,
+    sqrt(q)_upper, exponent)` at one common dyadic scale.  `constants` packs
+    lower/upper endpoints for `log(x)`, pi, Catalan, Euler gamma, `log(8)`,
+    `log(pi)`, and `log(|D|)`.  The eight outputs are exact numerator and
+    denominator pairs for the right and left interval endpoints.
+    """
+    maximum_terms: uint64 = 1000000
+    maximum_degree: uint64 = 256
+    valid = (
+        len(output) == 8
+        and len(constants) == 14
+        and term_count <= maximum_terms
+        and len(terms) == 5 * term_count
+        and scale > 0
+        and degree > 0
+        and degree <= maximum_degree
+        and real_places <= degree
+    )
+    if not valid:
+        return False
+    index = 0
+    while index < 14:
+        if constants[index] <= 0 or constants[index] > constants[index + 1]:
+            return False
+        index += 2
+    log_x_lower = constants[0]
+    log_x_upper = constants[1]
+    total_lower_numerator = 0
+    total_lower_denominator = 1
+    total_upper_numerator = 0
+    total_upper_denominator = 1
+    for term in range(term_count):
+        offset = 5 * term
+        log_lower = terms[offset]
+        log_upper = terms[offset + 1]
+        sqrt_lower = terms[offset + 2]
+        sqrt_upper = terms[offset + 3]
+        exponent = terms[offset + 4]
+        if (
+            log_lower <= 0
+            or log_lower > log_upper
+            or sqrt_lower <= 0
+            or sqrt_lower > sqrt_upper
+            or exponent <= 0
+        ):
+            return False
+        taper_lower = log_x_lower - exponent * log_upper
+        taper_upper = log_x_upper - exponent * log_lower
+        if taper_lower <= 0 or taper_upper <= 0:
+            return False
+        lower_numerator = log_lower * taper_lower
+        lower_denominator = sqrt_upper * log_x_lower
+        upper_numerator = log_upper * taper_upper
+        upper_denominator = sqrt_lower * log_x_upper
+        lower_numerator, lower_denominator = _packed_rational_normalize(
+            lower_numerator, lower_denominator
+        )
+        upper_numerator, upper_denominator = _packed_rational_normalize(
+            upper_numerator, upper_denominator
+        )
+        total_lower_numerator, total_lower_denominator = _packed_rational_add(
+            total_lower_numerator,
+            total_lower_denominator,
+            lower_numerator,
+            lower_denominator,
+        )
+        total_upper_numerator, total_upper_denominator = _packed_rational_add(
+            total_upper_numerator,
+            total_upper_denominator,
+            upper_numerator,
+            upper_denominator,
+        )
+
+    pi_lower = constants[2]
+    pi_upper = constants[3]
+    catalan_lower = constants[4]
+    catalan_upper = constants[5]
+    archimedean_lower_numerator = (
+        degree * pi_lower * pi_lower + 8 * real_places * catalan_lower * scale
+    )
+    archimedean_upper_numerator = (
+        degree * pi_upper * pi_upper + 8 * real_places * catalan_upper * scale
+    )
+    archimedean_lower_denominator = 2 * scale * log_x_upper
+    archimedean_upper_denominator = 2 * scale * log_x_lower
+    archimedean_lower_numerator, archimedean_lower_denominator = (
+        _packed_rational_normalize(
+            archimedean_lower_numerator, archimedean_lower_denominator
+        )
+    )
+    archimedean_upper_numerator, archimedean_upper_denominator = (
+        _packed_rational_normalize(
+            archimedean_upper_numerator, archimedean_upper_denominator
+        )
+    )
+    right_lower_numerator, right_lower_denominator = _packed_rational_subtract(
+        2 * total_lower_numerator,
+        total_lower_denominator,
+        archimedean_upper_numerator,
+        archimedean_upper_denominator,
+    )
+    right_upper_numerator, right_upper_denominator = _packed_rational_subtract(
+        2 * total_upper_numerator,
+        total_upper_denominator,
+        archimedean_lower_numerator,
+        archimedean_lower_denominator,
+    )
+
+    gamma_lower = constants[6]
+    gamma_upper = constants[7]
+    log_eight_lower = constants[8]
+    log_eight_upper = constants[9]
+    log_pi_lower = constants[10]
+    log_pi_upper = constants[11]
+    log_discriminant_lower = constants[12]
+    log_discriminant_upper = constants[13]
+    left_lower_numerator = (
+        2 * log_discriminant_lower
+        - 2 * degree * (gamma_upper + log_eight_upper + log_pi_upper)
+        - real_places * pi_upper
+    )
+    left_upper_numerator = (
+        2 * log_discriminant_upper
+        - 2 * degree * (gamma_lower + log_eight_lower + log_pi_lower)
+        - real_places * pi_lower
+    )
+    left_denominator = 2 * scale
+    left_lower_numerator, left_lower_denominator = _packed_rational_normalize(
+        left_lower_numerator, left_denominator
+    )
+    left_upper_numerator, left_upper_denominator = _packed_rational_normalize(
+        left_upper_numerator, left_denominator
+    )
+    output[0] = right_lower_numerator
+    output[1] = right_lower_denominator
+    output[2] = right_upper_numerator
+    output[3] = right_upper_denominator
+    output[4] = left_lower_numerator
+    output[5] = left_lower_denominator
+    output[6] = left_upper_numerator
+    output[7] = left_upper_denominator
+    return True
 
 
 @native
@@ -414,56 +717,62 @@ def packed_factor_base_rows_in_place(
     metadata[0] = 0
     metadata[1] = candidate_count
     metadata[2] = prime_power_count
-    candidate_index = 0
-    while candidate_index < candidate_count:
-        coordinate = 0
-        while coordinate < degree:
-            value = 0
-            basis_index = 0
-            while basis_index < degree:
-                value += (
-                    coefficient_vectors[candidate_index * degree + basis_index]
-                    * order_basis_numerators[basis_index * degree + coordinate]
-                )
-                basis_index += 1
-            workspace[coordinate] = value
-            coordinate += 1
-        row_norm = 1
-        any_valuation = False
-        factor_index = 0
-        while factor_index < factor_count:
-            valuation = 0
-            power_index = factor_offsets[factor_index]
-            stop = factor_offsets[factor_index + 1]
-            member = True
-            while member and power_index < stop:
-                member = _packed_upper_hnf_contains(
-                    prime_power_numerators,
-                    power_index * square,
-                    prime_power_denominators[power_index],
-                    workspace,
-                    order_basis_denominator,
-                    degree,
-                    workspace,
-                    degree,
-                )
-                if member:
-                    valuation += 1
-                    any_valuation = True
-                power_index += 1
-            row_output[candidate_index * factor_count + factor_index] = valuation
-            exponent = 0
-            while exponent < valuation:
-                row_norm *= factor_norms[factor_index]
-                exponent += 1
-            factor_index += 1
-        norm = absolute_norms[candidate_index]
-        if norm > 1 and any_valuation and row_norm == norm:
-            smooth_output[candidate_index] = 1
-            metadata[0] += 1
-        else:
-            smooth_output[candidate_index] = 0
-        candidate_index += 1
+    # Keep the order-basis matrix-vector accumulation live in one exact
+    # workspace.  Publishing only the completed coordinates removes one
+    # IntegerBuffer read/write crossing for every multiply-add while the
+    # canonical caller-owned buffers remain the sole semantic authority.
+    with NativeIntegerVector(maximum_degree, 65536) as exact_coordinates:
+        candidate_index = 0
+        while candidate_index < candidate_count:
+            coordinate = 0
+            while coordinate < degree:
+                exact_coordinates[coordinate] = 0
+                basis_index = 0
+                while basis_index < degree:
+                    exact_coordinates.addmul(
+                        coordinate,
+                        coefficient_vectors[candidate_index * degree + basis_index],
+                        order_basis_numerators[basis_index * degree + coordinate],
+                    )
+                    basis_index += 1
+                workspace[coordinate] = exact_coordinates[coordinate]
+                coordinate += 1
+            row_norm = 1
+            any_valuation = False
+            factor_index = 0
+            while factor_index < factor_count:
+                valuation = 0
+                power_index = factor_offsets[factor_index]
+                stop = factor_offsets[factor_index + 1]
+                member = True
+                while member and power_index < stop:
+                    member = _packed_upper_hnf_contains(
+                        prime_power_numerators,
+                        power_index * square,
+                        prime_power_denominators[power_index],
+                        workspace,
+                        order_basis_denominator,
+                        degree,
+                        workspace,
+                        degree,
+                    )
+                    if member:
+                        valuation += 1
+                        any_valuation = True
+                    power_index += 1
+                row_output[candidate_index * factor_count + factor_index] = valuation
+                exponent = 0
+                while exponent < valuation:
+                    row_norm *= factor_norms[factor_index]
+                    exponent += 1
+                factor_index += 1
+            norm = absolute_norms[candidate_index]
+            if norm > 1 and any_valuation and row_norm == norm:
+                smooth_output[candidate_index] = 1
+                metadata[0] += 1
+            else:
+                smooth_output[candidate_index] = 0
+            candidate_index += 1
     return True
 
 
@@ -485,6 +794,615 @@ def _packed_modular_inverse_or_zero(value: int, modulus: int) -> int:
     if old_remainder != 1:
         return 0
     return old_coefficient % modulus
+
+
+def _packed_cubic_modular_product_in_place(
+    output: IntegerBuffer,
+    output_offset: int,
+    left: IntegerBuffer,
+    left_offset: int,
+    right: IntegerBuffer,
+    right_offset: int,
+    multiplication_table: IntegerBuffer,
+    modulus: int,
+) -> bool:
+    """Multiply two cubic algebra vectors in one fixed packed table."""
+    coordinate = 0
+    while coordinate < 3:
+        value = 0
+        left_index = 0
+        while left_index < 3:
+            right_index = 0
+            while right_index < 3:
+                value += (
+                    left[left_offset + left_index]
+                    * right[right_offset + right_index]
+                    * multiplication_table[
+                        (left_index * 3 + right_index) * 3 + coordinate
+                    ]
+                )
+                right_index += 1
+            left_index += 1
+        output[output_offset + coordinate] = value % modulus
+        coordinate += 1
+    return True
+
+
+def _packed_cubic_rref_in_place(
+    matrix: IntegerBuffer,
+    offset: int,
+    row_count: int,
+    modulus: int,
+) -> int:
+    """Reduce at most three cubic row vectors and return their exact rank."""
+    pivot_row = 0
+    column = 0
+    while column < 3 and pivot_row < row_count:
+        selected = pivot_row
+        while (
+            selected < row_count
+            and matrix[offset + selected * 3 + column] % modulus == 0
+        ):
+            selected += 1
+        if selected != row_count:
+            if selected != pivot_row:
+                entry = 0
+                while entry < 3:
+                    left_index = offset + pivot_row * 3 + entry
+                    right_index = offset + selected * 3 + entry
+                    swap_value = matrix[left_index]
+                    matrix[left_index] = matrix[right_index]
+                    matrix[right_index] = swap_value
+                    entry += 1
+            inverse = _packed_modular_inverse_or_zero(
+                matrix[offset + pivot_row * 3 + column], modulus
+            )
+            if inverse == 0:
+                return -1
+            entry = 0
+            while entry < 3:
+                location = offset + pivot_row * 3 + entry
+                matrix[location] = matrix[location] * inverse % modulus
+                entry += 1
+            row = 0
+            while row < row_count:
+                if row != pivot_row:
+                    scalar = matrix[offset + row * 3 + column] % modulus
+                    if scalar != 0:
+                        entry = 0
+                        while entry < 3:
+                            location = offset + row * 3 + entry
+                            matrix[location] = (
+                                matrix[location]
+                                - scalar * matrix[offset + pivot_row * 3 + entry]
+                            ) % modulus
+                            entry += 1
+                row += 1
+            pivot_row += 1
+        column += 1
+    return pivot_row
+
+
+def _packed_small_matrix_inverse_in_place(
+    output: IntegerBuffer,
+    output_offset: int,
+    source: IntegerBuffer,
+    source_offset: int,
+    dimension: int,
+    modulus: int,
+    workspace: IntegerBuffer,
+    workspace_offset: int,
+) -> bool:
+    """Invert one dense matrix of order at most three modulo a prime."""
+    if dimension < 1 or dimension > 3:
+        return False
+    square = dimension * dimension
+    index = 0
+    while index < square:
+        workspace[workspace_offset + index] = source[source_offset + index] % modulus
+        workspace[workspace_offset + 9 + index] = 0
+        index += 1
+    row = 0
+    while row < dimension:
+        workspace[workspace_offset + 9 + row * dimension + row] = 1
+        row += 1
+    pivot = 0
+    while pivot < dimension:
+        selected = pivot
+        while (
+            selected < dimension
+            and workspace[workspace_offset + selected * dimension + pivot] % modulus
+            == 0
+        ):
+            selected += 1
+        if selected == dimension:
+            return False
+        if selected != pivot:
+            column = 0
+            while column < dimension:
+                left = workspace_offset + pivot * dimension + column
+                right = workspace_offset + selected * dimension + column
+                swap_value = workspace[left]
+                workspace[left] = workspace[right]
+                workspace[right] = swap_value
+                left = workspace_offset + 9 + pivot * dimension + column
+                right = workspace_offset + 9 + selected * dimension + column
+                swap_value = workspace[left]
+                workspace[left] = workspace[right]
+                workspace[right] = swap_value
+                column += 1
+        inverse = _packed_modular_inverse_or_zero(
+            workspace[workspace_offset + pivot * dimension + pivot], modulus
+        )
+        if inverse == 0:
+            return False
+        column = 0
+        while column < dimension:
+            left = workspace_offset + pivot * dimension + column
+            right = workspace_offset + 9 + pivot * dimension + column
+            workspace[left] = workspace[left] * inverse % modulus
+            workspace[right] = workspace[right] * inverse % modulus
+            column += 1
+        row = 0
+        while row < dimension:
+            if row != pivot:
+                scalar = workspace[workspace_offset + row * dimension + pivot] % modulus
+                if scalar != 0:
+                    column = 0
+                    while column < dimension:
+                        left = workspace_offset + row * dimension + column
+                        source_left = workspace_offset + pivot * dimension + column
+                        right = workspace_offset + 9 + row * dimension + column
+                        source_right = workspace_offset + 9 + pivot * dimension + column
+                        workspace[left] = (
+                            workspace[left] - scalar * workspace[source_left]
+                        ) % modulus
+                        workspace[right] = (
+                            workspace[right] - scalar * workspace[source_right]
+                        ) % modulus
+                        column += 1
+            row += 1
+        pivot += 1
+    index = 0
+    while index < square:
+        output[output_offset + index] = workspace[workspace_offset + 9 + index]
+        index += 1
+    return True
+
+
+@native
+def packed_cubic_reduced_algebra_factors_in_place(
+    metadata: IntegerBuffer,
+    kernel_output: IntegerBuffer,
+    presentation_output: IntegerBuffer,
+    workspace: IntegerBuffer,
+    multiplication_table: IntegerBuffer,
+    one: IntegerBuffer,
+    prime: uint64,
+) -> bool:
+    """Split one reduced cubic algebra into canonical field kernels.
+
+    This fixed-shape fast path handles the common index-prime case where the
+    integral equation is not `p`-maximal but `O/pO` is already reduced.  It
+    emits at most three canonical maximal-ideal row spaces and the same
+    primitive quotient presentations as the readable finite-algebra code.
+    Nonreduced or nonmonogenic inputs decline to that complete fallback.
+    """
+    valid = (
+        prime >= 2
+        # Both the Frobenius and root scans below are linear in `prime`.
+        # This is deliberately a small-prime acceleration boundary; larger
+        # primes retain the complete readable finite-algebra implementation.
+        and prime <= 257
+        and len(metadata) == 7
+        and len(kernel_output) == 27
+        and len(presentation_output) == 75
+        and len(workspace) == 128
+        and len(multiplication_table) == 27
+        and len(one) == 3
+    )
+    index = 0
+    while index < len(metadata):
+        metadata[index] = 0
+        index += 1
+    index = 0
+    while index < len(kernel_output):
+        kernel_output[index] = 0
+        index += 1
+    index = 0
+    while index < len(presentation_output):
+        presentation_output[index] = 0
+        index += 1
+    index = 0
+    while index < len(workspace):
+        workspace[index] = 0
+        index += 1
+    if not valid:
+        return False
+
+    # The kernel of a sufficiently large Frobenius power is the nilradical.
+    # Full rank of that map proves this bounded fast path is reduced.
+    frobenius_exponent: uint64 = prime
+    while frobenius_exponent < 3:
+        frobenius_exponent = frobenius_exponent * prime
+    basis_index = 0
+    while basis_index < 3:
+        workspace[36] = one[0] % prime
+        workspace[37] = one[1] % prime
+        workspace[38] = one[2] % prime
+        workspace[39] = 0
+        workspace[40] = 0
+        workspace[41] = 0
+        workspace[39 + basis_index] = 1
+        exponent = 0
+        while exponent < frobenius_exponent:
+            if not _packed_cubic_modular_product_in_place(
+                workspace,
+                42,
+                workspace,
+                36,
+                workspace,
+                39,
+                multiplication_table,
+                prime,
+            ):
+                return False
+            coordinate = 0
+            while coordinate < 3:
+                workspace[36 + coordinate] = workspace[42 + coordinate]
+                coordinate += 1
+            exponent += 1
+        coordinate = 0
+        while coordinate < 3:
+            workspace[basis_index * 3 + coordinate] = workspace[36 + coordinate]
+            coordinate += 1
+        basis_index += 1
+    if not _packed_small_matrix_inverse_in_place(
+        workspace, 9, workspace, 0, 3, prime, workspace, 80
+    ):
+        return False
+
+    # Find the first canonical primitive element of the full cubic algebra.
+    candidate_code = 1
+    primitive_found = False
+    while candidate_code <= 8 and not primitive_found:
+        encoded = candidate_code
+        coordinate = 0
+        while coordinate < 3:
+            workspace[36 + coordinate] = encoded % prime
+            encoded //= prime
+            coordinate += 1
+        workspace[39] = one[0] % prime
+        workspace[40] = one[1] % prime
+        workspace[41] = one[2] % prime
+        exponent = 0
+        while exponent < 3:
+            coordinate = 0
+            while coordinate < 3:
+                workspace[exponent * 3 + coordinate] = workspace[39 + coordinate]
+                coordinate += 1
+            if not _packed_cubic_modular_product_in_place(
+                workspace,
+                42,
+                workspace,
+                39,
+                workspace,
+                36,
+                multiplication_table,
+                prime,
+            ):
+                return False
+            coordinate = 0
+            while coordinate < 3:
+                workspace[39 + coordinate] = workspace[42 + coordinate]
+                coordinate += 1
+            exponent += 1
+        primitive_found = _packed_small_matrix_inverse_in_place(
+            workspace, 9, workspace, 0, 3, prime, workspace, 80
+        )
+        if not primitive_found:
+            candidate_code += 1
+    if not primitive_found:
+        return False
+
+    # Store the full-algebra minimal polynomial in workspace[48:52].
+    coefficient = 0
+    while coefficient < 3:
+        value = 0
+        coordinate = 0
+        while coordinate < 3:
+            value += (
+                workspace[39 + coordinate] * workspace[9 + coordinate * 3 + coefficient]
+            )
+            coordinate += 1
+        workspace[48 + coefficient] = (-value) % prime
+        coefficient += 1
+    workspace[51] = 1
+
+    root_count: uint64 = 0
+    root: uint64 = 0
+    one_uint: uint64 = 1
+    while root < prime:
+        root_value: uint64 = 0
+        coefficient = 3
+        while coefficient >= 0:
+            root_value = (
+                root_value * root + workspace[48 + coefficient] % prime
+            ) % prime
+            coefficient -= 1
+        if root_value == 0:
+            if root_count >= 3:
+                return False
+            workspace[52 + root_count] = root
+            root_count = root_count + one_uint
+        root = root + one_uint
+    if root_count != 0 and root_count != 1 and root_count != 3:
+        return False
+
+    factor_count = 1
+    if root_count == 1:
+        factor_count = 2
+    elif root_count == 3:
+        factor_count = 3
+    factor_index = 0
+    while factor_index < factor_count:
+        factor_offset = 56 + factor_index * 4
+        coefficient = 0
+        while coefficient < 4:
+            workspace[factor_offset + coefficient] = 0
+            coefficient += 1
+        if root_count == 0:
+            coefficient = 0
+            while coefficient < 4:
+                workspace[factor_offset + coefficient] = workspace[48 + coefficient]
+                coefficient += 1
+            workspace[68 + factor_index] = 3
+        elif root_count == 3 or factor_index == 0:
+            workspace[factor_offset] = (-workspace[52 + factor_index]) % prime
+            workspace[factor_offset + 1] = 1
+            workspace[68 + factor_index] = 1
+        else:
+            selected_root = workspace[52]
+            workspace[factor_offset + 2] = 1
+            workspace[factor_offset + 1] = (workspace[50] + selected_root) % prime
+            workspace[factor_offset] = (
+                workspace[49] + selected_root * workspace[factor_offset + 1]
+            ) % prime
+            if (workspace[48] + selected_root * workspace[factor_offset]) % prime != 0:
+                return False
+            workspace[68 + factor_index] = 2
+        factor_index += 1
+
+    factor_index = 0
+    while factor_index < factor_count:
+        factor_offset = 56 + factor_index * 4
+        factor_degree = workspace[68 + factor_index]
+        # Evaluate the irreducible factor at the global primitive.
+        workspace[36] = 0
+        workspace[37] = 0
+        workspace[38] = 0
+        coefficient = factor_degree
+        while coefficient >= 0:
+            encoded = candidate_code
+            coordinate = 0
+            while coordinate < 3:
+                workspace[45 + coordinate] = encoded % prime
+                encoded //= prime
+                coordinate += 1
+            if not _packed_cubic_modular_product_in_place(
+                workspace,
+                42,
+                workspace,
+                36,
+                workspace,
+                45,
+                multiplication_table,
+                prime,
+            ):
+                return False
+            coordinate = 0
+            while coordinate < 3:
+                workspace[36 + coordinate] = (
+                    workspace[42 + coordinate]
+                    + workspace[factor_offset + coefficient] * one[coordinate]
+                ) % prime
+                coordinate += 1
+            coefficient -= 1
+
+        # Generate the maximal ideal and row-reduce its three products.
+        basis_index = 0
+        child_offset = 71
+        while basis_index < 3:
+            workspace[45] = 0
+            workspace[46] = 0
+            workspace[47] = 0
+            workspace[45 + basis_index] = 1
+            if not _packed_cubic_modular_product_in_place(
+                workspace,
+                child_offset + basis_index * 3,
+                workspace,
+                36,
+                workspace,
+                45,
+                multiplication_table,
+                prime,
+            ):
+                return False
+            basis_index += 1
+        kernel_rows = _packed_cubic_rref_in_place(workspace, child_offset, 3, prime)
+        if kernel_rows != 3 - factor_degree:
+            return False
+        output_offset = factor_index * 9
+        row = 0
+        while row < kernel_rows:
+            coordinate = 0
+            while coordinate < 3:
+                kernel_output[output_offset + row * 3 + coordinate] = workspace[
+                    child_offset + row * 3 + coordinate
+                ]
+                coordinate += 1
+            row += 1
+
+        # The RREF kernel determines the canonical quotient coordinate map.
+        presentation_offset = factor_index * 25
+        coordinate = 0
+        while coordinate < 3:
+            encoded = candidate_code
+            presentation_output[presentation_offset + coordinate] = encoded % prime
+            encoded //= prime
+            coordinate += 1
+        free_count = 0
+        coordinate = 0
+        while coordinate < 3:
+            is_pivot = False
+            row = 0
+            while row < kernel_rows:
+                pivot_column = 0
+                while (
+                    pivot_column < 3
+                    and workspace[child_offset + row * 3 + pivot_column] == 0
+                ):
+                    pivot_column += 1
+                if pivot_column == coordinate:
+                    is_pivot = True
+                row += 1
+            if not is_pivot:
+                workspace[104 + free_count] = coordinate
+                free_count += 1
+            coordinate += 1
+        if free_count != factor_degree:
+            return False
+        quotient_offset = presentation_offset + 3
+        quotient_row = 0
+        while quotient_row < 3:
+            quotient_column = 0
+            while quotient_column < 3:
+                presentation_output[
+                    quotient_offset + quotient_row * 3 + quotient_column
+                ] = 0
+                quotient_column += 1
+            quotient_row += 1
+        quotient_column = 0
+        while quotient_column < factor_degree:
+            free_column = workspace[104 + quotient_column]
+            presentation_output[quotient_offset + free_column * 3 + quotient_column] = 1
+            row = 0
+            while row < kernel_rows:
+                pivot_column = 0
+                while (
+                    pivot_column < 3
+                    and workspace[child_offset + row * 3 + pivot_column] == 0
+                ):
+                    pivot_column += 1
+                presentation_output[
+                    quotient_offset + pivot_column * 3 + quotient_column
+                ] = (-workspace[child_offset + row * 3 + free_column]) % prime
+                row += 1
+            quotient_column += 1
+
+        # Reproduce the readable quotient's first bounded primitive search.
+        quotient_primitive_found = False
+        quotient_candidate = 1
+        while quotient_candidate <= 8 and not quotient_primitive_found:
+            encoded = quotient_candidate
+            coordinate = 0
+            while coordinate < 3:
+                workspace[45 + coordinate] = encoded % prime
+                encoded //= prime
+                coordinate += 1
+            workspace[36] = one[0] % prime
+            workspace[37] = one[1] % prime
+            workspace[38] = one[2] % prime
+            exponent = 0
+            while exponent < factor_degree:
+                quotient_column = 0
+                while quotient_column < factor_degree:
+                    value = 0
+                    coordinate = 0
+                    while coordinate < 3:
+                        value += (
+                            workspace[36 + coordinate]
+                            * presentation_output[
+                                quotient_offset + coordinate * 3 + quotient_column
+                            ]
+                        )
+                        coordinate += 1
+                    workspace[exponent * factor_degree + quotient_column] = (
+                        value % prime
+                    )
+                    quotient_column += 1
+                if not _packed_cubic_modular_product_in_place(
+                    workspace,
+                    42,
+                    workspace,
+                    36,
+                    workspace,
+                    45,
+                    multiplication_table,
+                    prime,
+                ):
+                    return False
+                coordinate = 0
+                while coordinate < 3:
+                    workspace[36 + coordinate] = workspace[42 + coordinate]
+                    coordinate += 1
+                exponent += 1
+            quotient_primitive_found = _packed_small_matrix_inverse_in_place(
+                workspace,
+                9,
+                workspace,
+                0,
+                factor_degree,
+                prime,
+                workspace,
+                80,
+            )
+            if not quotient_primitive_found:
+                quotient_candidate += 1
+        if not quotient_primitive_found:
+            return False
+        encoded = quotient_candidate
+        coordinate = 0
+        while coordinate < 3:
+            presentation_output[presentation_offset + coordinate] = encoded % prime
+            encoded //= prime
+            coordinate += 1
+        inverse_offset = presentation_offset + 12
+        row = 0
+        while row < factor_degree:
+            quotient_column = 0
+            while quotient_column < factor_degree:
+                presentation_output[inverse_offset + row * 3 + quotient_column] = (
+                    workspace[9 + row * factor_degree + quotient_column]
+                )
+                quotient_column += 1
+            row += 1
+        modulus_offset = presentation_offset + 21
+        coefficient = 0
+        while coefficient < factor_degree:
+            value = 0
+            row = 0
+            while row < factor_degree:
+                # Recompute all next-image coordinates for the row-vector
+                # multiply by the retained power inverse.
+                image = 0
+                coordinate = 0
+                while coordinate < 3:
+                    image += (
+                        workspace[36 + coordinate]
+                        * presentation_output[quotient_offset + coordinate * 3 + row]
+                    )
+                    coordinate += 1
+                value += image * workspace[9 + row * factor_degree + coefficient]
+                row += 1
+            presentation_output[modulus_offset + coefficient] = (-value) % prime
+            coefficient += 1
+        presentation_output[modulus_offset + factor_degree] = 1
+        metadata[1 + 2 * factor_index] = kernel_rows
+        metadata[2 + 2 * factor_index] = factor_degree
+        factor_index += 1
+    metadata[0] = factor_count
+    return True
 
 
 def _packed_polynomial_length(
@@ -1481,6 +2399,206 @@ def packed_ideal_product_hnf_in_place(
 
 
 @native
+def packed_ideal_power_chain_hnf_in_place(
+    powers: IntegerBuffer,
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    workspace: IntegerBuffer,
+    basis: IntegerBuffer,
+    multiplication_tensor: IntegerBuffer,
+    degree: uint64,
+    power_count: uint64,
+) -> bool:
+    """Compute canonical numerator HNFs for `I, I^2, ..., I^n`.
+
+    All powers use the caller-owned common denominator convention.  The first
+    `degree^2` entries of `output` retain the previous HNF between iterations;
+    `powers` receives the canonical `degree` rows for every exponent.
+    """
+    maximum_degree: uint64 = 16
+    maximum_power_count: uint64 = 256
+    square = degree * degree
+    product_entries = square * degree
+    valid = (
+        degree > 0
+        and degree <= maximum_degree
+        and power_count > 0
+        and power_count <= maximum_power_count
+        and len(powers) == power_count * square
+        and len(output) == product_entries
+        and len(source) == product_entries
+        and len(workspace) == 2 * degree
+        and len(basis) == square
+        and len(multiplication_tensor) == product_entries
+    )
+    if not valid:
+        return False
+
+    index = 0
+    while index < square:
+        output[index] = basis[index]
+        powers[index] = basis[index]
+        index += 1
+
+    exponent = 1
+    while exponent < power_count:
+        left_row = 0
+        while left_row < degree:
+            right_row = 0
+            while right_row < degree:
+                product_row = left_row * degree + right_row
+                coordinate = 0
+                while coordinate < degree:
+                    value = 0
+                    left_coordinate = 0
+                    while left_coordinate < degree:
+                        right_coordinate = 0
+                        while right_coordinate < degree:
+                            tensor_index = (
+                                left_coordinate * degree + right_coordinate
+                            ) * degree + coordinate
+                            value += (
+                                output[left_row * degree + left_coordinate]
+                                * basis[right_row * degree + right_coordinate]
+                                * multiplication_tensor[tensor_index]
+                            )
+                            right_coordinate += 1
+                        left_coordinate += 1
+                    source[product_row * degree + coordinate] = value
+                    coordinate += 1
+                right_row += 1
+            left_row += 1
+        if not _packed_row_hnf_in_place(
+            output,
+            source,
+            workspace,
+            square,
+            degree,
+        ):
+            return False
+        index = 0
+        while index < square:
+            powers[exponent * square + index] = output[index]
+            index += 1
+        exponent += 1
+    return True
+
+
+@native
+def packed_ideal_power_chains_hnf_in_place(
+    powers: IntegerBuffer,
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    workspace: IntegerBuffer,
+    bases: IntegerBuffer,
+    chain_offsets: IntegerBuffer,
+    multiplication_tensor: IntegerBuffer,
+    degree: uint64,
+    chain_count: uint64,
+    total_power_count: uint64,
+) -> bool:
+    """Compute several canonical ideal-power HNF chains in one call.
+
+    `chain_offsets` partitions `powers` into one nonempty chain per packed
+    basis. The scratch HNF buffers are reused across chains; no arithmetic or
+    canonicalization step is shared between distinct ideals.
+    """
+    maximum_degree: uint64 = 16
+    maximum_chain_count: uint64 = 256
+    maximum_power_count: uint64 = 256
+    square = degree * degree
+    product_entries = square * degree
+    valid = (
+        degree > 0
+        and degree <= maximum_degree
+        and chain_count > 0
+        and chain_count <= maximum_chain_count
+        and total_power_count > 0
+        and total_power_count <= maximum_power_count
+        and len(powers) == total_power_count * square
+        and len(output) == product_entries
+        and len(source) == product_entries
+        and len(workspace) == 2 * degree
+        and len(bases) == chain_count * square
+        and len(chain_offsets) == chain_count + 1
+        and len(multiplication_tensor) == product_entries
+    )
+    if not valid or chain_offsets[0] != 0:
+        return False
+    chain = 0
+    while chain < chain_count:
+        start = chain_offsets[chain]
+        stop = chain_offsets[chain + 1]
+        if start >= stop or stop > total_power_count:
+            return False
+        chain = chain + 1
+    if chain_offsets[chain_count] != total_power_count:
+        return False
+
+    chain = 0
+    while chain < chain_count:
+        start = chain_offsets[chain]
+        stop = chain_offsets[chain + 1]
+        basis_offset = chain * square
+        power_offset = start * square
+        index = 0
+        while index < square:
+            value = bases[basis_offset + index]
+            output[index] = value
+            powers[power_offset + index] = value
+            index += 1
+
+        exponent = start + 1
+        while exponent < stop:
+            left_row = 0
+            while left_row < degree:
+                right_row = 0
+                while right_row < degree:
+                    product_row = left_row * degree + right_row
+                    coordinate = 0
+                    while coordinate < degree:
+                        value = 0
+                        left_coordinate = 0
+                        while left_coordinate < degree:
+                            right_coordinate = 0
+                            while right_coordinate < degree:
+                                tensor_index = (
+                                    left_coordinate * degree + right_coordinate
+                                ) * degree + coordinate
+                                value += (
+                                    output[left_row * degree + left_coordinate]
+                                    * bases[
+                                        basis_offset
+                                        + right_row * degree
+                                        + right_coordinate
+                                    ]
+                                    * multiplication_tensor[tensor_index]
+                                )
+                                right_coordinate += 1
+                            left_coordinate += 1
+                        source[product_row * degree + coordinate] = value
+                        coordinate += 1
+                    right_row += 1
+                left_row += 1
+            if not _packed_row_hnf_in_place(
+                output,
+                source,
+                workspace,
+                square,
+                degree,
+            ):
+                return False
+            index = 0
+            power_offset = exponent * square
+            while index < square:
+                powers[power_offset + index] = output[index]
+                index += 1
+            exponent += 1
+        chain += 1
+    return True
+
+
+@native
 def packed_prime_ideal_candidate_hnf_in_place(
     output: IntegerBuffer,
     source: IntegerBuffer,
@@ -1635,6 +2753,9 @@ def packed_composite_dedekind_basis_in_place(
 __all__ = [
     "packed_composite_dedekind_basis_in_place",
     "packed_composite_dedekind_enlargement_in_place",
+    "packed_bdf_interval_in_place",
+    "packed_cubic_reduced_algebra_factors_in_place",
+    "packed_cubic_norm_form_first_obstruction_in_place",
     "packed_cubic_norm_form_target_slice",
     "packed_cubic_order_norm_form_coefficients_in_place",
     "packed_cubic_norm_smooth_candidates_in_place",
@@ -1642,6 +2763,8 @@ __all__ = [
     "packed_lattice_memberships_in_place",
     "packed_known_overorder_contains_vectors_in_place",
     "packed_ideal_product_hnf_in_place",
+    "packed_ideal_power_chain_hnf_in_place",
+    "packed_ideal_power_chains_hnf_in_place",
     "packed_order_contains_vector_in_place",
     "packed_order_contains_vectors_in_place",
     "packed_order_table_in_place",

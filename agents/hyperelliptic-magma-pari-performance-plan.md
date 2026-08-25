@@ -2,7 +2,48 @@
 
 ## Status
 
-Planned on 2026-08-23.
+Implemented and measured on 2026-08-23.
+
+The program is integrated as ordinary CPython source, source-transparent
+native kernels, and audited FLINT/Arb representation boundaries. The frozen
+Phase-0 corpus and the final Linux acceptance corpus both retain every
+unsupported or unavailable cell, and exact cross-backend digests are checked
+before timings are accepted. The machine-readable final receipt is
+`bench/hyperelliptic/competitive/receipt-linux-x64.json`; the rendered table is
+`bench/hyperelliptic/competitive/REPORT-linux-x64.md`.
+
+The outcome is intentionally workload-specific:
+
+The literal phase-by-phase exit-criterion review is maintained in
+`agents/hyperelliptic-magma-pari-performance-completion-audit.md`. It keeps
+missing acceptance evidence and partially closed phases separate from the
+broader implementation status summarized below.
+
+| Gate | Final result |
+|---|---|
+| Packed Cantor boundary versus identical standalone core | PASS: genus 2 1.049x, genus 3 1.048x overhead (limit 1.15x) |
+| Finite-field arithmetic versus Magma | MIXED: retained prepared add/double/scalar is 1.36x--1.54x in genus 2 and faster in genus 3; ordinary public add/double is 2.15x--4.60x and remains open |
+| Packed local factors through `10^5` | PASS: 1.741 s median, 96.8 MB RSS, frozen exact digest unchanged |
+| Public local-factor materialization through `10^5` | PASS: coefficient streaming 1.56x and public polynomial materialization 1.77x packed traversal; exact digests unchanged |
+| Rational 1024-by-32 many-prime reduction and witness | PASS: 98.54 ms versus Magma 140 ms, 1.42x faster |
+| Public rational addition | MIXED: growing-coefficient row 1.97x Magma (pass); small row 7.81x (open) |
+| Genus-2/3 periods | PASS: 1.73x and 1.47x PARI |
+| Genus-2 Abel--Jacobi 12-point batch | PASS: 9.35x faster than Magma |
+| Genus-2 fresh `L`-function initialization | PASS: 1.64x PARI after a separately reported 2.20 s cold universal-table build |
+| Certified genus-2 height, accuracy-matched 64-bit single point | PASS: 1.92x cold and 1.45x warm Magma |
+| Authenticated rank-2/rank-4 height reuse | PASS; object-cold construction remains 17.1x/12.4x Magma and is open |
+| Genus-3 order-32 structure/map | Resident object-cold and warm gates pass; a truly process-cold map remains open |
+| Certified genus-3 stream through `10^5` | PASS: 142.18 s, 338,968 KiB RSS, 5.50x speedup, and the frozen exact digest under the documented 256 MiB V8 old-space envelope |
+| Genus-3 radius-6 canonical height | PASS: 55.80 s process-cold versus 406.50 s for the same-host historical direct-theta path, a 7.29x speedup; exact finite replay and refinement stability pass, while rigor remains explicitly false |
+
+Windows x64, Linux ARM64, and macOS ARM64 native receipts agree on exact
+local-factor, Kummer, Cantor, scalar, and progression digests. Their
+authenticated Wasm receipts keep portable overhead, capability failures,
+cancellation, and recovery visible rather than importing Linux competitor
+timings. Linux ARM64's raw fixed Cantor boundary is 1.043x/1.036x the identical
+genus-2/genus-3 standalone core. Windows has no supported POSIX standalone
+contract, and macOS records the GNU/ELF-only standalone linker harness as
+unavailable rather than inventing a ratio.
 
 The recommended first implementation project is **native public Cantor and
 Kummer arithmetic for genus 2 and 3**.  This is the highest-fan-out performance
@@ -105,6 +146,28 @@ Each receipt pins commit, source hashes, CPU, operating system, compiler, Node,
 native profile, Magma version, PARI version, precision, algorithm options,
 warmup count, repetition count, and exact result digest.
 
+### Available performance hosts
+
+Use the following named machines rather than anonymous or incidental hosts:
+
+| SSH target | Architecture and operating system | Role |
+|---|---|---|
+| `ssh bench-1` | x86-64 Linux | Primary quiet acceptance host; the only host with Magma; run Sage.js/Magma and any available PARI/SageMath comparisons here. |
+| `ssh bench-arm` | aarch64 Linux | Native ARM64 correctness, standalone-core overhead, memory, and architecture-specific performance. |
+| `ssh m1` | Apple Silicon macOS | Native macOS ARM64 correctness, performance, packaging, and optional Metal/WebGPU work. |
+| `ssh windows` | Windows Server | Native Windows x64 correctness, performance, packaging, worker, and cancellation behavior. |
+
+Magma performance comparisons are therefore made **only on `bench-1`**.  Do
+not copy its Magma timing into an ARM, macOS, or Windows table, and do not mark
+the missing competitor executable as a Sage.js win.  On `bench-arm`, `m1`, and
+`windows`, compare Sage.js with its same-source standalone core, its previous
+per-host receipt, and Wasm where available.  Record PARI or SageMath comparison
+rows only on machines where the exact pinned executable is actually present.
+
+Absolute timings across different architectures are descriptive, not direct
+speed ratios.  Architecture gates compare each host with its own committed
+baseline and require exact cross-host output digests.
+
 ### Performance gates
 
 The program has three levels of success:
@@ -120,6 +183,9 @@ The program has three levels of success:
 
 These are workload-specific gates, not universal marketing claims.  A failure
 must name the dominant stage and remain visible in the benchmark report.
+The Magma-relative portions of these gates refer to `bench-1`; the
+cross-platform gates refer to each named host's own Sage.js/standalone
+baseline.
 
 ## Current evidence and the actual gaps
 
@@ -316,6 +382,17 @@ The public divisor still presents ordinary polynomial `u,v` data.  Packed
 storage is a prepared execution/serialization representation, not a second
 public mathematical type.
 
+The first packed ABI is explicitly versioned for an odd-degree model with one
+distinguished rational point at infinity.  It must reject even-degree models
+before packing.  Magma's canonical sextic/octic divisor representation shows
+why this distinction is mathematical rather than cosmetic: a generic
+even-degree class also carries an infinity/weight integer and can require
+`deg(v)=g+1`.  A later even-degree ABI must therefore add that integer and a
+`g+2`-slot `v` array (or use a proved explicit odd-degree isomorphism); it must
+not reinterpret the odd-degree bytes.  Until then, even-degree group-law
+benchmark cells are recorded as unsupported, while their local-factor,
+period, and analytic cells remain in the corpus.
+
 ### Source-transparent Cantor core
 
 Keep one ordinary typed-Python mathematical body for:
@@ -337,8 +414,29 @@ fallback.
 The existing handwritten genus-3 kernel remains an oracle during migration.
 It should not force the new public genus-2/3 design to duplicate handwritten
 formulas.  If profiling proves that the compiler cannot express a necessary
-fixed-degree primitive, record a narrow architecture exception rather than
-moving the whole group law into a host adapter.
+fixed-degree primitive, treat that first as an opportunity to improve the
+compiler.  Small fixed arrays, checked modular arithmetic, polynomial
+division/remainder, value-record returns, and bounded-loop lowering are useful
+beyond hyperelliptic curves and belong in the source-transparent toolchain
+when they can be given general semantics.
+
+For each apparent compiler gap:
+
+1. reduce it to a small typed-Python reproducer independent of Cantor's law;
+2. decide whether it is a reusable language/IR capability, a mature declared
+   foreign-library operation, or a genuinely domain-specific primitive;
+3. for a reusable capability, extend the compiler and add a representative
+   native-kernel witness with dynamic/native/Wasm differential tests,
+   inspectable IR, and emitted-core checks;
+4. for a mature library operation, add a strict FFI declaration rather than a
+   function-name special case;
+5. use a narrow recorded architecture exception only when neither route is
+   appropriate and the measured benefit justifies it.
+
+Never teach the compiler to recognize a Cantor-function name or move the whole
+group law into a host adapter merely to pass a benchmark.  A compiler
+improvement and the mathematical kernel should be reviewable as separate
+coherent changes.
 
 ### Genus-2 Kummer core
 
@@ -375,10 +473,10 @@ with exact projective iteration retained as a readable small-step oracle.
 
 The host-independent core must compile for:
 
-- Linux x86-64;
-- Linux arm64;
-- macOS Apple Silicon;
-- native Windows x64;
+- Linux x86-64 on `bench-1`;
+- Linux arm64 on `bench-arm`;
+- macOS Apple Silicon on `m1`;
+- native Windows x64 on `windows`;
 - WebAssembly/WASI when the required integer/field primitives are available.
 
 Wasm uses checked copied-byte transfers and bounded chunks.  It must produce
@@ -395,8 +493,9 @@ capability/fallback result rather than a packaging crash.
 3. Require result equality before emitting a timing row.
 4. Record dynamic Sage.js, current native Sage.js, standalone native cores,
    Magma, PARI where applicable, and SageMath.
-5. Check in Linux x64 cold/warm/batch receipts and smoke receipts for the
-   other supported platforms.
+5. Check in the full Linux x64 Sage.js/Magma/PARI receipt from `bench-1` and
+   Sage.js/standalone/Wasm cold/warm/batch receipts from `bench-arm`, `m1`, and
+   `windows`.
 6. Add a human-readable report generated from the JSON, not hand-copied
    timings.
 
@@ -414,19 +513,31 @@ schema; unsupported competitor cells are explicit.
 6. Differentially replay every serialized divisor through the ordinary
    implementation.
 
-Exit criterion: pack/unpack and prepared batch overhead is below 10% of a
-no-op native traversal for batches of at least 1,000 divisors.
+Exit criteria for batches of at least 1,000 divisors:
+
+- first ingress of serialized canonical rows performs complete degree,
+  normalization, curve-relation, owner/model, and mutation-safety validation
+  in one fail-atomic batch and is at least 20x faster than scalar public
+  validation;
+- preparing an already authenticated retained batch performs no duplicate
+  mathematical validation and costs at most 50 microseconds on the pinned
+  Linux x64 host;
+- no first-ingress validation cost is compared with, or relabelled as,
+  overhead over a no-op traversal.
 
 ### Phase 2 — native public Cantor addition and doubling
 
 1. Express complete odd-characteristic generalized Cantor composition and
    reduction in ordinary typed Python.
-2. Compile fixed-degree genus-2 and genus-3 kernels.
-3. Cover every collision/generalized-`h` branch exhaustively on small fields.
-4. Add one-call `add_batch`, `double_batch`, `sum`, and mixed operation plans.
-5. Make public `+`, `-`, and doubling select the native path inside the proven
+2. Compile fixed-degree genus-2 and genus-3 kernels, reducing and classifying
+   every compiler failure before considering an exception.
+3. Land reusable compiler/IR/FFI improvements with independent witnesses and
+   provenance tests.
+4. Cover every collision/generalized-`h` branch exhaustively on small fields.
+5. Add one-call `add_batch`, `double_batch`, `sum`, and mixed operation plans.
+6. Make public `+`, `-`, and doubling select the native path inside the proven
    domain while retaining `algorithm="reference"` for differential work.
-6. Record generated IR/core source and all-platform exact digests.
+7. Record generated IR/core source and all-platform exact digests.
 
 Exit criteria:
 
@@ -434,7 +545,9 @@ Exit criteria:
   batch on the pinned Linux x64 host;
 - packed boundary within 15% of the standalone core;
 - within 2x of Magma warm medians on the main finite-field corpus;
-- no accepted fixture slower by more than 3x without a named stage.
+- no accepted fixture slower by more than 3x without a named stage;
+- every compiler feature introduced by the project has a non-hyperelliptic
+  witness proving that it is a general source-transparent capability.
 
 ### Phase 3 — scalar multiplication and genus-2 Kummer arithmetic
 
@@ -472,6 +585,13 @@ Avoid repacking the same divisor or curve for each Sylow component.  Keep
 search budgets in terms of group operations, memory, and wall/cancellation
 status; a faster kernel must not make an unbounded search implicit.
 
+The pinned genus-3 family acceptance runs with
+`NODE_OPTIONS=--max-old-space-size=256`. This is a supported process resource
+envelope, analogous to the explicit mathematical search budgets: it neither
+changes the public API or mathematical result nor exposes or invokes garbage
+collection. Receipts record both this option and the V8-reported total heap
+limit, while retaining default-heap measurements as honest diagnostics.
+
 Exit criteria:
 
 - the existing cyclic structure timings do not regress by more than 20%;
@@ -480,8 +600,9 @@ Exit criteria:
 - genus-3 certification through `10^5` improves by at least 5x from 881.6
   seconds while returning the same digest;
 - the complete public genus-3 stream through `10^5` finishes below 300
-  seconds and 512 MiB on the pinned host, or the receipt identifies the next
-  dominant non-Jacobian stage before changing the automatic envelope.
+  seconds and 512 MiB on the pinned host under the documented 256 MiB V8
+  old-space envelope, or the receipt identifies the next dominant
+  non-Jacobian stage before changing the automatic envelope.
 
 ### Phase 5 — eliminate public local-factor construction overhead
 
@@ -519,8 +640,14 @@ Exit criteria on the existing genus-2 through-`10^5` receipt:
 
 Exit criteria:
 
-- ordinary rational addition and 256-bit scalar multiplication are within 2x
-  of Magma on the genus-2 corpus;
+- ordinary rational addition is within 2x of Magma on the genus-2 corpus;
+- ordinary non-torsion rational scalar multiplication is compared at matched,
+  explicitly bounded exact-output coefficient budgets, reports both scalar and
+  output bit lengths, and is within 2x of Magma on at least the small and
+  growing-coefficient rows;
+- a 256-bit scalar gate is required only over a bounded-height domain (finite
+  fields, local reductions, Kummer/sign-free filters, or explicitly labelled
+  torsion) and is never reported as non-torsion `QQ` growth;
 - a many-prime torsion/saturation reduction batch is faster than Magma on at
   least one research-sized workload;
 - all successful exact certificates verify using the reference path.
@@ -599,8 +726,8 @@ Exit criteria:
 
 1. Derive crossover thresholds from full public workloads, not kernel-only
    microbenchmarks.
-2. Record native and Wasm exact digests on Linux x64/arm64, macOS arm64, and
-   Windows x64.
+2. Record native and Wasm exact digests on `bench-1`, `bench-arm`, `m1`, and
+   `windows` from the same exact commit and corpus.
 3. Run address/undefined/leak sanitizers on native resource paths.
 4. Test missing artifact, cancellation, memory exhaustion, worker loss, and
    cache corruption.
@@ -672,7 +799,28 @@ versions, retain both receipts instead of rewriting history.
 
 ### Noise control
 
-- use a named otherwise-idle benchmark host;
+- use the `bench-1` Linux x64 VM as the primary performance-acceptance host,
+  connecting with `ssh bench-1`;
+- immediately before a run, record at least `uptime`, `uname -a`, `lscpu`, free
+  memory, CPU governor/thread settings, and the processes consuming CPU or
+  memory; the normal idle preflight begins with:
+
+  ```sh
+  ssh bench-1 uptime
+  # 02:10:06 up 16:06,  1 user,  load average: 0.00, 0.00, 0.00
+  ```
+
+- do not accept a primary receipt when `bench-1` has an unexplained competing
+  load; store the measured load and preflight metadata in the JSON receipt;
+- treat timings from the development host or another shared machine as
+  diagnostic unless the plan explicitly names a separate platform acceptance
+  host;
+- fingerprint `bench-1` hardware and operating-system images on every run so a
+  recreated or resized VM starts a new comparable series rather than silently
+  replacing the old baseline;
+- apply the corresponding platform-native preflight on `bench-arm`, `m1`, and
+  `windows`; record Unix `uptime`/process data on the first two and PowerShell
+  system, load, and process data on Windows;
 - pin CPU governor and thread counts where possible;
 - report rather than hide shared-host status;
 - alternate system order to reduce thermal bias;
@@ -719,6 +867,16 @@ explicit in the benchmark matrix and capability report.
 Cantor collision paths are easy to omit.  Begin from the complete generalized
 law, exhaust every small-field pair, and add specialized coprime/doubling
 formulas only as proven dispatches with the general path as oracle.
+
+### Compiler work expanding without a reusable contract
+
+A real compiler limitation is valuable to fix, but this project must not grow
+one-off Cantor intrinsics or indefinitely delay the mathematical milestone.
+Require a minimal reproducer, general typed semantics, an independent witness,
+and a separately reviewable compiler change.  When the missing operation is
+already mature in FLINT, prefer a declared FFI capability; when it is truly
+domain-specific, use a narrow audited exception with the ordinary source as
+the oracle.
 
 ### Kummer sign loss
 

@@ -1,0 +1,107 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-kummer-prime",
+  "title": "Hyp Kummer Prime",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement packed source-transparent genus-2 prime-field Kummer duplication, pseudo-addition, and scalar batches with exact reference differentials.",
+  "base_commit": "76b863adb13c683b265ddc0c987b727fd7291990",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
+    "test/hyperelliptic-native-kummer.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/hyperelliptic-native-kummer.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.753,
+      "started_at": "2026-08-23T03:07:08.691Z",
+      "commit": "76b863adb13c683b265ddc0c987b727fd7291990",
+      "workspace_fingerprint": "6a3ba23766388e982eb5d00c6d190989d1aff38f8f5d400eb3305ac57cb4c271",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-native-kummer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.453,
+      "started_at": "2026-08-23T03:14:15.168Z",
+      "commit": "fa4c3ea1c9090bf264f202aea3d457f929309c9d",
+      "workspace_fingerprint": "a3b3b57d13a4324859c23d13553ce0f78c7ff537ae2be00b1e30b8d39510c092",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.115,
+      "started_at": "2026-08-23T03:14:27.299Z",
+      "commit": "fa4c3ea1c9090bf264f202aea3d457f929309c9d",
+      "workspace_fingerprint": "a3b3b57d13a4324859c23d13553ce0f78c7ff537ae2be00b1e30b8d39510c092",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.502,
+      "started_at": "2026-08-23T03:16:02.258Z",
+      "commit": "fa4c3ea1c9090bf264f202aea3d457f929309c9d",
+      "workspace_fingerprint": "a3b3b57d13a4324859c23d13553ce0f78c7ff537ae2be00b1e30b8d39510c092",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "./bin/sagejs native compile src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py --cache-root /tmp/hyp-kummer-receipt-cache",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.692,
+      "started_at": "2026-08-23T03:16:15.101Z",
+      "commit": "fa4c3ea1c9090bf264f202aea3d457f929309c9d",
+      "workspace_fingerprint": "a3b3b57d13a4324859c23d13553ce0f78c7ff537ae2be00b1e30b8d39510c092",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented three source-transparent packed kernels and a bounded prepared context for genus-2 Kummer projection, Flynn quartic duplication, safe degenerate differential addition, repeated 2-power scalar batches, and sign-free 2-power annihilation. The exact envelope is odd primes p <= 2^32-1, odd quintics with one point at infinity, deg(h) <= 2, the shared 8-word canonical Mumford ABI, and normalized 4-word Kummer coordinates. Exhaustive F_3/F_5 classical/generalized Jacobians agree with Cantor doubling, CPython specialized plans agree with the immutable sparse Flynn oracle, native compilation is host-isolated with zero callbacks, and the production Wasm bridge classifies all three kernels as supported. On idle bench-1, normalized native duplication sustained about 1.128 million points/second and packed projection about 34.9 million points/second; the same CPython body sustained about 19.2 thousand duplications/second.",
+    "risks": [
+      "General Flynn biquadratic pseudo-addition is not yet implemented: xADD is exact only when either input is the identity or A-B is the identity (duplication); all other rows return KUMMER_UNSUPPORTED_DIFFERENTIAL.",
+      "The module currently imports _CLASSICAL_DELTA_1 through _CLASSICAL_DELTA_4 from genus2_kummer.py, which is an upward BSD-layer edge for a public Jacobian dependency.",
+      "The local architecture gate reaches the package graph but fails because this module raises hyperelliptic-curves-algorithms to 619831 bytes versus its current 610000-byte budget.",
+      "The actual Wasm execution differential is conditionally skipped without a complete WASI FLINT toolchain; bridge classification is always tested.",
+      "No native Windows/macOS/aarch64 execution receipt was collected in this lane; the fixed uint64 source ABI and dynamic fallbacks are platform-neutral but still need integration-matrix validation."
+    ],
+    "next_steps": [
+      "Move the four immutable Flynn tables verbatim, preserving tuple order/content, plus preferably the generic sparse evaluator into neutral genus2_kummer_formulas.py; have both genus2_kummer.py and this module import that single audited source.",
+      "Raise or rebalance the hyperelliptic-curves-algorithms lazy byte budget in the integration lane.",
+      "Construct/cache this context as Genus2PrimeKummerContext(ctx.prime, ctx.f_coefficients, ctx.h_coefficients) from the Cantor lane's prepared context, then route 2-primary annihilation filters through it.",
+      "Add the full audited Flynn biquadratic forms before advertising general differential addition or arbitrary Kummer-only scalar multiplication.",
+      "Register the three kernels in the production native/Wasm manifest and run the conditional exact Wasm differential on a configured toolchain."
+    ]
+  }
+}

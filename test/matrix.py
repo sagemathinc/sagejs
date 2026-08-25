@@ -54,6 +54,13 @@ assert list(A.row(1, from_list=True)) == [3, 4]
 assert list(A.column(1, from_list=True)) == [2, 4]
 assert vector(ZZ, 3, range(3)) == vector(ZZ, [0, 1, 2])
 
+integral_float_matrix = matrix([[float(1), float(2)]])
+integral_float_vector = vector([float(1), float(2)])
+assert integral_float_matrix.base_ring() is RDF
+assert integral_float_vector.base_ring() is RDF
+assert integral_float_matrix == matrix(RDF, [[1.0, 2.0]])
+assert integral_float_vector == vector(RDF, [1.0, 2.0])
+
 assert A.det() == -2
 assert A.determinant() == -2
 assert A.det(algorithm="flint") == -2

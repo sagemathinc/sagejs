@@ -1,0 +1,89 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-rational-reduction-batch",
+  "title": "Packed rational many-prime reduction batch",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement one-crossing packed QQ Mumford reduction across many primes, retain packed divisors through torsion and saturation consumers, and beat an equal-contract resident Magma benchmark with exact reference replay.",
+  "base_commit": "ab31e4f3ff8095dcfcdbb34d4d29fb142dc3ae01",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/rational_reduction_kernels.py",
+    "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
+    "src/lib/sagejs/hyperelliptic_curves/torsion.py",
+    "src/lib/sagejs/hyperelliptic_curves/saturation.py",
+    "test/hyperelliptic-rational-reduction-batch.cjs",
+    "bench/hyperelliptic/benchmark-rational-reduction-batch.cjs",
+    "bench/results/hyperelliptic-rational-phase6-acceptance-2026-08-23.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "reference-cantor",
+      "magma-2.18-5"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/hyperelliptic-rational-reduction-batch.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.156,
+      "started_at": "2026-08-23T09:45:49.590Z",
+      "commit": "ab31e4f3ff8095dcfcdbb34d4d29fb142dc3ae01",
+      "workspace_fingerprint": "fbe4704961dd4fe53ac2ea951eb061fb871f4b23591c86813a67707aa6f0d44d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.729,
+      "started_at": "2026-08-23T09:46:11.132Z",
+      "commit": "ab31e4f3ff8095dcfcdbb34d4d29fb142dc3ae01",
+      "workspace_fingerprint": "fbe4704961dd4fe53ac2ea951eb061fb871f4b23591c86813a67707aa6f0d44d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.604,
+      "started_at": "2026-08-23T09:46:55.752Z",
+      "commit": "ab31e4f3ff8095dcfcdbb34d4d29fb142dc3ae01",
+      "workspace_fingerprint": "fbe4704961dd4fe53ac2ea951eb061fb871f4b23591c86813a67707aa6f0d44d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "One exact QQ reduction crossing now feeds a same-source varying-modulus Cantor witness crossing. Prime-major rows and match flags remain canonically packed, uniform torsion scalars avoid pairwise host packing, torsion factor stripping and saturation consume the retained views, and all serialized certificates still replay through the reference path. The final local 1024x32 exact workload took 0.099484416s combined versus the prior bench-1 Magma median of 0.15s; a frozen same-host rerun is still required.",
+    "risks": [
+      "The fused public kernel needs integration-owned production/Wasm capability registration before the complete native suite can autoload the changed jacobian_kernels source identity.",
+      "The current integrated QQ prepared context lacks negate_batch, so unrelated public rational negation/group-consumer paths require a separate dispatch fix.",
+      "The projected Magma win uses the same EPYC model but is not yet a frozen same-host receipt."
+    ],
+    "next_steps": [
+      "Integrate the fused kernel capability and refresh native/FFI ratchets, then rerun pnpm test:native.",
+      "Run the bounded 1024x32 Sage/Magma workload and nontrivial public P+Q row on bench-1 after the queued owners release it.",
+      "Complete Windows x64, Linux arm64, and macOS arm64 production-pack validation through integration CI."
+    ]
+  }
+}

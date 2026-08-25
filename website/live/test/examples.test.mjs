@@ -40,3 +40,14 @@ test("live graph examples cover plotting and automorphisms", () => {
   assert.match(automorphisms?.source ?? "", /graphs\.RandomGNP\(20, \.2\)/);
   assert.match(automorphisms?.source ?? "", /g\.automorphism_group\(\)/);
 });
+
+test("live NumPy example combines vectorization, FFT, and linear algebra", () => {
+  const example = EXAMPLES.find(
+    (entry) => entry.id === "numpy-signal-recovery",
+  );
+  assert.ok(example, "missing NumPy signal-recovery example");
+  assert.match(example.source, /np\.random\.normal/);
+  assert.match(example.source, /np\.fft\.rfft/);
+  assert.match(example.source, /np\.linalg\.solve/);
+  assert.match(example.source, /np\.matmul/);
+});

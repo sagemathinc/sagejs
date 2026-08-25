@@ -39,7 +39,7 @@ SCHEMA = "sagejs.hyperelliptic.saturation-result.v2"
 REDUCTION_SCHEMA = "sagejs.hyperelliptic.saturation-reduction-constraint.v1"
 STEP_SCHEMA = "sagejs.hyperelliptic.saturation-basis-step.v1"
 VERIFIED_REDUCTION_SCHEMA = "sagejs.hyperelliptic.verified-reduction-record.v1"
-DIVISION_SEARCH_SCHEMA = "sagejs.hyperelliptic.rational-division-search.v1"
+DIVISION_SEARCH_SCHEMA = "sagejs.hyperelliptic.rational-division-search.v2"
 ASSUMPTION_SCHEMA = "sagejs.hyperelliptic.verified-assumption.v1"
 EXHAUSTIVE_REDUCTION_GROUP_LIMIT = 512
 
@@ -299,6 +299,29 @@ def _basis_digest(jacobian: Any, basis: Any) -> str:
             "ordered_basis": tuple(_divisor_wire(point) for point in basis),
         }
     )
+
+
+def _execution_divisor_fingerprint(jacobian: Any, divisor: Any) -> Any:
+    """Return an exact packed execution key without changing wire formats."""
+    if hasattr(divisor, "uv"):
+        torsion = __import__(
+            "sagejs.hyperelliptic_curves.torsion",
+            fromlist=["rational_mumford_fingerprint"],
+        )
+        return torsion.rational_mumford_fingerprint(jacobian, divisor)
+    return ("opaque", str(divisor))
+
+
+def _execution_basis_fingerprint(jacobian: Any, basis: Any) -> tuple[Any, ...]:
+    return tuple(_execution_divisor_fingerprint(jacobian, divisor) for divisor in basis)
+
+
+def _check_cancelled(cancelled: Any, stage: str) -> None:
+    if cancelled is not None and bool(cancelled()):
+        raise SaturationResourceLimitError(
+            "rational saturation cancelled during " + stage,
+            {"cancelled": True, "stage": stage},
+        )
 
 
 def _matrix_rank_and_nullspace(
@@ -772,6 +795,128 @@ def _division_search_public(certificate: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _division_filter_contexts(
+    jacobian: Any,
+    target: Any,
+    primes: Any,
+    maximum: int,
+    cancelled: Any,
+    algorithm: str,
+) -> tuple[Any, ...]:
+    """Prepare exact finite-reduction filters for a rational division search."""
+    torsion = __import__(
+        "sagejs.hyperelliptic_curves.torsion",
+        fromlist=[
+            "PreparedRationalReductionBatch",
+            "_prepared_reduced_jacobian",
+            "_reduce_rational_divisors_prepared",
+        ],
+    )
+    selected_primes = []
+    seen = set()
+    for raw_prime in primes:
+        if len(selected_primes) >= maximum:
+            break
+        prime = _checked_prime(raw_prime, "division_filter_prime")
+        if prime in seen:
+            continue
+        seen.add(prime)
+        selected_primes.append(prime)
+    if not selected_primes:
+        return ()
+    contexts = []
+    _check_cancelled(cancelled, "division-filter preparation")
+    try:
+        rows = torsion.PreparedRationalReductionBatch(
+            jacobian,
+            (target,),
+            cancel=cancelled,
+        ).reduce_many(
+            tuple(selected_primes),
+            algorithm=algorithm,
+            allow_nonintegral=True,
+            packed=True,
+        )
+        for row in rows:
+            reduced_target = row["divisors"][0]
+            if reduced_target is None:
+                continue
+            contexts.append((int(row["prime"]), reduced_target))
+        return tuple(contexts)
+    except (ArithmeticError, NotImplementedError, ValueError, ZeroDivisionError):
+        # Preserve the former prime-by-prime capability envelope if one model
+        # lies outside the packed batch.  This is also the exact fallback used
+        # by certificate replay.
+        contexts = []
+    for prime in selected_primes:
+        _check_cancelled(cancelled, "division-filter preparation")
+        try:
+            reduced_jacobian = torsion._prepared_reduced_jacobian(jacobian, prime)
+            reduced_target = torsion._reduce_rational_divisors_prepared(
+                jacobian,
+                (target,),
+                prime,
+                reduced_jacobian,
+                cancel=cancelled,
+            )[0]
+        except (ArithmeticError, NotImplementedError, ValueError, ZeroDivisionError):
+            continue
+        prepared = reduced_jacobian.prepared_arithmetic(
+            algorithm="auto", max_batch_items=1
+        )
+        contexts.append((prime, prepared.pack(reduced_target)))
+    return tuple(contexts)
+
+
+def _filter_division_candidates(
+    jacobian: Any,
+    candidates: Any,
+    ell: int,
+    contexts: Any,
+    cancelled: Any,
+    algorithm: str,
+) -> tuple[tuple[Any, ...], int]:
+    """Apply necessary finite-field divisibility tests to an exact batch."""
+    survivors = list(candidates)
+    if not survivors or not contexts:
+        return tuple(survivors), 0
+    filtered = 0
+    torsion = __import__(
+        "sagejs.hyperelliptic_curves.torsion",
+        fromlist=["PreparedRationalReductionBatch"],
+    )
+    prepared = torsion.PreparedRationalReductionBatch(
+        jacobian,
+        tuple(survivors),
+        cancel=cancelled,
+    )
+    rows = prepared.reduce_many(
+        tuple(context[0] for context in contexts),
+        algorithm=algorithm,
+        allow_nonintegral=True,
+        packed=True,
+    )
+    matches = prepared.scalar_zero_many(
+        rows,
+        ell,
+        algorithm=algorithm,
+        targets=tuple(context[1] for context in contexts),
+        packed=True,
+    )
+    alive = [True for _candidate in survivors]
+    for prime_matches in matches:
+        if not any(alive):
+            break
+        _check_cancelled(cancelled, "division-filter batch")
+        for index, matches_target in enumerate(prime_matches):
+            if alive[index] and matches_target is False:
+                alive[index] = False
+                filtered += 1
+    return tuple(
+        candidate for index, candidate in enumerate(survivors) if alive[index]
+    ), filtered
+
+
 def search_rational_mumford_division(
     jacobian: Any,
     target: Any,
@@ -780,6 +925,11 @@ def search_rational_mumford_division(
     numerator_bound: Any,
     denominator_bound: Any,
     max_candidate_tuples: Any = 100_000,
+    filter_primes: Any = (),
+    max_filter_primes: Any = 4,
+    filter_chunk_size: Any = 64,
+    filter_algorithm: str = "auto",
+    cancelled: Any = None,
 ) -> dict[str, Any]:
     """Search a replayable rational Mumford coefficient box exactly.
 
@@ -796,8 +946,16 @@ def search_rational_mumford_division(
     numerator = _canonical_integer(numerator_bound, "numerator_bound")
     denominator = _canonical_integer(denominator_bound, "denominator_bound")
     maximum = _canonical_integer(max_candidate_tuples, "max_candidate_tuples")
+    maximum_filters = _canonical_integer(max_filter_primes, "max_filter_primes")
+    chunk_size = _canonical_integer(filter_chunk_size, "filter_chunk_size")
     if numerator < 0 or denominator < 1 or maximum < 1:
         raise ValueError("division-search bounds must be positive")
+    if maximum_filters < 0 or chunk_size < 1:
+        raise ValueError("division-filter bounds must be positive")
+    if cancelled is not None and not callable(cancelled):
+        raise TypeError("cancelled must be callable")
+    if filter_algorithm not in ("auto", "native", "reference"):
+        raise ValueError("unknown division-filter algorithm " + repr(filter_algorithm))
     curve = jacobian.curve()
     genus = int(curve.genus())
     if genus not in (2, 3):
@@ -827,26 +985,68 @@ def search_rational_mumford_division(
         )
     ring = jacobian.polynomial_ring()
     one = field(1)
+    requested_filter_primes = tuple(
+        sorted(
+            {_checked_prime(value, "division_filter_prime") for value in filter_primes}
+        )
+    )
+    filter_contexts = _division_filter_contexts(
+        jacobian,
+        target,
+        requested_filter_primes,
+        maximum_filters,
+        cancelled,
+        filter_algorithm,
+    )
     checked = 0
     valid = 0
     found = None
+    pending = []
+    filtered = 0
+    exact_tests = 0
+
+    def test_pending() -> Any:
+        nonlocal filtered, exact_tests
+        survivors, removed = _filter_division_candidates(
+            jacobian,
+            pending,
+            ell,
+            filter_contexts,
+            cancelled,
+            filter_algorithm,
+        )
+        filtered += removed
+        for candidate in survivors:
+            _check_cancelled(cancelled, "exact division verification")
+            exact_tests += 1
+            if _scalar_multiple(candidate, ell) == target:
+                return candidate
+        return None
+
     for degree in range(genus + 1):
         for u_coefficients in _coefficient_vectors(values, degree):
             u_value = ring(list(u_coefficients) + [one])
             for v_coefficients in _coefficient_vectors(values, degree):
+                if checked % 256 == 0:
+                    _check_cancelled(cancelled, "division-box enumeration")
                 checked += 1
                 try:
                     candidate = jacobian([u_value, ring(v_coefficients)])
                 except (ArithmeticError, ValueError, ZeroDivisionError):
                     continue
                 valid += 1
-                if _scalar_multiple(candidate, ell) == target:
-                    found = candidate
-                    break
+                pending.append(candidate)
+                if len(pending) >= chunk_size:
+                    found = test_pending()
+                    pending = []
+                    if found is not None:
+                        break
             if found is not None:
                 break
         if found is not None:
             break
+    if found is None and pending:
+        found = test_pending()
     certificate = {
         "schema": DIVISION_SEARCH_SCHEMA,
         "algorithm": "classical-odd-degree-mumford-coefficient-box.v1",
@@ -860,6 +1060,12 @@ def search_rational_mumford_division(
         "candidate_bound": candidate_bound,
         "checked_candidate_tuples": checked,
         "valid_mumford_divisors": valid,
+        "requested_filter_primes": requested_filter_primes,
+        "used_filter_primes": tuple(context[0] for context in filter_contexts),
+        "max_filter_primes": maximum_filters,
+        "filter_chunk_size": chunk_size,
+        "filtered_candidate_divisors": filtered,
+        "exact_division_tests": exact_tests,
         "box_complete": found is None and checked == candidate_bound,
         "global_complete": False,
         "status": "found" if found is not None else "not_found_in_box",
@@ -888,6 +1094,10 @@ def verify_division_search_certificate(
         numerator_bound=certificate["numerator_bound"],
         denominator_bound=certificate["denominator_bound"],
         max_candidate_tuples=certificate["candidate_bound"],
+        filter_primes=certificate.get("requested_filter_primes", ()),
+        max_filter_primes=certificate.get("max_filter_primes", 4),
+        filter_chunk_size=certificate.get("filter_chunk_size", 64),
+        filter_algorithm="reference",
     )
     if _wire(_division_search_public(rebuilt)) != _wire(
         _division_search_public(certificate)
@@ -919,6 +1129,8 @@ def _division_answer(
     division_candidates: Any,
     division_search_bound: Any,
     maximum: int,
+    filter_primes: Any = (),
+    cancelled: Any = None,
 ) -> dict[str, Any]:
     raw = None
     if division_search is not None:
@@ -942,6 +1154,10 @@ def _division_answer(
             numerator_bound=division_search_bound.get("numerator_bound"),
             denominator_bound=division_search_bound.get("denominator_bound"),
             max_candidate_tuples=min(maximum, requested_maximum),
+            filter_primes=division_search_bound.get("filter_primes", filter_primes),
+            max_filter_primes=division_search_bound.get("max_filter_primes", 4),
+            filter_chunk_size=division_search_bound.get("filter_chunk_size", 64),
+            cancelled=cancelled,
         )
     else:
         for name in (
@@ -970,12 +1186,18 @@ def _division_answer(
             {"prime": prime, "candidate_count": len(candidates)},
         )
     checked = 0
+    seen = []
     for candidate in candidates:
+        _check_cancelled(cancelled, "division-candidate verification")
         checked += 1
         try:
             candidate = jacobian(candidate)
         except (TypeError, ValueError):
             pass
+        fingerprint = _execution_divisor_fingerprint(jacobian, candidate)
+        if any(fingerprint == previous for previous in seen):
+            continue
+        seen.append(fingerprint)
         if _scalar_multiple(candidate, prime) == target:
             return {
                 "status": "found",
@@ -1702,6 +1924,7 @@ def saturate_subgroup(
     max_baby_steps: int = 1_000_000,
     max_memory_bytes: int = 256 * 1024 * 1024,
     seed: Any = 0,
+    cancelled: Any = None,
 ) -> SaturationResult:
     """Saturate a supplied rational subgroup within explicit proof boundaries.
 
@@ -1711,6 +1934,9 @@ def saturate_subgroup(
     typed provenance is accepted by a registered verifier.
     """
     basis = tuple(points)
+    if cancelled is not None and not callable(cancelled):
+        raise TypeError("cancelled must be callable")
+    _check_cancelled(cancelled, "setup")
     zero = jacobian.zero()
     for point in basis:
         if hasattr(point, "parent") and point.parent() is not jacobian:
@@ -1727,6 +1953,8 @@ def saturate_subgroup(
     ):
         if _canonical_integer(value, name) < 0:
             raise ValueError(name + " must be nonnegative")
+    if _canonical_integer(max_memory_bytes, "max_memory_bytes") < 1:
+        raise ValueError("max_memory_bytes must be positive")
 
     assumption_context = {
         "curve_digest": _curve_digest(jacobian),
@@ -1836,14 +2064,22 @@ def saturate_subgroup(
     prime_results = []
     diagnostics: dict[str, Any] = {
         "reduction_attempts": 0,
+        "reduction_cache_hits": 0,
+        "reduction_cache_misses": 0,
+        "reduction_cache_invalidations": 0,
         "reduction_failures": [],
         "division_vectors": 0,
         "division_candidates_checked": 0,
         "resource_limits": [],
     }
+    reduction_cache: dict[Any, Any] = {}
+    cached_basis_fingerprint = _execution_basis_fingerprint(jacobian, basis)
+    residue_count = max(1, len(residue_primes))
+    per_reduction_memory_bytes = max(1, int(max_memory_bytes) // residue_count)
 
     requested_index = 0
     while requested_index < len(prime_values):
+        _check_cancelled(cancelled, "saturation-prime iteration")
         prime = prime_values[requested_index]
         requested_index += 1
         reductions = []
@@ -1852,34 +2088,45 @@ def saturate_subgroup(
         for reduction_index, residue_prime in enumerate(residue_primes):
             diagnostics["reduction_attempts"] += 1
             try:
-                if reduction_provider is None:
-                    data = _default_reduction_data(
-                        jacobian,
-                        basis,
-                        residue_prime,
-                        max_group_operations=max_group_operations,
-                        max_baby_steps=max_baby_steps,
-                        max_memory_bytes=max_memory_bytes,
-                        seed=(None if seed is None else int(seed) + reduction_index),
-                    )
+                _check_cancelled(cancelled, "finite reduction")
+                cache_key = (cached_basis_fingerprint, residue_prime)
+                cached = reduction_cache.get(cache_key)
+                if cached is not None:
+                    diagnostics["reduction_cache_hits"] += 1
+                    data, verified, binding = cached
                 else:
-                    data = reduction_provider(jacobian, basis, residue_prime)
-                verified = type(data) is VerifiedReductionRecord
-                if verified:
-                    data = _verify_reduction_record(jacobian, basis, data)
-                    binding = data.to_dict()
-                else:
-                    binding = {
-                        "curve_digest": data.get("curve_digest"),
-                        "basis_digest": data.get("basis_digest"),
-                        "claimed_good_reduction": data.get(
-                            "good_reduction_certificate"
-                        ),
-                        "reason": (
-                            "injected coordinates lack a replayed reduced model, "
-                            "good-reduction proof, and verified finite group map"
-                        ),
-                    }
+                    diagnostics["reduction_cache_misses"] += 1
+                    if reduction_provider is None:
+                        data = _default_reduction_data(
+                            jacobian,
+                            basis,
+                            residue_prime,
+                            max_group_operations=max_group_operations,
+                            max_baby_steps=max_baby_steps,
+                            max_memory_bytes=per_reduction_memory_bytes,
+                            seed=(
+                                None if seed is None else int(seed) + reduction_index
+                            ),
+                        )
+                    else:
+                        data = reduction_provider(jacobian, basis, residue_prime)
+                    verified = type(data) is VerifiedReductionRecord
+                    if verified:
+                        data = _verify_reduction_record(jacobian, basis, data)
+                        binding = data.to_dict()
+                    else:
+                        binding = {
+                            "curve_digest": data.get("curve_digest"),
+                            "basis_digest": data.get("basis_digest"),
+                            "claimed_good_reduction": data.get(
+                                "good_reduction_certificate"
+                            ),
+                            "reason": (
+                                "injected coordinates lack a replayed reduced model, "
+                                "good-reduction proof, and verified finite group map"
+                            ),
+                        }
+                    reduction_cache[cache_key] = (data, verified, binding)
                 certificate = reduction_constraint(
                     prime,
                     residue_prime,
@@ -1904,13 +2151,18 @@ def saturate_subgroup(
                 TypeError,
                 ValueError,
             ) as error:
+                diagnostic_error: Any = error
+                if (
+                    hasattr(error, "diagnostics")
+                    and diagnostic_error.diagnostics.get("cancelled") is True
+                ):
+                    raise
                 failure = {
                     "prime": residue_prime,
                     "type": _exception_name(error),
                     "reason": str(error),
                 }
                 if hasattr(error, "diagnostics"):
-                    diagnostic_error: Any = error
                     failure["diagnostics"] = diagnostic_error.diagnostics
                 failures.append(failure)
                 diagnostics["reduction_failures"].append(failure)
@@ -1938,6 +2190,8 @@ def saturate_subgroup(
                         division_candidates,
                         division_search_bound,
                         max_division_candidates,
+                        residue_primes,
+                        cancelled,
                     )
                     exhaustion_proof = None
                     search_certificate = answer.get("certificate")
@@ -1995,6 +2249,8 @@ def saturate_subgroup(
                     if not answer["exhaustive"]:
                         exhaustive_not_found = False
             except SaturationResourceLimitError as error:
+                if error.diagnostics.get("cancelled") is True:
+                    raise
                 resource = {
                     "type": _exception_name(error),
                     "reason": str(error),
@@ -2006,6 +2262,9 @@ def saturate_subgroup(
             # The new basis has index ell less in the input basis.  Re-run the
             # same prime from fresh reductions until no further enlargement is
             # found or a proof/resource result terminates it.
+            reduction_cache = {}
+            diagnostics["reduction_cache_invalidations"] += 1
+            cached_basis_fingerprint = _execution_basis_fingerprint(jacobian, basis)
             requested_index -= 1
             continue
         relation_obstruction = rank == len(basis)

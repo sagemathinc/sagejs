@@ -120,7 +120,7 @@ class FiniteFieldElement(sage.Element):
     def _new_reduced(self, value: int) -> FiniteFieldElement:
         answer = runtime.object.create(_finite_field_element_prototype)
         answer._parent = self._parent
-        answer._value = value
+        answer._value = runtime.bigint(value)
         runtime.object.freeze(answer)
         return answer
 
@@ -402,7 +402,7 @@ class IntegerModElement(FiniteFieldElement):
     def _new_reduced(self, value: int) -> IntegerModElement:
         answer = runtime.object.create(_integer_mod_element_prototype)
         answer._parent = self._parent
-        answer._value = value
+        answer._value = runtime.bigint(value)
         runtime.object.freeze(answer)
         return answer
 

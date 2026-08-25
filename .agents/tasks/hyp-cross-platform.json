@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-cross-platform",
+  "title": "Hyperelliptic cross-platform acceptance",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide and execute a reproducible exact-digest Sage.js dynamic/native cross-platform correctness and performance runner for local-factor and prime-Kummer paths on the named acceptance hosts",
+  "base_commit": "4ff7d15ea8a493ed63fa07ae679b78dbbe2f5ce5",
+  "claims": [
+    "bench/hyperelliptic/cross-platform/"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/hyperelliptic-magma-pari-performance-plan.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Exact canonical digests from Sage.js dynamic/native differential execution",
+      "Committed hyperelliptic regression fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

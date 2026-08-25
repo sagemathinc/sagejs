@@ -328,6 +328,12 @@ generic59 = bounded_cubic_minkowski_class_number(K59)
 assert generic59.complete and generic59.order() == 1
 assert generic59.certificate.obstructions == []
 assert generic59.certificate.verify()
+assert generic59.diagnostics["relation_search"]["integral_sieve_candidates"] == 0
+assert len(generic59.relation_records) == 1
+assert generic59.relation_records[0].row == (1,)
+assert generic59.relation_records[0].provenance["algorithm"] == (
+    "packed-cubic-attached-prime-generator"
+)
 
 # The nontrivial quotient is proved exact without units, a regulator, or hR.
 K1083 = NumberField(x**3 - x**2 - 6*x - 12, "d")
@@ -340,7 +346,18 @@ def counting_presentation_replay(value):
     presentation_replays[0] += 1
     return presentation_from_dict(value)
 matrix_module.RelationPresentation.from_dict = counting_presentation_replay
-classes1083 = bounded_cubic_minkowski_class_number(K1083)
+engine_module = __import__(
+    "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
+)
+engine_type = engine_module.ClassUnitGroupEngine
+class ForbiddenClassUnitEngine:
+    def __init__(self, *args, **kwargs):
+        raise AssertionError("a full-rank cubic prefix constructed the general engine")
+engine_module.ClassUnitGroupEngine = ForbiddenClassUnitEngine
+try:
+    classes1083 = bounded_cubic_minkowski_class_number(K1083)
+finally:
+    engine_module.ClassUnitGroupEngine = engine_type
 matrix_module.RelationPresentation.from_dict = presentation_from_dict
 assert presentation_replays[0] == 0
 assert classes1083.complete and classes1083.order() == 3
@@ -352,7 +369,13 @@ assert classes1083.diagnostics["residue_states"] <= 500000
 assert classes1083.diagnostics["relation_search"]["relation_attempts"] == 0
 assert classes1083.diagnostics["relation_search"]["ideals_tested"] == 0
 assert classes1083.diagnostics["relation_search"]["relation_candidates"] == 0
-assert classes1083.diagnostics["relation_search"]["integral_sieve_candidates"] == 21
+assert classes1083.diagnostics["relation_search"]["integral_sieve_candidates"] == 8
+assert classes1083.diagnostics["relation_search"][
+    "integral_sieve_valuation_limit"
+] == 8
+assert classes1083.diagnostics["relation_search"][
+    "integral_sieve_prefix_proved"
+] == 1
 assert classes1083.diagnostics["relation_search"]["integral_sieve_selected"] == 3
 assert classes1083.diagnostics["relation_search"]["integral_sieve_relations"] == 3
 assert classes1083.diagnostics["relation_search"]["integral_sieve_fallback"] == 0

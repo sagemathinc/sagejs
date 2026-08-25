@@ -1673,6 +1673,123 @@ def _periods_module() -> Any:
     )
 
 
+_NORMALIZED_ABEL_CACHE: dict[tuple[Any, ...], dict[str, Any]] = {}
+_NORMALIZED_ABEL_CACHE_LIMIT = 64
+_ABEL_COORDINATE_PLAN_CACHE: dict[tuple[Any, ...], Any] = {}
+_ABEL_COORDINATE_PLAN_CACHE_LIMIT = 12
+
+
+def _nested_tuple(value: Any) -> Any:
+    if isinstance(value, (tuple, list)):
+        return tuple(_nested_tuple(item) for item in value)
+    return value
+
+
+def _deep_copy_nested(value: Any) -> Any:
+    """Copy nested verification data without retaining mutable aliases."""
+    if isinstance(value, dict):
+        return {key: _deep_copy_nested(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_deep_copy_nested(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_deep_copy_nested(item) for item in value)
+    return value
+
+
+def _period_coordinate_key(
+    curve: Any,
+    period_result: Any,
+    precision: int,
+    abel_refinements: int,
+) -> tuple[Any, ...]:
+    """Bind a normalized Abel cache entry to one serialized period basis."""
+    return (
+        _curve_key(curve),
+        int(precision),
+        int(abel_refinements),
+        _nested_tuple(period_result.period_matrix_pairs()),
+        _nested_tuple(period_result.siegel_matrix_pairs()),
+    )
+
+
+def _point_support_text(point: Any) -> str:
+    x_value, y_value = _point_key(point)
+    return "(" + x_value + "," + y_value + ")"
+
+
+class _PreparedAbelCoordinateMap:
+    """Prepared inverse of the A-period block for normalized Abel lifts."""
+
+    def __init__(self, full_period_matrix: Any, precision: int) -> None:
+        rows = [list(row) for row in full_period_matrix]
+        if len(rows) != 3 or any(len(row) != 6 for row in rows):
+            raise ValueError("full_period_matrix must be a 3 by 6 [A|B] matrix")
+        self.precision = precision
+        with mp.workprec(precision + 32):
+            self.a_matrix = tuple(
+                tuple(row)
+                for row in [
+                    _complex_vector(row[:3], 3, "A-period matrix") for row in rows
+                ]
+            )
+            inverse_columns = [
+                _solve_complex_three(
+                    [list(row) for row in self.a_matrix],
+                    [mp.mpf(1) if row == column else mp.mpf(0) for row in range(3)],
+                )
+                for column in range(3)
+            ]
+            self.inverse = tuple(
+                tuple(inverse_columns[column][row] for column in range(3))
+                for row in range(3)
+            )
+
+    def normalize(self, raw_vector: Any) -> tuple[tuple[str, str], ...]:
+        with mp.workprec(self.precision + 32):
+            source = _complex_vector(raw_vector, 3, "raw Abel--Jacobi vector")
+            normalized = [
+                sum(self.inverse[row][column] * source[column] for column in range(3))
+                for row in range(3)
+            ]
+            residual = [
+                sum(
+                    self.a_matrix[row][column] * normalized[column]
+                    for column in range(3)
+                )
+                - source[row]
+                for row in range(3)
+            ]
+            tolerance = mp.power(2, -max(32, self.precision - 20)) * max(
+                [mp.mpf(1)] + [abs(value) for value in source]
+            )
+            maximum_residual = max(abs(value) for value in residual)
+            if maximum_residual > tolerance:
+                raise Genus3HeightNumericalIndeterminacyError(
+                    "A-period coordinate normalization failed its residual check",
+                    {
+                        "precision_bits": self.precision,
+                        "maximum_residual": mp.nstr(maximum_residual, 20),
+                        "tolerance": mp.nstr(tolerance, 20),
+                        "convention": "z=A^-1*integral(omega_model)",
+                        "algorithm": "prepared inverse of the A-period block",
+                    },
+                )
+            return _complex_pairs(normalized, self.precision)
+
+
+def _prepared_abel_coordinate_map(
+    key: tuple[Any, ...], full_period_matrix: Any, precision: int
+) -> tuple[_PreparedAbelCoordinateMap, bool]:
+    cached = _ABEL_COORDINATE_PLAN_CACHE.get(key)
+    if cached is not None:
+        return (cached, True)
+    prepared = _PreparedAbelCoordinateMap(full_period_matrix, precision)
+    if len(_ABEL_COORDINATE_PLAN_CACHE) >= _ABEL_COORDINATE_PLAN_CACHE_LIMIT:
+        del _ABEL_COORDINATE_PLAN_CACHE[next(iter(_ABEL_COORDINATE_PLAN_CACHE))]
+    _ABEL_COORDINATE_PLAN_CACHE[key] = prepared
+    return (prepared, False)
+
+
 def split_mumford_archimedean_pairing(
     move: SplitMumfordMove,
     *,
@@ -1729,11 +1846,41 @@ def split_mumford_archimedean_pairing(
     period_matrix = active_period_result.siegel_matrix_pairs()
     full_period_matrix = active_period_result.period_matrix_pairs()
     abel_jacobi_records = []
+    period_coordinate_key = _period_coordinate_key(
+        move.curve,
+        active_period_result,
+        prec,
+        abel_refinements,
+    )
+    coordinate_map, coordinate_plan_cache_hit = _prepared_abel_coordinate_map(
+        period_coordinate_key,
+        full_period_matrix,
+        prec,
+    )
+    local_point_vectors: dict[tuple[str, str], dict[str, Any]] = {}
+    _f_value, h_value = move.curve.hyperelliptic_polynomials()
 
-    def vector(point_or_points: Any) -> Any:
+    def individual(point: Any) -> tuple[dict[str, Any], int, bool]:
+        point_key = _point_key(point)
+        known = local_point_vectors.get(point_key)
+        if known is not None:
+            return (known, 1, True)
+        x_value, y_value = point.xy()
+        inverse_key = (
+            _qq_string(x_value),
+            _qq_string(-h_value(x_value) - y_value),
+        )
+        inverse = local_point_vectors.get(inverse_key)
+        if inverse is not None:
+            return (inverse, -1, True)
+        cache_key = (period_coordinate_key, point_key)
+        cached = _NORMALIZED_ABEL_CACHE.get(cache_key)
+        if cached is not None:
+            local_point_vectors[point_key] = cached
+            return (cached, 1, True)
         abel_result = periods.abel_jacobi(
             move.curve,
-            point_or_points,
+            point,
             period_result=active_period_result,
             basepoint="infinity",
             prec=prec,
@@ -1746,17 +1893,99 @@ def split_mumford_archimedean_pairing(
                 "an Abel--Jacobi result failed its curve/refinement replay",
                 {"abel_verification": dict(abel_verification)},
             )
-        normalized = normalize_abel_jacobi_coordinates(
-            raw_vector,
-            full_period_matrix,
-            prec=prec,
+        normalized = coordinate_map.normalize(raw_vector)
+        abel_data = abel_result.to_dict()
+        data = {
+            "support": (_point_support_text(point),),
+            "raw": tuple(tuple(value) for value in raw_vector),
+            "normalized": normalized,
+            "refinement_difference": str(abel_data["refinement_difference"]),
+            "abel_verification": _deep_copy_nested(dict(abel_verification)),
+            "abel_cache_hit": bool(abel_result.cache_hit),
+        }
+        if len(_NORMALIZED_ABEL_CACHE) >= _NORMALIZED_ABEL_CACHE_LIMIT:
+            del _NORMALIZED_ABEL_CACHE[next(iter(_NORMALIZED_ABEL_CACHE))]
+        _NORMALIZED_ABEL_CACHE[cache_key] = data
+        local_point_vectors[point_key] = data
+        return (data, 1, False)
+
+    def vector(point_or_points: Any) -> Any:
+        points = (
+            tuple(point_or_points)
+            if isinstance(point_or_points, (tuple, list))
+            else (point_or_points,)
         )
+        if not points:
+            return tuple(("0", "0") for _index in range(3))
+        components = [individual(point) for point in points]
+        with mp.workprec(prec + 32):
+            raw_sum = [mp.mpc(0) for _index in range(3)]
+            normalized_sum = [mp.mpc(0) for _index in range(3)]
+            for data, sign, _reused in components:
+                for index in range(3):
+                    raw_real, raw_imaginary = data["raw"][index]
+                    normalized_real, normalized_imaginary = data["normalized"][index]
+                    raw_sum[index] += sign * mp.mpc(raw_real, raw_imaginary)
+                    normalized_sum[index] += sign * mp.mpc(
+                        normalized_real, normalized_imaginary
+                    )
+            refinement_difference_bound = mp.fsum(
+                mp.mpf(data["refinement_difference"])
+                for data, _sign, _reused in components
+            )
+            refinement_tolerance = mp.power(2, -max(20, min(80, prec // 2))) * max(
+                [mp.mpf(1)] + [abs(value) for value in raw_sum]
+            )
+            if refinement_difference_bound > refinement_tolerance:
+                raise Genus3HeightNumericalIndeterminacyError(
+                    "a linearly assembled Abel--Jacobi lift did not retain refinement stability",
+                    {
+                        "precision_bits": int(prec),
+                        "support": tuple(
+                            _point_support_text(point) for point in points
+                        ),
+                        "refinement_difference_bound": mp.nstr(
+                            refinement_difference_bound, 20
+                        ),
+                        "refinement_tolerance": mp.nstr(refinement_tolerance, 20),
+                        "derivation": "triangle bound from individually replayed Abel lifts",
+                    },
+                )
+            raw_vector = _complex_pairs(raw_sum, prec)
+            normalized = _complex_pairs(normalized_sum, prec)
         abel_jacobi_records.append(
             {
-                "support": tuple(abel_result.to_dict().get("support", ())),
+                "support": tuple(_point_support_text(point) for point in points),
                 "raw_model_basis_vector": tuple(tuple(value) for value in raw_vector),
                 "normalized_theta_vector": normalized,
                 "transformation": "z_theta = A^-1 * integral(omega_model)",
+                "coordinate_plan_cache_hit": coordinate_plan_cache_hit,
+                "refinement_difference_bound": mp.nstr(
+                    refinement_difference_bound, max(20, prec // 3)
+                ),
+                "refinement_tolerance": mp.nstr(
+                    refinement_tolerance, max(20, prec // 3)
+                ),
+                "derivation": (
+                    "sum of individually refinement-stable Abel lifts; repeated "
+                    "points use exact linearity and hyperelliptic conjugates use "
+                    "the sign-reversed lift along the same deterministic ray"
+                ),
+                "components": tuple(
+                    {
+                        "point": _point_support_text(point),
+                        "source_support": data["support"],
+                        "sign": sign,
+                        "prepared_cache_hit": bool(reused),
+                        "abel_cache_hit": bool(data["abel_cache_hit"]),
+                        "abel_verification": _deep_copy_nested(
+                            data["abel_verification"]
+                        ),
+                    }
+                    for point, (data, sign, reused) in zip(
+                        points, components, strict=True
+                    )
+                ),
             }
         )
         return normalized
@@ -1943,18 +2172,212 @@ def _period_geometry(period_matrix: Any) -> tuple[list[list[Any]], Any]:
     return tau, eigenvalue_lower_bound
 
 
-def _integer_vectors(radius: int, size: int) -> Any:
-    current = [0 for _index in range(size)]
+_THETA_PLAN_CACHE: dict[tuple[Any, ...], Any] = {}
+_THETA_PLAN_CACHE_LIMIT = 12
+_THETA_RECURRENCE_REANCHOR = 32
+_THETA_RECURRENCE_PHASE_LIMIT = 1 << 24
 
-    def visit(index: int) -> Any:
-        if index == size:
-            yield list(current)
+
+def _theta_matrix_key(tau: list[list[Any]], precision: int) -> tuple[Any, ...]:
+    """Return the full active-precision identity of a normalized matrix."""
+    return tuple(
+        tuple(
+            (
+                tuple(mp.re(value)._mpf_),
+                tuple(mp.im(value)._mpf_),
+            )
+            for value in row
+        )
+        for row in tau
+    )
+
+
+class _ThetaLatticePlan:
+    """Prepared quadratic data for one pair of cubic theta truncations.
+
+    The last lattice coordinate is traversed by a multiplicative recurrence.
+    Every line is reanchored after a bounded number of steps, so the path is
+    deterministic and the extra 32 guard bits still dominate recurrence
+    drift.  Linear factors remain point-dependent; quadratic exponentials are
+    shared by every theta value using this plan.
+    """
+
+    def __init__(
+        self,
+        tau: list[list[Any]],
+        coarse_radius: int,
+        fine_radius: int,
+        precision: int,
+    ) -> None:
+        self.tau = tau
+        self.coarse_radius = coarse_radius
+        self.fine_radius = fine_radius
+        self.precision = precision
+        self.a_value = tuple(mp.mpf("0.5") for _index in range(3))
+        self.b_value = tuple(mp.mpf(3 - index) / 2 for index in range(3))
+        quadratic_phase_scale = max(
+            abs(mp.re(value)) for row in tau for value in row
+        ) * mp.power(mp.mpf(fine_radius) + mp.mpf("0.5"), 2)
+        self.direct_evaluation = quadratic_phase_scale > _THETA_RECURRENCE_PHASE_LIMIT
+        self.quadratic_exponentials = 0
+        if self.direct_evaluation:
+            self.ratio_step = mp.mpc(0)
+            self.lines = ()
             return
-        for value in range(-radius, radius + 1):
-            current[index] = value
-            yield from visit(index + 1)
+        self.ratio_step = mp.exp(2 * mp.pi * mp.j * tau[2][2])
+        self.quadratic_exponentials = 1
+        line_length = 2 * fine_radius + 1
+        lines = []
+        for n0 in range(-fine_radius, fine_radius + 1):
+            m0 = mp.mpf(n0) + self.a_value[0]
+            for n1 in range(-fine_radius, fine_radius + 1):
+                m1 = mp.mpf(n1) + self.a_value[1]
+                anchors = []
+                for offset in range(0, line_length, _THETA_RECURRENCE_REANCHOR):
+                    n2 = -fine_radius + offset
+                    shifted = (m0, m1, mp.mpf(n2) + self.a_value[2])
+                    quadratic = mp.mpc(0)
+                    for row in range(3):
+                        for column in range(3):
+                            quadratic += (
+                                shifted[row] * tau[row][column] * shifted[column]
+                            )
+                    q_term = mp.exp(mp.pi * mp.j * quadratic)
+                    self.quadratic_exponentials += 1
+                    segment_end = min(line_length, offset + _THETA_RECURRENCE_REANCHOR)
+                    q_ratio = None
+                    if offset + 1 < segment_end:
+                        delta = tau[2][2]
+                        for index in range(3):
+                            delta += (
+                                tau[2][index] * shifted[index]
+                                + shifted[index] * tau[index][2]
+                            )
+                        q_ratio = mp.exp(mp.pi * mp.j * delta)
+                        self.quadratic_exponentials += 1
+                    anchors.append(
+                        (
+                            offset,
+                            segment_end,
+                            shifted,
+                            q_term,
+                            q_ratio,
+                        )
+                    )
+                lines.append((n0, n1, tuple(anchors)))
+        self.lines = tuple(lines)
 
-    yield from visit(0)
+
+def _prepared_theta_lattice(
+    tau: list[list[Any]],
+    coarse_radius: int,
+    fine_radius: int,
+    precision: int,
+) -> tuple[_ThetaLatticePlan, bool]:
+    key = (
+        _theta_matrix_key(tau, precision),
+        int(coarse_radius),
+        int(fine_radius),
+        int(precision),
+        _THETA_RECURRENCE_REANCHOR,
+    )
+    cached = _THETA_PLAN_CACHE.get(key)
+    if cached is not None:
+        return (cached, True)
+    plan = _ThetaLatticePlan(tau, coarse_radius, fine_radius, precision)
+    if len(_THETA_PLAN_CACHE) >= _THETA_PLAN_CACHE_LIMIT:
+        del _THETA_PLAN_CACHE[next(iter(_THETA_PLAN_CACHE))]
+    _THETA_PLAN_CACHE[key] = plan
+    return (plan, False)
+
+
+def _theta_sums_from_plan(
+    z_value: list[Any], plan: _ThetaLatticePlan
+) -> tuple[Any, Any, dict[str, Any]]:
+    """Evaluate coarse and fine sums in one deterministic fine traversal."""
+    linear_phase_scale = max(
+        abs(mp.re(z_value[index] + plan.b_value[index])) for index in range(3)
+    ) * (mp.mpf(plan.fine_radius) + mp.mpf("0.5"))
+    if plan.direct_evaluation or linear_phase_scale > _THETA_RECURRENCE_PHASE_LIMIT:
+        fine_terms = []
+        coarse_terms = []
+        radius = plan.fine_radius
+        coarse = plan.coarse_radius
+        for n0 in range(-radius, radius + 1):
+            for n1 in range(-radius, radius + 1):
+                for n2 in range(-radius, radius + 1):
+                    shifted = (
+                        mp.mpf(n0) + plan.a_value[0],
+                        mp.mpf(n1) + plan.a_value[1],
+                        mp.mpf(n2) + plan.a_value[2],
+                    )
+                    quadratic = mp.mpc(0)
+                    for row in range(3):
+                        for column in range(3):
+                            quadratic += (
+                                shifted[row] * plan.tau[row][column] * shifted[column]
+                            )
+                    linear = sum(
+                        shifted[index] * (z_value[index] + plan.b_value[index])
+                        for index in range(3)
+                    )
+                    term = mp.exp(mp.pi * mp.j * quadratic + 2 * mp.pi * mp.j * linear)
+                    fine_terms.append(term)
+                    if (
+                        -coarse <= n0 <= coarse
+                        and -coarse <= n1 <= coarse
+                        and -coarse <= n2 <= coarse
+                    ):
+                        coarse_terms.append(term)
+        return (
+            mp.fsum(coarse_terms),
+            mp.fsum(fine_terms),
+            {
+                "linear_exponentials": 0,
+                "direct_exponentials": len(fine_terms),
+                "recurrence_multiplications": 0,
+                "algorithm": "single-traversal direct lattice fallback for large phase arguments",
+            },
+        )
+    fine_terms = []
+    coarse_terms = []
+    linear_step = mp.exp(2 * mp.pi * mp.j * (z_value[2] + plan.b_value[2]))
+    linear_exponentials = 1
+    recurrence_multiplications = 0
+    radius = plan.fine_radius
+    coarse = plan.coarse_radius
+    for n0, n1, anchors in plan.lines:
+        coarse_outer = -coarse <= n0 <= coarse and -coarse <= n1 <= coarse
+        for offset, segment_end, shifted, q_term, q_ratio in anchors:
+            linear = sum(
+                shifted[index] * (z_value[index] + plan.b_value[index])
+                for index in range(3)
+            )
+            term = q_term * mp.exp(2 * mp.pi * mp.j * linear)
+            linear_exponentials += 1
+            recurrence_multiplications += 1
+            ratio = None if q_ratio is None else q_ratio * linear_step
+            if ratio is not None:
+                recurrence_multiplications += 1
+            for position in range(offset, segment_end):
+                if position != offset:
+                    term *= ratio
+                    ratio *= plan.ratio_step
+                    recurrence_multiplications += 2
+                fine_terms.append(term)
+                n2 = -radius + position
+                if coarse_outer and -coarse <= n2 <= coarse:
+                    coarse_terms.append(term)
+    return (
+        mp.fsum(coarse_terms),
+        mp.fsum(fine_terms),
+        {
+            "linear_exponentials": linear_exponentials,
+            "direct_exponentials": 0,
+            "recurrence_multiplications": recurrence_multiplications,
+            "algorithm": "prepared quadratic lattice with reanchored line recurrence",
+        },
+    )
 
 
 def _theta_radius(
@@ -1975,24 +2398,6 @@ def _theta_radius(
     )
 
 
-def _theta_sum(z_value: list[Any], tau: list[list[Any]], radius: int) -> Any:
-    genus = 3
-    a_value = [mp.mpf("0.5") for _index in range(genus)]
-    b_value = [mp.mpf(genus - index) / 2 for index in range(genus)]
-    terms = []
-    for integer_vector in _integer_vectors(radius, genus):
-        shifted = [integer_vector[index] + a_value[index] for index in range(genus)]
-        quadratic = mp.mpc(0)
-        for row in range(genus):
-            for column in range(genus):
-                quadratic += shifted[row] * tau[row][column] * shifted[column]
-        linear = sum(
-            shifted[index] * (z_value[index] + b_value[index]) for index in range(genus)
-        )
-        terms.append(mp.exp(mp.pi * mp.j * quadratic + 2 * mp.pi * mp.j * linear))
-    return mp.fsum(terms)
-
-
 class ThetaEvaluation:
     """A genus-3 theta value with a radius-refinement witness."""
 
@@ -2004,6 +2409,13 @@ class ThetaEvaluation:
         terms: int,
         precision: int,
         stable: bool,
+        *,
+        plan_cache_hit: bool = False,
+        plan_quadratic_exponentials: int = 0,
+        linear_exponentials: int = 0,
+        direct_exponentials: int = 0,
+        recurrence_multiplications: int = 0,
+        algorithm: str = "prepared quadratic lattice with reanchored line recurrence",
     ) -> None:
         self.value = value
         self.refinement_difference = difference
@@ -2011,6 +2423,12 @@ class ThetaEvaluation:
         self.terms = terms
         self.precision = precision
         self.refinement_stable = bool(stable)
+        self.plan_cache_hit = bool(plan_cache_hit)
+        self.plan_quadratic_exponentials = int(plan_quadratic_exponentials)
+        self.linear_exponentials = int(linear_exponentials)
+        self.direct_exponentials = int(direct_exponentials)
+        self.recurrence_multiplications = int(recurrence_multiplications)
+        self.algorithm = str(algorithm)
         self.rigorous = False
         self.analytic_error_status = (
             "radius-refinement-stable; truncation and rounding not enclosed"
@@ -2026,10 +2444,83 @@ class ThetaEvaluation:
             "radius": self.radius,
             "terms": self.terms,
             "precision_bits": self.precision,
+            "algorithm": self.algorithm,
+            "plan_cache_hit": self.plan_cache_hit,
+            "plan_quadratic_exponentials": self.plan_quadratic_exponentials,
+            "linear_exponentials": self.linear_exponentials,
+            "direct_exponentials": self.direct_exponentials,
+            "exponential_evaluations": (
+                self.plan_quadratic_exponentials
+                + self.linear_exponentials
+                + self.direct_exponentials
+            ),
+            "recurrence_multiplications": self.recurrence_multiplications,
             "refinement_stable": self.refinement_stable,
             "rigorous": False,
             "analytic_error_status": self.analytic_error_status,
         }
+
+
+def _genus3_theta_prepared(
+    z_vector: list[Any],
+    tau: list[list[Any]],
+    lower_bound: Any,
+    precision: int,
+    radius: int | None,
+    limits: Genus3HeightLimits,
+) -> ThetaEvaluation:
+    coarse_radius = (
+        _theta_radius(z_vector, lower_bound, precision)
+        if radius is None
+        else _positive_integer(radius, "radius")
+    )
+    fine_radius = coarse_radius + 2
+    coarse_terms = (2 * coarse_radius + 1) ** 3
+    fine_terms = (2 * fine_radius + 1) ** 3
+    total_terms = coarse_terms + fine_terms
+    diagnostics = {
+        "precision_bits": precision,
+        "coarse_radius": coarse_radius,
+        "fine_radius": fine_radius,
+        "fine_terms": fine_terms,
+        "total_terms": total_terms,
+        "eigenvalue_lower_bound": mp.nstr(lower_bound, 20),
+        "limits": limits.to_dict(),
+    }
+    if fine_radius > limits.max_theta_radius or total_terms > limits.max_theta_terms:
+        raise Genus3HeightResourceError(
+            "the genus-3 theta plan exceeds its declared limit", diagnostics
+        )
+    plan, cache_hit = _prepared_theta_lattice(
+        tau, coarse_radius, fine_radius, precision
+    )
+    coarse, fine, recurrence = _theta_sums_from_plan(z_vector, plan)
+    difference = abs(fine - coarse)
+    tolerance = mp.power(2, -max(32, precision - 20)) * max(1, abs(fine))
+    stable = difference <= tolerance
+    if not stable:
+        diagnostics["refinement_difference"] = mp.nstr(difference, 20)
+        diagnostics["tolerance"] = mp.nstr(tolerance, 20)
+        diagnostics["plan_cache_hit"] = cache_hit
+        diagnostics["linear_exponentials"] = recurrence["linear_exponentials"]
+        diagnostics["direct_exponentials"] = recurrence["direct_exponentials"]
+        raise Genus3HeightNumericalIndeterminacyError(
+            "theta radius refinement did not stabilize", diagnostics
+        )
+    return ThetaEvaluation(
+        +fine,
+        +difference,
+        fine_radius,
+        total_terms,
+        precision,
+        True,
+        plan_cache_hit=cache_hit,
+        plan_quadratic_exponentials=(0 if cache_hit else plan.quadratic_exponentials),
+        linear_exponentials=recurrence["linear_exponentials"],
+        direct_exponentials=recurrence["direct_exponentials"],
+        recurrence_multiplications=recurrence["recurrence_multiplications"],
+        algorithm=recurrence["algorithm"],
+    )
 
 
 def genus3_theta(
@@ -2047,48 +2538,13 @@ def genus3_theta(
     with mp.workprec(precision + 32):
         tau, lower_bound = _period_geometry(period_matrix)
         z_vector = _complex_vector(z_value, 3, "z_value")
-        coarse_radius = (
-            _theta_radius(z_vector, lower_bound, precision)
-            if radius is None
-            else _positive_integer(radius, "radius")
-        )
-        fine_radius = coarse_radius + 2
-        fine_terms = (2 * fine_radius + 1) ** 3
-        total_terms = (2 * coarse_radius + 1) ** 3 + fine_terms
-        diagnostics = {
-            "precision_bits": precision,
-            "coarse_radius": coarse_radius,
-            "fine_radius": fine_radius,
-            "fine_terms": fine_terms,
-            "total_terms": total_terms,
-            "eigenvalue_lower_bound": mp.nstr(lower_bound, 20),
-            "limits": limits.to_dict(),
-        }
-        if (
-            fine_radius > limits.max_theta_radius
-            or total_terms > limits.max_theta_terms
-        ):
-            raise Genus3HeightResourceError(
-                "the genus-3 theta plan exceeds its declared limit", diagnostics
-            )
-        coarse = _theta_sum(z_vector, tau, coarse_radius)
-        fine = _theta_sum(z_vector, tau, fine_radius)
-        difference = abs(fine - coarse)
-        tolerance = mp.power(2, -max(32, precision - 20)) * max(1, abs(fine))
-        stable = difference <= tolerance
-        if not stable:
-            diagnostics["refinement_difference"] = mp.nstr(difference, 20)
-            diagnostics["tolerance"] = mp.nstr(tolerance, 20)
-            raise Genus3HeightNumericalIndeterminacyError(
-                "theta radius refinement did not stabilize", diagnostics
-            )
-        return ThetaEvaluation(
-            +fine,
-            +difference,
-            fine_radius,
-            total_terms,
+        return _genus3_theta_prepared(
+            z_vector,
+            tau,
+            lower_bound,
             precision,
-            True,
+            radius,
+            limits,
         )
 
 
@@ -2244,7 +2700,7 @@ def archimedean_green_pairing(
             },
         )
     with mp.workprec(precision + 32):
-        tau, _lower_bound = _period_geometry(period_matrix)
+        tau, lower_bound = _period_geometry(period_matrix)
         e1_vector = _complex_vector(e1_sum, 3, "e1_sum")
         e2_vector = _complex_vector(e2_sum, 3, "e2_sum")
         imaginary = [
@@ -2256,19 +2712,21 @@ def archimedean_green_pairing(
         theta_certificates = []
         for multiplicity, point_value in terms:
             point = _complex_vector(point_value, 3, "d_term")
-            first = genus3_theta(
+            first = _genus3_theta_prepared(
                 [point[index] - e1_vector[index] for index in range(3)],
                 tau,
-                prec=precision,
-                radius=theta_radius,
-                limits=limits,
+                lower_bound,
+                precision,
+                theta_radius,
+                limits,
             )
-            second = genus3_theta(
+            second = _genus3_theta_prepared(
                 [point[index] - e2_vector[index] for index in range(3)],
                 tau,
-                prec=precision,
-                radius=theta_radius,
-                limits=limits,
+                lower_bound,
+                precision,
+                theta_radius,
+                limits,
             )
             first_absolute = abs(first.value)
             second_absolute = abs(second.value)

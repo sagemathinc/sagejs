@@ -16,6 +16,9 @@ test("public shell exposes accessible execution and file controls", async () => 
   assert.match(html, /aria-live="polite"/);
   assert.match(html, /Skip to the Sage editor/);
   assert.match(html, /class="brand" href="https:\/\/sagejs\.org\/"/);
+  assert.match(html, /href="\.\/codemirror-license\.txt"/);
+  assert.match(html, /<div id="source" class="source-editor"><\/div>/);
+  assert.doesNotMatch(html, /<textarea[^>]+id="source"/);
   assert.doesNotMatch(html, /https?:\/\/[^"']+\.(?:js|css|woff2?)/i, "runtime UI must not load a CDN");
   const app = await read("app.mjs");
   assert.match(app, /wasm-capabilities-report\.json/);
@@ -26,6 +29,13 @@ test("public shell exposes accessible execution and file controls", async () => 
   assert.match(app, /result-input/);
   assert.match(app, /Copy input/);
   assert.match(app, /navigator\.clipboard\.writeText\(input\)/);
+  assert.match(app, /createSourceEditor\(elements\.source/);
+  const editor = await read("codemirror-editor.mjs");
+  assert.match(editor, /python\(\)/);
+  assert.match(editor, /indentUnit\.of\(FOUR_SPACES\)/);
+  assert.match(editor, /close|basicSetup/);
+  assert.match(editor, /Shift-Enter/);
+  assert.match(editor, /Mod-Enter/);
 });
 
 test("Cloudflare policy isolates a deliberately dynamic, credential-free origin", async () => {

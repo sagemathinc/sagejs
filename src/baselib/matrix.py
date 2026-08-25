@@ -815,9 +815,7 @@ def _base_for_values(values: list[Any]) -> sage.Parent:
             return runtime.reflect.get(value, "_parent")
         if _is_modular_base(parent) or _is_extension_field_base(parent):
             return _canonical_base(runtime.reflect.get(value, "_parent"))
-        if runtime.jstype(value) == "number" and not runtime.number.isSafeInteger(
-            value
-        ):
+        if isinstance(value, float):
             return runtime.reflect.get(runtime.global_object, "RDF")
     return sage.ZZ
 

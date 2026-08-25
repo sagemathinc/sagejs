@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "immutable-capsule-effects",
+  "title": "Fail-closed capsule effect metadata",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "/root/native_compiler",
+  "objective": "Make immutable UInt64 lease writability fail closed when prime-source effects metadata is absent",
+  "base_commit": "36c621654e663ea93f688d47f5bc0991584006ae",
+  "claims": [
+    "tools/native-kernel/js-backend.cjs",
+    "tools/native-kernel/test/immutable-capsule-effects.cjs",
+    "tools/native-kernel/test/immutable_capsule_effects_witness.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "generated wrapper with absent analysis/effects metadata",
+      "dynamic/native witness"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Prime-source UInt64 buffer writability now defaults to writable whenever the optional effect proof is absent, so immutable leases fail closed instead of crashing wrapper generation or reaching a potentially mutating kernel. A neutral production-shaped witness covers both analysis without effects and fully absent analysis, plus CPython, dynamic, and native agreement.",
+    "risks": [
+      "Prime-source IR does not yet publish buffer effect metadata, so immutable leases conservatively remain unavailable to those functions until a separate source-transparent effect analysis proves individual inputs read-only."
+    ],
+    "next_steps": [
+      "Integration should rerun the rational-reduction batch regression and stage-7 production pack with its prepared FLINT addon.",
+      "A later compiler project can add prime-source buffer alias/effect analysis to recover zero-copy immutable leases for proved read-only prime inputs."
+    ]
+  }
+}

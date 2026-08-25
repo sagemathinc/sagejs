@@ -90,6 +90,23 @@ for polynomial in (x**2 - 5, x**3 + 4*x - 1, x**4 - x + 1):
     for rational_prime in (2, 3, 5):
         factor_base.extend(O.factor_rational_prime(rational_prime).prime_ideals())
     elements = list(O.basis()) + [K(2), K(8), K(1) / K(2), O.basis()[0] + O.basis()[-1], O.basis()[0] - 2 * O.basis()[-1]]
+    membership_ideals = list(factor_base[:3]) + [O.ideal(2), O.ideal(K.gen() + 1)]
+    for ideal in membership_ideals:
+        for element in elements:
+            actual_member = element in ideal
+            saved_membership = ideals._element_membership_kernel_override
+            ideals._element_membership_kernel_override = False
+            expected_member = element in ideal
+            ideals._element_membership_kernel_override = saved_membership
+            assert actual_member == expected_member
+    for container in membership_ideals:
+        for contained in membership_ideals:
+            actual_containment = container.contains_ideal(contained)
+            saved_batch_membership = ideals._element_membership_batch_kernel_override
+            ideals._element_membership_batch_kernel_override = False
+            expected_containment = container.contains_ideal(contained)
+            ideals._element_membership_batch_kernel_override = saved_batch_membership
+            assert actual_containment == expected_containment
     for element in elements:
         assert not element.is_zero()
         actual = ideals.element_valuations(element, factor_base)

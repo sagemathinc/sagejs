@@ -1,0 +1,95 @@
+{
+  "schema": "sagejs.hyperelliptic-rational-phase6-acceptance.v1",
+  "captured_at_utc": "2026-08-23T10:06:37Z",
+  "source": {
+    "commit": "28e7d8cc0634c6fc7b8e66a44ca0fac2f7a0dcec",
+    "base_commit": "ab31e4f3ff8095dcfcdbb34d4d29fb142dc3ae01",
+    "benchmark": "bench/hyperelliptic/benchmark-rational-reduction-batch.cjs",
+    "benchmark_sha256": "37f04cc94ea7e3b0c59177d62ebb0c6a976082f10884e07062f7ba05db33c035"
+  },
+  "host": {
+    "id": "bench-1",
+    "platform": "linux",
+    "release": "6.17",
+    "architecture": "x86-64",
+    "cpu_model": "AMD EPYC 7B13",
+    "node": "26.7.0",
+    "load_average": null,
+    "load_average_status": "not retained in the receipt artifact; no value reconstructed"
+  },
+  "backends": {
+    "sagejs": {
+      "timer": "time.perf_counter_ns",
+      "timer_resolution_ns": 2816
+    },
+    "magma": {
+      "version": "2.18-5",
+      "executable_sha256": "ba9ee29500dedacddef6a3988f79985da9a667fe7d02295b90c7e849db1a82bf",
+      "timer": "Cputime",
+      "timer_resolution_seconds": 0.01
+    }
+  },
+  "many_prime_recurring_contract": {
+    "curve": "y^2=x^5-x",
+    "divisor_count": 1024,
+    "prime_count": 32,
+    "prime_divisor_pairs": 32768,
+    "witness_scalar": 2,
+    "exact_nonzero_checksum": 28672,
+    "sagejs": {
+      "prepared_qq_basis_seconds": 7.765864192,
+      "prepared_stage_in_recurring_comparison": false,
+      "qq_to_retained_packed_rows_seconds": 0.092505344,
+      "uniform_packed_witness_seconds": 0.006032384,
+      "recurring_combined_seconds": 0.098537728,
+      "kernel_crossings": {
+        "reduction": 1,
+        "witness": 1
+      }
+    },
+    "magma": {
+      "resident_trials": 5,
+      "construction_seconds": [0.01, 0.01, 0.01, 0.01, 0.01],
+      "witness_seconds": [0.14, 0.13, 0.13, 0.13, 0.14],
+      "median_combined_seconds": 0.14
+    },
+    "comparison": {
+      "status": "pass",
+      "sagejs_speedup_over_magma": 1.4207756038377504,
+      "scope": "recurring reduction plus exact witness; prepared QQ basis excluded"
+    }
+  },
+  "ordinary_public_qq_addition_contract": {
+    "curve": "y^2=x^5+x+1",
+    "operation": "nontrivial ordinary public P+Q",
+    "iterations": 1000,
+    "exact_reference_equality": true,
+    "object_cold_seconds": null,
+    "object_cold_status": "not retained in the receipt artifact; no value reconstructed",
+    "sagejs": {
+      "direct_prepared_seconds": 0.90732032,
+      "ordinary_public_seconds": 0.952599552,
+      "public_over_direct": 1.0499043513100204
+    },
+    "magma": {
+      "resident_seconds": [0.01, 0.01, 0.01, 0.0, 0.0],
+      "median_seconds": 0.01,
+      "timer_quantized": true
+    },
+    "comparison": {
+      "status": "fail",
+      "sagejs_over_magma_median": 95.2599552,
+      "qualification": "Magma's denominator is quantized at 0.01 seconds, but the miss is decisive"
+    }
+  },
+  "certificates": {
+    "included_in_benchmark_timing": false,
+    "sagejs_reference_replay": "separately verified by test/hyperelliptic-rational-reduction-batch.cjs",
+    "magma_equal_serialized_contract": "not available"
+  },
+  "acceptance": {
+    "many_prime_recurring_batch": "pass",
+    "ordinary_public_qq_addition": "fail",
+    "overall_phase6_gate": "open"
+  }
+}

@@ -550,6 +550,10 @@ assrt.equal(repr(RR(1) / RR(3)), "0.333333333333333")
 assrt.equal(repr(RR(1) / RR(0)), "+infinity")
 assrt.equal(repr(RR(2) ** -3), "0.125000000000000")
 
+assrt.ok(parent(float(1)) is RDF)
+assrt.ok(float(1) in QQ)
+assrt.ok(float(-0.0) in QQ)
+
 z = CC(1, 2)
 assrt.equal(parent(z), CC)
 assrt.equal(repr(type(z)), "<class 'ComplexNumber'>")

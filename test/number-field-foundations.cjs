@@ -89,3 +89,80 @@ test("ideal closure replay shares one exact membership coordinate map", async ()
     await session.close();
   }
 });
+
+test("immutable ideal norms share their exact determinant", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "R.<x> = QQ[]\n" +
+            "K.<a> = NumberField(x^3 - x^2 - 6*x - 12)\n" +
+            "O = K.maximal_order()\n" +
+            "I = O.ideal(2)\n" +
+            "first = I.norm()\n" +
+            "I.basis_matrix = lambda: (_ for _ in ()).throw(AssertionError('recomputed'))\n" +
+            "second = I.norm()\n" +
+            "P = O.factor_rational_prime(2).prime_ideals()[0]\n" +
+            "prime_first = P.norm()\n" +
+            "P.basis_matrix = lambda: (_ for _ in ()).throw(AssertionError('recomputed'))\n" +
+            "[first, second, prime_first, P.norm()]",
+        )
+      ).repr,
+      "[8, 8, 2, 2]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("prime verification rejects a reducible residue presentation", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "R.<x> = QQ[]\n" +
+            "K.<a> = NumberField(x^3 - x^2 - 6*x - 12)\n" +
+            "O = K.maximal_order()\n" +
+            "D = O.factor_rational_prime(2)\n" +
+            "certified = D.verify()['certified']\n" +
+            "P = [P for P in D.prime_ideals() if P.residue_class_degree() == 2][0]\n" +
+            "saved = P._residue_presentation\n" +
+            "P._residue_presentation = {**saved, 'modulus': (0, 0, 1)}\n" +
+            "rejected = not D.verify()['certified']\n" +
+            "P._residue_presentation = saved\n" +
+            "[certified, rejected, D.verify()['certified']]",
+        )
+      ).repr,
+      "[True, True, True]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("prime verification checks the exact HNF kernel directly", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "R.<x> = QQ[]\n" +
+            "K.<a> = NumberField(x^3 - x^2 - 6*x - 12)\n" +
+            "O = K.maximal_order()\n" +
+            "D = O.factor_rational_prime(2)\n" +
+            "for P in D.prime_ideals():\n" +
+            "    P.residue_coordinates = lambda value: (_ for _ in ()).throw(AssertionError('field-element reduction'))\n" +
+            "prime_ideals = __import__('sagejs.number_fields.prime_ideals', fromlist=['prime_ideals'])\n" +
+            "linear = prime_ideals._presentation_modulus_is_irreducible({'modulus': (1, 1)}, 2, 1)\n" +
+            "constant = prime_ideals._presentation_modulus_is_irreducible({'modulus': (1, 0)}, 2, 1)\n" +
+            "[D.verify()['certified'], linear, constant]",
+        )
+      ).repr,
+      "[True, True, False]",
+    );
+  } finally {
+    await session.close();
+  }
+});

@@ -15,19 +15,36 @@ const {
 } = require("../src/curves/core-source.cjs");
 const {
   resolveToolchain,
-} = require("./wasm-toolchain.cjs");
+} = require("../../wasm-toolchain/scripts/toolchain.cjs");
 const {
   runtimeHostAssets,
   verifyWasmMemoryContract,
   writeProductionReceipt,
 } = require("./production-receipt.cjs");
+const autoReceiptPolicyApi = require(
+  "../../../tools/math-dispatch/hyperelliptic-auto-receipt-policy.cjs"
+);
 const { kernelPackExports } = require("./kernel-pack-exports.cjs");
+const wasmAbiAllowlist = path.join(__dirname, "wasm-abi-allowlist.cjs");
 
 const packageRoot = path.resolve(__dirname, "..");
 const repositoryRoot = path.resolve(packageRoot, "..", "..");
 const toolchain = resolveToolchain({ root: repositoryRoot });
 const clang = toolchain.paths.clang;
 const sysroot = toolchain.paths.sysroot;
+function pathRemappingFlags(source, destination) {
+  return ["file", "debug", "macro"].map(
+    (kind) => `-f${kind}-prefix-map=${source}=${destination}`,
+  );
+}
+const targetCompileFlags = [
+  `--target=${toolchain.lock.build.target}`,
+  ...toolchain.lock.build.cFlags,
+  // The last matching map wins. The prepared toolchain can live below the Git
+  // common directory, so put its more specific mapping after the source root.
+  ...pathRemappingFlags(repositoryRoot, "/sagejs/source"),
+  ...pathRemappingFlags(toolchain.root, "/sagejs/toolchain"),
+];
 const wasmStrip = toolchain.paths.llvmStrip;
 const dependencies = ["flint", "mpfr", "gmp"].map((name) => ({
   name,
@@ -152,6 +169,15 @@ const serializationOutput = path.join(
 const plotlyOutput = path.join(outputDirectory, "plotly.min.js");
 const capabilityApiOutput = path.join(outputDirectory, "wasm-capability-api.mjs");
 const capabilityReportOutput = path.join(outputDirectory, "wasm-capabilities-report.json");
+const autoReceiptPolicySource = path.join(
+  repositoryRoot,
+  "architecture",
+  "hyperelliptic-auto-receipt-policy.json",
+);
+const autoReceiptPolicyOutput = path.join(
+  outputDirectory,
+  "hyperelliptic-auto-receipt-policy.json",
+);
 const compilerSource = path.join(
   repositoryRoot,
   "dist",
@@ -232,7 +258,7 @@ const treeSitterAssets = [
 ];
 const adapterInputsFilename = path.join(
   packageRoot,
-  "toolchain",
+  "release",
   "adapter-inputs.json",
 );
 const adapterInputs = JSON.parse(fs.readFileSync(adapterInputsFilename, "utf8"));
@@ -267,7 +293,7 @@ function requirePath(description, filename) {
     throw new Error(
       `missing ${description}: ${filename}\n` +
         "Prepare the pinned toolchain with `node " +
-        "packages/flint-wasm/scripts/wasm-toolchain.cjs prepare`.",
+        "packages/wasm-toolchain/scripts/toolchain.cjs prepare`.",
     );
   }
 }
@@ -328,6 +354,12 @@ requirePath(
 );
 
 fs.mkdirSync(outputDirectory, { recursive: true });
+// Earlier builds copied these source modules beside the bundled runtime. They
+// are no longer served or receipted; remove them explicitly when resuming a
+// package build so the physical dist directory is as clean as its manifest.
+for (const filename of ["wasi-constants.mjs", "wasi-filesystem.mjs"]) {
+  fs.rmSync(path.join(outputDirectory, filename), { force: true });
+}
 fs.copyFileSync(
   path.join(repositoryRoot, "architecture", "wasm-capability-api.mjs"),
   capabilityApiOutput,
@@ -657,7 +689,7 @@ if (reuseLinkedArtifacts) {
   kernelPackReceiptInputs = buildKernelPacks({ reuseLinkedArtifacts: true });
 } else {
 run(clang, [
-  ...toolchain.lock.build.cFlags,
+  ...targetCompileFlags,
   `--sysroot=${sysroot}`,
   "-Oz",
   ...includeArguments,
@@ -686,7 +718,7 @@ run(wasmStrip, ["--strip-all", rawOutput, "-o", output]);
 fs.rmSync(rawOutput);
 verifyWasmMemoryContract(output, productionModules.get("flint").memory);
 run(clang, [
-  ...toolchain.lock.build.cFlags,
+  ...targetCompileFlags,
   `--sysroot=${sysroot}`,
   "-O2",
   "-isystem",
@@ -707,7 +739,7 @@ run(wasmStrip, ["--strip-all", m4riRawOutput, "-o", m4riOutput]);
 fs.rmSync(m4riRawOutput);
 verifyWasmMemoryContract(m4riOutput, productionModules.get("m4ri").memory);
 run(clang, [
-  ...toolchain.lock.build.cFlags,
+  ...targetCompileFlags,
   `--sysroot=${sysroot}`,
   "-Oz",
   ...includeArguments,
@@ -732,15 +764,6 @@ verifyWasmMemoryContract(
 );
 kernelPackReceiptInputs = buildKernelPacks();
 }
-const browserPolyfills = {
-  assert: require.resolve("assert/"),
-  buffer: require.resolve("buffer/"),
-  events: require.resolve("events/"),
-  path: require.resolve("path-browserify"),
-  process: require.resolve("process/browser"),
-  stream: require.resolve("stream-browserify"),
-  util: require.resolve("util/"),
-};
 const wasiRuntimeBuild = esbuild.buildSync({
   absWorkingDir: repositoryRoot,
   entryPoints: [path.join(packageRoot, "src", "wasi-runtime.mjs")],
@@ -749,8 +772,6 @@ const wasiRuntimeBuild = esbuild.buildSync({
   platform: "browser",
   target: ["es2022"],
   outfile: wasiRuntimeOutput,
-  inject: [path.join(packageRoot, "src", "node-globals.mjs")],
-  alias: browserPolyfills,
   metafile: true,
 });
 const symbolicBackendBuild = esbuild.buildSync({
@@ -902,6 +923,29 @@ fs.writeFileSync(
     programs: dynamicPrograms,
   }),
 );
+const rawAutoReceiptPolicy = JSON.parse(
+  fs.readFileSync(autoReceiptPolicySource, "utf8"),
+);
+const verifiedAutoReceiptPolicy = autoReceiptPolicyApi.verifyPolicy(
+  rawAutoReceiptPolicy,
+  {
+    root: repositoryRoot,
+    sourceCommit: rawAutoReceiptPolicy.enabled
+      ? rawAutoReceiptPolicy.source_bundle.source_commit
+      : null,
+  },
+);
+fs.writeFileSync(
+  autoReceiptPolicyOutput,
+  JSON.stringify({
+    schema: verifiedAutoReceiptPolicy.schema,
+    enabled: verifiedAutoReceiptPolicy.enabled,
+    required_platforms: verifiedAutoReceiptPolicy.required_platforms,
+    source_bundle_contract: verifiedAutoReceiptPolicy.source_bundle_contract,
+    source_bundle: verifiedAutoReceiptPolicy.source_bundle,
+    entries: verifiedAutoReceiptPolicy.entries,
+  }),
+);
 fs.copyFileSync(
   require.resolve("plotly.js-dist-min/plotly.min.js"),
   plotlyOutput,
@@ -940,6 +984,12 @@ console.log(
     `${(fs.statSync(standardLibraryOutput).size / 1024 / 1024).toFixed(2)} MiB, ` +
     `lazy ${(fs.statSync(lazyModulesOutput).size / 1024 / 1024).toFixed(2)} MiB`,
 );
+run(process.execPath, [
+  wasmAbiAllowlist,
+  "--check",
+  "--dist",
+  outputDirectory,
+]);
 const receipt = writeProductionReceipt({
   repositoryRoot,
   packageRoot,
@@ -978,6 +1028,13 @@ const receipt = writeProductionReceipt({
     browserMagmaEnvironmentShim,
     ...treeSitterAssets.map((name) => path.join(vendorDirectory, name)),
     ...runtimeHostClosure.map(({ source }) => source),
+    autoReceiptPolicySource,
+    path.join(
+      repositoryRoot,
+      "tools",
+      "math-dispatch",
+      "hyperelliptic-auto-receipt-policy.cjs",
+    ),
     ...standardLibraryReceiptInputs,
     ...dynamicProgramInputs,
     lazyModuleGenerator,
@@ -1003,7 +1060,7 @@ function compilerDependencyClosure(sources, arguments_) {
   const files = new Set();
   for (const source of sources) {
     const result = spawnSync(clang, [
-      ...toolchain.lock.build.cFlags.filter(
+      ...targetCompileFlags.filter(
         (flag) => !flag.startsWith("-mexec-model="),
       ),
       `--sysroot=${sysroot}`,
@@ -1169,7 +1226,7 @@ function buildKernelPacks({ reuseLinkedArtifacts = false } = {}) {
       : ["gmp", "m", "wasi-emulated-signal"];
     if (!reuseLinkedArtifacts) {
       run(clang, [
-      ...toolchain.lock.build.cFlags,
+      ...targetCompileFlags,
       // Whole generated cores intentionally retain alternate lowering helpers
       // which are not reachable from the reviewed bridge export subset.
       "-Wno-unused-function",

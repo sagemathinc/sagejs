@@ -412,7 +412,7 @@
         },
         "word-prime-matrix-128": {
           "warm_ms": {
-            "median": 146.94000000000005
+            "median": 209.26000000000022
           }
         },
         "sparse-integer-right-kernel-192": {
@@ -432,7 +432,7 @@
         },
         "extension-field-polynomial-5632": {
           "warm_ms": {
-            "median": 2963.52
+            "median": 4837.9800000000005
           }
         },
         "hyperelliptic-local-factors-100000": {
@@ -507,7 +507,7 @@
           "warm_median_ratio": 1.4117978100815123
         },
         "extension-field-polynomial-5632": {
-          "warm_median_ratio": 3.432442471795681
+          "warm_median_ratio": 4.42606499835871
         },
         "hyperelliptic-local-factors-100000": {
           "warm_median_ratio": 1.111581818756322
@@ -550,7 +550,7 @@
           "warm_median_ratio": 1.0923131549668994
         },
         "graph-shortest-paths": {
-          "warm_median_ratio": 0.9901409596047045
+          "warm_median_ratio": 1.2844523105206684
         },
         "group-permutation-center": {
           "warm_median_ratio": 1.2252684940202208
@@ -571,7 +571,7 @@
           "warm_median_ratio": 9.064405543436358
         },
         "extension-field-polynomial-5632": {
-          "warm_median_ratio": 15.000906727141013
+          "warm_median_ratio": 19.65579732281183
         },
         "hyperelliptic-local-factors-100000": {
           "warm_median_ratio": 1.6220022668628244
@@ -608,7 +608,7 @@
           "warm_median_ratio": 1.2625552511390459
         },
         "moebius-range-100000": {
-          "warm_median_ratio": 0.34713572916514107
+          "warm_median_ratio": 0.5288924955720026
         },
         "graph-components-10000": {
           "warm_median_ratio": 0.9400806183370709
@@ -623,7 +623,7 @@
           "warm_median_ratio": 2.3403802181702726
         },
         "word-prime-matrix-128": {
-          "warm_median_ratio": 1.269028256698338
+          "warm_median_ratio": 1.7475258408728709
         },
         "sparse-integer-right-kernel-192": {
           "warm_median_ratio": 1.979964452539736
@@ -635,7 +635,7 @@
           "warm_median_ratio": 1.6807494262615872
         },
         "extension-field-polynomial-5632": {
-          "warm_median_ratio": 15.266142751086466
+          "warm_median_ratio": 26.966598985513006
         },
         "hyperelliptic-local-factors-100000": {
           "warm_median_ratio": 1.4081085907084967

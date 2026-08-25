@@ -53,6 +53,13 @@
       "rationale": "Standalone handwritten-C oracle copied from p1.c for the source-transparent Heilbronn compiler pilot."
     },
     {
+      "path": "bench/native-live-exact-vector-reference.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "native-compiler",
+      "rationale": "Standalone GMP ceiling for the lexical live-exact vector addmul witness; it is compiled only by the benchmark and is not linked into Sage.js."
+    },
+    {
       "path": "bench/number-field-order-resource-witness.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
@@ -186,6 +193,34 @@
       "rationale": "WASI compatibility symbols required by the browser build."
     },
     {
+      "path": "packages/wasm-toolchain/patches/sagejs_wasi_fenv_compat.h",
+      "category": "portability-shim",
+      "review_status": "audited",
+      "lane": "distribution",
+      "rationale": "Narrow BSD-licensed FLINT/WASI fenv macro and mkstemp declaration shim used only by the pinned direct FLINT cross-build."
+    },
+    {
+      "path": "packages/wasm-toolchain/probes/compiler-c.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Minimal C compile/link/run probe for the pinned direct WASI SDK; it has no production consumer."
+    },
+    {
+      "path": "packages/wasm-toolchain/probes/compiler-cxx.cc",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Minimal C++ compile/link/run probe for the pinned direct WASI SDK; it has no production consumer."
+    },
+    {
+      "path": "packages/wasm-toolchain/probes/wasi-abi.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Standalone raw Preview 1 conformance probe compiled and run against the Sage.js host and an independent standards-oriented host; it is not linked into production."
+    },
+    {
       "path": "packages/flint/include/sagejs/exact_polynomial_ffi.h",
       "category": "external-library-bridge",
       "review_status": "accepted",
@@ -289,6 +324,13 @@
       "review_status": "accepted",
       "lane": "hyperelliptic-curves",
       "rationale": "Host-neutral fixed-width ABI for exact genus-3 Mumford arithmetic, bounded progression search, cancellation, and recheckable element-order certificates."
+    },
+    {
+      "path": "packages/flint/include/sagejs/hyperelliptic/rational_jacobian_ffi.h",
+      "category": "representation-primitive",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Host-neutral fixed-scratch FLINT fmpq-polynomial workspace for source-transparent rational Cantor kernels; it supplies representation and lifetime primitives while the mathematical group law remains ordinary typed Python."
     },
     {
       "path": "packages/flint/include/sagejs/hyperelliptic/smalljac.h",
@@ -499,6 +541,20 @@
       "review_status": "accepted",
       "lane": "hyperelliptic-curves",
       "rationale": "Declarations for the private genus-3 Jacobian Node-API callbacks."
+    },
+    {
+      "path": "packages/flint/src/hyperelliptic/period_quadrature.c",
+      "category": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Bounded packed adapter that evaluates hyperelliptic edge quadrature and complete real-period refinements with mature Arb/Acb ball arithmetic; ordinary mpmath panels and pinned PARI periods provide independent differential oracles."
+    },
+    {
+      "path": "packages/flint/src/hyperelliptic/period_quadrature.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Declarations for the bounded hyperelliptic Arb/Acb edge and complete real-period adapters."
     },
     {
       "path": "packages/flint/src/hyperelliptic/smalljac.c",

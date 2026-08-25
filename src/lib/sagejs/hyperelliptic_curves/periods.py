@@ -43,18 +43,27 @@ from __future__ import annotations
 
 import json
 from itertools import permutations
-from math import ceil, isfinite
+from math import ceil, cos, isfinite, pi, sqrt
 from typing import Any
 
 import sagejs as sage
 import sagejs.runtime as runtime
 from mpmath import mp
+from sagejs.native import (
+    Float64Buffer,
+    is_compiled,
+    kernel_float64_buffer,
+    kernel_float64_zeros,
+    native,
+    uint64,
+)
 
 __all__ = [
     "AbelJacobiResult",
     "HyperellipticPeriodCapabilityError",
     "HyperellipticPeriodResult",
     "abel_jacobi",
+    "abel_jacobi_batch",
     "clear_period_cache",
     "period_cache_info",
     "real_period",
@@ -62,16 +71,31 @@ __all__ = [
 
 
 PERIOD_SCHEMA = "sagejs.hyperelliptic/real-period-v1"
+_TOPOLOGY_CACHE: dict[str, dict[str, Any]] = {}
 _GEOMETRY_CACHE: dict[tuple[str, int], dict[str, Any]] = {}
-_MODEL_PERIOD_CACHE: dict[tuple[Any, ...], dict[str, Any]] = {}
+_MODEL_PERIOD_CACHE: dict[tuple[Any, ...], Any] = {}
 _ABEL_CACHE: dict[tuple[Any, ...], dict[str, Any]] = {}
 _GAUSS_CACHE: dict[tuple[int, int], tuple[list[Any], list[Any]]] = {}
+_FLOAT64_GAUSS_CACHE: dict[int, tuple[list[float], list[float]]] = {}
+_FLOAT64_SAMPLE_CACHE: dict[tuple[int, int], list[float]] = {}
 _CACHE_LIMIT = 24
 _CACHE_STATS = {
+    "topology_hits": 0,
+    "topology_replans": 0,
+    "angular_path_hits": 0,
+    "exhaustive_path_fallbacks": 0,
     "geometry_hits": 0,
     "model_hits": 0,
     "abel_hits": 0,
     "computations": 0,
+    "float64_quadratures": 0,
+    "float64_fallbacks": 0,
+    "arb_quadratures": 0,
+    "arb_fallbacks": 0,
+    "complete_arb_periods": 0,
+    "complete_arb_fallbacks": 0,
+    "float64_sign_selections": 0,
+    "sign_selection_fallbacks": 0,
 }
 
 
@@ -99,6 +123,92 @@ def _payload_data(value: str) -> dict[str, Any]:
     if not isinstance(answer, dict):
         raise TypeError("a sealed hyperelliptic result payload must be a record")
     return answer
+
+
+class _PreparedModelData:
+    """One sealed model-period payload reusable without copying or encoding."""
+
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.payload = _sealed_payload(data)
+        self.requested_precision_bits = int(data["requested_precision_bits"])
+        self.achieved_stability_bits = int(data["achieved_stability_bits"])
+        self.genus = int(data["genus"])
+
+
+class _LazyModelPeriodData:
+    """A validated scalar result whose detailed witness is materialized on demand.
+
+    The complete FLINT boundary already performs exact-root isolation, two
+    independent Arb refinements, Riemann positivity, integral conjugation,
+    and exact real-lattice checks.  The ordinary implementation remains the
+    inspectable detailed witness and is run when matrix or diagnostic data is
+    requested, then cross-checked against this scalar before publication.
+    """
+
+    def __init__(
+        self,
+        curve: Any,
+        summary: dict[str, Any],
+        requested_bits: int,
+        max_refinements: int,
+        quadrature_order: int,
+        initial_panels: int,
+    ) -> None:
+        self.curve = curve
+        self.summary = summary
+        self.requested_precision_bits = int(requested_bits)
+        self.achieved_stability_bits = int(summary["achieved_stability_bits"])
+        self.genus = int(curve.genus())
+        self.max_refinements = int(max_refinements)
+        self.quadrature_order = int(quadrature_order)
+        self.initial_panels = int(initial_panels)
+        self._materialized: dict[str, Any] | None = None
+
+    def model_period_text(self) -> str:
+        return str(self.summary["model_real_period"])
+
+    def materialize(self) -> dict[str, Any]:
+        if self._materialized is not None:
+            return self._materialized
+        _complete_real_period_arb_evidence(self.summary)
+        detailed, _cache_hit = _model_period_data(
+            self.curve,
+            self.requested_precision_bits,
+            self.max_refinements,
+            self.quadrature_order,
+            self.initial_panels,
+            False,
+            False,
+        )
+        if not isinstance(detailed, dict):
+            raise AssertionError("the ordinary period witness did not materialize")
+        fast_value = mp.mpf(self.summary["model_real_period"])
+        detailed_value = mp.mpf(detailed["model_real_period"])
+        tolerance = 4 * max(
+            mp.mpf(self.summary["refinement_tolerance"]),
+            mp.mpf(detailed["refinement_tolerance"]),
+        )
+        difference = abs(fast_value - detailed_value)
+        if difference > tolerance:
+            raise HyperellipticPeriodCapabilityError(
+                "complete_arb_crosscheck_failed",
+                "the complete Arb period disagreed with the ordinary witness",
+                {
+                    "difference": str(difference),
+                    "tolerance": str(tolerance),
+                },
+            )
+        detailed["complete_arb_refinement_runs"] = _clone_data(
+            self.summary["refinement_runs"]
+        )
+        detailed["complete_arb_stage_timings_ms"] = _clone_data(
+            self.summary["stage_timings_ms"]
+        )
+        detailed["complete_arb_crosscheck_difference"] = _real_text(
+            difference, self.requested_precision_bits
+        )
+        self._materialized = detailed
+        return detailed
 
 
 def _validated_provenance(value: Any, path: str = "provenance") -> Any:
@@ -219,6 +329,20 @@ def _completed_model(curve: Any) -> tuple[Any, list[Any]]:
     return completed, list(completed.list())
 
 
+def _model_coefficient_lists(curve: Any) -> tuple[list[Any], list[Any]]:
+    """Return exact model coefficients for the mature FLINT boundary."""
+    base = curve.base_ring()
+    if getattr(base, "_kind", None) != "QQ" and base is not sage.QQ:
+        raise TypeError("real periods require a hyperelliptic curve over QQ")
+    f_value, h_value = curve.hyperelliptic_polynomials()
+    f_coefficients = list(f_value.list())
+    h_coefficients = list(h_value.list())
+    return (
+        f_coefficients if f_coefficients else [0],
+        h_coefficients if h_coefficients else [0],
+    )
+
+
 def _compare_exact(left: Any, right: Any) -> int:
     if left < right:
         return -1
@@ -315,6 +439,36 @@ def _noncrossing_order(
             min(abs(points[i + 1] - points[i]) for i in range(count - 1)),
         )
 
+    # Radial order about the centroid gives a deterministic simple-chain
+    # candidate for ordinary branch configurations.  Validate it with the
+    # same exact crossing/clearance predicate used by the exhaustive planner;
+    # degenerate radial arrangements retain the old bounded exhaustive
+    # fallback.  This avoids examining as many as 7! paths for a generic
+    # genus-3 model without weakening the numerical capability gate.
+    centroid = sum(points) / count
+
+    def angular_key(index: int) -> tuple[Any, Any, int]:
+        displacement = points[index] - centroid
+        return (mp.arg(displacement), abs(displacement), index)
+
+    angular = sorted(
+        range(count),
+        key=angular_key,
+    )
+    anchor = angular.index(0)
+    anchored = tuple(angular[anchor:] + angular[:anchor])
+    reversed_anchored = (0,) + tuple(reversed(anchored[1:]))
+    candidate = min(anchored, reversed_anchored)
+    candidate_quality = _path_quality(points, candidate)
+    root_scale = max([mp.mpf(1)] + [abs(point) for point in points])
+    if (
+        candidate_quality is not None
+        and candidate_quality[0] / root_scale >= mp.mpf(1) / 16
+    ):
+        _CACHE_STATS["angular_path_hits"] += 1
+        return (list(candidate), candidate_quality[0])
+    _CACHE_STATS["exhaustive_path_fallbacks"] += 1
+
     # Fixing the first exact-lexicographic root removes reversal duplicates.
     # At degree at most eight this examines at most 7! deterministic paths.
     best_order: tuple[int, ...] | None = None
@@ -347,27 +501,60 @@ def _noncrossing_order(
 
 
 def _branch_geometry(curve: Any, completed: Any, bits: int) -> dict[str, Any]:
-    key = (_model_key(curve), int(bits))
+    model_key = _model_key(curve)
+    key = (model_key, int(bits))
     cached = _GEOMETRY_CACHE.get(key)
     if cached is not None:
         _CACHE_STATS["geometry_hits"] += 1
         return cached
-    exact_roots = list(completed.roots(_global("QQbar"), multiplicities=False))
     degree = int(completed.degree())
-    if len(exact_roots) != degree:
-        raise ArithmeticError(
-            "the completed polynomial did not yield every branch root"
-        )
-    exact_roots = _sort_exact_roots(exact_roots)
+    topology: dict[str, Any] | None = _TOPOLOGY_CACHE.get(model_key)
+    topology_cache_hit = topology is not None
+    if topology is None:
+        exact_roots = list(completed.roots(_global("QQbar"), multiplicities=False))
+        if len(exact_roots) != degree:
+            raise ArithmeticError(
+                "the completed polynomial did not yield every branch root"
+            )
+        exact_roots = _sort_exact_roots(exact_roots)
+        topology = {
+            "exact_roots": exact_roots,
+            "order": None,
+            "real_root_count": sum(1 for root in exact_roots if root.is_real()),
+        }
+        if len(_TOPOLOGY_CACHE) >= _CACHE_LIMIT:
+            del _TOPOLOGY_CACHE[next(iter(_TOPOLOGY_CACHE))]
+        _TOPOLOGY_CACHE[model_key] = topology
+    else:
+        _CACHE_STATS["topology_hits"] += 1
+        exact_roots = topology["exact_roots"]
+        if len(exact_roots) != degree:
+            raise ArithmeticError("cached branch topology has the wrong degree")
     points = [_approximate_root(root, bits) for root in exact_roots]
-    order, clearance = _noncrossing_order(exact_roots, points)
+    stored_order = topology["order"]
+    quality = (
+        None
+        if stored_order is None
+        else _path_quality(points, tuple(int(index) for index in stored_order))
+    )
+    if quality is None:
+        if stored_order is not None:
+            _CACHE_STATS["topology_replans"] += 1
+        order, clearance = _noncrossing_order(exact_roots, points)
+        topology["order"] = list(order)
+    else:
+        if stored_order is None:
+            raise AssertionError("a validated branch path must have an order")
+        order = [int(index) for index in stored_order]
+        clearance = quality[0]
     result = {
         "exact_roots": exact_roots,
         "points": points,
         "order": order,
         "ordered_points": [points[index] for index in order],
-        "real_root_count": sum(1 for root in exact_roots if root.is_real()),
+        "real_root_count": int(topology["real_root_count"]),
         "clearance": clearance,
+        "topology_cache_hit": topology_cache_hit,
     }
     if len(_GEOMETRY_CACHE) >= _CACHE_LIMIT:
         del _GEOMETRY_CACHE[next(iter(_GEOMETRY_CACHE))]
@@ -396,6 +583,225 @@ def _canonical_edge_sign(values: list[Any]) -> list[Any]:
             return [-item for item in values] if mp.re(value) < 0 else values
         return [-item for item in values] if mp.im(value) < 0 else values
     return values
+
+
+@native
+def _period_edge_batch_float64(
+    edge_data: Float64Buffer,
+    other_roots: Float64Buffer,
+    samples: Float64Buffer,
+    output: Float64Buffer,
+    leading: float,
+    edge_count: uint64,
+    other_count: uint64,
+    genus: uint64,
+    sample_count: uint64,
+) -> float:
+    """Integrate every edge and differential in one packed binary64 call.
+
+    Complex square roots begin on the principal branch and are continued by
+    choosing the sign nearest to the preceding quadrature node.  The public
+    period code still subjects the result to independent panel refinement and
+    all Riemann, positivity, and integral-homology gates.
+    """
+    for edge in range(edge_count):
+        edge_start = edge * 4
+        midpoint_real = edge_data[edge_start]
+        midpoint_imag = edge_data[edge_start + 1]
+        half_real = edge_data[edge_start + 2]
+        half_imag = edge_data[edge_start + 3]
+        previous_real = 0.0
+        previous_imag = 0.0
+        has_previous: uint64 = 0
+        for sample in range(sample_count):
+            cosine = samples[2 * sample]
+            weight = samples[2 * sample + 1]
+            x_real = midpoint_real + half_real * cosine
+            x_imag = midpoint_imag + half_imag * cosine
+            residual_real = 0.0 - leading
+            residual_imag = 0.0
+            roots_start = edge * other_count * 2
+            for root_index in range(other_count):
+                root_start = roots_start + 2 * root_index
+                difference_real = x_real - other_roots[root_start]
+                difference_imag = x_imag - other_roots[root_start + 1]
+                product_real = (
+                    residual_real * difference_real - residual_imag * difference_imag
+                )
+                product_imag = (
+                    residual_real * difference_imag + residual_imag * difference_real
+                )
+                residual_real = product_real
+                residual_imag = product_imag
+            magnitude = sqrt(
+                residual_real * residual_real + residual_imag * residual_imag
+            )
+            square_real_squared = (magnitude + residual_real) / 2.0
+            square_imag_squared = (magnitude - residual_real) / 2.0
+            if square_real_squared < 0.0:
+                square_real_squared = 0.0
+            if square_imag_squared < 0.0:
+                square_imag_squared = 0.0
+            square_real = sqrt(square_real_squared)
+            square_imag = sqrt(square_imag_squared)
+            if residual_imag < 0.0:
+                square_imag = -square_imag
+            if has_previous == 1:
+                same_distance = (square_real - previous_real) * (
+                    square_real - previous_real
+                ) + (square_imag - previous_imag) * (square_imag - previous_imag)
+                opposite_distance = (-square_real - previous_real) * (
+                    -square_real - previous_real
+                ) + (-square_imag - previous_imag) * (-square_imag - previous_imag)
+                if opposite_distance < same_distance:
+                    square_real = -square_real
+                    square_imag = -square_imag
+            previous_real = square_real
+            previous_imag = square_imag
+            has_previous = 1
+            square_norm = square_real * square_real + square_imag * square_imag
+            factor_real = weight * square_real / square_norm
+            factor_imag = -weight * square_imag / square_norm
+            power_real = 1.0
+            power_imag = 0.0
+            for differential in range(genus):
+                output_start = 2 * (edge * genus + differential)
+                output[output_start] += (
+                    factor_real * power_real - factor_imag * power_imag
+                )
+                output[output_start + 1] += (
+                    factor_real * power_imag + factor_imag * power_real
+                )
+                next_power_real = power_real * x_real - power_imag * x_imag
+                next_power_imag = power_real * x_imag + power_imag * x_real
+                power_real = next_power_real
+                power_imag = next_power_imag
+    checksum = 0.0
+    for index in range(edge_count * genus * 2):
+        checksum += output[index]
+    return checksum
+
+
+def _float64_samples(panels: int, quadrature_order: int) -> list[float]:
+    key = (int(panels), int(quadrature_order))
+    cached = _FLOAT64_SAMPLE_CACHE.get(key)
+    if cached is not None:
+        return cached
+    rule = _FLOAT64_GAUSS_CACHE.get(quadrature_order)
+    if rule is None:
+        nodes = [0.0 for _index in range(quadrature_order)]
+        weights = [0.0 for _index in range(quadrature_order)]
+        half = (quadrature_order + 1) // 2
+        for index in range(half):
+            root = cos(pi * (index + 0.75) / (quadrature_order + 0.5))
+            derivative = 0.0
+            for _iteration in range(16):
+                previous = 1.0
+                current = root
+                for degree in range(2, quadrature_order + 1):
+                    following = (
+                        (2.0 * degree - 1.0) * root * current
+                        - (degree - 1.0) * previous
+                    ) / degree
+                    previous = current
+                    current = following
+                derivative = (
+                    quadrature_order * (root * current - previous) / (root * root - 1.0)
+                )
+                following_root = root - current / derivative
+                if abs(following_root - root) <= 4.0e-16:
+                    root = following_root
+                    break
+                root = following_root
+            weight = 2.0 / ((1.0 - root * root) * derivative * derivative)
+            nodes[index] = -root
+            nodes[quadrature_order - 1 - index] = root
+            weights[index] = weight
+            weights[quadrature_order - 1 - index] = weight
+        rule = (nodes, weights)
+        _FLOAT64_GAUSS_CACHE[quadrature_order] = rule
+    nodes, weights = rule
+    samples = []
+    panel_half = pi / (2.0 * panels)
+    for panel in range(panels):
+        panel_midpoint = pi * (panel + 0.5) / panels
+        for node, weight in zip(nodes, weights, strict=True):
+            samples.extend(
+                [
+                    cos(panel_midpoint + panel_half * node),
+                    panel_half * weight,
+                ]
+            )
+    if len(_FLOAT64_SAMPLE_CACHE) >= 16:
+        del _FLOAT64_SAMPLE_CACHE[next(iter(_FLOAT64_SAMPLE_CACHE))]
+    _FLOAT64_SAMPLE_CACHE[key] = samples
+    return samples
+
+
+def _edge_integrals_float64(
+    roots: list[Any],
+    leading: Any,
+    genus: int,
+    panels: int,
+    quadrature_order: int,
+    kernel: Any = None,
+) -> list[list[Any]]:
+    """Return all edge integrals through the packed binary64 kernel."""
+    if kernel is None:
+        kernel = _period_edge_batch_float64
+    edge_count = 2 * genus
+    other_count = len(roots) - 2
+    edge_data = []
+    other_roots = []
+    for edge in range(edge_count):
+        left = roots[edge]
+        right = roots[edge + 1]
+        midpoint = (left + right) / 2
+        half_edge = (right - left) / 2
+        residual = -leading
+        for root_index, root in enumerate(roots):
+            if root_index not in (edge, edge + 1):
+                residual *= midpoint - root
+                other_roots.extend([float(mp.re(root)), float(mp.im(root))])
+        if abs(residual) == 0:
+            raise ZeroDivisionError("an edge midpoint has zero residual")
+        edge_data.extend(
+            [
+                float(mp.re(midpoint)),
+                float(mp.im(midpoint)),
+                float(mp.re(half_edge)),
+                float(mp.im(half_edge)),
+            ]
+        )
+    packed_edges = kernel_float64_buffer(kernel, edge_data)
+    packed_roots = kernel_float64_buffer(kernel, other_roots)
+    packed_samples = kernel_float64_buffer(
+        kernel,
+        _float64_samples(panels, quadrature_order),
+    )
+    output = kernel_float64_zeros(
+        kernel,
+        2 * edge_count * genus,
+    )
+    kernel(
+        packed_edges,
+        packed_roots,
+        packed_samples,
+        output,
+        runtime.parse_float(str(leading)),
+        edge_count,
+        other_count,
+        genus,
+        panels * quadrature_order,
+    )
+    answer = []
+    for edge in range(edge_count):
+        values = []
+        for differential in range(genus):
+            start = 2 * (edge * genus + differential)
+            values.append(mp.mpc(output[start], output[start + 1]))
+        answer.append(_canonical_edge_sign(values))
+    return answer
 
 
 def _edge_integrals(
@@ -439,6 +845,385 @@ def _edge_integrals(
     return _canonical_edge_sign(values)
 
 
+def _edge_integrals_arb(
+    roots: list[Any],
+    leading: Any,
+    genus: int,
+    panels: int,
+    quadrature_order: int,
+    bits: int,
+) -> tuple[list[list[Any]], dict[str, Any]] | None:
+    """Evaluate one arbitrary-precision edge batch with FLINT Arb/Acb.
+
+    The native boundary evaluates exactly the same panelled Gauss--Legendre
+    formula as `_edge_integrals`, including square-root continuation and all
+    model differentials in one pass.  Root centres are still unenclosed
+    numerical approximations, so the returned Arb radii measure arithmetic
+    roundoff only.  Independent outer precision/panel refinement therefore
+    remains mandatory and the public result remains non-rigorous.
+    """
+    backend = runtime.flint_backend()
+    function = runtime.reflect.get(backend, "hyperellipticPeriodEdgeBatchArb")
+    if function is runtime.undefined:
+        return None
+    digits = _decimal_digits(bits + 32)
+    root_pairs = [
+        [_real_text(mp.re(root), bits + 32), _real_text(mp.im(root), bits + 32)]
+        for root in roots
+    ]
+    native = runtime.reflect.apply(
+        function,
+        backend,
+        [
+            root_pairs,
+            _real_text(leading, bits + 32),
+            genus,
+            panels,
+            quadrature_order,
+            bits,
+        ],
+    )
+    if str(runtime.reflect.get(native, "status")) != "ok":
+        raise ArithmeticError("the bounded Arb period quadrature did not converge")
+    raw_values = runtime.reflect.get(native, "values")
+    expected = 2 * genus * genus
+    if len(raw_values) != expected:
+        raise ArithmeticError("the Arb period quadrature returned the wrong shape")
+    accuracy_bits = bits
+    answer = []
+    for edge in range(2 * genus):
+        values = []
+        for differential in range(genus):
+            item = raw_values[edge * genus + differential]
+            real_value = str(runtime.reflect.get(item, "realMidpoint"))
+            imaginary_value = str(runtime.reflect.get(item, "imagMidpoint"))
+            accuracy_bits = min(
+                accuracy_bits,
+                int(runtime.reflect.get(item, "accuracyBits")),
+            )
+            values.append(mp.mpc(mp.mpf(real_value), mp.mpf(imaginary_value)))
+        answer.append(_canonical_edge_sign(values))
+    if accuracy_bits < max(24, bits // 2):
+        raise ArithmeticError(
+            "the Arb period quadrature did not retain enough arithmetic accuracy"
+        )
+    diagnostics = {
+        "arithmetic_accuracy_bits": int(accuracy_bits),
+        "work_precision_bits": int(runtime.reflect.get(native, "workPrecisionBits")),
+        "sample_evaluations": int(runtime.reflect.get(native, "sampleEvaluations")),
+        "decimal_digits": digits,
+    }
+    return (answer, diagnostics)
+
+
+def _complete_abel_jacobi_batch_arb(
+    f_coefficients: list[Any],
+    h_coefficients: list[Any],
+    point_coordinates: list[tuple[Any, Any]],
+    genus: int,
+    requested_bits: int,
+    max_refinements: int,
+    initial_panels: int,
+    quadrature_order: int,
+) -> dict[str, Any] | None:
+    """Evaluate a bounded point batch with two arbitrary-precision witnesses."""
+    backend = runtime.flint_backend()
+    function = runtime.reflect.get(backend, "hyperellipticAbelJacobiBatchArb")
+    if function is runtime.undefined:
+        return None
+    native = runtime.reflect.apply(
+        function,
+        backend,
+        [
+            [_exact_text(value) for value in f_coefficients],
+            [_exact_text(value) for value in h_coefficients],
+            [
+                [_exact_text(x_value), _exact_text(y_value)]
+                for x_value, y_value in point_coordinates
+            ],
+            genus,
+            requested_bits,
+            max_refinements,
+            initial_panels,
+            quadrature_order,
+        ],
+    )
+    if str(runtime.reflect.get(native, "status")) != "ok":
+        return None
+    raw_runs = runtime.reflect.get(native, "refinementRuns")
+    if len(raw_runs) < 2:
+        raise ArithmeticError(
+            "the Arb Abel--Jacobi batch did not return two refinement witnesses"
+        )
+    point_count = int(runtime.reflect.get(native, "pointCount"))
+    if point_count != len(point_coordinates):
+        raise ArithmeticError("the Arb Abel--Jacobi batch returned the wrong size")
+    raw_values = runtime.reflect.get(native, "values")
+    if len(raw_values) != point_count * genus:
+        raise ArithmeticError("the Arb Abel--Jacobi batch returned the wrong shape")
+    accuracy_bits = int(runtime.reflect.get(native, "arithmeticAccuracyBits"))
+    if accuracy_bits <= 44:
+        raise ArithmeticError(
+            "the Arb Abel--Jacobi batch did not retain arbitrary-precision evidence"
+        )
+    branch_order = [int(value) for value in runtime.reflect.get(native, "branchOrder")]
+    directions = [int(value) for value in runtime.reflect.get(native, "rayDirections")]
+    clearances = [str(value) for value in runtime.reflect.get(native, "rayClearances")]
+    if (
+        len(branch_order) not in (2 * genus + 1, 2 * genus + 2)
+        or len(directions) != point_count
+        or len(clearances) != point_count
+        or any(direction < 0 or direction >= 16 for direction in directions)
+    ):
+        raise ArithmeticError("the Arb Abel--Jacobi path evidence is malformed")
+    runs = []
+    previous_bits = 0
+    previous_panels = 0
+    for raw in raw_runs:
+        work_bits = int(runtime.reflect.get(raw, "workPrecisionBits"))
+        panels = int(runtime.reflect.get(raw, "quadraturePanels"))
+        order = int(runtime.reflect.get(raw, "quadratureOrder"))
+        samples = int(runtime.reflect.get(raw, "sampleEvaluations"))
+        engine = str(runtime.reflect.get(raw, "engine"))
+        raw_timings = runtime.reflect.get(raw, "stageTimingsMs")
+        if (
+            engine != "arb-acb-abel-jacobi-batch"
+            or work_bits <= previous_bits
+            or panels <= previous_panels
+            or order < 8
+            or order > 64
+            or samples != point_count * panels * order
+        ):
+            raise ArithmeticError(
+                "the Arb Abel--Jacobi batch returned malformed refinement evidence"
+            )
+        runs.append(
+            {
+                "engine": engine,
+                "work_precision_bits": work_bits,
+                "quadrature_panels": panels,
+                "quadrature_order": order,
+                "sample_evaluations": samples,
+                "stage_timings_ms": {
+                    "root_conversion": float(
+                        runtime.reflect.get(raw_timings, "rootConversion")
+                    ),
+                    "ray_planning": float(
+                        runtime.reflect.get(raw_timings, "rayPlanning")
+                    ),
+                    "quadrature": float(runtime.reflect.get(raw_timings, "quadrature")),
+                },
+            }
+        )
+        previous_bits = work_bits
+        previous_panels = panels
+    vectors = []
+    for point_index in range(point_count):
+        vector = []
+        for differential in range(genus):
+            item = raw_values[point_index * genus + differential]
+            vector.append(
+                (
+                    str(runtime.reflect.get(item, "realMidpoint")),
+                    str(runtime.reflect.get(item, "imagMidpoint")),
+                )
+            )
+        vectors.append(vector)
+    raw_stage_timings = runtime.reflect.get(native, "stageTimingsMs")
+    return {
+        "vectors": vectors,
+        "branch_order": branch_order,
+        "ray_directions": directions,
+        "ray_clearances": clearances,
+        "refinement_difference": str(
+            runtime.reflect.get(native, "refinementDifference")
+        ),
+        "refinement_tolerance": str(runtime.reflect.get(native, "refinementTolerance")),
+        "refinement_runs": runs,
+        "work_precision_bits": int(runtime.reflect.get(native, "workPrecisionBits")),
+        "achieved_stability_bits": int(
+            runtime.reflect.get(native, "achievedStabilityBits")
+        ),
+        "arithmetic_accuracy_bits": accuracy_bits,
+        "stage_timings_ms": {
+            "model_validation": float(
+                runtime.reflect.get(raw_stage_timings, "modelValidation")
+            ),
+            "exact_root_isolation": float(
+                runtime.reflect.get(raw_stage_timings, "exactRootIsolation")
+            ),
+            "branch_planning": float(
+                runtime.reflect.get(raw_stage_timings, "branchPlanning")
+            ),
+            "refinement_assembly": float(
+                runtime.reflect.get(raw_stage_timings, "refinementAssembly")
+            ),
+            "result_assembly": float(
+                runtime.reflect.get(raw_stage_timings, "resultAssembly")
+            ),
+        },
+    }
+
+
+def _complete_real_period_arb(
+    f_coefficients: list[Any],
+    h_coefficients: list[Any],
+    genus: int,
+    requested_bits: int,
+    max_refinements: int,
+    initial_panels: int,
+    quadrature_order: int,
+) -> dict[str, Any] | None:
+    """Run exact geometry, two refinements, and lattice assembly in FLINT.
+
+    This is a bounded scalar fast path.  The native operation uses exact
+    `fmpq_poly`/`qqbar` roots, Arb/Acb quadrature and matrix solves, and exact
+    FLINT integer kernels/SNF.  It returns only the refinement-stable scalar
+    and compact evidence; detailed public matrices are produced lazily by the
+    ordinary implementation and cross-checked against this value.
+    """
+    backend = runtime.flint_backend()
+    function = runtime.reflect.get(backend, "hyperellipticRealPeriodArb")
+    if function is runtime.undefined:
+        return None
+    native = runtime.reflect.apply(
+        function,
+        backend,
+        [
+            [_exact_text(value) for value in f_coefficients],
+            [_exact_text(value) for value in h_coefficients],
+            genus,
+            requested_bits,
+            max_refinements,
+            initial_panels,
+            quadrature_order,
+        ],
+    )
+    if str(runtime.reflect.get(native, "status")) != "ok":
+        return None
+    raw_runs = runtime.reflect.get(native, "refinementRuns")
+    if len(raw_runs) < 2:
+        raise ArithmeticError(
+            "the complete Arb period did not return two refinement witnesses"
+        )
+    model_period = str(runtime.reflect.get(native, "modelPeriod"))
+    if not mp.isfinite(mp.mpf(model_period)) or mp.mpf(model_period) <= 0:
+        raise ArithmeticError("the complete Arb period returned a nonpositive value")
+    achieved_bits = int(runtime.reflect.get(native, "achievedStabilityBits"))
+    accuracy_bits = int(runtime.reflect.get(native, "arithmeticAccuracyBits"))
+    if achieved_bits <= 44 or accuracy_bits <= 44:
+        raise ArithmeticError(
+            "the complete Arb period did not retain arbitrary-precision evidence"
+        )
+    return {
+        "_native_result": native,
+        "model_real_period": model_period,
+        "requested_precision_bits": requested_bits,
+        "achieved_stability_bits": achieved_bits,
+        "arithmetic_accuracy_bits": accuracy_bits,
+    }
+
+
+def _complete_real_period_arb_evidence(summary: dict[str, Any]) -> None:
+    """Validate and expand the compact native refinement record on demand."""
+    if "refinement_runs" in summary:
+        return
+    native = summary["_native_result"]
+    genus = int(runtime.reflect.get(native, "genus"))
+    raw_runs = runtime.reflect.get(native, "refinementRuns")
+    runs = []
+    previous_bits = 0
+    previous_panels = 0
+    for raw in raw_runs:
+        work_bits = int(runtime.reflect.get(raw, "workPrecisionBits"))
+        panels = int(runtime.reflect.get(raw, "quadraturePanels"))
+        order = int(runtime.reflect.get(raw, "quadratureOrder"))
+        samples = int(runtime.reflect.get(raw, "sampleEvaluations"))
+        engine = str(runtime.reflect.get(raw, "engine"))
+        raw_timings = runtime.reflect.get(raw, "stageTimingsMs")
+        if (
+            engine != "arb-acb-complete-period"
+            or work_bits <= previous_bits
+            or panels <= previous_panels
+            or order < 8
+            or order > 64
+            or samples != 2 * genus * panels * order
+        ):
+            raise ArithmeticError(
+                "the complete Arb period returned malformed refinement evidence"
+            )
+        runs.append(
+            {
+                "engine": engine,
+                "work_precision_bits": work_bits,
+                "quadrature_panels": panels,
+                "quadrature_order": order,
+                "sample_evaluations": samples,
+                "stage_timings_ms": {
+                    "root_conversion": float(
+                        runtime.reflect.get(raw_timings, "rootConversion")
+                    ),
+                    "quadrature": float(runtime.reflect.get(raw_timings, "quadrature")),
+                    "matrix_assembly": float(
+                        runtime.reflect.get(raw_timings, "matrixAssembly")
+                    ),
+                    "riemann_validation": float(
+                        runtime.reflect.get(raw_timings, "riemannValidation")
+                    ),
+                    "conjugation_validation": float(
+                        runtime.reflect.get(raw_timings, "conjugationValidation")
+                    ),
+                    "real_lattice": float(
+                        runtime.reflect.get(raw_timings, "realLattice")
+                    ),
+                },
+            }
+        )
+        previous_bits = work_bits
+        previous_panels = panels
+    raw_stage_timings = runtime.reflect.get(native, "stageTimingsMs")
+    summary.update(
+        {
+            "work_precision_bits": int(
+                runtime.reflect.get(native, "workPrecisionBits")
+            ),
+            "refinement_difference": str(
+                runtime.reflect.get(native, "refinementDifference")
+            ),
+            "refinement_tolerance": str(
+                runtime.reflect.get(native, "refinementTolerance")
+            ),
+            "branch_order": [
+                int(value) for value in runtime.reflect.get(native, "branchOrder")
+            ],
+            "branch_chain_clearance": str(
+                runtime.reflect.get(native, "branchChainClearance")
+            ),
+            "real_root_count": int(runtime.reflect.get(native, "realRootCount")),
+            "real_components": int(runtime.reflect.get(native, "realComponents")),
+            "sample_evaluations": int(runtime.reflect.get(native, "sampleEvaluations")),
+            "refinement_runs": runs,
+            "stage_timings_ms": {
+                "model_validation": float(
+                    runtime.reflect.get(raw_stage_timings, "modelValidation")
+                ),
+                "exact_root_isolation": float(
+                    runtime.reflect.get(raw_stage_timings, "exactRootIsolation")
+                ),
+                "branch_planning": float(
+                    runtime.reflect.get(raw_stage_timings, "branchPlanning")
+                ),
+                "refinement_assembly": float(
+                    runtime.reflect.get(raw_stage_timings, "refinementAssembly")
+                ),
+                "result_assembly": float(
+                    runtime.reflect.get(raw_stage_timings, "resultAssembly")
+                ),
+            },
+        }
+    )
+
+
 def _matrix_maximum(values: Any) -> Any:
     answer = mp.mpf(0)
     for row in range(values.rows):
@@ -447,31 +1232,283 @@ def _matrix_maximum(values: Any) -> Any:
     return answer
 
 
-def _periods_from_edges(edges: list[list[Any]], genus: int) -> dict[str, Any]:
+@native
+def _period_sign_mask_float64_kernel(
+    edge_data: Float64Buffer,
+    sign_data: Float64Buffer,
+    workspace: Float64Buffer,
+    output: Float64Buffer,
+    genus: uint64,
+    mask_count: uint64,
+) -> float:
+    """Preselect one Riemann-positive edge-sign mask in a packed call.
+
+    The output remains only a binary64 candidate.  `_periods_from_edges`
+    reconstructs the corresponding matrices at arbitrary precision and
+    applies the full symmetry and positivity gates before accepting it.
+    """
+    width = 2 * genus
+    square = genus * genus
+    augmented_real_start: uint64 = 0
+    augmented_imag_start: uint64 = 2 * square
+    inverse_real_start: uint64 = 4 * square
+    inverse_imag_start: uint64 = 5 * square
+    b_real_start: uint64 = 6 * square
+    b_imag_start: uint64 = 7 * square
+    tau_real_start: uint64 = 8 * square
+    tau_imag_start: uint64 = 9 * square
+    output[0] = 64.0
+
+    for row in range(genus):
+        for column in range(genus):
+            source = 2 * ((2 * column) * genus + row)
+            target = row * width + column
+            workspace[augmented_real_start + target] = 2.0 * edge_data[source]
+            workspace[augmented_imag_start + target] = 2.0 * edge_data[source + 1]
+        workspace[augmented_real_start + row * width + genus + row] = 1.0
+    for column in range(genus):
+        pivot = column
+        pivot_norm = 0.0
+        for row in range(column, genus):
+            index = row * width + column
+            real = workspace[augmented_real_start + index]
+            imaginary = workspace[augmented_imag_start + index]
+            norm = real * real + imaginary * imaginary
+            if norm > pivot_norm:
+                pivot = row
+                pivot_norm = norm
+        if pivot_norm == 0.0:
+            return 64.0
+        if pivot != column:
+            for entry in range(width):
+                left = column * width + entry
+                right = pivot * width + entry
+                temporary = workspace[augmented_real_start + left]
+                workspace[augmented_real_start + left] = workspace[
+                    augmented_real_start + right
+                ]
+                workspace[augmented_real_start + right] = temporary
+                temporary = workspace[augmented_imag_start + left]
+                workspace[augmented_imag_start + left] = workspace[
+                    augmented_imag_start + right
+                ]
+                workspace[augmented_imag_start + right] = temporary
+        pivot_index = column * width + column
+        pivot_real = workspace[augmented_real_start + pivot_index]
+        pivot_imag = workspace[augmented_imag_start + pivot_index]
+        pivot_denominator = pivot_real * pivot_real + pivot_imag * pivot_imag
+        for entry in range(width):
+            index = column * width + entry
+            real = workspace[augmented_real_start + index]
+            imaginary = workspace[augmented_imag_start + index]
+            workspace[augmented_real_start + index] = (
+                real * pivot_real + imaginary * pivot_imag
+            ) / pivot_denominator
+            workspace[augmented_imag_start + index] = (
+                imaginary * pivot_real - real * pivot_imag
+            ) / pivot_denominator
+        for row in range(genus):
+            if row != column:
+                factor_index = row * width + column
+                factor_real = workspace[augmented_real_start + factor_index]
+                factor_imag = workspace[augmented_imag_start + factor_index]
+                for entry in range(width):
+                    source = column * width + entry
+                    target = row * width + entry
+                    source_real = workspace[augmented_real_start + source]
+                    source_imag = workspace[augmented_imag_start + source]
+                    workspace[augmented_real_start + target] -= (
+                        factor_real * source_real - factor_imag * source_imag
+                    )
+                    workspace[augmented_imag_start + target] -= (
+                        factor_real * source_imag + factor_imag * source_real
+                    )
+
+    for row in range(genus):
+        for column in range(genus):
+            source = row * width + genus + column
+            target = row * genus + column
+            workspace[inverse_real_start + target] = workspace[
+                augmented_real_start + source
+            ]
+            workspace[inverse_imag_start + target] = workspace[
+                augmented_imag_start + source
+            ]
+
+    best_score = 1.0e300
+    for mask in range(mask_count):
+        for index in range(4 * square):
+            workspace[b_real_start + index] = 0.0
+        for row in range(genus):
+            for column in range(genus):
+                target = row * genus + column
+                for item in range(column, genus):
+                    odd_edge = 2 * item + 1
+                    sign = sign_data[mask * width + odd_edge]
+                    source = 2 * (odd_edge * genus + row)
+                    workspace[b_real_start + target] += 2.0 * sign * edge_data[source]
+                    workspace[b_imag_start + target] += (
+                        2.0 * sign * edge_data[source + 1]
+                    )
+        maximum = 1.0
+        for row in range(genus):
+            even_sign = sign_data[mask * width + 2 * row]
+            for column in range(genus):
+                target = row * genus + column
+                for index in range(genus):
+                    left = row * genus + index
+                    right = index * genus + column
+                    workspace[tau_real_start + target] += even_sign * (
+                        workspace[inverse_real_start + left]
+                        * workspace[b_real_start + right]
+                        - workspace[inverse_imag_start + left]
+                        * workspace[b_imag_start + right]
+                    )
+                    workspace[tau_imag_start + target] += even_sign * (
+                        workspace[inverse_real_start + left]
+                        * workspace[b_imag_start + right]
+                        + workspace[inverse_imag_start + left]
+                        * workspace[b_real_start + right]
+                    )
+                real = workspace[tau_real_start + target]
+                imaginary = workspace[tau_imag_start + target]
+                norm = sqrt(real * real + imaginary * imaginary)
+                if norm > maximum:
+                    maximum = norm
+        defect = 0.0
+        for row in range(genus):
+            for column in range(genus):
+                left = row * genus + column
+                right = column * genus + row
+                real = (
+                    workspace[tau_real_start + left] - workspace[tau_real_start + right]
+                )
+                imaginary = (
+                    workspace[tau_imag_start + left] - workspace[tau_imag_start + right]
+                )
+                difference = sqrt(real * real + imaginary * imaginary)
+                if difference > defect:
+                    defect = difference
+        score = defect / maximum
+        accepted: uint64 = 1
+        if score >= best_score:
+            accepted = 0
+        y00 = workspace[tau_imag_start]
+        if y00 <= 0.0:
+            accepted = 0
+        y01 = (workspace[tau_imag_start + 1] + workspace[tau_imag_start + genus]) / 2.0
+        y11 = workspace[tau_imag_start + genus + 1]
+        determinant2 = y00 * y11 - y01 * y01
+        if determinant2 <= 0.0:
+            accepted = 0
+        if genus == 3:
+            y02 = (
+                workspace[tau_imag_start + 2] + workspace[tau_imag_start + 2 * genus]
+            ) / 2.0
+            y12 = (
+                workspace[tau_imag_start + genus + 2]
+                + workspace[tau_imag_start + 2 * genus + 1]
+            ) / 2.0
+            y22 = workspace[tau_imag_start + 2 * genus + 2]
+            determinant3 = (
+                y00 * (y11 * y22 - y12 * y12)
+                - y01 * (y01 * y22 - y12 * y02)
+                + y02 * (y01 * y12 - y11 * y02)
+            )
+            if determinant3 <= 0.0:
+                accepted = 0
+        if accepted == 1:
+            output[0] = float(mask)
+            best_score = score
+    return best_score
+
+
+def _float64_period_sign_mask(edges: list[list[Any]], genus: int) -> int | None:
+    """Select the positive near-symmetric sign pattern in binary64.
+
+    This is only a preselector.  The chosen pattern is reconstructed and
+    validated with the arbitrary-precision Riemann gates below; a failed
+    preselection falls back to the exhaustive arbitrary-precision search.
+    """
+    edge_data = []
+    for edge in range(2 * genus):
+        for row in range(genus):
+            edge_data.extend(
+                [
+                    runtime.parse_float(str(mp.re(edges[edge][row]))),
+                    runtime.parse_float(str(mp.im(edges[edge][row]))),
+                ]
+            )
+    kernel = _period_sign_mask_float64_kernel
+    mask_count = 1 << (2 * genus - 1)
+    sign_data = []
+    for mask in range(mask_count):
+        sign_data.append(1.0)
+        for edge in range(1, 2 * genus):
+            sign_data.append(-1.0 if mask & (1 << (edge - 1)) else 1.0)
+    packed_edges = kernel_float64_buffer(kernel, edge_data)
+    packed_signs = kernel_float64_buffer(kernel, sign_data)
+    workspace = kernel_float64_zeros(kernel, 10 * genus * genus)
+    output = kernel_float64_zeros(kernel, 1)
+    kernel(packed_edges, packed_signs, workspace, output, genus, mask_count)
+    mask = int(output[0])
+    return None if mask == 64 else mask
+
+
+def _periods_from_edges(
+    edges: list[list[Any]], genus: int, force_exhaustive: bool = False
+) -> dict[str, Any]:
     best: dict[str, Any] | None = None
+    base_a = mp.matrix(genus, genus)
+    for column in range(genus):
+        for row in range(genus):
+            base_a[row, column] = 2 * edges[2 * column][row]
+    try:
+        inverse_a = base_a**-1
+    except ZeroDivisionError as caught:
+        raise HyperellipticPeriodCapabilityError(
+            "riemann_form_singular",
+            "the chain-cycle A-period matrix is singular",
+        ) from caught
+    preferred_mask = (
+        None if force_exhaustive else _float64_period_sign_mask(edges, genus)
+    )
+    masks = (
+        [preferred_mask]
+        if preferred_mask is not None
+        else list(range(1 << (2 * genus - 1)))
+    )
+    if preferred_mask is not None:
+        _CACHE_STATS["float64_sign_selections"] += 1
+    elif not force_exhaustive:
+        _CACHE_STATS["sign_selection_fallbacks"] += 1
     # A simultaneous sign change is immaterial, so fix the first edge sign.
-    for mask in range(1 << (2 * genus - 1)):
+    for mask in masks:
         signs = [1]
         for index in range(1, 2 * genus):
             signs.append(-1 if mask & (1 << (index - 1)) else 1)
-        a_matrix = mp.matrix(genus, genus)
         b_matrix = mp.matrix(genus, genus)
         for column in range(genus):
             for row in range(genus):
-                a_matrix[row, column] = 2 * signs[2 * column] * edges[2 * column][row]
                 b_matrix[row, column] = 2 * sum(
                     signs[2 * item + 1] * edges[2 * item + 1][row]
                     for item in range(column, genus)
                 )
-        try:
-            tau = a_matrix**-1 * b_matrix
-        except ZeroDivisionError:
-            continue
+        tau = mp.matrix(genus, genus)
+        for row in range(genus):
+            for column in range(genus):
+                tau[row, column] = signs[2 * row] * sum(
+                    inverse_a[row, index] * b_matrix[index, column]
+                    for index in range(genus)
+                )
         symmetry_defect = max(
             abs(tau[row, column] - tau[column, row])
             for row in range(genus)
             for column in range(genus)
         )
+        score = symmetry_defect / max(mp.mpf(1), _matrix_maximum(tau))
+        if best is not None and score >= best["symmetry_relative_defect"]:
+            continue
         imaginary_symmetric = mp.matrix(
             [
                 [
@@ -485,10 +1522,7 @@ def _periods_from_edges(edges: list[list[Any]], genus: int) -> dict[str, Any]:
         minimum_eigenvalue = min(eigenvalues)
         if minimum_eigenvalue <= 0:
             continue
-        score = symmetry_defect / max(mp.mpf(1), _matrix_maximum(tau))
         candidate = {
-            "a": a_matrix,
-            "b": b_matrix,
             "tau": tau,
             "signs": signs,
             "symmetry_defect": symmetry_defect,
@@ -498,10 +1532,26 @@ def _periods_from_edges(edges: list[list[Any]], genus: int) -> dict[str, Any]:
         if best is None or score < best["symmetry_relative_defect"]:
             best = candidate
     if best is None:
+        if preferred_mask is not None:
+            _CACHE_STATS["sign_selection_fallbacks"] += 1
+            # Binary64 selected a pattern which failed the full-precision
+            # positivity check; retry every sign in arbitrary precision.
+            return _periods_from_edges(edges, genus, True)
         raise HyperellipticPeriodCapabilityError(
             "riemann_form_not_positive",
             "no square-root continuation produced a positive Riemann matrix",
         )
+    a_matrix = mp.matrix(genus, genus)
+    b_matrix = mp.matrix(genus, genus)
+    for column in range(genus):
+        for row in range(genus):
+            a_matrix[row, column] = best["signs"][2 * column] * base_a[row, column]
+            b_matrix[row, column] = 2 * sum(
+                best["signs"][2 * item + 1] * edges[2 * item + 1][row]
+                for item in range(column, genus)
+            )
+    best["a"] = a_matrix
+    best["b"] = b_matrix
     period_matrix = mp.matrix(genus, 2 * genus)
     for row in range(genus):
         for column in range(genus):
@@ -523,32 +1573,151 @@ def _integer_matrix_product(
     ]
 
 
-def _conjugation_action(
-    period_matrix: Any, genus: int, tolerance: Any
-) -> dict[str, Any]:
+@native
+def _conjugation_action_float64_kernel(
+    period_data: Float64Buffer,
+    workspace: Float64Buffer,
+    output: Float64Buffer,
+    genus: uint64,
+) -> float:
+    """Solve `B^-1 diag(1,-1) B` as one packed binary64 preselection.
+
+    This kernel does not certify integrality.  Its rounded output is always
+    checked against the arbitrary-precision period matrix by
+    `_conjugation_action`, including the involution and anti-symplectic gates.
+    """
     dimension = 2 * genus
-    real_basis = mp.matrix(dimension, dimension)
+    width = 2 * dimension
+    for row in range(dimension):
+        sign = 1.0
+        period_row = row
+        component: uint64 = 0
+        if row >= genus:
+            sign = -1.0
+            period_row = row - genus
+            component = 1
+        for column in range(dimension):
+            source = 2 * (period_row * dimension + column) + component
+            value = period_data[source]
+            workspace[row * width + column] = value
+            workspace[row * width + dimension + column] = sign * value
+
+    minimum_pivot = 1.0e300
     for column in range(dimension):
-        for row in range(genus):
-            real_basis[row, column] = mp.re(period_matrix[row, column])
-            real_basis[genus + row, column] = mp.im(period_matrix[row, column])
-    conjugation = mp.diag([1 for _ in range(genus)] + [-1 for _ in range(genus)])
-    try:
-        approximate = real_basis**-1 * conjugation * real_basis
-    except ZeroDivisionError as error:
-        raise HyperellipticPeriodCapabilityError(
-            "period_lattice_rank_deficient",
-            "the numerical period lattice does not have full real rank",
-        ) from error
-    integral = [
-        [int(mp.nint(approximate[row, column])) for column in range(dimension)]
+        pivot = column
+        pivot_norm = 0.0
+        for row in range(column, dimension):
+            value = workspace[row * width + column]
+            norm = value * value
+            if norm > pivot_norm:
+                pivot = row
+                pivot_norm = norm
+        if pivot_norm == 0.0:
+            return 0.0
+        pivot_size = sqrt(pivot_norm)
+        if pivot_size < minimum_pivot:
+            minimum_pivot = pivot_size
+        if pivot != column:
+            for entry in range(width):
+                left = column * width + entry
+                right = pivot * width + entry
+                temporary = workspace[left]
+                workspace[left] = workspace[right]
+                workspace[right] = temporary
+        pivot_value = workspace[column * width + column]
+        for entry in range(width):
+            index = column * width + entry
+            workspace[index] /= pivot_value
+        for row in range(dimension):
+            if row != column:
+                factor = workspace[row * width + column]
+                for entry in range(width):
+                    workspace[row * width + entry] -= (
+                        factor * workspace[column * width + entry]
+                    )
+
+    for row in range(dimension):
+        for column in range(dimension):
+            output[row * dimension + column] = workspace[
+                row * width + dimension + column
+            ]
+    return minimum_pivot
+
+
+def _float64_conjugation_preselection(
+    period_matrix: Any, genus: int
+) -> list[list[int]] | None:
+    """Return a packed binary64 candidate for full-precision validation."""
+    dimension = 2 * genus
+    period_data = []
+    for row in range(genus):
+        for column in range(dimension):
+            period_data.extend(
+                [
+                    runtime.parse_float(str(mp.re(period_matrix[row, column]))),
+                    runtime.parse_float(str(mp.im(period_matrix[row, column]))),
+                ]
+            )
+    kernel = _conjugation_action_float64_kernel
+    packed_periods = kernel_float64_buffer(kernel, period_data)
+    workspace = kernel_float64_zeros(kernel, 2 * dimension * dimension)
+    output = kernel_float64_zeros(kernel, dimension * dimension)
+    minimum_pivot = kernel(packed_periods, workspace, output, genus)
+    if not isfinite(minimum_pivot) or minimum_pivot <= 1.0e-14:
+        return None
+    if any(not isfinite(output[index]) for index in range(dimension * dimension)):
+        return None
+    return [
+        [int(mp.nint(output[row * dimension + column])) for column in range(dimension)]
         for row in range(dimension)
     ]
-    defect = max(
-        abs(approximate[row, column] - integral[row][column])
-        for row in range(dimension)
-        for column in range(dimension)
-    )
+
+
+def _conjugation_action(
+    period_matrix: Any,
+    genus: int,
+    tolerance: Any,
+    preferred: list[list[int]] | None = None,
+) -> dict[str, Any]:
+    dimension = 2 * genus
+    if preferred is None:
+        real_basis = mp.matrix(dimension, dimension)
+        for column in range(dimension):
+            for row in range(genus):
+                real_basis[row, column] = mp.re(period_matrix[row, column])
+                real_basis[genus + row, column] = mp.im(period_matrix[row, column])
+        conjugation = mp.diag([1 for _ in range(genus)] + [-1 for _ in range(genus)])
+        try:
+            approximate = real_basis**-1 * conjugation * real_basis
+        except ZeroDivisionError as error:
+            raise HyperellipticPeriodCapabilityError(
+                "period_lattice_rank_deficient",
+                "the numerical period lattice does not have full real rank",
+            ) from error
+        integral = [
+            [int(mp.nint(approximate[row, column])) for column in range(dimension)]
+            for row in range(dimension)
+        ]
+        defect = max(
+            abs(approximate[row, column] - integral[row][column])
+            for row in range(dimension)
+            for column in range(dimension)
+        )
+    else:
+        integral = [list(row) for row in preferred]
+        if len(integral) != dimension or any(len(row) != dimension for row in integral):
+            raise ValueError("a preferred conjugation action has the wrong shape")
+        defect = max(
+            abs(
+                mp.conj(period_matrix[row, column])
+                - sum(
+                    period_matrix[row, index] * integral[index][column]
+                    for index in range(dimension)
+                )
+            )
+            for row in range(genus)
+            for column in range(dimension)
+        )
     if defect > tolerance:
         raise HyperellipticPeriodCapabilityError(
             "conjugation_not_integral",
@@ -685,6 +1854,8 @@ def _run_period_computation(
     bits: int,
     panels: int,
     quadrature_order: int,
+    allow_float64: bool = True,
+    preferred_conjugation: list[list[int]] | None = None,
 ) -> dict[str, Any]:
     genus = int(curve.genus())
     with mp.workprec(bits):
@@ -711,31 +1882,169 @@ def _run_period_computation(
         quadrature_attempts = []
         periods = None
         internal_tolerance = mp.mpf(0)
+        use_float64 = bool(allow_float64)
+        use_arb = True
+        quadrature_engine = "mpmath"
+        quadrature_evidence_bits = bits
         for _attempt in range(6):
-            edges = [
-                _edge_integrals(
-                    roots,
-                    leading,
-                    edge,
-                    genus,
-                    effective_panels,
-                    effective_order,
-                )
-                for edge in range(2 * genus)
-            ]
+            quadrature_engine = "mpmath"
+            fallback_reason = None
+            edges: list[list[Any]] | None = None
+            arb_diagnostics: dict[str, Any] | None = None
+            if use_float64:
+                try:
+                    edges = _edge_integrals_float64(
+                        roots,
+                        leading,
+                        genus,
+                        effective_panels,
+                        effective_order,
+                    )
+                    if any(
+                        not isfinite(float(mp.re(value)))
+                        or not isfinite(float(mp.im(value)))
+                        for edge_values in edges
+                        for value in edge_values
+                    ):
+                        raise ArithmeticError(
+                            "binary64 period quadrature produced a non-finite value"
+                        )
+                    quadrature_engine = (
+                        "packed-float64-native"
+                        if is_compiled(_period_edge_batch_float64)
+                        else "packed-float64-dynamic"
+                    )
+                    _CACHE_STATS["float64_quadratures"] += 1
+                except (
+                    ArithmeticError,
+                    OverflowError,
+                    RuntimeError,
+                    TypeError,
+                    ValueError,
+                    ZeroDivisionError,
+                ) as caught:
+                    use_float64 = False
+                    _CACHE_STATS["float64_fallbacks"] += 1
+                    fallback_reason = (
+                        "packed_float64_exception:"
+                        + type(caught).__name__
+                        + ":"
+                        + str(caught)
+                    )
+            if not use_float64 and use_arb:
+                try:
+                    arb_result = _edge_integrals_arb(
+                        roots,
+                        leading,
+                        genus,
+                        effective_panels,
+                        effective_order,
+                        bits,
+                    )
+                    if arb_result is None:
+                        use_arb = False
+                    else:
+                        edges, arb_diagnostics = arb_result
+                        quadrature_engine = "arb-acb-gauss-legendre"
+                        quadrature_evidence_bits = int(
+                            arb_diagnostics["arithmetic_accuracy_bits"]
+                        )
+                        _CACHE_STATS["arb_quadratures"] += 1
+                except (
+                    ArithmeticError,
+                    OverflowError,
+                    ValueError,
+                    ZeroDivisionError,
+                ) as caught:
+                    use_arb = False
+                    _CACHE_STATS["arb_fallbacks"] += 1
+                    fallback_reason = (
+                        "arb_acb_exception:" + type(caught).__name__ + ":" + str(caught)
+                    )
+            if not use_float64 and edges is None:
+                edges = [
+                    _edge_integrals(
+                        roots,
+                        leading,
+                        edge,
+                        genus,
+                        effective_panels,
+                        effective_order,
+                    )
+                    for edge in range(2 * genus)
+                ]
+                quadrature_evidence_bits = bits
+            if edges is None:
+                raise AssertionError("period quadrature did not produce edge integrals")
             periods = _periods_from_edges(edges, genus)
             scale = max(mp.mpf(1), _matrix_maximum(periods["period_matrix"]))
-            internal_tolerance = mp.power(2, -max(24, min(100, bits // 2))) * scale
+            validation_bits = max(24, min(100, bits // 2))
+            if quadrature_engine.startswith("packed-float64-"):
+                # The packed kernel is intentionally binary64.  Its Riemann
+                # gate must not demand more than the representation can
+                # express; the outer independent panel/precision refinement
+                # still enforces the requested result, and higher-precision
+                # refinement runs leave this binary64 path.
+                validation_bits = min(validation_bits, 44)
+            internal_tolerance = mp.power(2, -validation_bits) * scale
             quadrature_attempts.append(
                 {
                     "order": effective_order,
                     "panels": effective_panels,
+                    "engine": quadrature_engine,
+                    "representation_bits": (
+                        53
+                        if quadrature_engine.startswith("packed-float64-")
+                        else int(arb_diagnostics["work_precision_bits"])
+                        if arb_diagnostics is not None
+                        else bits
+                    ),
+                    "riemann_target_bits": validation_bits,
+                    "riemann_achieved_bits": _stable_bits(
+                        periods["symmetry_relative_defect"],
+                        (
+                            53
+                            if quadrature_engine.startswith("packed-float64-")
+                            else bits
+                        ),
+                    ),
+                    "fallback_reason": fallback_reason,
+                    "arithmetic_accuracy_bits": (
+                        None
+                        if arb_diagnostics is None
+                        else int(arb_diagnostics["arithmetic_accuracy_bits"])
+                    ),
+                    "sample_evaluations": (
+                        2 * genus * effective_panels * effective_order
+                        if arb_diagnostics is None
+                        else int(arb_diagnostics["sample_evaluations"])
+                    ),
                     "riemann_relative_defect": str(periods["symmetry_relative_defect"]),
                     "tolerance": str(internal_tolerance),
                 }
             )
             if periods["symmetry_relative_defect"] <= internal_tolerance:
                 break
+            if use_float64:
+                # A bad square-root chart is visible in the Riemann defect.
+                # Retry at the same numerical parameters with arbitrary-
+                # precision branch continuation before increasing the work.
+                use_float64 = False
+                _CACHE_STATS["float64_fallbacks"] += 1
+                quadrature_attempts[-1]["fallback_reason"] = (
+                    "riemann_defect_exceeded_binary64_gate"
+                )
+                continue
+            if quadrature_engine == "arb-acb-gauss-legendre":
+                # Preserve the ordinary implementation as a capability and
+                # branch-chart fallback.  A native result that misses the
+                # Riemann gate is never repaired or silently published.
+                use_arb = False
+                _CACHE_STATS["arb_fallbacks"] += 1
+                quadrature_attempts[-1]["fallback_reason"] = (
+                    "riemann_defect_exceeded_arb_gate"
+                )
+                continue
             effective_panels *= 2
             effective_order = min(64, 2 * effective_order)
         if periods is None or periods["symmetry_relative_defect"] > internal_tolerance:
@@ -744,9 +2053,36 @@ def _run_period_computation(
                 "the Riemann symmetry relation did not stabilize after adaptive quadrature refinement",
                 {"attempts": quadrature_attempts},
             )
-        action = _conjugation_action(
-            periods["period_matrix"], genus, 128 * internal_tolerance
-        )
+        conjugation_preselected = False
+        action_preference = preferred_conjugation
+        if action_preference is None:
+            action_preference = _float64_conjugation_preselection(
+                periods["period_matrix"], genus
+            )
+            conjugation_preselected = action_preference is not None
+        if preferred_conjugation is None and action_preference is not None:
+            try:
+                action = _conjugation_action(
+                    periods["period_matrix"],
+                    genus,
+                    128 * internal_tolerance,
+                    action_preference,
+                )
+            except HyperellipticPeriodCapabilityError:
+                conjugation_preselected = False
+                action = _conjugation_action(
+                    periods["period_matrix"],
+                    genus,
+                    128 * internal_tolerance,
+                    None,
+                )
+        else:
+            action = _conjugation_action(
+                periods["period_matrix"],
+                genus,
+                128 * internal_tolerance,
+                action_preference,
+            )
         lattice = _real_lattice_data(
             periods["period_matrix"],
             action["matrix"],
@@ -761,6 +2097,13 @@ def _run_period_computation(
             "requested_quadrature_order": quadrature_order,
             "relative_branch_clearance": relative_clearance,
             "quadrature_attempts": quadrature_attempts,
+            "quadrature_evidence_bits": (
+                44
+                if quadrature_engine.startswith("packed-float64-")
+                else int(quadrature_evidence_bits)
+            ),
+            "conjugation_action_reused": preferred_conjugation is not None,
+            "conjugation_action_preselected": conjugation_preselected,
             "geometry": geometry,
             "periods": periods,
             "action": action,
@@ -808,6 +2151,7 @@ def _serialize_model_result(
     achieved_stability_bits = min(
         _stable_bits(difference / scale, bits),
         _stable_bits(periods_relative, bits),
+        int(run["quadrature_evidence_bits"]),
     )
     return {
         "model_key": _model_key(curve),
@@ -907,19 +2251,52 @@ def _model_period_data(
     quadrature_order: int,
     initial_panels: int,
     use_cache: bool,
-) -> tuple[dict[str, Any], bool]:
-    completed, coefficients = _completed_model(curve)
-    cache_key = (
-        _model_key(curve),
-        requested_bits,
-        max_refinements,
-        quadrature_order,
-        initial_panels,
-    )
-    if use_cache and cache_key in _MODEL_PERIOD_CACHE:
+    allow_complete_arb: bool = True,
+) -> tuple[Any, bool]:
+    cache_key = None
+    if use_cache:
+        cache_key = (
+            _model_key(curve),
+            requested_bits,
+            max_refinements,
+            quadrature_order,
+            initial_panels,
+        )
+    if cache_key is not None and cache_key in _MODEL_PERIOD_CACHE:
         _CACHE_STATS["model_hits"] += 1
-        return (_clone_data(_MODEL_PERIOD_CACHE[cache_key]), True)
+        return (_MODEL_PERIOD_CACHE[cache_key], True)
     _CACHE_STATS["computations"] += 1
+    if allow_complete_arb and requested_bits > 44:
+        try:
+            f_coefficients, h_coefficients = _model_coefficient_lists(curve)
+            summary = _complete_real_period_arb(
+                f_coefficients,
+                h_coefficients,
+                int(curve.genus()),
+                requested_bits,
+                max_refinements,
+                initial_panels,
+                quadrature_order,
+            )
+        except (ArithmeticError, OverflowError, RuntimeError, TypeError, ValueError):
+            summary = None
+        if summary is not None:
+            _CACHE_STATS["complete_arb_periods"] += 1
+            lazy = _LazyModelPeriodData(
+                curve,
+                summary,
+                requested_bits,
+                max_refinements,
+                quadrature_order,
+                initial_panels,
+            )
+            if cache_key is not None:
+                if len(_MODEL_PERIOD_CACHE) >= _CACHE_LIMIT:
+                    del _MODEL_PERIOD_CACHE[next(iter(_MODEL_PERIOD_CACHE))]
+                _MODEL_PERIOD_CACHE[cache_key] = lazy
+            return (lazy, False)
+        _CACHE_STATS["complete_arb_fallbacks"] += 1
+    completed, coefficients = _completed_model(curve)
     target_tolerance = mp.power(2, -max(20, min(80, requested_bits // 2)))
     previous = None
     previous_order = None
@@ -936,6 +2313,8 @@ def _model_period_data(
             work_bits,
             panels,
             quadrature_order,
+            requested_bits <= 44,
+            None if previous is None else previous["action"]["matrix"],
         )
         order = tuple(run["geometry"]["order"])
         refinement_runs.append(
@@ -943,6 +2322,8 @@ def _model_period_data(
                 "work_precision_bits": work_bits,
                 "quadrature_order": int(run["quadrature_order"]),
                 "quadrature_panels": int(run["panels"]),
+                "quadrature_evidence_bits": int(run["quadrature_evidence_bits"]),
+                "conjugation_action_reused": bool(run["conjugation_action_reused"]),
                 "requested_quadrature_order": quadrature_order,
                 "requested_quadrature_panels": panels,
                 "relative_branch_clearance": _real_text(
@@ -950,12 +2331,21 @@ def _model_period_data(
                 ),
                 "quadrature_attempts": _clone_data(run["quadrature_attempts"]),
                 "branch_order": list(order),
+                "topology_cache_hit": bool(run["geometry"]["topology_cache_hit"]),
                 "model_real_period": _real_text(
                     run["lattice"]["model_period"], requested_bits
                 ),
             }
         )
-        if previous is not None and order == previous_order:
+        previous_evidence_bits = (
+            0 if previous is None else int(previous["quadrature_evidence_bits"])
+        )
+        if (
+            previous is not None
+            and order == previous_order
+            and min(previous_evidence_bits, int(run["quadrature_evidence_bits"]))
+            >= requested_bits
+        ):
             period_difference = _maximum_matrix_difference(
                 run["periods"]["period_matrix"],
                 previous["periods"]["period_matrix"],
@@ -981,10 +2371,12 @@ def _model_period_data(
                     last_tolerance,
                     refinement_runs,
                 )
-                if use_cache:
+                if cache_key is not None:
                     if len(_MODEL_PERIOD_CACHE) >= _CACHE_LIMIT:
                         del _MODEL_PERIOD_CACHE[next(iter(_MODEL_PERIOD_CACHE))]
-                    _MODEL_PERIOD_CACHE[cache_key] = _clone_data(result)
+                    prepared = _PreparedModelData(result)
+                    _MODEL_PERIOD_CACHE[cache_key] = prepared
+                    return (prepared, False)
                 return (result, False)
         previous = run
         previous_order = order
@@ -1181,6 +2573,24 @@ def _point_key(point: Any) -> str:
     return "(" + _exact_text(x_value) + "," + _exact_text(y_value) + ")"
 
 
+def _abel_cache_key(
+    curve: Any,
+    points: list[Any],
+    prec: int,
+    max_refinements: int,
+    quadrature_order: int,
+    initial_panels: int,
+) -> tuple[Any, ...]:
+    return (
+        _model_key(curve),
+        tuple(_point_key(point) for point in points),
+        prec,
+        max_refinements,
+        quadrature_order,
+        initial_panels,
+    )
+
+
 def _abel_data(
     curve: Any,
     points: list[Any],
@@ -1190,9 +2600,9 @@ def _abel_data(
     initial_panels: int,
     use_cache: bool,
 ) -> tuple[dict[str, Any], bool]:
-    key = (
-        _model_key(curve),
-        tuple(_point_key(point) for point in points),
+    key = _abel_cache_key(
+        curve,
+        points,
         prec,
         max_refinements,
         quadrature_order,
@@ -1453,8 +2863,13 @@ class AbelJacobiResult:
                 int(final["quadrature_panels"]),
                 int(final["quadrature_order"]),
             )
+            native_batch = final.get("engine") == "arb-acb-abel-jacobi-batch"
             checks["path_bound"] = (
-                tuple(recomputed["branch_order"]) == tuple(self._data["branch_order"])
+                (
+                    native_batch
+                    or tuple(recomputed["branch_order"])
+                    == tuple(self._data["branch_order"])
+                )
                 and list(recomputed["directions"]) == list(self._data["ray_directions"])
                 and all(
                     clearance == mp.inf or clearance > 0
@@ -1506,21 +2921,27 @@ class AbelJacobiResult:
     verify = internal_consistency
 
     def diagnostics(self) -> dict[str, Any]:
-        return _clone_data(
-            {
-                "support": list(self._data["support"]),
-                "basepoint": "infinity",
-                "branch_order": list(self._data["branch_order"]),
-                "ray_directions": list(self._data["ray_directions"]),
-                "ray_clearances": list(self._data["ray_clearances"]),
-                "refinement_difference": self._data["refinement_difference"],
-                "refinement_tolerance": self._data["refinement_tolerance"],
-                "refinement_runs": list(self._data["refinement_runs"]),
-                "analytic_error_status": self._data["analytic_error_status"],
-                "cache_hit": self.cache_hit,
-                "rigorous": False,
-            }
-        )
+        diagnostics = {
+            "support": list(self._data["support"]),
+            "basepoint": "infinity",
+            "branch_order": list(self._data["branch_order"]),
+            "ray_directions": list(self._data["ray_directions"]),
+            "ray_clearances": list(self._data["ray_clearances"]),
+            "refinement_difference": self._data["refinement_difference"],
+            "refinement_tolerance": self._data["refinement_tolerance"],
+            "refinement_runs": list(self._data["refinement_runs"]),
+            "analytic_error_status": self._data["analytic_error_status"],
+            "cache_hit": self.cache_hit,
+            "rigorous": False,
+        }
+        for key in (
+            "native_achieved_stability_bits",
+            "native_arithmetic_accuracy_bits",
+            "native_stage_timings_ms",
+        ):
+            if key in self._data:
+                diagnostics[key] = self._data[key]
+        return _clone_data(diagnostics)
 
     def to_dict(self) -> dict[str, Any]:
         return _clone_data(
@@ -1539,17 +2960,34 @@ class HyperellipticPeriodResult:
     def __init__(
         self,
         curve: Any,
-        model_data: dict[str, Any],
+        model_data: Any,
         normalization_data: dict[str, Any],
         cache_hit: bool,
     ) -> None:
         self.__curve = curve
-        self.__model_payload = _sealed_payload(model_data)
-        self.__normalization_payload = _sealed_payload(normalization_data)
+        self.__lazy_model_data: _LazyModelPeriodData | None = None
+        self.__model_payload: str | None = None
+        if isinstance(model_data, _LazyModelPeriodData):
+            self.__lazy_model_data = model_data
+            requested_precision_bits = model_data.requested_precision_bits
+            achieved_stability_bits = model_data.achieved_stability_bits
+            genus = model_data.genus
+        elif isinstance(model_data, _PreparedModelData):
+            self.__model_payload = model_data.payload
+            requested_precision_bits = model_data.requested_precision_bits
+            achieved_stability_bits = model_data.achieved_stability_bits
+            genus = model_data.genus
+        else:
+            self.__model_payload = _sealed_payload(model_data)
+            requested_precision_bits = int(model_data["requested_precision_bits"])
+            achieved_stability_bits = int(model_data["achieved_stability_bits"])
+            genus = int(model_data["genus"])
+        self.__normalization_data = normalization_data
+        self.__normalization_payload: str | None = None
         self.__cache_hit = bool(cache_hit)
-        self.__precision_bits = int(model_data["requested_precision_bits"])
-        self.__achieved_stability_bits = int(model_data["achieved_stability_bits"])
-        self.__genus = int(model_data["genus"])
+        self.__precision_bits = requested_precision_bits
+        self.__achieved_stability_bits = achieved_stability_bits
+        self.__genus = genus
         self.__normalization_status = str(normalization_data["status"])
 
     @property
@@ -1558,10 +2996,16 @@ class HyperellipticPeriodResult:
 
     @property
     def _model_data(self) -> dict[str, Any]:
+        if self.__model_payload is None:
+            if self.__lazy_model_data is None:
+                raise AssertionError("period result has no model payload")
+            self.__model_payload = _sealed_payload(self.__lazy_model_data.materialize())
         return _payload_data(self.__model_payload)
 
     @property
     def _normalization(self) -> dict[str, Any]:
+        if self.__normalization_payload is None:
+            self.__normalization_payload = _sealed_payload(self.__normalization_data)
         return _payload_data(self.__normalization_payload)
 
     @property
@@ -1604,9 +3048,11 @@ class HyperellipticPeriodResult:
 
     def model_period(self) -> Any:
         """Return the real period for the stated model differential basis."""
-        return _global("RealField")(self.precision_bits)(
-            self._model_data["model_real_period"]
-        )
+        if self.__lazy_model_data is not None and self.__model_payload is None:
+            value = self.__lazy_model_data.model_period_text()
+        else:
+            value = self._model_data["model_real_period"]
+        return _global("RealField")(self.precision_bits)(value)
 
     def neron_period(self) -> Any:
         """Return the Neron period, requiring an explicit exact normalization."""
@@ -1687,6 +3133,30 @@ class HyperellipticPeriodResult:
         return abel_jacobi(
             self._curve,
             point_or_split_mumford,
+            period_result=self,
+            basepoint=basepoint,
+            prec=self.precision_bits if prec is None else prec,
+            max_refinements=max_refinements,
+            quadrature_order=quadrature_order,
+            initial_panels=initial_panels,
+            use_cache=use_cache,
+        )
+
+    def abel_jacobi_batch(
+        self,
+        points: Any,
+        *,
+        basepoint: str = "infinity",
+        prec: int | None = None,
+        max_refinements: int = 3,
+        quadrature_order: int = 16,
+        initial_panels: int = 4,
+        use_cache: bool = True,
+    ) -> tuple[AbelJacobiResult, ...]:
+        """Return point lifts sharing this period lattice and one root plan."""
+        return abel_jacobi_batch(
+            self._curve,
+            points,
             period_result=self,
             basepoint=basepoint,
             prec=self.precision_bits if prec is None else prec,
@@ -1794,27 +3264,35 @@ class HyperellipticPeriodResult:
     verify = internal_consistency
 
     def diagnostics(self) -> dict[str, Any]:
+        model = self._model_data
         return _clone_data(
             {
-                "root_isolation_status": self._model_data["root_isolation_status"],
-                "branch_chain_clearance": self._model_data["branch_chain_clearance"],
-                "riemann_symmetry_relative_defect": self._model_data[
+                "root_isolation_status": model["root_isolation_status"],
+                "branch_chain_clearance": model["branch_chain_clearance"],
+                "riemann_symmetry_relative_defect": model[
                     "riemann_symmetry_relative_defect"
                 ],
-                "riemann_minimum_eigenvalue": self._model_data[
-                    "riemann_minimum_eigenvalue"
-                ],
-                "conjugation_integrality_defect": self._model_data[
+                "riemann_minimum_eigenvalue": model["riemann_minimum_eigenvalue"],
+                "conjugation_integrality_defect": model[
                     "conjugation_integrality_defect"
                 ],
-                "refinement_difference": self._model_data["refinement_difference"],
-                "refinement_tolerance": self._model_data["refinement_tolerance"],
-                "refinement_runs": list(self._model_data["refinement_runs"]),
-                "refinement_stable": bool(self._model_data["refinement_stable"]),
+                "refinement_difference": model["refinement_difference"],
+                "refinement_tolerance": model["refinement_tolerance"],
+                "refinement_runs": list(model["refinement_runs"]),
+                "complete_arb_refinement_runs": list(
+                    model.get("complete_arb_refinement_runs", [])
+                ),
+                "complete_arb_crosscheck_difference": model.get(
+                    "complete_arb_crosscheck_difference"
+                ),
+                "complete_arb_stage_timings_ms": model.get(
+                    "complete_arb_stage_timings_ms"
+                ),
+                "refinement_stable": bool(model["refinement_stable"]),
                 "requested_precision_bits": self.precision_bits,
-                "work_precision_bits": self._model_data["work_precision_bits"],
+                "work_precision_bits": model["work_precision_bits"],
                 "achieved_stability_bits": self.achieved_stability_bits,
-                "analytic_error_status": self._model_data["analytic_error_status"],
+                "analytic_error_status": model["analytic_error_status"],
                 "cache_hit": self.cache_hit,
                 "rigorous": False,
             }
@@ -1863,7 +3341,7 @@ def real_period(
     provenance: Any = None,
     max_refinements: int = 3,
     quadrature_order: int = 16,
-    initial_panels: int = 4,
+    initial_panels: int = 3,
     use_cache: bool = True,
 ) -> HyperellipticPeriodResult:
     """Compute a refinement-stable genus-2/3 real period.
@@ -1878,7 +3356,9 @@ def real_period(
     enclosures in the current implementation.  Precision/panel refinement,
     Riemann relations, positivity, integral conjugation, and real-lattice
     checks are all mandatory capability gates, but the result remains
-    `rigorous=False`.
+    `rigorous=False`.  The default begins genus-2 integration with three
+    panels; the bounded complete genus-3 path raises that minimum to four
+    before applying the requested refinement schedule.
     """
     requested_bits = int(prec)
     if requested_bits < 32 or requested_bits > 1024:
@@ -1966,11 +3446,12 @@ def abel_jacobi(
             initial_panels=initial_panels,
             use_cache=use_cache,
         )
-    elif period_result._curve is not curve or period_result._model_data[
-        "model_key"
-    ] != _model_key(curve):
+    elif period_result._curve is not curve:
         raise ValueError("the supplied period result belongs to a different curve")
-    elif requested_bits > period_result.achieved_stability_bits:
+    elif requested_bits > min(
+        period_result.precision_bits,
+        period_result.achieved_stability_bits,
+    ):
         raise HyperellipticPeriodCapabilityError(
             "period_precision_too_low",
             "Abel--Jacobi precision cannot exceed the achieved stability of the supplied period lattice",
@@ -1993,12 +3474,197 @@ def abel_jacobi(
     return AbelJacobiResult(curve, points, data, period_result, cache_hit)
 
 
+def abel_jacobi_batch(
+    curve: Any,
+    points: Any,
+    *,
+    period_result: HyperellipticPeriodResult | None = None,
+    basepoint: str = "infinity",
+    prec: int = 128,
+    max_refinements: int = 3,
+    quadrature_order: int = 16,
+    initial_panels: int = 4,
+    use_cache: bool = True,
+) -> tuple[AbelJacobiResult, ...]:
+    """Return a bounded batch of point lifts sharing one exact root plan.
+
+    The batch accepts from 1 through 64 affine rational points on the same
+    odd-degree `QQ` model.  One FLINT boundary validates the exact points,
+    isolates the roots once, and evaluates every differential along every
+    ray in each of at least two Arb/Acb refinements.  The ordinary scalar
+    implementation remains the capability fallback and independently replays
+    each returned result when `verify()` is requested.
+    """
+    if basepoint != "infinity":
+        raise HyperellipticPeriodCapabilityError(
+            "unsupported_abel_jacobi_basepoint",
+            "the initial Abel--Jacobi envelope requires the unique odd-degree point at infinity",
+        )
+    batch = list(points)
+    if not batch or len(batch) > 64:
+        raise ValueError("an Abel--Jacobi batch must contain from 1 through 64 points")
+    for point in batch:
+        if not hasattr(point, "parent") or point.parent() is not curve:
+            raise TypeError("every Abel--Jacobi batch point must belong to the curve")
+    completed, _coefficients = _completed_model(curve)
+    if int(completed.degree()) != 2 * int(curve.genus()) + 1:
+        raise HyperellipticPeriodCapabilityError(
+            "ambiguous_infinity_basepoint",
+            "even-degree models have two geometric points at infinity; supply a future explicit basepoint implementation",
+        )
+    requested_bits = int(prec)
+    max_refinements = int(max_refinements)
+    quadrature_order = int(quadrature_order)
+    initial_panels = int(initial_panels)
+    if requested_bits < 32 or requested_bits > 1024:
+        raise ValueError("Abel--Jacobi precision must be between 32 and 1024 bits")
+    if max_refinements < 2 or max_refinements > 6:
+        raise ValueError("max_refinements must be between 2 and 6")
+    if quadrature_order < 8 or quadrature_order > 64:
+        raise ValueError("quadrature_order must be between 8 and 64")
+    if initial_panels < 1 or initial_panels > 64:
+        raise ValueError("initial_panels must be between 1 and 64")
+    if period_result is None:
+        period_result = real_period(
+            curve,
+            prec=requested_bits,
+            max_refinements=max_refinements,
+            quadrature_order=quadrature_order,
+            initial_panels=initial_panels,
+            use_cache=use_cache,
+        )
+    elif period_result._curve is not curve:
+        raise ValueError("the supplied period result belongs to a different curve")
+    elif requested_bits > min(
+        period_result.precision_bits,
+        period_result.achieved_stability_bits,
+    ):
+        raise HyperellipticPeriodCapabilityError(
+            "period_precision_too_low",
+            "Abel--Jacobi precision cannot exceed the achieved stability of the supplied period lattice",
+            {
+                "requested_precision_bits": requested_bits,
+                "period_precision_bits": period_result.precision_bits,
+                "period_achieved_stability_bits": period_result.achieved_stability_bits,
+            },
+        )
+    keys = [
+        _abel_cache_key(
+            curve,
+            [point],
+            requested_bits,
+            max_refinements,
+            quadrature_order,
+            initial_panels,
+        )
+        for point in batch
+    ]
+    if use_cache and all(key in _ABEL_CACHE for key in keys):
+        _CACHE_STATS["abel_hits"] += len(keys)
+        return tuple(
+            AbelJacobiResult(
+                curve,
+                [point],
+                _clone_data(_ABEL_CACHE[key]),
+                period_result,
+                True,
+            )
+            for point, key in zip(batch, keys, strict=True)
+        )
+    if any(point.is_at_infinity() for point in batch):
+        return tuple(
+            abel_jacobi(
+                curve,
+                point,
+                period_result=period_result,
+                basepoint=basepoint,
+                prec=requested_bits,
+                max_refinements=max_refinements,
+                quadrature_order=quadrature_order,
+                initial_panels=initial_panels,
+                use_cache=use_cache,
+            )
+            for point in batch
+        )
+    f_value, h_value = _model_coefficient_lists(curve)
+    coordinates = [point.xy() for point in batch]
+    native = _complete_abel_jacobi_batch_arb(
+        f_value,
+        h_value,
+        coordinates,
+        int(curve.genus()),
+        requested_bits,
+        max_refinements,
+        initial_panels,
+        quadrature_order,
+    )
+    if native is None:
+        return tuple(
+            abel_jacobi(
+                curve,
+                point,
+                period_result=period_result,
+                basepoint=basepoint,
+                prec=requested_bits,
+                max_refinements=max_refinements,
+                quadrature_order=quadrature_order,
+                initial_panels=initial_panels,
+                use_cache=use_cache,
+            )
+            for point in batch
+        )
+    answer = []
+    for point_index, (point, key) in enumerate(zip(batch, keys, strict=True)):
+        direction = native["ray_directions"][point_index]
+        refinement_runs = []
+        for run in native["refinement_runs"]:
+            refinement_runs.append(
+                {
+                    **dict(run),
+                    "branch_order": list(native["branch_order"]),
+                    "ray_directions": [direction],
+                }
+            )
+        data = {
+            "model_key": _model_key(curve),
+            "genus": int(curve.genus()),
+            "precision_bits": requested_bits,
+            "work_precision_bits": native["work_precision_bits"],
+            "support": [_point_key(point)],
+            "basepoint": "infinity",
+            "vector": list(native["vectors"][point_index]),
+            "branch_order": list(native["branch_order"]),
+            "ray_directions": [direction],
+            "ray_clearances": [native["ray_clearances"][point_index]],
+            "refinement_difference": native["refinement_difference"],
+            "refinement_tolerance": native["refinement_tolerance"],
+            "refinement_runs": refinement_runs,
+            "refinement_stable": True,
+            "rigorous": False,
+            "analytic_error_status": (
+                "estimated_by_two_arbitrary_precision_batch_refinements"
+            ),
+            "native_achieved_stability_bits": native["achieved_stability_bits"],
+            "native_arithmetic_accuracy_bits": native["arithmetic_accuracy_bits"],
+            "native_stage_timings_ms": dict(native["stage_timings_ms"]),
+        }
+        if use_cache:
+            if len(_ABEL_CACHE) >= _CACHE_LIMIT:
+                del _ABEL_CACHE[next(iter(_ABEL_CACHE))]
+            _ABEL_CACHE[key] = _clone_data(data)
+        answer.append(AbelJacobiResult(curve, [point], data, period_result, False))
+    return tuple(answer)
+
+
 def clear_period_cache() -> None:
     """Clear branch geometry and completed model-period caches."""
+    _TOPOLOGY_CACHE.clear()
     _GEOMETRY_CACHE.clear()
     _MODEL_PERIOD_CACHE.clear()
     _ABEL_CACHE.clear()
     _GAUSS_CACHE.clear()
+    _FLOAT64_GAUSS_CACHE.clear()
+    _FLOAT64_SAMPLE_CACHE.clear()
     for key in _CACHE_STATS:
         _CACHE_STATS[key] = 0
 
@@ -2006,12 +3672,27 @@ def clear_period_cache() -> None:
 def period_cache_info() -> dict[str, int]:
     """Return deterministic cache sizes and hit/computation counters."""
     return {
+        "topology_entries": len(_TOPOLOGY_CACHE),
         "geometry_entries": len(_GEOMETRY_CACHE),
         "model_entries": len(_MODEL_PERIOD_CACHE),
         "abel_entries": len(_ABEL_CACHE),
         "gauss_rule_entries": len(_GAUSS_CACHE),
+        "float64_gauss_rule_entries": len(_FLOAT64_GAUSS_CACHE),
+        "float64_sample_entries": len(_FLOAT64_SAMPLE_CACHE),
+        "topology_hits": int(_CACHE_STATS["topology_hits"]),
+        "topology_replans": int(_CACHE_STATS["topology_replans"]),
+        "angular_path_hits": int(_CACHE_STATS["angular_path_hits"]),
+        "exhaustive_path_fallbacks": int(_CACHE_STATS["exhaustive_path_fallbacks"]),
         "geometry_hits": int(_CACHE_STATS["geometry_hits"]),
         "model_hits": int(_CACHE_STATS["model_hits"]),
         "abel_hits": int(_CACHE_STATS["abel_hits"]),
         "computations": int(_CACHE_STATS["computations"]),
+        "float64_quadratures": int(_CACHE_STATS["float64_quadratures"]),
+        "float64_fallbacks": int(_CACHE_STATS["float64_fallbacks"]),
+        "arb_quadratures": int(_CACHE_STATS["arb_quadratures"]),
+        "arb_fallbacks": int(_CACHE_STATS["arb_fallbacks"]),
+        "complete_arb_periods": int(_CACHE_STATS["complete_arb_periods"]),
+        "complete_arb_fallbacks": int(_CACHE_STATS["complete_arb_fallbacks"]),
+        "float64_sign_selections": int(_CACHE_STATS["float64_sign_selections"]),
+        "sign_selection_fallbacks": int(_CACHE_STATS["sign_selection_fallbacks"]),
     }

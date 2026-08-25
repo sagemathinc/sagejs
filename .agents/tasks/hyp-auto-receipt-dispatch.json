@@ -1,0 +1,142 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-auto-receipt-dispatch",
+  "title": "Hyp Auto Receipt Dispatch",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Wire authenticated Phase-10 receipt decisions into public hyperelliptic auto selectors while preserving explicit native and development receipt collection",
+  "base_commit": "3a67a44f90c86af5bc1c985bb65d2af745af8c8d",
+  "claims": [
+    ".agents/lanes.json",
+    "architecture/hyperelliptic-auto-receipt-policy.json",
+    "architecture/package-graph.json",
+    "packages/flint-wasm/auto-receipt-policy.mjs",
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/release/production-layout.json",
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/test/evaluator-host.test.mjs",
+    "scripts/hyperelliptic-auto-receipt-policy.cjs",
+    "tools/math-dispatch/hyperelliptic-auto-receipt-loader.cjs",
+    "tools/math-dispatch/hyperelliptic-auto-receipt-policy.cjs",
+    "tools/runtime-bootstrap.ts",
+    "tools/task-evaluator.ts",
+    "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",
+    "src/lib/sagejs/hyperelliptic_curves/frobenius.py",
+    "src/lib/sagejs/hyperelliptic_curves/jacobian.py",
+    "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
+    "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py",
+    "test/hyperelliptic-auto-receipt-dispatch.cjs",
+    "test/node-test-manifest.cjs",
+    "pyrightconfig.json"
+  ],
+  "dependencies": [
+    "hyp-auto-receipt-policy"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "tested-capability",
+    "oracles": [
+      "verified receipt-policy fixtures plus exact dynamic/native hyperelliptic differentials"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.448,
+      "started_at": "2026-08-24T01:08:11.622Z",
+      "commit": "3a67a44f90c86af5bc1c985bb65d2af745af8c8d",
+      "workspace_fingerprint": "596d1e54e9ff54fda5b18a13a5e7a2965c6264dc914cefa784ce21e6b87cf645",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.326,
+      "started_at": "2026-08-24T01:09:31.134Z",
+      "commit": "3a67a44f90c86af5bc1c985bb65d2af745af8c8d",
+      "workspace_fingerprint": "4a4f0cded511c8cbd756c67ba3cfac144572e384db5b96dbc968f2370e799167",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:wasm",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.715,
+      "started_at": "2026-08-24T01:09:37.715Z",
+      "commit": "3a67a44f90c86af5bc1c985bb65d2af745af8c8d",
+      "workspace_fingerprint": "4a4f0cded511c8cbd756c67ba3cfac144572e384db5b96dbc968f2370e799167",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:wasm-workloads",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.537,
+      "started_at": "2026-08-24T01:09:41.924Z",
+      "commit": "3a67a44f90c86af5bc1c985bb65d2af745af8c8d",
+      "workspace_fingerprint": "4a4f0cded511c8cbd756c67ba3cfac144572e384db5b96dbc968f2370e799167",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.399,
+      "started_at": "2026-08-24T01:09:48.994Z",
+      "commit": "3a67a44f90c86af5bc1c985bb65d2af745af8c8d",
+      "workspace_fingerprint": "4a4f0cded511c8cbd756c67ba3cfac144572e384db5b96dbc968f2370e799167",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 33.077,
+      "started_at": "2026-08-24T01:10:37.838Z",
+      "commit": "3a67a44f90c86af5bc1c985bb65d2af745af8c8d",
+      "workspace_fingerprint": "4a4f0cded511c8cbd756c67ba3cfac144572e384db5b96dbc968f2370e799167",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/hyperelliptic-auto-receipt-policy.cjs test/hyperelliptic-auto-receipt-dispatch.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.159,
+      "started_at": "2026-08-24T01:12:20.510Z",
+      "commit": "3a67a44f90c86af5bc1c985bb65d2af745af8c8d",
+      "workspace_fingerprint": "4a4f0cded511c8cbd756c67ba3cfac144572e384db5b96dbc968f2370e799167",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Wired the authenticated disabled Phase-10 receipt policy into finite Cantor add/scalar/progression/search/validation/sum, genus-2 prime Kummer project/double/power/pseudo-add, finite and rational smalljac/rforest local factors, and automatic smalljac group structure. Absent or verified disabled policy preserves development auto selection; an installed enabled verified policy denies every unreceipted or ambiguous accelerated request to exact reference/dynamic fallback. Explicit native bypasses receipt selection but retains capability checks. The checked-in policy remains disabled with no entries.",
+    "risks": [
+      "The base package graph budget for hyperelliptic-curves-algorithms is 815000 bytes while this completed workspace owns 829053 bytes. The shared integration manifest must raise its reviewed lazy budget before architecture:check and portable can pass; both otherwise fail only package-graph.cjs.",
+      "No receipt entry is enabled and no remote receipt was collected in this bounded selector-wiring lane.",
+      "The release host still must install the frozen runtime provider minted from verifyPolicy when the eventual enabled manifest is packaged. Tests install that provider explicitly through a Node preload."
+    ],
+    "next_steps": [
+      "Integrate on current higher-genus and review the hyperelliptic-curves-algorithms lazy source budget, then rerun architecture:check and test:portable.",
+      "After the final source freeze, collect exact four-platform receipts and enable only verified model/workload envelopes.",
+      "Wire the enabled verified policy provider into release startup only when the final manifest and authenticated receipt artifacts are present."
+    ]
+  }
+}

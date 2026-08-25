@@ -1,0 +1,230 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-qq-cantor",
+  "title": "Prepared rational Cantor arithmetic",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a prepared FLINT-backed QQ Cantor add, double, scalar and batch boundary for genus 2 and 3 with exact reference replay and Magma performance receipts.",
+  "base_commit": "ab31e4f3ff8095dcfcdbb34d4d29fb142dc3ae01",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "src/lib/sagejs/ffi/",
+    "src/baselib/sagejs/ffi/",
+    "packages/flint/generated/",
+    "packages/flint/include/sagejs/hyperelliptic/rational_jacobian_ffi.h",
+    "architecture/native-boundaries.json",
+    "architecture/native-code.json",
+    "architecture/native-exports.json",
+    "src/lib/sagejs/hyperelliptic_curves/jacobian.py",
+    "src/lib/sagejs/hyperelliptic_curves/jacobian_rational_native.py",
+    "test/ffi.cjs",
+    "test/hyperelliptic-rational-cantor.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/hyperelliptic/benchmark-rational-cantor.cjs",
+    "pyrightconfig.json",
+    "package.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "reference-cantor",
+      "magma-2.18-5"
+    ],
+    "exceptions": [
+      "Generated declarative in-place FLINT fmpq-polynomial resource primitives provide bounded scratch lifetime because the source-transparent compiler does not yet lower owned resource allocation inside loops; Cantor mathematics remains ordinary typed Python and reference replayed."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node test/hyperelliptic-rational-cantor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.543,
+      "started_at": "2026-08-23T05:32:11.888Z",
+      "commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+      "workspace_fingerprint": "437afbe8b1d89c5cb12ab108ae3a462ce6076f951e0aec2eabbb46341c7e0d0a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bin/sagejs ffi check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.73,
+      "started_at": "2026-08-23T05:32:24.926Z",
+      "commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+      "workspace_fingerprint": "437afbe8b1d89c5cb12ab108ae3a462ce6076f951e0aec2eabbb46341c7e0d0a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --project pyrightconfig.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.103,
+      "started_at": "2026-08-23T05:32:27.366Z",
+      "commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+      "workspace_fingerprint": "437afbe8b1d89c5cb12ab108ae3a462ce6076f951e0aec2eabbb46341c7e0d0a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:hyperelliptic-rational-cantor",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.031,
+      "started_at": "2026-08-23T05:33:01.883Z",
+      "commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+      "workspace_fingerprint": "437afbe8b1d89c5cb12ab108ae3a462ce6076f951e0aec2eabbb46341c7e0d0a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/hyperelliptic-rational-cantor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.44,
+      "started_at": "2026-08-23T05:49:39.391Z",
+      "commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+      "workspace_fingerprint": "5a99051a275ae5c46ec9e6985d693f3bd1a6c4dd6ca18d38b6ae64a46d97329b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:hyperelliptic-rational-cantor",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.963,
+      "started_at": "2026-08-23T05:49:48.496Z",
+      "commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+      "workspace_fingerprint": "5a99051a275ae5c46ec9e6985d693f3bd1a6c4dd6ca18d38b6ae64a46d97329b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bin/sagejs ffi check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.728,
+      "started_at": "2026-08-23T05:50:00.134Z",
+      "commit": "535c02b0ab2c9c0aed1eeb7c9d3e2d20c2890323",
+      "workspace_fingerprint": "5a99051a275ae5c46ec9e6985d693f3bd1a6c4dd6ca18d38b6ae64a46d97329b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/hyperelliptic-rational-cantor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.59,
+      "started_at": "2026-08-23T06:13:55.961Z",
+      "commit": "d4acfc70ba44e70ea51d96cae2f6bd0d55ed41f3",
+      "workspace_fingerprint": "7caaaa05a55e455df0879b7091415496723f8d188c995af40bfdc386ac5c3136",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:hyperelliptic-rational-cantor",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.977,
+      "started_at": "2026-08-23T06:14:09.229Z",
+      "commit": "d4acfc70ba44e70ea51d96cae2f6bd0d55ed41f3",
+      "workspace_fingerprint": "7caaaa05a55e455df0879b7091415496723f8d188c995af40bfdc386ac5c3136",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-rational-cantor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.396,
+      "started_at": "2026-08-23T09:53:32.539Z",
+      "commit": "ab31e4f3ff8095dcfcdbb34d4d29fb142dc3ae01",
+      "workspace_fingerprint": "e02118ad1f806f801978163435a178c4cb7b33272d766997232ce8567e429c93",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-rational-cantor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.756,
+      "started_at": "2026-08-23T11:01:37.648Z",
+      "commit": "cf58dfca74cd9c7f48951ebee8e3fcbcd1c172e6",
+      "workspace_fingerprint": "fa808b9cd0d5e252e2969634a3abdae02e35292d3232ea4babd19f2269bd832e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bin/sagejs ffi check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.767,
+      "started_at": "2026-08-23T11:01:55.027Z",
+      "commit": "cf58dfca74cd9c7f48951ebee8e3fcbcd1c172e6",
+      "workspace_fingerprint": "fa808b9cd0d5e252e2969634a3abdae02e35292d3232ea4babd19f2269bd832e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --project pyrightconfig.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.106,
+      "started_at": "2026-08-23T11:01:57.462Z",
+      "commit": "cf58dfca74cd9c7f48951ebee8e3fcbcd1c172e6",
+      "workspace_fingerprint": "fa808b9cd0d5e252e2969634a3abdae02e35292d3232ea4babd19f2269bd832e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.225,
+      "started_at": "2026-08-23T11:02:24.261Z",
+      "commit": "cf58dfca74cd9c7f48951ebee8e3fcbcd1c172e6",
+      "workspace_fingerprint": "fa808b9cd0d5e252e2969634a3abdae02e35292d3232ea4babd19f2269bd832e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/hyperelliptic/benchmark-rational-cantor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.813,
+      "started_at": "2026-08-23T11:02:27.160Z",
+      "commit": "cf58dfca74cd9c7f48951ebee8e3fcbcd1c172e6",
+      "workspace_fingerprint": "fa808b9cd0d5e252e2969634a3abdae02e35292d3232ea4babd19f2269bd832e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.009,
+      "started_at": "2026-08-23T11:03:43.412Z",
+      "commit": "cf58dfca74cd9c7f48951ebee8e3fcbcd1c172e6",
+      "workspace_fingerprint": "fa808b9cd0d5e252e2969634a3abdae02e35292d3232ea4babd19f2269bd832e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Exact genus-2/3 QQ Cantor results now retain one opaque owned FLINT `(u,v)` pair plus an authoritative immutable primitive row behind a closure-private WeakMap; ordinary public divisors remain lazy, survive prepared-context close/workspace reuse, and materialize only when `uv()` or serialization reconstruction requires polynomials. Public exact equality, hashing, packing, same-parent addition, scalar chaining, memory/cancellation bounds, and reference certificates preserve their contracts. Module-helper rebinding, plausible attribute injection, owner transplant, hash-cache injection, component/resource inspection, closed pair reuse, and overlapping pair loads fail safely. The 10,000-call local receipt measured 0.215 ms per public 257-bit torsion scalar, 0.170 ms per ordinary public nontrivial addition, 0.131 ms per prepared addition, 0.162 ms per chained retained addition, 0.556 ms including forced `(u,v)` materialization, and 0.205 ms including hashing. Public addition is about 5.6x faster than the previous 0.95 ms path, but still honestly misses the old timer-quantized Magma 0.01 ms/call row by about 17x; no new bench-1 comparison was run without authorization.",
+    "risks": [
+      "Integration must deliberately raise the hyperelliptic-curves-kernels lazy budget from 175000 bytes to at least the measured 177359 bytes; this lane did not hide the architecture:check failure.",
+      "Integration must classify exactly three new desktop-only WebAssembly capabilities with the existing exact reference fallback: ffi-resource:flint:fmpq_polynomial_pair, ffi:flint:fmpq_polynomial_workspace_copy_pair_out, and ffi:flint:fmpq_polynomial_workspace_load_pair.",
+      "Windows uses the tested exact reference fallback until the generated FLINT rational-polynomial workspace is available there.",
+      "The strict public QQ addition <=2x Magma gate remains open; the prior Magma row is only 0.01-second timer-quantized over 1000 calls, so a new same-host acceptance is required after integration."
+    ],
+    "next_steps": [
+      "Apply the package-budget and three WebAssembly capability dispositions in the integration lane, then rerun the complete architecture gate.",
+      "After explicit bench-1 authorization, repeat the equal-contract warmed/cold public P+Q and 257-bit scalar receipt against resident Magma.",
+      "If the public addition gate remains outside 2x, profile a single source-transparent operation that returns the exact primitive row and opaque pair with fewer runtime crossings; do not move Cantor mathematics into a host adapter."
+    ]
+  }
+}

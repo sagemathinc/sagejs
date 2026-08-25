@@ -378,6 +378,18 @@ O = K.maximal_order()
 P2 = O.factor_rational_prime(2)[0][0]
 
 unit = factored.FactoredNumberFieldElement.from_element(K, K(2))
+unit_hash = unit.stable_hash()
+assert unit.stable_hash() == unit_hash
+assert len(unit._stable_hash_cache) == 1
+mutated_unit_payload = unit.to_dict()
+mutated_unit_payload["factors"][0]["exponent"] = 2
+assert unit.to_dict()["factors"][0]["exponent"] == 1
+assert unit.stable_hash() == unit_hash
+unit_regulator_key = unit.regulator_cache_key()
+assert unit_regulator_key == ((((2, 1),), 1),)
+unit._stable_hash_cache[0] = "0" * 64
+assert unit.regulator_cache_key() == unit_regulator_key
+unit._stable_hash_cache[0] = unit_hash
 first = unit.principal_ideal(O)
 second = unit.principal_ideal(O)
 assert first == second and first is second
@@ -397,6 +409,18 @@ factored.FactoredNumberFieldElement.from_element(K, K(3)).archimedean_logarithms
 )
 assert factor_workspace.diagnostics()["entries"] == 1
 assert factor_workspace.diagnostics()["evictions"] == 1
+
+S = NumberField(x**3 + 4*x - 1, "s")
+rank_one_unit = factored.FactoredNumberFieldElement.from_element(S, S.gen())
+rank_one_workspace = factored.FactoredLogarithmWorkspace(S)
+full_rank_one_logs = rank_one_unit.archimedean_logarithms(96)
+regulator_rank_one_logs = rank_one_unit.regulator_logarithms(
+    96, 1, workspace=rank_one_workspace
+)
+assert len(full_rank_one_logs) == 2
+assert len(regulator_rank_one_logs) == 1
+assert regulator_rank_one_logs[0].to_dict() == full_rank_one_logs[0].to_dict()
+assert rank_one_workspace.diagnostics()["entries"] == 1
 
 engine = ClassUnitGroupEngine(K, algorithm="buchmann-hecke")
 log_calls = [0]
@@ -427,14 +451,21 @@ class UnitAuthorityProbe:
     def principal_ideal(self, order):
         principal_calls[0] += 1
         return order.ideal(1)
-engine._authenticated_dependency_units.add("trusted-unit")
-engine._verify_exact_units(
-    (UnitAuthorityProbe("trusted-unit"), UnitAuthorityProbe("cold-unit"))
+trusted_unit = UnitAuthorityProbe("trusted-unit")
+engine.context._live_artifacts.authenticated_dependency_units.append(
+    (trusted_unit, "trusted-unit")
 )
-assert principal_calls[0] == 1
-assert engine._resource_usage["unit_principal_authority_requests"] == 2
+engine._verify_exact_units(
+    (
+        trusted_unit,
+        UnitAuthorityProbe("trusted-unit"),
+        UnitAuthorityProbe("cold-unit"),
+    )
+)
+assert principal_calls[0] == 2
+assert engine._resource_usage["unit_principal_authority_requests"] == 3
 assert engine._resource_usage["unit_principal_authority_hits"] == 1
-assert engine._resource_usage["unit_principal_authority_fallbacks"] == 1
+assert engine._resource_usage["unit_principal_authority_fallbacks"] == 2
 
 collector = relations.ExactRelationCollector(O, (P2,))
 admission = collector.admit_witness(
@@ -778,6 +809,20 @@ assert len(engine.logs) == 3
 assert engine._resource_usage["relation_dependency_unit_cache_hits"] == 2
 assert engine._resource_usage["relation_independent_log_units"] == 2
 
+# Final basis selection consumes the exact unit objects constructed during
+# log-rank steering instead of decoding and combining the same live prefix.
+units, dependencies = engine._select_dependency_unit_basis(
+    (first, second, third),
+    ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    2,
+)
+assert len(units) == 2
+assert dependencies == ((1, 0, 0), (0, 0, 1))
+assert len(engine.combinations) == 3
+assert engine._resource_usage["relation_dependency_unit_object_cache_hits"] == 2
+assert engine._resource_usage["dependency_unit_steering_basis_hits"] == 1
+assert engine._resource_usage["dependency_unit_materializations"] == 0
+
 # A detached/restored prefix has equal mathematical-looking records but distinct
 # identities.  It must reset and recompute instead of inheriting producer state.
 detached = (FakeRecord(), FakeRecord(), FakeRecord())
@@ -797,6 +842,36 @@ assert fresh._unit_logarithmic_rank(
     2,
 ) == 2
 assert len(fresh.combinations) == 3
+
+# In a complex cubic the exact nontorsion test may replace steering logs, but
+# it must reject both torsion units.  The final regulator still consumes the
+# retained factored nontorsion unit through the ordinary rigorous path.
+from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
+class CubicRankOneProbe(ClassUnitGroupEngine):
+    def __init__(self, field, value):
+        super().__init__(field, algorithm="buchmann-hecke")
+        self.value = value
+        self.logs = 0
+    def _combine(self, records, coefficients):
+        return FactoredNumberFieldElement.from_element(self.field, self.value)
+    def _unit_logarithms(self, unit, precision):
+        self.logs += 1
+        return (0.0, 0.0)
+
+C = NumberField(x**3 - x - 1, "c")
+cubic_record = FakeRecord()
+torsion_probe = CubicRankOneProbe(C, -C.one())
+assert torsion_probe._unit_logarithmic_rank(
+    (cubic_record,), FakePresentation(((1,),)), 1
+) == 0
+assert torsion_probe.logs == 1
+assert torsion_probe._resource_usage["relation_exact_rank_one_units"] == 0
+nontorsion_probe = CubicRankOneProbe(C, C.gen())
+assert nontorsion_probe._unit_logarithmic_rank(
+    (cubic_record,), FakePresentation(((1,),)), 1
+) == 1
+assert nontorsion_probe.logs == 0
+assert nontorsion_probe._resource_usage["relation_exact_rank_one_units"] == 1
 print("monotone-log-steering")
 `);
   assert.equal(output, "monotone-log-steering");
@@ -1073,7 +1148,7 @@ class OrbitProbe(ClassUnitGroupEngine):
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-K = NumberField(x - 1, "a")
+K = NumberField(x**2 - 5, "a")
 factor_base = (FakePrime(), FakePrime())
 limits = ClassUnitEngineLimits(
     max_relation_attempts=4,
@@ -1097,6 +1172,26 @@ assert [record.provenance["algorithm"] for record in collector.records] == [
     "quadratic-conjugation-orbit",
 ]
 assert plan_builds == 1 and orbit_calls == 1
+
+# The production orbit planner currently supports exact quadratic
+# conjugation only. Cubic relation contexts must not pay to construct a
+# deterministic unavailable plan.
+real_relations = __import__(
+    "sagejs.number_fields.class_group_relations",
+    fromlist=["class_group_relations"],
+)
+original_planner = real_relations.plan_automorphism_orbits
+unexpected_cubic_plans = []
+def forbidden_cubic_plan(field, factors):
+    unexpected_cubic_plans.append((field, tuple(factors)))
+    raise AssertionError("a cubic field entered the quadratic orbit planner")
+real_relations.plan_automorphism_orbits = forbidden_cubic_plan
+C = NumberField(x**3 + x + 1, "c")
+cubic_engine = ClassUnitGroupEngine(C, algorithm="buchmann-hecke")
+assert cubic_engine._automorphism_plan_for_factor_base(real_relations, ()) is None
+assert unexpected_cubic_plans == []
+assert cubic_engine._resource_usage["automorphism_orbit_plans"] == 1
+real_relations.plan_automorphism_orbits = original_planner
 assert accelerated._resource_usage["automorphism_orbit_plans"] == 1
 assert accelerated._resource_usage["automorphism_orbit_relations"] == 1
 assert accelerated._relation_matrix_accumulator.row_count == 2
@@ -1206,7 +1301,9 @@ class FakeRelation:
         return {"certified": tuple(factor_base) == (prime,)}
 
 class FakeCollector:
-    def __init__(self):
+    def __init__(self, order, factor_base):
+        self.order = order
+        self.factor_base = tuple(factor_base)
         self.records = (FakeRelation(),)
         self._rows = {}
         self._row_requests = 0
@@ -1225,9 +1322,12 @@ class FakeCollector:
             "row_requests": self._row_requests,
             "row_hits": self._row_hits,
         }
+    def _all_records_live_authenticated(self, token):
+        return token is relation_module._LIVE_VERIFIED_RELATION_PREFIX_TOKEN
 
 class FakePresentation:
     order = 1
+    relation_rows = (object(),)
     def to_dict(self):
         return {"schema": "fake-presentation-v1", "order": 1}
     def verify(self):
@@ -1235,15 +1335,21 @@ class FakePresentation:
         return True
 
 class FakePlan:
-    theorem = "BDF factor-base theorem"
-    assumptions = ("GRH",)
-    bound = 17
+    def __init__(self, order):
+        self.order = order
+        self.theorem = "BDF factor-base theorem"
+        self.assumptions = ("GRH",)
+        self.bound = 17
 
+relation_module = __import__(
+    "sagejs.number_fields.class_group_relations",
+    fromlist=["class_group_relations"],
+)
 class Components:
     context = None
     factored = object()
     factor_base = FakeFactorBase
-    relations = object()
+    relations = relation_module
     matrix = object()
     analytic = object()
     def missing(self):
@@ -1255,9 +1361,13 @@ K = NumberField(x - 1, "a")
 engine = ClassUnitGroupEngine(
     K, algorithm="buchmann-hecke", components=Components()
 )
-collector = FakeCollector()
+collector = FakeCollector(engine.order, (prime,))
+plan = FakePlan(engine.order)
+presentation = FakePresentation()
+engine._bind_context_factor_base((prime,), validated=True)
+assert engine._bind_context_relations((prime,), collector, presentation)
 evidence, verifier = engine._generation_authority(
-    FakePlan(), (prime,), collector, FakePresentation(),
+    plan, (prime,), collector, presentation,
     EXACT_RELATIONS_CONDITIONAL_GRH,
 )
 assert counts == {
@@ -1271,12 +1381,26 @@ assert engine._resource_usage["generation_reconstruction_cache_hits"] == 0
 assert engine._resource_usage[
     "generation_verification_live_authentication_hits"
 ] == 1
+assert engine._resource_usage["generation_verification_full_replays"] == 0
 evidence["bound"] = 19
 assert not verifier(
     K, K.maximal_order(), (), 1, evidence,
     EXACT_RELATIONS_CONDITIONAL_GRH,
 )
 evidence["bound"] = 17
+retained_records = collector.records
+collector.records = retained_records + (FakeRelation(),)
+assert engine._context_generation_artifact(
+    plan, (prime,), collector, presentation,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+) is None
+collector.records = retained_records
+evidence["factor_base"][0]["prime"] = 3
+assert not verifier(
+    K, K.maximal_order(), (), 1, evidence,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+)
+evidence["factor_base"][0]["prime"] = 2
 for _index in range(2):
     assert verifier(
         K, K.maximal_order(), (), 1, evidence,
@@ -1290,8 +1414,20 @@ assert counts == {
 }
 assert engine._resource_usage["generation_reconstruction_calls"] == 0
 assert engine._resource_usage["generation_reconstruction_cache_hits"] == 0
+retained_evidence, retained_verifier = engine._generation_authority(
+    plan, (prime,), collector, presentation,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+)
+assert retained_evidence is evidence
+assert engine._resource_usage["generation_context_artifact_reuses"] == 1
 assert engine._resource_usage["generation_verification_cache_hits"] == 2
-engine._generation_verification_cache_active = False
+assert engine._resource_usage[
+    "generation_verification_live_authentication_hits"
+] == 2
+assert engine.context.live_diagnostics()["generation_verification_active"]
+assert engine.context.live_diagnostics()["generation_verification_entries"] == 1
+engine._deactivate_context_generation_verification()
+assert not engine.context.live_diagnostics()["generation_verification_active"]
 assert verifier(
     K, K.maximal_order(), (), 1, evidence,
     EXACT_RELATIONS_CONDITIONAL_GRH,
@@ -1938,6 +2074,33 @@ assert conditional_dependencies["relations"] != unconditional_dependencies["rela
 assert set(conditional_dependencies) == {
     "relations", "presentation", "generators", "saturation",
 }
+
+# Generation evidence uses component digests so the terminal proof-progress
+# hashes can reuse the already authenticated relation and presentation bytes.
+evidence = {
+    "schema": "sagejs.number-fields/class-generation-authority-v1",
+    "proof_status": EXACT_UNCONDITIONAL,
+    "theorem": "Minkowski",
+    "assumptions": [],
+    "bound": 3,
+    "factor_base": [{"prime": 2}],
+    "relations": [{"row": [1]}],
+    "presentation": {"order": 1},
+}
+evidence_digest = _generation_evidence_digests(evidence)
+assert all(len(value) == 64 for value in evidence_digest)
+changed = _component_payload(evidence)
+changed["relations"][0]["row"][0] = 2
+changed_digest = _generation_evidence_digests(changed)
+assert changed_digest[0] != evidence_digest[0]
+assert changed_digest[1] != evidence_digest[1]
+assert changed_digest[2] == evidence_digest[2]
+changed["unexpected"] = True
+try:
+    _generation_evidence_digests(changed)
+    raise AssertionError("extra generation evidence retained authority")
+except ValueError:
+    pass
 print("checkpoint-policy-bound")
 `);
   assert.equal(output, "checkpoint-policy-bound");

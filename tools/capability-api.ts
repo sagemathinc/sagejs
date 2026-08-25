@@ -1,5 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { getAsset, getAssetKeys, isSea } from "node:sea";
+
+const CAPABILITY_REPORT_ASSET =
+  "architecture/wasm-capabilities-report.json";
 
 function architectureDirectory(): string {
   const candidates = [
@@ -23,10 +27,18 @@ function immutableJson(value: any): any {
 
 /** Load the generated report into the narrow immutable host query surface. */
 export function loadSagejsCapabilityApi(): any {
-  const report = immutableJson(JSON.parse(readFileSync(
-    join(architectureDirectory(), "wasm-capabilities-report.json"),
-    "utf8",
-  )));
+  const serialized = isSea()
+    ? (() => {
+      if (!getAssetKeys().includes(CAPABILITY_REPORT_ASSET)) {
+        throw new Error("the generated WebAssembly capability report is missing");
+      }
+      return Buffer.from(getAsset(CAPABILITY_REPORT_ASSET)).toString("utf8");
+    })()
+    : readFileSync(
+      join(architectureDirectory(), "wasm-capabilities-report.json"),
+      "utf8",
+    );
+  const report = immutableJson(JSON.parse(serialized));
   if (
     report.schema !== "sagejs.wasm-capability-report/v1" ||
     !Array.isArray(report.capabilities) ||

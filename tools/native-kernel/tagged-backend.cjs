@@ -848,12 +848,83 @@ ${cleanup.join("\n")}
 }`;
 }
 
+function emitGmpWorkspaceBridge(fn) {
+  const declarations = ["    int sagejs_workspace_ok;"];
+  const initialization = [];
+  const cleanup = [];
+  const arguments_ = [];
+  for (const param of fn.params) {
+    if (param.type !== "Integer") {
+      arguments_.push(`sagejs_tagged_arg_${param.name}`);
+      continue;
+    }
+    const local = `sagejs_workspace_arg_${param.name}`;
+    declarations.push(`    mpz_t ${local};`);
+    initialization.push(
+      `    mpz_init(${local});`,
+      `    if (sagejs_tagged_arg_${param.name}->is_big)`,
+      `        mpz_set(${local}, sagejs_tagged_arg_${param.name}->big);`,
+      "    else",
+      `        set_mpz_int64(${local}, ` +
+        `sagejs_tagged_arg_${param.name}->small);`,
+    );
+    cleanup.unshift(`    mpz_clear(${local});`);
+    arguments_.push(local);
+  }
+  const resultTypes = tupleElementTypes(fn.returnType) || [fn.returnType];
+  const resultArguments = [];
+  const copies = [];
+  resultTypes.forEach((type, index) => {
+    if (type !== "Integer") {
+      if (resourceForFunctionType(fn, type) !== undefined) {
+        throw new Error(
+          "live exact workspace functions cannot return owned resources",
+        );
+      }
+      resultArguments.push(`sagejs_tagged_output_${index}`);
+      return;
+    }
+    const local = `sagejs_workspace_result_${index}`;
+    const small = `${local}_small`;
+    declarations.push(`    mpz_t ${local};`, `    int64_t ${small};`);
+    initialization.push(`    mpz_init(${local});`);
+    cleanup.unshift(`    mpz_clear(${local});`);
+    resultArguments.push(local);
+    copies.push(
+      `        if (mpz_to_int64(${local}, &${small}))`,
+      `            sagejs_tagged_set_small(` +
+        `sagejs_tagged_output_${index}, ${small});`,
+      "        else",
+      "        {",
+      `            sagejs_tagged_make_big(sagejs_tagged_output_${index});`,
+      `            mpz_set(sagejs_tagged_output_${index}->big, ${local});`,
+      "        }",
+    );
+  });
+  return `${taggedSignature(fn)}
+{
+${declarations.join("\n")}
+${initialization.join("\n")}
+    sagejs_workspace_ok = native_${fn.name}(status, ` +
+    `${resultArguments.join(", ")}` +
+    `${arguments_.length ? `, ${arguments_.join(", ")}` : ""});
+    if (sagejs_workspace_ok)
+    {
+${copies.join("\n")}
+    }
+${cleanup.join("\n")}
+    return sagejs_workspace_ok;
+}`;
+}
+
 function generateTaggedFunctions(functions) {
   const functionMap = new Map(functions.map((fn) => [fn.name, fn]));
   return {
     prototypes: functions.map((fn) => taggedSignature(fn, true)).join("\n"),
     functions: functions
-      .map((fn) => emitTaggedFunction(fn, functionMap))
+      .map((fn) => fn.analysis?.backend?.requiresExactWorkspace
+        ? emitGmpWorkspaceBridge(fn)
+        : emitTaggedFunction(fn, functionMap))
       .join("\n\n"),
   };
 }

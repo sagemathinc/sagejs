@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "immutable-capsule-gather",
+  "title": "Gather authenticated immutable UInt64 capsules",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add an authenticated transactional immutable UInt64 capsule gather with exact binding validation, portable copy fallback, adversarial tests, and a representative publication benchmark",
+  "base_commit": "5309f463715d6a2b723d71a2923e9e07a1782f3b",
+  "claims": [
+    ".agents/lanes.json",
+    "tools/immutable-uint64-capsule.ts",
+    "tools/immutable-uint64-capsule-benchmark.cjs",
+    "tools/python/contract.ts",
+    "src/baselib/sagejs/runtime.py",
+    "src/baselib/sagejs/runtime.pyi",
+    "test/immutable-uint64-capsule.cjs",
+    "test/runtime-intrinsics.cjs",
+    "architecture/native-boundaries.json",
+    "architecture/package-graph.json",
+    "architecture/wasm-capabilities.json",
+    "architecture/wasm-capabilities-report.json",
+    "architecture/wasm-workload-dashboard.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "ordinary sequence copies and private capsule registry adversarial differentials"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

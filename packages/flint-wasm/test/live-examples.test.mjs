@@ -10,6 +10,7 @@ test("every live dropdown example executes verbatim in production Node-Wasm", as
     "elliptic-lseries",
     "complex-plot",
     "exact-matrices",
+    "numpy-signal-recovery",
     "modular-symbols",
     "python-language",
     "magma-language",
@@ -30,6 +31,26 @@ test("every live dropdown example executes verbatim in production Node-Wasm", as
         assert.equal(typeof result.repr, "string");
         if (example.id === "complex-plot" || example.id === "random-graph-plot") {
           assert.equal(result.display?.mime, "application/vnd.plotly.v1+json");
+        }
+        if (example.id === "numpy-signal-recovery") {
+          assert.equal(
+            result.stdout,
+            [
+              "dominant frequency bins: [19, 7]",
+              "recovered coefficients: [1.721, -0.011, -0.007, 0.892]",
+              "fit RMSE: 0.018268",
+              "",
+            ].join("\n"),
+          );
+          assert.ok(
+            result.instrumentation.routes.some(
+              (route) =>
+                route.capability_id === "specialist:numpy-ts" &&
+                route.selected_route === "receipt-backed-wasm-artifact" &&
+                route.execution_target === "wasm-artifact",
+            ),
+            JSON.stringify(result.instrumentation),
+          );
         }
       } finally {
         await sage.close();

@@ -45,8 +45,8 @@
           <span id="example-description"></span>
         </div>
 
-        <label class="editor-label" for="source">Sage source</label>
-        <textarea id="source" rows="18" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="editor-help"></textarea>
+        <div id="source-label" class="editor-label">Sage source</div>
+        <div id="source" class="source-editor"></div>
         <p id="editor-help" class="editor-help">
           <kbd>Shift</kbd>+<kbd>Enter</kbd> runs the current cell; <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd> runs all. Separate cells with <code># %%</code> or a blank line.
         </p>
@@ -98,6 +98,7 @@
     <footer>
       <p>Your source and mathematics stay on this device. Sage.js has no backend compute server.</p>
       <a href="./privacy.html">Security, privacy &amp; limits</a>
+      <a href="./codemirror-license.txt">CodeMirror license</a>
       <a href="https://github.com/sagemathinc/sagejs">Source code</a>
     </footer>
 

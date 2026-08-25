@@ -67,6 +67,24 @@ function operationInputs(operation) {
       return [operation.buffer, operation.index];
     case "uint64.buffer.set":
       return [operation.buffer, operation.index, operation.value];
+    case "integer.vector.scope":
+      return [operation.capacity, operation.memoryLimit];
+    case "integer.vector.length":
+      return [operation.vector];
+    case "integer.vector.get":
+      return [operation.vector, operation.index];
+    case "integer.vector.set":
+      return [operation.vector, operation.index, operation.value];
+    case "integer.vector.addmul":
+    case "integer.vector.submul":
+      return [
+        operation.vector,
+        operation.index,
+        operation.left,
+        operation.right,
+      ];
+    case "integer.vector.swap":
+      return [operation.vector, operation.left, operation.right];
     case "native.call":
     case "ffi.call":
       return operation.arguments.map((argument) => argument.name);
@@ -121,6 +139,12 @@ function walkStatements(statements, handlers) {
         handlers.write(statement.index);
       }
       handlers.exitLoop?.("range");
+      continue;
+    }
+    if (statement.kind === "integer.vector.scope") {
+      handlers.operation(statement);
+      walkStatements(statement.setup, handlers);
+      walkStatements(statement.body, handlers);
       continue;
     }
     handlers.operation(statement);
@@ -266,12 +290,21 @@ function constantBits(value) {
 }
 
 function executionProfile(fn) {
+  const integerBufferParameters = new Set(
+    fn.params
+      .filter((param) => param.type === "IntegerBuffer")
+      .map((param) => param.name),
+  );
+  const integerBufferLoadParameters = new Set();
   const profile = {
     arithmeticOperations: 0,
+    integerGrowthOperations: 0,
+    integerBufferLoads: 0,
     uint64BitwiseOperations: 0,
     nativeCalls: 0,
     rangeLoops: 0,
     whileLoops: 0,
+    liveExactScopes: 0,
     maximumConstantBits: 0,
   };
   walkStatements(fn.body, {
@@ -290,6 +323,22 @@ function executionProfile(fn) {
         profile.arithmeticOperations += 1;
       }
       if (
+        (operation.kind === "integer.binary" &&
+          ["mul", "floordiv", "mod"].includes(operation.operation)) ||
+        operation.kind === "integer.pow_uint" ||
+        operation.kind === "integer.divmod" ||
+        operation.kind === "integer.mod_uint64" ||
+        operation.kind === "integer.round_sqrt"
+      ) {
+        profile.integerGrowthOperations += 1;
+      }
+      if (operation.kind === "integer.buffer.get") {
+        profile.integerBufferLoads += 1;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
+      }
+      if (
         operation.kind === "uint64.binary" &&
         isUint64Bitwise(operation.operation)
       ) {
@@ -297,6 +346,9 @@ function executionProfile(fn) {
       }
       if (operation.kind === "native.call" || operation.kind === "ffi.call") {
         profile.nativeCalls += 1;
+      }
+      if (operation.kind === "integer.vector.scope") {
+        profile.liveExactScopes += 1;
       }
       if (operation.kind === "integer.constant") {
         profile.maximumConstantBits = Math.max(
@@ -308,6 +360,9 @@ function executionProfile(fn) {
     read() {},
     write() {},
   });
+  profile.integerBufferLoadParameters = Array.from(
+    integerBufferLoadParameters,
+  ).sort();
   return profile;
 }
 
@@ -379,6 +434,26 @@ function localEffects(fn) {
         operation.kind === "uint64.buffer.set"
       ) {
         mayRaise.add("IndexError");
+      }
+      if (operation.kind === "integer.vector.scope") {
+        foreignMayAllocate = true;
+        mayRaise.add("MemoryError");
+      }
+      if (
+        operation.kind === "integer.vector.get" ||
+        operation.kind === "integer.vector.set" ||
+        operation.kind === "integer.vector.addmul" ||
+        operation.kind === "integer.vector.submul" ||
+        operation.kind === "integer.vector.swap"
+      ) {
+        mayRaise.add("IndexError");
+      }
+      if (
+        operation.kind === "integer.vector.set" ||
+        operation.kind === "integer.vector.addmul" ||
+        operation.kind === "integer.vector.submul"
+      ) {
+        mayRaise.add("MemoryError");
       }
       if (operation.kind === "int64.buffer.set" ||
           operation.kind === "integer.buffer.set") {
@@ -481,7 +556,11 @@ function bufferWrites(fn, dependencyEffects) {
         changed = visit(statement.alternative) || changed;
       } else if (statement.kind === "while" ||
           statement.kind === "loop.range" ||
-          statement.kind === "loop.range_exact") {
+          statement.kind === "loop.range_exact" ||
+          statement.kind === "integer.vector.scope") {
+        if (statement.setup) {
+          changed = visit(statement.setup) || changed;
+        }
         if (statement.condition?.operations) {
           changed = visit(statement.condition.operations) || changed;
         }
@@ -497,6 +576,157 @@ function bufferWrites(fn, dependencyEffects) {
   return Array.from(writes)
     .filter((name) => fn.params.some((param) => param.name === name))
     .sort();
+}
+
+/**
+ * Prove which caller-owned UInt64Buffer parameters a prime-source function
+ * may mutate. Prime-source helpers remain in the same lowered module, so the
+ * proof follows positional calls to a fixed point instead of trusting names or
+ * declarations supplied by a consumer.
+ *
+ * Unknown callees fail closed: every buffer argument is treated as writable.
+ * Compiler-owned records are also conservative at call boundaries because the
+ * public ABI does not yet represent effects for individual record fields.
+ */
+function primeSourceBufferWrites(fn, dependencyEffects) {
+  const aliases = new Map(
+    fn.params
+      .filter((param) => param.type === "UInt64Buffer")
+      .map((param) => [param.name, new Set([param.name])]),
+  );
+  const recordAliases = new Map();
+  const writes = new Set();
+  function roots(name) {
+    return aliases.get(name) || new Set();
+  }
+  function addAlias(target, sourceRoots) {
+    const current = aliases.get(target) || new Set();
+    const before = current.size;
+    for (const root of sourceRoots) current.add(root);
+    aliases.set(target, current);
+    return current.size !== before;
+  }
+  function addRecordAliases(target, fields) {
+    const current = recordAliases.get(target) || new Map();
+    let changed = false;
+    for (const [field, sourceRoots] of fields) {
+      const previous = current.get(field) || new Set();
+      const before = previous.size;
+      for (const root of sourceRoots) previous.add(root);
+      current.set(field, previous);
+      changed = previous.size !== before || changed;
+    }
+    recordAliases.set(target, current);
+    return changed;
+  }
+  function markRoots(sourceRoots) {
+    for (const root of sourceRoots) writes.add(root);
+  }
+  function markArgument(argument) {
+    markRoots(roots(argument.name));
+    for (const sourceRoots of recordAliases.get(argument.name)?.values() || []) {
+      markRoots(sourceRoots);
+    }
+  }
+  function visit(statements) {
+    let changed = false;
+    for (const statement of statements || []) {
+      if (
+        statement.kind === "source.copy" &&
+        statement.type === "UInt64Buffer"
+      ) {
+        changed = addAlias(statement.target, roots(statement.source)) || changed;
+      } else if (
+        statement.kind === "source.copy" &&
+        statement.type?.startsWith("Record:")
+      ) {
+        changed = addRecordAliases(
+          statement.target,
+          recordAliases.get(statement.source) || new Map(),
+        ) || changed;
+      } else if (statement.kind === "source.record.construct") {
+        changed = addRecordAliases(
+          statement.target,
+          new Map(
+            statement.fields
+              .filter((field) => field.type === "UInt64Buffer")
+              .map((field) => [field.name, roots(field.value)]),
+          ),
+        ) || changed;
+      } else if (
+        statement.kind === "source.record.get" &&
+        statement.type === "UInt64Buffer"
+      ) {
+        changed = addAlias(
+          statement.target,
+          recordAliases.get(statement.source)?.get(statement.field) || new Set(),
+        ) || changed;
+      } else if (statement.kind === "source.buffer.set") {
+        markRoots(roots(statement.buffer));
+      } else if (statement.kind === "source.call") {
+        const effect = dependencyEffects.get(statement.function);
+        if (effect === undefined) {
+          for (const argument of statement.arguments) markArgument(argument);
+        } else {
+          for (const written of effect.externalWrites) {
+            const position = effect.params.indexOf(written);
+            if (position >= 0 && statement.arguments[position] !== undefined) {
+              markArgument(statement.arguments[position]);
+            }
+          }
+          // Record-field effects are deliberately not represented yet.
+          for (const argument of statement.arguments) {
+            if (argument.type?.startsWith("Record:")) markArgument(argument);
+          }
+        }
+      } else if (statement.kind === "source.if") {
+        changed = visit(statement.condition.operations) || changed;
+        changed = visit(statement.body) || changed;
+        changed = visit(statement.alternative) || changed;
+      } else if (statement.kind === "source.while") {
+        changed = visit(statement.condition.operations) || changed;
+        changed = visit(statement.body) || changed;
+      } else if (statement.kind === "source.loop.range") {
+        changed = visit(statement.body) || changed;
+      } else if (statement.kind === "source.bool.short_circuit") {
+        changed = visit(statement.right.operations) || changed;
+      }
+    }
+    return changed;
+  }
+  let changed;
+  do changed = visit(fn.body); while (changed);
+  return Array.from(writes)
+    .filter((name) => fn.params.some((param) => param.name === name))
+    .sort();
+}
+
+function primeSourceEffectAnalyses(functions) {
+  const primeSource = new Map(
+    functions
+      .filter((fn) => fn.kernelKind === "prime-field-source")
+      .map((fn) => [fn.name, fn]),
+  );
+  const effects = new Map(
+    Array.from(primeSource, ([name, fn]) => [name, {
+      params: fn.params.map((param) => param.name),
+      externalWrites: [],
+    }]),
+  );
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [name, fn] of primeSource) {
+      const effect = effects.get(name);
+      const externalWrites = primeSourceBufferWrites(fn, effects);
+      if (externalWrites.join("\0") !== effect.externalWrites.join("\0")) {
+        effect.externalWrites = externalWrites;
+        changed = true;
+      }
+    }
+  }
+  for (const effect of effects.values()) delete effect.params;
+  return effects;
 }
 
 function effectAnalyses(functions) {
@@ -583,6 +813,26 @@ function taggedIntegerProof(fn, effects) {
     read() {},
     write() {},
   });
+  const ownsLiveExactWorkspace = operations.has("tagged-vector.scope");
+  if (ownsLiveExactWorkspace) {
+    return {
+      eligible: true,
+      representation: "gmp-live-exact-workspace",
+      smallRepresentation: "tagged entry bridge only",
+      largeRepresentation: "lexical-owned-mpz-vector",
+      entry: "lossless-tagged-to-gmp",
+      operations: Array.from(operations).sort(),
+      promotion: "before lexical workspace entry",
+      deoptimization: "none inside owned scope",
+      publicReplay: "never",
+      calleeSpeculation: "word entry promotes before workspace allocation",
+      directCalls: [...fn.dependencies, ...(fn.foreignDependencies || [])],
+      effectsChecked: effects.pure && effects.deterministic &&
+        effects.externalWrites.length === 0,
+      proof:
+        "the tagged bridge converts once and the isolated GMP body owns and clears every live exact entry",
+    };
+  }
   return {
     eligible: true,
     representation: "tagged-int64-gmp",
@@ -604,7 +854,42 @@ function taggedIntegerProof(fn, effects) {
   };
 }
 
+function liveExactWorkspaceAnalysis(fn) {
+  const scopes = [];
+  walkStatements(fn.body, {
+    loop() {},
+    operation(operation) {
+      if (operation.kind !== "integer.vector.scope") return;
+      scopes.push({
+        owner: operation.owner,
+        capacity: operation.capacity,
+        memoryLimit: operation.memoryLimit,
+        storage: "lexical-owned-mpz-vector",
+        cleanup: "all-exit-idempotent",
+        canonicalAuthority: false,
+      });
+    },
+    read() {},
+    write() {},
+  });
+  return {
+    count: scopes.length,
+    scopes,
+    ownership: "compiler-owned-lexical",
+    allocation: "bounded-capacity-and-semantic-charge",
+    physicalMemory: "reported-by-receipt-not-semantic-limit",
+    automaticSelection: "receipt-gated",
+  };
+}
+
 function backendPolicy(fn, profile, recursive) {
+  if (profile.liveExactScopes > 0) {
+    return {
+      kind: "gmp",
+      reason: "a lexical live-exact workspace has one GMP ownership backend",
+      requiresExactWorkspace: true,
+    };
+  }
   if ((fn.foreignDependencies || []).length > 0) {
     return {
       kind: "tagged",
@@ -624,6 +909,20 @@ function backendPolicy(fn, profile, recursive) {
     return {
       kind: "tagged",
       reason: "bounded uint64 operations execute in the isolated native core",
+    };
+  }
+  if (
+    profile.integerBufferLoads > 0 &&
+    profile.rangeLoops + profile.whileLoops > 0 &&
+    profile.integerBufferLoadParameters.length > 0 &&
+    ((profile.nativeCalls > 0 && profile.dependencyDepth >= 2) ||
+      profile.integerGrowthOperations >= 16)
+  ) {
+    return {
+      kind: "integer-buffer-values",
+      parameters: profile.integerBufferLoadParameters,
+      reason:
+        "an amortizable exact loop selects tagged or GMP from packed input bounds",
     };
   }
   if (
@@ -731,7 +1030,10 @@ function analyzeExactModule(functions) {
       dependencyDepth: dependencyDepth(fn.name),
     };
     let backend = backendPolicy(fn, profile, recursive.has(fn.name));
-    if (profile.rangeLoops > 0 && backend.kind !== "gmp") {
+    if (
+      profile.rangeLoops > 0 &&
+      !["gmp", "integer-buffer-values"].includes(backend.kind)
+    ) {
       backend = {
         kind: "tagged",
         reason: "an exact range loop amortizes tagged native entry",
@@ -744,8 +1046,18 @@ function analyzeExactModule(functions) {
       backend,
       effects: effect,
       taggedInteger: taggedIntegerProof(fn, effect),
+      ...(profile.liveExactScopes > 0
+        ? { liveExactWorkspace: liveExactWorkspaceAnalysis(fn) }
+        : {}),
       ...(hasUint64Bitwise(fn.body) ? { uint64: UINT64_SEMANTICS } : {}),
     };
+  }
+  const primeSourceEffects = primeSourceEffectAnalyses(functions);
+  for (const fn of functions) {
+    const effects = primeSourceEffects.get(fn.name);
+    if (effects !== undefined) {
+      fn.analysis = { ...fn.analysis, effects };
+    }
   }
   return functions;
 }
@@ -756,6 +1068,7 @@ module.exports = {
   effectAnalyses,
   executionProfile,
   localEffects,
+  primeSourceEffectAnalyses,
   storageAnalysis,
   taggedIntegerProof,
 };

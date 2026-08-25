@@ -431,15 +431,36 @@ assert fallback.to_dict() == scalar_finite.to_dict()
 assert fallback_field.diagnostics()["bf_dyadic_kernel_calls"] == 0
 assert fallback_field.diagnostics()["bf_dyadic_kernel_fallbacks"] == 1
 
+owned_generation = {"generation": "focused-provenance-test"}
 certificate = UnitSaturationIndexCertificate(
     {"field": "focused-provenance-test"},
     [],
     {},
     1,
     {"finite_term": new_finite.to_dict()},
-    {"generation": "focused-provenance-test"},
+    owned_generation,
     "exact-relations-conditional-grh",
 )
+assert certificate._authenticated_body_matches()
+assert certificate._consume_live_parent_payload(
+    module._LIVE_UNIT_INDEX_PARENT_TOKEN
+) is None
+live_certificate = UnitSaturationIndexCertificate(
+    {"field": "focused-live-parent-test"},
+    [],
+    {},
+    1,
+    {"finite_term": new_finite.to_dict()},
+    {"generation": "focused-live-parent-test"},
+    "exact-relations-conditional-grh",
+    _live_parent_token=module._LIVE_UNIT_INDEX_PARENT_TOKEN,
+)
+assert live_certificate._consume_live_parent_payload(
+    module._LIVE_UNIT_INDEX_PARENT_TOKEN
+) == live_certificate.to_dict()
+assert live_certificate._consume_live_parent_payload(
+    module._LIVE_UNIT_INDEX_PARENT_TOKEN
+) is None
 original_certificate_payload = certificate.to_dict()
 mutated = certificate.to_dict()
 mutated["analytic_proof"]["finite_term"]["source"] = "forged-provenance"
@@ -448,6 +469,10 @@ assert certificate.to_dict() == original_certificate_payload
 exposed_generation = certificate.generation_evidence
 exposed_generation["generation"] = "another-forgery"
 assert certificate.to_dict() == original_certificate_payload
+owned_generation["generation"] = "mutated-after-construction"
+assert not certificate._authenticated_body_matches()
+owned_generation["generation"] = "focused-provenance-test"
+assert certificate._authenticated_body_matches()
 try:
     UnitSaturationIndexCertificate.from_dict(mutated)
     raise AssertionError("a finite-term provenance mutation retained authority")
@@ -719,7 +744,7 @@ warm_zeta = zeta_log_residue_bound(
 )
 assert len(provider_calls) == calls_after_cold
 assert warm_zeta.diagnostics["provider_calls"] == 0
-assert warm_zeta.diagnostics["splitting_cache_hits"] == 1
+assert warm_zeta.diagnostics["splitting_cache_hits"] == 0
 assert warm_zeta.diagnostics["prime_enumeration_cache_hits"] == 1
 assert warm_zeta.diagnostics["prime_power_plan_cache_hits"] == 1
 assert warm_zeta.diagnostics["threshold_cache_hits"] == 1
@@ -820,11 +845,38 @@ validation = validate_hr_index(
 assert validation.rigorous and validation.index_one
 assert validation.lower_index == validation.upper_index == 1
 
+# The fused exact endpoint sum must reproduce the former scalar formula's
+# final hR index ball.  The scalar expression remains an independent readable
+# oracle for both the true and deliberately inflated tentative class numbers.
+def scalar_hr_index(class_number):
+    precision = 128
+    field = IntervalBallField(precision)
+    log_two = field.log_integer(2)
+    log_prefactor = (
+        RealBall(2, precision_bits=precision) * log_two
+        - field.log_integer(2)
+        - field.log_integer(5) / RealBall(2, precision_bits=precision)
+    )
+    algebraic = (
+        log_prefactor
+        + field.log_integer(class_number)
+        + field.log(regulator.ball)
+    )
+    log_index = algebraic - zeta.ball
+    return field.exp(log_index)
+
+scalar_validation = scalar_hr_index(1)
+assert validation.index_ball.lower == scalar_validation.lower
+assert validation.index_ball.upper == scalar_validation.upper
+
 forged = validate_hr_index(
     signature=(2, 0), discriminant=5, class_number=2, roots_of_unity=2,
     regulator=regulator, zeta_log_residue=zeta, precision_bits=128,
 )
 assert forged.rigorous and forged.unique_index == 2 and not forged.index_one
+scalar_forged = scalar_hr_index(2)
+assert forged.index_ball.lower == scalar_forged.lower
+assert forged.index_ball.upper == scalar_forged.upper
 
 try:
     zeta_log_residue_bound(
@@ -842,11 +894,38 @@ print("analytic-index-ok")
 test("declared FLINT integer balls agree with independent rigorous endpoints", () => {
   const output = runSagejs(String.raw`
 import sagejs.native as native_module
+import sagejs.number_fields.class_unit_analytic as analytic_module
 import sagejs.number_fields.zeta_coefficient_kernel as kernel_module
 from sagejs.number_fields.class_unit_analytic import (
     IntervalBallField,
     _dyadic_mantissas,
+    _primes_below,
 )
+
+assert _primes_below(30) == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
+
+splitting = {
+    2: ((1, 1), (1, 2)),
+    3: ((3, 1),),
+    5: ((1, 3),),
+    7: ((1, 1), (1, 1), (1, 1)),
+}
+readable_plan = analytic_module._build_bf_plan_readable(99, splitting)
+packed_plan = analytic_module._build_bf_plan_kernel(99, splitting)
+assert packed_plan is not None
+assert packed_plan.terms == readable_plan.terms
+assert packed_plan.raw_terms == readable_plan.raw_terms
+plan_kernel = kernel_module.assemble_bf_prime_power_plan_in_place
+assert native_module.is_compiled(plan_kernel)
+
+saved_plan_override = analytic_module._bf_prime_power_plan_kernel_override
+analytic_module._bf_prime_power_plan_kernel_override = False
+try:
+    fallback_plan = analytic_module._build_bf_plan(99, splitting)
+finally:
+    analytic_module._bf_prime_power_plan_kernel_override = saved_plan_override
+assert fallback_plan.terms == readable_plan.terms
+assert fallback_plan.raw_terms == readable_plan.raw_terms
 
 flint_kernel = kernel_module.assemble_bf_integer_transcendental_endpoints_flint
 source_kernel = kernel_module.assemble_bf_integer_transcendental_endpoints

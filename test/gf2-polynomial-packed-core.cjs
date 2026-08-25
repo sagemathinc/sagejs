@@ -22,6 +22,18 @@ const kernelSource = join(
 );
 const sage = process.env.SAGE_EXECUTABLE || "/home/user/sagelite/sage";
 
+function hasSageMath() {
+  if (!existsSync(sage)) return false;
+  const result = spawnSync(sage, ["-c", "from sage.all import ZZ"], {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 30_000,
+  });
+  return result.error === undefined && result.status === 0;
+}
+
+const sageMathAvailable = hasSageMath();
+
 function runSage(source, environment = {}) {
   const result = spawnSync(process.execPath, [sagejs, "--python"], {
     cwd: root,
@@ -330,7 +342,7 @@ print(type(value._words), value._words is carrier)
 
 test(
   "packed GF(2) semantics agree with SageMath",
-  { skip: !existsSync(sage) },
+  { skip: !sageMathAvailable },
   () => {
     const sageSource = String.raw`
 from sage.all import *
