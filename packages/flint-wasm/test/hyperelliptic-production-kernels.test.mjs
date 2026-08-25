@@ -344,7 +344,7 @@ test("authenticated production packs execute every hyperelliptic source family",
   const expectedFunctions = new Map([
     ["genus2-kummer-height-production", 6],
     ["genus3-weil-candidate-production", 3],
-    ["hyperelliptic-cantor-production", 8],
+    ["hyperelliptic-cantor-production", 11],
     ["hyperelliptic-kummer-production", 3],
     ["hyperelliptic-period-edge-batch-production", 3],
   ]);
