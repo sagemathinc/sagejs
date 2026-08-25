@@ -1,0 +1,67 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "minkowski-proof-bulk-issuance",
+  "title": "Minkowski Proof Bulk Issuance",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reduce live Minkowski proof-prime admission to one exact representative and principal-witness construction while preserving transactional and detached proof authority",
+  "base_commit": "3144848926d5b448f47f1955d1ceadb0399b2220",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "test/number-field-class-unit-terminal-reuse.cjs",
+    "test/number-field-class-unit-engine.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "Frozen C4 baseline at origin/class-group 31448489: 27.078s cold proof, 25.245s unconditional phase, 36 representative and 36 principal constructions for 12 proof primes",
+    "Independent authority review: SAFE after uninterrupted-path narrowing and exact witness-payload binding"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "C4 quintic exact public and detached proof replay",
+      "Existing terminal proof progress and checkpoint tamper tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test --test-name-pattern=\"Minkowski partitions resume\" test/number-field-class-unit-engine.cjs",
+    "node --test --test-name-pattern=\"reuses C4 quintic terminals\" test/number-field-class-unit-terminal-reuse.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.032,
+      "started_at": "2026-08-25T13:51:26.902Z",
+      "commit": "5747481d361690f7212ff1698c90d2870f954269",
+      "workspace_fingerprint": "e65e7400be764ae20c9afcb1cc0dd6a73ad14b49cf5d9cccb0fc0f2994014fc0",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Three coherent commits are pushed: typed class-unit cache authority (989f5821), Sage-mode freeze and exact context-policy binding (bb54df54), and uninterrupted Minkowski proof bulk issuance (5747481d). The final exact C4 run constructs one representative and one principal witness per each of 12 proof primes, preserves exact public and detached replay, and reduces the unconditional phase from 25.245s to 20.140s (-20.2%) and cold proof from 27.078s to 21.947s (-18.9%). The conditional median changed from 0.912s to 0.899s. Focused hostile/cancellation/retry tests, the C4 terminal test, build, strict Python, and lane checks pass. Independent reviews marked both cache authority and proof issuance SAFE.",
+    "risks": [
+      "architecture:check reaches package-graph validation but needs the integration-owned number-field-global-arithmetic byte budget raised from 1,500,000 to at least 1,505,450 for the combined cache and proof source",
+      "The cumulative native suite is intentionally integration-owned so the overlapping adaptive-hR and proof-bulk changes receive one exact combined native receipt"
+    ],
+    "next_steps": [
+      "Cherry-pick 989f5821, bb54df54, and 5747481d in order",
+      "Raise only the measured lazy package byte budget, then run architecture:check and one cumulative test:native on the integrated source",
+      "Unblock and rebase the adaptive-hR lane after this proof authority boundary integrates"
+    ]
+  }
+}
