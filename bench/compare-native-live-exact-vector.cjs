@@ -122,8 +122,10 @@ function measure(operation) {
     assert.equal(native.result, expected);
     assert.equal(javascript.result, expected);
     assert.equal(BigInt(direct.result), expected);
+    const memory = process.memoryUsage();
+    const resources = process.resourceUsage();
     const report = {
-      schema: "sagejs-native-live-exact-vector-benchmark-v1",
+      schema: "sagejs-native-live-exact-vector-benchmark-v2",
       revision: run("git", ["rev-parse", "HEAD"]),
       platform: process.platform,
       architecture: process.arch,
@@ -149,6 +151,17 @@ function measure(operation) {
           "argument validation, one native entry, lexical vector, result publication",
         generatedJavaScript:
           "argument validation, lexical BigInt vector, result publication",
+      },
+      memory: {
+        logicalCapacity: 1,
+        semanticMemoryLimitBytes: 4096,
+        initializedExactEntriesPerCall: 1,
+        deterministicCloseCompleted: true,
+        processRssBytesAfterCalls: memory.rss,
+        javascriptHeapUsedBytesAfterCalls: memory.heapUsed,
+        javascriptExternalBytesAfterCalls: memory.external,
+        arrayBufferBytesAfterCalls: memory.arrayBuffers,
+        processMaxRssKiB: resources.maxRSS,
       },
     };
     console.log(JSON.stringify(report, null, 2));

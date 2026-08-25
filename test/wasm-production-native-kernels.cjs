@@ -245,6 +245,7 @@ function numberFieldOracle() {
       input: String.raw`
 import json
 from sagejs.native import integer_buffer_values, kernel_integer_buffer, kernel_integer_zeros, kernel_uint64_buffer
+from sagejs.number_fields.bl_composite_kernel import packed_factor_base_rows_in_place
 from sagejs.number_fields.composite_field_analysis import packed_integer_square_root
 from sagejs.number_fields.om_maxmin import packed_maxmin_valuations_are_maximal
 from sagejs.number_fields.round4_state_kernel import packed_round4_padic_characteristic
@@ -326,6 +327,23 @@ bf_transcendental_result = assemble_bf_integer_transcendental_endpoints(
     ),
     64,
 )
+relation_metadata = kernel_integer_zeros(packed_factor_base_rows_in_place, 3, 1)
+relation_rows = kernel_integer_zeros(packed_factor_base_rows_in_place, 4, 4)
+relation_smooth = kernel_integer_zeros(packed_factor_base_rows_in_place, 2, 1)
+relation_result = packed_factor_base_rows_in_place(
+    relation_metadata,
+    relation_rows,
+    relation_smooth,
+    kernel_integer_zeros(packed_factor_base_rows_in_place, 2, 4),
+    kernel_integer_buffer(packed_factor_base_rows_in_place, [2, 3]),
+    kernel_integer_buffer(packed_factor_base_rows_in_place, [2, 3]),
+    kernel_integer_buffer(packed_factor_base_rows_in_place, [1]),
+    kernel_integer_buffer(packed_factor_base_rows_in_place, [2, 3]),
+    kernel_integer_buffer(packed_factor_base_rows_in_place, [1, 1]),
+    kernel_integer_buffer(packed_factor_base_rows_in_place, [0, 1, 2]),
+    kernel_integer_buffer(packed_factor_base_rows_in_place, [2, 3]),
+    1, 1, 2, 2, 2,
+)
 
 print(json.dumps({
     "om": [om_result, words(om_workspace)],
@@ -335,6 +353,12 @@ print(json.dumps({
     "bf": [bf_result, words(bf_output)],
     "bf_transcendentals": [
         bf_transcendental_result, words(bf_transcendental_output)
+    ],
+    "relation_rows": [
+        relation_result,
+        words(relation_metadata),
+        words(relation_rows),
+        words(relation_smooth),
     ],
 }))
 `,
@@ -387,6 +411,7 @@ test("number-field Wasm cores execute the same exact sources as fallbacks", {
       "prime-ideal-candidate-materializer-production",
       "number-field-element-valuations-production",
       "number-field-cubic-norm-obstruction-production",
+      "number-field-cubic-relation-sieve-production",
       "number-field-om-proof-production",
       "number-field-composite-analysis-production",
       "number-field-zeta-coefficients-production",
@@ -530,6 +555,31 @@ test("number-field Wasm cores execute the same exact sources as fallbacks", {
     ];
     assert.equal(normObstruction(normForm, 19n, 0n, 19n, 5n, 14n), 1n);
     assert.equal(normObstruction(normForm, 19n, 0n, 19n, 0n, 0n), 2n);
+    const factorBaseRows = runtime.function(
+      "sagejs/number_fields/bl_composite_kernel.py",
+      "packed_factor_base_rows_in_place",
+    );
+    const relationMetadata = [0n, 0n, 0n];
+    const relationRows = [0n, 0n, 0n, 0n];
+    const relationSmooth = [0n, 0n];
+    const relationResult = factorBaseRows(
+      relationMetadata,
+      relationRows,
+      relationSmooth,
+      [0n, 0n],
+      [2n, 3n],
+      [2n, 3n],
+      [1n],
+      [2n, 3n],
+      [1n, 1n],
+      [0n, 1n, 2n],
+      [2n, 3n],
+      1n,
+      1n,
+      2n,
+      2n,
+      2n,
+    );
     const actual = {
       om: [omResult, words(omWorkspace)],
       composite: String(squareRoot(value)),
@@ -539,6 +589,12 @@ test("number-field Wasm cores execute the same exact sources as fallbacks", {
         bfTranscendentalResult,
         words(bfTranscendentalOutput),
       ],
+      relation_rows: [
+        relationResult,
+        words(relationMetadata),
+        words(relationRows),
+        words(relationSmooth),
+      ],
     };
     const oracle = numberFieldOracle();
     assert.deepEqual(actual, {
@@ -547,6 +603,7 @@ test("number-field Wasm cores execute the same exact sources as fallbacks", {
       zeta: oracle.zeta,
       bf: oracle.bf,
       bf_transcendentals: oracle.bf_transcendentals,
+      relation_rows: oracle.relation_rows,
     });
     assert.deepEqual(actual, {
       om: [true, ["0", "2", "0", "0"]],
@@ -560,10 +617,16 @@ test("number-field Wasm cores execute the same exact sources as fallbacks", {
         "20265819725292939638", "20265819725292939640",
         "31950697969885030202", "31950697969885030204",
       ]],
+      relation_rows: [
+        true,
+        ["2", "2", "2"],
+        ["1", "0", "0", "1"],
+        ["1", "1"],
+      ],
     });
     for (const fn of [
       maxmin, squareRoot, zeta, bf, bfTranscendentals, candidate, memberships,
-      normObstruction,
+      normObstruction, factorBaseRows,
     ]) {
       assert.equal(fn.nativeAvailable, true);
       assert.equal(fn.executionTarget, "wasm");
