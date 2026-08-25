@@ -778,7 +778,13 @@ workspace.covered_stop = saved_covered_stop
 
 record_key = next(iter(workspace._records))
 saved_record = workspace._records[record_key]
+issued_authority = workspace._proof_cache_authority
 workspace._records[record_key] = ()
+try:
+    issued_authority.payload = workspace._proof_cache_snapshot()
+    raise AssertionError("a paired cache/authority mutation was accepted")
+except AttributeError:
+    pass
 assert_cache_tamper_rejected("splitting record")
 workspace._records[record_key] = saved_record
 

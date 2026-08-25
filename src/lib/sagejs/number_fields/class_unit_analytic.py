@@ -45,6 +45,7 @@ _MAXIMUM_ANALYTIC_REPLAY_PRECISION_BITS = 4096
 _MAXIMUM_ANALYTIC_REPLAY_BLOCK_SIZE = 1_000_000
 _SHARED_ZETA_WORKSPACE_CACHE_LIMIT = 16
 _SHARED_ZETA_WORKSPACE_SNAPSHOT_TOKEN = object()
+_ZETA_PROOF_CACHE_AUTHORITY_TOKEN = object()
 _shared_zeta_workspace_snapshots: dict[str, Any] = {}
 _bf_prime_power_plan_kernel_override: Any = None
 _MAXIMUM_PACKED_BF_PLAN_TERMS = 1_000_000
@@ -3382,6 +3383,21 @@ class _SharedZetaWorkspaceSnapshot:
         self.__dict__[name] = value
 
 
+class _ZetaProofCacheAuthority:
+    """Module-issued immutable authority for one complete workspace state."""
+
+    def __init__(self, token: object, payload: tuple[Any, ...]) -> None:
+        if token is not _ZETA_PROOF_CACHE_AUTHORITY_TOKEN:
+            raise TypeError("zeta proof-cache authorities are module-issued")
+        self.payload = payload
+        self.__dict__["_frozen"] = True
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if self.__dict__.get("_frozen", False):
+            raise AttributeError("zeta proof-cache authorities are immutable")
+        self.__dict__[name] = value
+
+
 def _build_bf_plan_readable(
     threshold: int,
     splitting: dict[int, tuple[tuple[int, int], ...]],
@@ -3643,23 +3659,16 @@ class ZetaLogResidueWorkspace:
         self.certificate_construction_nanoseconds = 0
         self.certificate_replay_nanoseconds = 0
         self._records: dict[int, tuple[tuple[int, int], ...]] = {}
-        self._record_snapshots: dict[int, tuple[tuple[int, int], ...]] = {}
         self._plans: dict[int, _BFPrimePowerPlan] = {}
-        self._plan_snapshots: dict[
-            int, tuple[int, tuple[tuple[int, int, int, int], ...], int]
-        ] = {}
         self._primes: dict[int, tuple[int, ...]] = {}
-        self._prime_snapshots: dict[int, tuple[int, ...]] = {}
         self._thresholds: dict[tuple[str, int], tuple[int, RealBall, int]] = {}
-        self._threshold_snapshots: dict[
-            tuple[str, int], tuple[int, tuple[Any, ...], int]
-        ] = {}
         self._finite_terms: dict[tuple[int, int], tuple[RealBall, dict[str, int]]] = {}
-        self._finite_term_snapshots: dict[tuple[int, int], tuple[Any, ...]] = {}
-        self._covered_stop_snapshot = self.covered_stop
         self._regulators: dict[
             tuple[str, int, int, int, int, int], tuple[RegulatorEnclosure, str]
         ] = {}
+        self._proof_cache_authority = _ZetaProofCacheAuthority(
+            _ZETA_PROOF_CACHE_AUTHORITY_TOKEN, self._proof_cache_snapshot()
+        )
         self._shared_cache_key = (
             _shared_zeta_workspace_key(discriminant, degree, splitting_provider)
             if share_across_isomorphic_fields
@@ -3678,28 +3687,37 @@ class ZetaLogResidueWorkspace:
                 _shared_zeta_workspace_snapshots.pop(self._shared_cache_key)
                 _shared_zeta_workspace_snapshots[self._shared_cache_key] = snapshot
 
-    def _shared_snapshot(self) -> tuple[Any, ...]:
+    def _proof_cache_snapshot(self) -> tuple[Any, ...]:
         return (
-            self._covered_stop_snapshot,
-            tuple(sorted(self._record_snapshots.items())),
+            self.covered_stop,
+            tuple(sorted(self._records.items())),
             tuple(
-                snapshot
-                for _threshold, snapshot in sorted(self._plan_snapshots.items())
+                (threshold, tuple(plan.terms), int(plan.raw_terms))
+                for threshold, plan in sorted(self._plans.items())
             ),
-            tuple(sorted(self._prime_snapshots.items())),
+            tuple(sorted(self._primes.items())),
             tuple(
-                (key, value[0], value[1], value[2])
-                for key, value in sorted(self._threshold_snapshots.items())
+                (key, value[0], _real_ball_snapshot(value[1]), value[2])
+                for key, value in sorted(self._thresholds.items())
             ),
             tuple(
                 (
                     key,
-                    self._finite_term_snapshots[key],
-                    tuple(sorted(self._finite_terms[key][1].items())),
+                    _real_ball_snapshot(value[0]),
+                    tuple(sorted(value[1].items())),
                 )
-                for key in sorted(self._finite_term_snapshots)
+                for key, value in sorted(self._finite_terms.items())
             ),
         )
+
+    def _issue_proof_cache_authority(self) -> None:
+        self._proof_cache_authority = _ZetaProofCacheAuthority(
+            _ZETA_PROOF_CACHE_AUTHORITY_TOKEN, self._proof_cache_snapshot()
+        )
+
+    def _shared_snapshot(self) -> tuple[Any, ...]:
+        self._validate_proof_cache()
+        return self._proof_cache_authority.payload
 
     def _restore_shared_snapshot(self, snapshot: tuple[Any, ...]) -> None:
         (
@@ -3711,19 +3729,12 @@ class ZetaLogResidueWorkspace:
             finite_terms,
         ) = snapshot
         self.covered_stop = int(covered_stop)
-        self._covered_stop_snapshot = self.covered_stop
         self._records = {int(prime): tuple(factors) for prime, factors in records}
-        self._record_snapshots = dict(self._records)
         self._plans = {
             int(threshold): _BFPrimePowerPlan(threshold, terms, raw_terms)
             for threshold, terms, raw_terms in plans
         }
-        self._plan_snapshots = {
-            int(threshold): (int(threshold), tuple(terms), int(raw_terms))
-            for threshold, terms, raw_terms in plans
-        }
         self._primes = {int(bound): tuple(values) for bound, values in primes}
-        self._prime_snapshots = dict(self._primes)
         self._thresholds = {
             tuple(key): (
                 int(threshold),
@@ -3732,53 +3743,20 @@ class ZetaLogResidueWorkspace:
             )
             for key, threshold, ball, evaluations in thresholds
         }
-        self._threshold_snapshots = {
-            tuple(key): (int(threshold), tuple(ball), int(evaluations))
-            for key, threshold, ball, evaluations in thresholds
-        }
         self._finite_terms = {
             tuple(key): (_real_ball_from_snapshot(ball), dict(diagnostics))
             for key, ball, diagnostics in finite_terms
         }
-        self._finite_term_snapshots = {
-            tuple(key): tuple(ball) for key, ball, _diagnostics in finite_terms
-        }
+        self._issue_proof_cache_authority()
 
     def _validate_proof_cache(self) -> None:
         """Reject any mutation of proof-relevant acceleration state."""
-        if self.covered_stop != self._covered_stop_snapshot:
-            raise AnalyticCertificationError("cached splitting coverage was mutated")
-        if self._records != self._record_snapshots:
-            raise AnalyticCertificationError("cached splitting records were mutated")
-        if self._primes != self._prime_snapshots:
-            raise AnalyticCertificationError("cached rational primes were mutated")
-        if set(self._plans) != set(self._plan_snapshots):
-            raise AnalyticCertificationError("cached prime-power plans were mutated")
-        for threshold, plan in self._plans.items():
-            if (
-                int(plan.threshold),
-                tuple(plan.terms),
-                int(plan.raw_terms),
-            ) != self._plan_snapshots[threshold]:
-                raise AnalyticCertificationError(
-                    "a cached prime-power plan was mutated"
-                )
-        if set(self._thresholds) != set(self._threshold_snapshots):
-            raise AnalyticCertificationError("cached zeta thresholds were mutated")
-        for key, (threshold, ball, evaluations) in self._thresholds.items():
-            if (
-                int(threshold),
-                _real_ball_snapshot(ball),
-                int(evaluations),
-            ) != self._threshold_snapshots[key]:
-                raise AnalyticCertificationError("a cached zeta threshold was mutated")
-        if set(self._finite_terms) != set(self._finite_term_snapshots):
-            raise AnalyticCertificationError("cached zeta finite terms were mutated")
-        for key, (ball, _diagnostics) in self._finite_terms.items():
-            if _real_ball_snapshot(ball) != self._finite_term_snapshots[key]:
-                raise AnalyticCertificationError(
-                    "a cached zeta finite term was mutated"
-                )
+        authority = self._proof_cache_authority
+        if (
+            type(authority) is not _ZetaProofCacheAuthority
+            or authority.payload != self._proof_cache_snapshot()
+        ):
+            raise AnalyticCertificationError("the zeta proof cache was mutated")
 
     def _publish_shared_snapshot(self) -> None:
         key = self._shared_cache_key
@@ -3843,7 +3821,7 @@ class ZetaLogResidueWorkspace:
                 return list(cached)
             primes = tuple(_primes_below(int(bound)))
             self._primes[int(bound)] = primes
-            self._prime_snapshots[int(bound)] = primes
+            self._issue_proof_cache_authority()
             return list(primes)
         finally:
             self.prime_enumeration_nanoseconds += time.perf_counter_ns() - started
@@ -3982,10 +3960,13 @@ class ZetaLogResidueWorkspace:
                 else:
                     self.provider_calls += 1
                     self.records_decoded += len(block)
+                # The provider is an external callback and may have re-entered
+                # this workspace.  Authenticate the old state before admitting
+                # its newly validated block into a fresh issued authority.
+                self._validate_proof_cache()
                 self._records.update(block)
-                self._record_snapshots.update(block)
                 self.covered_stop = stop
-                self._covered_stop_snapshot = stop
+                self._issue_proof_cache_authority()
             return {prime: self._records[prime] for prime in primes}
         finally:
             self.splitting_nanoseconds += time.perf_counter_ns() - started
@@ -4003,11 +3984,7 @@ class ZetaLogResidueWorkspace:
                 return cached
             plan = _build_bf_plan(threshold, splitting)
             self._plans[threshold] = plan
-            self._plan_snapshots[threshold] = (
-                int(plan.threshold),
-                tuple(plan.terms),
-                int(plan.raw_terms),
-            )
+            self._issue_proof_cache_authority()
             return plan
         finally:
             self.prime_power_plan_nanoseconds += time.perf_counter_ns() - started
@@ -4052,11 +4029,7 @@ class ZetaLogResidueWorkspace:
             threshold, bound = _bf_threshold(model, target, maximum)
             result = (threshold, bound, model.evaluations)
             self._thresholds[key] = result
-            self._threshold_snapshots[key] = (
-                int(threshold),
-                _real_ball_snapshot(bound),
-                int(model.evaluations),
-            )
+            self._issue_proof_cache_authority()
             return result
         finally:
             self.threshold_nanoseconds += time.perf_counter_ns() - started
@@ -4089,7 +4062,7 @@ class ZetaLogResidueWorkspace:
             field = IntervalBallField(precision)
             result = (_bf_finite_term(plan, field), field.diagnostics())
             self._finite_terms[key] = result
-            self._finite_term_snapshots[key] = _real_ball_snapshot(result[0])
+            self._issue_proof_cache_authority()
             return result
         finally:
             self.finite_term_nanoseconds += time.perf_counter_ns() - started
