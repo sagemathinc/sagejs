@@ -5,6 +5,12 @@ const childProcess = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
+const corpusDownloader = require("./download-lmfdb-number-fields.cjs");
+const {
+  NATIVE_MATH_DEPENDENCY_VERSIONS,
+} = require("../../scripts/native-math-profile.cjs");
+const { inspectBuildReceipt } = require("../../scripts/build-receipt.cjs");
+
 const {
   SCHEMA,
   SCHEMA_VERSION,
@@ -13,9 +19,11 @@ const {
   collectGitSourceIdentity,
   collectHostFingerprint,
   createToolFingerprint,
+  decimalMetadata,
   finalizeClassUnitEvidence,
   fingerprint,
   performanceEvidenceAccepted,
+  regulatorSatisfiesContract,
   semanticComparisonKey,
   sha256File,
 } = require("./class-unit-evidence-schema.cjs");
@@ -39,12 +47,22 @@ const ROLES = new Set(["smoke", "tune", "holdout"]);
 const PAYLOAD_PREFIX = "SAGEJS_CLASS_UNIT_CORPUS|";
 const GP_PAYLOAD_PREFIX = "SAGEJS_CLASS_UNIT_GP|";
 const GP_ERROR_PREFIX = "SAGEJS_CLASS_UNIT_GP_ERROR|";
+const REGULATOR_CONTRACT = Object.freeze({
+  minimum_decimal_digits: 10,
+  require_rigorous: false,
+});
+const GNU_TIME = process.platform === "linux" && fs.existsSync("/usr/bin/time")
+  ? "/usr/bin/time"
+  : null;
 
 function usage() {
   return `Usage: node ${path.relative(ROOT, __filename)} [options]
 
 Run a versioned subset of the stratified cubic class/unit corpus. An actual
-evidence run is accepted only from a clean Git source tree.
+evidence run is accepted only from a clean Git source tree. Sub-10ms direct-GP
+kernel and field samples are means of independent-field batches lasting at
+least one second; every sample records its batch size, child peak RSS, and
+available phase times.
 
 Corpus and measurement options:
   --tier TIER            smoke, tune, holdout, or all (default: smoke)
@@ -289,6 +307,101 @@ function packageVersion() {
   }
 }
 
+function displayedPath(filename) {
+  const absolute = fs.realpathSync(filename);
+  const relative = path.relative(ROOT, absolute).replaceAll("\\", "/");
+  return relative !== "" && !relative.startsWith("../") && !path.isAbsolute(relative)
+    ? relative
+    : absolute;
+}
+
+function fileArtifact(role, filename) {
+  const absolute = fs.realpathSync(filename);
+  return { role, path: displayedPath(absolute), sha256: sha256File(absolute) };
+}
+
+function treeArtifact(role, directory) {
+  const absolute = fs.realpathSync(directory);
+  const records = [];
+  function visit(current) {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })
+      .sort((left, right) => left.name.localeCompare(right.name))) {
+      const filename = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        visit(filename);
+      } else if (entry.isFile()) {
+        const stats = fs.statSync(filename);
+        records.push({
+          path: path.relative(absolute, filename).replaceAll("\\", "/"),
+          bytes: stats.size,
+          sha256: sha256File(filename),
+        });
+      } else {
+        throw new Error(`runtime artifact tree contains a non-file entry: ${filename}`);
+      }
+    }
+  }
+  visit(absolute);
+  if (records.length === 0) throw new Error(`runtime artifact tree is empty: ${absolute}`);
+  return { role, path: displayedPath(absolute), sha256: fingerprint(records) };
+}
+
+function sourceRuntimeArtifacts(executable) {
+  const inspected = inspectBuildReceipt(ROOT);
+  if (!inspected.current) {
+    throw new Error(`source Sage.js build receipt is stale: ${inspected.reason}`);
+  }
+  const receiptFile = path.join(ROOT, "dist/build-receipt.json");
+  const receipt = JSON.parse(fs.readFileSync(receiptFile, "utf8"));
+  if (receipt.schema !== "sagejs.build-receipt/v1" ||
+      !/^[0-9a-f]{64}$/.test(receipt.identity?.workspaceSha256 || "")) {
+    throw new Error("source Sage.js requires a valid dist/build-receipt.json");
+  }
+  for (const input of receipt.identity.nativeInputs || []) {
+    for (const file of input.files || []) {
+      const filename = path.join(ROOT, file.path);
+      if (!fs.existsSync(filename) || fs.statSync(filename).size !== file.bytes ||
+          sha256File(filename) !== file.sha256) {
+        throw new Error(`native build receipt mismatch at ${file.path}`);
+      }
+    }
+  }
+  const nativeIndexFile = path.join(ROOT, "dist/native-kernels/index.json");
+  const nativeIndex = JSON.parse(fs.readFileSync(nativeIndexFile, "utf8"));
+  const pack = nativeIndex.packs?.[0];
+  const packFile = path.join(ROOT, "dist/native-kernels/pack/sagejs_native_kernel_pack.node");
+  if (!pack || !fs.existsSync(packFile) || fs.statSync(packFile).size !== pack.bytes ||
+      sha256File(packFile) !== pack.sha256) {
+    throw new Error("production native-kernel pack disagrees with its authenticated index");
+  }
+  return [
+    fileArtifact("source-launcher", executable),
+    fileArtifact("source-entrypoint", path.join(ROOT, "bin/sagejs-source.cjs")),
+    fileArtifact("node-runtime", process.execPath),
+    fileArtifact("build-receipt", receiptFile),
+    treeArtifact("tools-tree", path.join(ROOT, "dist/tools")),
+    treeArtifact("module-cache-tree", path.join(ROOT, "dist/module-cache")),
+    treeArtifact("runtime-cache-tree", path.join(ROOT, "dist/runtime-cache")),
+    treeArtifact("native-kernels-tree", path.join(ROOT, "dist/native-kernels")),
+  ];
+}
+
+function sourceLibraries() {
+  const createCompiler = require(path.join(ROOT, "dist/tools/compiler.js")).default;
+  const compiler = createCompiler().get_compiler_version();
+  return {
+    arb: `integrated-with-flint-${NATIVE_MATH_DEPENDENCY_VERSIONS.flint}`,
+    compiler,
+    flint: NATIVE_MATH_DEPENDENCY_VERSIONS.flint,
+    gmp: NATIVE_MATH_DEPENDENCY_VERSIONS.gmp,
+    pari: null,
+  };
+}
+
+function nullLibraries(overrides = {}) {
+  return { arb: null, compiler: null, flint: null, gmp: null, pari: null, ...overrides };
+}
+
 function executableTool(name, requested, versionProbe) {
   const executable = resolveExecutable(requested);
   if (!executable) {
@@ -317,6 +430,7 @@ function detectTools(options) {
   const sagejs = executableTool("sagejs", options.sagejs, (executable) => {
     const result = probe(executable, ["--python", "-"], {
       input: 'print("SAGEJS_CORPUS_PROBE_OK")\n',
+      env: { SAGEJS_USE_SOURCE: "1" },
     });
     return {
       ok: result.ok && result.stdout.split(/\r?\n/).includes("SAGEJS_CORPUS_PROBE_OK"),
@@ -326,6 +440,16 @@ function detectTools(options) {
     };
   });
   sagejs.argv_prefix = sagejs.executable ? [sagejs.executable, "--python"] : null;
+  if (sagejs.status === "available") {
+    try {
+      sagejs.artifacts = sourceRuntimeArtifacts(sagejs.executable);
+      sagejs.libraries = sourceLibraries();
+      sagejs.execution_mode = "source-forced";
+    } catch (error) {
+      sagejs.status = "unavailable";
+      sagejs.reason = error.message;
+    }
+  }
 
   const sagejsRelease = options.sagejsRelease
     ? executableTool("sagejs-release", options.sagejsRelease, (executable) => {
@@ -350,6 +474,16 @@ function detectTools(options) {
   sagejsRelease.argv_prefix = sagejsRelease.executable
     ? [sagejsRelease.executable, "--python"]
     : null;
+  if (sagejsRelease.status === "available") {
+    if (sagejs.executable && sagejsRelease.executable === sagejs.executable) {
+      sagejsRelease.status = "unavailable";
+      sagejsRelease.reason = "release launcher must be distinct from the forced source launcher";
+    } else {
+      sagejsRelease.artifacts = [fileArtifact("release-executable", sagejsRelease.executable)];
+      sagejsRelease.libraries = nullLibraries();
+      sagejsRelease.execution_mode = "release-explicit";
+    }
+  }
 
   const sage = executableTool("sage-pari", options.sage, (executable) => {
     const result = probe(executable, ["--version"]);
@@ -362,6 +496,15 @@ function detectTools(options) {
     };
   });
   sage.argv_prefix = sage.executable ? [sage.executable, "-python"] : null;
+  if (sage.status === "available") {
+    const pariProbe = probe(sage.executable, ["-python", "-"], {
+      input: 'from sage.all import pari\nprint("SAGEJS_PARI_VERSION|" + str(pari("version()")))\n',
+    });
+    sage.artifacts = [fileArtifact("executable", sage.executable)];
+    sage.libraries = nullLibraries({
+      pari: /SAGEJS_PARI_VERSION\|([^\r\n]+)/.exec(pariProbe.stdout)?.[1] || "unreported",
+    });
+  }
 
   const gp = executableTool("direct-gp", options.gp, (executable) => {
     const result = probe(executable, ["--version"]);
@@ -374,6 +517,10 @@ function detectTools(options) {
     };
   });
   gp.argv_prefix = gp.executable ? [gp.executable, "-fq"] : null;
+  if (gp.status === "available") {
+    gp.artifacts = [fileArtifact("executable", gp.executable)];
+    gp.libraries = nullLibraries({ pari: gp.version });
+  }
 
   const magma = executableTool("magma", options.magma, (executable) => {
     const result = probe(executable, ["-b"], {
@@ -388,6 +535,10 @@ function detectTools(options) {
     };
   });
   magma.argv_prefix = magma.executable ? [magma.executable, "-b"] : null;
+  if (magma.status === "available") {
+    magma.artifacts = [fileArtifact("executable", magma.executable)];
+    magma.libraries = nullLibraries();
+  }
 
   const julia = executableTool("julia", options.julia, (executable) => {
     const result = probe(executable, ["--version"]);
@@ -404,7 +555,7 @@ function detectTools(options) {
   const juliaDepotAvailable = fs.statSync(juliaDepot, { throwIfNoEntry: false })?.isDirectory() || false;
   function juliaFamily(name, project) {
     const available = julia.status === "available" && project.status === "available";
-    return {
+    const answer = {
       name,
       status: available ? "available" : "unavailable",
       requested_executable: options.julia,
@@ -420,8 +571,13 @@ function detectTools(options) {
       julia_depot_available: juliaDepotAvailable,
       reason: available ? null : julia.reason || project.reason,
     };
+    if (available) {
+      answer.artifacts = [fileArtifact("executable", julia.executable)];
+      answer.libraries = nullLibraries();
+    }
+    return answer;
   }
-  return {
+  const answer = {
     sagejs,
     "sagejs-release": sagejsRelease,
     "sage-pari": sage,
@@ -430,6 +586,11 @@ function detectTools(options) {
     hecke: juliaFamily("hecke", heckeProject),
     oscar: juliaFamily("oscar", oscarProject),
   };
+  for (const tool of Object.values(answer)) {
+    tool.artifacts ||= [];
+    tool.libraries ||= nullLibraries();
+  }
+  return answer;
 }
 
 function evidenceTool(name, tool) {
@@ -441,6 +602,8 @@ function evidenceTool(name, tool) {
       `@manifest-sha256:${projectRecord.manifest_toml_sha256 || "unavailable"}` +
       (tool.julia_depot ? `@depot:${tool.julia_depot}` : "")
     : null;
+  const artifacts = [...(tool.artifacts || [])];
+  if (available && GNU_TIME) artifacts.push(fileArtifact("measurement-wrapper", GNU_TIME));
   return createToolFingerprint(name, {
     status: available ? "ok" : "unavailable",
     executable: available ? tool.executable : null,
@@ -448,6 +611,9 @@ function evidenceTool(name, tool) {
     project,
     version: available ? (tool.version || "version not reported") : null,
     executable_sha256: available ? sha256File(tool.executable) : null,
+    execution_mode: available ? (tool.execution_mode || "direct-executable") : null,
+    artifacts: available ? artifacts : [],
+    libraries: tool.libraries || nullLibraries(),
     reason: available ? null : tool.reason,
   });
 }
@@ -464,6 +630,7 @@ function loadFixture(filename, tier, limit) {
   if (fixture.schema !== FIXTURE_SCHEMA || !Array.isArray(fixture.records)) {
     throw new Error(`unsupported class/unit corpus fixture: expected ${FIXTURE_SCHEMA}`);
   }
+  corpusDownloader.validateCorpus(fixture);
   const labels = new Set();
   for (const record of fixture.records) {
     if (record.degree !== 3 || !Array.isArray(record.coefficients) || record.coefficients.length !== 4) {
@@ -553,6 +720,7 @@ function createPlan(options, fixture, records, detectedTools, source) {
       tier: options.limit === null ? options.tier : `${options.tier}-limit-${options.limit}`,
       requested_proofs: proofs,
       requested_output: "class-invariants-unit-summary-regulator",
+      regulator_contract: REGULATOR_CONTRACT,
       boundaries: options.boundaries,
       systems: options.systems,
       samples: options.samples,
@@ -638,6 +806,10 @@ payload = []
 for record in records:
     for sample in range(samples):
         try:
+            if sample == 0 and boundary in ("kernel-warm", "field-cold"):
+                warm_field = fresh_field(record, "warm")
+                warm_field.maximal_order()
+                compute_answer(warm_field, proof)
             field_started = time.perf_counter_ns()
             field = fresh_field(record, sample)
             field.maximal_order()
@@ -657,6 +829,8 @@ for record in records:
                 "sample": sample,
                 "status": "ok",
                 "elapsed_seconds": elapsed,
+                "batch_elapsed_seconds": elapsed,
+                "iteration_count": 1,
                 "phases_seconds": {
                     "initialization": None,
                     "field_construction": field_seconds,
@@ -695,16 +869,58 @@ function gpAdapterSource(records, proof, boundary, samples) {
       const functionName = `sagejs_cu_job_${jobIndex++}`;
       statements.push(`${functionName}() = {
   f = Polrev(${gpVector(record.coefficients)});
-  field_started = getwalltime();
-  nf = nfinit(f);
-  field_seconds = (getwalltime() - field_started) / 1000.;
-  computation_started = getwalltime();
-  bnf = bnfinit(nf, 1);
-  ${proof ? "certified = bnfcertify(bnf); if(!certified, error(\"bnfcertify returned false\"));" : "certified = 0;"}
-  computation_seconds = (getwalltime() - computation_started) / 1000.;
-  elapsed = ${boundary === "kernel-warm" ? "computation_seconds" : "field_seconds + computation_seconds"};
+  persistent = ${["kernel-warm", "field-cold"].includes(boundary) ? 1 : 0};
+  if(persistent,
+    warm_nf = nfinit(f);
+    warm_bnf = bnfinit(warm_nf, 1);
+    ${proof ? "if(!bnfcertify(warm_bnf), error(\"warm bnfcertify returned false\"));" : ""}
+    calibration_nf = nfinit(f);
+    calibration_started = getwalltime();
+    calibration_bnf = bnfinit(calibration_nf, 1);
+    ${proof ? "if(!bnfcertify(calibration_bnf), error(\"calibration bnfcertify returned false\"));" : ""}
+    calibration_ms = max(1, getwalltime() - calibration_started);
+    iterations = min(10000, max(2, ceil(1200 / calibration_ms))),
+    iterations = 1
+  );
+  field_ms = 0;
+  computation_ms = 0;
+  verification_ms = 0;
+  if(${boundary === "kernel-warm" ? 1 : 0},
+    nfs = vector(iterations, i, nfinit(f));
+    computation_started = getwalltime();
+    bnfs = vector(iterations, i, bnfinit(nfs[i], 1));
+    computation_ms = getwalltime() - computation_started;
+    answer_nf = nfs[iterations],
+    bnfs = vector(iterations, i,
+      my(field_started = getwalltime(), current_nf, computation_started, current_bnf);
+      current_nf = nfinit(f);
+      field_ms += getwalltime() - field_started;
+      computation_started = getwalltime();
+      current_bnf = bnfinit(current_nf, 1);
+      computation_ms += getwalltime() - computation_started;
+      if(i == iterations, answer_nf = current_nf);
+      current_bnf
+    )
+  );
+  if(${proof ? 1 : 0},
+    verification_started = getwalltime();
+    for(i = 1, iterations, if(!bnfcertify(bnfs[i]), error("bnfcertify returned false")));
+    verification_ms = getwalltime() - verification_started;
+    certified = 1,
+    certified = 0
+  );
+  batch_ms = ${boundary === "kernel-warm"
+    ? "computation_ms + verification_ms"
+    : "field_ms + computation_ms + verification_ms"};
+  if(persistent && batch_ms < 1000, error("GP microbatch did not reach one second"));
+  elapsed = batch_ms / iterations / 1000.;
+  batch_seconds = batch_ms / 1000.;
+  field_seconds = field_ms / iterations / 1000.;
+  computation_seconds = computation_ms / iterations / 1000.;
+  verification_seconds = verification_ms / iterations / 1000.;
+  bnf = bnfs[iterations];
   if(elapsed <= 0, error("GP wall timer resolution was insufficient"));
-  print("${GP_PAYLOAD_PREFIX}${prefix}|", elapsed, "|", field_seconds, "|", computation_seconds, "|", bnf.no, "|", bnf.cyc, "|", nf.sign[1] + nf.sign[2] - 1, "|", bnf.tu[1], "|", bnf.reg, "|", certified);
+  print("${GP_PAYLOAD_PREFIX}${prefix}|", elapsed, "|", batch_seconds, "|", iterations, "|", field_seconds, "|", computation_seconds, "|", verification_seconds, "|", bnf.no, "|", bnf.cyc, "|", answer_nf.sign[1] + answer_nf.sign[2] - 1, "|", bnf.tu[1], "|", bnf.reg, "|", certified);
 };
 iferr(${functionName}(), E, print("${GP_ERROR_PREFIX}${prefix}|", E));`);
     }
@@ -714,8 +930,12 @@ iferr(${functionName}(), E, print("${GP_ERROR_PREFIX}${prefix}|", E));`);
 }
 
 function spawn(executable, args, source, timeoutSeconds, env = {}) {
+  if (!GNU_TIME) {
+    throw new Error("performance evidence requires GNU /usr/bin/time for child peak RSS");
+  }
+  const rssMarker = "SAGEJS_CLASS_UNIT_MAX_RSS_KIB|";
   const started = process.hrtime.bigint();
-  const run = childProcess.spawnSync(executable, args, {
+  const run = childProcess.spawnSync(GNU_TIME, ["-f", `${rssMarker}%M`, executable, ...args], {
     cwd: ROOT,
     encoding: "utf8",
     input: source,
@@ -724,10 +944,43 @@ function spawn(executable, args, source, timeoutSeconds, env = {}) {
     killSignal: "SIGKILL",
     maxBuffer: 64 * 1024 * 1024,
   });
+  const rssMatches = [...(run.stderr || "").matchAll(
+    new RegExp(`${rssMarker.replaceAll("|", "\\|")}(\\d+)`, "g"),
+  )];
+  const peakRssKib = rssMatches.length === 1 ? Number(rssMatches[0][1]) : null;
   return {
     run,
     process_total_seconds: Number(process.hrtime.bigint() - started) / 1e9,
+    peak_rss_bytes: Number.isSafeInteger(peakRssKib) && peakRssKib > 0
+      ? peakRssKib * 1024
+      : null,
   };
+}
+
+function rationalText(parts) {
+  return parts[1] === 1n ? String(parts[0]) : `${parts[0]}/${parts[1]}`;
+}
+
+function decimalRegulator(value) {
+  const text = String(value);
+  const metadata = decimalMetadata(text);
+  return {
+    kind: "decimal",
+    value: text,
+    precision_digits: metadata.precisionDigits,
+    absolute_error_bound: rationalText(metadata.radius),
+    rigorous: false,
+  };
+}
+
+function decoratePayload(payload) {
+  return payload.map((sample) => {
+    if (sample.answer?.regulator?.kind !== "decimal") return sample;
+    return {
+      ...sample,
+      answer: { ...sample.answer, regulator: decimalRegulator(sample.answer.regulator.value) },
+    };
+  });
 }
 
 function parsePythonPayload(run, system) {
@@ -740,7 +993,7 @@ function parsePythonPayload(run, system) {
     item.startsWith(PAYLOAD_PREFIX)
   );
   if (!line) throw new Error(`${system} emitted no corpus payload`);
-  return JSON.parse(line.slice(PAYLOAD_PREFIX.length));
+  return decoratePayload(JSON.parse(line.slice(PAYLOAD_PREFIX.length)));
 }
 
 function parseGpPayload(run) {
@@ -768,8 +1021,11 @@ function parseGpPayload(run) {
       label,
       sample,
       elapsed,
+      batchElapsed,
+      iterations,
       fieldSeconds,
       computationSeconds,
+      verificationSeconds,
       classNumber,
       invariants,
       unitRank,
@@ -786,18 +1042,20 @@ function parseGpPayload(run) {
       sample: Number(sample),
       status: "ok",
       elapsed_seconds: Number(elapsed),
+      batch_elapsed_seconds: Number(batchElapsed),
+      iteration_count: Number(iterations),
       phases_seconds: {
         initialization: null,
         field_construction: Number(fieldSeconds),
         computation: Number(computationSeconds),
-        verification: null,
+        verification: Number(verificationSeconds),
       },
       answer: {
         class_number: classNumber,
         class_group_invariant_factors: parsedInvariants,
         unit_rank: Number(unitRank),
         torsion_order: torsion,
-        regulator: { kind: "decimal", value: regulator },
+        regulator: decimalRegulator(regulator),
         _achieved_proof_semantics: certified === "1"
           ? "exact-unconditional"
           : "exact-relations-conditional-grh",
@@ -808,14 +1066,39 @@ function parseGpPayload(run) {
   return payload;
 }
 
-function numericRational(text) {
-  if (typeof text !== "string") return Number(text);
-  const parts = text.split("/");
-  if (parts.length === 2) return Number(parts[0]) / Number(parts[1]);
-  return Number(text);
+function rationalParts(text) {
+  const match = /^(-?(?:0|[1-9][0-9]*))(?:\/([1-9][0-9]*))?$/.exec(String(text));
+  if (!match) throw new Error(`invalid rational ${text}`);
+  return [BigInt(match[1]), BigInt(match[2] || "1")];
 }
 
-function correctnessMismatches(answer, expected) {
+function compareRationals(left, right) {
+  const difference = left[0] * right[1] - right[0] * left[1];
+  return difference < 0n ? -1 : difference > 0n ? 1 : 0;
+}
+
+function addRationals(left, right) {
+  return [left[0] * right[1] + right[0] * left[1], left[1] * right[1]];
+}
+
+function negateRational(value) {
+  return [-value[0], value[1]];
+}
+
+function decimalCell(text) {
+  const metadata = decimalMetadata(String(text));
+  return {
+    lower: addRationals(metadata.value, negateRational(metadata.radius)),
+    upper: addRationals(metadata.value, metadata.radius),
+  };
+}
+
+function cellsOverlap(left, right) {
+  return compareRationals(left.lower, right.upper) <= 0 &&
+    compareRationals(right.lower, left.upper) <= 0;
+}
+
+function correctnessMismatches(answer, expected, regulatorContract = REGULATOR_CONTRACT) {
   if (!answer) return ["missing-answer"];
   const mismatches = [];
   if (answer.class_number !== expected.class_number) mismatches.push("class_number");
@@ -827,19 +1110,35 @@ function correctnessMismatches(answer, expected) {
   }
   if (answer.unit_rank !== expected.unit_rank) mismatches.push("unit_rank");
   if (answer.torsion_order !== String(expected.torsion_order)) mismatches.push("torsion_order");
-  const target = Number(expected.regulator);
-  if (!Number.isFinite(target)) {
+  let expectedCell;
+  try {
+    expectedCell = decimalCell(expected.regulator);
+  } catch {
     mismatches.push("fixture_regulator");
-  } else if (answer.regulator?.kind === "interval") {
-    const lower = numericRational(answer.regulator.lower);
-    const upper = numericRational(answer.regulator.upper);
-    if (!Number.isFinite(lower) || !Number.isFinite(upper) || lower > target || target > upper) {
+  }
+  if (expectedCell && answer.regulator?.kind === "interval") {
+    let interval;
+    try {
+      interval = {
+        lower: rationalParts(answer.regulator.lower),
+        upper: rationalParts(answer.regulator.upper),
+      };
+    } catch {
+      interval = null;
+    }
+    if (!interval || !cellsOverlap(interval, expectedCell) ||
+        !regulatorSatisfiesContract(answer.regulator, regulatorContract)) {
       mismatches.push("regulator_interval");
     }
-  } else {
-    const observed = Number(answer.regulator?.value);
-    const tolerance = Math.max(1, Math.abs(target)) * 1e-10;
-    if (!Number.isFinite(observed) || Math.abs(observed - target) > tolerance) {
+  } else if (expectedCell) {
+    let observedCell;
+    try {
+      observedCell = decimalCell(answer.regulator?.value);
+    } catch {
+      observedCell = null;
+    }
+    if (!observedCell || !cellsOverlap(observedCell, expectedCell) ||
+        !regulatorSatisfiesContract(answer.regulator, regulatorContract)) {
       mismatches.push("regulator_decimal");
     }
   }
@@ -882,19 +1181,37 @@ function terminalResult(job, reason = null) {
   };
 }
 
-function aggregateJob(job, samples, expected, processTotalSeconds = null) {
+function aggregateJob(
+  job,
+  samples,
+  expected,
+  processTotalSeconds = null,
+  processPeakRssBytes = null,
+) {
+  const identityErrors = [];
+  const indices = new Set();
+  for (const sample of samples) {
+    if (sample.label !== job.label) identityErrors.push(`foreign label ${sample.label}`);
+    if (!Number.isInteger(sample.sample) || sample.sample < 0 || sample.sample >= job.samples) {
+      identityErrors.push(`invalid sample index ${sample.sample}`);
+    } else if (indices.has(sample.sample)) {
+      identityErrors.push(`duplicate sample index ${sample.sample}`);
+    } else {
+      indices.add(sample.sample);
+    }
+  }
+  if (samples.length !== job.samples || indices.size !== job.samples) {
+    identityErrors.push(`expected exact sample indices 0..${job.samples - 1}`);
+  }
+  if (identityErrors.length > 0) {
+    return {
+      ...terminalResult(job, `sample identity mismatch: ${identityErrors.join("; ")}`),
+      status: "error",
+    };
+  }
+  samples = [...samples].sort((left, right) => left.sample - right.sample);
   const failures = samples.filter((sample) => sample.status !== "ok");
   const successful = samples.filter((sample) => sample.status === "ok");
-  const internalAnswer = successful.at(-1)?.answer || null;
-  const achieved = internalAnswer?._achieved_proof_semantics || null;
-  const answer = internalAnswer
-    ? Object.fromEntries(Object.entries(internalAnswer).filter(([key]) => !key.startsWith("_")))
-    : null;
-  const mismatches = correctnessMismatches(answer, expected);
-  const proofSatisfied = achieved === "exact-unconditional" ||
-    (achieved === "exact-relations-conditional-grh" &&
-      job.requested_proof === "conditional-grh");
-  if (!proofSatisfied) mismatches.push("achieved_proof_semantics");
   if (failures.length > 0 || successful.length !== job.samples) {
     const reason = failures.map((sample) => sample.reason).filter(Boolean).join("; ") ||
       `expected ${job.samples} samples, received ${successful.length}`;
@@ -902,6 +1219,31 @@ function aggregateJob(job, samples, expected, processTotalSeconds = null) {
       ...terminalResult(job, reason),
       status: "error",
     };
+  }
+  const analyzed = successful.map((sample) => {
+    const internalAnswer = sample.answer;
+    const answer = internalAnswer
+      ? Object.fromEntries(Object.entries(internalAnswer).filter(([key]) => !key.startsWith("_")))
+      : null;
+    const achieved = internalAnswer?._achieved_proof_semantics || null;
+    const mismatches = correctnessMismatches(answer, expected, REGULATOR_CONTRACT);
+    const proofSatisfied = achieved === "exact-unconditional" ||
+      (achieved === "exact-relations-conditional-grh" &&
+        job.requested_proof === "conditional-grh");
+    if (!proofSatisfied) mismatches.push("achieved_proof_semantics");
+    return { achieved, answer, mismatches };
+  });
+  const achieved = analyzed[0].achieved;
+  const answer = analyzed[0].answer;
+  const mismatches = analyzed.flatMap((item, index) =>
+    item.mismatches.map((mismatch) => `sample-${index}:${mismatch}`)
+  );
+  const answerFingerprint = fingerprint(answer);
+  for (const [index, item] of analyzed.entries()) {
+    if (item.achieved !== achieved) mismatches.push(`sample-${index}:proof-disagreement`);
+    if (fingerprint(item.answer) !== answerFingerprint) {
+      mismatches.push(`sample-${index}:answer-disagreement`);
+    }
   }
   if (mismatches.length > 0) {
     return {
@@ -923,16 +1265,21 @@ function aggregateJob(job, samples, expected, processTotalSeconds = null) {
       comparison_key: semanticComparisonKey({
         achievedProofSemantics: achieved,
         requestedOutput: "class-invariants-unit-summary-regulator",
-        regulator: answer.regulator,
+        regulatorContract: REGULATOR_CONTRACT,
       }),
     },
     boundary: job.boundary,
     status: "ok",
     reason: null,
     process_total_seconds: processTotalSeconds,
-    samples: samples.map((sample) => ({
+    samples: samples.map((sample, index) => ({
+      sample_index: sample.sample,
+      answer_sha256: fingerprint(analyzed[index].answer),
+      achieved_proof_semantics: analyzed[index].achieved,
       elapsed_seconds: sample.elapsed_seconds,
-      peak_rss_bytes: null,
+      batch_elapsed_seconds: sample.batch_elapsed_seconds || sample.elapsed_seconds,
+      iteration_count: sample.iteration_count || 1,
+      peak_rss_bytes: sample.peak_rss_bytes || processPeakRssBytes,
       phases_seconds: sample.phases_seconds || {
         initialization: null,
         field_construction: null,
@@ -976,7 +1323,13 @@ function runPersistentGroup(system, proof, boundary, jobs, recordsByLabel, tool,
     : system === "sage-pari"
       ? ["-python", "-"]
       : ["-fq"];
-  const executed = spawn(tool.executable, args, source, timeoutSeconds);
+  const executed = spawn(
+    tool.executable,
+    args,
+    source,
+    timeoutSeconds,
+    system === "sagejs" ? { SAGEJS_USE_SOURCE: "1" } : {},
+  );
   const payload = system === "direct-gp"
     ? parseGpPayload(executed.run)
     : parsePythonPayload(executed.run, system);
@@ -985,6 +1338,7 @@ function runPersistentGroup(system, proof, boundary, jobs, recordsByLabel, tool,
     payload.filter((sample) => sample.label === job.label),
     recordsByLabel.get(job.label),
     executed.process_total_seconds,
+    executed.peak_rss_bytes,
   ));
 }
 
@@ -996,13 +1350,13 @@ function runFreshJob(job, expected, tool, timeoutSeconds) {
       ? gpAdapterSource(
           [expected],
           job.requested_proof === "unconditional",
-          "field-cold",
+          job.boundary,
           1,
         )
       : pythonAdapterSource(
           [expected],
           job.requested_proof === "unconditional",
-          "field-cold",
+          job.boundary,
           1,
           job.system,
         );
@@ -1011,13 +1365,25 @@ function runFreshJob(job, expected, tool, timeoutSeconds) {
       : job.system === "sage-pari"
         ? ["-python", "-"]
         : ["-fq"];
-    const executed = spawn(tool.executable, args, source, timeoutSeconds);
+    const executed = spawn(
+      tool.executable,
+      args,
+      source,
+      timeoutSeconds,
+      job.tool_id === "sagejs" ? { SAGEJS_USE_SOURCE: "1" } : {},
+    );
     processTotalSeconds += executed.process_total_seconds;
     let payload;
     try {
       payload = job.system === "direct-gp"
         ? parseGpPayload(executed.run)
         : parsePythonPayload(executed.run, job.system);
+      if (payload.length !== 1 || payload[0].label !== job.label || payload[0].sample !== 0) {
+        throw new Error(
+          `fresh process must return exactly sample 0 for ${job.label}; got ` +
+            payload.map((item) => `${item.label}:${item.sample}`).join(","),
+        );
+      }
       const item = payload[0];
       const initializationSeconds = Math.max(
         0,
@@ -1027,6 +1393,7 @@ function runFreshJob(job, expected, tool, timeoutSeconds) {
         ...item,
         sample,
         elapsed_seconds: executed.process_total_seconds,
+        peak_rss_bytes: executed.peak_rss_bytes,
         phases_seconds: {
           initialization: initializationSeconds,
           field_construction: item.phases_seconds?.field_construction ?? null,
@@ -1044,7 +1411,7 @@ function runFreshJob(job, expected, tool, timeoutSeconds) {
       });
     }
   }
-  return aggregateJob(job, samples, expected, processTotalSeconds);
+  return aggregateJob(job, samples, expected, processTotalSeconds, null);
 }
 
 function runPlan(plan, records, options) {
@@ -1103,6 +1470,16 @@ function runPlan(plan, records, options) {
     order.get(`${left.system}|${left.label}|${left.requested_proof}|${left.boundary}`) -
     order.get(`${right.system}|${right.label}|${right.requested_proof}|${right.boundary}`)
   );
+  const finalSource = collectGitSourceIdentity({ root: ROOT });
+  if (fingerprint(finalSource) !== fingerprint(plan.source)) {
+    throw new Error("source identity changed while the class/unit corpus was running");
+  }
+  const finalTools = evidenceTools(detectTools(options));
+  for (const [name, original] of Object.entries(plan.tools)) {
+    if (!finalTools[name] || finalTools[name].fingerprint !== original.fingerprint) {
+      throw new Error(`tool or executed artifact identity changed while running: ${name}`);
+    }
+  }
   const raw = {
     schema: SCHEMA,
     schema_version: SCHEMA_VERSION,
@@ -1158,6 +1535,8 @@ if (require.main === module) {
 
 module.exports = {
   SYSTEMS,
+  aggregateJob,
+  correctnessMismatches,
   createPlan,
   detectTools,
   gpAdapterSource,
