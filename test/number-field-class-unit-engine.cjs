@@ -115,6 +115,7 @@ assert _cached_class_unit_engine_result(
     cache, false_key, K, order, False, "auto", 1, limits_key
 ) is None
 other_limits = ClassUnitEngineLimits(max_relation_attempts=513)
+other_limits_key = _class_unit_engine_limits_key(other_limits)
 assert _cached_class_unit_engine_result(
     cache,
     false_key,
@@ -123,8 +124,20 @@ assert _cached_class_unit_engine_result(
     False,
     "auto",
     0,
-    _class_unit_engine_limits_key(other_limits),
+    other_limits_key,
 ) is None
+
+# Sage-mode objects expose a Python-shaped dictionary even when their source
+# declares slots.  The issued entry is runtime-frozen, and lookup also derives
+# the full limit projection independently from the retained context.
+try:
+    entry.__dict__["_ClassUnitEngineCacheEntry__limits_key"] = other_limits_key
+except (AttributeError, TypeError):
+    pass
+forged_limits_key = (False, "auto", 0, other_limits_key)
+cache[forged_limits_key] = entry
+forged_limits = class_unit_context(K, proof=False, max_relation_attempts=513)
+assert forged_limits is not first
 
 # The original vulnerability was a raw conditional result injected under the
 # proof=True tuple key.  A raw value is never cache authority now.
@@ -162,7 +175,7 @@ limited_key = (
     False,
     "auto",
     0,
-    _class_unit_engine_limits_key(other_limits),
+    other_limits_key,
 )
 M._class_unit_engine_cache[limited_key] = policy_entry
 limited = class_unit_context(M, proof=False, max_relation_attempts=513)
