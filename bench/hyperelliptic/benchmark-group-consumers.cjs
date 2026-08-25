@@ -55,7 +55,7 @@ order = J.order()
 order_seconds = time.perf_counter() - started
 
 started = time.perf_counter()
-structure = J.group_structure(algorithm="native", seed=3)
+structure = J.group_structure(algorithm="auto", seed=3)
 structure_seconds = time.perf_counter() - started
 
 original_points = J.points
@@ -66,7 +66,7 @@ def counted_points(*args, **kwds):
 J.points = counted_points
 try:
     started = time.perf_counter()
-    G, phi = J.abelian_group(algorithm="native", seed=3)
+    G, phi = J.abelian_group(algorithm="auto", seed=3)
     map_seconds = time.perf_counter() - started
 finally:
     J.points = original_points
@@ -79,7 +79,7 @@ query_seconds = time.perf_counter() - started
 started = time.perf_counter()
 verified = phi.verify()
 verify_seconds = time.perf_counter() - started
-capability = J.prepared_arithmetic(algorithm="native").capability().to_dict()
+capability = J.prepared_arithmetic(algorithm="auto").capability().to_dict()
 
 assert order == 32
 assert structure == (2, 2, 8)
@@ -143,6 +143,10 @@ function rankThreeProcessColdReceipt(options) {
       {
         cwd: repositoryRoot,
         encoding: "utf8",
+        env: {
+          ...process.env,
+          SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY: "off",
+        },
         maxBuffer: 16 * 1024 * 1024,
       },
     );
@@ -185,7 +189,8 @@ function rankThreeProcessColdReceipt(options) {
       baseline_seconds: rankThreeMapBaselineSeconds,
       maximum_seconds: rankThreeMapTargetSeconds,
       process_per_sample: true,
-      algorithm: "native",
+      algorithm: "auto",
+      auto_receipt_policy: "off-for-explicit-receipt-collection",
     },
     exact_digest: exactDigest,
     samples,
