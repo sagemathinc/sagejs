@@ -1,0 +1,92 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-factor-base-latency",
+  "title": "Cubic Factor Base Latency",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reduce warm cubic Minkowski factor-base latency with exact integer complex-cubic bound evaluation and canonical second-generator/table reuse for index-prime finite-algebra candidates, preserving byte-identical factor-base payloads and independent replay.",
+  "base_commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_group_factor_base.py",
+    "src/lib/sagejs/number_fields/prime_ideals.py",
+    "test/number-field-class-group-factor-base.cjs",
+    "bench/class-unit-groups/number-field-cubic-factor-base.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test --test-name-pattern=complex cubic Minkowski|index-prime packed test/number-field-class-group-factor-base.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-class-group-factor-base.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 18.889,
+      "started_at": "2026-08-25T04:50:26.322Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "160b02f8aa0ab84f205753fa7831915a9804b5ddb8855cdde0e612a27f18ede4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=complex cubic Minkowski|index-prime packed test/number-field-class-group-factor-base.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.085,
+      "started_at": "2026-08-25T04:50:56.394Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "160b02f8aa0ab84f205753fa7831915a9804b5ddb8855cdde0e612a27f18ede4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.496,
+      "started_at": "2026-08-25T04:51:04.571Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "160b02f8aa0ab84f205753fa7831915a9804b5ddb8855cdde0e612a27f18ede4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.893,
+      "started_at": "2026-08-25T04:51:42.281Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "160b02f8aa0ab84f205753fa7831915a9804b5ddb8855cdde0e612a27f18ede4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds an exact-integer complex-cubic Minkowski coarse interval and producer-side canonical second-generator witnesses for finite-algebra candidates. The ten-field packed payload SHA-256 receipts are byte-identical to base. Warm factor-base medians improve 4.5--37.7% across the corpus (D1083 16.0%, D2856 10.0%); public D1083 improves 6.0--7.7% with no observed public regression above 4.8%.",
+    "risks": [
+      "The number-field-prime-arithmetic package is 144648/145000 bytes, leaving only 352 bytes under its architecture budget.",
+      "A redundant lane-local test:native build was deliberately stopped to avoid contending with the corpus lane's broad native validation. Its interruption removed the local native pack, so the recorded full focused rerun fails only at the pre-existing is_compiled assertion; the two new exact differential tests, strict library gate, and architecture gate pass."
+    ],
+    "next_steps": [
+      "Run the cumulative native suite and then the complete focused factor-base file in the integration lane after publishing its production native pack.",
+      "After compact-ledger integration, consider retaining one immutable finite-algebra table per rational prime across packed consumers instead of lazily reconstructing a per-record copy."
+    ]
+  }
+}
