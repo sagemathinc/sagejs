@@ -1037,18 +1037,19 @@ function parseGpPayload(run) {
     const parsedInvariants = invariants === "[]"
       ? []
       : invariants.slice(1, -1).split(",").map((value) => value.trim());
+    const gpNumber = (value) => Number(value.replace(/\s+/g, ""));
     payload.push({
       label,
       sample: Number(sample),
       status: "ok",
-      elapsed_seconds: Number(elapsed),
-      batch_elapsed_seconds: Number(batchElapsed),
+      elapsed_seconds: gpNumber(elapsed),
+      batch_elapsed_seconds: gpNumber(batchElapsed),
       iteration_count: Number(iterations),
       phases_seconds: {
         initialization: null,
-        field_construction: Number(fieldSeconds),
-        computation: Number(computationSeconds),
-        verification: Number(verificationSeconds),
+        field_construction: gpNumber(fieldSeconds),
+        computation: gpNumber(computationSeconds),
+        verification: gpNumber(verificationSeconds),
       },
       answer: {
         class_number: classNumber,
