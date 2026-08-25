@@ -5118,50 +5118,19 @@ def _unit_index_proof_payload(
     }
 
 
-def _compute_unit_index_proof(
-    field: Any,
-    order: Any,
-    initial_units: Sequence[Any],
+def _unit_index_replay_parameters(
     configuration: dict[str, Any],
-    *,
-    workspace: ZetaLogResidueWorkspace | None = None,
-    cancelled: Callable[[], Any] | None = None,
-) -> tuple[int, dict[str, Any]]:
-    def check_cancelled() -> None:
-        if callable(cancelled) and cancelled():
-            raise AnalyticResourceError("global index certificate replay was cancelled")
-
-    check_cancelled()
-    signature_module = __import__(
-        "sagejs.number_fields.embeddings", fromlist=["embeddings"]
-    )
-    signature = tuple(int(value) for value in signature_module.exact_signature(field))
-    configured_signature = tuple(
-        _payload_integer(value, "global-index signature entry")
-        for value in configuration["signature"]
-    )
-    if signature != configured_signature:
-        raise AnalyticCertificationError(
-            "the global index certificate signature does not match the field"
-        )
-    expected_rank = signature[0] + signature[1] - 1
-    if len(initial_units) != expected_rank:
-        raise AnalyticCertificationError(
-            "the global index certificate has the wrong number of free units"
-        )
-    units_module = __import__("sagejs.number_fields.units", fromlist=["units"])
-    torsion = units_module.roots_of_unity(field)
-    if (
-        not torsion.complete
-        or not torsion.verify()
-        or int(torsion.order)
-        != _payload_integer(
-            configuration["roots_of_unity"], "global-index torsion order"
-        )
-    ):
-        raise AnalyticCertificationError(
-            "the global index certificate has unverified torsion data"
-        )
+) -> tuple[
+    int,
+    int,
+    int,
+    int,
+    str,
+    tuple[str, ...],
+    int,
+    ZetaLogResidueLimits,
+]:
+    """Validate producer and verifier analytic limits at one boundary."""
     regulator_configuration = configuration["regulator"]
     regulator_precision = _payload_integer(
         regulator_configuration["precision_bits"], "regulator precision"
@@ -5190,26 +5159,6 @@ def _compute_unit_index_proof(
         raise AnalyticResourceError(
             "global index certificate precision exceeds the verifier cap"
         )
-    regulator = (
-        regulator_from_factored_units(
-            initial_units,
-            unit_rank=expected_rank,
-            precision_bits=regulator_precision,
-            absolute_tolerance_bits=regulator_tolerance,
-            maximum_precision_bits=regulator_maximum_precision,
-            cancelled=cancelled,
-        )
-        if workspace is None
-        else workspace.regulator_from_factored_units(
-            initial_units,
-            unit_rank=expected_rank,
-            precision_bits=regulator_precision,
-            absolute_tolerance_bits=regulator_tolerance,
-            maximum_precision_bits=regulator_maximum_precision,
-            cancelled=cancelled,
-        )
-    )
-    check_cancelled()
     zeta_configuration = configuration["zeta"]
     zeta_absolute_error = zeta_configuration["absolute_error"]
     if (
@@ -5267,6 +5216,92 @@ def _compute_unit_index_proof(
         splitting_block_size=splitting_block_size,
         maximum_precision_bits=maximum_zeta_precision,
     )
+    return (
+        regulator_precision,
+        regulator_tolerance,
+        regulator_maximum_precision,
+        hr_precision,
+        zeta_absolute_error,
+        zeta_error_history,
+        zeta_precision,
+        limits,
+    )
+
+
+def _compute_unit_index_proof(
+    field: Any,
+    order: Any,
+    initial_units: Sequence[Any],
+    configuration: dict[str, Any],
+    *,
+    workspace: ZetaLogResidueWorkspace | None = None,
+    cancelled: Callable[[], Any] | None = None,
+) -> tuple[int, dict[str, Any]]:
+    def check_cancelled() -> None:
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("global index certificate replay was cancelled")
+
+    check_cancelled()
+    (
+        regulator_precision,
+        regulator_tolerance,
+        regulator_maximum_precision,
+        hr_precision,
+        _zeta_absolute_error,
+        zeta_error_history,
+        zeta_precision,
+        limits,
+    ) = _unit_index_replay_parameters(configuration)
+    signature_module = __import__(
+        "sagejs.number_fields.embeddings", fromlist=["embeddings"]
+    )
+    signature = tuple(int(value) for value in signature_module.exact_signature(field))
+    configured_signature = tuple(
+        _payload_integer(value, "global-index signature entry")
+        for value in configuration["signature"]
+    )
+    if signature != configured_signature:
+        raise AnalyticCertificationError(
+            "the global index certificate signature does not match the field"
+        )
+    expected_rank = signature[0] + signature[1] - 1
+    if len(initial_units) != expected_rank:
+        raise AnalyticCertificationError(
+            "the global index certificate has the wrong number of free units"
+        )
+    units_module = __import__("sagejs.number_fields.units", fromlist=["units"])
+    torsion = units_module.roots_of_unity(field)
+    if (
+        not torsion.complete
+        or not torsion.verify()
+        or int(torsion.order)
+        != _payload_integer(
+            configuration["roots_of_unity"], "global-index torsion order"
+        )
+    ):
+        raise AnalyticCertificationError(
+            "the global index certificate has unverified torsion data"
+        )
+    regulator = (
+        regulator_from_factored_units(
+            initial_units,
+            unit_rank=expected_rank,
+            precision_bits=regulator_precision,
+            absolute_tolerance_bits=regulator_tolerance,
+            maximum_precision_bits=regulator_maximum_precision,
+            cancelled=cancelled,
+        )
+        if workspace is None
+        else workspace.regulator_from_factored_units(
+            initial_units,
+            unit_rank=expected_rank,
+            precision_bits=regulator_precision,
+            absolute_tolerance_bits=regulator_tolerance,
+            maximum_precision_bits=regulator_maximum_precision,
+            cancelled=cancelled,
+        )
+    )
+    check_cancelled()
     hr_started = time.perf_counter_ns()
     try:
         zeta: ZetaLogResidueEnclosure | None = None
@@ -5702,6 +5737,9 @@ def certify_unit_saturation_index(
             },
         },
     }
+    # The private precomputed path is an optimization, not an alternate proof
+    # boundary: never issue a certificate outside detached replay's limits.
+    _unit_index_replay_parameters(configuration)
     selected_workspace = workspace or ZetaLogResidueWorkspace(
         int(order.discriminant()), int(field.degree()), order.splitting_records
     )

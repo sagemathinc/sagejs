@@ -1738,6 +1738,39 @@ def verify_generation(field, order, units, class_number, evidence, status):
         and status == EXACT_RELATIONS_CONDITIONAL_GRH
     )
 
+# The precomputed producer path applies the same independent limits as
+# detached replay and cannot issue a certificate that is invalid by design.
+live_proof = engine._context_analytic_proof()
+live_regulator = live_proof[3]
+live_zeta = live_proof[4]
+live_index = live_proof[5]
+try:
+    engine.components.analytic.certify_unit_saturation_index(
+        K,
+        engine.order,
+        initial_units,
+        class_number=1,
+        roots_of_unity=int(torsion.order),
+        precision_bits=96,
+        maximum_precision_bits=256,
+        zeta_absolute_error="1/2",
+        zeta_absolute_error_history=("1", "1/2"),
+        zeta_limits=engine.components.analytic.ZetaLogResidueLimits(
+            maximum_prime_bound=1000001,
+            maximum_precision_bits=256,
+        ),
+        workspace=engine._analytic_workspace,
+        generation_evidence=generation_evidence,
+        generation_verifier=verify_generation,
+        proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
+        _precomputed_regulator=live_regulator,
+        _precomputed_zeta_log_residue=live_zeta,
+        _precomputed_index=live_index,
+    )
+    raise AssertionError("an over-cap precomputed certificate was issued")
+except engine.components.analytic.AnalyticResourceError:
+    pass
+
 # A cache poisoned after analytic computation but before certificate issuance
 # cannot become live semantic authority, even on the precomputed fast path.
 preseal_ball = next(iter(engine._analytic_workspace._finite_terms.values()))[0]
