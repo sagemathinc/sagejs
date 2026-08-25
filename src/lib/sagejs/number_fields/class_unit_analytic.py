@@ -5774,7 +5774,16 @@ def certify_unit_saturation_index(
     }
     # The private precomputed path is an optimization, not an alternate proof
     # boundary: never issue a certificate outside detached replay's limits.
-    _unit_index_replay_parameters(configuration)
+    (
+        configured_regulator_precision,
+        configured_regulator_tolerance,
+        configured_regulator_maximum_precision,
+        configured_hr_precision,
+        _configured_zeta_error,
+        _configured_zeta_history,
+        configured_zeta_precision,
+        configured_zeta_limits,
+    ) = _unit_index_replay_parameters(configuration)
     selected_workspace = workspace or ZetaLogResidueWorkspace(
         int(order.discriminant()), int(field.degree()), order.splitting_records
     )
@@ -5797,6 +5806,26 @@ def certify_unit_saturation_index(
             regulator = _precomputed_regulator
             zeta = _precomputed_zeta_log_residue
             index = _precomputed_index
+            regulator_history = tuple(
+                int(value) for value in getattr(regulator, "precision_history", ())
+            )
+            zeta_precision_history = tuple(
+                int(value) for value in getattr(zeta, "precision_history", ())
+            )
+
+            def compatible_precision_history(
+                history: tuple[int, ...], initial: int, maximum: int
+            ) -> bool:
+                return bool(
+                    history
+                    and history[0] == initial
+                    and history[-1] <= maximum
+                    and all(
+                        history[position] == 2 * history[position - 1]
+                        for position in range(1, len(history))
+                    )
+                )
+
             if (
                 type(regulator) is not RegulatorEnclosure
                 or type(zeta) is not ZetaLogResidueEnclosure
@@ -5812,9 +5841,38 @@ def certify_unit_saturation_index(
                 or index.unique_index is None
                 or index.lower_index != index.upper_index
                 or index.analytic_log_residue.to_dict() != zeta.ball.to_dict()
+                or not compatible_precision_history(
+                    regulator_history,
+                    configured_regulator_precision,
+                    configured_regulator_maximum_precision,
+                )
+                or regulator.precision_bits != regulator_history[-1]
+                or regulator.ball.radius()
+                > RationalEndpoint(1, 2**configured_regulator_tolerance)
+                or not compatible_precision_history(
+                    zeta_precision_history,
+                    configured_zeta_precision,
+                    configured_zeta_limits.maximum_precision_bits,
+                )
+                or zeta.threshold > configured_zeta_limits.maximum_prime_bound
+                or zeta.degree > configured_zeta_limits.maximum_degree
+                or zeta.ball.radius() > _endpoint(selected_zeta_error, rigorous=True)
             ):
                 raise AnalyticCertificationError(
                     "precomputed analytic proof components are inconsistent"
+                )
+            recomputed_index = validate_hr_index(
+                signature=(signature[0], signature[1]),
+                discriminant=int(order.discriminant()),
+                class_number=int(class_number),
+                roots_of_unity=int(roots_of_unity),
+                regulator=regulator,
+                zeta_log_residue=zeta,
+                precision_bits=configured_hr_precision,
+            )
+            if recomputed_index.to_dict() != index.to_dict():
+                raise AnalyticCertificationError(
+                    "the precomputed hR index does not match its configuration"
                 )
             index_bound = int(index.unique_index)
             proof = _unit_index_proof_payload(
