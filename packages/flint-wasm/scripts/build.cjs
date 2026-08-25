@@ -342,6 +342,12 @@ requirePath(
 );
 
 fs.mkdirSync(outputDirectory, { recursive: true });
+// Earlier builds copied these source modules beside the bundled runtime. They
+// are no longer served or receipted; remove them explicitly when resuming a
+// package build so the physical dist directory is as clean as its manifest.
+for (const filename of ["wasi-constants.mjs", "wasi-filesystem.mjs"]) {
+  fs.rmSync(path.join(outputDirectory, filename), { force: true });
+}
 fs.copyFileSync(
   path.join(repositoryRoot, "architecture", "wasm-capability-api.mjs"),
   capabilityApiOutput,

@@ -1,7 +1,13 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const test = require("node:test");
@@ -75,5 +81,11 @@ test("no signed production asset embeds checkout or prepared-toolchain paths", (
       null,
       `${asset.path} embeds ${embedded?.root ?? "a local build path"}`,
     );
+  }
+});
+
+test("obsolete unreceipted WASI source modules are absent", () => {
+  for (const name of ["wasi-constants.mjs", "wasi-filesystem.mjs"]) {
+    assert.equal(existsSync(join(dist, name)), false, `${name} is stale`);
   }
 });
