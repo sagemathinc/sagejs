@@ -3710,7 +3710,9 @@ class ZetaLogResidueWorkspace:
             ),
         )
 
-    def _issue_proof_cache_authority(self) -> None:
+    def _issue_proof_cache_authority(self, token: object) -> None:
+        if token is not _ZETA_PROOF_CACHE_AUTHORITY_TOKEN:
+            raise TypeError("zeta proof-cache authority issuance is module-private")
         self._proof_cache_authority = _ZetaProofCacheAuthority(
             _ZETA_PROOF_CACHE_AUTHORITY_TOKEN, self._proof_cache_snapshot()
         )
@@ -3747,7 +3749,7 @@ class ZetaLogResidueWorkspace:
             tuple(key): (_real_ball_from_snapshot(ball), dict(diagnostics))
             for key, ball, diagnostics in finite_terms
         }
-        self._issue_proof_cache_authority()
+        self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
 
     def _validate_proof_cache(self) -> None:
         """Reject any mutation of proof-relevant acceleration state."""
@@ -3821,7 +3823,7 @@ class ZetaLogResidueWorkspace:
                 return list(cached)
             primes = tuple(_primes_below(int(bound)))
             self._primes[int(bound)] = primes
-            self._issue_proof_cache_authority()
+            self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
             return list(primes)
         finally:
             self.prime_enumeration_nanoseconds += time.perf_counter_ns() - started
@@ -3966,7 +3968,7 @@ class ZetaLogResidueWorkspace:
                 self._validate_proof_cache()
                 self._records.update(block)
                 self.covered_stop = stop
-                self._issue_proof_cache_authority()
+                self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
             return {prime: self._records[prime] for prime in primes}
         finally:
             self.splitting_nanoseconds += time.perf_counter_ns() - started
@@ -3984,7 +3986,7 @@ class ZetaLogResidueWorkspace:
                 return cached
             plan = _build_bf_plan(threshold, splitting)
             self._plans[threshold] = plan
-            self._issue_proof_cache_authority()
+            self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
             return plan
         finally:
             self.prime_power_plan_nanoseconds += time.perf_counter_ns() - started
@@ -4029,7 +4031,7 @@ class ZetaLogResidueWorkspace:
             threshold, bound = _bf_threshold(model, target, maximum)
             result = (threshold, bound, model.evaluations)
             self._thresholds[key] = result
-            self._issue_proof_cache_authority()
+            self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
             return result
         finally:
             self.threshold_nanoseconds += time.perf_counter_ns() - started
@@ -4062,7 +4064,7 @@ class ZetaLogResidueWorkspace:
             field = IntervalBallField(precision)
             result = (_bf_finite_term(plan, field), field.diagnostics())
             self._finite_terms[key] = result
-            self._issue_proof_cache_authority()
+            self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
             return result
         finally:
             self.finite_term_nanoseconds += time.perf_counter_ns() - started

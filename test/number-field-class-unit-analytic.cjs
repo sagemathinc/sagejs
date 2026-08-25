@@ -811,8 +811,17 @@ workspace._thresholds[threshold_key] = saved_threshold
 finite_key = next(iter(workspace._finite_terms))
 saved_finite = workspace._finite_terms[finite_key]
 workspace._finite_terms[finite_key] = (
-    RealBall(-99, 99, precision_bits=96), saved_finite[1]
+    saved_finite[0] - IntervalBallField(96).log_integer(2), saved_finite[1]
 )
+for attempted_token in (None, object()):
+    try:
+        if attempted_token is None:
+            workspace._issue_proof_cache_authority()
+        else:
+            workspace._issue_proof_cache_authority(attempted_token)
+        raise AssertionError("a caller reissued authority for a forged finite term")
+    except TypeError:
+        pass
 assert_cache_tamper_rejected("finite term")
 workspace._finite_terms[finite_key] = saved_finite
 
@@ -821,6 +830,30 @@ assert zeta_log_residue_bound(
     5, 2, counted_provider, absolute_error="0.125", precision_bits=96,
     limits=ZetaLogResidueLimits(maximum_prime_bound=20000), workspace=workspace,
 ).ball.to_dict() == zeta.ball.to_dict()
+
+# A splitting callback cannot re-enter the workspace and bless its own cache
+# mutation before the provider result is admitted.
+hostile_holder = {}
+def hostile_provider(start, stop):
+    hostile_workspace = hostile_holder["workspace"]
+    hostile_workspace._records[99991] = ((1, 2),)
+    try:
+        hostile_workspace._issue_proof_cache_authority(object())
+        raise AssertionError("a callback reissued zeta cache authority")
+    except TypeError:
+        pass
+    return base_provider(start, stop)
+hostile_workspace = ZetaLogResidueWorkspace(5, 2, hostile_provider)
+hostile_holder["workspace"] = hostile_workspace
+try:
+    zeta_log_residue_bound(
+        5, 2, hostile_provider, absolute_error="0.125", precision_bits=96,
+        limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+        workspace=hostile_workspace,
+    )
+    raise AssertionError("a reentrant callback mutation entered the proof cache")
+except AnalyticCertificationError:
+    pass
 
 class FakeCoordinate:
     def __init__(self, numerator, denominator=1):
