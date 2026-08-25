@@ -1158,6 +1158,94 @@ def packed_cantor_add_batch(
 
 
 @native
+def packed_cantor_sum_batch(
+    output: UInt64Buffer,
+    statuses: UInt64Buffer,
+    model: UInt64Buffer,
+    elements: UInt64Buffer,
+    count: uint64,
+    genus: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Reduce one packed batch to its exact group sum in a single crossing."""
+    checked_modulus = modulus + 0
+    status_count: uint64 = 0
+    if count > 0:
+        status_count = count - 1
+    if (
+        checked_modulus <= 2
+        or (genus != 2 and genus != 3)
+        or len(output) != 8
+        or len(statuses) != status_count
+        or len(model) != 12
+        or len(elements) != count * 8
+    ):
+        return False
+    index: uint64 = 0
+    while index < 12:
+        if model[index] >= checked_modulus:
+            return False
+        index += 1
+    index = 2 * genus + 2
+    while index < 8:
+        if model[index] != 0:
+            return False
+        index += 1
+    index = genus + 1
+    while index < 4:
+        if model[8 + index] != 0:
+            return False
+        index += 1
+    if model[2 * genus + 1] == 0:
+        return False
+    if count == 0:
+        index = 0
+        while index < 8:
+            output[index] = 0
+            index += 1
+        output[1] = 1
+        return True
+
+    store = prime_zeros(16 * 52)
+    accumulator = prime_zeros(8)
+    temporary = prime_zeros(8)
+    packed = _unpack_row(store, 0, 16, elements, 0, genus, modulus)
+    if packed == 0:
+        return False
+    index = 0
+    while index < 8:
+        accumulator[index] = elements[index]
+        index += 1
+    item: uint64 = 1
+    while item < count:
+        status = _cantor_add_one(
+            temporary,
+            0,
+            accumulator,
+            0,
+            elements,
+            item * 8,
+            model,
+            genus,
+            modulus,
+            store,
+        )
+        statuses[item - 1] = status
+        if status == 0:
+            return False
+        index = 0
+        while index < 8:
+            accumulator[index] = temporary[index]
+            index += 1
+        item += 1
+    index = 0
+    while index < 8:
+        output[index] = accumulator[index]
+        index += 1
+    return True
+
+
+@native
 def packed_cantor_progression_batch(
     output: UInt64Buffer,
     statuses: UInt64Buffer,

@@ -653,10 +653,12 @@ class PreparedJacobianArithmetic:
             packed_cantor_scalar_batch,
             packed_cantor_search_progression,
             packed_cantor_search_progressions,
+            packed_cantor_sum_batch,
             packed_cantor_validate_batch,
         )
 
         self._add_kernel = packed_cantor_add_batch
+        self._sum_kernel = packed_cantor_sum_batch
         self._validate_kernel = packed_cantor_validate_batch
         self._progression_kernel = packed_cantor_progression_batch
         self._search_kernel = packed_cantor_search_progression
@@ -665,6 +667,7 @@ class PreparedJacobianArithmetic:
         self._native_available = (
             self.prime is not None
             and is_compiled(self._add_kernel)
+            and is_compiled(self._sum_kernel)
             and is_compiled(self._progression_kernel)
             and is_compiled(self._scalar_kernel)
         )
@@ -2319,6 +2322,53 @@ class PreparedJacobianArithmetic:
                 validation_ns=0,
                 statuses=(),
             )
+        if selected == "native":
+            assert self.prime is not None
+            assert isinstance(level, PreparedDivisorBatch)
+            output = kernel_uint64_zeros(self._sum_kernel, 8)
+            status_buffer = kernel_uint64_zeros(self._sum_kernel, count - 1)
+            started = time.perf_counter_ns()
+            accepted = self._sum_kernel(
+                output,
+                status_buffer,
+                kernel_uint64_buffer(self._sum_kernel, self._model),
+                level._lease_for(self),
+                count,
+                self.genus,
+                self.prime,
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            if not accepted:
+                raise ArithmeticError(
+                    "the packed Cantor sum kernel rejected a validated batch"
+                )
+            statuses = (
+                tuple(int(status_buffer[index]) for index in range(count - 1))
+                if diagnostics
+                else ()
+            )
+            started = time.perf_counter_ns()
+            answer = self._publish_kernel_batch(output, 1)[0]
+            unpack_ns = time.perf_counter_ns() - started
+            materialization_ns = 0
+            if materialize:
+                started = time.perf_counter_ns()
+                answer.uv()
+                materialization_ns = time.perf_counter_ns() - started
+            record = PreparedBatchDiagnostics(
+                operation="sum",
+                requested=self._algorithm if algorithm is None else algorithm,
+                selected=selected,
+                fallback_reason=reason,
+                count=count,
+                pack_ns=initial_pack_ns,
+                kernel_ns=kernel_ns,
+                unpack_ns=unpack_ns,
+                materialization_ns=materialization_ns,
+                validation_ns=0,
+                statuses=statuses,
+            )
+            return (answer, record) if diagnostics else answer
         total_pack = initial_pack_ns
         total_kernel = total_unpack = total_validation = 0
         all_statuses: list[int] = []

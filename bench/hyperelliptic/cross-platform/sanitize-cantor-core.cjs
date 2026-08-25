@@ -86,11 +86,13 @@ static int exercise_scalar_and_progression(uint64_t genus) {
   uint64_t scalar_signs[1] = {0};
   uint64_t scalar_statuses[1] = {0};
   uint64_t scalar_output[8] = {0};
+  uint64_t sum_output[8] = {0};
   uint64_t *progression = calloc(COUNT * 8, sizeof(uint64_t));
   uint64_t *statuses = calloc(COUNT, sizeof(uint64_t));
+  uint64_t *sum_statuses = calloc(COUNT - 1, sizeof(uint64_t));
   sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
   int accepted = 0;
-  if (progression == NULL || statuses == NULL) return 0;
+  if (progression == NULL || statuses == NULL || sum_statuses == NULL) return 0;
   model[0] = 1;
   model[1] = genus == 2 ? 1 : 2;
   model[genus == 2 ? 5 : 7] = 1;
@@ -106,6 +108,7 @@ static int exercise_scalar_and_progression(uint64_t genus) {
     fprintf(stderr, "progression failed genus=%" PRIu64
             " called/accepted/status=%d/%d/%d\n",
             genus, status.code == SAGEJS_NATIVE_OK, accepted, status.code);
+    free(sum_statuses);
     free(statuses);
     free(progression);
     return 0;
@@ -125,16 +128,57 @@ static int exercise_scalar_and_progression(uint64_t genus) {
     fprintf(stderr, "scalar failed genus=%" PRIu64
             " called/accepted/status=%d/%d/%d\n",
             genus, status.code == SAGEJS_NATIVE_OK, accepted, status.code);
+    free(sum_statuses);
     free(statuses);
     free(progression);
     return 0;
   }
   if (memcmp(scalar_output, progression + 257 * 8, 8 * sizeof(uint64_t)) != 0) {
     fprintf(stderr, "scalar/progression mismatch genus=%" PRIu64 "\n", genus);
+    free(sum_statuses);
     free(statuses);
     free(progression);
     return 0;
   }
+  status = (sagejs_native_status){SAGEJS_NATIVE_OK, NULL};
+  accepted = 0;
+  if (!sagejs_kernel_packed_cantor_sum_batch(
+          &status, &accepted,
+          (sagejs_source_u64_buffer){sum_output, 8},
+          (sagejs_source_u64_buffer){sum_statuses, COUNT - 1},
+          (sagejs_source_u64_buffer){model, 12},
+          (sagejs_source_u64_buffer){progression, COUNT * 8},
+          COUNT, genus, 1009) ||
+      accepted != 1 || status.code != SAGEJS_NATIVE_OK) {
+    fprintf(stderr, "sum failed genus=%" PRIu64
+            " called/accepted/status=%d/%d/%d\n",
+            genus, status.code == SAGEJS_NATIVE_OK, accepted, status.code);
+    free(sum_statuses);
+    free(statuses);
+    free(progression);
+    return 0;
+  }
+  scalar_words[0] = COUNT * (COUNT - 1) / 2;
+  status = (sagejs_native_status){SAGEJS_NATIVE_OK, NULL};
+  accepted = 0;
+  if (!sagejs_kernel_packed_cantor_scalar_batch(
+          &status, &accepted,
+          (sagejs_source_u64_buffer){scalar_output, 8},
+          (sagejs_source_u64_buffer){scalar_statuses, 1},
+          (sagejs_source_u64_buffer){model, 12},
+          (sagejs_source_u64_buffer){(uint64_t *) step, 8},
+          (sagejs_source_u64_buffer){scalar_words, 1},
+          (sagejs_source_u64_buffer){scalar_signs, 1},
+          1, 1, genus, 1009) ||
+      accepted != 1 || status.code != SAGEJS_NATIVE_OK ||
+      memcmp(sum_output, scalar_output, 8 * sizeof(uint64_t)) != 0) {
+    fprintf(stderr, "sum/scalar mismatch genus=%" PRIu64 "\n", genus);
+    free(sum_statuses);
+    free(statuses);
+    free(progression);
+    return 0;
+  }
+  free(sum_statuses);
   free(statuses);
   free(progression);
   return 1;
@@ -157,6 +201,7 @@ function main() {
   if (config.check) {
     assert.match(harnessText, /sagejs_kernel_packed_cantor_add_batch/);
     assert.match(harnessText, /sagejs_kernel_packed_cantor_scalar_batch/);
+    assert.match(harnessText, /sagejs_kernel_packed_cantor_sum_batch/);
     assert.match(harnessText, /sagejs_kernel_packed_cantor_progression_batch/);
     assert.match(harnessText, /genus == 2/);
     assert.match(harnessText, /bench_case\(3/);

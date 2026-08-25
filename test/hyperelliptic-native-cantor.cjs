@@ -78,6 +78,7 @@ from sagejs.hyperelliptic_curves.jacobian_kernels import (
     packed_cantor_search_progression,
     packed_cantor_search_progressions,
     packed_cantor_scalar_batch,
+    packed_cantor_sum_batch,
     packed_cantor_validate_batch,
 )
 from sagejs.hyperelliptic_curves.jacobian_native import PreparedDivisorBatch
@@ -89,6 +90,7 @@ assert compiled == is_compiled(packed_cantor_copy_batch)
 assert compiled == is_compiled(packed_cantor_progression_batch)
 assert compiled == is_compiled(packed_cantor_search_progression)
 assert compiled == is_compiled(packed_cantor_search_progressions)
+assert compiled == is_compiled(packed_cantor_sum_batch)
 assert compiled == is_compiled(packed_cantor_validate_batch)
 selected = "native" if compiled else "reference"
 
@@ -294,6 +296,58 @@ def check_curve(curve, exhaustive):
         assert packed_total == reference_total
         assert prepared_sample.published_count == 0
         assert sum_diagnostics.operation == "sum"
+        assert len(sum_diagnostics.statuses) == len(prepared_sample) - 1
+    for sum_count in (0, 1, 2, 3, 7, min(16, len(sample))):
+        sum_values = sample[:sum_count]
+        sum_answer, sum_record = context.sum(
+            sum_values,
+            algorithm=selected,
+            diagnostics=True,
+        )
+        sum_reference = context.sum(sum_values, algorithm="reference")
+        assert sum_answer == sum_reference
+        if compiled and sum_count > 0:
+            assert len(sum_record.statuses) == sum_count - 1
+    if not compiled:
+        raw_sum_values = sample[:min(16, len(sample))]
+        raw_sum_output = [0] * 8
+        raw_sum_statuses = [0] * max(0, len(raw_sum_values) - 1)
+        assert packed_cantor_sum_batch(
+            raw_sum_output,
+            raw_sum_statuses,
+            list(context.model_coefficients),
+            [word for point in raw_sum_values for word in context.pack(point)],
+            len(raw_sum_values),
+            context.genus,
+            context.prime,
+        )
+        assert context.unpack(raw_sum_output) == context.sum(
+            raw_sum_values, algorithm="reference"
+        )
+    invalid_sum_row = list(context.pack(sample[0]))
+    invalid_sum_row[1] = context.prime
+    rejected_sum_output = kernel_uint64_buffer(
+        packed_cantor_sum_batch, [91] * 8
+    )
+    rejected_sum_status = kernel_uint64_buffer(
+        packed_cantor_sum_batch, [7]
+    )
+    assert not packed_cantor_sum_batch(
+        rejected_sum_output,
+        rejected_sum_status,
+        kernel_uint64_buffer(
+            packed_cantor_sum_batch, context.model_coefficients
+        ),
+        kernel_uint64_buffer(
+            packed_cantor_sum_batch,
+            list(context.pack(sample[0])) + invalid_sum_row,
+        ),
+        2,
+        context.genus,
+        context.prime,
+    )
+    assert tuple(int(value) for value in rejected_sum_output) == (91,) * 8
+    assert tuple(int(value) for value in rejected_sum_status) == (0,)
     assert sample[1].negate(algorithm=selected) == negated_reference[1]
     assert sample[1].subtract(sample[2], algorithm=selected) == difference_reference[1]
 
@@ -1029,6 +1083,15 @@ test("prepared packed Cantor arithmetic is exact in dynamic and native modes", (
     assert.doesNotMatch(
       multiSearchBody,
       /native__row_|native__multi_search_record|mpz_|SAGEJS_WORD_PROMOTE/,
+    );
+    const sumBody = cFunction(
+      core,
+      "int sagejs_kernel_packed_cantor_sum_batch(",
+    );
+    assert.match(sumBody, /word__cantor_add_one/);
+    assert.doesNotMatch(
+      sumBody,
+      /native__cantor_add_one|mpz_|SAGEJS_WORD_PROMOTE/,
     );
     const dynamic = run(process.execPath, [sagejs, program], {
       env: {
