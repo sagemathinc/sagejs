@@ -177,6 +177,7 @@ test("the checked-in stratified fixture validates in a network-free process", ()
 function syntheticEvidenceRaw({
   requestedProof = "conditional-grh",
   achievedProof = "exact-unconditional",
+  rssScope = "case-process-peak",
 } = {}) {
   const answer = {
     class_number: "1",
@@ -266,7 +267,8 @@ function syntheticEvidenceRaw({
       elapsed_seconds: ["process-cold", "release-cold"].includes(job.boundary) ? 0.1 : 0.01,
       batch_elapsed_seconds: 0.01,
       iteration_count: 1,
-      peak_rss_bytes: 1024,
+      process_peak_rss_bytes: 1024,
+      rss_scope: rssScope,
       phases_seconds: {
         initialization: ["process-cold", "release-cold"].includes(job.boundary) ? 0.08 : null,
         field_construction: job.boundary === "kernel-warm" ? null : 0,
@@ -323,6 +325,7 @@ function syntheticEvidenceRaw({
 test("performance evidence binds all boundaries, tools, and achieved semantics", () => {
   const finalized = evidence.finalizeClassUnitEvidence(syntheticEvidenceRaw());
   assert.equal(finalized.performance_accepted, true);
+  assert.equal(finalized.memory_accepted, false);
   assert.equal(finalized.report.results[0].requested_proof, "conditional-grh");
   assert.equal(
     finalized.report.results[0].achieved_proof_semantics,
@@ -336,6 +339,38 @@ test("performance evidence binds all boundaries, tools, and achieved semantics",
   assert.equal(
     evidence.validateClassUnitEvidence(roundTrip).fingerprint,
     finalized.fingerprint,
+  );
+});
+
+test("memory evidence requires a single-operation process peak", () => {
+  const invalidScope = syntheticEvidenceRaw();
+  invalidScope.results[0].samples[0].rss_scope = "unscoped-peak";
+  assert.throws(
+    () => evidence.finalizeClassUnitEvidence(invalidScope),
+    /rss_scope must be single-operation-process-peak or case-process-peak/,
+  );
+
+  const caseProcess = evidence.finalizeClassUnitEvidence(
+    syntheticEvidenceRaw({ rssScope: "case-process-peak" }),
+  );
+  assert.equal(caseProcess.performance_accepted, true);
+  assert.equal(caseProcess.memory_accepted, false);
+  assert.equal(evidence.memoryEvidenceAccepted(caseProcess.report), false);
+
+  const singleOperation = evidence.finalizeClassUnitEvidence(
+    syntheticEvidenceRaw({ rssScope: "single-operation-process-peak" }),
+  );
+  assert.equal(singleOperation.performance_accepted, true);
+  assert.equal(singleOperation.memory_accepted, true);
+  assert.equal(evidence.memoryEvidenceAccepted(singleOperation.report), true);
+
+  const relabelledBatch = syntheticEvidenceRaw({
+    rssScope: "single-operation-process-peak",
+  });
+  relabelledBatch.results[0].samples[0].iteration_count = 2;
+  assert.throws(
+    () => evidence.finalizeClassUnitEvidence(relabelledBatch),
+    /single-operation-process-peak requires iteration_count 1/,
   );
 });
 
@@ -457,4 +492,69 @@ test("runner fixture loading invokes the full checksum validator", () => {
   fs.writeFileSync(filename, `${JSON.stringify(changed)}\n`);
   assert.throws(() => runner.loadFixture(filename, "smoke", null));
   fs.rmSync(temporary, { recursive: true, force: true });
+});
+
+test("direct GP identity binds its resolved GMP library", {
+  skip: process.platform !== "linux",
+}, () => {
+  const options = runner.parseArguments([
+    "--dry-run",
+    "--systems",
+    "direct-gp",
+    "--limit",
+    "1",
+  ]);
+  const gp = runner.detectTools(options)["direct-gp"];
+  if (gp.status !== "available") return;
+  assert.match(gp.libraries.gmp, /^libgmp[^@]*@sha256:[0-9a-f]{64}$/);
+  assert.ok(
+    gp.artifacts.some((artifact) =>
+      artifact.role.startsWith("dynamic-library-") && /libgmp/.test(artifact.path)
+    ),
+  );
+});
+
+test("measured-process timeout kills the benchmark process group", {
+  skip: process.platform !== "linux" || !fs.existsSync("/usr/bin/timeout"),
+  timeout: 10_000,
+}, async () => {
+  const marker = `sagejs-cu-timeout-${process.pid}-${Date.now()}`;
+  const childSource = "setInterval(() => {}, 1000)";
+  const source = `
+const { spawn } = require("node:child_process");
+spawn(process.execPath, ["-e", ${JSON.stringify(childSource)}, ${JSON.stringify(marker)}]);
+setInterval(() => {}, 1000);
+`;
+  const started = Date.now();
+  const measured = runner.spawnMeasuredProcess(
+    process.execPath,
+    ["-e", source],
+    null,
+    1,
+  );
+  assert.ok(Date.now() - started < 6_000, "timeout supervisor did not return promptly");
+  assert.ok(
+    measured.run.status === 124 || measured.run.signal !== null || measured.run.error,
+    `expected a timeout terminal state, got status ${measured.run.status}`,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  const ps = childProcess.spawnSync("ps", ["-eo", "pid=,args="], {
+    encoding: "utf8",
+    timeout: 2_000,
+  });
+  assert.equal(ps.status, 0);
+  const survivors = String(ps.stdout || "")
+    .split(/\r?\n/)
+    .filter((line) => line.includes(marker));
+  for (const survivor of survivors) {
+    const pid = Number(/^\s*(\d+)/.exec(survivor)?.[1]);
+    if (Number.isSafeInteger(pid)) {
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch {
+        // The process may have exited between observation and cleanup.
+      }
+    }
+  }
+  assert.deepEqual(survivors, [], `timeout leaked descendants: ${survivors.join("\n")}`);
 });

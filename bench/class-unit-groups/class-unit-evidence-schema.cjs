@@ -7,8 +7,8 @@ const os = require("node:os");
 const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "../..");
-const SCHEMA = "sagejs.number-fields/class-unit-performance-evidence-v2";
-const SCHEMA_VERSION = 2;
+const SCHEMA = "sagejs.number-fields/class-unit-performance-evidence-v3";
+const SCHEMA_VERSION = 3;
 const SHA256 = /^[0-9a-f]{64}$/;
 const GIT_OBJECT = /^[0-9a-f]{40}$/;
 const NAME = /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/;
@@ -34,6 +34,10 @@ const SAMPLE_PHASES = Object.freeze([
   "field_construction",
   "computation",
   "verification",
+]);
+const RSS_SCOPES = Object.freeze([
+  "single-operation-process-peak",
+  "case-process-peak",
 ]);
 
 const BOUNDARY_CONTRACTS = Object.freeze({
@@ -938,8 +942,8 @@ function validateResults(filename, results, planned, configuration) {
           sample,
           [
             "achieved_proof_semantics", "answer_sha256", "batch_elapsed_seconds",
-            "elapsed_seconds", "iteration_count", "peak_rss_bytes", "phases_seconds",
-            "sample_index",
+            "elapsed_seconds", "iteration_count", "phases_seconds", "process_peak_rss_bytes",
+            "rss_scope", "sample_index",
           ],
           sampleLabel,
         );
@@ -964,8 +968,26 @@ function validateResults(filename, results, planned, configuration) {
           `${sampleLabel}.batch_elapsed_seconds`,
         );
         positiveNumber(filename, sample.elapsed_seconds, `${sampleLabel}.elapsed_seconds`);
-        if (sample.peak_rss_bytes !== null) {
-          safeInteger(filename, sample.peak_rss_bytes, `${sampleLabel}.peak_rss_bytes`, 1);
+        if (sample.process_peak_rss_bytes !== null) {
+          safeInteger(
+            filename,
+            sample.process_peak_rss_bytes,
+            `${sampleLabel}.process_peak_rss_bytes`,
+            1,
+          );
+        }
+        if (!RSS_SCOPES.includes(sample.rss_scope)) {
+          evidenceError(
+            filename,
+            `${sampleLabel}.rss_scope must be ${RSS_SCOPES.join(" or ")}`,
+          );
+        }
+        if (sample.rss_scope === "single-operation-process-peak" &&
+            sample.iteration_count !== 1) {
+          evidenceError(
+            filename,
+            `${sampleLabel}.rss_scope single-operation-process-peak requires iteration_count 1`,
+          );
         }
         exactKeys(filename, sample.phases_seconds, SAMPLE_PHASES, `${sampleLabel}.phases_seconds`);
         for (const phase of SAMPLE_PHASES) {
@@ -1071,7 +1093,8 @@ function performanceEvidenceAccepted(report, options = {}) {
         regulatorContract: report.configuration.regulator_contract,
       }) &&
       result.samples.every((sample) =>
-        Number.isSafeInteger(sample.peak_rss_bytes) && sample.peak_rss_bytes > 0 &&
+        Number.isSafeInteger(sample.process_peak_rss_bytes) &&
+        sample.process_peak_rss_bytes > 0 &&
         sample.phases_seconds.computation !== null &&
         (result.boundary === "kernel-warm" ||
           sample.phases_seconds.field_construction !== null) &&
@@ -1088,6 +1111,18 @@ function performanceEvidenceAccepted(report, options = {}) {
       (result.answer.regulator.kind !== "decimal" ||
         result.answer.regulator.precision_digits >=
           report.configuration.regulator_contract.minimum_decimal_digits)
+    );
+}
+
+function memoryEvidenceAccepted(report, options = {}) {
+  return performanceEvidenceAccepted(report, options) &&
+    report.results.every((result) =>
+      result.status === "ok" &&
+      result.samples.every((sample) =>
+        Number.isSafeInteger(sample.process_peak_rss_bytes) &&
+        sample.process_peak_rss_bytes > 0 &&
+        sample.rss_scope === "single-operation-process-peak"
+      )
     );
 }
 
@@ -1137,6 +1172,7 @@ function validateClassUnitEvidence(report, options = {}) {
     report: normalized,
     fingerprint: expectedFingerprint,
     performance_accepted: performanceEvidenceAccepted(normalized, options),
+    memory_accepted: memoryEvidenceAccepted(normalized, options),
   });
 }
 
@@ -1172,6 +1208,7 @@ module.exports = {
   REQUESTED_PROOFS,
   REQUESTED_OUTPUT,
   ROOT,
+  RSS_SCOPES,
   SCHEMA,
   SCHEMA_VERSION,
   SAMPLE_PHASES,
@@ -1190,6 +1227,7 @@ module.exports = {
   finalizeClassUnitEvidence,
   fingerprint,
   jobKey,
+  memoryEvidenceAccepted,
   performanceEvidenceAccepted,
   proofRequestSatisfied,
   regulatorSatisfiesContract,
