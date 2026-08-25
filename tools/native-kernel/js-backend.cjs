@@ -249,6 +249,28 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}integerBufferSet(${operation.buffer}, ` +
       `${operation.index}, ${operation.value});`;
   }
+  if (operation.kind === "integer.vector.length") {
+    return `${indent}${operation.target} = ` +
+      `nativeIntegerVectorLength(${operation.vector});`;
+  }
+  if (operation.kind === "integer.vector.get") {
+    return `${indent}${operation.target} = nativeIntegerVectorGet(` +
+      `${operation.vector}, ${operation.index});`;
+  }
+  if (operation.kind === "integer.vector.set") {
+    return `${indent}nativeIntegerVectorSet(${operation.vector}, ` +
+      `${operation.index}, ${operation.value});`;
+  }
+  if (operation.kind === "integer.vector.addmul" ||
+      operation.kind === "integer.vector.submul") {
+    return `${indent}nativeIntegerVectorAddmul(${operation.vector}, ` +
+      `${operation.index}, ${operation.left}, ${operation.right}, ` +
+      `${operation.kind === "integer.vector.submul"});`;
+  }
+  if (operation.kind === "integer.vector.swap") {
+    return `${indent}nativeIntegerVectorSwap(${operation.vector}, ` +
+      `${operation.left}, ${operation.right});`;
+  }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
   }
@@ -408,6 +430,22 @@ function emitExactStatement(operation, indent, resourceStack = null) {
       ...operation.body.map((item) =>
         emitExactStatement(item, `${indent}  `, resourceStack)
       ),
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.vector.scope") {
+    return [
+      ...operation.setup.map((item) =>
+        emitExactStatement(item, indent, resourceStack)
+      ),
+      `${indent}${operation.owner} = createNativeIntegerVector(` +
+        `${operation.capacity}, ${operation.memoryLimit});`,
+      `${indent}try {`,
+      ...operation.body.map((item) =>
+        emitExactStatement(item, `${indent}  `, resourceStack)
+      ),
+      `${indent}} finally {`,
+      `${indent}  nativeIntegerVectorClose(${operation.owner});`,
       `${indent}}`,
     ].join("\n");
   }
@@ -690,6 +728,9 @@ function emitExactPublicFunction(fn) {
   const policy = JSON.stringify(fn.analysis.backend);
   const effects = JSON.stringify(fn.analysis.effects);
   const taggedInteger = JSON.stringify(fn.analysis.taggedInteger);
+  const liveExactWorkspace = JSON.stringify(
+    fn.analysis.liveExactWorkspace ?? null,
+  );
   return `${emitExactFallback(fn)}
 
 function validate_${fn.name}(${params}) {
@@ -744,6 +785,7 @@ ${normalized.join("\n")}
 ${fn.name}.backendPolicy = Object.freeze(${policy});
 ${fn.name}.effects = Object.freeze(${effects});
 ${fn.name}.taggedInteger = Object.freeze(${taggedInteger});
+${fn.name}.liveExactWorkspace = ${liveExactWorkspace === "null" ? "null" : `Object.freeze(${liveExactWorkspace})`};
 ${fn.name}.createInt64Buffer = createInt64Buffer;
 ${fn.name}.createUInt64Buffer = createUInt64Buffer;
 ${fn.name}.createIntegerBuffer = createIntegerBuffer;
@@ -1327,6 +1369,121 @@ function integerBufferSet(buffer, index, value) {
   packed.sizes[absolute] = negative ? -words : words;
 }
 
+const nativeIntegerVectorEntryCharge = 32n;
+
+function nativeIntegerPayloadCharge(value) {
+  const exact = value < 0n ? -value : value;
+  return exact === 0n ? 0n : BigInt(Math.ceil(exact.toString(2).length / 8));
+}
+
+function createNativeIntegerVector(capacity, memoryLimit) {
+  const exactCapacity = BigInt(capacity);
+  const exactLimit = BigInt(memoryLimit);
+  if (exactCapacity < 0n || exactCapacity > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new RangeError("NativeIntegerVector capacity is too large");
+  }
+  const baseCharge = exactCapacity * nativeIntegerVectorEntryCharge;
+  if (baseCharge > exactLimit) {
+    nativeRaise("MemoryError", "NativeIntegerVector memory limit exceeded");
+  }
+  return {
+    values: Array(Number(exactCapacity)).fill(0n),
+    payloadCharges: Array(Number(exactCapacity)).fill(0n),
+    memoryLimit: exactLimit,
+    chargedBytes: baseCharge,
+    open: true,
+  };
+}
+
+function nativeIntegerVectorRequireOpen(vector) {
+  if (vector === null || typeof vector !== "object" || vector.open !== true) {
+    throw new RangeError("NativeIntegerVector is closed");
+  }
+  return vector.values;
+}
+
+function nativeIntegerVectorPosition(vector, index) {
+  const values = nativeIntegerVectorRequireOpen(vector);
+  const exact = BigInt(index);
+  if (exact < 0n || exact >= BigInt(values.length)) {
+    nativeRaise("IndexError", "NativeIntegerVector index out of range");
+  }
+  return Number(exact);
+}
+
+function nativeIntegerVectorReserve(vector, position, payload) {
+  nativeIntegerVectorRequireOpen(vector);
+  const retained = vector.chargedBytes - vector.payloadCharges[position];
+  const charge = retained + payload;
+  if (charge > vector.memoryLimit) {
+    nativeRaise("MemoryError", "NativeIntegerVector memory limit exceeded");
+  }
+  vector.chargedBytes = charge;
+  vector.payloadCharges[position] = payload;
+}
+
+function nativeIntegerVectorLength(vector) {
+  return BigInt(nativeIntegerVectorRequireOpen(vector).length);
+}
+
+function nativeIntegerVectorGet(vector, index) {
+  const position = nativeIntegerVectorPosition(vector, index);
+  return nativeIntegerVectorRequireOpen(vector)[position];
+}
+
+function nativeIntegerVectorSet(vector, index, value) {
+  const position = nativeIntegerVectorPosition(vector, index);
+  const exact = BigInt(value);
+  nativeIntegerVectorReserve(
+    vector, position, nativeIntegerPayloadCharge(exact));
+  vector.values[position] = exact;
+}
+
+function nativeIntegerVectorAddmul(vector, index, left, right, subtract) {
+  const position = nativeIntegerVectorPosition(vector, index);
+  const exactLeft = BigInt(left);
+  const exactRight = BigInt(right);
+  const current = vector.values[position];
+  const currentBits = current === 0n
+    ? 0 : (current < 0n ? -current : current).toString(2).length;
+  const leftBits = exactLeft === 0n
+    ? 0 : (exactLeft < 0n ? -exactLeft : exactLeft).toString(2).length;
+  const rightBits = exactRight === 0n
+    ? 0 : (exactRight < 0n ? -exactRight : exactRight).toString(2).length;
+  const productBits = leftBits === 0 || rightBits === 0
+    ? 0 : leftBits + rightBits;
+  const conservativePayload = BigInt(
+    Math.ceil((Math.max(currentBits, productBits) + 1) / 8));
+  nativeIntegerVectorReserve(vector, position, conservativePayload);
+  const result = subtract
+    ? current - exactLeft * exactRight
+    : current + exactLeft * exactRight;
+  vector.values[position] = result;
+}
+
+function nativeIntegerVectorSwap(vector, leftIndex, rightIndex) {
+  const left = nativeIntegerVectorPosition(vector, leftIndex);
+  const right = nativeIntegerVectorPosition(vector, rightIndex);
+  const temporary = vector.values[left];
+  vector.values[left] = vector.values[right];
+  vector.values[right] = temporary;
+  const temporaryCharge = vector.payloadCharges[left];
+  vector.payloadCharges[left] = vector.payloadCharges[right];
+  vector.payloadCharges[right] = temporaryCharge;
+}
+
+function nativeIntegerVectorClose(vector) {
+  if (vector === null || typeof vector !== "object" || vector.open !== true) {
+    return;
+  }
+  vector.values.fill(0n);
+  vector.values.length = 0;
+  vector.payloadCharges.fill(0n);
+  vector.payloadCharges.length = 0;
+  vector.chargedBytes = 0n;
+  vector.open = false;
+}
+
 function createIntegerBuffer(length, wordCapacity = 8, source = undefined) {
   if (!Number.isSafeInteger(length) || length < 0 ||
       !Number.isSafeInteger(wordCapacity) || wordCapacity <= 0 ||
@@ -1760,6 +1917,13 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
     if (message.includes("IntegerBuffer index") ||
         message.includes("Int64 buffer index") ||
         message.includes("Int64Record")) {
+      nativeRaise("IndexError", message);
+    }
+    if (message.includes("NativeIntegerVector memory limit") ||
+        message.includes("NativeIntegerVector allocation failed")) {
+      nativeRaise("MemoryError", message);
+    }
+    if (message.includes("NativeIntegerVector index")) {
       nativeRaise("IndexError", message);
     }
     if (message.includes("matrix modulus must be at least") ||

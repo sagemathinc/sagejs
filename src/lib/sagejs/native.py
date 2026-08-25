@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v22 currently accepts a deliberately narrow typed numerical
+Native Kernel v23 currently accepts a deliberately narrow typed numerical
 subset, including exact `Integer`/GMP kernels and reusable dense
 decompositions over prime fields. Typed `uint64` kernels support full-word
 `&`, `|`, `^`, `<<`, and `>>`, including augmented scalar and buffer forms.
@@ -68,6 +68,144 @@ PrimeFieldMatrix: TypeAlias = object
 # Exact public modulus value used with explicit packed prime-field storage.
 PrimeFieldModulus: TypeAlias = int
 _warned_fallback_sources: set[str] = set()
+
+
+class NativeIntegerVector:
+    """Lexical bounded exact-integer workspace for native kernels.
+
+    This ordinary-Python implementation defines the portable contract. Native
+    compilation replaces it with an initialized GMP vector owned by the
+    surrounding `with` statement. The vector has a fixed capacity and a
+    deterministic semantic memory charge; that charge deliberately does not
+    claim to equal Python's, GMP's, or the process allocator's physical RSS.
+
+    A vector is invalid after leaving its context. Negative indices are not
+    accepted, so the same checked-index contract is available in C and Wasm.
+    """
+
+    _ENTRY_CHARGE = 32
+    _UINT64_MAX = (1 << 64) - 1
+
+    def __init__(self, capacity: int, memory_limit: int) -> None:
+        exact_capacity = int(capacity)
+        exact_limit = int(memory_limit)
+        if (
+            exact_capacity < 0
+            or exact_capacity > self._UINT64_MAX
+            or exact_limit < 0
+            or exact_limit > self._UINT64_MAX
+        ):
+            raise OverflowError("NativeIntegerVector dimensions are outside uint64")
+        base_charge = exact_capacity * self._ENTRY_CHARGE
+        if base_charge > exact_limit:
+            raise MemoryError("NativeIntegerVector memory limit exceeded")
+        self._values = [0 for _index in range(exact_capacity)]
+        self._payload_charges = [0 for _index in range(exact_capacity)]
+        self._memory_limit = exact_limit
+        self._charged_bytes = base_charge
+        self._open = True
+        self._entered = False
+
+    @staticmethod
+    def _payload_charge(value: int) -> int:
+        return (abs(value).bit_length() + 7) // 8
+
+    def _require_open(self) -> list[int]:
+        if not self._open:
+            raise ValueError("NativeIntegerVector is closed")
+        return self._values
+
+    def _position(self, index: int) -> int:
+        exact = int(index)
+        values = self._require_open()
+        if exact < 0 or exact >= len(values):
+            raise IndexError("NativeIntegerVector index out of range")
+        return exact
+
+    def _replace(self, index: int, value: int) -> None:
+        values = self._require_open()
+        exact = int(value)
+        charge = (
+            self._charged_bytes
+            - self._payload_charges[index]
+            + self._payload_charge(exact)
+        )
+        if charge > self._memory_limit:
+            raise MemoryError("NativeIntegerVector memory limit exceeded")
+        values[index] = exact
+        self._payload_charges[index] = self._payload_charge(exact)
+        self._charged_bytes = charge
+
+    def __enter__(self) -> NativeIntegerVector:
+        if self._entered or not self._open:
+            raise ValueError("NativeIntegerVector cannot be re-entered")
+        self._entered = True
+        return self
+
+    def __exit__(self, _type: Any, _value: Any, _traceback: Any) -> bool:
+        self.close()
+        return False
+
+    def close(self) -> None:
+        """Release the fallback workspace; repeated close is harmless."""
+        if not self._open:
+            return
+        self._values.clear()
+        self._payload_charges.clear()
+        self._charged_bytes = 0
+        self._open = False
+
+    def __len__(self) -> int:
+        return len(self._require_open())
+
+    def __getitem__(self, index: int) -> int:
+        return self._require_open()[self._position(index)]
+
+    def __setitem__(self, index: int, value: int) -> None:
+        self._replace(self._position(index), value)
+
+    def _reserve_addmul(self, index: int, left: int, right: int) -> None:
+        values = self._require_open()
+        current = values[index]
+        left_bits = abs(left).bit_length()
+        right_bits = abs(right).bit_length()
+        product_bits = (
+            0 if left_bits == 0 or right_bits == 0 else left_bits + right_bits
+        )
+        result_bits = max(abs(current).bit_length(), product_bits) + 1
+        conservative_payload = (result_bits + 7) // 8
+        peak = self._charged_bytes - self._payload_charges[index] + conservative_payload
+        if peak > self._memory_limit:
+            raise MemoryError("NativeIntegerVector memory limit exceeded")
+        self._charged_bytes = peak
+        self._payload_charges[index] = conservative_payload
+
+    def addmul(self, index: int, left: int, right: int) -> None:
+        """Set entry `index` to itself plus `left * right` in place."""
+        position = self._position(index)
+        exact_left = int(left)
+        exact_right = int(right)
+        self._reserve_addmul(position, exact_left, exact_right)
+        self._values[position] += exact_left * exact_right
+
+    def submul(self, index: int, left: int, right: int) -> None:
+        """Set entry `index` to itself minus `left * right` in place."""
+        position = self._position(index)
+        exact_left = int(left)
+        exact_right = int(right)
+        self._reserve_addmul(position, exact_left, exact_right)
+        self._values[position] -= exact_left * exact_right
+
+    def swap(self, left_index: int, right_index: int) -> None:
+        """Swap two entries without changing the semantic memory charge."""
+        left = self._position(left_index)
+        right = self._position(right_index)
+        values = self._require_open()
+        values[left], values[right] = values[right], values[left]
+        self._payload_charges[left], self._payload_charges[right] = (
+            self._payload_charges[right],
+            self._payload_charges[left],
+        )
 
 
 class RationalBuffer:
@@ -569,6 +707,7 @@ __all__ = [
     "IntegerBuffer",
     "Int64Buffer",
     "Int64Record",
+    "NativeIntegerVector",
     "NativeRecord",
     "PrimeFieldMatrix",
     "PrimeFieldModulus",

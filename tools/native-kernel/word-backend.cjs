@@ -594,6 +594,22 @@ function emitWordStatements(statements, context, indent) {
 }
 
 function emitWordFunction(fn, functions) {
+  if (fn.analysis?.backend?.requiresExactWorkspace) {
+    const unused = [
+      ...wordResults(fn.returnType).map((_value, index) =>
+        `    (void) sagejs_word_output_${index};`
+      ),
+      ...fn.params.map((param) =>
+        `    (void) ${wordName(param.name)};`
+      ),
+    ];
+    return `${wordSignature(fn)}
+{
+    (void) status;
+${unused.join("\n")}
+    return SAGEJS_WORD_PROMOTE;
+}`;
+  }
   const sites = promotionSites(fn);
   const params = new Set(fn.params.map((param) => param.name));
   const declarations = fn.locals

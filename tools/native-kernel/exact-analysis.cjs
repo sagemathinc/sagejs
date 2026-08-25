@@ -67,6 +67,24 @@ function operationInputs(operation) {
       return [operation.buffer, operation.index];
     case "uint64.buffer.set":
       return [operation.buffer, operation.index, operation.value];
+    case "integer.vector.scope":
+      return [operation.capacity, operation.memoryLimit];
+    case "integer.vector.length":
+      return [operation.vector];
+    case "integer.vector.get":
+      return [operation.vector, operation.index];
+    case "integer.vector.set":
+      return [operation.vector, operation.index, operation.value];
+    case "integer.vector.addmul":
+    case "integer.vector.submul":
+      return [
+        operation.vector,
+        operation.index,
+        operation.left,
+        operation.right,
+      ];
+    case "integer.vector.swap":
+      return [operation.vector, operation.left, operation.right];
     case "native.call":
     case "ffi.call":
       return operation.arguments.map((argument) => argument.name);
@@ -121,6 +139,12 @@ function walkStatements(statements, handlers) {
         handlers.write(statement.index);
       }
       handlers.exitLoop?.("range");
+      continue;
+    }
+    if (statement.kind === "integer.vector.scope") {
+      handlers.operation(statement);
+      walkStatements(statement.setup, handlers);
+      walkStatements(statement.body, handlers);
       continue;
     }
     handlers.operation(statement);
@@ -272,6 +296,7 @@ function executionProfile(fn) {
     nativeCalls: 0,
     rangeLoops: 0,
     whileLoops: 0,
+    liveExactScopes: 0,
     maximumConstantBits: 0,
   };
   walkStatements(fn.body, {
@@ -297,6 +322,9 @@ function executionProfile(fn) {
       }
       if (operation.kind === "native.call" || operation.kind === "ffi.call") {
         profile.nativeCalls += 1;
+      }
+      if (operation.kind === "integer.vector.scope") {
+        profile.liveExactScopes += 1;
       }
       if (operation.kind === "integer.constant") {
         profile.maximumConstantBits = Math.max(
@@ -379,6 +407,26 @@ function localEffects(fn) {
         operation.kind === "uint64.buffer.set"
       ) {
         mayRaise.add("IndexError");
+      }
+      if (operation.kind === "integer.vector.scope") {
+        foreignMayAllocate = true;
+        mayRaise.add("MemoryError");
+      }
+      if (
+        operation.kind === "integer.vector.get" ||
+        operation.kind === "integer.vector.set" ||
+        operation.kind === "integer.vector.addmul" ||
+        operation.kind === "integer.vector.submul" ||
+        operation.kind === "integer.vector.swap"
+      ) {
+        mayRaise.add("IndexError");
+      }
+      if (
+        operation.kind === "integer.vector.set" ||
+        operation.kind === "integer.vector.addmul" ||
+        operation.kind === "integer.vector.submul"
+      ) {
+        mayRaise.add("MemoryError");
       }
       if (operation.kind === "int64.buffer.set" ||
           operation.kind === "integer.buffer.set") {
@@ -481,7 +529,11 @@ function bufferWrites(fn, dependencyEffects) {
         changed = visit(statement.alternative) || changed;
       } else if (statement.kind === "while" ||
           statement.kind === "loop.range" ||
-          statement.kind === "loop.range_exact") {
+          statement.kind === "loop.range_exact" ||
+          statement.kind === "integer.vector.scope") {
+        if (statement.setup) {
+          changed = visit(statement.setup) || changed;
+        }
         if (statement.condition?.operations) {
           changed = visit(statement.condition.operations) || changed;
         }
@@ -583,6 +635,26 @@ function taggedIntegerProof(fn, effects) {
     read() {},
     write() {},
   });
+  const ownsLiveExactWorkspace = operations.has("tagged-vector.scope");
+  if (ownsLiveExactWorkspace) {
+    return {
+      eligible: true,
+      representation: "gmp-live-exact-workspace",
+      smallRepresentation: "tagged entry bridge only",
+      largeRepresentation: "lexical-owned-mpz-vector",
+      entry: "lossless-tagged-to-gmp",
+      operations: Array.from(operations).sort(),
+      promotion: "before lexical workspace entry",
+      deoptimization: "none inside owned scope",
+      publicReplay: "never",
+      calleeSpeculation: "word entry promotes before workspace allocation",
+      directCalls: [...fn.dependencies, ...(fn.foreignDependencies || [])],
+      effectsChecked: effects.pure && effects.deterministic &&
+        effects.externalWrites.length === 0,
+      proof:
+        "the tagged bridge converts once and the isolated GMP body owns and clears every live exact entry",
+    };
+  }
   return {
     eligible: true,
     representation: "tagged-int64-gmp",
@@ -604,7 +676,42 @@ function taggedIntegerProof(fn, effects) {
   };
 }
 
+function liveExactWorkspaceAnalysis(fn) {
+  const scopes = [];
+  walkStatements(fn.body, {
+    loop() {},
+    operation(operation) {
+      if (operation.kind !== "integer.vector.scope") return;
+      scopes.push({
+        owner: operation.owner,
+        capacity: operation.capacity,
+        memoryLimit: operation.memoryLimit,
+        storage: "lexical-owned-mpz-vector",
+        cleanup: "all-exit-idempotent",
+        canonicalAuthority: false,
+      });
+    },
+    read() {},
+    write() {},
+  });
+  return {
+    count: scopes.length,
+    scopes,
+    ownership: "compiler-owned-lexical",
+    allocation: "bounded-capacity-and-semantic-charge",
+    physicalMemory: "reported-by-receipt-not-semantic-limit",
+    automaticSelection: "receipt-gated",
+  };
+}
+
 function backendPolicy(fn, profile, recursive) {
+  if (profile.liveExactScopes > 0) {
+    return {
+      kind: "gmp",
+      reason: "a lexical live-exact workspace has one GMP ownership backend",
+      requiresExactWorkspace: true,
+    };
+  }
   if ((fn.foreignDependencies || []).length > 0) {
     return {
       kind: "tagged",
@@ -744,6 +851,9 @@ function analyzeExactModule(functions) {
       backend,
       effects: effect,
       taggedInteger: taggedIntegerProof(fn, effect),
+      ...(profile.liveExactScopes > 0
+        ? { liveExactWorkspace: liveExactWorkspaceAnalysis(fn) }
+        : {}),
       ...(hasUint64Bitwise(fn.body) ? { uint64: UINT64_SEMANTICS } : {}),
     };
   }

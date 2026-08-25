@@ -377,6 +377,7 @@ test("FFI declarations are strict and generated modules are current", () => {
       "number_field_order_resource_unramified_primes",
       "number_field_order_with_round2_proof_resource",
       "number_field_analyze_resource",
+      "integer_log_sqrt_balls_packed",
     ],
   );
   assert.deepEqual(
@@ -455,7 +456,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /413 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /414 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -505,7 +506,7 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(functions.length, {
       fflas: 10,
-      flint: 370,
+      flint: 371,
       igraph: 2,
       m4ri: 26,
     }[declaration.library.id]);
@@ -561,7 +562,7 @@ test("computed resource byte transfers lower to one generated copy", async () =>
 
 test("packages publish every generated host adapter as the canonical export", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 371],
+    ["../packages/flint", 372],
     ["../packages/fflas", 10],
     ["../packages/graph", 2],
   ]) {
@@ -739,7 +740,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 413);
+  assert.equal(current.counts["declared-ffi"], 414);
   assert.equal(current.counts["declared-ffi-resource"], 29);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
@@ -1744,7 +1745,7 @@ test("generated igraph views pin owners and invalidate on explicit close", () =>
 test("typed FFI imports lower to declared host-isolated calls", async () => {
   const source = readFileSync(witness, "utf8");
   const ir = await lowerSource(source, witness);
-  assert.equal(ir.version, 22);
+  assert.equal(ir.version, 23);
   assert.equal(ir.foreignLibraries.length, 1);
   assert.equal(ir.foreignLibraries[0].id, "flint");
   assert.match(ir.foreignLibraries[0].declarationHash, /^[0-9a-f]{64}$/);

@@ -54,7 +54,7 @@ const {
   uint64COperator,
 } = require("./uint64-operations.cjs");
 
-const NATIVE_ABI_VERSION = 22;
+const NATIVE_ABI_VERSION = 23;
 const RESOURCE_FINALIZATION_CAPABILITY = Object.freeze({
   model: "node-api-basic-post-finalizer-v1",
   self_finalizing: true,
@@ -475,6 +475,93 @@ function emitExactOperation(operation, context, indent) {
       `${indent}}`,
     ].join("\n");
   }
+  if (operation.kind === "integer.vector.length") {
+    return `${indent}${target} = (uint64_t) ` +
+      `${exactValue(operation.vector, context)}.length;`;
+  }
+  if (
+    operation.kind === "integer.vector.get" ||
+    operation.kind === "integer.vector.set" ||
+    operation.kind === "integer.vector.addmul" ||
+    operation.kind === "integer.vector.submul"
+  ) {
+    const vector = exactValue(operation.vector, context);
+    const index = exactValue(operation.index, context);
+    const check = operation.indexType === "Integer"
+      ? `!sagejs_native_integer_vector_mpz_index(&${vector}, ${index}, ` +
+        "&sagejs_vector_position)"
+      : `${index} >= (uint64_t) ${vector}.length`;
+    let action;
+    if (operation.kind === "integer.vector.get") {
+      action = `mpz_set(${target}, ${vector}.entries[sagejs_vector_position]);`;
+    } else if (operation.kind === "integer.vector.set") {
+      action = `if (!sagejs_native_integer_vector_set(status, &${vector}, ` +
+        `sagejs_vector_position, ${exactValue(operation.value, context)}))\n` +
+        `${indent}        goto fail;`;
+    } else {
+      action = `if (!sagejs_native_integer_vector_addmul(status, &${vector}, ` +
+        `sagejs_vector_position, ${exactValue(operation.left, context)}, ` +
+        `${exactValue(operation.right, context)}, ` +
+        `${operation.kind === "integer.vector.submul" ? 1 : 0}))\n` +
+        `${indent}        goto fail;`;
+    }
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_vector_position = ` +
+        `${operation.indexType === "Integer" ? "0" : `(size_t) ${index}`};`,
+      `${indent}    if (${check})`,
+      `${indent}    {`,
+      statusFailure(
+        "range",
+        "NativeIntegerVector index out of range",
+        `${indent}        `,
+      ),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    ${action}`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.vector.swap") {
+    const vector = exactValue(operation.vector, context);
+    const left = exactValue(operation.left, context);
+    const right = exactValue(operation.right, context);
+    const leftCheck = operation.leftType === "Integer"
+      ? `!sagejs_native_integer_vector_mpz_index(&${vector}, ${left}, ` +
+        "&sagejs_vector_left)"
+      : `${left} >= (uint64_t) ${vector}.length`;
+    const rightCheck = operation.rightType === "Integer"
+      ? `!sagejs_native_integer_vector_mpz_index(&${vector}, ${right}, ` +
+        "&sagejs_vector_right)"
+      : `${right} >= (uint64_t) ${vector}.length`;
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_vector_left = ` +
+        `${operation.leftType === "Integer" ? "0" : `(size_t) ${left}`};`,
+      `${indent}    size_t sagejs_vector_right = ` +
+        `${operation.rightType === "Integer" ? "0" : `(size_t) ${right}`};`,
+      `${indent}    if (${leftCheck} || ${rightCheck})`,
+      `${indent}    {`,
+      statusFailure(
+        "range",
+        "NativeIntegerVector index out of range",
+        `${indent}        `,
+      ),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    mpz_swap(${vector}.entries[sagejs_vector_left], ` +
+        `${vector}.entries[sagejs_vector_right]);`,
+      `${indent}    {`,
+      `${indent}        const uint64_t sagejs_vector_charge = ` +
+        `${vector}.payload_charges[sagejs_vector_left];`,
+      `${indent}        ${vector}.payload_charges[sagejs_vector_left] = ` +
+        `${vector}.payload_charges[sagejs_vector_right];`,
+      `${indent}        ${vector}.payload_charges[sagejs_vector_right] = ` +
+        `sagejs_vector_charge;`,
+      `${indent}    }`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}set_mpz_uint64(${target}, ` +
       `${exactValue(operation.source, context)});`;
@@ -780,6 +867,21 @@ function emitExactStatements(statements, context, indent) {
       );
       continue;
     }
+    if (statement.kind === "integer.vector.scope") {
+      const owner = exactValue(statement.owner, context);
+      lines.push(
+        emitExactStatements(statement.setup, context, indent),
+        `${indent}if (!sagejs_native_integer_vector_init(status, &${owner}, ` +
+          `${exactValue(statement.capacity, context)}, ` +
+          `${exactValue(statement.memoryLimit, context)}))`,
+        `${indent}    goto fail;`,
+        `${indent}${cName(statement.owner)}_initialized = 1;`,
+        emitExactStatements(statement.body, context, indent),
+        `${indent}sagejs_native_integer_vector_clear(&${owner});`,
+        `${indent}${cName(statement.owner)}_initialized = 0;`,
+      );
+      continue;
+    }
     if (statement.kind === "return") {
       const tuple = tupleElementTypes(statement.type);
       if (tuple !== undefined) {
@@ -855,6 +957,17 @@ function exactDeclarations(fn) {
           `        ${resource.native.clear_symbol}(${cName(local.name)});`,
         );
       }
+      continue;
+    }
+    if (local.type === "NativeIntegerVector") {
+      declarations.push(
+        `    sagejs_native_integer_vector ${cName(local.name)} = {0};`,
+        `    int ${cName(local.name)}_initialized = 0;`,
+      );
+      cleanup.unshift(
+        `    if (${cName(local.name)}_initialized)`,
+        `        sagejs_native_integer_vector_clear(&${cName(local.name)});`,
+      );
       continue;
     }
     if (local.type === "Integer" || local.type.startsWith("IntegerSequence[")) {
@@ -2690,7 +2803,7 @@ function coreHeader(ir, options = {}) {
     }).join("\n");
     return `typedef struct\n{\n${fields}\n} sagejs_native_record_${record.name};`;
   }).join("\n\n");
-  return `/* Generated by Sage.js Native Kernel v22. */
+  return `/* Generated by Sage.js Native Kernel v23. */
 #ifndef SAGEJS_GENERATED_KERNEL_CORE_H
 #define SAGEJS_GENERATED_KERNEL_CORE_H
 
@@ -2841,7 +2954,7 @@ function generateHostCore(ir, options = {}) {
     primeFields.length > 0 ? generatePrimeFieldSupport() : "",
     ...primeFields.map(emitPrimeFieldCoreFunction),
   ].filter(Boolean);
-  const source = `/* Generated by Sage.js Native Kernel v22.
+  const source = `/* Generated by Sage.js Native Kernel v23.
  * Host-isolated mathematical core: no Node, JavaScript, or Python runtime.
  */
 #include <math.h>
@@ -3041,7 +3154,7 @@ static int get_precision(
         "napi_default, NULL}",
     ]),
   ].join(",\n");
-  return `/* Generated by Sage.js Native Kernel v22.
+  return `/* Generated by Sage.js Native Kernel v23.
  * Node adapter only; mathematical execution lives in kernel_core.c.
  */
 #include <math.h>
