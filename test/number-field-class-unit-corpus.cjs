@@ -599,6 +599,36 @@ test("job aggregation rejects duplicate identities and every bad retained sample
     runner.aggregateJob(job, wrongFirst, expected, 7, 1024).reason,
     /sample-0:class_number/,
   );
+
+  const rigorous = clone(samples);
+  for (const sample of rigorous) {
+    sample.answer.regulator = {
+      kind: "interval",
+      lower: "1405997871614809/5000000000000000",
+      upper: "2811995743229619/10000000000000000",
+      precision_bits: 100,
+      rigorous: true,
+    };
+  }
+  rigorous[1].answer.regulator = {
+    kind: "interval",
+    lower: "28119957432296179/100000000000000000",
+    upper: "5623991486459237/20000000000000000",
+    precision_bits: 100,
+    rigorous: true,
+  };
+  assert.equal(
+    runner.aggregateJob(job, rigorous, expected, 7, 1024).status,
+    "ok",
+    "independent rigorous enclosures may differ while overlapping",
+  );
+  const disjoint = clone(rigorous);
+  disjoint[1].answer.regulator.lower = "2811995743231/10000000000000";
+  disjoint[1].answer.regulator.upper = "17574973395197/62500000000000";
+  assert.match(
+    runner.aggregateJob(job, disjoint, expected, 7, 1024).reason,
+    /sample-1:answer-disagreement/,
+  );
 });
 
 test("runner fixture loading invokes the full checksum validator", () => {

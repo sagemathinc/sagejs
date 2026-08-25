@@ -1990,6 +1990,33 @@ function cellsOverlap(left, right) {
     compareRationals(right.lower, left.upper) <= 0;
 }
 
+function regulatorCell(regulator) {
+  if (regulator?.kind === "interval") {
+    return {
+      lower: rationalParts(regulator.lower),
+      upper: rationalParts(regulator.upper),
+    };
+  }
+  if (regulator?.kind === "decimal") return decimalCell(regulator.value);
+  throw new Error("unsupported regulator observation");
+}
+
+function answersEquivalent(left, right) {
+  for (const key of [
+    "class_number",
+    "class_group_invariant_factors",
+    "unit_rank",
+    "torsion_order",
+  ]) {
+    if (JSON.stringify(left?.[key]) !== JSON.stringify(right?.[key])) return false;
+  }
+  try {
+    return cellsOverlap(regulatorCell(left.regulator), regulatorCell(right.regulator));
+  } catch {
+    return false;
+  }
+}
+
 function correctnessMismatches(answer, expected, regulatorContract = REGULATOR_CONTRACT) {
   if (!answer) return ["missing-answer"];
   const mismatches = [];
@@ -2134,7 +2161,7 @@ function aggregateJob(
   const answerFingerprint = fingerprint(answer);
   for (const [index, item] of analyzed.entries()) {
     if (item.achieved !== achieved) mismatches.push(`sample-${index}:proof-disagreement`);
-    if (fingerprint(item.answer) !== answerFingerprint) {
+    if (!answersEquivalent(item.answer, answer)) {
       mismatches.push(`sample-${index}:answer-disagreement`);
     }
   }
@@ -2167,7 +2194,10 @@ function aggregateJob(
     process_total_seconds: processTotalSeconds,
     samples: samples.map((sample, index) => ({
       sample_index: sample.sample,
-      answer_sha256: fingerprint(analyzed[index].answer),
+      // v3 stores one semantically representative answer. Every retained
+      // sample was checked above for exact discrete agreement and overlapping
+      // regulator evidence before it is bound to that aggregate digest.
+      answer_sha256: answerFingerprint,
       achieved_proof_semantics: analyzed[index].achieved,
       elapsed_seconds: sample.elapsed_seconds,
       batch_elapsed_seconds: sample.batch_elapsed_seconds || sample.elapsed_seconds,
