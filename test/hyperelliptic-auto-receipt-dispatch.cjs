@@ -472,7 +472,7 @@ test("the release policy retains six exact Cantor envelopes but fails closed", (
   assert(candidate.entries.every((entry) => !entry.enabled));
   assert.equal(
     candidate.source_bundle.sha256,
-    "6715c02a684a1ebfeac30aa6cd2aabe875114a3033f256107de8e7b9406b84ea",
+    "36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1",
   );
   assert.deepEqual(
     [...new Set(candidate.entries.map((entry) => entry.backend))],
