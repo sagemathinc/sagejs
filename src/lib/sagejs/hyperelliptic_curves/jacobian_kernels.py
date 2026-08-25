@@ -934,6 +934,35 @@ def _cantor_add_one(
     return branch
 
 
+def _validate_packed_model(
+    model: UInt64Buffer,
+    genus: uint64,
+    modulus: PrimeFieldModulus,
+) -> uint64:
+    """Check the fixed-width odd-degree model header shared by packed kernels."""
+    checked_modulus = modulus + 0
+    if checked_modulus <= 2 or (genus != 2 and genus != 3) or len(model) != 12:
+        return 0
+    index: uint64 = 0
+    while index < 12:
+        if model[index] >= checked_modulus:
+            return 0
+        index += 1
+    index = 2 * genus + 2
+    while index < 8:
+        if model[index] != 0:
+            return 0
+        index += 1
+    index = genus + 1
+    while index < 4:
+        if model[8 + index] != 0:
+            return 0
+        index += 1
+    if model[2 * genus + 1] == 0:
+        return 0
+    return 1
+
+
 def _validate_packed_row(
     rows: UInt64Buffer,
     row_offset: uint64,
@@ -1022,32 +1051,9 @@ def packed_cantor_validate_batch(
     modulus: PrimeFieldModulus,
 ) -> bool:
     """Authenticate canonical serialized rows before copying any output."""
-    checked_modulus = modulus + 0
-    if (
-        checked_modulus <= 2
-        or (genus != 2 and genus != 3)
-        or len(model) != 12
-        or len(rows) != count * 8
-        or len(output) != count * 8
-        or len(statuses) != count
-    ):
+    if len(rows) != count * 8 or len(output) != count * 8 or len(statuses) != count:
         return False
-    index: uint64 = 0
-    while index < 12:
-        if model[index] >= checked_modulus:
-            return False
-        index += 1
-    index = 2 * genus + 2
-    while index < 8:
-        if model[index] != 0:
-            return False
-        index += 1
-    index = genus + 1
-    while index < 4:
-        if model[8 + index] != 0:
-            return False
-        index += 1
-    if model[2 * genus + 1] == 0:
+    if _validate_packed_model(model, genus, modulus) == 0:
         return False
     store = prime_zeros(16 * 10)
     item: uint64 = 0
@@ -1168,36 +1174,14 @@ def packed_cantor_sum_batch(
     modulus: PrimeFieldModulus,
 ) -> bool:
     """Reduce one packed batch to its exact group sum in a single crossing."""
-    checked_modulus = modulus + 0
     status_count: uint64 = 0
     if count > 0:
         status_count = count - 1
-    if (
-        checked_modulus <= 2
-        or (genus != 2 and genus != 3)
-        or len(output) != 8
-        or len(statuses) != status_count
-        or len(model) != 12
-        or len(elements) != count * 8
-    ):
+    if len(output) != 8 or len(statuses) != status_count or len(elements) != count * 8:
+        return False
+    if _validate_packed_model(model, genus, modulus) == 0:
         return False
     index: uint64 = 0
-    while index < 12:
-        if model[index] >= checked_modulus:
-            return False
-        index += 1
-    index = 2 * genus + 2
-    while index < 8:
-        if model[index] != 0:
-            return False
-        index += 1
-    index = genus + 1
-    while index < 4:
-        if model[8 + index] != 0:
-            return False
-        index += 1
-    if model[2 * genus + 1] == 0:
-        return False
     if count == 0:
         index = 0
         while index < 8:
@@ -1242,6 +1226,40 @@ def packed_cantor_sum_batch(
     while index < 8:
         output[index] = accumulator[index]
         index += 1
+    return True
+
+
+@native
+def packed_cantor_negate_batch(
+    output: UInt64Buffer,
+    statuses: UInt64Buffer,
+    model: UInt64Buffer,
+    elements: UInt64Buffer,
+    count: uint64,
+    genus: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Negate a packed batch directly, without scalar-word marshalling."""
+    if len(output) != count * 8 or len(statuses) != count or len(elements) != count * 8:
+        return False
+    if _validate_packed_model(model, genus, modulus) == 0:
+        return False
+    store = prime_zeros(16 * 52)
+    item: uint64 = 0
+    while item < count:
+        statuses[item] = _cantor_negate_one(
+            output,
+            item * 8,
+            elements,
+            item * 8,
+            model,
+            genus,
+            modulus,
+            store,
+        )
+        if statuses[item] == 0:
+            return False
+        item += 1
     return True
 
 
@@ -1604,12 +1622,8 @@ def packed_cantor_scalar_batch(
 ) -> bool:
     """Multiply a batch by signed little-endian 64-bit scalar words."""
     item: uint64 = 0
-    checked_modulus = modulus + 0
     valid = (
-        (genus == 2 or genus == 3)
-        and checked_modulus > 2
-        and len(model) == 12
-        and len(output) == count * 8
+        len(output) == count * 8
         and len(statuses) == count
         and len(elements) == count * 8
         and len(scalar_words) == count * words_per_scalar
@@ -1617,22 +1631,7 @@ def packed_cantor_scalar_batch(
     )
     if not valid:
         return False
-    index: uint64 = 0
-    while index < 12:
-        if model[index] >= checked_modulus:
-            return False
-        index += 1
-    index = 2 * genus + 2
-    while index < 8:
-        if model[index] != 0:
-            return False
-        index += 1
-    index = genus + 1
-    while index < 4:
-        if model[8 + index] != 0:
-            return False
-        index += 1
-    if model[2 * genus + 1] == 0:
+    if _validate_packed_model(model, genus, modulus) == 0:
         return False
     store = prime_zeros(16 * 52)
     accumulator = prime_zeros(8)

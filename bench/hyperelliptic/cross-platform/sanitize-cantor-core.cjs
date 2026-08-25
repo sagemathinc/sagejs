@@ -86,6 +86,8 @@ static int exercise_scalar_and_progression(uint64_t genus) {
   uint64_t scalar_signs[1] = {0};
   uint64_t scalar_statuses[1] = {0};
   uint64_t scalar_output[8] = {0};
+  uint64_t negate_statuses[1] = {0};
+  uint64_t negate_output[8] = {0};
   uint64_t sum_output[8] = {0};
   uint64_t *progression = calloc(COUNT * 8, sizeof(uint64_t));
   uint64_t *statuses = calloc(COUNT, sizeof(uint64_t));
@@ -142,6 +144,43 @@ static int exercise_scalar_and_progression(uint64_t genus) {
   }
   status = (sagejs_native_status){SAGEJS_NATIVE_OK, NULL};
   accepted = 0;
+  if (!sagejs_kernel_packed_cantor_negate_batch(
+          &status, &accepted,
+          (sagejs_source_u64_buffer){negate_output, 8},
+          (sagejs_source_u64_buffer){negate_statuses, 1},
+          (sagejs_source_u64_buffer){model, 12},
+          (sagejs_source_u64_buffer){(uint64_t *) step, 8},
+          1, genus, 1009) ||
+      accepted != 1 || status.code != SAGEJS_NATIVE_OK) {
+    fprintf(stderr, "negate failed genus=%" PRIu64 "\n", genus);
+    free(sum_statuses);
+    free(statuses);
+    free(progression);
+    return 0;
+  }
+  scalar_words[0] = 1;
+  scalar_signs[0] = 1;
+  status = (sagejs_native_status){SAGEJS_NATIVE_OK, NULL};
+  accepted = 0;
+  if (!sagejs_kernel_packed_cantor_scalar_batch(
+          &status, &accepted,
+          (sagejs_source_u64_buffer){scalar_output, 8},
+          (sagejs_source_u64_buffer){scalar_statuses, 1},
+          (sagejs_source_u64_buffer){model, 12},
+          (sagejs_source_u64_buffer){(uint64_t *) step, 8},
+          (sagejs_source_u64_buffer){scalar_words, 1},
+          (sagejs_source_u64_buffer){scalar_signs, 1},
+          1, 1, genus, 1009) ||
+      accepted != 1 || status.code != SAGEJS_NATIVE_OK ||
+      memcmp(negate_output, scalar_output, 8 * sizeof(uint64_t)) != 0) {
+    fprintf(stderr, "negate/scalar mismatch genus=%" PRIu64 "\n", genus);
+    free(sum_statuses);
+    free(statuses);
+    free(progression);
+    return 0;
+  }
+  status = (sagejs_native_status){SAGEJS_NATIVE_OK, NULL};
+  accepted = 0;
   if (!sagejs_kernel_packed_cantor_sum_batch(
           &status, &accepted,
           (sagejs_source_u64_buffer){sum_output, 8},
@@ -159,6 +198,7 @@ static int exercise_scalar_and_progression(uint64_t genus) {
     return 0;
   }
   scalar_words[0] = COUNT * (COUNT - 1) / 2;
+  scalar_signs[0] = 0;
   status = (sagejs_native_status){SAGEJS_NATIVE_OK, NULL};
   accepted = 0;
   if (!sagejs_kernel_packed_cantor_scalar_batch(
@@ -201,6 +241,7 @@ function main() {
   if (config.check) {
     assert.match(harnessText, /sagejs_kernel_packed_cantor_add_batch/);
     assert.match(harnessText, /sagejs_kernel_packed_cantor_scalar_batch/);
+    assert.match(harnessText, /sagejs_kernel_packed_cantor_negate_batch/);
     assert.match(harnessText, /sagejs_kernel_packed_cantor_sum_batch/);
     assert.match(harnessText, /sagejs_kernel_packed_cantor_progression_batch/);
     assert.match(harnessText, /genus == 2/);
