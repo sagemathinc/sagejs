@@ -649,6 +649,7 @@ class PreparedJacobianArithmetic:
 
         from sagejs.hyperelliptic_curves.jacobian_kernels import (
             packed_cantor_add_batch,
+            packed_cantor_negate_batch,
             packed_cantor_progression_batch,
             packed_cantor_scalar_batch,
             packed_cantor_search_progression,
@@ -658,6 +659,7 @@ class PreparedJacobianArithmetic:
         )
 
         self._add_kernel = packed_cantor_add_batch
+        self._negate_kernel = packed_cantor_negate_batch
         self._sum_kernel = packed_cantor_sum_batch
         self._validate_kernel = packed_cantor_validate_batch
         self._progression_kernel = packed_cantor_progression_batch
@@ -667,6 +669,7 @@ class PreparedJacobianArithmetic:
         self._native_available = (
             self.prime is not None
             and is_compiled(self._add_kernel)
+            and is_compiled(self._negate_kernel)
             and is_compiled(self._sum_kernel)
             and is_compiled(self._progression_kernel)
             and is_compiled(self._scalar_kernel)
@@ -1479,22 +1482,89 @@ class PreparedJacobianArithmetic:
         materialize: bool = False,
     ) -> Any:
         """Return canonical inverses, retaining packed rows when native."""
-        count = len(elements) if isinstance(elements, PreparedDivisorBatch) else None
-        values: Any = elements if count is not None else tuple(elements)
-        if count is None:
-            count = len(values)
-        result = self.scalar_batch(
-            values,
-            (-1 for _index in range(count)),
-            algorithm=algorithm,
-            diagnostics=diagnostics,
-            materialize=materialize,
+        values_are_packed = isinstance(elements, PreparedDivisorBatch)
+        values: Any = elements if values_are_packed else tuple(elements)
+        count = len(values)
+        self._check_batch_size(count)
+        if values_are_packed:
+            values._lease_for(self)
+        selected, reason = self._selection(
+            algorithm,
+            operation="negate",
+            batch_items=count,
+            resource_bytes=96 + 136 * count,
         )
-        if diagnostics:
-            answer, record = result
-            record.operation = "negate"
-            return answer, record
-        return result
+        started = time.perf_counter_ns()
+        packed_rows = None
+        if selected == "native":
+            if values_are_packed:
+                packed_rows = values._lease_for(self)
+            else:
+                packed_rows = self.prepare_batch(values)._lease_for(self)
+        else:
+            for value in values:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
+        pack_ns = time.perf_counter_ns() - started
+        materialization_ns = 0
+        if selected == "reference":
+            started = time.perf_counter_ns()
+            answer: Any = tuple(value._negate_reference() for value in values)
+            kernel_ns = time.perf_counter_ns() - started
+            unpack_ns = 0
+            statuses = tuple(100 for _value in answer) if diagnostics else ()
+        else:
+            assert self.prime is not None
+            output = kernel_uint64_zeros(self._negate_kernel, count * 8)
+            status_buffer = kernel_uint64_zeros(self._negate_kernel, count)
+            started = time.perf_counter_ns()
+            accepted = self._negate_kernel(
+                output,
+                status_buffer,
+                kernel_uint64_buffer(self._negate_kernel, self._model),
+                packed_rows,
+                count,
+                self.genus,
+                self.prime,
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            if not accepted:
+                raise ArithmeticError(
+                    "the packed Cantor negation kernel rejected a validated batch"
+                )
+            statuses = (
+                tuple(int(status_buffer[index]) for index in range(count))
+                if diagnostics
+                else ()
+            )
+            started = time.perf_counter_ns()
+            answer = self._publish_kernel_batch(output, count)
+            unpack_ns = time.perf_counter_ns() - started
+        if materialize:
+            started = time.perf_counter_ns()
+            if isinstance(answer, PreparedDivisorBatch):
+                answer = answer.materialize()
+            else:
+                for divisor_value in answer:
+                    divisor: Any = divisor_value
+                    divisor.uv()
+            materialization_ns = time.perf_counter_ns() - started
+        if not diagnostics:
+            return answer
+        record = PreparedBatchDiagnostics(
+            operation="negate",
+            requested=self._algorithm if algorithm is None else algorithm,
+            selected=selected,
+            fallback_reason=reason,
+            count=count,
+            pack_ns=pack_ns,
+            kernel_ns=kernel_ns,
+            unpack_ns=unpack_ns,
+            materialization_ns=materialization_ns,
+            validation_ns=0,
+            statuses=statuses,
+        )
+        return answer, record
 
     def subtract_batch(
         self,

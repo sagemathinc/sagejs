@@ -75,6 +75,7 @@ import pickle
 from sagejs.hyperelliptic_curves.jacobian_kernels import (
     packed_cantor_add_batch,
     packed_cantor_copy_batch,
+    packed_cantor_negate_batch,
     packed_cantor_progression_batch,
     packed_cantor_search_progression,
     packed_cantor_search_progressions,
@@ -88,6 +89,7 @@ compiled = is_compiled(packed_cantor_add_batch)
 capsule_factory = runtime.immutable_uint64_capsule
 assert compiled == is_compiled(packed_cantor_scalar_batch)
 assert compiled == is_compiled(packed_cantor_copy_batch)
+assert compiled == is_compiled(packed_cantor_negate_batch)
 assert compiled == is_compiled(packed_cantor_progression_batch)
 assert compiled == is_compiled(packed_cantor_search_progression)
 assert compiled == is_compiled(packed_cantor_search_progressions)
@@ -265,6 +267,45 @@ def check_curve(curve, exhaustive):
     negated_reference = tuple(point._negate_reference() for point in sample)
     assert negated == negated_reference
     assert negate_diagnostics.operation == "negate"
+    if compiled:
+        assert len(negate_diagnostics.statuses) == len(sample)
+    else:
+        raw_negated = [0] * (8 * len(sample))
+        raw_negate_statuses = [0] * len(sample)
+        assert packed_cantor_negate_batch(
+            raw_negated,
+            raw_negate_statuses,
+            list(context.model_coefficients),
+            [word for point in sample for word in context.pack(point)],
+            len(sample),
+            context.genus,
+            context.prime,
+        )
+        assert tuple(
+            context.unpack(raw_negated[8 * index:8 * index + 8])
+            for index in range(len(sample))
+        ) == negated_reference
+    invalid_negate_row = list(context.pack(sample[0]))
+    invalid_negate_row[1] = context.prime
+    rejected_negate_output = kernel_uint64_buffer(
+        packed_cantor_negate_batch, [92] * 8
+    )
+    rejected_negate_status = kernel_uint64_buffer(
+        packed_cantor_negate_batch, [7]
+    )
+    assert not packed_cantor_negate_batch(
+        rejected_negate_output,
+        rejected_negate_status,
+        kernel_uint64_buffer(
+            packed_cantor_negate_batch, context.model_coefficients
+        ),
+        kernel_uint64_buffer(packed_cantor_negate_batch, invalid_negate_row),
+        1,
+        context.genus,
+        context.prime,
+    )
+    assert tuple(int(value) for value in rejected_negate_output) == (92,) * 8
+    assert tuple(int(value) for value in rejected_negate_status) == (0,)
     shifted = tuple(sample[(index + 1) % len(sample)] for index in range(len(sample)))
     differences, subtract_diagnostics = context.subtract_batch(
         sample, shifted, algorithm=selected, diagnostics=True
@@ -1093,6 +1134,15 @@ test("prepared packed Cantor arithmetic is exact in dynamic and native modes", (
     assert.doesNotMatch(
       sumBody,
       /native__cantor_add_one|mpz_|SAGEJS_WORD_PROMOTE/,
+    );
+    const negateBody = cFunction(
+      core,
+      "int sagejs_kernel_packed_cantor_negate_batch(",
+    );
+    assert.match(negateBody, /sagejs_kernel__cantor_negate_one/);
+    assert.doesNotMatch(
+      negateBody,
+      /native__cantor_negate_one|mpz_|SAGEJS_WORD_PROMOTE/,
     );
     const dynamic = run(process.execPath, [sagejs, program], {
       env: {
