@@ -5,6 +5,13 @@ import test from 'node:test';
 const read = relative =>
   readFile(new URL(`../${relative}`, import.meta.url), 'utf8');
 
+test('the iOS delegate uses the React umbrella for deep-link dispatch', async () => {
+  const source = await read('ios/SageJSMobile/AppDelegate.swift');
+  assert.match(source, /^import React$/m);
+  assert.doesNotMatch(source, /^import React_RCTLinking$/m);
+  assert.match(source, /RCTLinkingManager\.application\(app, open: url/);
+});
+
 test('both native origins bind only ephemeral IPv4 loopback with capabilities', async () => {
   const [android, ios] = await Promise.all([
     read(

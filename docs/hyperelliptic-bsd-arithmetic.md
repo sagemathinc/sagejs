@@ -114,7 +114,7 @@ numerical result.
 The reusable `LFunctionInit` object computes the central value and derivatives
 once and caches the central-weight plan:
 
-```sage test
+```sage
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 # This generalized model has certified global data at every bad prime.
@@ -135,7 +135,9 @@ assert rank == 0 and leading.rank.status == "probable"
 
 `from_lfunction_init` requires a stabilized, isolated derivative and records
 the actual prepared precision and backend diagnostics.  It does not call a
-probable analytic rank “proved.”
+probable analytic rank “proved.”  The 160-bit order-four initialization above
+is intentionally not part of the routine documentation test tier: it is a
+substantial analytic computation, not a quick-start smoke test.
 
 ## Atomic automatic assembly
 
@@ -144,7 +146,11 @@ returns one `BSDPipelineReport`.  A complete report proxies the usual quotient
 methods; an incomplete report is a checkpoint containing the factors that did
 succeed and makes no BSD quotient claim:
 
-```sage test
+```sage
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+C_lseries = HyperellipticCurve(x, x**3 - x + 1)
+
 rank_source = Provenance.supplied(
     "independent Mordell--Weil computation",
     reference="research notebook, cell 27",
@@ -183,7 +189,9 @@ the wrong number of subgroup generators leaves `report.complete == False`.
 Use `on_incomplete="raise"` when a batch should stop instead of recording the
 checkpoint.  Typed objects can be passed in `overrides` when a factor comes
 from another program; every such input retains its own provenance, and unknown
-override names are rejected.
+override names are rejected.  Like the high-precision initialization it uses,
+this full quotient is intentionally outside the routine documentation test
+tier.
 
 `BSDPipelineReport.to_json()`, `.from_json()`, and `.sqlite_record()` support
 checkpoint/restart workflows.  The SQLite row exists even for an incomplete
@@ -191,6 +199,15 @@ report and records its missing-factor list without numerator or denominator
 columns that could be mistaken for a quotient.
 
 ## Real periods and Abel--Jacobi coordinates
+
+The quick examples below share this tested curve fixture:
+
+```sage test
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+C_lseries = HyperellipticCurve(x, x**3 - x + 1)
+assert C_lseries.conductor() == 713
+```
 
 `real_period` uses the completed model `Y^2=h^2+4f` and the differential basis
 

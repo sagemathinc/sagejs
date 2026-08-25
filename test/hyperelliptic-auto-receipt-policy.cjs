@@ -212,7 +212,7 @@ test("the checked-in release policy fails closed after the native ABI change", (
   assert.equal(policy.verified_receipts.length, 0);
   assert.equal(
     policy.source_bundle.sha256,
-    "15619c129783d98770c2518023b13f26a9309e7b2806c31bc19f177020045a1c",
+    "6715c02a684a1ebfeac30aa6cd2aabe875114a3033f256107de8e7b9406b84ea",
   );
   assert(Object.isFrozen(policy));
   assert.equal(

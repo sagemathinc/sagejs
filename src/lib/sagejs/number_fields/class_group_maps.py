@@ -19,8 +19,10 @@ particular, a matrix lane can expose transformations without the map lane
 depending on its class names, and factored elements can prove principal ideals
 through `verify_principal_ideal(ideal)` or `principal_ideal()` without being
 expanded.  The engine adapter additionally consumes a verified
-`saturation_record`; unconditional results must expose authenticated
-`proof_progress` with strided partitions plus independently computed
+`saturation_record`.  Unconditional upgrade results expose authenticated
+`proof_progress` with strided partitions; direct Minkowski discoveries retain
+the exact factor base and presentation from which the adapter independently
+rebuilds that progress.  Both routes bind independently computed
 `proof_dependency_hashes` for `relations`, `presentation`, `generators`, and
 `saturation`.
 """
@@ -1927,15 +1929,32 @@ class _EngineProofReplayContext:
             "sagejs.number_fields.class_group_factor_base",
             fromlist=["factor_base_plan"],
         )
-        bound = self.minkowski_bound[0]
+        degree = _integer(self.order.degree(), "unconditional field degree")
+        bound = _integer(self.minkowski_bound[0], "Minkowski replay bound")
+        if (
+            degree < 1
+            or degree > _CONDITIONAL_MAX_DEGREE
+            or bound < 0
+            or bound > _CONDITIONAL_MAX_BOUND
+            or bound > _CONDITIONAL_MAX_RATIONAL_PRIMES
+        ):
+            raise ArithmeticError("Minkowski factor-base replay exceeds verifier caps")
         plan = factor_base.factor_base_plan(
             self.order,
             proof=True,
             theorem="minkowski",
-            max_bound=max(1, bound),
-            max_rational_primes=max(1, bound),
-            max_prime_ideals=max(1, int(self.order.degree()) * max(1, bound)),
+            max_bound=_CONDITIONAL_MAX_BOUND,
+            max_rational_primes=_CONDITIONAL_MAX_RATIONAL_PRIMES,
+            max_prime_ideals=_CONDITIONAL_MAX_FACTOR_BASE,
+            max_memory_bytes=_CONDITIONAL_MAX_MEMORY_BYTES,
         )
+        plan.require_feasible()
+        if (
+            _integer(plan.bound, "rebuilt Minkowski bound") != bound
+            or "Minkowski" not in str(plan.theorem)
+            or tuple(plan.assumptions)
+        ):
+            raise ArithmeticError("Minkowski factor-base replay changed its theorem")
         for record in factor_base.prime_ideal_norm_stream(plan):
             yield record.prime_ideal
 
@@ -1943,12 +1962,29 @@ class _EngineProofReplayContext:
         return _portable_ideal_fingerprint(ideal)
 
     def encode_ideal(self, ideal: Any) -> dict[str, Any]:
+        prime_module = __import__(
+            "sagejs.number_fields.prime_ideals",
+            fromlist=["NumberFieldPrimeIdeal", "serialize_prime_ideal"],
+        )
+        if isinstance(ideal, prime_module.NumberFieldPrimeIdeal):
+            return prime_module.serialize_prime_ideal(ideal)
         arithmetic = __import__(
             "sagejs.number_fields.ideal_arithmetic", fromlist=["serialize_ideal"]
         )
         return arithmetic.serialize_ideal(ideal)
 
     def decode_ideal(self, payload: dict[str, Any]) -> Any:
+        if not isinstance(payload, dict):
+            raise TypeError("a serialized proof ideal must be a dictionary")
+        schema = payload.get("schema")
+        if schema == "sagejs.number-fields.prime-ideal.v1":
+            prime_module = __import__(
+                "sagejs.number_fields.prime_ideals",
+                fromlist=["prime_ideal_from_dict"],
+            )
+            return prime_module.prime_ideal_from_dict(self.order, payload)
+        if schema != "sagejs.number-fields.ideal.v1":
+            raise ValueError("unsupported proof-ideal serialization schema")
         arithmetic = __import__(
             "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_from_dict"]
         )
@@ -2016,6 +2052,161 @@ def _engine_unconditional_records(
     return tuple(answer)
 
 
+def _direct_minkowski_evidence(
+    result: Any,
+    engine_group: Any,
+    replay: _EngineProofReplayContext,
+    bound: int,
+    dependency_hashes: dict[str, str],
+) -> tuple[
+    tuple[MinkowskiPrimeClassRecord, ...],
+    dict[str, Any],
+    dict[str, Any],
+]:
+    """Authenticate a direct Minkowski discovery from retained exact material."""
+    factor_base_stage = _stage(result, "factor-base")
+    diagnostics = getattr(result, "diagnostics", None)
+    retained = getattr(engine_group, "_factor_base", None)
+    if (
+        factor_base_stage is None
+        or factor_base_stage.state != "complete"
+        or not isinstance(diagnostics, dict)
+        or retained is None
+    ):
+        raise ArithmeticError(
+            "a direct unconditional result has no completed factor-base evidence"
+        )
+    details = factor_base_stage.details
+    theorem = details.get("theorem")
+    assumptions = details.get("assumptions")
+    retained_factor_base = tuple(retained)
+    degree = _integer(replay.order.degree(), "direct Minkowski field degree")
+    if (
+        degree < 1
+        or degree > _CONDITIONAL_MAX_DEGREE
+        or bound < 0
+        or bound > _CONDITIONAL_MAX_BOUND
+        or bound > _CONDITIONAL_MAX_RATIONAL_PRIMES
+        or not isinstance(theorem, str)
+        or "Minkowski" not in theorem
+        or not isinstance(assumptions, (list, tuple))
+        or tuple(assumptions)
+        or _integer(details.get("bound"), "direct Minkowski bound") != bound
+        or _integer(diagnostics.get("factor_base_bound"), "factor-base bound") != bound
+        or _integer(details.get("size"), "factor-base stage size")
+        != len(retained_factor_base)
+        or _integer(diagnostics.get("factor_base_size"), "factor-base size")
+        != len(retained_factor_base)
+        or len(retained_factor_base) > _CONDITIONAL_MAX_FACTOR_BASE
+    ):
+        raise ArithmeticError("direct Minkowski factor-base authority is inconsistent")
+
+    rebuilt_primes = tuple(replay.iter_minkowski_prime_ideals())
+    rebuilt_fingerprints = tuple(
+        replay.ideal_fingerprint(prime) for prime in rebuilt_primes
+    )
+    retained_fingerprints = tuple(
+        replay.ideal_fingerprint(prime) for prime in retained_factor_base
+    )
+    if retained_fingerprints != rebuilt_fingerprints:
+        raise ArithmeticError(
+            "the retained factor base differs from the exact Minkowski stream"
+        )
+
+    records: list[MinkowskiPrimeClassRecord] = []
+    progress_records: list[dict[str, Any]] = []
+    for index, (prime, fingerprint) in enumerate(
+        zip(rebuilt_primes, rebuilt_fingerprints, strict=True)
+    ):
+        coordinates, generator = engine_group.discrete_log(prime)
+        checked_coordinates = tuple(
+            _integer(value, "a direct Minkowski proof coordinate")
+            for value in coordinates
+        )
+        representative = engine_group.representative_ideal(checked_coordinates)
+        quotient = _ideal_quotient(prime, representative)
+        witness = PrincipalIdealWitness(
+            quotient,
+            generator,
+            source="direct Minkowski factor-base discrete log",
+        )
+        if not witness.verify(replay.order):
+            raise ArithmeticError(
+                "a direct Minkowski proof-prime discrete log failed exact replay"
+            )
+        norm = prime.norm()
+        numerator = _integer(
+            getattr(norm, "_numerator", norm), "direct Minkowski proof-prime norm"
+        )
+        denominator = _integer(
+            getattr(norm, "_denominator", 1),
+            "direct Minkowski proof-prime norm denominator",
+        )
+        if denominator != 1 or numerator < 2 or numerator > bound:
+            raise ArithmeticError("a direct Minkowski proof prime has an invalid norm")
+        raw = {
+            "index": index,
+            "norm": numerator,
+            "coordinates": checked_coordinates,
+            "ideal": replay.encode_ideal(prime),
+            "witness": replay.encode_generator(generator),
+        }
+        progress_entry = {
+            "schema": _PROGRESS_RECORD_SCHEMA,
+            "index": index,
+            "prime_fingerprint": fingerprint,
+            "evidence": raw,
+        }
+        progress_entry["content_sha256"] = _payload_hash(progress_entry)
+        progress_records.append(progress_entry)
+        records.append(
+            MinkowskiPrimeClassRecord(
+                prime,
+                fingerprint,
+                numerator,
+                checked_coordinates,
+                witness,
+            )
+        )
+    progress_plan = {
+        "theorem": "Minkowski ideal-class theorem",
+        "bound": [bound, 1],
+        "prime_fingerprints": list(rebuilt_fingerprints),
+        "dependency_hashes": dict(dependency_hashes),
+        "partition_count": 1,
+    }
+    plan_hash = _payload_hash(progress_plan)
+    partition = {
+        "schema": _PARTITION_SCHEMA,
+        "plan_sha256": plan_hash,
+        "partition_index": 0,
+        "partition_count": 1,
+        "total_items": len(progress_records),
+        "records": progress_records,
+    }
+    partition["content_sha256"] = _payload_hash(partition)
+    progress_body = {
+        "schema": _PROGRESS_SCHEMA,
+        **progress_plan,
+        "plan_sha256": plan_hash,
+        "partitions": [partition],
+        "completed_items": len(progress_records),
+        "complete": True,
+    }
+    progress_body["content_sha256"] = _payload_hash(progress_body)
+    progress_payload = _canonical_payload(
+        progress_body, "direct Minkowski proof progress"
+    )
+    if not _authenticated_payload(progress_payload):
+        raise ArithmeticError("direct Minkowski proof progress failed authentication")
+    if replay._progress_records(progress_payload) != tuple(
+        _canonical_payload(entry["evidence"], "direct Minkowski proof-prime evidence")
+        for entry in progress_records
+    ):
+        raise ArithmeticError("direct Minkowski proof progress failed exact replay")
+    return tuple(records), progress_payload, progress_payload
+
+
 def class_group_from_engine_result(result: Any) -> IdealClassGroup:
     """Adapt one complete class/unit engine result to the public map contract."""
     if getattr(result, "complete", None) is not True:
@@ -2046,8 +2237,14 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
     if proof_stage is None or proof_stage.state != "complete":
         raise ArithmeticError("the engine result has no completed proof stage")
     diagnostics = result.diagnostics
-    relation_count = int(diagnostics.get("relations"))
-    if int(proof_stage.details.get("exact_relations", -1)) != relation_count:
+    relation_count = _integer(diagnostics.get("relations"), "engine relation count")
+    if (
+        proof_stage.details.get("proof_status") != proof_status
+        or _integer(
+            proof_stage.details.get("exact_relations"), "proof-stage relation count"
+        )
+        != relation_count
+    ):
         raise ArithmeticError("the proof stage has the wrong exact relation count")
     saturation_producer, saturation_payload = _producer_saturation(result)
     saturation = _saturation_record(saturation_payload)
@@ -2058,14 +2255,26 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
     conditional_evidence = None
     if proof_status == EXACT_UNCONDITIONAL:
         unconditional_stage = _stage(result, "unconditional-proof")
-        if unconditional_stage is None or unconditional_stage.state != "complete":
-            raise ArithmeticError(
-                "an unconditional engine result has no completed Minkowski stage"
+        if unconditional_stage is not None:
+            if unconditional_stage.state != "complete":
+                raise ArithmeticError(
+                    "an unconditional engine result has an incomplete Minkowski stage"
+                )
+            if "Minkowski" not in str(unconditional_stage.details.get("theorem")):
+                raise ArithmeticError("the unconditional stage does not name Minkowski")
+            bound = _integer(
+                unconditional_stage.details.get("bound"), "Minkowski proof bound"
             )
-        if "Minkowski" not in str(unconditional_stage.details.get("theorem")):
-            raise ArithmeticError("the unconditional stage does not name Minkowski")
-        bound = int(unconditional_stage.details.get("bound"))
-        proof_progress, progress_payload = _producer_proof_progress(result)
+            proof_progress, progress_payload = _producer_proof_progress(result)
+        else:
+            factor_base_stage = _stage(result, "factor-base")
+            if factor_base_stage is None or factor_base_stage.state != "complete":
+                raise ArithmeticError(
+                    "an unconditional engine result has no completed Minkowski stage"
+                )
+            bound = _integer(
+                factor_base_stage.details.get("bound"), "direct Minkowski bound"
+            )
         dependency_hashes = _producer_dependency_hashes(result)
     else:
         bound = int(diagnostics.get("factor_base_bound"))
@@ -2092,22 +2301,58 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
         conditional_evidence,
     )
     if proof_status == EXACT_UNCONDITIONAL:
-        if unconditional_stage is None:
-            raise ArithmeticError("the unconditional proof stage disappeared")
-        if progress_payload is None:
-            raise ArithmeticError("the unconditional proof progress disappeared")
-        raw_prime_records = replay._progress_records(progress_payload)
-        if int(unconditional_stage.details.get("prime_ideals", -1)) != len(
-            raw_prime_records
-        ) or int(proof_stage.details.get("minkowski_primes", -1)) != len(
-            raw_prime_records
-        ):
-            raise ArithmeticError("the proof stages have the wrong Minkowski count")
-        prime_records = _engine_unconditional_records(
-            engine_group,
-            replay,
-            raw_prime_records,
-        )
+        if progress_payload is not None:
+            if unconditional_stage is None:
+                raise ArithmeticError("the unconditional proof stage disappeared")
+            raw_prime_records = replay._progress_records(progress_payload)
+            if _integer(
+                unconditional_stage.details.get("prime_ideals"),
+                "unconditional proof-prime count",
+            ) != len(raw_prime_records) or _integer(
+                proof_stage.details.get("minkowski_primes"),
+                "completed proof-prime count",
+            ) != len(raw_prime_records):
+                raise ArithmeticError("the proof stages have the wrong Minkowski count")
+            prime_records = _engine_unconditional_records(
+                engine_group,
+                replay,
+                raw_prime_records,
+            )
+        else:
+            if unconditional_stage is not None or dependency_hashes is None:
+                raise ArithmeticError("the unconditional proof evidence disappeared")
+            if (
+                _integer(
+                    proof_stage.details.get("minkowski_primes"),
+                    "direct proof-prime upgrade count",
+                )
+                != 0
+            ):
+                raise ArithmeticError(
+                    "a direct Minkowski result claims an unrecorded proof upgrade"
+                )
+            prime_records, proof_progress, progress_payload = (
+                _direct_minkowski_evidence(
+                    result,
+                    engine_group,
+                    replay,
+                    bound,
+                    dependency_hashes,
+                )
+            )
+            replay = _EngineProofReplayContext(
+                result,
+                engine_group,
+                order,
+                saturation,
+                saturation_producer,
+                saturation_payload,
+                bound,
+                proof_progress,
+                progress_payload,
+                dependency_hashes,
+                conditional_evidence,
+            )
         proof_record: Any = UnconditionalMinkowskiProofRecord(
             field_order_fingerprint=replay.field_order_fingerprint,
             discriminant=replay.discriminant,
