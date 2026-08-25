@@ -135,11 +135,150 @@ The next production profile should ask narrower questions:
 
 Only a positive answer should open the next compiler work package.
 
-## Remaining release work for this slice
+## End-to-end acceptance
 
-- exact-revision Linux x64 and arm64 receipts;
-- exact-revision macOS arm64 and Windows x64 receipts;
-- the mandatory broad native test suite;
-- a clean matched end-to-end receipt meeting the sprint's 15% threshold; and
-- same-host Sage/PARI, direct PARI, Magma, and Oscar/Hecke comparison records
-  for the resumed class-group workload.
+The clean historical boundary for this sprint is
+`44a63f15fd7bef171c5aa3c0d16901b2af95f179`, immediately before the first
+live-exact compiler commit.  The measured implementation revision is
+`ea8bfd1c9f89f0b4971af714b17528c966a41d6d`.  Both revisions were built from
+detached clean worktrees with their own compiler, FLINT adapter, production
+native pack, and receipt-authenticated lazy-module cache.
+
+Five alternating fresh-process executions of the production-shaped cubic C0
+witness gave these medians:
+
+| revision | complete process | producer | packed proposal | certificate |
+|---|---:|---:|---:|---|
+| before | 6.753 s | 3.808 s | 19.49 ms | `631ce567...accd0` |
+| after | 3.499 s | 0.602 s | 21.89 ms | `631ce567...accd0` |
+
+The complete operation improves by 48.2% and the exact certificate hash is
+unchanged.  The tiny packed proposal is not claimed as a speedup: its median
+is slightly higher in this workload, but it is only 3.6% of the new producer.
+That satisfies C7's explicit alternative gate honestly.  The neutral
+100,000-operation witness remains the evidence that live exact accumulation
+itself is useful when it is actually hot: generated native C is about 4.69 ms
+versus 3.57 ms for direct GMP C and about 152 ms for generated JavaScript.
+
+The independent higher-degree acceptance gate uses `x^6-x-1`, proof false,
+the committed one-GiB policy, and a fresh persistent runtime-cache directory.
+It gives:
+
+| revision | process | public elapsed | engine diagnostic |
+|---|---:|---:|---:|
+| before | 8.120 s | 7.192 s | 6.009 s |
+| after | 4.612 s | 3.821 s | 2.676 s |
+
+This is a 43.2% fresh-process improvement.  Class number, unit rank, proof
+status, regulator enclosure, and all four dependency hashes for generators,
+presentation, relations, and saturation are identical.
+
+## First-process compiler closure
+
+The higher-degree receipt found a separate compiler-production defect rather
+than an arithmetic defect.  `buchmann_lenstra.py` and
+`maximal_order_certification.py` had become lazy maximal-order dependencies
+after the general class/unit precompile manifest was last expanded.  A normal
+production package therefore compiled them during the first class/unit call.
+Adding both exact source modules to the receipt-bound lazy roots reduces the
+degree-6 factor-base phase from 3.746 seconds to 0.407 seconds.  The arithmetic
+phases and proof hashes remain stable.
+
+This correction is part of the compiler-sprint acceptance boundary: the plan
+forbids a kernel-only win accompanied by a first-process regression.  It does
+not make ordinary stale cache data trusted.  Module source signatures,
+compiler versions, bundle provenance, and dynamic fallback behavior are
+unchanged and continue to fail closed.
+
+## External systems
+
+The versioned degree-6--10 corpus was rerun on the same Linux x64 host with
+Sage 10.9.post1/PARI 2.17, Magma 2.18-5, and Hecke 0.40.0.  Every system agrees
+on the exact class groups, unit ranks, torsion, and regulator acceptance.  The
+five-degree, both-proof-mode harness totals were 2.709 seconds for Sage/PARI,
+2.308 seconds for Magma, and 27.534 seconds for Hecke, including their harness
+process overheads.
+
+For degree 6 specifically, conditional timings were about 10 ms in Sage/PARI,
+60 ms in Magma, and 1.76 seconds in Hecke.  Sage.js is now 2.68 seconds in its
+engine and 4.61 seconds as a fresh production process.  This is meaningful
+progress and roughly the same order of magnitude as Hecke, but it is not yet
+competitive with PARI or Magma.  The compiler sprint removes a representation
+and startup obstacle; it does not replace the subsequent algorithm and data-
+structure program.
+
+## Validation closure
+
+The accepted slice has passed:
+
+- the full native test suite on Linux x64, including FLINT, FFLAS, graph,
+  M4RI, lifecycle fuzzing, matrix migration gates, performance ratchets, and
+  the live-exact sanitizer witness;
+- ASan and UBSan on Linux; UBSan on macOS, where Apple ASan was independently
+  shown to deadlock inside the platform runtime before `main`;
+- production Wasm compilation and exact ordinary/native/Wasm differential
+  tests;
+- exact-source architecture, capability, package-graph, and automatic-route
+  authentication checks; and
+- focused live-vector, cleanup, memory, transactional-failure, escape,
+  mutation, and cubic certificate tests on Linux x64, Linux arm64, macOS
+  arm64, and native Windows x64.
+
+The platform reruns were all made from clean detached checkouts at exact code
+revision `ea8bfd1c9f89f0b4971af714b17528c966a41d6d`:
+
+- Linux x64 passed the complete native suite and production Wasm build;
+- Linux arm64 passed build stages 1--6, published all 29 production modules in
+  a separately bounded final-stage invocation after the outer build cap, and
+  passed the live-vector/sanitizer suite 5/5;
+- macOS arm64 passed the seven-stage build and the Darwin UBSan live-vector
+  suite 5/5 after refreshing a stale patched eclib source in its existing
+  dependency prefix; and
+- native Windows x64 rebuilt all 29 production families, passed the live-vector
+  suite 4/4 with the Unix-only sanitizer test intentionally skipped, and
+  passed the architecture and lazy-root receipt gates.
+
+All three remote worktrees were clean after validation.  No mathematical
+source differs among those targets.
+
+## Adoption boundary for other arithmetic
+
+The accepted cross-subsystem surface is intentionally only the lexical exact
+vector:
+
+```python
+with NativeIntegerVector(capacity, memory_limit) as values:
+    values[i] = x
+    values.addmul(i, a, b)
+    values.submul(i, q, pivot)
+    values.swap(i, j)
+    y = values[i]
+```
+
+Higher-genus and other arithmetic may now use this surface for one measured,
+production-shaped exact-coordinate accumulation whose result is copied into
+its existing canonical representation before the scope exits.  The ordinary
+Python body remains the dynamic oracle; compiled state is acceleration only.
+Automatic selection requires a workload receipt and must fail closed outside
+the authenticated envelope.
+
+This is not authorization to invent another local arena, owner registry,
+packed mutable aggregate, capsule protocol, or lifetime system.  Nested live
+vectors, owner aliasing or escape, calls that expose the owner, and use after
+scope are deliberately rejected.  Maps, records, shaped views, owned aggregate
+returns, and richer arenas remain C4/C5 work and require a new measured profile.
+
+## Post-sprint decision
+
+The compiler sprint is accepted.  C1--C3 provide a small safe mathematical
+machine model rather than a new general-purpose language.  C4 maps and sparse
+rows, and C5 owned aggregates and richer arenas, remain deferred until a
+stage-resolved production profile shows that their representation boundary is
+material.
+
+Class-and-unit optimization should now resume.  The next phase should profile
+the exact relation search and unit-recovery paths on the LMFDB corpus and the
+degree-6--10 witnesses, then add one machine-model feature only if a concrete
+phase spends at least 15% in representation conversion, repeated exact
+mutation, or manually managed lifetime state.  Canonical payloads remain
+semantic authority; live native state remains authenticated acceleration.
