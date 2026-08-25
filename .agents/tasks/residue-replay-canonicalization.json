@@ -75,6 +75,46 @@
       "commit": "f05f3d1646af2486ce9cfcad0e8496518699cf7c",
       "workspace_fingerprint": "822ef9ff9185e27c4ce9db5bc39986c1340591ed9b90584b3e436d6a9b7abff9",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=conditional.*semantic.*prime test/number-field-class-group-maps-proof.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.157,
+      "started_at": "2026-08-25T22:53:39.108Z",
+      "commit": "3b1eb8adbca8c3978abf228f7e085b6a72095af8",
+      "workspace_fingerprint": "1d9a29ab43b3a5bd3dfa8be6bab337d7faf4a7f1dd976c898fef913edd75b583",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.028,
+      "started_at": "2026-08-25T22:54:06.936Z",
+      "commit": "3b1eb8adbca8c3978abf228f7e085b6a72095af8",
+      "workspace_fingerprint": "1d9a29ab43b3a5bd3dfa8be6bab337d7faf4a7f1dd976c898fef913edd75b583",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.733,
+      "started_at": "2026-08-25T22:54:46.403Z",
+      "commit": "3b1eb8adbca8c3978abf228f7e085b6a72095af8",
+      "workspace_fingerprint": "1d9a29ab43b3a5bd3dfa8be6bab337d7faf4a7f1dd976c898fef913edd75b583",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 900,
+      "started_at": "2026-08-25T22:32:45.000Z",
+      "commit": "3b1eb8adbca8c3978abf228f7e085b6a72095af8",
+      "workspace_fingerprint": "1d9a29ab43b3a5bd3dfa8be6bab337d7faf4a7f1dd976c898fef913edd75b583",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
