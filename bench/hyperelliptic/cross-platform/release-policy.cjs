@@ -19,25 +19,29 @@ const {
 
 const root = resolve(__dirname, "..", "..", "..");
 const results = join(__dirname, "results");
-const policyDirectory = join(results, "policy-b25ffdd1");
+const policyDirectory = join(results, "policy-a9d83f82");
 const policyPath = join(
   root,
   "architecture",
   "hyperelliptic-auto-receipt-policy.json",
 );
-const sourceCommit = "b25ffdd128cb19d95c979133349fb205a40f26e4";
+const sourceCommit = "a9d83f82261c3dc28fb8a79c2f161c57a9efc7cc";
 const sourceBundleSha =
-  "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e";
+  "36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1";
+const packageSmokePatchCommit =
+  "b36aab0335322d404254e04085f61cc8252b21bf";
+const packageSmokePatchedSha =
+  "40964694c659d1152b5b2fc020fd57593bc0487dc039ad12aeedae2fd23fdc21";
 const harnessPath = "bench/hyperelliptic/cross-platform/run.cjs";
 const modelFingerprints = Object.freeze({
   2: "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234",
   3: "4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279",
 });
 const platformFiles = Object.freeze({
-  "linux-x64": "linux-x64-b25ffdd1",
-  "linux-arm64": "linux-arm64-b25ffdd1",
-  "darwin-arm64": "macos-arm64-b25ffdd1",
-  "win32-x64": "windows-x64-b25ffdd1",
+  "linux-x64": "linux-x64-a9d83f82",
+  "linux-arm64": "linux-arm64-a9d83f82",
+  "darwin-arm64": "macos-arm64-a9d83f82",
+  "win32-x64": "windows-x64-a9d83f82",
 });
 const platforms = Object.freeze(Object.keys(platformFiles));
 
@@ -127,10 +131,10 @@ function main() {
   const harness = { path: harnessPath, sha256: sha256(harnessBytes) };
   assert.equal(
     harness.sha256,
-    "b81a08b591d94191c23fedb6ea93c576251f46620b16732cab1087ca06c47669",
+    "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435",
   );
   const corpus = {
-    id: "phase10-primary-cantor-b1-v1",
+    id: "phase10-primary-cantor-a9d-v1",
     path: harnessPath,
     sha256: harness.sha256,
   };
@@ -150,6 +154,19 @@ function main() {
     assert.equal(extra.repository.commit, sourceCommit);
     assert.equal(primary.repository.status, "");
     assert.equal(extra.repository.status, "");
+    assert.equal(
+      primary.configuration.receipt_policy,
+      "off-for-explicit-receipt-collection",
+    );
+    assert.deepEqual(extra.repository.package_smoke_overlay, {
+      source_commit: sourceCommit,
+      test_patch_commit: packageSmokePatchCommit,
+      base_test_sha256:
+        "2a85aad10b6922600d6c97e312dfb32ee8430e197c85000c0b379c1b64a459e0",
+      patched_test_sha256: packageSmokePatchedSha,
+      updater_sha256:
+        "b8862e8ca6b5ae2740f8fb4b53bbcd47cca79083f1f4df5fefe9d9f15cecc06e",
+    });
     assert.equal(`${primary.host.platform}-${primary.host.architecture}`, platform);
     assert.equal(`${extra.host.platform}-${extra.host.architecture}`, platform);
     assert.match(primary.modes.dynamic.cantor.capability, /artifact-unavailable/);
@@ -160,6 +177,14 @@ function main() {
     assert.equal(extra.wasm.cancellation.recovery_stdout, "42");
     assert.equal(extra.wasm.package_verification.stderr, "");
     assert.equal(extra.wasm.package_load_test.status, "passed");
+    assert.equal(
+      extra.wasm.package_load_test.test_patch_commit,
+      packageSmokePatchCommit,
+    );
+    assert.equal(
+      extra.wasm.package_load_test.test_source_sha256,
+      packageSmokePatchedSha,
+    );
     receipts[platform] = primary;
     extras[platform] = extra;
     artifacts.push(
@@ -186,7 +211,7 @@ function main() {
   for (const platform of platforms.slice(1)) {
     assert.deepEqual(receipts[platform].cross_mode_exact, referenceExact);
   }
-  const cachePath = join(results, "linux-x64-b25ffdd1-cache-corruption.stdout");
+  const cachePath = join(results, "linux-x64-a9d83f82-cache-corruption.stdout");
   assert.match(
     readFileSync(cachePath, "utf8"),
     /receipt validation detects changed production assets/,
@@ -197,9 +222,17 @@ function main() {
       "artifact identity binds layout and content",
     ]),
   );
-  const sanitizerPath = join(results, "linux-x64-b25ffdd1-cantor-sanitizers.json");
+  const sanitizerPath = join(results, "linux-x64-a9d83f82-cantor-sanitizers.json");
   const sanitizer = readJson(sanitizerPath);
   assert.equal(sanitizer.schema, "sagejs.hyperelliptic-cantor-sanitizers/v1");
+  assert.equal(sanitizer.platform, "linux-x64");
+  assert.equal(sanitizer.source_commit, sourceCommit);
+  assert.equal(
+    sanitizer.source_sha256,
+    receipts["linux-x64"].repository.source_sha256[
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py"
+    ],
+  );
   assert.deepEqual(
     sanitizer.rows.map((row) => [row.sanitizer, row.status]),
     REQUIRED_SANITIZERS.map((name) => [name, "passed"]),
@@ -243,7 +276,7 @@ function main() {
     assert(exact, `missing genus-${genus} exact row`);
     for (const operation of ["add", "scalar", "progression"]) {
       const digest = exact[`${operation}_sha256`];
-      const entryId = `prime-cantor-g${genus}-${operation}-b1-v1`;
+      const entryId = `prime-cantor-g${genus}-${operation}-a9d-v1`;
       const references = [];
       for (const platform of platforms) {
         const receiptEvidence = {

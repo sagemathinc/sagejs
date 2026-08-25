@@ -384,7 +384,7 @@ test("an enabled empty policy gates auto while explicit accelerators remain coll
   assert.equal(observed.group_explicit, "smalljac");
 });
 
-test("absent policy preserves development auto while release policy gates misses", (context) => {
+test("absent policy preserves development auto while release policy admits only exact receipts", (context) => {
   const item = enabledEmptyPolicy();
   context.after(() => fs.rmSync(item.root, { recursive: true, force: true }));
   const absent = parseSageJson(runSage(selectorWitness, {
@@ -402,8 +402,9 @@ test("absent policy preserves development auto while release policy gates misses
   const release = parseSageJson(runSage(selectorWitness));
   assert.equal(release.decision.allowed, false);
   assert.equal(release.decision.reason, "unreceipted-fallback");
-  assert.equal(release.matched_decision.allowed, false);
-  assert.equal(release.matched_decision.reason, "unreceipted-fallback");
+  assert.equal(release.matched_decision.allowed, true);
+  assert.equal(release.matched_decision.reason, "exact-receipt-policy-match");
+  assert.equal(release.matched_decision.entry_id, "prime-cantor-g2-add-a9d-v1");
   assert.deepEqual(release.prepared, ["reference", "unreceipted-fallback"]);
   assert.equal(release.rational_auto, "exhaustive");
   assert.equal(release.kummer_selected, false);
@@ -463,16 +464,16 @@ test("trusted startup rejects a provider installed before Sage.js", (context) =>
   assert.match(result.stderr, /existed before trusted startup/);
 });
 
-test("the release policy retains six exact Cantor envelopes but fails closed", () => {
+test("the release policy enables six exact Cantor envelopes and fails closed elsewhere", () => {
   const candidate = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
   assert.equal(candidate.enabled, true);
   assert.equal(candidate.entries.length, 6);
-  assert(candidate.entries.every((entry) => !entry.enabled));
+  assert(candidate.entries.every((entry) => entry.enabled));
   assert.equal(
     candidate.source_bundle.sha256,
-    "6715c02a684a1ebfeac30aa6cd2aabe875114a3033f256107de8e7b9406b84ea",
+    "36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1",
   );
   assert.deepEqual(
     [...new Set(candidate.entries.map((entry) => entry.backend))],

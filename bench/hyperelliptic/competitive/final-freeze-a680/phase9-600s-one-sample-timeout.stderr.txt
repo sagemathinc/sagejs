@@ -1,0 +1,13 @@
+SageSessionTimeoutError: Sage.js evaluation timed out after 600000 ms
+    at Timeout.<anonymous> (/home/user/sagejs-hyp-final-d98b9dcd/dist/tools/kernel.js:206:45)
+    at listOnTimeout (node:internal/timers:585:17)
+    at process.processTimers (node:internal/timers:521:7)
+/home/user/sagejs-hyp-final-d98b9dcd/dist/tools/kernel.js:396
+        const error = new SageSessionClosedError();
+                      ^
+
+SageSessionClosedError: Sage.js session is closed
+    at SageSession.close (/home/user/sagejs-hyp-final-d98b9dcd/dist/tools/kernel.js:396:23)
+    at main (/home/user/sagejs-hyp-final-d98b9dcd/bench/hyperelliptic/benchmark-analytic-competitive.cjs:675:19)
+
+Node.js v22.22.2

@@ -143,6 +143,10 @@ function rankThreeProcessColdReceipt(options) {
       {
         cwd: repositoryRoot,
         encoding: "utf8",
+        env: {
+          ...process.env,
+          SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY: "off",
+        },
         maxBuffer: 16 * 1024 * 1024,
       },
     );
@@ -166,7 +170,7 @@ function rankThreeProcessColdReceipt(options) {
   }
   const mapSeconds = samples.map((sample) => sample.seconds.explicit_map);
   const receipt = {
-    schema: "sagejs.hyperelliptic.rank3-process-cold.v1",
+    schema: "sagejs.hyperelliptic.rank3-process-cold.v2",
     recorded_at: new Date().toISOString(),
     source: {
       commit: gitOutput(["rev-parse", "HEAD"]),
@@ -185,6 +189,8 @@ function rankThreeProcessColdReceipt(options) {
       baseline_seconds: rankThreeMapBaselineSeconds,
       maximum_seconds: rankThreeMapTargetSeconds,
       process_per_sample: true,
+      algorithm: "auto",
+      auto_receipt_policy: "off-for-explicit-receipt-collection",
     },
     exact_digest: exactDigest,
     samples,

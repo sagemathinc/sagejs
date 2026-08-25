@@ -89,7 +89,6 @@ for table in context._classical_duplication_terms:
         exponents.extend(term[1:])
 fallback_state = list(state)
 fallback_output = [0 for _ in range(10*steps)]
-fallback_scratch = [0 for _ in range(48)]
 fallback = getattr(
     dyadic_kummer_height_recurrence,
     "__wrapped__",
@@ -101,11 +100,30 @@ fallback_status = fallback(
     coefficients,
     exponents,
     counts,
-    fallback_scratch,
+    6144,
     scale,
     steps,
 )
 assert fallback_status == steps
+bounded_state = list(state)
+bounded_output = [0 for _ in range(10*steps)]
+try:
+    fallback(
+        bounded_output,
+        bounded_state,
+        coefficients,
+        exponents,
+        counts,
+        1535,
+        scale,
+        steps,
+    )
+except MemoryError:
+    pass
+else:
+    raise AssertionError("undersized exact workspace did not fail closed")
+assert bounded_state == state
+assert bounded_output == [0 for _ in range(10*steps)]
 native_match = True
 if is_compiled(dyadic_kummer_height_recurrence):
     packed_state = kernel_integer_buffer(dyadic_kummer_height_recurrence, state)
@@ -116,9 +134,6 @@ if is_compiled(dyadic_kummer_height_recurrence):
         dyadic_kummer_height_recurrence, exponents
     )
     packed_counts = kernel_uint64_buffer(dyadic_kummer_height_recurrence, counts)
-    packed_scratch = kernel_integer_zeros(
-        dyadic_kummer_height_recurrence, runtime.number(48), runtime.number(8)
-    )
     packed_output = kernel_integer_zeros(
         dyadic_kummer_height_recurrence,
         runtime.number(10*steps),
@@ -130,7 +145,7 @@ if is_compiled(dyadic_kummer_height_recurrence):
         packed_coefficients,
         packed_exponents,
         packed_counts,
-        packed_scratch,
+        runtime.number(6144),
         scale,
         steps,
     )
@@ -139,6 +154,31 @@ if is_compiled(dyadic_kummer_height_recurrence):
         and integer_buffer_values(packed_output) == fallback_output
         and integer_buffer_values(packed_state) == fallback_state
     )
+    bounded_packed_state = kernel_integer_buffer(
+        dyadic_kummer_height_recurrence, state
+    )
+    bounded_packed_output = kernel_integer_zeros(
+        dyadic_kummer_height_recurrence,
+        runtime.number(10*steps),
+        runtime.number(8),
+    )
+    try:
+        dyadic_kummer_height_recurrence(
+            bounded_packed_output,
+            bounded_packed_state,
+            packed_coefficients,
+            packed_exponents,
+            packed_counts,
+            runtime.number(1535),
+            scale,
+            steps,
+        )
+    except MemoryError:
+        pass
+    else:
+        raise AssertionError("native undersized exact workspace did not fail closed")
+    assert integer_buffer_values(bounded_packed_state) == state
+    assert integer_buffer_values(bounded_packed_output) == [0 for _ in range(10*steps)]
 assert native_match
 
 finite_coordinates = context.kummer(P).coordinates()
@@ -310,8 +350,8 @@ dyadic_dynamic_status = dyadic_fallback(
     batch_coefficients,
     batch_exponents,
     batch_counts,
-    [0 for _ in range(48*batch_count)],
     dyadic_dynamic_statuses,
+    7680,
     batch_scale,
     batch_count,
     batch_steps,
@@ -333,12 +373,8 @@ dyadic_native_status = dyadic_kummer_height_recurrence_batch(
     kernel_integer_buffer(dyadic_kummer_height_recurrence_batch, batch_coefficients),
     kernel_uint64_buffer(dyadic_kummer_height_recurrence_batch, batch_exponents),
     kernel_uint64_buffer(dyadic_kummer_height_recurrence_batch, batch_counts),
-    kernel_integer_zeros(
-        dyadic_kummer_height_recurrence_batch,
-        runtime.number(48*batch_count),
-        runtime.number(12),
-    ),
     dyadic_native_statuses,
+    runtime.number(7680),
     batch_scale,
     batch_count,
     batch_steps,
@@ -404,6 +440,7 @@ for output_precision in (64,128,256):
     input_scale = 2**input_precision
     hostile_endpoints = [
         input_scale, input_scale,
+        7*input_scale//5-1, 7*input_scale//5+1,
         3*input_scale//2-1, 3*input_scale//2+1,
         input_scale*2**257+123456789, input_scale*2**257+123456999,
         input_scale//2**257-1, input_scale//2**257+1,
@@ -527,10 +564,10 @@ assert local.diagnostics["selected_algorithm"] == "local"
 assert local.diagnostics["exact_small_step_oracle"]["status"] == "passed"
 assert local.diagnostics["finite_correction"]["diagnostics"][
     "recurrence_backend"
-] == "native-integer-buffer-batch"
+] == "native-packed-batch-live-exact-dyadic"
 assert local.diagnostics["archimedean_correction"]["diagnostics"][
     "recurrence_backend"
-] == "native-integer-buffer-batch"
+] == "native-packed-batch-live-exact-dyadic"
 assert local.diagnostics["asymptotic_state"] == (
     "point-major polynomial-size modular state and bounded dyadic balls"
 )

@@ -1,0 +1,693 @@
+{
+  "schema": "sagejs.hyperelliptic.finite-jacobian-magma-contract.v1",
+  "revision": "a680c04d06fbffd7831a96b3d6e0791ebfc39f26",
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "release": "6.17.0-1022-gcp",
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpus": 8,
+    "node": "v22.22.2"
+  },
+  "contract": {
+    "prime": 1009,
+    "cheap_iterations": 100000,
+    "scalar_iterations": 1000,
+    "scalar_bits": 256,
+    "scalar": "57896044618658097711785492504343953926634992332820282019728792003956564885506",
+    "samples": 7,
+    "warmups": 2,
+    "result_observation_outside_timing": true,
+    "ordinary_public": "one public batch call from canonical registered divisor objects; includes authenticated gather and retains canonical output rows",
+    "prepared_retained_batch": "one prepared batch boundary; opaque canonical rows retained",
+    "forced_materialized_batch": "one prepared batch boundary plus all public Mumford polynomial objects",
+    "magma": "resident public Jacobian operations; final canonical Mumford result observed outside timing"
+  },
+  "sources": {
+    "harness_sha256": "03502ece58b2f7fb2f73882b7833be30c6e806d2efc16b9113615bae63880da6",
+    "sagejs_program_sha256": "56c46a7c60157580b59ffd589aec42a9420ab47a25ba3b6742232a1c1580c4b7",
+    "magma_program_sha256": "312047781c0014441f0c356d55c2a2e5715594bcc96c9dba9731d39e112ad36e"
+  },
+  "backends": {
+    "sagejs": {
+      "executable": "/home/user/sagejs-hyp-final-d98b9dcd/bin/sagejs"
+    },
+    "magma": {
+      "executable": "/home/user/bin/magma",
+      "version": "2.18.5",
+      "timer_resolution_ns": 10000000
+    }
+  },
+  "rows": [
+    {
+      "id": "g2-p1009",
+      "genus": 2,
+      "prime": 1009,
+      "operations": {
+        "add": {
+          "canonical_result": {
+            "u": [
+              507,
+              944,
+              1
+            ],
+            "v": [
+              113,
+              633
+            ]
+          },
+          "canonical_packed_row": [
+            2,
+            507,
+            944,
+            1,
+            0,
+            113,
+            633,
+            0
+          ],
+          "result_digest_sha256": "c2e47cae54b134525acec256e7955552d092d63a21cb6b23ba596d63d722b6c6",
+          "reference_result_digest_sha256": "c2e47cae54b134525acec256e7955552d092d63a21cb6b23ba596d63d722b6c6",
+          "sagejs": {
+            "forced_materialized_batch": {
+              "samples_ns": [
+                21098733824,
+                21667186176,
+                20913185792,
+                21141930240,
+                22336405504,
+                21139196928,
+                20944905984
+              ],
+              "median_ns": 21139196928,
+              "min_ns": 20913185792,
+              "max_ns": 22336405504,
+              "mad_ns": 194290944,
+              "item_count": 100000,
+              "median_ns_per_item": 211391.96928,
+              "result_digest_sha256": "c2e47cae54b134525acec256e7955552d092d63a21cb6b23ba596d63d722b6c6",
+              "ratio_to_magma": 124.3482172235294
+            },
+            "ordinary_public": {
+              "samples_ns": [
+                302013184,
+                298303488,
+                305772288,
+                288206080,
+                304743936,
+                293264896,
+                314548992
+              ],
+              "median_ns": 302013184,
+              "min_ns": 288206080,
+              "max_ns": 314548992,
+              "mad_ns": 3759104,
+              "item_count": 100000,
+              "median_ns_per_item": 3020.13184,
+              "result_digest_sha256": "c2e47cae54b134525acec256e7955552d092d63a21cb6b23ba596d63d722b6c6",
+              "ratio_to_magma": 1.7765481411764705
+            },
+            "prepared_retained_batch": {
+              "samples_ns": [
+                269212160,
+                268568064,
+                272268544,
+                277982208,
+                263736320,
+                279470592,
+                268549632
+              ],
+              "median_ns": 269212160,
+              "min_ns": 263736320,
+              "max_ns": 279470592,
+              "mad_ns": 3056384,
+              "item_count": 100000,
+              "median_ns_per_item": 2692.1216,
+              "result_digest_sha256": "c2e47cae54b134525acec256e7955552d092d63a21cb6b23ba596d63d722b6c6",
+              "ratio_to_magma": 1.5836009411764707
+            }
+          },
+          "magma": {
+            "status": "ok",
+            "samples_ns": [
+              180000000,
+              170000000,
+              170000000,
+              170000000,
+              170000000,
+              170000000,
+              170000000
+            ],
+            "median_ns": 170000000,
+            "min_ns": 170000000,
+            "max_ns": 180000000,
+            "mad_ns": 0,
+            "item_count": 100000,
+            "median_ns_per_item": 1700,
+            "result_digest_sha256": "c2e47cae54b134525acec256e7955552d092d63a21cb6b23ba596d63d722b6c6",
+            "infinity_weight": 2,
+            "timer_resolution_ns": 10000000
+          }
+        },
+        "double": {
+          "canonical_result": {
+            "u": [
+              843,
+              270,
+              1
+            ],
+            "v": [
+              201,
+              988
+            ]
+          },
+          "canonical_packed_row": [
+            2,
+            843,
+            270,
+            1,
+            0,
+            201,
+            988,
+            0
+          ],
+          "result_digest_sha256": "ab0a1052f29ac443e0060dafe2e4c353aa3cb24ccab78794e69b748c9ee2f4bf",
+          "reference_result_digest_sha256": "ab0a1052f29ac443e0060dafe2e4c353aa3cb24ccab78794e69b748c9ee2f4bf",
+          "sagejs": {
+            "forced_materialized_batch": {
+              "samples_ns": [
+                20974624256,
+                21077117184,
+                20999437312,
+                21176713984,
+                21405952256,
+                21076814080,
+                20852271616
+              ],
+              "median_ns": 21076814080,
+              "min_ns": 20852271616,
+              "max_ns": 21405952256,
+              "mad_ns": 99899904,
+              "item_count": 100000,
+              "median_ns_per_item": 210768.1408,
+              "result_digest_sha256": "ab0a1052f29ac443e0060dafe2e4c353aa3cb24ccab78794e69b748c9ee2f4bf",
+              "ratio_to_magma": 123.98125929411765
+            },
+            "ordinary_public": {
+              "samples_ns": [
+                304903680,
+                266573312,
+                267827968,
+                266880256,
+                276702720,
+                265747712,
+                280008960
+              ],
+              "median_ns": 267827968,
+              "min_ns": 265747712,
+              "max_ns": 304903680,
+              "mad_ns": 2080256,
+              "item_count": 100000,
+              "median_ns_per_item": 2678.27968,
+              "result_digest_sha256": "ab0a1052f29ac443e0060dafe2e4c353aa3cb24ccab78794e69b748c9ee2f4bf",
+              "ratio_to_magma": 1.5754586352941178
+            },
+            "prepared_retained_batch": {
+              "samples_ns": [
+                254370816,
+                254403328,
+                269047296,
+                254828032,
+                253739520,
+                253948672,
+                254612736
+              ],
+              "median_ns": 254403328,
+              "min_ns": 253739520,
+              "max_ns": 269047296,
+              "mad_ns": 424704,
+              "item_count": 100000,
+              "median_ns_per_item": 2544.03328,
+              "result_digest_sha256": "ab0a1052f29ac443e0060dafe2e4c353aa3cb24ccab78794e69b748c9ee2f4bf",
+              "ratio_to_magma": 1.4964901647058824
+            }
+          },
+          "magma": {
+            "status": "ok",
+            "samples_ns": [
+              170000000,
+              170000000,
+              170000000,
+              170000000,
+              170000000,
+              180000000,
+              170000000
+            ],
+            "median_ns": 170000000,
+            "min_ns": 170000000,
+            "max_ns": 180000000,
+            "mad_ns": 0,
+            "item_count": 100000,
+            "median_ns_per_item": 1700,
+            "result_digest_sha256": "ab0a1052f29ac443e0060dafe2e4c353aa3cb24ccab78794e69b748c9ee2f4bf",
+            "infinity_weight": 2,
+            "timer_resolution_ns": 10000000
+          }
+        },
+        "scalar": {
+          "canonical_result": {
+            "u": [
+              169,
+              7,
+              1
+            ],
+            "v": [
+              1001,
+              957
+            ]
+          },
+          "canonical_packed_row": [
+            2,
+            169,
+            7,
+            1,
+            0,
+            1001,
+            957,
+            0
+          ],
+          "result_digest_sha256": "12b8e34a1136ad846da35402cdb92c24d7a5d14a5ae8dde595940f0676a32007",
+          "reference_result_digest_sha256": "12b8e34a1136ad846da35402cdb92c24d7a5d14a5ae8dde595940f0676a32007",
+          "sagejs": {
+            "forced_materialized_batch": {
+              "samples_ns": [
+                872751360,
+                867359232,
+                869019136,
+                874215424,
+                872132608,
+                863509248,
+                867408384
+              ],
+              "median_ns": 869019136,
+              "min_ns": 863509248,
+              "max_ns": 874215424,
+              "mad_ns": 3113472,
+              "item_count": 1000,
+              "median_ns_per_item": 869019.136,
+              "result_digest_sha256": "12b8e34a1136ad846da35402cdb92c24d7a5d14a5ae8dde595940f0676a32007",
+              "ratio_to_magma": 1.7735084408163266
+            },
+            "ordinary_public": {
+              "samples_ns": [
+                665742336,
+                665263872,
+                664786944,
+                665445376,
+                663866624,
+                663528704,
+                664499712
+              ],
+              "median_ns": 664786944,
+              "min_ns": 663528704,
+              "max_ns": 665742336,
+              "mad_ns": 658432,
+              "item_count": 1000,
+              "median_ns_per_item": 664786.944,
+              "result_digest_sha256": "12b8e34a1136ad846da35402cdb92c24d7a5d14a5ae8dde595940f0676a32007",
+              "ratio_to_magma": 1.356708048979592
+            },
+            "prepared_retained_batch": {
+              "samples_ns": [
+                659596288,
+                669324288,
+                663653376,
+                663305216,
+                661384960,
+                663463936,
+                662301696
+              ],
+              "median_ns": 663305216,
+              "min_ns": 659596288,
+              "max_ns": 669324288,
+              "mad_ns": 1003520,
+              "item_count": 1000,
+              "median_ns_per_item": 663305.216,
+              "result_digest_sha256": "12b8e34a1136ad846da35402cdb92c24d7a5d14a5ae8dde595940f0676a32007",
+              "ratio_to_magma": 1.3536841142857143
+            }
+          },
+          "magma": {
+            "status": "ok",
+            "samples_ns": [
+              490000000,
+              500000000,
+              490000000,
+              490000000,
+              490000000,
+              490000000,
+              490000000
+            ],
+            "median_ns": 490000000,
+            "min_ns": 490000000,
+            "max_ns": 500000000,
+            "mad_ns": 0,
+            "item_count": 1000,
+            "median_ns_per_item": 490000,
+            "result_digest_sha256": "12b8e34a1136ad846da35402cdb92c24d7a5d14a5ae8dde595940f0676a32007",
+            "infinity_weight": 2,
+            "timer_resolution_ns": 10000000
+          }
+        }
+      }
+    },
+    {
+      "id": "g3-p1009",
+      "genus": 3,
+      "prime": 1009,
+      "operations": {
+        "add": {
+          "canonical_result": {
+            "u": [
+              724,
+              967,
+              255,
+              1
+            ],
+            "v": [
+              184,
+              196,
+              185
+            ]
+          },
+          "canonical_packed_row": [
+            3,
+            724,
+            967,
+            255,
+            1,
+            184,
+            196,
+            185
+          ],
+          "result_digest_sha256": "fdcf70b9a62f7ea0dbbbec4af30e6d176113f9b4c6f3b81d429ec4d622ceb1bc",
+          "reference_result_digest_sha256": "fdcf70b9a62f7ea0dbbbec4af30e6d176113f9b4c6f3b81d429ec4d622ceb1bc",
+          "sagejs": {
+            "forced_materialized_batch": {
+              "samples_ns": [
+                22024325120,
+                22375089920,
+                22016321536,
+                22158477056,
+                22350848000,
+                22084131584,
+                22124563200
+              ],
+              "median_ns": 22124563200,
+              "min_ns": 22016321536,
+              "max_ns": 22375089920,
+              "mad_ns": 100238080,
+              "item_count": 100000,
+              "median_ns_per_item": 221245.632,
+              "result_digest_sha256": "fdcf70b9a62f7ea0dbbbec4af30e6d176113f9b4c6f3b81d429ec4d622ceb1bc",
+              "ratio_to_magma": 79.01629714285714
+            },
+            "ordinary_public": {
+              "samples_ns": [
+                280222720,
+                291472384,
+                280816640,
+                294237184,
+                288179456,
+                281681664,
+                292361984
+              ],
+              "median_ns": 288179456,
+              "min_ns": 280222720,
+              "max_ns": 294237184,
+              "mad_ns": 6057728,
+              "item_count": 100000,
+              "median_ns_per_item": 2881.79456,
+              "result_digest_sha256": "fdcf70b9a62f7ea0dbbbec4af30e6d176113f9b4c6f3b81d429ec4d622ceb1bc",
+              "ratio_to_magma": 1.0292123428571427
+            },
+            "prepared_retained_batch": {
+              "samples_ns": [
+                258303744,
+                257331456,
+                268445952,
+                258776832,
+                256460032,
+                258187776,
+                257497344
+              ],
+              "median_ns": 258187776,
+              "min_ns": 256460032,
+              "max_ns": 268445952,
+              "mad_ns": 690432,
+              "item_count": 100000,
+              "median_ns_per_item": 2581.87776,
+              "result_digest_sha256": "fdcf70b9a62f7ea0dbbbec4af30e6d176113f9b4c6f3b81d429ec4d622ceb1bc",
+              "ratio_to_magma": 0.9220991999999999
+            }
+          },
+          "magma": {
+            "status": "ok",
+            "samples_ns": [
+              290000000,
+              290000000,
+              270000000,
+              270000000,
+              280000000,
+              270000000,
+              280000000
+            ],
+            "median_ns": 280000000,
+            "min_ns": 270000000,
+            "max_ns": 290000000,
+            "mad_ns": 10000000,
+            "item_count": 100000,
+            "median_ns_per_item": 2800,
+            "result_digest_sha256": "fdcf70b9a62f7ea0dbbbec4af30e6d176113f9b4c6f3b81d429ec4d622ceb1bc",
+            "infinity_weight": 3,
+            "timer_resolution_ns": 10000000
+          }
+        },
+        "double": {
+          "canonical_result": {
+            "u": [
+              944,
+              75,
+              429,
+              1
+            ],
+            "v": [
+              71,
+              304,
+              193
+            ]
+          },
+          "canonical_packed_row": [
+            3,
+            944,
+            75,
+            429,
+            1,
+            71,
+            304,
+            193
+          ],
+          "result_digest_sha256": "2caba1884c8bfd6c4d929c577f08e8a5decef877ce2c892549b217e481a33a18",
+          "reference_result_digest_sha256": "2caba1884c8bfd6c4d929c577f08e8a5decef877ce2c892549b217e481a33a18",
+          "sagejs": {
+            "forced_materialized_batch": {
+              "samples_ns": [
+                22148928512,
+                22374560000,
+                22087673600,
+                22315895552,
+                22494588672,
+                22266767872,
+                22016645120
+              ],
+              "median_ns": 22266767872,
+              "min_ns": 22016645120,
+              "max_ns": 22494588672,
+              "mad_ns": 117839360,
+              "item_count": 100000,
+              "median_ns_per_item": 222667.67872,
+              "result_digest_sha256": "2caba1884c8bfd6c4d929c577f08e8a5decef877ce2c892549b217e481a33a18",
+              "ratio_to_magma": 58.59675755789473
+            },
+            "ordinary_public": {
+              "samples_ns": [
+                306969600,
+                277270528,
+                275649536,
+                275032064,
+                286646016,
+                280688640,
+                276738304
+              ],
+              "median_ns": 277270528,
+              "min_ns": 275032064,
+              "max_ns": 306969600,
+              "mad_ns": 2238464,
+              "item_count": 100000,
+              "median_ns_per_item": 2772.70528,
+              "result_digest_sha256": "2caba1884c8bfd6c4d929c577f08e8a5decef877ce2c892549b217e481a33a18",
+              "ratio_to_magma": 0.7296592842105264
+            },
+            "prepared_retained_batch": {
+              "samples_ns": [
+                264423680,
+                264336128,
+                276320768,
+                264387840,
+                262500608,
+                262922752,
+                264738816
+              ],
+              "median_ns": 264387840,
+              "min_ns": 262500608,
+              "max_ns": 276320768,
+              "mad_ns": 350976,
+              "item_count": 100000,
+              "median_ns_per_item": 2643.8784,
+              "result_digest_sha256": "2caba1884c8bfd6c4d929c577f08e8a5decef877ce2c892549b217e481a33a18",
+              "ratio_to_magma": 0.6957574736842106
+            }
+          },
+          "magma": {
+            "status": "ok",
+            "samples_ns": [
+              380000000,
+              380000000,
+              380000000,
+              380000000,
+              380000000,
+              370000000,
+              380000000
+            ],
+            "median_ns": 380000000,
+            "min_ns": 370000000,
+            "max_ns": 380000000,
+            "mad_ns": 0,
+            "item_count": 100000,
+            "median_ns_per_item": 3800,
+            "result_digest_sha256": "2caba1884c8bfd6c4d929c577f08e8a5decef877ce2c892549b217e481a33a18",
+            "infinity_weight": 3,
+            "timer_resolution_ns": 10000000
+          }
+        },
+        "scalar": {
+          "canonical_result": {
+            "u": [
+              720,
+              837,
+              548,
+              1
+            ],
+            "v": [
+              727,
+              139,
+              915
+            ]
+          },
+          "canonical_packed_row": [
+            3,
+            720,
+            837,
+            548,
+            1,
+            727,
+            139,
+            915
+          ],
+          "result_digest_sha256": "e8fcbece8c8820e2f6a44ca2417f488b9ed9fdcde8351b50d00cdfa0c6acd205",
+          "reference_result_digest_sha256": "e8fcbece8c8820e2f6a44ca2417f488b9ed9fdcde8351b50d00cdfa0c6acd205",
+          "sagejs": {
+            "forced_materialized_batch": {
+              "samples_ns": [
+                1159029504,
+                1164744192,
+                1163712256,
+                1161000704,
+                1159922944,
+                1163025408,
+                1165472256
+              ],
+              "median_ns": 1163025408,
+              "min_ns": 1159029504,
+              "max_ns": 1165472256,
+              "mad_ns": 2024704,
+              "item_count": 1000,
+              "median_ns_per_item": 1163025.408,
+              "result_digest_sha256": "e8fcbece8c8820e2f6a44ca2417f488b9ed9fdcde8351b50d00cdfa0c6acd205",
+              "ratio_to_magma": 0.9086136
+            },
+            "ordinary_public": {
+              "samples_ns": [
+                941993472,
+                947916288,
+                947128832,
+                945966080,
+                941362176,
+                947185408,
+                940968192
+              ],
+              "median_ns": 945966080,
+              "min_ns": 940968192,
+              "max_ns": 947916288,
+              "mad_ns": 1950208,
+              "item_count": 1000,
+              "median_ns_per_item": 945966.08,
+              "result_digest_sha256": "e8fcbece8c8820e2f6a44ca2417f488b9ed9fdcde8351b50d00cdfa0c6acd205",
+              "ratio_to_magma": 0.7390359999999999
+            },
+            "prepared_retained_batch": {
+              "samples_ns": [
+                944600064,
+                940106496,
+                944447232,
+                944580096,
+                945622784,
+                940511744,
+                940779776
+              ],
+              "median_ns": 944447232,
+              "min_ns": 940106496,
+              "max_ns": 945622784,
+              "mad_ns": 1175552,
+              "item_count": 1000,
+              "median_ns_per_item": 944447.232,
+              "result_digest_sha256": "e8fcbece8c8820e2f6a44ca2417f488b9ed9fdcde8351b50d00cdfa0c6acd205",
+              "ratio_to_magma": 0.7378494
+            }
+          },
+          "magma": {
+            "status": "ok",
+            "samples_ns": [
+              1270000000,
+              1290000000,
+              1280000000,
+              1280000000,
+              1270000000,
+              1300000000,
+              1280000000
+            ],
+            "median_ns": 1280000000,
+            "min_ns": 1270000000,
+            "max_ns": 1300000000,
+            "mad_ns": 10000000,
+            "item_count": 1000,
+            "median_ns_per_item": 1280000,
+            "result_digest_sha256": "e8fcbece8c8820e2f6a44ca2417f488b9ed9fdcde8351b50d00cdfa0c6acd205",
+            "infinity_weight": 3,
+            "timer_resolution_ns": 10000000
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1248,8 +1248,9 @@ def normalized_archimedean_correction(
     scale_enclosures: list[dict[str, str]] = []
     dyadic_scales: list[tuple[int, int]] = []
     recurrence_backend = "dynamic-python"
+    workspace_memory_limit = None
     if is_compiled(dyadic_kummer_height_recurrence):
-        recurrence_backend = "native-integer-buffer"
+        recurrence_backend = "native-live-exact-workspace"
         coefficients, exponents, term_counts, coefficient_bits = (
             _flatten_specialized_terms(specialized_terms)
         )
@@ -1267,11 +1268,7 @@ def normalized_archimedean_correction(
             dyadic_kummer_height_recurrence, term_counts
         )
         word_capacity = max(8, (precision + coefficient_bits + 191) // 64)
-        packed_scratch = kernel_integer_zeros(
-            dyadic_kummer_height_recurrence,
-            _host_buffer_length(48),
-            _host_buffer_length(word_capacity),
-        )
+        workspace_memory_limit = _host_buffer_length(48 * (64 + 8 * word_capacity))
         packed_output = kernel_integer_zeros(
             dyadic_kummer_height_recurrence,
             _host_buffer_length(10 * steps),
@@ -1283,7 +1280,7 @@ def normalized_archimedean_correction(
             packed_coefficients,
             packed_exponents,
             packed_counts,
-            packed_scratch,
+            workspace_memory_limit,
             dyadic_scale,
             steps,
         )
@@ -1414,6 +1411,7 @@ def normalized_archimedean_correction(
             "bounded_projective_state": True,
             "coordinate_storage": "four outward-rounded real balls",
             "recurrence_backend": recurrence_backend,
+            "dyadic_workspace_memory_limit_bytes": workspace_memory_limit,
             "specialized_quartic_term_counts": tuple(
                 len(table) for table in specialized_terms
             ),
@@ -2413,11 +2411,7 @@ def _canonical_heights_uncached_local_batch(
         dyadic_kummer_height_recurrence_batch, [0] * point_count
     )
     word_capacity = max(8, (working_precision + coefficient_bits + 191) // 64)
-    dyadic_scratch = kernel_integer_zeros(
-        dyadic_kummer_height_recurrence_batch,
-        _host_buffer_length(48 * point_count),
-        _host_buffer_length(word_capacity),
-    )
+    workspace_memory_limit = _host_buffer_length(48 * (64 + 8 * word_capacity))
     dyadic_output = kernel_integer_zeros(
         dyadic_kummer_height_recurrence_batch,
         _host_buffer_length(10 * point_count * selected_steps),
@@ -2429,8 +2423,8 @@ def _canonical_heights_uncached_local_batch(
         dyadic_coefficients,
         dyadic_exponents,
         dyadic_counts,
-        dyadic_scratch,
         dyadic_statuses,
+        workspace_memory_limit,
         dyadic_scale,
         point_count,
         selected_steps,
@@ -2442,7 +2436,7 @@ def _canonical_heights_uncached_local_batch(
             "a real Kummer batch point could not separate its projective image from zero; increase precision",
             {
                 "precision_bits": working_precision,
-                "recurrence_backend": "native-integer-buffer-batch",
+                "recurrence_backend": "native-packed-batch-live-exact-dyadic",
             },
         )
     if dyadic_status != point_count:
@@ -2666,7 +2660,7 @@ def _canonical_heights_uncached_local_batch(
         "exact_small_step_oracle": str((oracle_at - logarithm_at) * 1000),
     }
     recurrence_backend = (
-        "native-integer-buffer-batch"
+        "native-packed-batch-live-exact-dyadic"
         if all(
             is_compiled(function)
             for function in (
@@ -2742,6 +2736,7 @@ def _canonical_heights_uncached_local_batch(
                 "bounded_projective_state": True,
                 "coordinate_storage": "four outward-rounded dyadic intervals",
                 "recurrence_backend": recurrence_backend,
+                "dyadic_workspace_memory_limit_bytes": workspace_memory_limit,
                 "batch_point_count": point_count,
                 "specialized_quartic_term_counts": tuple(
                     len(table) for table in specialized_terms
@@ -2989,6 +2984,7 @@ def _canonical_heights_uncached_local_batch(
                 "point_count": point_count,
                 "shared_model_specialization": True,
                 "atomic_publication": True,
+                "dyadic_workspace_memory_limit_bytes": workspace_memory_limit,
                 "stage_milliseconds": stage_milliseconds,
             },
             "asymptotic_state": (
