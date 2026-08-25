@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { isDeepStrictEqual } = require("node:util");
 const zlib = require("node:zlib");
-const { canonicalJson } = require("./wasm-toolchain.cjs");
+const { canonicalJson } = require("../../wasm-toolchain/scripts/toolchain.cjs");
 
 function sha256(bytes) {
   return crypto.createHash("sha256").update(bytes).digest("hex");
@@ -347,12 +347,13 @@ function enforceTopologyBudgets(report) {
   return failures;
 }
 
-function compareArtifacts(left, right) {
+function compareArtifacts(left, right, { includeBuildReceipt = true } = {}) {
   const differences = [];
   if (left.production_manifest_sha256 !== right.production_manifest_sha256) {
     differences.push("production manifest bytes differ");
   }
-  if (left.build_receipt_sha256 !== right.build_receipt_sha256) {
+  if (includeBuildReceipt &&
+      left.build_receipt_sha256 !== right.build_receipt_sha256) {
     differences.push("build receipt bytes differ");
   }
   const byPath = (report) => new Map(report.files.map((item) => [item.path, item]));
@@ -407,6 +408,17 @@ if (require.main === module) {
     if (compare) {
       const differences = compareArtifacts(report, inspectProductionArtifact(compare));
       if (differences.length) throw new Error(`artifact is not reproducible:\n${differences.join("\n")}`);
+    }
+    const comparePayload = argument("--compare-payload");
+    if (comparePayload) {
+      const differences = compareArtifacts(
+        report,
+        inspectProductionArtifact(comparePayload),
+        { includeBuildReceipt: false },
+      );
+      if (differences.length) {
+        throw new Error(`cross-platform payload differs:\n${differences.join("\n")}`);
+      }
     }
     const budgetPath = argument("--budget");
     if (budgetPath) {

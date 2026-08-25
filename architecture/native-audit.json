@@ -496,6 +496,27 @@
         "SageMath"
       ],
       "next": "Keep the six-export surface bounded and preserve one copied ingress and egress per public resultant."
+    },
+    {
+      "path": "packages/wasm-toolchain/patches/sagejs_wasi_fenv_compat.h",
+      "lines": 25,
+      "bytes": 560,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "WASI-compatible floating-point environment feature selection",
+        "portable mkstemp declaration for the pinned FLINT cross-build"
+      ],
+      "rationale": "This narrow BSD-licensed portability header adapts missing WASI libc surface for the pinned upstream FLINT build. It contains no mathematical implementation, allocator, filesystem host, or generalized compiler-driver behavior.",
+      "fallback": "Native builds continue to compile FLINT against their platform libc without this Wasm-only compatibility header.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "official WASI SDK libc",
+        "FLINT standalone probes",
+        "production browser parity corpus"
+      ],
+      "next": "Delete individual declarations or feature macros when the pinned WASI SDK or upstream FLINT provides them directly; do not expand this into a general POSIX shim."
     }
   ]
 }

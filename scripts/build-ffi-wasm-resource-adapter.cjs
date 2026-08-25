@@ -6,7 +6,6 @@ const {
   mkdirSync,
   writeFileSync,
 } = require("node:fs");
-const { homedir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { loadRegistry } = require("../tools/ffi/declarations.cjs");
@@ -15,6 +14,9 @@ const {
 } = require("../tools/ffi/wasm-adapters.cjs");
 
 const root = resolve(__dirname, "..");
+const {
+  resolveToolchain,
+} = require("../packages/wasm-toolchain/scripts/toolchain.cjs");
 
 function parseArguments(argv) {
   const options = { resources: [], functions: [] };
@@ -42,13 +44,6 @@ function parseArguments(argv) {
   return options;
 }
 
-function cowasmRoot() {
-  const candidates = process.env.SAGEJS_COWASM_ROOT === undefined
-    ? [join(root, "..", "cowasm"), join(homedir(), "cowasm")]
-    : [resolve(process.env.SAGEJS_COWASM_ROOT)];
-  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
-}
-
 const wasmLibraries = Object.freeze({
   flint: Object.freeze({
     prefixes: Object.freeze(["flint", "mpfr", "gmp"]),
@@ -71,18 +66,14 @@ function toolchain(library = "flint") {
   if (configuration === undefined) {
     throw new Error(`no Wasm toolchain configuration for ${library}`);
   }
-  const cowasm = cowasmRoot();
-  const wasiNative = join(
-    cowasm, "core", "build", "build", "wasi-sdk", "dist",
-    "wasi-sdk-next", "native",
-  );
+  const prepared = resolveToolchain({ root });
   const prefixes = configuration.prefixes.map((name) => ({
     name,
-    path: join(cowasm, "sagemath", name, "dist", "wasi-sdk"),
+    path: prepared.paths.libraries[name].prefix,
   }));
   return {
-    clang: join(wasiNative, "bin", "clang"),
-    sysroot: join(wasiNative, "share", "wasi-sysroot"),
+    clang: prepared.paths.clang,
+    sysroot: prepared.paths.sysroot,
     prefixes,
     libraries: configuration.libraries,
     sources: configuration.sources,
@@ -93,7 +84,8 @@ function requirePath(description, path) {
   if (!existsSync(path)) {
     throw new Error(
       `missing ${description}: ${path}\n` +
-      "Build the required CoWasm library toolchain or set SAGEJS_COWASM_ROOT.",
+      "Prepare the Sage.js Wasm toolchain with " +
+      "`pnpm --dir packages/wasm-toolchain toolchain:prepare`.",
     );
   }
 }
@@ -180,4 +172,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { build, cowasmRoot, parseArguments, toolchain };
+module.exports = { build, parseArguments, toolchain };

@@ -7,7 +7,7 @@ const { tmpdir } = require("node:os");
 const { dirname, join } = require("node:path");
 const test = require("node:test");
 
-const { canonicalJson } = require("../scripts/wasm-toolchain.cjs");
+const { canonicalJson } = require("../../wasm-toolchain/scripts/toolchain.cjs");
 const {
   artifactFiles,
   createArtifactManifest,
@@ -38,10 +38,9 @@ function fixture() {
     join(__dirname, "..", "release", "production-capabilities.json"),
     join(packageRoot, "release", "production-capabilities.json"),
   );
-  mkdirSync(join(packageRoot, "toolchain"), { recursive: true });
   cpSync(
-    join(__dirname, "..", "toolchain", "adapter-inputs.json"),
-    join(packageRoot, "toolchain", "adapter-inputs.json"),
+    join(__dirname, "..", "release", "adapter-inputs.json"),
+    join(packageRoot, "release", "adapter-inputs.json"),
   );
   const layout = JSON.parse(readFileSync(join(packageRoot, "release", "production-layout.json"), "utf8"));
   for (const name of artifactFiles(layout)) {

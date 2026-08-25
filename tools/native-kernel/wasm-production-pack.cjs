@@ -8,7 +8,7 @@ const {
   statSync,
   writeFileSync,
 } = require("node:fs");
-const { dirname, join, relative, resolve } = require("node:path");
+const { join, relative, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 const { generateHostCore } = require("./c-backend.cjs");
@@ -108,7 +108,11 @@ async function inventoryProductionKernels({ root, manifestPath }) {
     const logicalSource = sourceKey(kernel.source);
     const source = readFileSync(sourcePath, "utf8");
     const sourceHash = sha256(source);
-    const ir = await lowerSource(source, sourcePath, {
+    // The production ABI and generated C provenance must not depend on the
+    // builder's checkout directory. `lowerSource` already receives the source
+    // contents directly, so use the authenticated repository-relative logical
+    // name for diagnostics and #line directives.
+    const ir = await lowerSource(source, logicalSource, {
       functions: kernel.functions,
     });
     const identity = portableKernelIdentity({ ir, sourceHash, logicalSource });
@@ -294,6 +298,7 @@ function toolchainReceipt(toolchain, configuration) {
   return {
     clang: resolve(toolchain.clang),
     clangVersion: compilerVersion(toolchain.clang),
+    target: toolchain.target,
     sysroot: resolve(toolchain.sysroot),
     archives,
   };
@@ -310,6 +315,9 @@ function buildDomain({
 }) {
   const configuration = domainConfiguration(domain, toolchain);
   configuration.libraries = availableLibraries(configuration, toolchain);
+  if (toolchain.target !== "wasm32-wasip1") {
+    throw new Error(`Wasm kernel packs require wasm32-wasip1, found ${toolchain.target}`);
+  }
   requirePath("WASI clang", toolchain.clang);
   requirePath("WASI sysroot", toolchain.sysroot);
   for (const prefix of configuration.prefixes) {
@@ -372,7 +380,7 @@ __attribute__((weak)) clock_t clock(void)
     ...(ownershipAdapter?.exports ?? []),
   ];
   const args = [
-    "--target=wasm32-wasi",
+    `--target=${toolchain.target}`,
     `--sysroot=${toolchain.sysroot}`,
     "-mexec-model=reactor",
     // `-O2` avoids pathological compile time and memory on the largest exact
@@ -536,17 +544,10 @@ async function buildWasmProductionPacks(options) {
 }
 
 function defaultToolchain(root) {
-  const cowasm = resolve(process.env.SAGEJS_COWASM_ROOT ??
-    join(dirname(root), "cowasm"));
-  const prefix = (name) => join(cowasm, "sagemath", name, "dist", "wasi-sdk");
-  return {
-    clang: process.env.SAGEJS_WASI_CLANG ?? "clang",
-    sysroot: process.env.SAGEJS_WASI_SYSROOT ?? "/usr",
-    gmpPrefix: process.env.SAGEJS_WASM_GMP_PREFIX ?? prefix("gmp"),
-    flintPrefix: process.env.SAGEJS_WASM_FLINT_PREFIX ?? prefix("flint"),
-    mpfrPrefix: process.env.SAGEJS_WASM_MPFR_PREFIX ?? prefix("mpfr"),
-    mpcPrefix: process.env.SAGEJS_WASM_MPC_PREFIX ?? prefix("mpc"),
-  };
+  const { wasmKernelToolchain } = require(
+    "../../packages/wasm-toolchain/scripts/toolchain.cjs"
+  );
+  return wasmKernelToolchain({ root });
 }
 
 function parseArguments(argv, root = resolve(__dirname, "..", "..")) {

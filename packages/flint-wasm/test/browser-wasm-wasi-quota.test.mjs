@@ -23,34 +23,34 @@ test("the authenticated WASI host enforces byte, file, and per-file quotas", () 
 
   const perFile = createWasiHost();
   assert.equal(perFile.filesystemLimits, limits);
-  assertEnospc(() => perFile.filesystem.writeFileSync(
+  assertEnospc(() => perFile.testing.writeFile(
     "/tmp/too-large",
     Buffer.alloc(limits.maxFileBytes + 1),
   ));
 
   const count = createWasiHost();
   for (let index = 0; index < limits.maxFiles; index += 1) {
-    count.filesystem.writeFileSync(`/tmp/f-${index}`, Buffer.alloc(0));
+    count.testing.writeFile(`/tmp/f-${index}`, Buffer.alloc(0));
   }
-  assertEnospc(() => count.filesystem.writeFileSync("/tmp/one-too-many", Buffer.alloc(0)));
+  assertEnospc(() => count.testing.writeFile("/tmp/one-too-many", Buffer.alloc(0)));
 
   const total = createWasiHost();
   const chunk = limits.maxFileBytes;
   let written = 0;
   let index = 0;
   while (written + chunk <= limits.maxTotalBytes && index < limits.maxFiles) {
-    total.filesystem.writeFileSync(`/tmp/b-${index}`, Buffer.alloc(chunk));
+    total.testing.writeFile(`/tmp/b-${index}`, Buffer.alloc(chunk));
     written += chunk;
     index += 1;
   }
   const remainder = limits.maxTotalBytes - written;
   if (remainder > 0 && index < limits.maxFiles) {
-    total.filesystem.writeFileSync(`/tmp/b-${index}`, Buffer.alloc(remainder));
+    total.testing.writeFile(`/tmp/b-${index}`, Buffer.alloc(remainder));
     index += 1;
   }
   const usage = total.filesystemUsage();
   assert.equal(Object.isFrozen(usage), true);
   assert.equal(usage.totalBytes, limits.maxTotalBytes);
-  assertEnospc(() => total.filesystem.writeFileSync(`/tmp/b-${index}`, Buffer.from([1])));
+  assertEnospc(() => total.testing.writeFile(`/tmp/b-${index}`, Buffer.from([1])));
   assert.equal(total.filesystemUsage().totalBytes, limits.maxTotalBytes);
 });
