@@ -757,6 +757,65 @@ assert warm_zeta.ball.to_dict() == zeta.ball.to_dict()
 assert workspace.diagnostics()["zeta_residue_calls"] == 2
 assert workspace.diagnostics()["splitting_nanoseconds"] >= 0
 
+# Every mutable acceleration cache has separate canonical authority.  Poisoning
+# any dependency before a proof-producing call must fail closed, including a
+# record cache that an already-built plan would otherwise bypass.
+def assert_cache_tamper_rejected(label):
+    try:
+        zeta_log_residue_bound(
+            5, 2, counted_provider, absolute_error="0.125", precision_bits=96,
+            limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+            workspace=workspace,
+        )
+    except AnalyticCertificationError:
+        return
+    raise AssertionError(label + " cache mutation was accepted")
+
+saved_covered_stop = workspace.covered_stop
+workspace.covered_stop = saved_covered_stop + 1
+assert_cache_tamper_rejected("splitting coverage")
+workspace.covered_stop = saved_covered_stop
+
+record_key = next(iter(workspace._records))
+saved_record = workspace._records[record_key]
+workspace._records[record_key] = ()
+assert_cache_tamper_rejected("splitting record")
+workspace._records[record_key] = saved_record
+
+prime_key = next(iter(workspace._primes))
+saved_primes = workspace._primes[prime_key]
+workspace._primes[prime_key] = ()
+assert_cache_tamper_rejected("rational prime")
+workspace._primes[prime_key] = saved_primes
+
+plan_key = next(iter(workspace._plans))
+saved_raw_terms = workspace._plans[plan_key].raw_terms
+workspace._plans[plan_key].raw_terms = saved_raw_terms + 1
+assert_cache_tamper_rejected("prime-power plan")
+workspace._plans[plan_key].raw_terms = saved_raw_terms
+
+threshold_key = next(iter(workspace._thresholds))
+saved_threshold = workspace._thresholds[threshold_key]
+workspace._thresholds[threshold_key] = (
+    saved_threshold[0], RealBall(-99, 99, precision_bits=96), saved_threshold[2]
+)
+assert_cache_tamper_rejected("threshold")
+workspace._thresholds[threshold_key] = saved_threshold
+
+finite_key = next(iter(workspace._finite_terms))
+saved_finite = workspace._finite_terms[finite_key]
+workspace._finite_terms[finite_key] = (
+    RealBall(-99, 99, precision_bits=96), saved_finite[1]
+)
+assert_cache_tamper_rejected("finite term")
+workspace._finite_terms[finite_key] = saved_finite
+
+# Restoring the mutable views preserves the authenticated warm result.
+assert zeta_log_residue_bound(
+    5, 2, counted_provider, absolute_error="0.125", precision_bits=96,
+    limits=ZetaLogResidueLimits(maximum_prime_bound=20000), workspace=workspace,
+).ball.to_dict() == zeta.ball.to_dict()
+
 class FakeCoordinate:
     def __init__(self, numerator, denominator=1):
         self._numerator = numerator

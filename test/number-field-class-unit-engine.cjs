@@ -1738,6 +1738,26 @@ def verify_generation(field, order, units, class_number, evidence, status):
         and status == EXACT_RELATIONS_CONDITIONAL_GRH
     )
 
+# A cache poisoned after analytic computation but before certificate issuance
+# cannot become live semantic authority, even on the precomputed fast path.
+preseal_ball = next(iter(engine._analytic_workspace._finite_terms.values()))[0]
+preseal_lower = preseal_ball.lower
+preseal_ball.lower = engine.components.analytic.RationalEndpoint(999)
+try:
+    engine._unit_index_certificate(
+        initial_units,
+        torsion,
+        1,
+        generation_evidence,
+        verify_generation,
+        EXACT_RELATIONS_CONDITIONAL_GRH,
+    )
+    raise AssertionError("a pre-seal poisoned zeta cache issued a certificate")
+except engine.components.analytic.AnalyticCertificationError:
+    pass
+finally:
+    preseal_ball.lower = preseal_lower
+
 before_saturation = engine._analytic_workspace.diagnostics()
 updated, artifact, attempt = engine._try_unit_saturation(
     initial_units,
@@ -1780,6 +1800,21 @@ assert detached_payload["analytic_proof"][
 assert detached.verify(
     K, engine.order, initial_units, generation_verifier=verify_generation
 )
+assert not engine.components.analytic.verify_saturation_evidence(
+    K,
+    engine.order,
+    initial_units,
+    artifact.to_dict(),
+    generation_verifier=verify_generation,
+    cancelled=lambda: True,
+)
+assert not detached.verify(
+    K,
+    engine.order,
+    initial_units,
+    generation_verifier=verify_generation,
+    cancelled=lambda: True,
+)
 
 # A rehashed but non-halving detached history has no mathematical authority.
 import copy
@@ -1797,6 +1832,24 @@ forged = engine.components.analytic.UnitSaturationIndexCertificate.from_dict(
     forged_payload
 )
 assert not forged.verify(
+    K, engine.order, initial_units, generation_verifier=verify_generation
+)
+
+# Rehashing a certificate cannot make producer-selected analytic resources
+# exceed the verifier's independent cap.
+over_cap_payload = copy.deepcopy(detached_payload)
+over_cap_payload["configuration"]["zeta"]["limits"][
+    "maximum_prime_bound"
+] = 1000001
+over_cap_body = dict(over_cap_payload)
+del over_cap_body["content_sha256"]
+over_cap_payload["content_sha256"] = engine.components.analytic._content_hash(
+    over_cap_body
+)
+over_cap = engine.components.analytic.UnitSaturationIndexCertificate.from_dict(
+    over_cap_payload
+)
+assert not over_cap.verify(
     K, engine.order, initial_units, generation_verifier=verify_generation
 )
 
