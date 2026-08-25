@@ -2917,16 +2917,175 @@ class ClassUnitGroupEngine:
             )
         self._proof_progress = progress
 
+        def finish_progress(value: Any) -> tuple[Any, ...]:
+            self._proof_progress = value
+            self._resource_usage["proof_primes_completed"] = int(value.completed_items)
+            records = tuple(
+                evidence(record)
+                for partition in value.partitions
+                for record in partition.records
+            )
+            records = tuple(sorted(records, key=lambda record: int(record["index"])))
+            self._phase_finish("unconditional-proof", started)
+            self._stage(
+                "unconditional-proof",
+                "complete",
+                theorem=theorem,
+                bound=int(plan.bound),
+                prime_ideals=len(records),
+                partitions=int(value.partition_count),
+                plan_sha256=str(value.plan_sha256),
+            )
+            return records
+
+        uninterrupted = bool(
+            controller is None
+            and self.progress is None
+            and not self._cancelled_callback_supplied
+        )
+        if not uninterrupted:
+            for partition_index in range(self.limits.proof_partition_count):
+                while True:
+                    pending = tuple(progress.pending_indices(partition_index))
+                    if not pending:
+                        break
+                    index = pending[0]
+                    prime_ideal = proof_primes[index]
+                    self._check_cancelled()
+                    coordinates, witness = group.discrete_log(prime_ideal)
+                    representative = group.representative_ideal(coordinates)
+                    quotient = prime_ideal / representative
+                    if witness.principal_ideal(self.order) != quotient:
+                        raise ArithmeticError(
+                            "a Minkowski proof-prime discrete log failed principal replay"
+                        )
+                    norm = prime_ideal.norm()
+                    if norm._denominator != 1:
+                        raise ArithmeticError(
+                            "a proof-prime ideal has nonintegral norm"
+                        )
+                    raw = {
+                        "index": index,
+                        "norm": int(norm._numerator),
+                        "coordinates": tuple(int(value) for value in coordinates),
+                        "ideal": prime_ideal.to_dict(),
+                        "witness": witness.to_dict(),
+                    }
+                    wrapped = record_type(index, fingerprints[index], raw)
+                    if not verify_record(wrapped, index, fingerprints[index]):
+                        raise ArithmeticError(
+                            "a Minkowski proof-prime record failed exact replay"
+                        )
+                    if controller is None:
+                        progress = progress.record(index, wrapped)
+                        self._checkpoint_capture({"proof_progress": progress})
+                        self._checkpoint_save(force=True)
+                    else:
+                        checkpoint_prime = getattr(
+                            controller, "checkpoint_minkowski_proof_prime", None
+                        )
+                        if not callable(checkpoint_prime):
+                            raise TypeError(
+                                "the checkpoint controller cannot save a proof prime"
+                            )
+                        try:
+                            progress = checkpoint_prime(
+                                progress,
+                                index,
+                                wrapped,
+                                details={
+                                    "partition_index": partition_index,
+                                    "prime_index": index,
+                                },
+                                force=True,
+                            )
+                        finally:
+                            restored = controller.restore_minkowski_proof_progress(
+                                bound=(int(plan.bound), 1),
+                                prime_fingerprints=fingerprints,
+                                partition_count=self.limits.proof_partition_count,
+                                theorem=theorem,
+                                dependency_hashes=self._proof_dependency_hashes,
+                                record_decoder=decode_record,
+                                record_verifier=verify_record,
+                            )
+                            if restored is not None:
+                                progress = restored
+                    self._proof_progress = progress
+                    self._resource_usage["proof_primes_completed"] = int(
+                        progress.completed_items
+                    )
+                    self._emit_progress(
+                        "proof-prime",
+                        completed=int(progress.completed_items),
+                        total=len(proof_primes),
+                        partition_index=partition_index,
+                        partition_count=self.limits.proof_partition_count,
+                        prime_index=index,
+                    )
+                    self._check_cancelled()
+            if not progress.complete or not progress.verify_records(verify_record):
+                raise ArithmeticError("the Minkowski proof partitions are incomplete")
+            return finish_progress(progress)
+
+        issued_group = group
+        issued_primes = proof_primes
+        issued_dependencies = dict(self._proof_dependency_hashes)
+        issued_plan_sha256 = str(progress.plan_sha256)
+        issued_discrete_log = group.discrete_log
+        issued_representative_ideal = group.representative_ideal
+        record_seals: list[tuple[Any, str]] = []
+
+        def verify_live_issuance(value: Any, *, require_complete: bool) -> bool:
+            try:
+                records = tuple(
+                    record
+                    for partition in value.partitions
+                    for record in partition.records
+                )
+                if (
+                    group is not issued_group
+                    or proof_primes is not issued_primes
+                    or dict(self._proof_dependency_hashes) != issued_dependencies
+                    or str(value.plan_sha256) != issued_plan_sha256
+                    or value.dependency_hashes != issued_dependencies
+                    or tuple(
+                        _portable_ideal_fingerprint(prime) for prime in proof_primes
+                    )
+                    != fingerprints
+                    or (require_complete and not value.complete)
+                    or len(records) != len(record_seals)
+                ):
+                    return False
+                for record, (sealed_record, stable_hash) in zip(
+                    records, record_seals, strict=True
+                ):
+                    if (
+                        record is not sealed_record
+                        or str(record.stable_hash()) != stable_hash
+                    ):
+                        return False
+                return True
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                ArithmeticError,
+            ):
+                return False
+
+        working_progress = progress
+
         for partition_index in range(self.limits.proof_partition_count):
             while True:
-                pending = tuple(progress.pending_indices(partition_index))
+                pending = tuple(working_progress.pending_indices(partition_index))
                 if not pending:
                     break
                 index = pending[0]
                 prime_ideal = proof_primes[index]
                 self._check_cancelled()
-                coordinates, witness = group.discrete_log(prime_ideal)
-                representative = group.representative_ideal(coordinates)
+                coordinates, witness = issued_discrete_log(prime_ideal)
+                representative = issued_representative_ideal(coordinates)
                 quotient = prime_ideal / representative
                 if witness.principal_ideal(self.order) != quotient:
                     raise ArithmeticError(
@@ -2935,84 +3094,52 @@ class ClassUnitGroupEngine:
                 norm = prime_ideal.norm()
                 if norm._denominator != 1:
                     raise ArithmeticError("a proof-prime ideal has nonintegral norm")
+                witness_type = getattr(
+                    self.components.factored, "FactoredNumberFieldElement", None
+                )
+                if witness_type is None:
+                    witness_type = self.components.relations.FactoredPrincipalWitness
+                witness_payload = witness.to_dict()
+                detached_witness = witness_type.from_dict(self.field, witness_payload)
+                live_field = getattr(witness, "field", None)
+                live_field = live_field() if callable(live_field) else live_field
+                detached_field = getattr(detached_witness, "field", None)
+                detached_field = (
+                    detached_field() if callable(detached_field) else detached_field
+                )
+                if (
+                    live_field is not self.field
+                    or detached_field is not self.field
+                    or tuple(detached_witness.factors()) != tuple(witness.factors())
+                    or detached_witness.to_dict() != witness_payload
+                ):
+                    raise ArithmeticError(
+                        "a Minkowski proof witness payload changed after live replay"
+                    )
                 raw = {
                     "index": index,
                     "norm": int(norm._numerator),
                     "coordinates": tuple(int(value) for value in coordinates),
                     "ideal": prime_ideal.to_dict(),
-                    "witness": witness.to_dict(),
+                    "witness": witness_payload,
                 }
                 wrapped = record_type(index, fingerprints[index], raw)
-                if not verify_record(wrapped, index, fingerprints[index]):
-                    raise ArithmeticError(
-                        "a Minkowski proof-prime record failed exact replay"
-                    )
-                if controller is None:
-                    progress = progress.record(index, wrapped)
-                    self._checkpoint_capture({"proof_progress": progress})
-                    self._checkpoint_save(force=True)
-                else:
-                    checkpoint_prime = getattr(
-                        controller, "checkpoint_minkowski_proof_prime", None
-                    )
-                    if not callable(checkpoint_prime):
-                        raise TypeError(
-                            "the checkpoint controller cannot save a proof prime"
-                        )
-                    try:
-                        progress = checkpoint_prime(
-                            progress,
-                            index,
-                            wrapped,
-                            details={
-                                "partition_index": partition_index,
-                                "prime_index": index,
-                            },
-                            force=True,
-                        )
-                    finally:
-                        restored = controller.restore_minkowski_proof_progress(
-                            bound=(int(plan.bound), 1),
-                            prime_fingerprints=fingerprints,
-                            partition_count=self.limits.proof_partition_count,
-                            theorem=theorem,
-                            dependency_hashes=self._proof_dependency_hashes,
-                            record_decoder=decode_record,
-                            record_verifier=verify_record,
-                        )
-                        if restored is not None:
-                            progress = restored
-                self._proof_progress = progress
-                self._resource_usage["proof_primes_completed"] = int(
-                    progress.completed_items
-                )
-                self._emit_progress(
-                    "proof-prime",
-                    completed=int(progress.completed_items),
-                    total=len(proof_primes),
-                    partition_index=partition_index,
-                    partition_count=self.limits.proof_partition_count,
-                    prime_index=index,
-                )
-        if not progress.complete or not progress.verify_records(verify_record):
+                stable_hash = getattr(wrapped, "stable_hash", None)
+                if not callable(stable_hash):
+                    raise TypeError("a live Minkowski proof record has no stable hash")
+                record_seals.append((wrapped, str(stable_hash())))
+                working_progress = working_progress.record(index, wrapped)
+
+        if not verify_live_issuance(working_progress, require_complete=True):
+            raise ArithmeticError("the live Minkowski proof issuance changed")
+
+        progress = working_progress
+        self._checkpoint_capture({"proof_progress": progress})
+        self._checkpoint_save(force=True)
+
+        if not verify_live_issuance(progress, require_complete=True):
             raise ArithmeticError("the Minkowski proof partitions are incomplete")
-        records = tuple(
-            evidence(record)
-            for partition in progress.partitions
-            for record in partition.records
-        )
-        records = tuple(sorted(records, key=lambda record: int(record["index"])))
-        self._phase_finish("unconditional-proof", started)
-        self._stage(
-            "unconditional-proof",
-            "complete",
-            theorem=theorem,
-            bound=int(plan.bound),
-            prime_ideals=len(records),
-            partitions=int(progress.partition_count),
-            plan_sha256=str(progress.plan_sha256),
-        )
-        return records
+        return finish_progress(progress)
 
     def _proof_dependencies(
         self, group: Any, collector: Any, presentation: Any, saturation: Any

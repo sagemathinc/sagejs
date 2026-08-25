@@ -1957,12 +1957,17 @@ class FakeIdeal:
         return ("quotient", self.index, representative.index)
 
 class FakeWitness:
-    def __init__(self, index):
+    def __init__(self, index, payload_index=None):
         self.index = index
+        self.payload_index = index if payload_index is None else payload_index
     def principal_ideal(self, order):
         return ("quotient", self.index, self.index)
+    def field(self):
+        return K
+    def factors(self):
+        return ((self.index, 1),)
     def to_dict(self):
-        return {"schema": "fake-witness-v1", "index": self.index}
+        return {"schema": "fake-witness-v1", "index": self.payload_index}
 
 class FakeFactored:
     @classmethod
@@ -1993,11 +1998,13 @@ class FakePlan:
     bound = 17
 
 class FakeGroup:
-    def __init__(self, calls):
+    def __init__(self, calls, forge_witness_payload=False):
         self.calls = calls
+        self.forge_witness_payload = forge_witness_payload
     def discrete_log(self, ideal):
         self.calls.append(ideal.index)
-        return (ideal.index,), FakeWitness(ideal.index)
+        payload_index = ideal.index + 1 if self.forge_witness_payload else ideal.index
+        return (ideal.index,), FakeWitness(ideal.index, payload_index)
     def representative_ideal(self, coordinates):
         return FakeIdeal(int(coordinates[0]))
 
@@ -2088,6 +2095,103 @@ assert second._proof_progress.complete
 assert second._proof_progress.bound == (17, 1)
 assert second._proof_progress.theorem == "Minkowski ideal-class theorem"
 assert second._proof_progress.dependency_hashes == dependencies
+
+class HostileController(Controller):
+    def __init__(self):
+        super().__init__()
+        self.cancel_after_next_prime = False
+        self.mutate_final_restore = True
+    def restore_minkowski_proof_progress(self, **options):
+        stored = None if self.stored is None else json.loads(json.dumps(self.stored))
+        if stored is None:
+            return None
+        progress = MinkowskiProofProgress.from_dict(
+            stored,
+            record_decoder=options.get("record_decoder"),
+            record_verifier=options.get("record_verifier"),
+        )
+        assert progress.matches_plan(
+            options["bound"],
+            options["prime_fingerprints"],
+            partition_count=options["partition_count"],
+            theorem=options["theorem"],
+            dependency_hashes=options["dependency_hashes"],
+        )
+        if (
+            self.mutate_final_restore
+            and progress is not None
+            and progress.complete
+        ):
+            progress.partitions[0].records[0].evidence["coordinates"] = (999,)
+        return progress
+
+hostile_controller = HostileController()
+hostile_calls = []
+hostile = ProofProbe(
+    K,
+    algorithm="buchmann-hecke",
+    components=Components(),
+    limits=limits,
+    checkpoint_controller=hostile_controller,
+)
+hostile._proof_dependency_hashes = dependencies
+try:
+    hostile._unconditional_proof_pass(FakeGroup(hostile_calls))
+    raise AssertionError("hostile restored progress was published")
+except ArithmeticError as error:
+    assert "incomplete" in str(error)
+hostile_controller.mutate_final_restore = False
+retried_records = hostile._unconditional_proof_pass(FakeGroup(hostile_calls))
+assert [record["index"] for record in retried_records] == [0, 1, 2, 3]
+assert hostile._proof_progress.complete
+
+# A progress observer may request cancellation without raising itself.  The
+# interposed path checks that request before terminal publication, and retry is
+# independent of the aborted in-memory progress.
+cancel_state = {"requested": False, "armed": True}
+def request_cancel(event):
+    if cancel_state["armed"] and event["event"] == "proof-prime":
+        cancel_state["requested"] = True
+progress_cancelled = ProofProbe(
+    K,
+    algorithm="buchmann-hecke",
+    components=Components(),
+    limits=limits,
+    progress=request_cancel,
+    cancelled=lambda: cancel_state["requested"],
+)
+progress_cancelled._proof_dependency_hashes = dependencies
+try:
+    progress_cancelled._unconditional_proof_pass(FakeGroup([]))
+    raise AssertionError("progress-triggered cancellation published exact proof")
+except RuntimeError as error:
+    assert str(error) == "class/unit computation cancelled"
+assert not progress_cancelled._proof_progress.complete
+cancel_state["requested"] = False
+cancel_state["armed"] = False
+progress_retry = progress_cancelled._unconditional_proof_pass(FakeGroup([]))
+assert [record["index"] for record in progress_retry] == [0, 1, 2, 3]
+assert progress_cancelled._proof_progress.complete
+
+# The uninterrupted fast path binds a canonical detached witness payload back
+# to the exact live witness whose principal ideal was checked.  A witness that
+# serializes different factor semantics is rejected before bulk publication,
+# and an ordinary retry can still complete.
+bulk = ProofProbe(
+    K,
+    algorithm="buchmann-hecke",
+    components=Components(),
+    limits=limits,
+)
+bulk._proof_dependency_hashes = dependencies
+try:
+    bulk._unconditional_proof_pass(FakeGroup([], forge_witness_payload=True))
+    raise AssertionError("a changed live witness payload was published")
+except ArithmeticError as error:
+    assert "payload changed" in str(error)
+bulk_records = bulk._unconditional_proof_pass(FakeGroup([]))
+assert [record["index"] for record in bulk_records] == [0, 1, 2, 3]
+assert bulk._proof_progress.complete
 print("proof-resumed")
 `);
   assert.equal(output, "proof-resumed");
