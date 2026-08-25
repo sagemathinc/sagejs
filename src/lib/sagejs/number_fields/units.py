@@ -315,7 +315,10 @@ class RootsOfUnityCertificate:
             raise ValueError("roots-of-unity certificate field signature changed")
 
         prime_power_payload = payload["universal_prime_powers"]
-        if type(prime_power_payload) is not list:
+        exact_prime_powers = _universal_torsion_prime_powers(degree)
+        if type(prime_power_payload) is not list or len(prime_power_payload) != len(
+            exact_prime_powers
+        ):
             raise ValueError("invalid universal prime-power payload")
         universal_prime_powers: list[tuple[int, int]] = []
         for pair in prime_power_payload:
@@ -327,7 +330,6 @@ class RootsOfUnityCertificate:
                     exact_integer(pair[1], "universal prime power", minimum=2),
                 )
             )
-        exact_prime_powers = _universal_torsion_prime_powers(degree)
         if tuple(universal_prime_powers) != exact_prime_powers:
             raise ValueError("universal torsion prime powers changed")
         universal_exponent = exact_integer(
@@ -367,7 +369,11 @@ class RootsOfUnityCertificate:
             maximum=candidate_cap,
         )
         bounds_payload = payload["coefficient_bounds"]
-        if type(bounds_payload) is not list:
+        expected_bound_count = degree if kind == "embedding-box-exhaustion" else 0
+        if (
+            type(bounds_payload) is not list
+            or len(bounds_payload) != expected_bound_count
+        ):
             raise ValueError("invalid coefficient-bound payload")
         coefficient_bounds = tuple(
             exact_integer(
@@ -451,8 +457,6 @@ class RootsOfUnityCertificate:
         elif kind == "residue-upper-bound":
             if not prime_records or coefficient_bounds:
                 raise ValueError("invalid residue-bound certificate shape")
-        elif len(coefficient_bounds) != degree:
-            raise ValueError("an embedding-box certificate needs one bound per degree")
 
         certificate = cls(
             kind,

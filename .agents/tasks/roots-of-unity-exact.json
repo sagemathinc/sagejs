@@ -108,6 +108,26 @@
       "commit": "1900da11db15c9d799b9b0428956aa3a8330eefd",
       "workspace_fingerprint": "2f062c5e52375c6619fb33dda2208274d903b3326800e61d504a9a1986211b49",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-roots-of-unity.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 41.854,
+      "started_at": "2026-08-25T07:56:48.816Z",
+      "commit": "8afce9c48108f211890bb7cb93abebba54041b4f",
+      "workspace_fingerprint": "587a2aa6e340b65876060a6798996d6a0b3f46a11d305aa0065052f37a50ac8c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.655,
+      "started_at": "2026-08-25T07:57:35.706Z",
+      "commit": "8afce9c48108f211890bb7cb93abebba54041b4f",
+      "workspace_fingerprint": "587a2aa6e340b65876060a6798996d6a0b3f46a11d305aa0065052f37a50ac8c",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
