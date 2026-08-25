@@ -4333,25 +4333,42 @@ class ClassUnitGroupEngine:
         }
         if self._analytic_workspace is not None:
             zeta_options["workspace"] = self._analytic_workspace
-        zeta = analytic.zeta_log_residue_bound(
-            int(self.order.discriminant()),
-            int(self.field.degree()),
-            self.order.splitting_records,
-            **zeta_options,
-        )
         units_module = _optional_module("sagejs.number_fields.units")
         torsion = units_module.roots_of_unity(self.field)
         if not torsion.complete or not torsion.verify():
             raise ArithmeticError("roots of unity are incomplete")
-        index = analytic.validate_hr_index(
-            signature=_value(self.field, ("signature",)),
-            discriminant=int(self.order.discriminant()),
-            class_number=int(presentation.order),
-            roots_of_unity=int(torsion.order),
-            regulator=regulator,
-            zeta_log_residue=zeta,
-            precision_bits=self.limits.precision_bits,
-        )
+        adaptive_completion = getattr(analytic, "adaptive_hr_index", None)
+        if callable(adaptive_completion):
+            completion_result: Any = adaptive_completion(
+                signature=_value(self.field, ("signature",)),
+                discriminant=int(self.order.discriminant()),
+                degree=int(self.field.degree()),
+                class_number=int(presentation.order),
+                roots_of_unity=int(torsion.order),
+                regulator=regulator,
+                splitting_provider=self.order.splitting_records,
+                initial_absolute_error="1",
+                cancelled=self.cancelled,
+                **zeta_options,
+            )
+            zeta, index, error_history = completion_result
+        else:
+            zeta = analytic.zeta_log_residue_bound(
+                int(self.order.discriminant()),
+                int(self.field.degree()),
+                self.order.splitting_records,
+                **zeta_options,
+            )
+            index = analytic.validate_hr_index(
+                signature=_value(self.field, ("signature",)),
+                discriminant=int(self.order.discriminant()),
+                class_number=int(presentation.order),
+                roots_of_unity=int(torsion.order),
+                regulator=regulator,
+                zeta_log_residue=zeta,
+                precision_bits=self.limits.precision_bits,
+            )
+            error_history = (str(getattr(zeta, "requested_absolute_error", "0.125")),)
         self._bind_context_analytic_proof(
             (
                 tuple(units),
@@ -4370,6 +4387,8 @@ class ClassUnitGroupEngine:
             upper_index=int(index.upper_index),
             rigorous=bool(index.rigorous),
             zeta_threshold=int(zeta.threshold),
+            zeta_absolute_error=str(error_history[-1]),
+            zeta_refinement_attempts=len(error_history),
         )
         return torsion, regulator, index
 
@@ -4806,6 +4825,12 @@ class ClassUnitGroupEngine:
                 and live_class_number == int(class_number)
                 and live_torsion_order == int(_value(torsion, ("order",), 0))
             ):
+                live_error_history = tuple(
+                    getattr(live_zeta, "hr_index_absolute_error_history", ())
+                )
+                if live_error_history:
+                    options["zeta_absolute_error"] = live_error_history[-1]
+                    options["zeta_absolute_error_history"] = live_error_history
                 options["_precomputed_regulator"] = live_regulator
                 options["_precomputed_zeta_log_residue"] = live_zeta
                 options["_precomputed_index"] = live_index

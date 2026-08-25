@@ -730,11 +730,11 @@ zeta = zeta_log_residue_bound(
     5,
     2,
     counted_provider,
-    absolute_error="0.125",
     precision_bits=96,
     limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
     workspace=workspace,
 )
+assert str(zeta.requested_absolute_error) == "1/8"
 calls_after_cold = len(provider_calls)
 warm_zeta = zeta_log_residue_bound(
     5, 2, counted_provider, absolute_error="0.125", precision_bits=96,
@@ -876,6 +876,74 @@ assert forged.rigorous and forged.unique_index == 2 and not forged.index_one
 scalar_forged = scalar_hr_index(2)
 assert forged.index_ball.lower == scalar_forged.lower
 assert forged.index_ball.upper == scalar_forged.upper
+
+# The policy layer starts coarse, treats an empty integer intersection as an
+# inconclusive decision, and halves the exact requested error deterministically.
+# Synthetic zeta balls isolate that control-flow contract from the BF kernel;
+# the ordinary hR validator still performs every mathematical decision.
+seed_validation = validate_hr_index(
+    signature=(0, 1), discriminant=-4, class_number=1, roots_of_unity=4,
+    regulator=RealBall(1, precision_bits=128),
+    zeta_log_residue=RealBall(-20, 20, precision_bits=128),
+    precision_bits=128,
+)
+decision_field = IntervalBallField(128)
+coarse_residue = seed_validation.algebraic_log_hr - decision_field.log(
+    RealBall("3/2", precision_bits=128)
+)
+fine_residue = seed_validation.algebraic_log_hr
+adaptive_calls = []
+original_zeta_bound = module.zeta_log_residue_bound
+def synthetic_zeta_bound(*args, **options):
+    requested = str(module._endpoint(options["absolute_error"], rigorous=True))
+    adaptive_calls.append(requested)
+    return coarse_residue if requested == "1" else fine_residue
+module.zeta_log_residue_bound = synthetic_zeta_bound
+try:
+    selected_zeta, selected_index, selected_history = adaptive_hr_index(
+        signature=(0, 1), discriminant=-4, degree=2, class_number=1,
+        roots_of_unity=4, regulator=RealBall(1, precision_bits=128),
+        splitting_provider=lambda start, stop: (), precision_bits=128,
+    )
+    assert selected_index.rigorous and selected_index.unique_index == 1
+    assert selected_zeta is fine_residue
+    assert selected_history == ("1", "1/2")
+    assert adaptive_calls == ["1", "1/2"]
+
+    cancellation_checks = []
+    adaptive_calls.clear()
+    def cancelled_after_first_attempt():
+        cancellation_checks.append(True)
+        return len(cancellation_checks) > 1
+    try:
+        adaptive_hr_index(
+            signature=(0, 1), discriminant=-4, degree=2, class_number=1,
+            roots_of_unity=4, regulator=RealBall(1, precision_bits=128),
+            splitting_provider=lambda start, stop: (), precision_bits=128,
+            cancelled=cancelled_after_first_attempt,
+        )
+        raise AssertionError("adaptive hR refinement ignored cancellation")
+    except AnalyticResourceError as error:
+        assert "cancelled" in str(error)
+    assert adaptive_calls == ["1"]
+finally:
+    module.zeta_log_residue_bound = original_zeta_bound
+
+resource_provider_calls = []
+def resource_provider(start, stop):
+    resource_provider_calls.append((start, stop))
+    return ()
+try:
+    adaptive_hr_index(
+        signature=(2, 0), discriminant=5, degree=2, class_number=1,
+        roots_of_unity=2, regulator=regulator,
+        splitting_provider=resource_provider, precision_bits=96,
+        limits=ZetaLogResidueLimits(maximum_prime_bound=72),
+    )
+    raise AssertionError("adaptive hR refinement exceeded its prime cap")
+except AnalyticResourceError as error:
+    assert "maximum_prime_bound" in str(error)
+assert resource_provider_calls == []
 
 try:
     zeta_log_residue_bound(

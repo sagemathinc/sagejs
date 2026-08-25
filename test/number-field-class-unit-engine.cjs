@@ -1722,6 +1722,9 @@ _torsion, _regulator, initial_index = engine._analytic_index(
 )
 assert initial_index.rigorous
 assert initial_index.lower_index == 2 and initial_index.upper_index == 2
+initial_zeta = engine._context_analytic_proof()[4]
+assert initial_zeta.hr_index_absolute_error_history == ("1", "1/2")
+assert str(initial_zeta.requested_absolute_error) == "1/2"
 generation_evidence = {
     "schema": "test.engine-generation-authority.v1",
     "class_number": 1,
@@ -1766,12 +1769,124 @@ detached = engine.components.analytic.UnitSaturationIndexCertificate.from_dict(
     artifact.global_index_certificate
 )
 assert detached.workspace_diagnostics() is None
-assert engine._diagnostics()["analytic_workspace"] == after_saturation
+detached_payload = detached.to_dict()
+assert detached_payload["configuration"]["zeta"]["absolute_error"] == "1/2"
+assert detached_payload["configuration"]["zeta"][
+    "absolute_error_history"
+] == ["1", "1/2"]
+assert detached_payload["analytic_proof"][
+    "zeta_absolute_error_history"
+] == ["1", "1/2"]
+assert detached.verify(
+    K, engine.order, initial_units, generation_verifier=verify_generation
+)
+
+# A rehashed but non-halving detached history has no mathematical authority.
+import copy
+forged_payload = copy.deepcopy(detached_payload)
+forged_payload["configuration"]["zeta"]["absolute_error"] = "1/3"
+forged_payload["configuration"]["zeta"]["absolute_error_history"] = [
+    "1", "1/3",
+]
+forged_body = dict(forged_payload)
+del forged_body["content_sha256"]
+forged_payload["content_sha256"] = engine.components.analytic._content_hash(
+    forged_body
+)
+forged = engine.components.analytic.UnitSaturationIndexCertificate.from_dict(
+    forged_payload
+)
+assert not forged.verify(
+    K, engine.order, initial_units, generation_verifier=verify_generation
+)
+
+# Live cache state is only an acceleration hint.  Corrupting it makes replay
+# fail closed, and restoring it restores the authenticated proof.
+live_certificate = engine._unit_index_certificate(
+    initial_units,
+    torsion,
+    1,
+    generation_evidence,
+    verify_generation,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+)
+assert live_certificate.verify(K, engine.order, initial_units)
+finite_ball = next(iter(engine._analytic_workspace._finite_terms.values()))[0]
+saved_lower = finite_ball.lower
+finite_ball.lower = engine.components.analytic.RationalEndpoint(999)
+assert not live_certificate.verify(K, engine.order, initial_units)
+finite_ball.lower = saved_lower
+assert live_certificate.verify(K, engine.order, initial_units)
+final_diagnostics = engine._diagnostics()["analytic_workspace"]
+assert final_diagnostics["certificate_replay_calls"] > after_saturation[
+    "certificate_replay_calls"
+]
 assert len(updated) == 1 and updated[0].evaluate()**2 == epsilon**2
 print("real-saturation-replay")
 `);
   assert.equal(output, "real-saturation-replay");
 });
+
+test(
+  "adaptive analytic completion preserves C4 and quartic exact outputs",
+  { skip: process.env.SAGEJS_SLOW_CLASS_UNIT !== "1" },
+  () => {
+    const output = run(String.raw`
+import sagejs.number_fields.class_unit_analytic as analytic
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+cases = (
+    (
+        x**4 - x - 1,
+        (),
+        "exact-unconditional",
+    ),
+    (
+        x**5 + x**3 - x**2 + 4*x + 1,
+        (4,),
+        "exact-relations-conditional-grh",
+    ),
+)
+for polynomial, expected_invariants, expected_status in cases:
+    K = NumberField(polynomial, "a")
+    result = class_unit_context(K, proof=False)
+    assert result.complete and result.proof_status == expected_status
+    assert result.class_group().invariants() == expected_invariants
+    assert result.class_group().order() == (
+        1 if not expected_invariants else expected_invariants[0]
+    )
+    unit_group = result.unit_group()
+    assert unit_group.complete and unit_group.unit_rank == 2
+    assert unit_group.torsion.order == 2
+    regulator = result.regulator()
+    assert regulator.rigorous and regulator.precision_bits >= 100
+
+    certificate = result.saturation_record._analytic_certificate
+    configuration = certificate.configuration
+    history = configuration["zeta"]["absolute_error_history"]
+    assert history[0] == "1"
+    assert history[-1] == configuration["zeta"]["absolute_error"]
+    for previous, current in zip(history, history[1:]):
+        assert (
+            analytic._endpoint(previous, rigorous=True)
+            / analytic.RationalEndpoint(2)
+            == analytic._endpoint(current, rigorous=True)
+        )
+    detached = analytic.UnitSaturationIndexCertificate.from_dict(
+        certificate.to_dict()
+    )
+    assert detached.verify(
+        K,
+        K.maximal_order(),
+        result.saturation_original_units,
+        generation_verifier=certificate._generation_verifier,
+    )
+print("adaptive-c4-quartic-ok")
+`);
+    assert.equal(output, "adaptive-c4-quartic-ok");
+  },
+);
 
 test("missing saturation producer exhausts bounded retries honestly", () => {
   const output = run(String.raw`
