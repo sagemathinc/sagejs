@@ -96,6 +96,15 @@
       "expected": "(2, [(1, 0, 1, 1), (0, 1, 0, 1)])"
     },
     {
+      "id": "integer-partitions",
+      "capability": "combinatorics",
+      "title": "Enumerate, count, and address integer partitions",
+      "language": "sage",
+      "code": "(Partitions(4).list(), Partitions(1000).cardinality(), Partitions(5, max_part=3).list(), Partition([4, 2, 1]).conjugate())",
+      "expected": "([[4], [3, 1], [2, 2], [2, 1, 1], [1, 1, 1, 1]], 24061467864032622473692149727991, [[3, 2], [3, 1, 1], [2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]], [3, 2, 1, 1])",
+      "note": "Counting uses Euler's pentagonal number recurrence, so a class far too large to list still answers cardinality, rank, unrank, and uniform random_element exactly."
+    },
+    {
       "id": "petersen-graph",
       "capability": "graph-theory",
       "title": "Isomorphism and automorphisms of the Petersen graph",

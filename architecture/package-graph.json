@@ -374,6 +374,17 @@
       "prefixes": []
     },
     {
+      "id": "combinatorics",
+      "layer": 4,
+      "startup": "bootstrap",
+      "max_source_bytes": 60000,
+      "depends_on": ["core-runtime", "native-integration", "python-stdlib"],
+      "files": [
+        "src/baselib/combinat.py"
+      ],
+      "prefixes": []
+    },
+    {
       "id": "graph-theory",
       "layer": 4,
       "startup": "bootstrap",

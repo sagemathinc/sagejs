@@ -269,6 +269,7 @@ from sagejs.ffi.flint import (
     dirichlet_group_size as _ffi_dirichlet_group_size,
     dirichlet_group_num_primitive as _ffi_dirichlet_group_num_primitive,
     n_is_prime as _ffi_n_is_prime,
+    arith_number_of_partitions as _ffi_arith_number_of_partitions,
     fmpz_gcd as _ffi_fmpz_gcd,
     fmpz_mat_rank as _ffi_fmpz_mat_rank,
     fmpz_mat_mul as _ffi_fmpz_mat_mul,
@@ -2974,6 +2975,15 @@ def wordIsPrime(
 ) -> bool:
     return _ffi_n_is_prime(
         value,
+    )
+
+
+@native
+def numberOfPartitions(
+    size: uint64,
+) -> Integer:
+    return _ffi_arith_number_of_partitions(
+        size,
     )
 
 

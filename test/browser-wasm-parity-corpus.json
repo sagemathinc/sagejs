@@ -18,6 +18,21 @@
       }
     },
     {
+      "id": "partition-count-and-ranking",
+      "family": "enumerative-combinatorics",
+      "workflow": "partition-count-and-ranking",
+      "tier": "release",
+      "requires": [
+        { "id": "ffi:flint:arith_number_of_partitions", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "value=number_of_partitions(10^6)\nC=Partitions(100,max_part=20)\np=C.unrank(12345)\nprint(len(str(value)),value%10^12)\nprint(C.cardinality(),C.rank(p),p)\nlarge=Partitions(10000)\ntry:\n    large.unrank(1)\nexcept RuntimeError as error:\n    print(str(error),large._table is None)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "1108 467104673818\n97132873 12345 [20, 20, 20, 12, 11, 5, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]\npartition ranking table requires 50015001 cells, exceeding the reviewed maximum 1000000 True\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "capability-report-api",
       "family": "runtime",
       "workflow": "capability-report-api",

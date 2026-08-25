@@ -53,6 +53,7 @@
     "sagejs.number_fields.general_zeta",
     "sagejs.number_fields.ideal_arithmetic",
     "sagejs.number_fields.maximal_order_certification",
+    "sagejs.number_fields.order_resource",
     "sagejs.number_fields.prime_ideals",
     "sagejs.number_fields.quadratic_characters",
     "sagejs.number_fields.riemann_zeta",

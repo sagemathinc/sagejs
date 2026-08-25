@@ -6660,38 +6660,6 @@ def srange(
     return answer
 
 
-class _Partitions:
-    def __init__(self, value: Any) -> None:
-        if not runtime.is_exact_integer(value):
-            raise TypeError("partition size must be an integer")
-        self._value = int(value)
-        if self._value < 0:
-            raise ValueError("partition size must be nonnegative")
-
-    def _partitions(
-        self,
-        remaining: _Int,
-        maximum: _Int,
-    ) -> Iterator[list[_Int]]:
-        if remaining == 0:
-            yield []
-        else:
-            upper = min(remaining, maximum)
-            for first in range(upper, 0, -1):
-                for rest in self._partitions(remaining - first, first):
-                    yield [first] + rest
-
-    def __iter__(self) -> Iterator[list[_Int]]:
-        return self._partitions(self._value, self._value)
-
-    def list(self) -> list[list[_Int]]:
-        return list(self)
-
-
-def Partitions(value: Any) -> _Partitions:
-    return _Partitions(value)
-
-
 def bernoulli(index: Any) -> Any:
     if not runtime.is_exact_integer(index):
         raise TypeError("Bernoulli number index must be an integer")

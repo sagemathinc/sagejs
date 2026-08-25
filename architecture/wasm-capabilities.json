@@ -55,6 +55,14 @@
           "test/ffi-wasm-fmpq-resource-core.cjs"
         ]
       },
+      "partition-count-wasm-differential": {
+        "differential": true,
+        "paths": [
+          "test/combinat.cjs",
+          "packages/flint-wasm/test/partition-count-public.test.mjs",
+          "test/browser-wasm-parity-corpus.json"
+        ]
+      },
       "fflas-wasm-disposition": {
         "differential": true,
         "paths": [
@@ -489,6 +497,9 @@
     ],
     "moebius-range-packed": [
       "kernel:packed-moebius-range-production"
+    ],
+    "partition-count-and-ranking": [
+      "ffi:flint:arith_number_of_partitions"
     ],
     "multivariate-resultant-packed": [
       "wasm-library:flint:fmpz-mpoly-resultant-packed-v1"
@@ -4292,6 +4303,34 @@
         "status": "included"
       },
       "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi:flint:arith_number_of_partitions",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-unavailable-pentagonal-recurrence",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "number_of_partitions",
+        "Partitions.cardinality"
+      ],
+      "tests": [
+        "partition-count-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The generated adapter links FLINT's Rademacher partition counter into the receipt-authenticated production reactor. The exact recurrence is selected only when the declared backend operation is explicitly absent; accelerator failures propagate.",
+      "wasm_declared": true,
+      "wasm_closure": {
+        "status": "included"
+      },
+      "resource_limits": {
+        "reviewed_release_input": 1000000,
+        "boundary_crossings": 1
+      },
+      "public_explanation": "Large partition counts use FLINT's exact Rademacher implementation in native and WebAssembly builds. Release telemetry requires the declared FLINT route so an accidental recurrence fallback fails validation."
     },
     {
       "id": "ffi:flint:fmpz_gcd",

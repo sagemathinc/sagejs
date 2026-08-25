@@ -55,8 +55,12 @@ const wasmLibraries = Object.freeze({
     ]),
   }),
   m4ri: Object.freeze({
-    prefixes: Object.freeze(["m4ri"]),
-    libraries: Object.freeze(["m4ri", "m"]),
+    // M4RI's public headers include GMP declarations and the static archive
+    // retains GMP references.  The adapter must therefore use the same
+    // authenticated GMP prefix as the prepared M4RI dependency instead of
+    // accidentally succeeding only on hosts with system GMP headers.
+    prefixes: Object.freeze(["m4ri", "gmp"]),
+    libraries: Object.freeze(["m4ri", "gmp", "m"]),
     sources: Object.freeze([]),
   }),
 });
