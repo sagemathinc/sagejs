@@ -54,21 +54,35 @@ except ArithmeticError as error:
 finally:
     class_group_maps.class_group_from_engine_result = original_adapter
 
-# A successful but malformed sealing helper must fail before commit.  Restoring
-# the helper leaves a clean reservation and the next call publishes normally.
+# Replaced helpers are interposed paths: they remain cold and cannot publish.
 original_sealer = class_group_maps.seal_public_class_group_projection
 def malformed_sealer(_group):
     return object()
 class_group_maps.seal_public_class_group_projection = malformed_sealer
 try:
-    K.class_group(proof=False, max_relation_attempts=64)
-    raise AssertionError("a malformed projection was committed")
-except ArithmeticError as error:
-    assert "projection changed type" in str(error)
+    interposed = K.class_group(proof=False, max_relation_attempts=64)
+    assert interposed.verify()
 finally:
     class_group_maps.seal_public_class_group_projection = original_sealer
 assert result.context._live_artifacts.public_class_group_projection is None
 assert not result.context._live_artifacts.public_class_group_projection_reserved
+
+# An interposed adapter cannot smuggle a correctly typed but invalid group into
+# the retained projection.  It fails its cold public verification, and helper
+# restoration permits an ordinary clean publication.
+def mutated_adapter(_result):
+    group = original_adapter(_result)
+    group._invariants = (2,)
+    return group
+class_group_maps.class_group_from_engine_result = mutated_adapter
+try:
+    K.class_group(proof=False, max_relation_attempts=64)
+    raise AssertionError("an invalid interposed adapter result was accepted")
+except ArithmeticError as error:
+    assert "interposed public class-group adapter" in str(error)
+finally:
+    class_group_maps.class_group_from_engine_result = original_adapter
+assert result.context._live_artifacts.public_class_group_projection is None
 
 first = K.class_group(proof=False, max_relation_attempts=64)
 payload_text = json.dumps(first.proof_payload(), sort_keys=True, separators=(",", ":"))

@@ -6477,6 +6477,20 @@ def class_unit_context(
     return result
 
 
+_STANDARD_PUBLIC_CLASS_GROUP_MAPS = __import__(
+    "sagejs.number_fields.class_group_maps", fromlist=["class_group_maps"]
+)
+_STANDARD_PUBLIC_CLASS_GROUP_ADAPTER = (
+    _STANDARD_PUBLIC_CLASS_GROUP_MAPS.class_group_from_engine_result
+)
+_STANDARD_PUBLIC_CLASS_GROUP_SEALER = (
+    _STANDARD_PUBLIC_CLASS_GROUP_MAPS.seal_public_class_group_projection
+)
+_STANDARD_PUBLIC_CLASS_GROUP_VIEW = (
+    _STANDARD_PUBLIC_CLASS_GROUP_MAPS.public_class_group_projection_view
+)
+
+
 def class_group(
     field: Any,
     proof: bool | None = None,
@@ -6514,10 +6528,15 @@ def class_group(
         if not callable(verify) or verify() is not True:
             raise ArithmeticError("the public class group failed exact verification")
     else:
-        maps = __import__(
-            "sagejs.number_fields.class_group_maps", fromlist=["class_group_maps"]
-        )
+        maps = _STANDARD_PUBLIC_CLASS_GROUP_MAPS
         adapter = maps.class_group_from_engine_result
+        helpers_are_standard = bool(
+            adapter is _STANDARD_PUBLIC_CLASS_GROUP_ADAPTER
+            and maps.seal_public_class_group_projection
+            is _STANDARD_PUBLIC_CLASS_GROUP_SEALER
+            and maps.public_class_group_projection_view
+            is _STANDARD_PUBLIC_CLASS_GROUP_VIEW
+        )
         context_module = __import__(
             "sagejs.number_fields.class_unit_context",
             fromlist=["class_unit_context"],
@@ -6539,6 +6558,7 @@ def class_group(
             and callable(finish)
             and live_token is not None
             and proof_value is False
+            and helpers_are_standard
             else None
         )
         if transaction is not None and transaction[0] == "published":
@@ -6565,6 +6585,12 @@ def class_group(
         else:
             # Non-reusable paths retain the independent cold adapter.
             answer = adapter(result)
+            if not helpers_are_standard:
+                verify = getattr(answer, "verify", None)
+                if not callable(verify) or verify() is not True:
+                    raise ArithmeticError(
+                        "an interposed public class-group adapter failed verification"
+                    )
     return answer
 
 
