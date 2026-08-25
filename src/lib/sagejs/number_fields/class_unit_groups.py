@@ -6519,6 +6519,20 @@ def class_unit_context(
     return result
 
 
+_STANDARD_PUBLIC_CLASS_GROUP_MAPS = __import__(
+    "sagejs.number_fields.class_group_maps", fromlist=["class_group_maps"]
+)
+_STANDARD_PUBLIC_CLASS_GROUP_ADAPTER = (
+    _STANDARD_PUBLIC_CLASS_GROUP_MAPS.class_group_from_engine_result
+)
+_STANDARD_PUBLIC_CLASS_GROUP_SEALER = (
+    _STANDARD_PUBLIC_CLASS_GROUP_MAPS.seal_public_class_group_projection
+)
+_STANDARD_PUBLIC_CLASS_GROUP_VIEW = (
+    _STANDARD_PUBLIC_CLASS_GROUP_MAPS.public_class_group_projection_view
+)
+
+
 def class_group(
     field: Any,
     proof: bool | None = None,
@@ -6557,12 +6571,69 @@ def class_group(
         # adapter below.
         answer = raw_group
     else:
-        maps = __import__(
-            "sagejs.number_fields.class_group_maps", fromlist=["class_group_maps"]
-        )
+        maps = _STANDARD_PUBLIC_CLASS_GROUP_MAPS
         adapter = maps.class_group_from_engine_result
-        # The adapter publishes only after its independent `verify()` replay.
-        answer = adapter(result)
+        helpers_are_standard = bool(
+            adapter is _STANDARD_PUBLIC_CLASS_GROUP_ADAPTER
+            and maps.seal_public_class_group_projection
+            is _STANDARD_PUBLIC_CLASS_GROUP_SEALER
+            and maps.public_class_group_projection_view
+            is _STANDARD_PUBLIC_CLASS_GROUP_VIEW
+        )
+        context_module = __import__(
+            "sagejs.number_fields.class_unit_context",
+            fromlist=["class_unit_context"],
+        )
+        live_token = getattr(context_module, "_LIVE_CLASS_UNIT_CONTEXT_TOKEN", None)
+        begin = getattr(
+            getattr(result, "context", None),
+            "_begin_live_public_class_group_projection",
+            None,
+        )
+        finish = getattr(
+            getattr(result, "context", None),
+            "_finish_live_public_class_group_projection",
+            None,
+        )
+        transaction: Any = (
+            begin(live_token, result)
+            if callable(begin)
+            and callable(finish)
+            and live_token is not None
+            and proof_value is False
+            and helpers_are_standard
+            else None
+        )
+        if transaction is not None and transaction[0] == "published":
+            answer = maps.public_class_group_projection_view(transaction[1])
+        elif transaction is not None and transaction[0] == "reserved":
+            if not callable(finish):
+                raise ArithmeticError("the public projection lost its transaction")
+            try:
+                # The adapter publishes only after its independent `verify()` replay.
+                adapted = adapter(result)
+                projection = maps.seal_public_class_group_projection(adapted)
+                # Constructing the first view performs the exact projection-type
+                # check before the context can publish anything.  A replaced
+                # helper therefore owns only this reservation and retry remains
+                # cold and atomic.
+                answer = maps.public_class_group_projection_view(projection)
+                if finish(live_token, projection, commit=True) is not True:
+                    raise ArithmeticError(
+                        "the public class-group projection failed publication"
+                    )
+            except BaseException:
+                finish(live_token, commit=False)
+                raise
+        else:
+            # Non-reusable paths retain the independent cold adapter.
+            answer = adapter(result)
+            if not helpers_are_standard:
+                verify = getattr(answer, "verify", None)
+                if not callable(verify) or verify() is not True:
+                    raise ArithmeticError(
+                        "an interposed public class-group adapter failed verification"
+                    )
     return answer
 
 

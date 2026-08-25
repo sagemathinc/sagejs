@@ -171,13 +171,7 @@ def _canonical_payload(value: Any, purpose: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise TypeError(purpose + " must serialize to a dictionary")
     try:
-        text = json.dumps(
-            value,
-            allow_nan=False,
-            ensure_ascii=True,
-            separators=(",", ":"),
-            sort_keys=True,
-        )
+        text = _canonical_json(value)
         payload = json.loads(text)
     except (TypeError, ValueError) as error:
         raise TypeError(purpose + " must be JSON-safe") from error
@@ -187,14 +181,17 @@ def _canonical_payload(value: Any, purpose: str) -> dict[str, Any]:
 
 
 def _payload_hash(payload: dict[str, Any]) -> str:
-    text = json.dumps(
-        payload,
+    return hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(
+        value,
         allow_nan=False,
         ensure_ascii=True,
         separators=(",", ":"),
         sort_keys=True,
     )
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def _authenticated_payload(payload: dict[str, Any]) -> bool:
@@ -966,6 +963,8 @@ class IdealClassGroup:
         self._presentation_evidence = presentation_evidence
         self._proof_record = proof_record
         self._proof_context = proof_context
+        self._projection_core: Any = None
+        self._projection_ideals_materialized = True
         self._relation_count = (
             None
             if relation_count is None
@@ -1061,6 +1060,9 @@ class IdealClassGroup:
 
     @property
     def proof_record(self) -> Any:
+        projection = self._projection_core
+        if projection is not None:
+            return projection.proof_record()
         return self._proof_record
 
     def ideal_order(self) -> Any:
@@ -1091,6 +1093,9 @@ class IdealClassGroup:
         return self._generators
 
     def gens_ideals(self) -> tuple[Any, ...]:
+        projection = self._projection_core
+        if projection is not None:
+            projection.materialize_view_ideals(self)
         return self._generator_ideals
 
     def from_coordinates(self, coordinates: Any) -> IdealClassElement:
@@ -1104,6 +1109,9 @@ class IdealClassGroup:
         return self.from_coordinates(self.discrete_log(ideal).coordinates)
 
     def representative_ideal(self, coordinates: Any) -> Any:
+        projection = self._projection_core
+        if projection is not None:
+            projection.materialize_view_ideals(self)
         element = IdealClassElement(self, coordinates)
         answer = self._order.ideal(1)
         for coordinate, ideal in zip(
@@ -1169,6 +1177,9 @@ class IdealClassGroup:
 
     def proof_payload(self) -> dict[str, Any]:
         """Serialize the attached conditional or unconditional proof record."""
+        projection = self._projection_core
+        if projection is not None:
+            return projection.proof_payload()
         if self._proof_record is None:
             raise ValueError("the class group has no attached completeness proof")
         if isinstance(self._proof_record, ConditionalGRHProofRecord):
@@ -1195,6 +1206,9 @@ class IdealClassGroup:
         self, payload: dict[str, Any], *, cancelled: Any = None
     ) -> bool:
         """Decode and independently replay one serialized completeness proof."""
+        projection = self._projection_core
+        if projection is not None:
+            return projection.verify_proof_payload(self, payload, cancelled=cancelled)
         try:
             if _cancelled(cancelled):
                 return False
@@ -1309,6 +1323,9 @@ class IdealClassGroup:
         return free_rank is None or int(free_rank) == 0
 
     def verify(self) -> bool:
+        projection = self._projection_core
+        if projection is not None:
+            return projection.verify_view(self)
         try:
             if proof_label(self._proof_status) not in COMPLETE_PROOF_LABELS:
                 return False
@@ -1327,6 +1344,295 @@ class IdealClassGroup:
             return True
         except (TypeError, ValueError, ArithmeticError, AttributeError, IndexError):
             return False
+
+
+class _IdealClassGroupProjectionView:
+    __slots__ = (
+        "_generation_verifier",
+        "_generator_payloads",
+        "_ideal_log",
+        "_presentation_json",
+        "_proof_payload_json",
+        "_metadata",
+        "_witness_generators",
+        "_sealed",
+    )
+
+    def __init__(
+        self,
+        generator_payloads: tuple[str, ...],
+        witness_generators: tuple[tuple[Any, str, str], ...],
+        presentation_json: str,
+        proof_payload_json: str,
+        metadata: tuple[Any, ...],
+        ideal_log: Any,
+        generation_verifier: Any,
+    ) -> None:
+        object.__setattr__(self, "_generator_payloads", generator_payloads)
+        object.__setattr__(self, "_witness_generators", witness_generators)
+        object.__setattr__(self, "_presentation_json", presentation_json)
+        object.__setattr__(self, "_proof_payload_json", proof_payload_json)
+        object.__setattr__(self, "_metadata", metadata)
+        object.__setattr__(self, "_ideal_log", ideal_log)
+        object.__setattr__(self, "_generation_verifier", generation_verifier)
+        object.__setattr__(self, "_sealed", True)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_sealed", False):
+            raise AttributeError("a public class-group projection is immutable")
+        object.__setattr__(self, name, value)
+
+    def _ideals(self) -> tuple[Any, ...]:
+        ideal_module = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+        )
+        return tuple(
+            ideal_module.ideal_from_dict(self._metadata[0], json.loads(payload))
+            for payload in self._generator_payloads
+        )
+
+    def proof_record(self) -> ConditionalGRHProofRecord:
+        return ConditionalGRHProofRecord.from_dict(self.proof_payload())
+
+    def proof_payload(self) -> dict[str, Any]:
+        return json.loads(self._proof_payload_json)
+
+    def new_view(self) -> IdealClassGroup:
+        order, invariants, status, algorithm, theorem, bound, count = self._metadata
+        answer = IdealClassGroup.__new__(IdealClassGroup)
+        answer._order = order
+        answer._invariants = invariants
+        answer._generator_ideals = ()
+        answer._relation_witnesses = ()
+        answer._ideal_log = self._ideal_log
+        answer._proof_status = status
+        answer._algorithm = algorithm
+        answer._factor_base_theorem = theorem
+        answer._factor_base_bound = bound
+        answer._presentation_evidence = None
+        answer._proof_record = None
+        answer._proof_context = None
+        answer._relation_count = count
+        answer._generators = tuple(
+            IdealClassElement(
+                answer,
+                [1 if index == position else 0 for index in range(len(invariants))],
+            )
+            for position in range(len(invariants))
+        )
+        answer._one = IdealClassElement(answer, [0 for _value in invariants])
+        answer._map = IdealClassMap(answer)
+        answer._projection_core = self
+        answer._projection_ideals_materialized = False
+        return answer
+
+    def materialize_view_ideals(self, view: IdealClassGroup) -> None:
+        if view._projection_core is not self:
+            raise ArithmeticError("a projected class group changed its receipt")
+        if not view._projection_ideals_materialized:
+            view._generator_ideals = self._ideals()
+            view._projection_ideals_materialized = True
+
+    def _full_group(self) -> IdealClassGroup:
+        matrix_module = __import__(
+            "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
+        )
+        order, invariants, status, algorithm, theorem, bound, count = self._metadata
+        ideals = self._ideals()
+        witnesses = []
+        field = order.number_field()
+        for invariant, ideal, (generator_type, payload, source) in zip(
+            invariants, ideals, self._witness_generators, strict=True
+        ):
+            generator = generator_type.from_dict(field, json.loads(payload))
+            witnesses.append(
+                PrincipalIdealWitness(
+                    _ideal_power(ideal, invariant), generator, source=source
+                )
+            )
+        presentation = matrix_module.RelationPresentation.from_dict(
+            json.loads(self._presentation_json)
+        )
+        context = _detached_conditional_replay_context(
+            order,
+            invariants,
+            ideals,
+            self._proof_payload_json,
+            self._generation_verifier,
+        )
+        return IdealClassGroup(
+            order,
+            invariants,
+            ideals,
+            witnesses,
+            self._ideal_log,
+            proof_status=status,
+            algorithm=algorithm,
+            factor_base_theorem=theorem,
+            factor_base_bound=bound,
+            presentation_evidence=presentation,
+            proof_record=self.proof_record(),
+            proof_context=context,
+            relation_count=count,
+        )
+
+    def _matches_view(self, view: IdealClassGroup) -> bool:
+        try:
+            self.materialize_view_ideals(view)
+            ideal_module = __import__(
+                "sagejs.number_fields.ideal_arithmetic",
+                fromlist=["ideal_arithmetic"],
+            )
+            payloads = tuple(
+                _canonical_json(ideal_module.serialize_ideal(ideal))
+                for ideal in view._generator_ideals
+            )
+            order, invariants, status, algorithm, theorem, bound, count = self._metadata
+            return bool(
+                view._order is order
+                and view._invariants == invariants
+                and view._proof_status == status
+                and view._algorithm == algorithm
+                and view._factor_base_theorem == theorem
+                and view._factor_base_bound == bound
+                and view._relation_count == count
+                and view._ideal_log is self._ideal_log
+                and payloads == self._generator_payloads
+                and len(view._generators) == len(invariants)
+                and all(generator.parent() is view for generator in view._generators)
+                and view._one.parent() is view
+                and view._map.domain() is view
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+    def verify_view(self, view: IdealClassGroup) -> bool:
+        if not self._matches_view(view):
+            return False
+        try:
+            return self._full_group().verify() is True
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+    def verify_proof_payload(
+        self,
+        view: IdealClassGroup,
+        payload: dict[str, Any],
+        *,
+        cancelled: Any = None,
+    ) -> bool:
+        if _cancelled(cancelled) or not self._matches_view(view):
+            return False
+        try:
+            return self._full_group().verify_proof_payload(payload, cancelled=cancelled)
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+
+class _SealedIdealClassGroupProjection:
+    __slots__ = (
+        "_generation_verifier",
+        "_generator_payloads",
+        "_ideal_log",
+        "_metadata",
+        "_presentation_json",
+        "_proof_payload_json",
+        "_sealed",
+        "_witness_generators",
+    )
+
+    def __init__(self, source: IdealClassGroup) -> None:
+        if type(source) is not IdealClassGroup:
+            raise TypeError("a public projection needs an ordinary exact group")
+        if not isinstance(source._proof_record, ConditionalGRHProofRecord):
+            raise TypeError("only conditional public projections are reusable")
+        if IdealClassGroup.verify(source) is not True:
+            raise ArithmeticError("a public projection source failed exact replay")
+        context = source._proof_context
+        if type(context) is not _EngineProofReplayContext:
+            raise TypeError("a public projection needs the standard replay context")
+        saturation = context._saturation_producer
+        generation_verifier = getattr(saturation, "_analytic_generation_verifier", None)
+        if not callable(generation_verifier):
+            raise TypeError("a public projection needs exact generation replay")
+        ideal_module = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+        )
+        generator_payloads = tuple(
+            _canonical_json(ideal_module.serialize_ideal(ideal))
+            for ideal in source._generator_ideals
+        )
+        witness_generators = []
+        for witness in source._relation_witnesses:
+            generator = witness.generator
+            encoder = getattr(generator, "to_dict", None)
+            decoder = getattr(type(generator), "from_dict", None)
+            if not callable(encoder) or not callable(decoder):
+                raise TypeError(
+                    "a projected principal witness needs canonical serialization"
+                )
+            witness_generators.append(
+                (type(generator), _canonical_json(encoder()), witness.source)
+            )
+        presentation_encoder = getattr(source._presentation_evidence, "to_dict", None)
+        if not callable(presentation_encoder):
+            raise TypeError("a public projection needs a replayable presentation")
+        object.__setattr__(self, "_generator_payloads", generator_payloads)
+        object.__setattr__(self, "_witness_generators", tuple(witness_generators))
+        object.__setattr__(
+            self, "_presentation_json", _canonical_json(presentation_encoder())
+        )
+        object.__setattr__(
+            self, "_proof_payload_json", _canonical_json(source.proof_payload())
+        )
+        object.__setattr__(
+            self,
+            "_metadata",
+            (
+                source._order,
+                source._invariants,
+                source._proof_status,
+                source._algorithm,
+                source._factor_base_theorem,
+                source._factor_base_bound,
+                source._relation_count,
+            ),
+        )
+        object.__setattr__(self, "_ideal_log", source._ideal_log)
+        object.__setattr__(self, "_generation_verifier", generation_verifier)
+        object.__setattr__(self, "_sealed", True)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_sealed", False):
+            raise AttributeError("a public class-group projection is immutable")
+        object.__setattr__(self, name, value)
+
+    def new_view(self) -> IdealClassGroup:
+        # The context-owned projection never escapes.  Every public wrapper
+        # gets its own immutable capsule, so mutating one view cannot alter the
+        # replay state used by a later observation.
+        capsule = _IdealClassGroupProjectionView(
+            self._generator_payloads,
+            self._witness_generators,
+            self._presentation_json,
+            self._proof_payload_json,
+            self._metadata,
+            self._ideal_log,
+            self._generation_verifier,
+        )
+        return capsule.new_view()
+
+
+def seal_public_class_group_projection(
+    source: IdealClassGroup,
+) -> _SealedIdealClassGroupProjection:
+    return _SealedIdealClassGroupProjection(source)
+
+
+def public_class_group_projection_view(projection: Any) -> IdealClassGroup:
+    if type(projection) is not _SealedIdealClassGroupProjection:
+        raise ArithmeticError("the public class-group projection changed type")
+    return projection.new_view()
 
 
 def class_group_from_context(context: Any) -> IdealClassGroup:
@@ -2020,6 +2326,193 @@ class _EngineProofReplayContext:
         )
 
 
+class _DetachedConditionalStage:
+    __slots__ = ("details", "name", "state")
+
+    def __init__(self, name: str, state: str, details: dict[str, Any]) -> None:
+        self.name = name
+        self.state = state
+        self.details = dict(details)
+
+
+class _DetachedConditionalEngineGroup:
+    __slots__ = (
+        "_generator_ideals",
+        "_invariants",
+        "factor_base_theorem",
+        "proof_status",
+    )
+
+    def __init__(
+        self,
+        invariants: tuple[int, ...],
+        generator_ideals: tuple[Any, ...],
+        theorem: str,
+    ) -> None:
+        self._invariants = tuple(invariants)
+        self._generator_ideals = tuple(generator_ideals)
+        self.factor_base_theorem = theorem
+        self.proof_status = EXACT_RELATIONS_CONDITIONAL_GRH
+
+    def invariants(self) -> tuple[int, ...]:
+        return self._invariants
+
+    def order(self) -> int:
+        answer = 1
+        for value in self._invariants:
+            answer *= value
+        return answer
+
+    def gens_ideals(self) -> tuple[Any, ...]:
+        return self._generator_ideals
+
+
+class _DetachedConditionalResult:
+    __slots__ = (
+        "complete",
+        "diagnostics",
+        "proof_status",
+        "saturation_original_units",
+        "saturation_record",
+        "stages",
+    )
+
+    def __init__(
+        self,
+        saturation_record: Any,
+        *,
+        bound: int,
+        relation_count: int,
+    ) -> None:
+        self.complete = True
+        self.proof_status = EXACT_RELATIONS_CONDITIONAL_GRH
+        self.saturation_record = saturation_record
+        self.saturation_original_units = tuple(saturation_record.original_units)
+        self.diagnostics = {
+            "factor_base_bound": bound,
+            "relations": relation_count,
+        }
+        self.stages = (
+            _DetachedConditionalStage(
+                "proof",
+                "complete",
+                {"proof_status": EXACT_RELATIONS_CONDITIONAL_GRH},
+            ),
+        )
+
+    def verify_saturation_record(self, payload: Any) -> bool:
+        try:
+            return bool(
+                _canonical_payload(payload, "detached saturation evidence")
+                == _canonical_payload(
+                    self.saturation_record, "detached saturation evidence"
+                )
+                and self.saturation_record.verify(
+                    self.saturation_record._field,
+                    self.saturation_record._order,
+                    self.saturation_original_units,
+                )
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+
+def _clone_detached_conditional_saturation(
+    order: Any,
+    payload: dict[str, Any],
+    generation_verifier: Any,
+) -> Any:
+    if payload.get("schema") != _SATURATION_SCHEMA or not _authenticated_payload(
+        payload
+    ):
+        raise ArithmeticError("detached saturation evidence failed authentication")
+    groups = __import__(
+        "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
+    )
+    analytic = __import__(
+        "sagejs.number_fields.class_unit_analytic", fromlist=["class_unit_analytic"]
+    )
+    factored = __import__(
+        "sagejs.number_fields.factored_elements", fromlist=["factored_elements"]
+    )
+    field = order.number_field()
+    original_units = tuple(
+        factored.FactoredNumberFieldElement.from_dict(field, value)
+        for value in payload.get("original_units", ())
+    )
+    units = tuple(
+        factored.FactoredNumberFieldElement.from_dict(field, value)
+        for value in payload.get("units", ())
+    )
+    certificate = analytic.UnitSaturationIndexCertificate.from_dict(
+        payload.get("analytic_certificate")
+    )
+    answer = groups.ClassUnitSaturationRecord(
+        field,
+        order,
+        original_units,
+        units,
+        index_bound=_integer(payload.get("index_bound"), "detached index bound"),
+        required_primes=payload.get("required_primes", ()),
+        remaining_index_bound=_integer(
+            payload.get("remaining_index_bound"), "detached remaining index"
+        ),
+        attempts=payload.get("attempts", ()),
+        analytic_validation=payload.get("analytic_validation", {}),
+        analytic_certificate=certificate,
+        analytic_generation_verifier=generation_verifier,
+        producer_artifacts=(),
+        analytic_module=analytic,
+        analytic_workspace=None,
+        reason=str(payload.get("reason")),
+    )
+    if _canonical_payload(answer, "detached saturation evidence") != payload:
+        raise ArithmeticError("detached saturation reconstruction changed payload")
+    return answer
+
+
+def _detached_conditional_replay_context(
+    order: Any,
+    invariants: tuple[int, ...],
+    generator_ideals: tuple[Any, ...],
+    proof_payload_json: str,
+    generation_verifier: Any,
+) -> _EngineProofReplayContext:
+    payload = json.loads(proof_payload_json)
+    if not _conditional_payload_within_caps(payload):
+        raise ArithmeticError("detached conditional proof exceeds replay caps")
+    record = ConditionalGRHProofRecord.from_dict(payload)
+    evidence = payload.get("conditional_evidence")
+    saturation_payload = record.saturation.evidence
+    if not isinstance(evidence, dict) or not isinstance(saturation_payload, dict):
+        raise TypeError("detached conditional proof lost exact evidence")
+    saturation = _clone_detached_conditional_saturation(
+        order,
+        _canonical_payload(saturation_payload, "detached saturation evidence"),
+        generation_verifier,
+    )
+    engine_group = _DetachedConditionalEngineGroup(
+        tuple(invariants), tuple(generator_ideals), record.theorem
+    )
+    result = _DetachedConditionalResult(
+        saturation,
+        bound=_integer(record.bound[0], "detached conditional bound"),
+        relation_count=record.relation_count,
+    )
+    return _EngineProofReplayContext(
+        result,
+        engine_group,
+        order,
+        record.saturation,
+        saturation,
+        _canonical_payload(saturation_payload, "detached saturation evidence"),
+        _integer(record.bound[0], "detached conditional bound"),
+        conditional_evidence_payload=_canonical_payload(
+            evidence, "detached conditional evidence"
+        ),
+    )
+
+
 def _engine_unconditional_records(
     engine_group: Any,
     replay: _EngineProofReplayContext,
@@ -2402,4 +2895,6 @@ __all__ = [
     "PrincipalityResult",
     "class_group_from_engine_result",
     "class_group_from_context",
+    "public_class_group_projection_view",
+    "seal_public_class_group_projection",
 ]
