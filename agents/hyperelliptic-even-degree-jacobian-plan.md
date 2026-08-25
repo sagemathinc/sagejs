@@ -2,8 +2,10 @@
 
 ## Status
 
-Proposed on 2026-08-25. This is a mathematical correctness and API expansion,
-not a native-performance project.
+Implemented and release-validated on 2026-08-25. The production mathematical
+implementation is commit `2f1e296481aef4455ccd0aa35199692e44509116`.
+This is a mathematical correctness and API expansion, not a native-performance
+project.
 
 The first production slice is deliberately narrow:
 
@@ -18,6 +20,39 @@ registry, arena, map, owned aggregate, handwritten Cantor code, or a hidden
 conversion to an odd-degree model. Native acceleration is a later measured
 slice after the dynamic representation and its mathematical contract are
 stable.
+
+The completed slice provides:
+
+- exact split `(u,v,n)` arithmetic for smooth genus-2 and genus-3 even-degree
+  models over odd prime fields with two rational points at infinity;
+- generalized `y^2+h*y=f` equations, deterministic infinity orientation,
+  point/basepoint construction, addition, doubling, negation, subtraction,
+  scalar multiplication, order, serialization, enumeration, sampling, and
+  group-structure maps/certificates;
+- the Sage-compatible `Jacobian(H)` facade and model-specific capability
+  errors for unsupported consumers;
+- a pinned SageMath differential corpus, the `[P-P]` cancellation regression,
+  exhaustive genus-2 `GF(3)` group-law coverage, complete genus-3 `GF(5)`
+  enumeration, adversarial authority/transplant tests, and verbatim executable
+  documentation examples.
+
+The implementation deliberately remains ordinary reference arithmetic.
+`algorithm="auto"` selects it, while `algorithm="native"` fails explicitly;
+there is no split packed schema or new low-level representation machinery.
+Characteristic two, inert infinity, `QQ`, extension-field release claims,
+Kummer/height support, and native split arithmetic remain deferred exactly as
+listed below.
+
+Release validation completed with a policy-enabled 7-stage production build,
+focused odd/split suites (22/22), strict CPython/Ruff/Pyright checks (239
+modules, zero errors), architecture validation (1122 boundaries and 998 Wasm
+capabilities), the complete unit tier (71/71 files), and the complete portable
+tier (65/65 files). The focused split suite passed 8/8 on native Windows x64.
+Because the shared `jacobian.py` source is part of the authenticated native
+Cantor source bundle, the existing odd-model auto-selection policy was also
+re-frozen—without widening its envelope—against 24 exact current-source
+receipts across Linux x64, Linux ARM64, macOS ARM64, and Windows x64. Split
+models are not authorized for those native entries.
 
 ## Objective
 

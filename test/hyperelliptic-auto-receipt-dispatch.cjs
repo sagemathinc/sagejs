@@ -404,7 +404,7 @@ test("absent policy preserves development auto while release policy gates misses
   assert.equal(release.matched_decision.reason, "exact-receipt-policy-match");
   assert.equal(
     release.matched_decision.entry_id,
-    "prime-cantor-g2-add-b1-v1",
+    "prime-cantor-g2-add-2f1e2964-v1",
   );
   assert.deepEqual(release.prepared, ["reference", "unreceipted-fallback"]);
   assert.equal(release.rational_auto, "exhaustive");
@@ -474,7 +474,7 @@ test("the release policy enables only six exact Cantor envelopes", () => {
   assert(candidate.entries.every((entry) => entry.enabled));
   assert.equal(
     candidate.source_bundle.sha256,
-    "4e35043ffea8c3818639eaccc500de3c054c882806080aca7db34402f1e38f46",
+    "1985fa5202ce06e6dcbfe037db6f569c9791d2d6677e8c1f1a1a29b6af8d7d59",
   );
   assert.deepEqual(
     [...new Set(candidate.entries.map((entry) => entry.backend))],

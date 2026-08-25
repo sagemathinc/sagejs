@@ -1,0 +1,1495 @@
+{
+  "schema": "sagejs.hyperelliptic-cross-platform-acceptance.v1",
+  "generated_at_utc": "2026-08-25T22:50:16.904Z",
+  "host": {
+    "hostname": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "os_type": "Linux",
+    "platform": "linux",
+    "os_release": "6.17.0-1022-gcp",
+    "architecture": "x64",
+    "cpu_models": [
+      "AMD EPYC 7B13"
+    ],
+    "logical_cpus": 8,
+    "total_memory_bytes": 33649016832,
+    "free_memory_bytes_before": 32255844352,
+    "node": "v26.5.1",
+    "preflight": {
+      "uptime": {
+        "command": [
+          "uptime"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "22:50:16 up 3 days, 12:46,  1 user,  load average: 1.00, 1.03, 0.94",
+        "stderr": ""
+      },
+      "git_status": {
+        "command": [
+          "git",
+          "status",
+          "--short",
+          "--branch"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "## HEAD (no branch)",
+        "stderr": ""
+      },
+      "git_commit": {
+        "command": [
+          "git",
+          "rev-parse",
+          "HEAD"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "2f1e296481aef4455ccd0aa35199692e44509116",
+        "stderr": ""
+      },
+      "compiler": {
+        "command": [
+          "cc",
+          "--version"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0\nCopyright (C) 2023 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+        "stderr": ""
+      },
+      "uname": {
+        "command": [
+          "uname",
+          "-a"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "Linux cocalc-vm-51c5044ca6d3406d983e0f10 6.17.0-1022-gcp #25-Ubuntu SMP Sat Jul 25 01:12:40 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux",
+        "stderr": ""
+      },
+      "cpu": {
+        "command": [
+          "lscpu"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           48 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  8\nOn-line CPU(s) list:                     0-7\nVendor ID:                               AuthenticAMD\nModel name:                              AMD EPYC 7B13\nCPU family:                              25\nModel:                                   1\nThread(s) per core:                      1\nCore(s) per socket:                      8\nSocket(s):                               1\nStepping:                                0\nBogoMIPS:                                4899.99\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext ssbd ibrs ibpb stibp vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 clzero xsaveerptr arat umip vaes vpclmulqdq rdpid fsrm\nHypervisor vendor:                       KVM\nVirtualization type:                     full\nL1d cache:                               256 KiB (8 instances)\nL1i cache:                               256 KiB (8 instances)\nL2 cache:                                4 MiB (8 instances)\nL3 cache:                                32 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-7\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Mitigation; Safe RET\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Mitigation; Clear CPU buffers\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected",
+        "stderr": ""
+      },
+      "memory": {
+        "command": [
+          "free",
+          "-h"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "total        used        free      shared  buff/cache   available\nMem:            31Gi       1.3Gi        10Gi       1.1Mi        19Gi        30Gi\nSwap:             0B          0B          0B",
+        "stderr": ""
+      },
+      "processes": {
+        "command": [
+          "ps",
+          "-eo",
+          "pid,pcpu,pmem,comm",
+          "--sort=-pcpu"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "PID %CPU %MEM COMMAND\n1495938  100  0.0 ps\n1494789  0.2  0.8 node-MainThread\n      1  0.0  0.0 systemd\n1494727  0.0  0.0 systemd\n     15  0.0  0.0 rcu_sched\n    177  0.0  0.3 systemd-journal\n    708  0.0  0.1 google_osconfig\n1491474  0.0  0.0 kworker/u32:0-iou_exit\n    977  0.0  0.0 google_guest_ag\n1484530  0.0  0.0 kworker/u32:1-kvfree_rcu_reclaim\n    241  0.0  0.0 multipathd\n1487307  0.0  0.0 kworker/3:2-events\n     97  0.0  0.0 hwrng\n1486728  0.0  0.0 kworker/u32:3-iou_exit\n1485420  0.0  0.0 kworker/0:2-events\n     73  0.0  0.0 kcompactd0\n    693  0.0  0.0 dbus-daemon\n1487500  0.0  0.0 kworker/1:0-events\n1357653  0.0  0.0 kworker/2:0-events\n1357385  0.0  0.0 kworker/4:2-events\n    793  0.0  0.0 rsyslogd\n1485372  0.0  0.0 kworker/7:1-events\n1477928  0.0  0.0 kworker/6:2-events\n    754  0.0  0.1 snapd\n   1178  0.0  0.0 systemd-logind\n   1091  0.0  0.0 polkitd\n1348278  0.0  0.0 kworker/5:0-events\n     93  0.0  0.0 kswapd0\n1494723  0.0  0.0 sshd\n    555  0.0  0.0 jbd2/sdb-8\n    842  0.0  0.0 sshd\n    129  0.0  0.0 jbd2/sda1-8\n     29  0.0  0.0 migration/2\n     23  0.0  0.0 migration/1\n     35  0.0  0.0 migration/3\n     47  0.0  0.0 migration/5\n     53  0.0  0.0 migration/6\n     41  0.0  0.0 migration/4\n     59  0.0  0.0 migration/7\n    128  0.0  0.0 kworker/7:1H-kblockd\n     18  0.0  0.0 migration/0\n     24  0.0  0.0 ksoftirqd/1\n     14  0.0  0.0 ksoftirqd/0\n     30  0.0  0.0 ksoftirqd/2\n     60  0.0  0.0 ksoftirqd/7\n     36  0.0  0.0 ksoftirqd/3\n     42  0.0  0.0 ksoftirqd/4\n     48  0.0  0.0 ksoftirqd/5\n     54  0.0  0.0 ksoftirqd/6\n    582  0.0  0.0 systemd-resolve\n   1195  0.0  0.0 cron\n    127  0.0  0.0 kworker/1:1H-kblockd\n     92  0.0  0.0 kworker/0:1H-kblockd\n    104  0.0  0.0 kworker/2:1H-kblockd\n    155  0.0  0.0 kworker/3:1H-kblockd\n    164  0.0  0.0 kworker/4:1H-kblockd\n    131  0.0  0.0 kworker/5:1H-kblockd\n    245  0.0  0.0 systemd-udevd\n    185  0.0  0.0 kworker/6:1H-kblockd\n    647  0.0  0.0 systemd-network\n      2  0.0  0.0 kthreadd\n     68  0.0  0.0 khungtaskd\n    824  0.0  0.0 chronyd\n    717  0.0  0.0 networkd-dispat\n    831  0.0  0.0 unattended-upgr\n     17  0.0  0.0 rcu_exp_gp_kthread_worker\n      3  0.0  0.0 pool_workqueue_release\n      4  0.0  0.0 kworker/R-rcu_gp\n      5  0.0  0.0 kworker/R-sync_wq\n      6  0.0  0.0 kworker/R-kvfree_rcu_reclaim\n      7  0.0  0.0 kworker/R-slub_flushwq\n      8  0.0  0.0 kworker/R-netns\n     10  0.0  0.0 kworker/0:0H-events_highpri\n     13  0.0  0.0 kworker/R-mm_percpu_wq\n     16  0.0  0.0 rcu_exp_par_gp_kthread_worker/0\n     19  0.0  0.0 idle_inject/0\n     20  0.0  0.0 cpuhp/0\n     21  0.0  0.0 cpuhp/1\n     22  0.0  0.0 idle_inject/1\n     26  0.0  0.0 kworker/1:0H-events_highpri\n     27  0.0  0.0 cpuhp/2\n     28  0.0  0.0 idle_inject/2\n     32  0.0  0.0 kworker/2:0H-events_highpri\n     33  0.0  0.0 cpuhp/3\n     34  0.0  0.0 idle_inject/3\n     38  0.0  0.0 kworker/3:0H-events_highpri\n     39  0.0  0.0 cpuhp/4\n     40  0.0  0.0 idle_inject/4\n     44  0.0  0.0 kworker/4:0H-events_highpri\n     45  0.0  0.0 cpuhp/5\n     46  0.0  0.0 idle_inject/5\n     50  0.0  0.0 kworker/5:0H-kblockd\n     51  0.0  0.0 cpuhp/6\n     52  0.0  0.0 idle_inject/6\n     56  0.0  0.0 kworker/6:0H-events_highpri\n     57  0.0  0.0 cpuhp/7\n     58  0.0  0.0 idle_inject/7\n     62  0.0  0.0 kworker/7:0H-kblockd\n     63  0.0  0.0 kdevtmpfs\n     64  0.0  0.0 kworker/R-inet_frag_wq\n     65  0.0  0.0 rcu_tasks_rude_kthread\n     66  0.0  0.0 rcu_tasks_trace_kthread\n     67  0.0  0.0 kauditd\n     69  0.0  0.0 oom_reaper\n     71  0.0  0.0 kworker/R-writeback\n     74  0.0  0.0 ksmd\n     75  0.0  0.0 khugepaged\n     76  0.0  0.0 kworker/R-kblockd\n     77  0.0  0.0 kworker/R-blkcg_punt_bio\n     78  0.0  0.0 kworker/R-kintegrityd\n     79  0.0  0.0 irq/9-acpi\n     83  0.0  0.0 kworker/R-tpm_dev_wq\n     84  0.0  0.0 kworker/R-ata_sff\n     85  0.0  0.0 kworker/R-md\n     86  0.0  0.0 kworker/R-md_bitmap\n     87  0.0  0.0 kworker/R-edac-poller\n     88  0.0  0.0 kworker/R-devfreq_wq\n     89  0.0  0.0 watchdogd\n     91  0.0  0.0 kworker/R-quota_events_unbound\n     94  0.0  0.0 ecryptfs-kthread\n     95  0.0  0.0 kworker/R-kthrotld\n     96  0.0  0.0 kworker/R-acpi_thermal_pm\n     98  0.0  0.0 scsi_eh_0\n     99  0.0  0.0 kworker/R-scsi_tmf_0\n    100  0.0  0.0 kworker/R-nvme-wq\n    101  0.0  0.0 kworker/R-nvme-reset-wq\n    102  0.0  0.0 kworker/R-nvme-delete-wq\n    103  0.0  0.0 kworker/R-nvme-auth-wq\n    107  0.0  0.0 kworker/R-mld\n    108  0.0  0.0 kworker/R-ipv6_addrconf\n    109  0.0  0.0 kworker/R-kstrp\n    115  0.0  0.0 kworker/u33:0\n    126  0.0  0.0 kworker/R-charger_manager\n    130  0.0  0.0 kworker/R-ext4-rsv-conversion\n    199  0.0  0.0 kworker/R-kmpathd\n    201  0.0  0.0 kworker/R-kmpath_handlerd\n    255  0.0  0.0 psimon\n    397  0.0  0.0 jbd2/sda16-8\n    398  0.0  0.0 kworker/R-ext4-rsv-conversion\n    556  0.0  0.0 kworker/R-ext4-rsv-conversion\n    826  0.0  0.0 chronyd\n   1125  0.0  0.0 agetty\n   1133  0.0  0.0 agetty\n   1478  0.0  0.0 psimon\n   2193  0.0  0.0 kworker/R-tls-strp\n1487306  0.0  0.0 kworker/3:0\n1491855  0.0  0.0 kworker/5:1-cgroup_free\n1494284  0.0  0.0 kworker/2:1-cgroup_free\n1494728  0.0  0.0 (sd-pam)\n1494788  0.0  0.0 sshd\n1495084  0.0  0.0 kworker/4:1-cgroup_free\n1495137  0.0  0.0 kworker/0:1-cgroup_free\n1495177  0.0  0.0 kworker/6:1-cgroup_free\n1495196  0.0  0.0 kworker/7:0-cgroup_free\n1495319  0.0  0.0 kworker/1:2-cgroup_free\n1495417  0.0  0.0 kworker/2:2-cgroup_free\n1495559  0.0  0.0 kworker/5:2-cgroup_free\n1495674  0.0  0.0 kworker/u32:2-iou_exit\n1495675  0.0  0.0 kworker/u32:4\n1495832  0.0  0.0 kworker/3:1-mm_percpu_wq",
+        "stderr": ""
+      },
+      "governors": {
+        "command": [
+          "sh",
+          "-c",
+          "for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do test -r \"$f\" && printf '%s=%s\\n' \"$f\" \"$(cat \"$f\")\"; done"
+        ],
+        "exit_code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": ""
+      }
+    }
+  },
+  "repository": {
+    "root": "/home/user/sagejs-rc-b1a05935",
+    "commit": "2f1e296481aef4455ccd0aa35199692e44509116",
+    "status": "",
+    "harness_sha256": "b81a08b591d94191c23fedb6ea93c576251f46620b16732cab1087ca06c47669",
+    "build_receipt_sha256": "57fe626664d67656aa90a67edd27e2944c3bc6b2662cfe606ace82e0d5e27253",
+    "source_sha256": {
+      "src/lib/sagejs/hyperelliptic_curves/frobenius.py": "f104c3dbfbcbd80f83e712a6d1c376ed12b5e1489270aa498c4104f10640d755",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py": "8a2191c6978e7cd83c269e279f9d06cff0587a926c068d51ceaebde62a20bf2b",
+      "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_formulas.py": "762394ae727216b4625b7c539ef43799e5abfa8ec7d7f9869c1d6d140b45f0cc",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian.py": "961eab4e87c284a3d3b4911fbd3e3837aedf34211abd2940ece5608e94ae491c",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py": "0ad1a48746777eccc6e47c948eadfaeb43937a178be01188fe723c71ebb40bcb",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py": "a93729738d2063be3b85d3948c50edbd2165b1a1ca42f62aa6336eb771b0920c",
+      "packages/flint/src/hyperelliptic/smalljac.c": "a1033120ed51d346771b3abec6b67c70b3ec96e757451b5a642e7aef2fae7058",
+      "packages/flint/src/addon.h": "214cc046b5f664be73917f2c5dee55eadb78a8b285e49667d37370e08cf4dd1e"
+    }
+  },
+  "configuration": {
+    "limits": [
+      10000,
+      100000
+    ],
+    "kummer_batch": 4096,
+    "cantor_add_batch": 1000,
+    "cantor_scalar_batch": 64,
+    "cantor_scalar_bits": 256,
+    "cantor_progression_batch": 1000,
+    "cantor_scalar_repeat": 1,
+    "repeat": 5,
+    "cache_root": "/tmp/sagejs-hyperelliptic-cross-platform-cache",
+    "algorithm_environment": {
+      "SAGEJS_NATIVE_MODE": null,
+      "SAGEJS_NATIVE_DISABLE": null,
+      "SAGEJS_NATIVE_REQUIRED": null,
+      "SAGEJS_NATIVE_AUTOLOAD": null,
+      "SAGEJS_NATIVE_CACHE_DIR": null,
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": null,
+      "VECLIB_MAXIMUM_THREADS": null,
+      "NUMEXPR_NUM_THREADS": null
+    }
+  },
+  "native_compilation": {
+    "wall_ms": 5872.6413,
+    "kummer": {
+      "cache_key": "4cec29e7d2be6570f104f60905a34b740399b580d7cd416db586456aa483dc5c",
+      "cached": false,
+      "source_hash": "8a2191c6978e7cd83c269e279f9d06cff0587a926c068d51ceaebde62a20bf2b",
+      "native_abi": 22,
+      "host_isolation": {
+        "isolated": true,
+        "boundary": "packed-c-abi",
+        "hostAbiVersion": 2,
+        "hostCallbacks": 0,
+        "forbiddenApis": [
+          "Node-API",
+          "Node header",
+          "CPython API",
+          "JavaScript engine API"
+        ],
+        "nativeDependencies": [
+          "libc",
+          "libm",
+          "FLINT"
+        ],
+        "functions": [
+          "genus2_kummer_project_batch",
+          "genus2_kummer_double_batch",
+          "genus2_kummer_degenerate_pseudo_add_batch"
+        ],
+        "kernelKinds": [
+          "prime-field-source"
+        ]
+      },
+      "source_bounds_checked": true,
+      "module_path": "/tmp/sagejs-hyperelliptic-cross-platform-cache/4cec29e7d2be6570f104f60905a34b740399b580d7cd416db586456aa483dc5c/index.cjs",
+      "manifest_sha256": "f0707a9fd92351fc8347d30b73f4cb5940edec87cf6f2ba7149e5d3c5346bdcd",
+      "core_source_sha256": "9e722d22fb6fa5d1c427a0db5b61d17f979350f0ee72ccad67d70f807b022c20"
+    },
+    "cantor": {
+      "cache_key": "cfcd178930bea176aa45706797855fa31686149b466acb2435775c54be7a9b21",
+      "cached": false,
+      "source_hash": "a93729738d2063be3b85d3948c50edbd2165b1a1ca42f62aa6336eb771b0920c",
+      "native_abi": 22,
+      "host_isolation": {
+        "isolated": true,
+        "boundary": "packed-c-abi",
+        "hostAbiVersion": 2,
+        "hostCallbacks": 0,
+        "forbiddenApis": [
+          "Node-API",
+          "Node header",
+          "CPython API",
+          "JavaScript engine API"
+        ],
+        "nativeDependencies": [
+          "libc",
+          "libm",
+          "GMP",
+          "FLINT"
+        ],
+        "functions": [
+          "packed_cantor_validate_batch",
+          "packed_cantor_copy_batch",
+          "packed_cantor_add_batch",
+          "packed_cantor_progression_batch",
+          "packed_cantor_scalar_batch",
+          "packed_cantor_search_progression",
+          "packed_cantor_search_progressions",
+          "packed_cantor_scalar_many_primes",
+          "_validate_packed_row",
+          "_cantor_add_one",
+          "_cantor_scalar_one",
+          "_cantor_negate_one",
+          "_row_copy",
+          "_row_equal",
+          "_row_hash",
+          "_scalar_bit_length",
+          "_scalar_operation_count",
+          "_search_record",
+          "_multi_search_record",
+          "_poly_add",
+          "_poly_clear",
+          "_poly_divrem",
+          "_poly_mul",
+          "_poly_sub",
+          "_unpack_row",
+          "_divexact",
+          "_pack_row",
+          "_poly_copy",
+          "_poly_is_one",
+          "_poly_xgcd",
+          "_reduce",
+          "_poly_scale"
+        ],
+        "kernelKinds": [
+          "prime-field-source",
+          "integer"
+        ]
+      },
+      "source_bounds_checked": true,
+      "module_path": "/tmp/sagejs-hyperelliptic-cross-platform-cache/cfcd178930bea176aa45706797855fa31686149b466acb2435775c54be7a9b21/index.cjs",
+      "manifest_sha256": "091fadfcf32a2291ea0c05a11bb69f8d59beb70ee1dd4e2b105ba2ae9bb78c2a",
+      "core_source_sha256": "bbd75e741c89d604f5fec11ec2dd298c2d85daea88fc84a9f153c955245f3a2c"
+    }
+  },
+  "modes": {
+    "dynamic": {
+      "mode": "dynamic",
+      "runtime_native_mode": "dynamic",
+      "session_ready_ms": 287.219938,
+      "process_start_rss_bytes": 154914816,
+      "local_factors": [
+        {
+          "curve": "y^2=x^5+x+1",
+          "start": 3,
+          "stop": 10000,
+          "packed_backend": "smalljac-native-addon",
+          "packed_rows": 1228,
+          "packed_exact_sha256": "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d",
+          "packed": {
+            "wall_ms": {
+              "count": 5,
+              "min": 58.26116499999989,
+              "median": 58.407076000001325,
+              "max": 58.78720499999872,
+              "mad": 0.04083100000207196
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 58.421,
+              "median": 58.476,
+              "max": 63.849,
+              "mad": 0.054999999999999716
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 0,
+              "median": 0,
+              "max": 0,
+              "mad": 0
+            },
+            "peak_rss_bytes": 476528640
+          },
+          "coefficient_rows_exact_sha256": "f25885d7ff7194130ef32d7528a389211e490c49763c27f9af411761b585fea6",
+          "coefficient_exact_checksum": "(1225, 5736361, 1070, 5746424)",
+          "coefficients": {
+            "wall_ms": {
+              "count": 5,
+              "min": 218.59442299999864,
+              "median": 222.96831300000122,
+              "max": 227.69995199999903,
+              "mad": 1.832780000002458
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 225.111,
+              "median": 234.373,
+              "max": 281.545,
+              "mad": 9.262
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 3.022,
+              "median": 4.981,
+              "max": 8.903,
+              "mad": 1.959
+            },
+            "peak_rss_bytes": 497369088,
+            "arithmetic_ms": {
+              "count": 5,
+              "min": 188.323974609375,
+              "median": 192.83318519592285,
+              "max": 196.22468948364258,
+              "mad": 2.945423126220703
+            }
+          }
+        },
+        {
+          "curve": "y^2=x^5+x+1",
+          "start": 3,
+          "stop": 100000,
+          "packed_backend": "smalljac-native-addon",
+          "packed_rows": 9591,
+          "packed_exact_sha256": "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894",
+          "packed": {
+            "wall_ms": {
+              "count": 5,
+              "min": 1768.557331,
+              "median": 1770.3237609999996,
+              "max": 1771.2657520000012,
+              "mad": 0.5972710000005463
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 1768.644,
+              "median": 1770.117,
+              "max": 1771.058,
+              "mad": 0.9230000000000018
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 0,
+              "median": 0,
+              "max": 0.279,
+              "mad": 0
+            },
+            "peak_rss_bytes": 497500160
+          },
+          "coefficient_rows_exact_sha256": "a501f7d70e91e32338122f08f89281d301d844b3b143c3af159d74d7d987cb9f",
+          "coefficient_exact_checksum": "(9588, 454396502, 31923, 459539912)",
+          "coefficients": {
+            "wall_ms": {
+              "count": 5,
+              "min": 2707.292168,
+              "median": 2718.393618000002,
+              "max": 2729.532406999999,
+              "mad": 7.430948999997781
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 2739.26,
+              "median": 2759.396,
+              "max": 2858.462,
+              "mad": 18.620000000000346
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 1,
+              "median": 2.306,
+              "max": 27.388,
+              "mad": 0.6709999999999998
+            },
+            "peak_rss_bytes": 486060032,
+            "arithmetic_ms": {
+              "count": 5,
+              "min": 2674.2188930511475,
+              "median": 2682.4588775634766,
+              "max": 2690.6538009643555,
+              "mad": 3.3254623413085938
+            }
+          }
+        }
+      ],
+      "kummer": {
+        "curve": "y^2+h*y=f; f=[1,2,3,4,5,1], h=[2,0,3]",
+        "prime": 4294967291,
+        "batch_size": 4096,
+        "capability": "(False, 'dynamic', 4096, ('genus2-kummer-prime.v1', 4294967291, (1, 2, 3, 4, 5, 1, 0, 0), (2, 0, 3, 0)))",
+        "object_cold": {
+          "wall_ms": 2048.999039999995,
+          "cpu_user_ms": 2327.475,
+          "cpu_system_ms": 18.064,
+          "rss_bytes": 401592320
+        },
+        "exact_result_sha256": "b87da12953daa2d1170a8e3f6ea6da10f9c42e90163756e3dd0c2a07504d329c",
+        "exact_checksum": "(4096, 0, 26137496198570)",
+        "doubling": {
+          "wall_ms": {
+            "count": 5,
+            "min": 2498.2205239999967,
+            "median": 2505.387603999996,
+            "max": 2520.8598029999994,
+            "mad": 7.16707999999926
+          },
+          "cpu_user_ms": {
+            "count": 5,
+            "min": 2513.294,
+            "median": 2531.998,
+            "max": 2552.188,
+            "mad": 15.666999999999916
+          },
+          "cpu_system_ms": {
+            "count": 5,
+            "min": 1.015,
+            "median": 2.981,
+            "max": 6.974,
+            "mad": 1.966
+          },
+          "peak_rss_bytes": 399269888,
+          "arithmetic_ms": {
+            "count": 5,
+            "min": 2462.672472000122,
+            "median": 2471.151351928711,
+            "max": 2484.6482276916504,
+            "mad": 7.849216461181641
+          }
+        }
+      },
+      "cantor": {
+        "schema": "sagejs.hyperelliptic.packed-mumford.odd.v1",
+        "capability": "(False, 24, PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 2, 'prime': 3, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9dd3a52eecccdd8eaf0528913862dcf6650ecc0a1ae0143b3ef72ffd4ec56716', 'validation_available': False, 'search_available': False, 'multi_search_available': False}), [(2, PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 2, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234', 'validation_available': False, 'search_available': False, 'multi_search_available': False})), (3, PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 3, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279', 'validation_available': False, 'search_available': False, 'multi_search_available': False}))])",
+        "object_cold": {
+          "wall_ms": 10253.717347999998,
+          "cpu_user_ms": 11137.196,
+          "cpu_system_ms": 136.13,
+          "rss_bytes": 474521600
+        },
+        "tiny_prime": 3,
+        "tiny_exact_sha256": "cdaf7bf823e523d62172609e5aa8f8b2a8f0c53fa0dc30d2d261edab9c567913",
+        "cases": [
+          {
+            "genus": 2,
+            "prime": 1009,
+            "capability": "PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 2, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234', 'validation_available': False, 'search_available': False, 'multi_search_available': False})",
+            "add_batch_items": 1000,
+            "add_exact_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+            "add_exact_checksum": "(1000, '52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176')",
+            "add_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 10899.979158000002,
+                "median": 11053.494296000004,
+                "max": 11104.431721,
+                "mad": 50.93742499999644
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 11076.227,
+                "median": 11105.436,
+                "max": 11241.358,
+                "mad": 29.208999999998923
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 16.798,
+                "median": 78.637,
+                "max": 90.182,
+                "mad": 11.545000000000002
+              },
+              "peak_rss_bytes": 666079232,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 5517.817974090576,
+                "median": 5597.828149795532,
+                "max": 5648.454427719116,
+                "mad": 19.848108291625977
+              }
+            },
+            "add_materialized_exact_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+            "add_materialized_exact_checksum": "(1000, '52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176')",
+            "add_materialized_batch": null,
+            "scalar_batch_items": 64,
+            "scalar_bits": 256,
+            "scalar_exact_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+            "scalar_exact_checksum": "(64, 'ec3863f93ddb2df46f326eb061c662086d076db67f5d7d80d47e89b67533d0ee')",
+            "scalar_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 93073.66831100002,
+                "median": 93073.66831100002,
+                "max": 93073.66831100002,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 93886.932,
+                "median": 93886.932,
+                "max": 93886.932,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 165.982,
+                "median": 165.982,
+                "max": 165.982,
+                "mad": 0
+              },
+              "peak_rss_bytes": 432173056,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 92710.26849746704,
+                "median": 92710.26849746704,
+                "max": 92710.26849746704,
+                "mad": 0
+              }
+            },
+            "scalar_materialized_exact_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+            "scalar_materialized_exact_checksum": "(64, 'ec3863f93ddb2df46f326eb061c662086d076db67f5d7d80d47e89b67533d0ee')",
+            "scalar_materialized_batch": null,
+            "progression_items": 1000,
+            "progression_packed": true,
+            "progression_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 6227.662772999989,
+                "median": 6259.606640999991,
+                "max": 6305.382635999995,
+                "mad": 31.943868000002112
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 6290.346,
+                "median": 6401.809,
+                "max": 6500.478,
+                "mad": 98.66899999999987
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 5.013,
+                "median": 10.016,
+                "max": 48.731,
+                "mad": 1.6500000000000004
+              },
+              "peak_rss_bytes": 658870272,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 6198.544979095459,
+                "median": 6240.816593170166,
+                "max": 6281.818151473999,
+                "mad": 37.273406982421875
+              }
+            },
+            "progression_retained_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_retained_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_retained_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 5286.386955999973,
+                "median": 5343.394442000019,
+                "max": 5423.390305999987,
+                "mad": 57.0074860000459
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 5293.946,
+                "median": 5415.787,
+                "max": 5550.449,
+                "mad": 57.32799999999952
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 5.027,
+                "median": 13.792,
+                "max": 43.053,
+                "mad": 8.765
+              },
+              "peak_rss_bytes": 624660480,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 5265.813827514648,
+                "median": 5310.312271118164,
+                "max": 5402.6172161102295,
+                "mad": 44.498443603515625
+              }
+            },
+            "progression_materialized_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_materialized_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_materialized_batch": null,
+            "materialization_comparison": "not-applicable-reference-is-already-materialized",
+            "representation_state": "(1000, 1000, 64, 1, 1000, 1000)"
+          },
+          {
+            "genus": 3,
+            "prime": 1009,
+            "capability": "PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 3, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279', 'validation_available': False, 'search_available': False, 'multi_search_available': False})",
+            "add_batch_items": 1000,
+            "add_exact_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+            "add_exact_checksum": "(1000, '815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323')",
+            "add_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 13311.30488000001,
+                "median": 13345.307626000023,
+                "max": 13547.876220999984,
+                "mad": 34.00274600001285
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 13372.849,
+                "median": 13524.923,
+                "max": 13728.461,
+                "mad": 95.66899999999987
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 20.036,
+                "median": 24.1,
+                "max": 59.051,
+                "mad": 3.881999999999998
+              },
+              "peak_rss_bytes": 450560000,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 5548.372268676758,
+                "median": 5593.621253967285,
+                "max": 5697.085857391357,
+                "mad": 20.316362380981445
+              }
+            },
+            "add_materialized_exact_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+            "add_materialized_exact_checksum": "(1000, '815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323')",
+            "add_materialized_batch": null,
+            "scalar_batch_items": 64,
+            "scalar_bits": 256,
+            "scalar_exact_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+            "scalar_exact_checksum": "(64, '2ee1c3546b80765c8b81a9f305397f9d2d86bd63057890ea0969d5a98e48002a')",
+            "scalar_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 133067.75158500008,
+                "median": 133067.75158500008,
+                "max": 133067.75158500008,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 134317.153,
+                "median": 134317.153,
+                "max": 134317.153,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 219.102,
+                "median": 219.102,
+                "max": 219.102,
+                "mad": 0
+              },
+              "peak_rss_bytes": 435298304,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 132537.96911239624,
+                "median": 132537.96911239624,
+                "max": 132537.96911239624,
+                "mad": 0
+              }
+            },
+            "scalar_materialized_exact_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+            "scalar_materialized_exact_checksum": "(64, '2ee1c3546b80765c8b81a9f305397f9d2d86bd63057890ea0969d5a98e48002a')",
+            "scalar_materialized_batch": null,
+            "progression_items": 1000,
+            "progression_packed": true,
+            "progression_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 6464.060814999975,
+                "median": 6527.5147,
+                "max": 6556.29598699999,
+                "mad": 13.122749000031035
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 6648.812,
+                "median": 6683.181,
+                "max": 6723.132,
+                "mad": 4.854000000000269
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 7.001,
+                "median": 13.014,
+                "max": 17.473,
+                "mad": 1.991999999999999
+              },
+              "peak_rss_bytes": 436998144,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 6436.297416687012,
+                "median": 6490.990877151489,
+                "max": 6526.894330978394,
+                "mad": 15.319585800170898
+              }
+            },
+            "progression_retained_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_retained_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_retained_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 5513.050319000031,
+                "median": 5559.956984999997,
+                "max": 5589.576312999998,
+                "mad": 15.627398999989964
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 5537.823,
+                "median": 5578.293,
+                "max": 5606.792,
+                "mad": 13.521999999999935
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 3.01,
+                "median": 7.009,
+                "max": 9.023,
+                "mad": 0.9979999999999993
+              },
+              "peak_rss_bytes": 436998144,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 5494.10605430603,
+                "median": 5539.5753383636475,
+                "max": 5569.287061691284,
+                "mad": 14.299869537353516
+              }
+            },
+            "progression_materialized_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_materialized_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_materialized_batch": null,
+            "materialization_comparison": "not-applicable-reference-is-already-materialized",
+            "representation_state": "(1000, 1000, 64, 1, 1000, 1000)"
+          }
+        ]
+      },
+      "curve_object_cold": {
+        "wall_ms": 6231.374292,
+        "cpu_user_ms": 7260.79,
+        "cpu_system_ms": 176.247,
+        "rss_bytes": 380190720
+      },
+      "process_cold_first_answer_ms": 6574.769095,
+      "process_end_rss_bytes": 346533888,
+      "worker_total_ms": 581384.6246249999,
+      "stderr": ""
+    },
+    "native": {
+      "mode": "native",
+      "runtime_native_mode": "auto",
+      "session_ready_ms": 296.887127,
+      "process_start_rss_bytes": 155033600,
+      "local_factors": [
+        {
+          "curve": "y^2=x^5+x+1",
+          "start": 3,
+          "stop": 10000,
+          "packed_backend": "smalljac-native-addon",
+          "packed_rows": 1228,
+          "packed_exact_sha256": "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d",
+          "packed": {
+            "wall_ms": {
+              "count": 5,
+              "min": 57.78083600000002,
+              "median": 57.84524499999998,
+              "max": 58.40220599999998,
+              "mad": 0.06440899999995509
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 57.119,
+              "median": 57.784,
+              "max": 58.686,
+              "mad": 0.18200000000000216
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 0,
+              "median": 0.006,
+              "max": 1.022,
+              "mad": 0.006
+            },
+            "peak_rss_bytes": 260349952
+          },
+          "coefficient_rows_exact_sha256": "f25885d7ff7194130ef32d7528a389211e490c49763c27f9af411761b585fea6",
+          "coefficient_exact_checksum": "(1225, 5736361, 1070, 5746424)",
+          "coefficients": {
+            "wall_ms": {
+              "count": 5,
+              "min": 226.69517300000007,
+              "median": 239.7413019999999,
+              "max": 265.90474900000004,
+              "mad": 10.786930999999868
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 253.033,
+              "median": 267.769,
+              "max": 416.25,
+              "mad": 14.736000000000018
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 2.859,
+              "median": 5.915,
+              "max": 11.921,
+              "mad": 3.056
+            },
+            "peak_rss_bytes": 322347008,
+            "arithmetic_ms": {
+              "count": 5,
+              "min": 189.39208984375,
+              "median": 198.1210708618164,
+              "max": 208.34803581237793,
+              "mad": 4.95147705078125
+            }
+          }
+        },
+        {
+          "curve": "y^2=x^5+x+1",
+          "start": 3,
+          "stop": 100000,
+          "packed_backend": "smalljac-native-addon",
+          "packed_rows": 9591,
+          "packed_exact_sha256": "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894",
+          "packed": {
+            "wall_ms": {
+              "count": 5,
+              "min": 1759.4090620000006,
+              "median": 1761.8618219999998,
+              "max": 1765.0203620000002,
+              "mad": 2.4527599999992162
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 1759.325,
+              "median": 1761.657,
+              "max": 1764.869,
+              "mad": 2.33199999999988
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 0,
+              "median": 0,
+              "max": 0,
+              "mad": 0
+            },
+            "peak_rss_bytes": 322478080
+          },
+          "coefficient_rows_exact_sha256": "a501f7d70e91e32338122f08f89281d301d844b3b143c3af159d74d7d987cb9f",
+          "coefficient_exact_checksum": "(9588, 454396502, 31923, 459539912)",
+          "coefficients": {
+            "wall_ms": {
+              "count": 5,
+              "min": 2732.8096269999987,
+              "median": 2734.950946000001,
+              "max": 2756.7187040000026,
+              "mad": 2.141319000002113
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 2759.069,
+              "median": 2791.161,
+              "max": 2897.063,
+              "mad": 32.0920000000001
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 3.983,
+              "median": 8.032,
+              "max": 21.964,
+              "mad": 3.0519999999999996
+            },
+            "peak_rss_bytes": 372670464,
+            "arithmetic_ms": {
+              "count": 5,
+              "min": 2686.525821685791,
+              "median": 2701.7581462860107,
+              "max": 2720.769166946411,
+              "mad": 14.259576797485352
+            }
+          }
+        }
+      ],
+      "kummer": {
+        "curve": "y^2+h*y=f; f=[1,2,3,4,5,1], h=[2,0,3]",
+        "prime": 4294967291,
+        "batch_size": 4096,
+        "capability": "(True, 'native-capable', 4096, ('genus2-kummer-prime.v1', 4294967291, (1, 2, 3, 4, 5, 1, 0, 0), (2, 0, 3, 0)))",
+        "object_cold": {
+          "wall_ms": 183.63874600000054,
+          "cpu_user_ms": 214.092,
+          "cpu_system_ms": 8.069,
+          "rss_bytes": 365838336
+        },
+        "exact_result_sha256": "b87da12953daa2d1170a8e3f6ea6da10f9c42e90163756e3dd0c2a07504d329c",
+        "exact_checksum": "(4096, 0, 26137496198570)",
+        "doubling": {
+          "wall_ms": {
+            "count": 5,
+            "min": 139.7960090000015,
+            "median": 142.40004899999985,
+            "max": 156.28170699999828,
+            "mad": 2.6040399999983492
+          },
+          "cpu_user_ms": {
+            "count": 5,
+            "min": 156.722,
+            "median": 168.495,
+            "max": 262.318,
+            "mad": 11.772999999999996
+          },
+          "cpu_system_ms": {
+            "count": 5,
+            "min": 0.022,
+            "median": 1.97,
+            "max": 4.985,
+            "mad": 1.034
+          },
+          "peak_rss_bytes": 369152000,
+          "arithmetic_ms": {
+            "count": 5,
+            "min": 101.59444808959961,
+            "median": 106.42457008361816,
+            "max": 109.53426361083984,
+            "mad": 2.9790401458740234
+          }
+        }
+      },
+      "cantor": {
+        "schema": "sagejs.hyperelliptic.packed-mumford.odd.v1",
+        "capability": "(True, 24, PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'development-auto-policy-absent', 'genus': 2, 'prime': 3, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9dd3a52eecccdd8eaf0528913862dcf6650ecc0a1ae0143b3ef72ffd4ec56716', 'validation_available': True, 'search_available': True, 'multi_search_available': True}), [(2, PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'development-auto-policy-absent', 'genus': 2, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234', 'validation_available': True, 'search_available': True, 'multi_search_available': True})), (3, PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'development-auto-policy-absent', 'genus': 3, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279', 'validation_available': True, 'search_available': True, 'multi_search_available': True}))])",
+        "object_cold": {
+          "wall_ms": 1023.2405099999996,
+          "cpu_user_ms": 1196.052,
+          "cpu_system_ms": 18.947,
+          "rss_bytes": 387407872
+        },
+        "tiny_prime": 3,
+        "tiny_exact_sha256": "cdaf7bf823e523d62172609e5aa8f8b2a8f0c53fa0dc30d2d261edab9c567913",
+        "cases": [
+          {
+            "genus": 2,
+            "prime": 1009,
+            "capability": "PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'development-auto-policy-absent', 'genus': 2, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234', 'validation_available': True, 'search_available': True, 'multi_search_available': True})",
+            "add_batch_items": 1000,
+            "add_exact_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+            "add_exact_checksum": "(1000, '52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176')",
+            "add_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 150.4679679999972,
+                "median": 159.38066800000524,
+                "max": 164.11260700000275,
+                "mad": 4.73193899999751
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 156.472,
+                "median": 171.338,
+                "max": 199.626,
+                "mad": 10.454000000000008
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0.002,
+                "median": 1.042,
+                "max": 7.712,
+                "mad": 1.04
+              },
+              "peak_rss_bytes": 417771520,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 3.484487533569336,
+                "median": 3.952503204345703,
+                "max": 4.3849945068359375,
+                "mad": 0.14328956604003906
+              }
+            },
+            "add_materialized_exact_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+            "add_materialized_exact_checksum": "(1000, '52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176')",
+            "add_materialized_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 1282.5680099999954,
+                "median": 1294.619998999995,
+                "max": 1323.6085160000002,
+                "mad": 12.051988999999594
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 1329.731,
+                "median": 1356.454,
+                "max": 1511.254,
+                "mad": 26.722999999999956
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 4.981,
+                "median": 11.061,
+                "max": 13.88,
+                "mad": 2.819000000000001
+              },
+              "peak_rss_bytes": 418033664,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 227.2937297821045,
+                "median": 231.13751411437988,
+                "max": 239.2442226409912,
+                "mad": 3.6737918853759766
+              }
+            },
+            "scalar_batch_items": 64,
+            "scalar_bits": 256,
+            "scalar_exact_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+            "scalar_exact_checksum": "(64, 'ec3863f93ddb2df46f326eb061c662086d076db67f5d7d80d47e89b67533d0ee')",
+            "scalar_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 77.86901399999624,
+                "median": 77.86901399999624,
+                "max": 77.86901399999624,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 81.35,
+                "median": 81.35,
+                "max": 81.35,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 1.442,
+                "median": 1.442,
+                "max": 1.442,
+                "mad": 0
+              },
+              "peak_rss_bytes": 418164736,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 46.106815338134766,
+                "median": 46.106815338134766,
+                "max": 46.106815338134766,
+                "mad": 0
+              }
+            },
+            "scalar_materialized_exact_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+            "scalar_materialized_exact_checksum": "(64, 'ec3863f93ddb2df46f326eb061c662086d076db67f5d7d80d47e89b67533d0ee')",
+            "scalar_materialized_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 152.54647800000384,
+                "median": 152.54647800000384,
+                "max": 152.54647800000384,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 158.927,
+                "median": 158.927,
+                "max": 158.927,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 0.015,
+                "median": 0.015,
+                "max": 0.015,
+                "mad": 0
+              },
+              "peak_rss_bytes": 418295808,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 60.033559799194336,
+                "median": 60.033559799194336,
+                "max": 60.033559799194336,
+                "mad": 0
+              }
+            },
+            "progression_items": 1000,
+            "progression_packed": true,
+            "progression_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 67.155955000002,
+                "median": 70.17554400000517,
+                "max": 70.9026739999972,
+                "mad": 0.7271299999920302
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 69.309,
+                "median": 73.924,
+                "max": 77.595,
+                "mad": 1.551000000000002
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0.005,
+                "max": 1.993,
+                "mad": 0.005
+              },
+              "peak_rss_bytes": 418033664,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 48.56371879577637,
+                "median": 51.08356475830078,
+                "max": 52.17790603637695,
+                "mad": 1.0943412780761719
+              }
+            },
+            "progression_retained_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_retained_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_retained_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 38.189807000002475,
+                "median": 41.416017000003194,
+                "max": 42.221447000003536,
+                "mad": 0.8054300000003423
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 37.958,
+                "median": 41.035,
+                "max": 46.153,
+                "mad": 3.076999999999998
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0.002,
+                "median": 1.006,
+                "max": 3.987,
+                "mad": 0.02100000000000002
+              },
+              "peak_rss_bytes": 418033664,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 3.354310989379883,
+                "median": 3.6439895629882812,
+                "max": 4.19163703918457,
+                "mad": 0.09250640869140625
+              }
+            },
+            "progression_materialized_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_materialized_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_materialized_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 243.0058710000012,
+                "median": 247.6678710000051,
+                "max": 251.18213000000105,
+                "mad": 3.395539999997709
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 251.622,
+                "median": 255.276,
+                "max": 263.517,
+                "mad": 3.6539999999999964
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0.029,
+                "median": 2.463,
+                "max": 3.001,
+                "mad": 0.5379999999999998
+              },
+              "peak_rss_bytes": 418164736,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 221.79484367370605,
+                "median": 227.34999656677246,
+                "max": 229.88581657409668,
+                "mad": 2.5358200073242188
+              }
+            },
+            "materialization_comparison": "retained-packed-versus-forced-polynomials",
+            "representation_state": "(0, 1000, 0, 64, 0, 1000)"
+          },
+          {
+            "genus": 3,
+            "prime": 1009,
+            "capability": "PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'development-auto-policy-absent', 'genus': 3, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279', 'validation_available': True, 'search_available': True, 'multi_search_available': True})",
+            "add_batch_items": 1000,
+            "add_exact_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+            "add_exact_checksum": "(1000, '815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323')",
+            "add_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 148.67205900000408,
+                "median": 150.97354799999448,
+                "max": 154.28639800000383,
+                "mad": 0.39513000000442844
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 152.892,
+                "median": 160.38,
+                "max": 165.83,
+                "mad": 4.778999999999996
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 1.999,
+                "median": 3.999,
+                "max": 5.035,
+                "mad": 1.0100000000000002
+              },
+              "peak_rss_bytes": 479113216,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 3.669261932373047,
+                "median": 3.695964813232422,
+                "max": 3.859281539916992,
+                "mad": 0.026702880859375
+              }
+            },
+            "add_materialized_exact_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+            "add_materialized_exact_checksum": "(1000, '815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323')",
+            "add_materialized_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 1344.2428250000012,
+                "median": 1360.8307540000023,
+                "max": 1367.628923999997,
+                "mad": 6.79816999999457
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 1362.933,
+                "median": 1375.39,
+                "max": 1390.89,
+                "mad": 10.067000000000007
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 10.991,
+                "median": 15.046,
+                "max": 21.991,
+                "mad": 2.974
+              },
+              "peak_rss_bytes": 488157184,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 230.67498207092285,
+                "median": 234.88616943359375,
+                "max": 246.43659591674805,
+                "mad": 4.211187362670898
+              }
+            },
+            "scalar_batch_items": 64,
+            "scalar_bits": 256,
+            "scalar_exact_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+            "scalar_exact_checksum": "(64, '2ee1c3546b80765c8b81a9f305397f9d2d86bd63057890ea0969d5a98e48002a')",
+            "scalar_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 97.27674300000217,
+                "median": 97.27674300000217,
+                "max": 97.27674300000217,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 107.11,
+                "median": 107.11,
+                "max": 107.11,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 2.031,
+                "median": 2.031,
+                "max": 2.031,
+                "mad": 0
+              },
+              "peak_rss_bytes": 491696128,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 63.257694244384766,
+                "median": 63.257694244384766,
+                "max": 63.257694244384766,
+                "mad": 0
+              }
+            },
+            "scalar_materialized_exact_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+            "scalar_materialized_exact_checksum": "(64, '2ee1c3546b80765c8b81a9f305397f9d2d86bd63057890ea0969d5a98e48002a')",
+            "scalar_materialized_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 178.1881549999962,
+                "median": 178.1881549999962,
+                "max": 178.1881549999962,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 178.78,
+                "median": 178.78,
+                "max": 178.78,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 5.959,
+                "median": 5.959,
+                "max": 5.959,
+                "mad": 0
+              },
+              "peak_rss_bytes": 494186496,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 79.02717590332031,
+                "median": 79.02717590332031,
+                "max": 79.02717590332031,
+                "mad": 0
+              }
+            },
+            "progression_items": 1000,
+            "progression_packed": true,
+            "progression_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 67.79804500000319,
+                "median": 69.82881500000076,
+                "max": 71.00586399999884,
+                "mad": 0.02880100000766106
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 66.889,
+                "median": 70.666,
+                "max": 78.732,
+                "mad": 2.2549999999999955
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0.007,
+                "median": 0.996,
+                "max": 1.995,
+                "mad": 0.989
+              },
+              "peak_rss_bytes": 488681472,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 50.34446716308594,
+                "median": 51.590681076049805,
+                "max": 51.68747901916504,
+                "mad": 0.04887580871582031
+              }
+            },
+            "progression_retained_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_retained_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_retained_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 38.433406999996805,
+                "median": 39.72806699999637,
+                "max": 41.36353699999745,
+                "mad": 1.2256199999974342
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 39.03,
+                "median": 43.973,
+                "max": 44.85,
+                "mad": 0.8770000000000024
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0,
+                "median": 0.846,
+                "max": 2.984,
+                "mad": 0.846
+              },
+              "peak_rss_bytes": 489205760,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 3.540515899658203,
+                "median": 3.7069320678710938,
+                "max": 3.862619400024414,
+                "mad": 0.1392364501953125
+              }
+            },
+            "progression_materialized_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_materialized_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_materialized_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 249.60568999999668,
+                "median": 255.87038900000334,
+                "max": 260.8824789999999,
+                "mad": 2.4360990000059246
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 252.961,
+                "median": 260.002,
+                "max": 262.291,
+                "mad": 1.8319999999999936
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0.005,
+                "median": 0.785,
+                "max": 3.997,
+                "mad": 0.78
+              },
+              "peak_rss_bytes": 490254336,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 229.01582717895508,
+                "median": 235.65983772277832,
+                "max": 239.4256591796875,
+                "mad": 2.305269241333008
+              }
+            },
+            "materialization_comparison": "retained-packed-versus-forced-polynomials",
+            "representation_state": "(0, 1000, 0, 64, 0, 1000)"
+          }
+        ]
+      },
+      "curve_object_cold": {
+        "wall_ms": 189.93238499999995,
+        "cpu_user_ms": 218.459,
+        "cpu_system_ms": 33.559,
+        "rss_bytes": 201629696
+      },
+      "process_cold_first_answer_ms": 544.423417,
+      "process_end_rss_bytes": 438345728,
+      "worker_total_ms": 57446.804938000045,
+      "stderr": ""
+    }
+  },
+  "cross_mode_exact": {
+    "local_factor_packed_sha256": [
+      "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d",
+      "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894"
+    ],
+    "local_factor_coefficients_sha256": [
+      "f25885d7ff7194130ef32d7528a389211e490c49763c27f9af411761b585fea6",
+      "a501f7d70e91e32338122f08f89281d301d844b3b143c3af159d74d7d987cb9f"
+    ],
+    "kummer_sha256": "b87da12953daa2d1170a8e3f6ea6da10f9c42e90163756e3dd0c2a07504d329c",
+    "cantor_tiny_sha256": "cdaf7bf823e523d62172609e5aa8f8b2a8f0c53fa0dc30d2d261edab9c567913",
+    "cantor_cases": [
+      {
+        "genus": 2,
+        "add_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+        "scalar_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+        "progression_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807"
+      },
+      {
+        "genus": 3,
+        "add_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+        "scalar_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+        "progression_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf"
+      }
+    ]
+  }
+}
