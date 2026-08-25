@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented and measured on 2026-08-23.
+Implemented and re-frozen on 2026-08-25.
 
 The program is integrated as ordinary CPython source, source-transparent
 native kernels, and audited FLINT/Arb representation boundaries. The frozen
@@ -11,6 +11,11 @@ unsupported or unavailable cell, and exact cross-backend digests are checked
 before timings are accepted. The machine-readable final receipt is
 `bench/hyperelliptic/competitive/receipt-linux-x64.json`; the rendered table is
 `bench/hyperelliptic/competitive/REPORT-linux-x64.md`.
+
+The final-source Linux receipts and failed-gate evidence are in
+`bench/hyperelliptic/competitive/final-freeze-a680/`. They authenticate
+mathematical source `a680c04d` with framed bundle digest `36495206...73e1`;
+later benchmark/test commits do not change that bundle.
 
 The outcome is intentionally workload-specific:
 
@@ -22,19 +27,27 @@ broader implementation status summarized below.
 | Gate | Final result |
 |---|---|
 | Packed Cantor boundary versus identical standalone core | PASS: genus 2 1.049x, genus 3 1.048x overhead (limit 1.15x) |
-| Finite-field arithmetic versus Magma | MIXED: retained prepared add/double/scalar is 1.36x--1.54x in genus 2 and faster in genus 3; ordinary public add/double is 2.15x--4.60x and remains open |
+| Finite-field arithmetic versus Magma | PASS on the accepted 1,000-item/public scalar corpus: ordinary genus-2 add/double/scalar is 1.78x/1.58x/1.36x; genus 3 is 1.03x/0.73x/0.74x |
 | Packed local factors through `10^5` | PASS: 1.741 s median, 96.8 MB RSS, frozen exact digest unchanged |
 | Public local-factor materialization through `10^5` | PASS: coefficient streaming 1.56x and public polynomial materialization 1.77x packed traversal; exact digests unchanged |
 | Rational 1024-by-32 many-prime reduction and witness | PASS: 98.54 ms versus Magma 140 ms, 1.42x faster |
 | Public rational addition | MIXED: growing-coefficient row 1.97x Magma (pass); small row 7.81x (open) |
+| Public rational scalar | PASS for the required bounded non-torsion rows: scalar 17/347-bit output is 1.66x Magma and scalar 65/5,094-bit output is 0.41x; explicitly torsion 256-bit row is 0.33x |
 | Genus-2/3 periods | PASS: 1.73x and 1.47x PARI |
 | Genus-2 Abel--Jacobi 12-point batch | PASS: 9.35x faster than Magma |
-| Genus-2 fresh `L`-function initialization | PASS: 1.64x PARI after a separately reported 2.20 s cold universal-table build |
+| Genus-2 fresh `L`-function initialization | HISTORICAL PASS, CURRENT OPEN: final-source five- and one-sample runs time out at 600 s with 17.0--17.4 GiB RSS |
 | Certified genus-2 height, accuracy-matched 64-bit single point | PASS: 1.92x cold and 1.45x warm Magma |
 | Authenticated rank-2/rank-4 height reuse | PASS; object-cold construction remains 17.1x/12.4x Magma and is open |
-| Genus-3 order-32 structure/map | Resident object-cold and warm gates pass; a truly process-cold map remains open |
+| Genus-3 order-32 structure/map | PASS after artifact publication: five separate process-cold maps are 0.532--0.563 s (15.0x median); first artifact-cold post-build map is 1.224 s and remains explicit |
 | Certified genus-3 stream through `10^5` | PASS: 142.18 s, 338,968 KiB RSS, 5.50x speedup, and the frozen exact digest under the documented 256 MiB V8 old-space envelope |
 | Genus-3 radius-6 canonical height | PASS: 55.80 s process-cold versus 406.50 s for the same-host historical direct-theta path, a 7.29x speedup; exact finite replay and refinement stability pass, while rigor remains explicitly false |
+
+The two declared mathematical optimization misses for this freeze are the
+small-coefficient ordinary rational-addition row and genus-2 object-cold
+rank-2/rank-4 proof assembly. Phase 9 is separately marked as a source-current
+acceptance regression, not folded into those two measured representation
+floors. No automatic native entry is enabled until the final four-platform
+refresh authenticates this source bundle.
 
 Windows x64, Linux ARM64, and macOS ARM64 native receipts agree on exact
 local-factor, Kummer, Cantor, scalar, and progression digests. Their

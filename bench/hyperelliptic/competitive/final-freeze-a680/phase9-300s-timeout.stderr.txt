@@ -1,0 +1,26 @@
+Error: analytic competitive benchmark failed (1):
+SageSessionTimeoutError: Sage.js evaluation timed out after 300000 ms
+    at Timeout.<anonymous> (/home/user/sagejs-hyp-final-d98b9dcd/dist/tools/kernel.js:206:45)
+    at listOnTimeout (node:internal/timers:585:17)
+    at process.processTimers (node:internal/timers:521:7)
+/home/user/sagejs-hyp-final-d98b9dcd/dist/tools/kernel.js:396
+        const error = new SageSessionClosedError();
+                      ^
+
+SageSessionClosedError: Sage.js session is closed
+    at SageSession.close (/home/user/sagejs-hyp-final-d98b9dcd/dist/tools/kernel.js:396:23)
+    at main (/home/user/sagejs-hyp-final-d98b9dcd/bench/hyperelliptic/benchmark-analytic-competitive.cjs:660:19)
+
+Node.js v22.22.2
+
+
+    at parseJsonOutput (/home/user/sagejs-hyp-final-d98b9dcd/bench/hyperelliptic/analytic-acceptance/run.cjs:190:11)
+    at runCompetitive (/home/user/sagejs-hyp-final-d98b9dcd/bench/hyperelliptic/analytic-acceptance/run.cjs:209:10)
+    at run (/home/user/sagejs-hyp-final-d98b9dcd/bench/hyperelliptic/analytic-acceptance/run.cjs:283:23)
+    at main (/home/user/sagejs-hyp-final-d98b9dcd/bench/hyperelliptic/analytic-acceptance/run.cjs:356:25)
+    at Object.<anonymous> (/home/user/sagejs-hyp-final-d98b9dcd/bench/hyperelliptic/analytic-acceptance/run.cjs:369:3)
+    at Module._compile (node:internal/modules/cjs/loader:1705:14)
+    at Object..js (node:internal/modules/cjs/loader:1838:10)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
