@@ -98,6 +98,16 @@
       "commit": "2c911bc8c18c204ebf2c5ed42e7934dcacb745fe",
       "workspace_fingerprint": "3050e201848aff673eda94434ecb9a82bb4a7bd94e1c10e071031ceda97aa919",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/run-class-unit-corpus.cjs --tier smoke --limit 1 --proof both --systems direct-gp --samples 5 --output /tmp/class-unit-gp-receipt-v2.json",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 32.866,
+      "started_at": "2026-08-25T05:32:42.814Z",
+      "commit": "d0ded13ddb37ca2ce448c71a50891f6ed75fdf86",
+      "workspace_fingerprint": "2a945bfcf717f26bd3879c34133261897e54f00a2c81fca9510e4abecab97dc0",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
