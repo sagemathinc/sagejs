@@ -4,7 +4,7 @@
   "id": "class-unit-magma-hecke",
   "title": "Class Unit Magma Hecke Comparators",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Implement actual exact four-boundary Magma and pinned Hecke 0.40 class/unit corpus comparator adapters with authenticated evidence and focused documentation/tests.",
   "base_commit": "dc2aa03d1c6c3920b264d671ed44d192697831ea",
@@ -39,12 +39,86 @@
   },
   "validation": [
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "node --test test/number-field-class-unit-corpus.cjs",
+    "node --check bench/class-unit-groups/run-class-unit-corpus.cjs",
+    "pnpm parallel:check",
+    "node bench/class-unit-groups/run-class-unit-corpus.cjs --tier smoke --limit 1 --systems magma,hecke --proof both --samples 5 --timeout-seconds 180 --output /scratch/class-group/magma-hecke-d8d72b81.json"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/number-field-class-unit-corpus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.534,
+      "started_at": "2026-08-25T09:55:12.774Z",
+      "commit": "d8d72b81e1b098f9a4e5db9f09e0f5615214b19c",
+      "workspace_fingerprint": "9402e2ab7947e9eaa42f8717fdcb0de9966ffdcb2996a88b977d7714543600fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/run-class-unit-corpus.cjs --tier smoke --limit 1 --systems magma,hecke --proof both --samples 5 --timeout-seconds 180 --output /scratch/class-group/magma-hecke-d8d72b81.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 548.178,
+      "started_at": "2026-08-25T09:44:26.876Z",
+      "commit": "d8d72b81e1b098f9a4e5db9f09e0f5615214b19c",
+      "workspace_fingerprint": "9402e2ab7947e9eaa42f8717fdcb0de9966ffdcb2996a88b977d7714543600fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 31.561,
+      "started_at": "2026-08-25T09:59:00.107Z",
+      "commit": "d8d72b81e1b098f9a4e5db9f09e0f5615214b19c",
+      "workspace_fingerprint": "9402e2ab7947e9eaa42f8717fdcb0de9966ffdcb2996a88b977d7714543600fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/class-unit-groups/run-class-unit-corpus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.031,
+      "started_at": "2026-08-25T09:59:33.485Z",
+      "commit": "d8d72b81e1b098f9a4e5db9f09e0f5615214b19c",
+      "workspace_fingerprint": "9402e2ab7947e9eaa42f8717fdcb0de9966ffdcb2996a88b977d7714543600fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 890.426,
+      "started_at": "2026-08-25T10:02:30.339Z",
+      "commit": "d8d72b81e1b098f9a4e5db9f09e0f5615214b19c",
+      "workspace_fingerprint": "9402e2ab7947e9eaa42f8717fdcb0de9966ffdcb2996a88b977d7714543600fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.604,
+      "started_at": "2026-08-25T10:17:33.381Z",
+      "commit": "d8d72b81e1b098f9a4e5db9f09e0f5615214b19c",
+      "workspace_fingerprint": "9402e2ab7947e9eaa42f8717fdcb0de9966ffdcb2996a88b977d7714543600fe",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented authenticated, executable Magma 2.18-5 and pinned Hecke 0.40 class/unit/regulator adapters for all four evidence boundaries. Both adapters use independently prepared calibrated warm batches, fail-closed payload protocols, explicit conditional/unconditional proof semantics, exact runtime and mathematical-library fingerprints, descendant-safe timeouts, and honest RSS scopes. Hecke publishes rigorous Arb regulator intersections and separately times proof upgrades; Magma clears ambient MAGMA_LIBRARIES and authenticates its launcher, static runtime, and complete package tree. The clean exact d8d72b81 receipt at /scratch/class-group/magma-hecke-d8d72b81.json has 16/16 matched jobs, timing acceptance true, memory acceptance false, and fingerprint 44ae2ccdbda2f4c38383c2827767df5e9301d06e388f62ef6693e57a2432e464. Median seconds by conditional/unconditional proof and kernel-warm, field-cold, process-cold, release-cold are Magma conditional [0.01397727294401689, 0.01386363939805464, 0.21, 0.21], Magma unconditional [0.01365384688744178, 0.01365384230246911, 0.21, 0.21], Hecke conditional [0.01830440013636364, 0.018323330090909088, 22.51, 22.7], and Hecke unconditional [0.018834658968749994, 0.018777181687499995, 22.86, 23].",
+    "risks": [
+      "The committed exact timing receipt covers one permanent smoke field with five samples per proof/boundary; the broader tune and held-out tiers remain to be run on an idle benchmark host.",
+      "Persistent warm RSS is deliberately a case-process upper bound, so the receipt cannot satisfy the per-operation memory gate; only cold samples have single-operation process peaks.",
+      "Magma is proprietary and Hecke uses a host-specific pinned Julia project/depot. Missing or differently pinned installations fail closed as unavailable rather than silently selecting another implementation.",
+      "The repository-wide test:changed command reaches the pre-existing stale test-manifest ratchet outside this lane's claims; the focused suite, syntax, diff, parallel contract, exact runtime receipt, and independent review pass."
+    ],
+    "next_steps": [
+      "Run the 10-field smoke tier, then the 60-field tuning and 30-field held-out tiers with Sage.js, Sage/PARI, direct GP, Magma, and Hecke on an idle benchmark machine.",
+      "Use semantic comparison keys to join only equivalent conditional or unconditional proof/output/regulator contracts when computing performance gates.",
+      "Refresh the shared test manifest and run cumulative repository-wide native/strict gates after integration; no native source or compiler input changed in this lane."
+    ]
   }
 }
