@@ -1879,6 +1879,7 @@ def packed_finite_algebra_candidates(
             packed_order_basis=packed_order_basis,
         )
         if packed is not None:
+            _attach_packed_second_generators(order, prime, table, packed)
             return packed
     radical = _nilradical(degree, prime, one, table)
     quotient_cache: dict[Any, Any] = {}
@@ -1945,7 +1946,6 @@ def packed_finite_algebra_candidates(
                 "e": ramification,
                 "f": residue_degree,
                 "presentation": presentation,
-                "second_generator": None,
                 "table": table,
                 "one": one,
             }
@@ -1960,7 +1960,40 @@ def packed_finite_algebra_candidates(
             for value in pair
         )
     )
+    _attach_packed_second_generators(order, prime, table, answer)
     return answer
+
+
+def _attach_packed_second_generators(
+    order: Any,
+    prime: int,
+    table: list[list[list[int]]],
+    records: list[dict[str, Any]],
+) -> None:
+    """Attach canonical HNF witnesses with one shared order inverse."""
+    inverse_rows = order._basis_inverse_matrix().rows()
+    degree = int(order.degree())
+    if len(inverse_rows) != degree:
+        raise ArithmeticError("the maximal-order inverse basis has the wrong height")
+    p = int(prime)
+    for record in records:
+        target = [list(row) for row in record["subspace"]]
+        for row in record["rows"]:
+            coordinates: list[Any] = []
+            for target_index in range(degree):
+                coordinate: Any = sage.QQ(0)
+                for source in range(degree):
+                    coordinate += row[source] * inverse_rows[source][target_index]
+                coordinates.append(coordinate)
+            if any(value._denominator != 1 for value in coordinates):
+                continue
+            modular = [int(value._numerator) % p for value in coordinates]
+            if _subspace_ideal_generated_by([modular], degree, table, p) == target:
+                record["second_generator_payload"] = [
+                    [int(value._numerator), int(value._denominator)] for value in row
+                ]
+                record["table"] = None
+                break
 
 
 def _packed_cubic_reduced_algebra_candidates(
