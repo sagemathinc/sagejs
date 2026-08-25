@@ -731,11 +731,11 @@ zeta = zeta_log_residue_bound(
     5,
     2,
     counted_provider,
-    absolute_error="0.125",
     precision_bits=96,
     limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
     workspace=workspace,
 )
+assert str(zeta.requested_absolute_error) == "1/8"
 calls_after_cold = len(provider_calls)
 warm_zeta = zeta_log_residue_bound(
     5, 2, counted_provider, absolute_error="0.125", precision_bits=96,
@@ -757,6 +757,144 @@ assert warm_zeta.ball.contains(quadratic["logResidue"])
 assert warm_zeta.ball.to_dict() == zeta.ball.to_dict()
 assert workspace.diagnostics()["zeta_residue_calls"] == 2
 assert workspace.diagnostics()["splitting_nanoseconds"] >= 0
+
+# Every mutable acceleration cache has separate canonical authority.  Poisoning
+# any dependency before a proof-producing call must fail closed, including a
+# record cache that an already-built plan would otherwise bypass.
+def assert_cache_tamper_rejected(label):
+    try:
+        zeta_log_residue_bound(
+            5, 2, counted_provider, absolute_error="0.125", precision_bits=96,
+            limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+            workspace=workspace,
+        )
+    except AnalyticCertificationError:
+        return
+    raise AssertionError(label + " cache mutation was accepted")
+
+saved_covered_stop = workspace.covered_stop
+workspace.covered_stop = saved_covered_stop + 1
+assert_cache_tamper_rejected("splitting coverage")
+workspace.covered_stop = saved_covered_stop
+
+record_key = next(iter(workspace._records))
+saved_record = workspace._records[record_key]
+issued_authority = workspace._proof_cache_authority
+workspace._records[record_key] = ()
+try:
+    issued_authority.payload = workspace._proof_cache_snapshot()
+    raise AssertionError("a paired cache/authority mutation was accepted")
+except AttributeError:
+    pass
+assert not hasattr(issued_authority, "__dict__")
+try:
+    object.__setattr__(
+        issued_authority, "payload", workspace._proof_cache_snapshot()
+    )
+    raise AssertionError("object.__setattr__ mutated a cache authority")
+except (AttributeError, TypeError):
+    pass
+assert_cache_tamper_rejected("splitting record")
+workspace._records[record_key] = saved_record
+
+prime_key = next(iter(workspace._primes))
+saved_primes = workspace._primes[prime_key]
+workspace._primes[prime_key] = ()
+assert_cache_tamper_rejected("rational prime")
+workspace._primes[prime_key] = saved_primes
+
+plan_key = next(iter(workspace._plans))
+saved_raw_terms = workspace._plans[plan_key].raw_terms
+workspace._plans[plan_key].raw_terms = saved_raw_terms + 1
+assert_cache_tamper_rejected("prime-power plan")
+workspace._plans[plan_key].raw_terms = saved_raw_terms
+
+threshold_key = next(iter(workspace._thresholds))
+saved_threshold = workspace._thresholds[threshold_key]
+workspace._thresholds[threshold_key] = (
+    saved_threshold[0], RealBall(-99, 99, precision_bits=96), saved_threshold[2]
+)
+assert_cache_tamper_rejected("threshold")
+workspace._thresholds[threshold_key] = saved_threshold
+
+finite_key = next(iter(workspace._finite_terms))
+saved_finite = workspace._finite_terms[finite_key]
+workspace._finite_terms[finite_key] = (
+    saved_finite[0] - IntervalBallField(96).log_integer(2), saved_finite[1]
+)
+for attempted_token in (None, object()):
+    try:
+        if attempted_token is None:
+            workspace._issue_proof_cache_authority()
+        else:
+            workspace._issue_proof_cache_authority(attempted_token)
+        raise AssertionError("a caller reissued authority for a forged finite term")
+    except TypeError:
+        pass
+assert_cache_tamper_rejected("finite term")
+workspace._finite_terms[finite_key] = saved_finite
+
+# Restoring the mutable views preserves the authenticated warm result.
+assert zeta_log_residue_bound(
+    5, 2, counted_provider, absolute_error="0.125", precision_bits=96,
+    limits=ZetaLogResidueLimits(maximum_prime_bound=20000), workspace=workspace,
+).ball.to_dict() == zeta.ball.to_dict()
+
+# A splitting callback cannot re-enter the workspace and bless its own cache
+# mutation before the provider result is admitted.
+hostile_holder = {}
+def hostile_provider(start, stop):
+    hostile_workspace = hostile_holder["workspace"]
+    hostile_workspace._records[99991] = ((1, 2),)
+    try:
+        hostile_workspace._issue_proof_cache_authority(object())
+        raise AssertionError("a callback reissued zeta cache authority")
+    except TypeError:
+        pass
+    return base_provider(start, stop)
+hostile_workspace = ZetaLogResidueWorkspace(5, 2, hostile_provider)
+hostile_holder["workspace"] = hostile_workspace
+try:
+    zeta_log_residue_bound(
+        5, 2, hostile_provider, absolute_error="0.125", precision_bits=96,
+        limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+        workspace=hostile_workspace,
+    )
+    raise AssertionError("a reentrant callback mutation entered the proof cache")
+except AnalyticCertificationError:
+    pass
+
+# A frozen authority is identity-bound to its workspace.  Transplanting a
+# complete, internally consistent cache from another field cannot relabel its
+# zeta interval with this field's discriminant.
+provider_5 = quadratic_provider(5)
+provider_13 = quadratic_provider(13)
+workspace_5 = ZetaLogResidueWorkspace(5, 2, provider_5)
+workspace_13 = ZetaLogResidueWorkspace(13, 2, provider_13)
+clean_5 = zeta_log_residue_bound(
+    5, 2, provider_5, absolute_error="0.125", precision_bits=96,
+    limits=ZetaLogResidueLimits(maximum_prime_bound=20000), workspace=workspace_5,
+)
+clean_13 = zeta_log_residue_bound(
+    13, 2, provider_13, absolute_error="0.125", precision_bits=96,
+    limits=ZetaLogResidueLimits(maximum_prime_bound=20000), workspace=workspace_13,
+)
+assert clean_5.ball.to_dict() != clean_13.ball.to_dict()
+workspace_5.covered_stop = workspace_13.covered_stop
+for cache_name in (
+    "_records", "_plans", "_primes", "_thresholds", "_finite_terms",
+):
+    setattr(workspace_5, cache_name, getattr(workspace_13, cache_name))
+workspace_5._proof_cache_authority = workspace_13._proof_cache_authority
+try:
+    zeta_log_residue_bound(
+        5, 2, provider_5, absolute_error="0.125", precision_bits=96,
+        limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+        workspace=workspace_5,
+    )
+    raise AssertionError("a foreign workspace authority was transplanted")
+except AnalyticCertificationError:
+    pass
 
 class FakeCoordinate:
     def __init__(self, numerator, denominator=1):
@@ -792,6 +930,49 @@ assert cached_regulator.to_dict() == warm_regulator.to_dict()
 assert counted_unit.calls == [96]
 assert workspace.diagnostics()["regulator_calls"] == 2
 assert workspace.diagnostics()["regulator_cache_hits"] == 1
+
+# Replacing both a cached regulator and its caller-visible JSON sibling cannot
+# bless a different hR value: the owner-bound authority retains the admitted
+# canonical regulator payload independently.
+regulator_key = next(iter(workspace._regulators))
+saved_regulator_entry = workspace._regulators[regulator_key]
+forged_regulator = RegulatorEnclosure(
+    warm_regulator.ball * RealBall(2, precision_bits=96),
+    1,
+    [96],
+    weighted_complex_places=True,
+)
+workspace._regulators[regulator_key] = (
+    forged_regulator, module._canonical_json(forged_regulator.to_dict())
+)
+try:
+    workspace.regulator_from_factored_units(
+        [counted_unit], unit_rank=1, precision_bits=96,
+        absolute_tolerance_bits=60, maximum_precision_bits=192,
+    )
+    raise AssertionError("a paired cached-regulator replacement was accepted")
+except AnalyticCertificationError:
+    pass
+workspace._regulators[regulator_key] = saved_regulator_entry
+
+class ReentrantFactoredUnit(CountedFactoredUnit):
+    def archimedean_logarithms(self, precision):
+        workspace._regulators[regulator_key] = (
+            forged_regulator, module._canonical_json(forged_regulator.to_dict())
+        )
+        return [RealBall("1", precision_bits=precision)]
+
+try:
+    workspace.regulator_from_factored_units(
+        [ReentrantFactoredUnit(2)], unit_rank=1, precision_bits=96,
+        absolute_tolerance_bits=60, maximum_precision_bits=192,
+    )
+    raise AssertionError("a reentrant regulator callback mutation was admitted")
+except AnalyticCertificationError:
+    pass
+finally:
+    workspace._regulators[regulator_key] = saved_regulator_entry
+
 try:
     workspace.regulator_from_factored_units(
         [counted_unit], unit_rank=1, precision_bits=96,
@@ -877,6 +1058,74 @@ assert forged.rigorous and forged.unique_index == 2 and not forged.index_one
 scalar_forged = scalar_hr_index(2)
 assert forged.index_ball.lower == scalar_forged.lower
 assert forged.index_ball.upper == scalar_forged.upper
+
+# The policy layer starts coarse, treats an empty integer intersection as an
+# inconclusive decision, and halves the exact requested error deterministically.
+# Synthetic zeta balls isolate that control-flow contract from the BF kernel;
+# the ordinary hR validator still performs every mathematical decision.
+seed_validation = validate_hr_index(
+    signature=(0, 1), discriminant=-4, class_number=1, roots_of_unity=4,
+    regulator=RealBall(1, precision_bits=128),
+    zeta_log_residue=RealBall(-20, 20, precision_bits=128),
+    precision_bits=128,
+)
+decision_field = IntervalBallField(128)
+coarse_residue = seed_validation.algebraic_log_hr - decision_field.log(
+    RealBall("3/2", precision_bits=128)
+)
+fine_residue = seed_validation.algebraic_log_hr
+adaptive_calls = []
+original_zeta_bound = module.zeta_log_residue_bound
+def synthetic_zeta_bound(*args, **options):
+    requested = str(module._endpoint(options["absolute_error"], rigorous=True))
+    adaptive_calls.append(requested)
+    return coarse_residue if requested == "1" else fine_residue
+module.zeta_log_residue_bound = synthetic_zeta_bound
+try:
+    selected_zeta, selected_index, selected_history = adaptive_hr_index(
+        signature=(0, 1), discriminant=-4, degree=2, class_number=1,
+        roots_of_unity=4, regulator=RealBall(1, precision_bits=128),
+        splitting_provider=lambda start, stop: (), precision_bits=128,
+    )
+    assert selected_index.rigorous and selected_index.unique_index == 1
+    assert selected_zeta is fine_residue
+    assert selected_history == ("1", "1/2")
+    assert adaptive_calls == ["1", "1/2"]
+
+    cancellation_checks = []
+    adaptive_calls.clear()
+    def cancelled_after_first_attempt():
+        cancellation_checks.append(True)
+        return len(cancellation_checks) > 1
+    try:
+        adaptive_hr_index(
+            signature=(0, 1), discriminant=-4, degree=2, class_number=1,
+            roots_of_unity=4, regulator=RealBall(1, precision_bits=128),
+            splitting_provider=lambda start, stop: (), precision_bits=128,
+            cancelled=cancelled_after_first_attempt,
+        )
+        raise AssertionError("adaptive hR refinement ignored cancellation")
+    except AnalyticResourceError as error:
+        assert "cancelled" in str(error)
+    assert adaptive_calls == ["1"]
+finally:
+    module.zeta_log_residue_bound = original_zeta_bound
+
+resource_provider_calls = []
+def resource_provider(start, stop):
+    resource_provider_calls.append((start, stop))
+    return ()
+try:
+    adaptive_hr_index(
+        signature=(2, 0), discriminant=5, degree=2, class_number=1,
+        roots_of_unity=2, regulator=regulator,
+        splitting_provider=resource_provider, precision_bits=96,
+        limits=ZetaLogResidueLimits(maximum_prime_bound=72),
+    )
+    raise AssertionError("adaptive hR refinement exceeded its prime cap")
+except AnalyticResourceError as error:
+    assert "maximum_prime_bound" in str(error)
+assert resource_provider_calls == []
 
 try:
     zeta_log_residue_bound(

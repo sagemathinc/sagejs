@@ -21,6 +21,8 @@ import json
 import time
 from typing import Any, Callable, Iterable, Sequence
 
+import sagejs.runtime as runtime
+
 EXACT_UNCONDITIONAL = "exact-unconditional"
 EXACT_RELATIONS_CONDITIONAL_GRH = "exact-relations-conditional-grh"
 INCOMPLETE_RESOURCE_LIMIT = "incomplete-resource-limit"
@@ -37,6 +39,41 @@ DEFAULT_CUBIC_SATURATION_RELATION_BATCH = 12
 MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 
 _CUBIC_RELATION_SEED_UNREAD = object()
+_TERMINAL_SATURATION_CLONE_TOKEN = object()
+_CLASS_UNIT_ENGINE_CACHE_ENTRY_TOKEN = object()
+
+
+def _context_matches_engine_limits(
+    context_limits: Any, limits_key: tuple[tuple[str, int], ...]
+) -> bool:
+    """Compare the exact engine policy with its checkpoint-context projection."""
+    expected = dict(limits_key)
+    standard_names = (
+        "max_factor_base_size",
+        "max_relations",
+        "max_partial_relations",
+        "max_relation_attempts",
+        "max_precision_bits",
+        "max_memory_bytes",
+    )
+    try:
+        if any(
+            getattr(context_limits, name, None) != expected[name]
+            for name in standard_names
+        ):
+            return False
+        if (
+            getattr(context_limits, "max_proof_primes", None)
+            != expected["max_factor_base_size"]
+            or getattr(context_limits, "max_checkpoint_bytes", None) is not None
+            or getattr(context_limits, "max_seconds", None) is not None
+        ):
+            return False
+        return context_limits.extra == {
+            name: expected[name] for name in expected if name not in standard_names
+        }
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return False
 
 
 def _factor_base_proof_status(plan: Any) -> str:
@@ -75,6 +112,33 @@ def _positive(value: Any, name: str) -> int:
     if answer < 1:
         raise ValueError(name + " must be positive")
     return answer
+
+
+def _initial_relation_admissions_per_ideal(
+    signature: Sequence[int], factor_base_size: int
+) -> int:
+    """Choose a fixed relation-search batch from field-level evidence.
+
+    Cubics retain one admission per reduced ideal.  Signature `(1, 2)`
+    fields with nonempty factor bases amortize the exact ideal embedding and
+    LLL plan across three admissions.  Empty-factor-base unit searches and all
+    other signatures retain the conservative batch of two.  This is the
+    clean-room analogue of Hecke's context-owned reuse of a reduced-ideal
+    search; exact admission and completion checks are unchanged.
+    """
+    if len(signature) != 2:
+        raise ValueError("a number-field signature must have two entries")
+    real_places = _integer(signature[0], "real signature places")
+    complex_places = _integer(signature[1], "complex signature places")
+    base_size = _integer(factor_base_size, "factor-base size")
+    if real_places < 0 or complex_places < 0 or base_size < 0:
+        raise ValueError("signature entries and factor-base size must be nonnegative")
+    degree = real_places + 2 * complex_places
+    if degree == 3:
+        return 1
+    if (real_places, complex_places) == (1, 2) and base_size > 0:
+        return 3
+    return 2
 
 
 def _product(values: Iterable[int]) -> int:
@@ -354,14 +418,28 @@ class ClassUnitSaturationRecord:
         analytic_module: Any = None,
         analytic_workspace: Any = None,
         reason: str = "",
+        _trusted_terminal_snapshot: Any = None,
     ) -> None:
+        trusted_terminal = bool(
+            isinstance(_trusted_terminal_snapshot, tuple)
+            and len(_trusted_terminal_snapshot) == 3
+            and _trusted_terminal_snapshot[0] is _TERMINAL_SATURATION_CLONE_TOKEN
+        )
         self.original_units = tuple(original_units)
         self.units = tuple(units)
         self.index_bound = max(1, int(index_bound))
         self.required_primes = tuple(sorted({int(value) for value in required_primes}))
         self.remaining_index_bound = max(1, int(remaining_index_bound))
-        self.attempts = tuple(_component_payload(value) for value in attempts)
-        self.analytic_validation = _component_payload(analytic_validation)
+        self._attempts = (
+            tuple(attempts)
+            if trusted_terminal
+            else tuple(_component_payload(value) for value in attempts)
+        )
+        self._analytic_validation = (
+            analytic_validation
+            if trusted_terminal
+            else _component_payload(analytic_validation)
+        )
         self._analytic_certificate = analytic_certificate
         standard_certificate_type = getattr(
             analytic_module, "UnitSaturationIndexCertificate", None
@@ -406,12 +484,12 @@ class ClassUnitSaturationRecord:
         )
         self._analytic_module = analytic_module
         self._analytic_workspace = analytic_workspace
-        self.rigorous = bool(self.analytic_validation.get("rigorous"))
+        self.rigorous = bool(self._analytic_validation.get("rigorous"))
         self.complete = bool(
             self.rigorous
             and self._analytic_certificate is not None
-            and int(self.analytic_validation.get("lower_index", 0)) == 1
-            and int(self.analytic_validation.get("upper_index", 0)) == 1
+            and int(self._analytic_validation.get("lower_index", 0)) == 1
+            and int(self._analytic_validation.get("upper_index", 0)) == 1
             and self.remaining_index_bound == 1
         )
         self.saturated = self.complete
@@ -421,8 +499,30 @@ class ClassUnitSaturationRecord:
         self._live_authentication_available = bool(
             live_parent_payload_consumed and analytic_workspace is not None
         )
-        body = self._body_dict()
-        self.content_sha256 = _canonical_payload_hash(body)
+        if _trusted_terminal_snapshot is None:
+            body = self._body_dict()
+            self._canonical_body_json = json.dumps(
+                body,
+                allow_nan=False,
+                ensure_ascii=True,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            self.content_sha256 = hashlib.sha256(
+                self._canonical_body_json.encode("utf-8")
+            ).hexdigest()
+        else:
+            token, body_json, content_sha256 = _trusted_terminal_snapshot
+            if (
+                token is not _TERMINAL_SATURATION_CLONE_TOKEN
+                or not isinstance(body_json, str)
+                or not isinstance(content_sha256, str)
+                or hashlib.sha256(body_json.encode("utf-8")).hexdigest()
+                != content_sha256
+            ):
+                raise TypeError("a trusted terminal saturation snapshot is malformed")
+            self._canonical_body_json = body_json
+            self.content_sha256 = content_sha256
 
     def _unit_payload(self, unit: Any) -> Any:
         encode = getattr(unit, "to_dict", None)
@@ -435,6 +535,16 @@ class ClassUnitSaturationRecord:
             [int(coordinate._numerator), int(coordinate._denominator)]
             for coordinate in coordinates
         ]
+
+    @property
+    def attempts(self) -> tuple[Any, ...]:
+        """Return a detached view of bounded saturation diagnostics."""
+        return tuple(_component_payload(value) for value in self._attempts)
+
+    @property
+    def analytic_validation(self) -> dict[str, Any]:
+        """Return a detached view of the rigorous final index interval."""
+        return _component_payload(self._analytic_validation)
 
     def _body_dict(self) -> dict[str, Any]:
         original_payloads = [self._unit_payload(unit) for unit in self.original_units]
@@ -453,8 +563,8 @@ class ClassUnitSaturationRecord:
             "index_bound": self.index_bound,
             "required_primes": list(self.required_primes),
             "remaining_index_bound": self.remaining_index_bound,
-            "attempts": list(self.attempts),
-            "analytic_validation": self.analytic_validation,
+            "attempts": list(self._attempts),
+            "analytic_validation": self._analytic_validation,
             "analytic_certificate": self._analytic_certificate_payload,
             "original_units": original_payloads,
             "units": unit_payloads,
@@ -514,9 +624,9 @@ class ClassUnitSaturationRecord:
                 self.remaining_index_bound
             ):
                 return False
-            if int(self.analytic_validation.get("lower_index", 0)) != int(
+            if int(self._analytic_validation.get("lower_index", 0)) != int(
                 self.remaining_index_bound
-            ) or int(self.analytic_validation.get("upper_index", 0)) != int(
+            ) or int(self._analytic_validation.get("upper_index", 0)) != int(
                 self.remaining_index_bound
             ):
                 return False
@@ -1043,6 +1153,138 @@ class ClassUnitComputation:
         return "Incomplete class/unit computation (" + self.reason + ")"
 
 
+class _ClassUnitEngineCacheEntry:
+    """Identity- and policy-bound authority for one live engine result."""
+
+    __slots__ = (
+        "__token",
+        "__field",
+        "__order",
+        "__requested_proof",
+        "__algorithm",
+        "__seed",
+        "__limits_key",
+        "__result",
+        "__context",
+        "__result_algorithm",
+        "__proof_status",
+        "__complete",
+        "__context_proof_state",
+        "__context_proof_hash",
+        "__context_limits",
+        "__context_limits_hash",
+    )
+
+    def __init__(
+        self,
+        token: Any,
+        field: Any,
+        order: Any,
+        requested_proof: bool,
+        algorithm: str,
+        seed: int,
+        limits_key: tuple[tuple[str, int], ...],
+        result: ClassUnitComputation,
+    ) -> None:
+        if token is not _CLASS_UNIT_ENGINE_CACHE_ENTRY_TOKEN:
+            raise TypeError("class/unit engine cache entries are producer-owned")
+        if type(result) is not ClassUnitComputation:
+            raise TypeError("a class/unit engine cache entry needs a standard result")
+        context = result.context
+        proof_state = getattr(context, "proof_state", None)
+        proof_hash = getattr(proof_state, "stable_hash", None)
+        context_limits = getattr(context, "limits", None)
+        limits_hash = getattr(context_limits, "stable_hash", None)
+        if (
+            context is None
+            or proof_state is None
+            or not callable(proof_hash)
+            or context_limits is None
+            or not callable(limits_hash)
+            or not _context_matches_engine_limits(context_limits, limits_key)
+            or result.field is not field
+            or getattr(context, "field", None) is not field
+            or getattr(context, "order", None) is not order
+            or getattr(context, "algorithm", None) != algorithm
+            or getattr(context, "random_seed", None) != int(seed)
+            or getattr(proof_state, "label", None) != result.proof_status
+            or (
+                bool(requested_proof)
+                and result.complete
+                and result.proof_status != EXACT_UNCONDITIONAL
+            )
+        ):
+            raise TypeError("a cached class/unit result lost its producer bindings")
+        self.__token = token
+        self.__field = field
+        self.__order = order
+        self.__requested_proof = bool(requested_proof)
+        self.__algorithm = str(algorithm)
+        self.__seed = int(seed)
+        self.__limits_key = tuple(limits_key)
+        self.__result = result
+        self.__context = context
+        self.__result_algorithm = result.algorithm
+        self.__proof_status = result.proof_status
+        self.__complete = result.complete
+        self.__context_proof_state = proof_state
+        self.__context_proof_hash = str(proof_hash())
+        self.__context_limits = context_limits
+        self.__context_limits_hash = str(limits_hash())
+        runtime.object.freeze(self)
+
+    def matching_result(
+        self,
+        field: Any,
+        order: Any,
+        requested_proof: bool,
+        algorithm: str,
+        seed: int,
+        limits_key: tuple[tuple[str, int], ...],
+    ) -> ClassUnitComputation | None:
+        """Return the live result only while every issued binding still holds."""
+        try:
+            result = self.__result
+            context = self.__context
+            proof_state = self.__context_proof_state
+            context_limits = self.__context_limits
+            if (
+                self.__token is not _CLASS_UNIT_ENGINE_CACHE_ENTRY_TOKEN
+                or self.__field is not field
+                or self.__order is not order
+                or self.__requested_proof is not bool(requested_proof)
+                or self.__algorithm != algorithm
+                or self.__seed != int(seed)
+                or self.__limits_key != tuple(limits_key)
+                or type(result) is not ClassUnitComputation
+                or result is not self.__result
+                or result.field is not field
+                or result.context is not context
+                or result.algorithm != self.__result_algorithm
+                or result.proof_status != self.__proof_status
+                or result.complete is not self.__complete
+                or getattr(context, "field", None) is not field
+                or getattr(context, "order", None) is not order
+                or getattr(context, "algorithm", None) != algorithm
+                or getattr(context, "random_seed", None) != int(seed)
+                or getattr(context, "proof_state", None) is not proof_state
+                or getattr(proof_state, "label", None) != result.proof_status
+                or str(proof_state.stable_hash()) != self.__context_proof_hash
+                or getattr(context, "limits", None) is not context_limits
+                or str(context_limits.stable_hash()) != self.__context_limits_hash
+                or not _context_matches_engine_limits(context_limits, limits_key)
+                or (
+                    bool(requested_proof)
+                    and result.complete
+                    and result.proof_status != EXACT_UNCONDITIONAL
+                )
+            ):
+                return None
+            return result
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return None
+
+
 _CLASS_NUMBER_PROJECTION_TOKEN = object()
 
 
@@ -1454,6 +1696,7 @@ class ClassUnitGroupEngine:
         self._phase_timings: dict[str, float] = {}
         self._resource_usage: dict[str, Any] = {
             "relation_attempts": 0,
+            "initial_relations_per_ideal": 0,
             "relation_candidates": 0,
             "ideals_tested": 0,
             "relations": 0,
@@ -1474,6 +1717,7 @@ class ClassUnitGroupEngine:
             "relation_independent_log_units": 0,
             "relation_log_steering_resets": 0,
             "relation_log_steering_fallbacks": 0,
+            "relation_steering": {},
             "relation_witness_decode_requests": 0,
             "relation_witness_decode_cache_hits": 0,
             "relation_witness_logarithm_requests": 0,
@@ -1551,6 +1795,7 @@ class ClassUnitGroupEngine:
         self._relation_matrix_accumulator: Any = None
         self._relation_presentation_policy: Any = None
         self._relation_presentation_record_count = 0
+        self._relation_steering_context: Any = None
         self._automorphism_orbit_plans: list[tuple[tuple[Any, ...], Any]] = []
         self._proof_progress: Any = None
         self._proof_dependency_hashes: dict[str, str] = {}
@@ -2281,9 +2526,14 @@ class ClassUnitGroupEngine:
         *,
         saturation_prime: int | None = None,
         target_missing_pivots: bool = False,
+        steering: Any = None,
     ) -> tuple[Any, tuple[int, ...], str]:
         """Choose a targeted product ideal before falling back to the PRNG."""
         width = len(factor_base)
+        if steering is not None:
+            source_row, strategy = steering.source_row(coefficient_bound)
+            ideal = search.collector.reconstruct_factor_base_ideal(source_row)
+            return ideal, source_row, strategy
         if width == 0:
             return self.order.ideal(1), (), "unit-ideal-sweep"
         missing = tuple(search.collector.rank_screen.missing_pivots())
@@ -2333,8 +2583,21 @@ class ClassUnitGroupEngine:
         large_prime_bound: int,
         stop_after: int = 2,
         stop_after_independent: bool = False,
+        steering: Any = None,
+        unit_rank: int = 0,
     ) -> int:
         """Search one ideal while retaining bounded exact partial relations."""
+        raw_admission_cap = getattr(search, "_absolute_admission_cap", None)
+        admission_cap = (
+            None
+            if raw_admission_cap is None
+            else _integer(raw_admission_cap, "maximum admissions")
+        )
+        if admission_cap is not None:
+            if admission_cap < 0:
+                raise ValueError("maximum admissions must be nonnegative")
+            if admission_cap == 0:
+                return 0
         search.state.ideals_tested += 1
         admitted = 0
         independent_admitted = 0
@@ -2348,40 +2611,90 @@ class ClassUnitGroupEngine:
                 "candidate_sequence": sequence,
             }
             candidate_provenance.update(provenance)
-            try:
-                admission = search.collector.admit_witness(
-                    element,
-                    source_ideal=ideal,
-                    source_row=source_row,
-                    integral_generator=element,
-                    provenance=candidate_provenance,
-                )
-            except self.components.relations.RelationNotSmoothError:
-                witness = (
-                    self.components.relations.FactoredPrincipalWitness.from_element(
-                        element
+            steering_ticket = None
+            witness = None
+            if steering is not None:
+                screened_norm = steering.screen_norm(element.norm())
+                if screened_norm is None:
+                    continue
+                logarithms = None
+                independent = True
+                if steering.factor_base_size == 0 and unit_rank > 0:
+                    witness = (
+                        self.components.relations.FactoredPrincipalWitness.from_element(
+                            element
+                        )
                     )
+                    if self.components.factored is not None:
+                        logarithm_witness = self.components.factored.FactoredNumberFieldElement.from_element(
+                            self.field, element
+                        )
+                        logarithms = tuple(
+                            self._unit_logarithms(logarithm_witness, 80)[:-1]
+                        )
+                        provisional = steering.provisional_unit_logarithms
+                        independent = _floating_matrix_rank(
+                            [*provisional, logarithms]
+                        ) > len(provisional)
+                steering_ticket = steering.begin_candidate(
+                    element,
+                    logarithms=logarithms,
+                    logarithmically_independent=independent,
                 )
-                admission = self._try_large_prime_partial(
-                    search.collector,
-                    witness,
-                    ideal,
-                    source_row,
-                    candidate_provenance,
-                    large_prime_bound,
-                )
-            except ValueError as error:
-                if "already admitted" not in str(error):
+                if steering_ticket is None:
+                    continue
+                # No cancellation callback may split exact admission from the
+                # producer-local cursor commit below.
+                try:
+                    self._check_cancelled()
+                except Exception:
+                    steering.abort_candidate(steering_ticket)
                     raise
-                admission = None
+            try:
+                try:
+                    admission = search.collector.admit_witness(
+                        element if witness is None else witness,
+                        source_ideal=ideal,
+                        source_row=source_row,
+                        integral_generator=element,
+                        provenance=candidate_provenance,
+                    )
+                except self.components.relations.RelationNotSmoothError:
+                    witness = (
+                        self.components.relations.FactoredPrincipalWitness.from_element(
+                            element
+                        )
+                    )
+                    admission = self._try_large_prime_partial(
+                        search.collector,
+                        witness,
+                        ideal,
+                        source_row,
+                        candidate_provenance,
+                        large_prime_bound,
+                    )
+                except ValueError as error:
+                    if "already admitted" not in str(error):
+                        raise
+                    admission = None
+            except Exception:
+                if steering_ticket is not None and steering is not None:
+                    steering.abort_candidate(steering_ticket)
+                raise
             if admission is not None:
+                if steering_ticket is not None and steering is not None:
+                    steering.commit_candidate(steering_ticket)
                 admitted += 1
                 if admission.modular_independent:
                     independent_admitted += 1
                 search.state.relations_admitted += 1
                 progress = independent_admitted if stop_after_independent else admitted
-                if progress >= stop_after:
+                if progress >= stop_after or (
+                    admission_cap is not None and admitted >= admission_cap
+                ):
                     break
+            elif steering_ticket is not None and steering is not None:
+                steering.abort_candidate(steering_ticket)
         return admitted
 
     def _default_cubic_integral_relation_prefix(
@@ -2644,16 +2957,175 @@ class ClassUnitGroupEngine:
             )
         self._proof_progress = progress
 
+        def finish_progress(value: Any) -> tuple[Any, ...]:
+            self._proof_progress = value
+            self._resource_usage["proof_primes_completed"] = int(value.completed_items)
+            records = tuple(
+                evidence(record)
+                for partition in value.partitions
+                for record in partition.records
+            )
+            records = tuple(sorted(records, key=lambda record: int(record["index"])))
+            self._phase_finish("unconditional-proof", started)
+            self._stage(
+                "unconditional-proof",
+                "complete",
+                theorem=theorem,
+                bound=int(plan.bound),
+                prime_ideals=len(records),
+                partitions=int(value.partition_count),
+                plan_sha256=str(value.plan_sha256),
+            )
+            return records
+
+        uninterrupted = bool(
+            controller is None
+            and self.progress is None
+            and not self._cancelled_callback_supplied
+        )
+        if not uninterrupted:
+            for partition_index in range(self.limits.proof_partition_count):
+                while True:
+                    pending = tuple(progress.pending_indices(partition_index))
+                    if not pending:
+                        break
+                    index = pending[0]
+                    prime_ideal = proof_primes[index]
+                    self._check_cancelled()
+                    coordinates, witness = group.discrete_log(prime_ideal)
+                    representative = group.representative_ideal(coordinates)
+                    quotient = prime_ideal / representative
+                    if witness.principal_ideal(self.order) != quotient:
+                        raise ArithmeticError(
+                            "a Minkowski proof-prime discrete log failed principal replay"
+                        )
+                    norm = prime_ideal.norm()
+                    if norm._denominator != 1:
+                        raise ArithmeticError(
+                            "a proof-prime ideal has nonintegral norm"
+                        )
+                    raw = {
+                        "index": index,
+                        "norm": int(norm._numerator),
+                        "coordinates": tuple(int(value) for value in coordinates),
+                        "ideal": prime_ideal.to_dict(),
+                        "witness": witness.to_dict(),
+                    }
+                    wrapped = record_type(index, fingerprints[index], raw)
+                    if not verify_record(wrapped, index, fingerprints[index]):
+                        raise ArithmeticError(
+                            "a Minkowski proof-prime record failed exact replay"
+                        )
+                    if controller is None:
+                        progress = progress.record(index, wrapped)
+                        self._checkpoint_capture({"proof_progress": progress})
+                        self._checkpoint_save(force=True)
+                    else:
+                        checkpoint_prime = getattr(
+                            controller, "checkpoint_minkowski_proof_prime", None
+                        )
+                        if not callable(checkpoint_prime):
+                            raise TypeError(
+                                "the checkpoint controller cannot save a proof prime"
+                            )
+                        try:
+                            progress = checkpoint_prime(
+                                progress,
+                                index,
+                                wrapped,
+                                details={
+                                    "partition_index": partition_index,
+                                    "prime_index": index,
+                                },
+                                force=True,
+                            )
+                        finally:
+                            restored = controller.restore_minkowski_proof_progress(
+                                bound=(int(plan.bound), 1),
+                                prime_fingerprints=fingerprints,
+                                partition_count=self.limits.proof_partition_count,
+                                theorem=theorem,
+                                dependency_hashes=self._proof_dependency_hashes,
+                                record_decoder=decode_record,
+                                record_verifier=verify_record,
+                            )
+                            if restored is not None:
+                                progress = restored
+                    self._proof_progress = progress
+                    self._resource_usage["proof_primes_completed"] = int(
+                        progress.completed_items
+                    )
+                    self._emit_progress(
+                        "proof-prime",
+                        completed=int(progress.completed_items),
+                        total=len(proof_primes),
+                        partition_index=partition_index,
+                        partition_count=self.limits.proof_partition_count,
+                        prime_index=index,
+                    )
+                    self._check_cancelled()
+            if not progress.complete or not progress.verify_records(verify_record):
+                raise ArithmeticError("the Minkowski proof partitions are incomplete")
+            return finish_progress(progress)
+
+        issued_group = group
+        issued_primes = proof_primes
+        issued_dependencies = dict(self._proof_dependency_hashes)
+        issued_plan_sha256 = str(progress.plan_sha256)
+        issued_discrete_log = group.discrete_log
+        issued_representative_ideal = group.representative_ideal
+        record_seals: list[tuple[Any, str]] = []
+
+        def verify_live_issuance(value: Any, *, require_complete: bool) -> bool:
+            try:
+                records = tuple(
+                    record
+                    for partition in value.partitions
+                    for record in partition.records
+                )
+                if (
+                    group is not issued_group
+                    or proof_primes is not issued_primes
+                    or dict(self._proof_dependency_hashes) != issued_dependencies
+                    or str(value.plan_sha256) != issued_plan_sha256
+                    or value.dependency_hashes != issued_dependencies
+                    or tuple(
+                        _portable_ideal_fingerprint(prime) for prime in proof_primes
+                    )
+                    != fingerprints
+                    or (require_complete and not value.complete)
+                    or len(records) != len(record_seals)
+                ):
+                    return False
+                for record, (sealed_record, stable_hash) in zip(
+                    records, record_seals, strict=True
+                ):
+                    if (
+                        record is not sealed_record
+                        or str(record.stable_hash()) != stable_hash
+                    ):
+                        return False
+                return True
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                ArithmeticError,
+            ):
+                return False
+
+        working_progress = progress
+
         for partition_index in range(self.limits.proof_partition_count):
             while True:
-                pending = tuple(progress.pending_indices(partition_index))
+                pending = tuple(working_progress.pending_indices(partition_index))
                 if not pending:
                     break
                 index = pending[0]
                 prime_ideal = proof_primes[index]
                 self._check_cancelled()
-                coordinates, witness = group.discrete_log(prime_ideal)
-                representative = group.representative_ideal(coordinates)
+                coordinates, witness = issued_discrete_log(prime_ideal)
+                representative = issued_representative_ideal(coordinates)
                 quotient = prime_ideal / representative
                 if witness.principal_ideal(self.order) != quotient:
                     raise ArithmeticError(
@@ -2662,84 +3134,52 @@ class ClassUnitGroupEngine:
                 norm = prime_ideal.norm()
                 if norm._denominator != 1:
                     raise ArithmeticError("a proof-prime ideal has nonintegral norm")
+                witness_type = getattr(
+                    self.components.factored, "FactoredNumberFieldElement", None
+                )
+                if witness_type is None:
+                    witness_type = self.components.relations.FactoredPrincipalWitness
+                witness_payload = witness.to_dict()
+                detached_witness = witness_type.from_dict(self.field, witness_payload)
+                live_field = getattr(witness, "field", None)
+                live_field = live_field() if callable(live_field) else live_field
+                detached_field = getattr(detached_witness, "field", None)
+                detached_field = (
+                    detached_field() if callable(detached_field) else detached_field
+                )
+                if (
+                    live_field is not self.field
+                    or detached_field is not self.field
+                    or tuple(detached_witness.factors()) != tuple(witness.factors())
+                    or detached_witness.to_dict() != witness_payload
+                ):
+                    raise ArithmeticError(
+                        "a Minkowski proof witness payload changed after live replay"
+                    )
                 raw = {
                     "index": index,
                     "norm": int(norm._numerator),
                     "coordinates": tuple(int(value) for value in coordinates),
                     "ideal": prime_ideal.to_dict(),
-                    "witness": witness.to_dict(),
+                    "witness": witness_payload,
                 }
                 wrapped = record_type(index, fingerprints[index], raw)
-                if not verify_record(wrapped, index, fingerprints[index]):
-                    raise ArithmeticError(
-                        "a Minkowski proof-prime record failed exact replay"
-                    )
-                if controller is None:
-                    progress = progress.record(index, wrapped)
-                    self._checkpoint_capture({"proof_progress": progress})
-                    self._checkpoint_save(force=True)
-                else:
-                    checkpoint_prime = getattr(
-                        controller, "checkpoint_minkowski_proof_prime", None
-                    )
-                    if not callable(checkpoint_prime):
-                        raise TypeError(
-                            "the checkpoint controller cannot save a proof prime"
-                        )
-                    try:
-                        progress = checkpoint_prime(
-                            progress,
-                            index,
-                            wrapped,
-                            details={
-                                "partition_index": partition_index,
-                                "prime_index": index,
-                            },
-                            force=True,
-                        )
-                    finally:
-                        restored = controller.restore_minkowski_proof_progress(
-                            bound=(int(plan.bound), 1),
-                            prime_fingerprints=fingerprints,
-                            partition_count=self.limits.proof_partition_count,
-                            theorem=theorem,
-                            dependency_hashes=self._proof_dependency_hashes,
-                            record_decoder=decode_record,
-                            record_verifier=verify_record,
-                        )
-                        if restored is not None:
-                            progress = restored
-                self._proof_progress = progress
-                self._resource_usage["proof_primes_completed"] = int(
-                    progress.completed_items
-                )
-                self._emit_progress(
-                    "proof-prime",
-                    completed=int(progress.completed_items),
-                    total=len(proof_primes),
-                    partition_index=partition_index,
-                    partition_count=self.limits.proof_partition_count,
-                    prime_index=index,
-                )
-        if not progress.complete or not progress.verify_records(verify_record):
+                stable_hash = getattr(wrapped, "stable_hash", None)
+                if not callable(stable_hash):
+                    raise TypeError("a live Minkowski proof record has no stable hash")
+                record_seals.append((wrapped, str(stable_hash())))
+                working_progress = working_progress.record(index, wrapped)
+
+        if not verify_live_issuance(working_progress, require_complete=True):
+            raise ArithmeticError("the live Minkowski proof issuance changed")
+
+        progress = working_progress
+        self._checkpoint_capture({"proof_progress": progress})
+        self._checkpoint_save(force=True)
+
+        if not verify_live_issuance(progress, require_complete=True):
             raise ArithmeticError("the Minkowski proof partitions are incomplete")
-        records = tuple(
-            evidence(record)
-            for partition in progress.partitions
-            for record in partition.records
-        )
-        records = tuple(sorted(records, key=lambda record: int(record["index"])))
-        self._phase_finish("unconditional-proof", started)
-        self._stage(
-            "unconditional-proof",
-            "complete",
-            theorem=theorem,
-            bound=int(plan.bound),
-            prime_ideals=len(records),
-            partitions=int(progress.partition_count),
-            plan_sha256=str(progress.plan_sha256),
-        )
-        return records
+        return finish_progress(progress)
 
     def _proof_dependencies(
         self, group: Any, collector: Any, presentation: Any, saturation: Any
@@ -3044,7 +3484,11 @@ class ClassUnitGroupEngine:
                     presentation,
                     extracted_level="snf",
                 )
-        coefficient_bound = 1
+        restored_attempts = int(getattr(restored_state, "ideals_tested", 0))
+        coefficient_bound = min(
+            self.limits.max_coefficient_bound,
+            1 + restored_attempts // max(1, len(factor_base)),
+        )
         search = relations.LLLRelationSearch(
             collector,
             seed=self.seed,
@@ -3055,6 +3499,56 @@ class ClassUnitGroupEngine:
         )
         self._relation_search_state = search.state
         attempts = int(search.state.ideals_tested)
+        steering: Any = self._relation_steering_context
+        steering_type = getattr(relations, "_RelationSteeringContext", None)
+        steering_token = getattr(relations, "_RELATION_STEERING_CONTEXT_TOKEN", None)
+        if steering is None or not steering.matches(collector, search.state):
+            steering = (
+                steering_type(
+                    collector,
+                    search.state,
+                    _producer_token=steering_token,
+                )
+                if callable(steering_type) and steering_token is not None
+                else None
+            )
+            self._relation_steering_context = steering
+
+        def sync_steering_diagnostics() -> None:
+            if steering is None:
+                return
+            self._resource_usage["relation_steering"] = steering.diagnostics()
+
+        def observed_unit_log_rank(current_presentation: Any) -> int:
+            # Steering caches are deliberately absent from checkpoints.  A
+            # resumed context starts its dependency cursor at zero, rescans
+            # this authenticated exact presentation once, then replaces its
+            # numerical prefilter basis from the engine's exact dependency
+            # units before any new candidate is considered.
+            if steering is None:
+                return self._unit_logarithmic_rank(
+                    collector.records, current_presentation, unit_rank
+                )
+            transaction = steering.begin_dependency_update(current_presentation)
+            try:
+                answer = self._unit_logarithmic_rank(
+                    collector.records,
+                    current_presentation,
+                    unit_rank,
+                    dependency_transforms=transaction.dependencies,
+                )
+            except Exception:
+                steering.abort_dependency_update(transaction)
+                sync_steering_diagnostics()
+                raise
+            steering.commit_dependency_update(transaction)
+            steering.reconcile_unit_rank(answer, unit_rank)
+            steering.synchronize_exact_unit_logarithms(
+                self._relation_independent_logarithms
+            )
+            sync_steering_diagnostics()
+            return answer
+
         # Initial discovery needs a full relation-matrix rank and enough
         # independent logarithmic units.  Extra dependencies are not a proof
         # boundary: rigorous hR index-one certification below proves
@@ -3065,9 +3559,7 @@ class ClassUnitGroupEngine:
             if minimum_dependencies is None
             else max(0, int(minimum_dependencies))
         )
-        unit_log_rank = self._unit_logarithmic_rank(
-            collector.records, presentation, unit_rank
-        )
+        unit_log_rank = observed_unit_log_rank(presentation)
         self._relation_unit_log_rank = unit_log_rank
         self._resource_usage.update(
             {
@@ -3098,6 +3590,11 @@ class ClassUnitGroupEngine:
             self._check_cancelled()
             if attempts >= self.limits.max_relation_attempts:
                 break
+            remaining_relation_capacity = self.limits.max_relations - len(
+                collector.records
+            )
+            if remaining_relation_capacity <= 0:
+                break
             search.max_candidates_per_ideal = min(
                 self.limits.max_candidates_per_ideal,
                 8 * coefficient_bound,
@@ -3106,10 +3603,17 @@ class ClassUnitGroupEngine:
                 self.limits.max_random_terms, 2 + coefficient_bound
             )
             search.coefficient_bound = coefficient_bound
+            steering_active = bool(
+                steering is not None
+                and int(presentation.rank) == len(factor_base)
+                and unit_log_rank < unit_rank
+            )
             if saturation_prime is None:
                 relation_ideal_options: dict[str, Any] = {}
                 if target_missing_pivots:
                     relation_ideal_options["target_missing_pivots"] = True
+                if steering_active:
+                    relation_ideal_options["steering"] = steering
                 ideal, source_row, strategy = self._relation_ideal(
                     search,
                     factor_base,
@@ -3124,11 +3628,16 @@ class ClassUnitGroupEngine:
                     attempts,
                     coefficient_bound,
                     saturation_prime=saturation_prime,
+                    steering=steering if steering_active else None,
                 )
             before = len(collector.records)
+            search._absolute_admission_cap = remaining_relation_capacity
             search_options: dict[str, Any] = {"stop_after": relations_per_ideal}
             if independent_relations_per_ideal:
                 search_options["stop_after_independent"] = True
+            if steering_active:
+                search_options["steering"] = steering
+                search_options["unit_rank"] = unit_rank
             self._search_relation_ideal(
                 search,
                 ideal,
@@ -3154,7 +3663,30 @@ class ClassUnitGroupEngine:
                 if accumulator is not None:
                     for record in collector.records[before:]:
                         accumulator.add_relation(record.row)
-                if policy is not None:
+                zero_width_extended = False
+                if (
+                    steering_active
+                    and steering is not None
+                    and len(factor_base) == 0
+                    and int(getattr(presentation, "row_count", 0)) > 0
+                ):
+                    extend = getattr(
+                        matrix_module,
+                        "extend_relation_presentation_with_duplicate_rows",
+                        None,
+                    )
+                    if callable(extend):
+                        presentation = accept_presentation(
+                            extend(
+                                presentation,
+                                [record.row for record in collector.records[before:]],
+                            )
+                        )
+                        zero_width_extended = True
+                        steering.note_zero_width_extensions(
+                            len(collector.records) - before
+                        )
+                if policy is not None and not zero_width_extended:
                     update = policy_presentation()
                     if update is not None:
                         presentation = update
@@ -3173,9 +3705,16 @@ class ClassUnitGroupEngine:
                         presentation.rank < len(factor_base) and modular_full
                     ):
                         presentation = extract_presentation()
-                unit_log_rank = self._unit_logarithmic_rank(
-                    collector.records, presentation, unit_rank
-                )
+                if (
+                    steering_active
+                    and steering is not None
+                    and len(factor_base) == 0
+                    and self._relation_presentation_record_count
+                    != len(collector.records)
+                ):
+                    update = policy_presentation(force=True)
+                    presentation = extract_presentation() if update is None else update
+                unit_log_rank = observed_unit_log_rank(presentation)
                 self._relation_unit_log_rank = unit_log_rank
             coefficient_bound = min(
                 self.limits.max_coefficient_bound,
@@ -3220,15 +3759,15 @@ class ClassUnitGroupEngine:
                     len(collector.records) - self._relation_presentation_record_count
                 ),
                 search_state=search.state.to_dict(),
+                steering=(None if steering is None else steering.diagnostics()),
             )
         if self._relation_presentation_record_count != len(collector.records):
             update = policy_presentation(force=True)
             presentation = extract_presentation() if update is None else update
-            unit_log_rank = self._unit_logarithmic_rank(
-                collector.records, presentation, unit_rank
-            )
+            unit_log_rank = observed_unit_log_rank(presentation)
             self._relation_unit_log_rank = unit_log_rank
         self._phase_finish("relations", started)
+        sync_steering_diagnostics()
         search_complete = (
             presentation.rank == len(factor_base)
             and len(presentation.dependency_transforms) >= dependency_target
@@ -3264,12 +3803,18 @@ class ClassUnitGroupEngine:
                 self._resource_usage["automorphism_orbit_relations"]
             ),
             search_state=search.state.to_dict(),
+            steering=(None if steering is None else steering.diagnostics()),
         )
         self._bind_context_relations(factor_base, collector, presentation)
         return collector, presentation
 
     def _unit_logarithmic_rank(
-        self, records: Sequence[Any], presentation: Any, unit_rank: int
+        self,
+        records: Sequence[Any],
+        presentation: Any,
+        unit_rank: int,
+        *,
+        dependency_transforms: Sequence[Sequence[int]] | None = None,
     ) -> int:
         """Return a monotone observed rank of exact dependency units.
 
@@ -3307,9 +3852,15 @@ class ClassUnitGroupEngine:
             self._resource_usage["relation_independent_log_units"] = 1
             return 1
         current_rank = len(logarithms)
-        for dependency in presentation.dependency_transforms:
+        dependencies = (
+            presentation.dependency_transforms
+            if dependency_transforms is None
+            else dependency_transforms
+        )
+        for dependency in dependencies:
             if current_rank >= unit_rank:
                 break
+            self._check_cancelled()
             self._resource_usage["relation_dependency_unit_requests"] += 1
             normalized = [int(value) for value in dependency]
             while normalized and normalized[-1] == 0:
@@ -3347,7 +3898,6 @@ class ClassUnitGroupEngine:
                 return self._uncached_unit_logarithmic_rank(
                     record_prefix, presentation, unit_rank
                 )
-            self._relation_seen_dependency_units.add(unit_hash)
             if unit is None:
                 unit = self._combine(record_prefix, dependency)
             # A cubic field has no roots of unity beyond +/-1: every
@@ -3362,6 +3912,7 @@ class ClassUnitGroupEngine:
                 value = evaluator()
                 one = self.field.one()
                 if value != one and value != -one:
+                    self._relation_seen_dependency_units.add(unit_hash)
                     self._relation_exact_rank_one_dependency_key = dependency_key
                     self._relation_independent_dependency_keys.append(dependency_key)
                     self._resource_usage["relation_exact_rank_one_units"] += 1
@@ -3374,6 +3925,7 @@ class ClassUnitGroupEngine:
                 logarithms.append(row)
                 self._relation_independent_dependency_keys.append(dependency_key)
                 current_rank = candidate_rank
+            self._relation_seen_dependency_units.add(unit_hash)
         self._resource_usage["relation_dependency_unit_cache_entries"] = len(
             self._relation_dependency_unit_hashes
         )
@@ -3821,25 +4373,42 @@ class ClassUnitGroupEngine:
         }
         if self._analytic_workspace is not None:
             zeta_options["workspace"] = self._analytic_workspace
-        zeta = analytic.zeta_log_residue_bound(
-            int(self.order.discriminant()),
-            int(self.field.degree()),
-            self.order.splitting_records,
-            **zeta_options,
-        )
         units_module = _optional_module("sagejs.number_fields.units")
         torsion = units_module.roots_of_unity(self.field)
         if not torsion.complete or not torsion.verify():
             raise ArithmeticError("roots of unity are incomplete")
-        index = analytic.validate_hr_index(
-            signature=_value(self.field, ("signature",)),
-            discriminant=int(self.order.discriminant()),
-            class_number=int(presentation.order),
-            roots_of_unity=int(torsion.order),
-            regulator=regulator,
-            zeta_log_residue=zeta,
-            precision_bits=self.limits.precision_bits,
-        )
+        adaptive_completion = getattr(analytic, "adaptive_hr_index", None)
+        if callable(adaptive_completion):
+            completion_result: Any = adaptive_completion(
+                signature=_value(self.field, ("signature",)),
+                discriminant=int(self.order.discriminant()),
+                degree=int(self.field.degree()),
+                class_number=int(presentation.order),
+                roots_of_unity=int(torsion.order),
+                regulator=regulator,
+                splitting_provider=self.order.splitting_records,
+                initial_absolute_error="1",
+                cancelled=self.cancelled,
+                **zeta_options,
+            )
+            zeta, index, error_history = completion_result
+        else:
+            zeta = analytic.zeta_log_residue_bound(
+                int(self.order.discriminant()),
+                int(self.field.degree()),
+                self.order.splitting_records,
+                **zeta_options,
+            )
+            index = analytic.validate_hr_index(
+                signature=_value(self.field, ("signature",)),
+                discriminant=int(self.order.discriminant()),
+                class_number=int(presentation.order),
+                roots_of_unity=int(torsion.order),
+                regulator=regulator,
+                zeta_log_residue=zeta,
+                precision_bits=self.limits.precision_bits,
+            )
+            error_history = (str(getattr(zeta, "requested_absolute_error", "0.125")),)
         self._bind_context_analytic_proof(
             (
                 tuple(units),
@@ -3858,6 +4427,8 @@ class ClassUnitGroupEngine:
             upper_index=int(index.upper_index),
             rigorous=bool(index.rigorous),
             zeta_threshold=int(zeta.threshold),
+            zeta_absolute_error=str(error_history[-1]),
+            zeta_refinement_attempts=len(error_history),
         )
         return torsion, regulator, index
 
@@ -4294,6 +4865,12 @@ class ClassUnitGroupEngine:
                 and live_class_number == int(class_number)
                 and live_torsion_order == int(_value(torsion, ("order",), 0))
             ):
+                live_error_history = tuple(
+                    getattr(live_zeta, "hr_index_absolute_error_history", ())
+                )
+                if live_error_history:
+                    options["zeta_absolute_error"] = live_error_history[-1]
+                    options["zeta_absolute_error_history"] = live_error_history
                 options["_precomputed_regulator"] = live_regulator
                 options["_precomputed_zeta_log_residue"] = live_zeta
                 options["_precomputed_index"] = live_index
@@ -4519,7 +5096,7 @@ class ClassUnitGroupEngine:
             index_bound=record.index_bound,
             remaining_index_bound=record.remaining_index_bound,
             required_primes=record.required_primes,
-            attempts=len(record.attempts),
+            attempts=len(record._attempts),
             rigorous=record.rigorous,
         )
         return collector, presentation, units, torsion, regulator, index, record
@@ -4929,14 +5506,12 @@ class ClassUnitGroupEngine:
                     size=len(factor_base),
                     reused_cubic_seed=True,
                 )
-            # In cubic fields, retaining a second smooth witness from the same
-            # short-vector enumeration costs more exact ideal admission and
-            # replay work than it saves in lattice setup.  The stopping rule
-            # below still requires full relation rank, the full logarithmic
-            # unit rank, and rigorous index one.  Other degrees keep two
-            # admissions per ideal because their LLL/enumeration setup is the
-            # dominant cost and should be amortized across useful witnesses.
-            initial_relations_per_ideal = 1 if int(self.field.degree()) == 3 else 2
+            initial_relations_per_ideal = _initial_relation_admissions_per_ideal(
+                signature, len(factor_base)
+            )
+            self._resource_usage["initial_relations_per_ideal"] = (
+                initial_relations_per_ideal
+            )
             if relation_seed is None:
                 collector, presentation = self._relations(
                     factor_base,
@@ -5161,6 +5736,472 @@ def compute_class_unit_group(
 class_unit_group = compute_class_unit_group
 
 
+def _clone_engine_class_group_for_unconditional_proof(group: Any) -> Any:
+    """Clone only the proof-labelled shell around authenticated exact state."""
+    if type(group) is not _EngineClassGroup:
+        raise TypeError("a terminal proof upgrade needs the standard engine group")
+    return _EngineClassGroup(
+        group._order,
+        group._invariants,
+        group._generator_ideals,
+        group._generator_rows,
+        group._presentation,
+        group._factor_base,
+        group._relations,
+        group._combine_relations,
+        group._factor_over_base,
+        group._reduce_over_base,
+        group._combine_reduction_witness,
+        EXACT_UNCONDITIONAL,
+        "Minkowski ideal-class theorem",
+        group._relation_reconstructor,
+    )
+
+
+def _clone_factored_terminal_units(field: Any, payloads: Any) -> tuple[Any, ...]:
+    """Reconstruct immutable exact units from a private terminal snapshot."""
+    factored_module = _optional_module("sagejs.number_fields.factored_elements")
+    factored_type = getattr(factored_module, "FactoredNumberFieldElement", None)
+    if factored_type is None or not isinstance(payloads, list):
+        raise TypeError("a terminal proof upgrade needs canonical factored units")
+    return tuple(factored_type.from_dict(field, payload) for payload in payloads)
+
+
+def _clone_terminal_torsion(field: Any, payload: Any) -> Any:
+    """Reconstruct roots of unity without sharing the conditional shell."""
+    if not isinstance(payload, dict):
+        raise TypeError("a terminal torsion snapshot must be a dictionary")
+    factored_module = _optional_module("sagejs.number_fields.factored_elements")
+    units_module = _optional_module("sagejs.number_fields.units")
+    decode = getattr(factored_module, "_element_from_payload", None)
+    torsion_type = getattr(units_module, "RootsOfUnityResult", None)
+    certificate_type = getattr(units_module, "RootsOfUnityCertificate", None)
+    decode_certificate = getattr(certificate_type, "from_dict", None)
+    raw_elements = payload.get("elements")
+    if (
+        not callable(decode)
+        or not callable(torsion_type)
+        or not callable(decode_certificate)
+        or not isinstance(raw_elements, list)
+    ):
+        raise TypeError("the canonical torsion decoder is unavailable")
+    certificate = decode_certificate(field, payload.get("certificate"))
+    answer = torsion_type(
+        [decode(field, value) for value in raw_elements],
+        decode(field, payload.get("generator")),
+        _integer(payload.get("order"), "terminal torsion order"),
+        payload.get("complete") is True,
+        str(payload.get("reason")),
+        certificate,
+    )
+    verify = getattr(answer, "verify", None)
+    if (
+        _value(answer, ("proof_status",), None) != payload.get("proof_status")
+        or not callable(verify)
+        or not verify(force_replay=True)
+    ):
+        raise ArithmeticError("the cloned terminal torsion failed exact replay")
+    return answer
+
+
+def _clone_terminal_regulator(payload: Any, analytic_module: Any) -> Any:
+    """Reconstruct a rigorous regulator enclosure from exact endpoints."""
+    if not isinstance(payload, dict) or not isinstance(payload.get("ball"), dict):
+        raise TypeError("a terminal regulator snapshot must be a dictionary")
+    ball_payload = payload["ball"]
+    ball_type = getattr(analytic_module, "RealBall", None)
+    regulator_type = getattr(analytic_module, "RegulatorEnclosure", None)
+    endpoint = getattr(analytic_module, "_decimal_rational", None)
+    if (
+        not callable(ball_type)
+        or not callable(regulator_type)
+        or not callable(endpoint)
+    ):
+        raise TypeError("the canonical regulator decoder is unavailable")
+    ball = ball_type(
+        ball_payload.get("lower"),
+        ball_payload.get("upper"),
+        precision_bits=_integer(
+            ball_payload.get("precision_bits"), "terminal regulator precision"
+        ),
+        rigorous=ball_payload.get("rigorous") is True,
+        source=str(ball_payload.get("source")),
+    )
+    answer = regulator_type(
+        ball,
+        _integer(payload.get("unit_rank"), "terminal regulator rank"),
+        payload.get("precision_history", ()),
+        weighted_complex_places=payload.get("weighted_complex_places") is True,
+        determinant_widths=tuple(
+            endpoint(value) for value in payload.get("determinant_widths", ())
+        ),
+    )
+    encode = getattr(answer, "to_dict", None)
+    if not callable(encode) or encode() != payload:
+        raise ArithmeticError("the cloned terminal regulator changed its enclosure")
+    return answer
+
+
+def _clone_terminal_saturation(
+    field: Any,
+    order: Any,
+    source: Any,
+    payload: Any,
+    *,
+    body_json: str,
+    content_sha256: str,
+) -> ClassUnitSaturationRecord:
+    """Reconstruct semantic saturation authority, excluding mutable workspaces."""
+    if type(source) is not ClassUnitSaturationRecord or not isinstance(payload, dict):
+        raise TypeError("a terminal proof fork needs standard saturation evidence")
+    analytic_module = getattr(source, "_analytic_module", None)
+    certificate_type = getattr(analytic_module, "UnitSaturationIndexCertificate", None)
+    if certificate_type is None:
+        raise TypeError("the terminal unit-index certificate decoder is unavailable")
+    original_units = _clone_factored_terminal_units(
+        field, payload.get("original_units")
+    )
+    units = _clone_factored_terminal_units(field, payload.get("units"))
+    certificate = certificate_type.from_dict(payload.get("analytic_certificate"))
+    answer = ClassUnitSaturationRecord(
+        field,
+        order,
+        original_units,
+        units,
+        index_bound=_integer(payload.get("index_bound"), "terminal index bound"),
+        required_primes=payload.get("required_primes", ()),
+        remaining_index_bound=_integer(
+            payload.get("remaining_index_bound"), "terminal remaining index"
+        ),
+        attempts=getattr(source, "_attempts", ()),
+        analytic_validation=getattr(source, "_analytic_validation", {}),
+        analytic_certificate=certificate,
+        analytic_generation_verifier=getattr(
+            source, "_analytic_generation_verifier", None
+        ),
+        # Producer artifacts and workspaces are acceleration state.  The
+        # detached final index-one certificate is the semantic authority.
+        producer_artifacts=(),
+        analytic_module=analytic_module,
+        analytic_workspace=None,
+        reason=str(payload.get("reason")),
+        _trusted_terminal_snapshot=(
+            _TERMINAL_SATURATION_CLONE_TOKEN,
+            body_json,
+            content_sha256,
+        ),
+    )
+    return answer
+
+
+def _clone_terminal_unit_authority(
+    field: Any,
+    order: Any,
+    source_group: Any,
+    source_saturation: Any,
+    snapshot: Any,
+) -> tuple[tuple[Any, ...], UnitGroupComputation, ClassUnitSaturationRecord]:
+    """Clone every mutable unit-side component from authenticated payloads."""
+    if (
+        type(source_group) is not UnitGroupComputation
+        or not source_group.complete
+        or not isinstance(snapshot, dict)
+    ):
+        raise TypeError("a terminal proof upgrade needs standard complete units")
+    body_json = snapshot.get("saturation_body_json")
+    content_sha256 = snapshot.get("saturation_content_sha256")
+    if (
+        not isinstance(body_json, str)
+        or not isinstance(content_sha256, str)
+        or hashlib.sha256(body_json.encode("utf-8")).hexdigest() != content_sha256
+    ):
+        raise ArithmeticError("the retained saturation snapshot is malformed")
+    certificate = getattr(source_saturation, "_analytic_certificate", None)
+    encode_certificate = getattr(certificate, "to_dict", None)
+    if not callable(encode_certificate):
+        raise TypeError("the terminal unit-index certificate is unavailable")
+    saturation_payload = {
+        "schema": "sagejs.number-fields/class-unit-saturation-v1",
+        "index_bound": snapshot.get("saturation_index_bound"),
+        "required_primes": snapshot.get("saturation_required_primes"),
+        "remaining_index_bound": snapshot.get("saturation_remaining_index_bound"),
+        "attempts": list(getattr(source_saturation, "_attempts", ())),
+        "analytic_validation": getattr(source_saturation, "_analytic_validation", {}),
+        "analytic_certificate": encode_certificate(),
+        "original_units": [
+            unit.to_dict() for unit in getattr(source_saturation, "original_units", ())
+        ],
+        "units": [unit.to_dict() for unit in getattr(source_saturation, "units", ())],
+        "rigorous": snapshot.get("saturation_rigorous"),
+        "complete": snapshot.get("saturation_complete"),
+        "saturated": snapshot.get("saturation_saturated"),
+        "reason": snapshot.get("saturation_reason"),
+        "content_sha256": content_sha256,
+    }
+    units = _clone_factored_terminal_units(field, saturation_payload["units"])
+    saturation = _clone_terminal_saturation(
+        field,
+        order,
+        source_saturation,
+        saturation_payload,
+        body_json=body_json,
+        content_sha256=content_sha256,
+    )
+    analytic_module = getattr(source_saturation, "_analytic_module", None)
+    unit_group = UnitGroupComputation(
+        _clone_terminal_torsion(field, snapshot.get("torsion")),
+        units,
+        _integer(snapshot.get("unit_rank"), "terminal unit rank"),
+        complete=snapshot.get("unit_complete") is True,
+        regulator=_clone_terminal_regulator(snapshot.get("regulator"), analytic_module),
+        reason=str(snapshot.get("unit_reason")),
+        proof_status=EXACT_UNCONDITIONAL,
+        completion_evidence=saturation,
+    )
+    return units, unit_group, saturation
+
+
+def _terminal_dependency_hashes_for_policies(
+    engine: ClassUnitGroupEngine,
+    group: Any,
+    collector: Any,
+    presentation: Any,
+    saturation: Any,
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Rehash a cached terminal once under conditional and proof policies."""
+    if type(saturation) is not ClassUnitSaturationRecord:
+        raise TypeError("a terminal proof fork needs standard saturation evidence")
+    saturation_body = saturation._body_dict()
+    saturation_hash = _canonical_payload_hash(saturation_body)
+    if saturation_hash != str(saturation.content_sha256):
+        raise ArithmeticError("cached terminal saturation evidence changed")
+    relations_sha256 = _canonical_payload_hash(
+        [_component_payload(record) for record in collector.records]
+    )
+    presentation_sha256 = _canonical_payload_hash(_component_payload(presentation))
+    generators_sha256 = _canonical_payload_hash(
+        {
+            "schema": "sagejs.number-fields/proof-generators-v1",
+            "ideals": [_component_payload(ideal) for ideal in group.gens_ideals()],
+        }
+    )
+
+    def dependencies(requested_proof: bool) -> dict[str, str]:
+        execution_policy = {
+            "schema": "sagejs.number-fields/class-unit-execution-policy-v1",
+            "requested_proof": bool(requested_proof),
+            "algorithm": engine.algorithm,
+            "limits": engine.limits.to_dict(),
+        }
+        return {
+            "relations": _canonical_payload_hash(
+                {
+                    "schema": "sagejs.number-fields/proof-relations-v2",
+                    "records_sha256": relations_sha256,
+                    "execution_policy": execution_policy,
+                }
+            ),
+            "presentation": presentation_sha256,
+            "generators": generators_sha256,
+            "saturation": saturation_hash,
+        }
+
+    return dependencies(False), dependencies(True)
+
+
+def _merged_terminal_upgrade_diagnostics(
+    source: ClassUnitComputation,
+    engine: ClassUnitGroupEngine,
+    *,
+    proof_records: tuple[Any, ...],
+    factor_base_size: int,
+) -> dict[str, Any]:
+    """Preserve the exact prefix receipt and add an explicit proof-only suffix."""
+    answer = dict(source.diagnostics)
+    suffix = engine._diagnostics()
+    source_phases = dict(answer.get("phase_timings", {}))
+    suffix_phases = dict(suffix.get("phase_timings", {}))
+    combined_phases = dict(source_phases)
+    for name, elapsed in suffix_phases.items():
+        combined_phases[name] = combined_phases.get(name, 0.0) + float(elapsed)
+    source_resources = dict(answer.get("resources", {}))
+    suffix_resources = dict(suffix.get("resources", {}))
+    combined_resources = dict(source_resources)
+    for name, value in suffix_resources.items():
+        if isinstance(value, int) and isinstance(combined_resources.get(name, 0), int):
+            combined_resources[name] = int(combined_resources.get(name, 0)) + value
+        elif name not in combined_resources:
+            combined_resources[name] = value
+    answer.update(
+        {
+            "elapsed_seconds": float(answer.get("elapsed_seconds", 0.0))
+            + float(suffix.get("elapsed_seconds", 0.0)),
+            "phase_timings": combined_phases,
+            "resources": combined_resources,
+            "limits": engine.limits.to_dict(),
+            "unconditional_prime_records": proof_records,
+            "proof_dependency_hashes": dict(engine._proof_dependency_hashes),
+            "proof_progress": (
+                None
+                if engine._proof_progress is None
+                else engine._proof_progress.to_dict()
+            ),
+            "terminal_upgrade": {
+                "schema": "sagejs.number-fields/class-unit-terminal-upgrade-v1",
+                "reused_factor_base_size": int(factor_base_size),
+                "reused_relation_count": len(source.conditional_relation_records),
+                "reused_presentation": True,
+                "reused_units": len(source.units()),
+                "reused_saturation": True,
+                "rerun_relation_search": False,
+                "rerun_analytic_index": False,
+            },
+        }
+    )
+    return answer
+
+
+def _upgrade_cached_conditional_result(
+    field: Any,
+    source: Any,
+    *,
+    algorithm: str,
+    limits: ClassUnitEngineLimits,
+    seed: int,
+) -> ClassUnitComputation | None:
+    """Run only the existing Minkowski suffix on a sealed conditional result."""
+    if (
+        type(source) is not ClassUnitComputation
+        or not source.complete
+        or source.proof_status != EXACT_RELATIONS_CONDITIONAL_GRH
+        or getattr(source, "field", None) is not field
+    ):
+        return None
+    context = source.context
+    context_module = _optional_module("sagejs.number_fields.class_unit_context")
+    fork = getattr(context, "_fork_live_terminal_for_unconditional_proof", None)
+    proof_state_type = getattr(context_module, "ClassUnitProofState", None)
+    live_token = getattr(context_module, "_LIVE_CLASS_UNIT_CONTEXT_TOKEN", None)
+    finish_terminal_upgrade = getattr(context, "_finish_live_terminal_upgrade", None)
+    if (
+        not callable(fork)
+        or not callable(finish_terminal_upgrade)
+        or proof_state_type is None
+        or live_token is None
+    ):
+        return None
+    requested_state = proof_state_type.incomplete(
+        "unconditional terminal proof upgrade in progress",
+        evidence={
+            "schema": "sagejs.number-fields/class-unit-request-policy-v1",
+            "requested_proof": True,
+        },
+    )
+    committed = False
+    try:
+        issued = fork(live_token, source, requested_state)
+        if not isinstance(issued, tuple) or len(issued) != 2:
+            return None
+        forked_context = issued[0]
+        material = issued[1]
+        if not isinstance(material, dict):
+            return None
+        engine = ClassUnitGroupEngine(
+            field,
+            proof=True,
+            algorithm=algorithm,
+            limits=limits,
+            seed=seed,
+        )
+        if engine.order is not getattr(context, "order", None):
+            return None
+        engine.context = forked_context
+        source_group = material["class_group"]
+        source_units = material["unit_group"]
+        collector = material["collector"]
+        presentation = material["presentation"]
+        saturation = material["saturation_record"]
+        factor_base = tuple(material["factor_base"])
+        units = tuple(material["units"])
+        if (
+            collector is None
+            or presentation is None
+            or saturation is None
+            or getattr(source_group, "_relation_reconstructor", None) is not collector
+            or getattr(source_group, "_presentation", None) is not presentation
+        ):
+            return None
+        group = _clone_engine_class_group_for_unconditional_proof(source_group)
+        units, unit_group, cloned_saturation = _clone_terminal_unit_authority(
+            field,
+            engine.order,
+            source_units,
+            saturation,
+            material.get("terminal_semantic_snapshot"),
+        )
+        engine.stages = [
+            stage for stage in source.stages if stage.name not in ("proof", "terminal")
+        ]
+        conditional_dependencies, unconditional_dependencies = (
+            _terminal_dependency_hashes_for_policies(
+                engine, group, collector, presentation, saturation
+            )
+        )
+        if conditional_dependencies != source.proof_dependency_hashes:
+            return None
+        engine._proof_dependency_hashes = unconditional_dependencies
+        proof_records = engine._unconditional_proof_pass(group)
+        engine._stage(
+            "proof",
+            "complete",
+            proof_status=EXACT_UNCONDITIONAL,
+            minkowski_primes=len(proof_records),
+            exact_relations=len(material["relations"]),
+        )
+        engine._phase_finish("total", engine._started_ns)
+        engine._stage("terminal", "complete", class_number=group.order())
+        diagnostics = _merged_terminal_upgrade_diagnostics(
+            source,
+            engine,
+            proof_records=proof_records,
+            factor_base_size=len(factor_base),
+        )
+        engine._retain_context_terminal(
+            EXACT_UNCONDITIONAL,
+            "exact relations and rigorous class/unit index one",
+            theorem="Minkowski ideal-class theorem",
+            assumptions=(),
+            units=units,
+            saturation_record=cloned_saturation,
+            class_group=group,
+            unit_group=unit_group,
+            diagnostics=diagnostics,
+        )
+        answer = ClassUnitComputation(
+            field,
+            proof_status=EXACT_UNCONDITIONAL,
+            complete=True,
+            reason="exact relations and rigorous class/unit index one",
+            algorithm=source.algorithm,
+            stages=engine.stages,
+            class_group=group,
+            unit_group=unit_group,
+            tentative_invariants=group.invariants(),
+            context=forked_context,
+            diagnostics=diagnostics,
+            saturation_record=cloned_saturation,
+            proof_progress=engine._proof_progress,
+            proof_dependency_hashes=engine._proof_dependency_hashes,
+        )
+        if finish_terminal_upgrade(live_token, commit=True) is not True:
+            return None
+        committed = True
+        return answer
+    finally:
+        if not committed:
+            finish_terminal_upgrade(live_token, commit=False)
+
+
 def _class_number_projection_cache_key(
     proof: bool, limits: ClassUnitEngineLimits
 ) -> tuple[Any, ...]:
@@ -5169,6 +6210,60 @@ def _class_number_projection_cache_key(
         "auto",
         0,
         tuple(sorted(limits.to_dict().items())),
+    )
+
+
+def _class_unit_engine_limits_key(
+    limits: ClassUnitEngineLimits,
+) -> tuple[tuple[str, int], ...]:
+    return tuple(sorted(limits.to_dict().items()))
+
+
+def _cached_class_unit_engine_result(
+    cache: Any,
+    cache_key: tuple[Any, ...],
+    field: Any,
+    order: Any,
+    requested_proof: bool,
+    algorithm: str,
+    seed: int,
+    limits_key: tuple[tuple[str, int], ...],
+) -> ClassUnitComputation | None:
+    if not isinstance(cache, dict):
+        return None
+    entry = cache.get(cache_key)
+    if type(entry) is not _ClassUnitEngineCacheEntry:
+        return None
+    return entry.matching_result(
+        field,
+        order,
+        requested_proof,
+        algorithm,
+        seed,
+        limits_key,
+    )
+
+
+def _retain_class_unit_engine_result(
+    cache: dict[Any, Any],
+    cache_key: tuple[Any, ...],
+    field: Any,
+    order: Any,
+    requested_proof: bool,
+    algorithm: str,
+    seed: int,
+    limits_key: tuple[tuple[str, int], ...],
+    result: ClassUnitComputation,
+) -> None:
+    cache[cache_key] = _ClassUnitEngineCacheEntry(
+        _CLASS_UNIT_ENGINE_CACHE_ENTRY_TOKEN,
+        field,
+        order,
+        requested_proof,
+        algorithm,
+        seed,
+        limits_key,
+        result,
     )
 
 
@@ -5232,17 +6327,98 @@ def class_unit_context(
         and checkpoint is None
         and resume_from is None
         and checkpoint_controller is None
+        and max_checkpoint_bytes is None
         and components is None
     )
+    limits_key = _class_unit_engine_limits_key(selected_limits)
     cache_key = (
         proof_value,
         algorithm,
         seed,
-        tuple(sorted(selected_limits.to_dict().items())),
+        limits_key,
     )
     cache = getattr(field, "_class_unit_engine_cache", None)
-    if use_cache and isinstance(cache, dict) and cache_key in cache:
-        return cache[cache_key]
+    cache_order = field.maximal_order() if use_cache else None
+    cached = (
+        _cached_class_unit_engine_result(
+            cache,
+            cache_key,
+            field,
+            cache_order,
+            proof_value,
+            algorithm,
+            seed,
+            limits_key,
+        )
+        if use_cache
+        else None
+    )
+    if cached is not None:
+        return cached
+    if use_cache and proof_value and isinstance(cache, dict):
+        conditional_key = (
+            False,
+            algorithm,
+            seed,
+            limits_key,
+        )
+        conditional = _cached_class_unit_engine_result(
+            cache,
+            conditional_key,
+            field,
+            cache_order,
+            False,
+            algorithm,
+            seed,
+            limits_key,
+        )
+        upgraded = None
+        try:
+            try:
+                upgraded = _upgrade_cached_conditional_result(
+                    field,
+                    conditional,
+                    algorithm=algorithm,
+                    limits=selected_limits,
+                    seed=seed,
+                )
+            except (
+                AttributeError,
+                ImportError,
+                KeyError,
+                RuntimeError,
+                TypeError,
+                ValueError,
+                ArithmeticError,
+            ):
+                upgraded = None
+        finally:
+            if upgraded is None:
+                conditional_context = getattr(conditional, "context", None)
+                release = getattr(
+                    conditional_context, "_finish_live_terminal_upgrade", None
+                )
+                context_module = _optional_module(
+                    "sagejs.number_fields.class_unit_context"
+                )
+                live_token = getattr(
+                    context_module, "_LIVE_CLASS_UNIT_CONTEXT_TOKEN", None
+                )
+                if callable(release) and live_token is not None:
+                    release(live_token, commit=False)
+        if upgraded is not None:
+            _retain_class_unit_engine_result(
+                cache,
+                cache_key,
+                field,
+                cache_order,
+                proof_value,
+                algorithm,
+                seed,
+                limits_key,
+                upgraded,
+            )
+            return upgraded
     if (
         use_cache
         and int(field.degree()) == 3
@@ -5251,12 +6427,65 @@ def class_unit_context(
         and selected_limits.to_dict() == ClassUnitEngineLimits().to_dict()
     ):
         projection = _cached_class_number_projection(field, cache_key, proof_value)
+        if (
+            projection is None
+            and getattr(field, "_bounded_cubic_class_number_artifact", None) is None
+        ):
+            # The default cubic scalar producer is also the cheapest way to
+            # initialize the coupled computation.  It either publishes a
+            # small authenticated relation seed, binds a live exact
+            # class-number continuation, or records a measured size decline
+            # that lets the general engine avoid the unrelated bounded
+            # class/unit probe.  Keep this preflight inside the cacheable
+            # default policy: interposed runs retain their ordinary progress,
+            # cancellation, checkpoint, component, and resource semantics.
+            #
+            # Producer artifacts are acceleration state, never mathematical
+            # authority for the final result.  If an unavailable or tampered
+            # hint makes the preflight fail, the unchanged exact engine still
+            # owns relation admission, hR validation, saturation, and replay.
+            try:
+                cubic_class_number_projection(field, proof=proof_value)
+            except (
+                AttributeError,
+                ImportError,
+                KeyError,
+                RuntimeError,
+                TypeError,
+                ValueError,
+                ArithmeticError,
+            ):
+                pass
+            cache = getattr(field, "_class_unit_engine_cache", None)
+            cached = _cached_class_unit_engine_result(
+                cache,
+                cache_key,
+                field,
+                cache_order,
+                proof_value,
+                algorithm,
+                seed,
+                limits_key,
+            )
+            if cached is not None:
+                return cached
+            projection = _cached_class_number_projection(field, cache_key, proof_value)
         if projection is not None:
             result = projection.finish()
             if not isinstance(cache, dict):
                 cache = {}
                 field._class_unit_engine_cache = cache
-            cache[cache_key] = result
+            _retain_class_unit_engine_result(
+                cache,
+                cache_key,
+                field,
+                cache_order,
+                proof_value,
+                algorithm,
+                seed,
+                limits_key,
+                result,
+            )
             return result
     result = compute_class_unit_group(
         field,
@@ -5276,7 +6505,17 @@ def class_unit_context(
         if not isinstance(cache, dict):
             cache = {}
             field._class_unit_engine_cache = cache
-        cache[cache_key] = result
+        _retain_class_unit_engine_result(
+            cache,
+            cache_key,
+            field,
+            cache_order,
+            proof_value,
+            algorithm,
+            seed,
+            limits_key,
+            result,
+        )
     return result
 
 
@@ -5296,26 +6535,35 @@ def class_group(
 ) -> Any:
     """Return the proved ordinary ideal class group of `field`."""
     del names
+    proof_value = True if proof is None else bool(proof)
+    selected_limits = ClassUnitEngineLimits(**limits)
     result = class_unit_context(
         field,
-        proof=proof,
+        proof=proof_value,
         algorithm=algorithm,
+        limits=selected_limits,
         cancelled=cancelled,
         progress=progress,
         checkpoint=checkpoint,
         resume_from=resume_from,
         checkpoint_controller=checkpoint_controller,
         max_checkpoint_bytes=max_checkpoint_bytes,
-        **limits,
     )
     raw_group = result.class_group()
     if not isinstance(raw_group, _EngineClassGroup):
-        return raw_group
-    maps = __import__(
-        "sagejs.number_fields.class_group_maps", fromlist=["class_group_maps"]
-    )
-    adapter = maps.class_group_from_engine_result
-    return adapter(result)
+        # Specialized exact producers return their already-published group.
+        # Their enclosing class/unit result owns the proof certificate; unlike
+        # engine groups, they do not need the presentation-backed public map
+        # adapter below.
+        answer = raw_group
+    else:
+        maps = __import__(
+            "sagejs.number_fields.class_group_maps", fromlist=["class_group_maps"]
+        )
+        adapter = maps.class_group_from_engine_result
+        # The adapter publishes only after its independent `verify()` replay.
+        answer = adapter(result)
+    return answer
 
 
 def cubic_class_number_projection(field: Any, proof: bool | None = None) -> int:
@@ -5447,9 +6695,19 @@ def cubic_class_number_projection(field: Any, proof: bool | None = None) -> int:
         proof_value,
         "auto",
         0,
-        tuple(sorted(engine.limits.to_dict().items())),
+        _class_unit_engine_limits_key(engine.limits),
     )
-    cache[cache_key] = result
+    _retain_class_unit_engine_result(
+        cache,
+        cache_key,
+        field,
+        engine.order,
+        proof_value,
+        "auto",
+        0,
+        _class_unit_engine_limits_key(engine.limits),
+        result,
+    )
     return answer
 
 

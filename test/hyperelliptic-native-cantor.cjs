@@ -131,8 +131,11 @@ assert scalar_operations(2**64 - 1) == 65
 
 def check_curve(curve, exhaustive):
     J = curve.jacobian()
-    context = J.prepared_arithmetic()
-    assert context is J.prepared_arithmetic()
+    # This differential explicitly exercises the compiled and source paths.
+    # Do not route its unreceipted GF(3) fixtures through release auto, which
+    # correctly fails closed outside the authenticated GF(1009) envelopes.
+    context = J.prepared_arithmetic(algorithm=selected)
+    assert context is J.prepared_arithmetic(algorithm=selected)
     capability = context.capability()
     assert capability.schema == "sagejs.hyperelliptic.packed-mumford.odd.v1"
     assert capability.model_kind == "odd-degree-one-infinity"

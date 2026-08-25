@@ -40,8 +40,13 @@ _MAXIMUM_SATURATION_REPLAY_PRECISION_STEPS = 32
 _MAXIMUM_SATURATION_REPLAY_RECORDS = 4_096
 _MAXIMUM_SATURATION_REPLAY_DEPTH = 64
 _MAXIMUM_SATURATION_REPLAY_STRING = 1_000_000
+_MAXIMUM_ANALYTIC_REPLAY_PRIME_BOUND = 1_000_000
+_MAXIMUM_ANALYTIC_REPLAY_PRECISION_BITS = 4096
+_MAXIMUM_ANALYTIC_REPLAY_BLOCK_SIZE = 1_000_000
 _SHARED_ZETA_WORKSPACE_CACHE_LIMIT = 16
 _SHARED_ZETA_WORKSPACE_SNAPSHOT_TOKEN = object()
+_ZETA_PROOF_CACHE_AUTHORITY_TOKEN = object()
+_REGULATOR_ISSUANCE_TOKEN = object()
 _shared_zeta_workspace_snapshots: dict[str, Any] = {}
 _bf_prime_power_plan_kernel_override: Any = None
 _MAXIMUM_PACKED_BF_PLAN_TERMS = 1_000_000
@@ -1915,7 +1920,12 @@ class ExactUnitSaturationResult:
         self._generation_verifier = generation_verifier
         self._workspace = workspace
 
-    def verify(self, *, workspace: ZetaLogResidueWorkspace | None = None) -> bool:
+    def verify(
+        self,
+        *,
+        workspace: ZetaLogResidueWorkspace | None = None,
+        cancelled: Callable[[], Any] | None = None,
+    ) -> bool:
         """Replay in-process work when available; detached replay stays cold."""
         return verify_saturation_evidence(
             self._field,
@@ -1923,6 +1933,7 @@ class ExactUnitSaturationResult:
             self._initial_units,
             self.to_dict(),
             generation_verifier=self._generation_verifier,
+            cancelled=cancelled,
             workspace=self._workspace if workspace is None else workspace,
         )
 
@@ -2072,7 +2083,11 @@ def saturate_unit_lattice(
         )
     saturation_work_remaining = maximum_saturation_work - factor_work
     if index_certificate is not None:
-        rigorous_bound = index_certificate.verify(field, order, units)
+        rigorous_bound = index_certificate.verify(
+            field, order, units, cancelled=cancelled
+        )
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("unit saturation was cancelled")
         global_index_certificate = index_certificate.to_dict()
         generation_verifier = index_certificate._generation_verifier
     if rank and any(
@@ -2724,6 +2739,7 @@ def verify_saturation_evidence(
                     order,
                     initial_units,
                     generation_verifier=generation_verifier,
+                    cancelled=cancelled,
                 )
             )
         if (
@@ -3352,20 +3368,68 @@ def _shared_zeta_workspace_key(
     return hashlib.sha256(_canonical_json(body).encode("utf-8")).hexdigest()
 
 
-class _SharedZetaWorkspaceSnapshot:
+class _SharedZetaWorkspaceSnapshot(tuple[Any, ...]):
     """Module-issued immutable cache entry, never serialized as proof data."""
 
-    def __init__(self, token: object, key: str, payload: tuple[Any, ...]) -> None:
+    __slots__ = ()
+
+    def __new__(
+        cls, token: object, key: str, payload: tuple[Any, ...]
+    ) -> _SharedZetaWorkspaceSnapshot:
         if token is not _SHARED_ZETA_WORKSPACE_SNAPSHOT_TOKEN:
             raise TypeError("shared zeta snapshots are module-issued")
-        self.key = str(key)
-        self.payload = payload
-        self.__dict__["_frozen"] = True
+        return tuple.__new__(cls, (str(key), payload))
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        if self.__dict__.get("_frozen", False):
-            raise AttributeError("shared zeta snapshots are immutable")
-        self.__dict__[name] = value
+    @property
+    def key(self) -> str:
+        return self[0]
+
+    @property
+    def payload(self) -> tuple[Any, ...]:
+        return self[1]
+
+
+class _ZetaProofCacheAuthority(tuple[Any, ...]):
+    """Module-issued immutable authority for one complete workspace state."""
+
+    __slots__ = ()
+
+    def __new__(
+        cls, token: object, owner: Any, payload: tuple[Any, ...]
+    ) -> _ZetaProofCacheAuthority:
+        if token is not _ZETA_PROOF_CACHE_AUTHORITY_TOKEN:
+            raise TypeError("zeta proof-cache authorities are module-issued")
+        return tuple.__new__(cls, (owner, payload))
+
+    @property
+    def owner(self) -> Any:
+        return self[0]
+
+    @property
+    def payload(self) -> tuple[Any, ...]:
+        return self[1]
+
+
+class _RegulatorIssuance(tuple[Any, ...]):
+    """Immutable local receipt for one exact-unit regulator computation."""
+
+    __slots__ = ()
+
+    def __new__(
+        cls,
+        token: object,
+        owner: Any,
+        units: tuple[Any, ...],
+        parameters: tuple[int, ...],
+        key: tuple[Any, ...],
+        regulator: Any,
+        payload: str,
+    ) -> _RegulatorIssuance:
+        if token is not _REGULATOR_ISSUANCE_TOKEN:
+            raise TypeError("regulator issuances are module-issued")
+        return tuple.__new__(
+            cls, (owner, units, parameters, key, regulator, str(payload))
+        )
 
 
 def _build_bf_plan_readable(
@@ -3636,6 +3700,12 @@ class ZetaLogResidueWorkspace:
         self._regulators: dict[
             tuple[str, int, int, int, int, int], tuple[RegulatorEnclosure, str]
         ] = {}
+        self._regulator_issuance: _RegulatorIssuance | None = None
+        self._proof_cache_authority = _ZetaProofCacheAuthority(
+            _ZETA_PROOF_CACHE_AUTHORITY_TOKEN,
+            self,
+            self._proof_cache_snapshot(),
+        )
         self._shared_cache_key = (
             _shared_zeta_workspace_key(discriminant, degree, splitting_provider)
             if share_across_isomorphic_fields
@@ -3654,12 +3724,12 @@ class ZetaLogResidueWorkspace:
                 _shared_zeta_workspace_snapshots.pop(self._shared_cache_key)
                 _shared_zeta_workspace_snapshots[self._shared_cache_key] = snapshot
 
-    def _shared_snapshot(self) -> tuple[Any, ...]:
+    def _proof_cache_snapshot(self) -> tuple[Any, ...]:
         return (
             self.covered_stop,
             tuple(sorted(self._records.items())),
             tuple(
-                (threshold, plan.terms, plan.raw_terms)
+                (threshold, tuple(plan.terms), int(plan.raw_terms))
                 for threshold, plan in sorted(self._plans.items())
             ),
             tuple(sorted(self._primes.items())),
@@ -3675,7 +3745,37 @@ class ZetaLogResidueWorkspace:
                 )
                 for key, value in sorted(self._finite_terms.items())
             ),
+            self._regulator_cache_snapshot(),
         )
+
+    def _regulator_cache_snapshot(self) -> tuple[Any, ...]:
+        entries: list[Any] = []
+        for key, value in sorted(self._regulators.items()):
+            regulator = value[0]
+            authenticated_payload = value[1]
+            entries.append(
+                (
+                    key,
+                    _canonical_json(regulator.to_dict()),
+                    authenticated_payload,
+                )
+            )
+        return tuple(entries)
+
+    def _issue_proof_cache_authority(self, token: object) -> None:
+        if token is not _ZETA_PROOF_CACHE_AUTHORITY_TOKEN:
+            raise TypeError("zeta proof-cache authority issuance is module-private")
+        self._proof_cache_authority = _ZetaProofCacheAuthority(
+            _ZETA_PROOF_CACHE_AUTHORITY_TOKEN,
+            self,
+            self._proof_cache_snapshot(),
+        )
+
+    def _shared_snapshot(self) -> tuple[Any, ...]:
+        self._validate_proof_cache()
+        # Regulator entries are identity-sensitive to live unit objects and
+        # remain local; the first six components are field-only zeta state.
+        return self._proof_cache_authority.payload[:6]
 
     def _restore_shared_snapshot(self, snapshot: tuple[Any, ...]) -> None:
         (
@@ -3705,15 +3805,31 @@ class ZetaLogResidueWorkspace:
             tuple(key): (_real_ball_from_snapshot(ball), dict(diagnostics))
             for key, ball, diagnostics in finite_terms
         }
+        self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
 
-    def _publish_shared_snapshot(self) -> None:
+    def _validate_proof_cache(self) -> None:
+        """Reject any mutation of proof-relevant acceleration state."""
+        authority = self._proof_cache_authority
+        if (
+            type(authority) is not _ZetaProofCacheAuthority
+            or authority.owner is not self
+            or authority.payload != self._proof_cache_snapshot()
+        ):
+            raise AnalyticCertificationError("the zeta proof cache was mutated")
+
+    def _publish_shared_snapshot(self, token: object | None = None) -> None:
         key = self._shared_cache_key
         if key is None:
             return
+        payload = (
+            self._proof_cache_authority.payload[:6]
+            if token is _ZETA_PROOF_CACHE_AUTHORITY_TOKEN
+            else self._shared_snapshot()
+        )
         snapshot = _SharedZetaWorkspaceSnapshot(
             _SHARED_ZETA_WORKSPACE_SNAPSHOT_TOKEN,
             key,
-            self._shared_snapshot(),
+            payload,
         )
         _shared_zeta_workspace_snapshots.pop(key, None)
         if len(_shared_zeta_workspace_snapshots) >= _SHARED_ZETA_WORKSPACE_CACHE_LIMIT:
@@ -3769,9 +3885,83 @@ class ZetaLogResidueWorkspace:
                 return list(cached)
             primes = tuple(_primes_below(int(bound)))
             self._primes[int(bound)] = primes
+            self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
             return list(primes)
         finally:
             self.prime_enumeration_nanoseconds += time.perf_counter_ns() - started
+
+    def _record_regulator_issuance(
+        self,
+        units: Sequence[Any],
+        parameters: tuple[int, ...],
+        key: tuple[Any, ...],
+        regulator: RegulatorEnclosure,
+        payload: str,
+    ) -> None:
+        self._regulator_issuance = _RegulatorIssuance(
+            _REGULATOR_ISSUANCE_TOKEN,
+            self,
+            tuple(units),
+            parameters,
+            key,
+            regulator,
+            payload,
+        )
+
+    def retained_regulator_issuance(
+        self,
+        units: Sequence[Any],
+        regulator: RegulatorEnclosure,
+        *,
+        unit_rank: int,
+        precision_bits: int,
+        absolute_tolerance_bits: int,
+        maximum_precision_bits: int,
+        maximum_determinant_states: int = 65_536,
+    ) -> RegulatorEnclosure | None:
+        """Consume an identity-bound live regulator receipt without reevaluation."""
+        started = time.perf_counter_ns()
+        self.regulator_calls += 1
+        try:
+            receipt = self._regulator_issuance
+            parameters = (
+                int(unit_rank),
+                int(precision_bits),
+                int(absolute_tolerance_bits),
+                int(maximum_precision_bits),
+                int(maximum_determinant_states),
+            )
+            if (
+                type(receipt) is not _RegulatorIssuance
+                or receipt[0] is not self
+                or receipt[2] != parameters
+                or receipt[4] is not regulator
+                or len(receipt[1]) != len(units)
+                or any(
+                    retained is not supplied
+                    for retained, supplied in zip(receipt[1], units, strict=True)
+                )
+            ):
+                return None
+            key = receipt[3]
+            payload = receipt[5]
+            if _canonical_json(regulator.to_dict()) != payload:
+                return None
+            cached = self._regulators.get(key)
+            authority = self._proof_cache_authority
+            if (
+                cached is None
+                or cached[0] is not regulator
+                or cached[1] != payload
+                or type(authority) is not _ZetaProofCacheAuthority
+                or authority.owner is not self
+                or (key, payload, payload) not in authority.payload[6]
+            ):
+                return None
+            self.regulator_cache_hits += 1
+            return regulator
+        finally:
+            self.regulator_nanoseconds += time.perf_counter_ns() - started
 
     def regulator_from_factored_units(
         self,
@@ -3807,14 +3997,15 @@ class ZetaLogResidueWorkspace:
                 )
                 for unit in units
             ]
-            key = (
-                _canonical_json(unit_payload),
+            parameters = (
                 int(unit_rank),
                 int(precision_bits),
                 int(absolute_tolerance_bits),
                 int(maximum_precision_bits),
                 int(maximum_determinant_states),
             )
+            key = (_canonical_json(unit_payload), *parameters)
+            self._validate_proof_cache()
             cached = self._regulators.get(key)
             if cached is not None:
                 regulator, authenticated_payload = cached
@@ -3823,6 +4014,9 @@ class ZetaLogResidueWorkspace:
                         "a cached regulator enclosure was mutated"
                     )
                 self.regulator_cache_hits += 1
+                self._record_regulator_issuance(
+                    units, parameters, key, regulator, authenticated_payload
+                )
                 return regulator
             regulator = regulator_from_factored_units(
                 units,
@@ -3834,9 +4028,15 @@ class ZetaLogResidueWorkspace:
                 cancelled=cancelled,
                 logarithm_workspace=self.factored_logarithm_workspace,
             )
-            self._regulators[key] = (
-                regulator,
-                _canonical_json(regulator.to_dict()),
+            authenticated_payload = _canonical_json(regulator.to_dict())
+            # Unit logarithm providers are external callbacks.  Authenticate
+            # all old entries before admitting this result and issuing a new
+            # complete local authority.
+            self._validate_proof_cache()
+            self._regulators[key] = (regulator, authenticated_payload)
+            self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
+            self._record_regulator_issuance(
+                units, parameters, key, regulator, authenticated_payload
             )
             return regulator
         finally:
@@ -3907,8 +4107,13 @@ class ZetaLogResidueWorkspace:
                 else:
                     self.provider_calls += 1
                     self.records_decoded += len(block)
+                # The provider is an external callback and may have re-entered
+                # this workspace.  Authenticate the old state before admitting
+                # its newly validated block into a fresh issued authority.
+                self._validate_proof_cache()
                 self._records.update(block)
                 self.covered_stop = stop
+                self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
             return {prime: self._records[prime] for prime in primes}
         finally:
             self.splitting_nanoseconds += time.perf_counter_ns() - started
@@ -3926,6 +4131,7 @@ class ZetaLogResidueWorkspace:
                 return cached
             plan = _build_bf_plan(threshold, splitting)
             self._plans[threshold] = plan
+            self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
             return plan
         finally:
             self.prime_power_plan_nanoseconds += time.perf_counter_ns() - started
@@ -3970,6 +4176,7 @@ class ZetaLogResidueWorkspace:
             threshold, bound = _bf_threshold(model, target, maximum)
             result = (threshold, bound, model.evaluations)
             self._thresholds[key] = result
+            self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
             return result
         finally:
             self.threshold_nanoseconds += time.perf_counter_ns() - started
@@ -4002,6 +4209,7 @@ class ZetaLogResidueWorkspace:
             field = IntervalBallField(precision)
             result = (_bf_finite_term(plan, field), field.diagnostics())
             self._finite_terms[key] = result
+            self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
             return result
         finally:
             self.finite_term_nanoseconds += time.perf_counter_ns() - started
@@ -4606,6 +4814,7 @@ class ZetaLogResidueEnclosure:
         aggregated_prime_power_terms: int,
         diagnostics: dict[str, Any],
         enclosure_widths: Sequence[RationalEndpoint],
+        requested_absolute_error: RationalEndpoint,
     ) -> None:
         self.ball = ball
         self.finite_term = finite_term
@@ -4619,6 +4828,10 @@ class ZetaLogResidueEnclosure:
         self.aggregated_prime_power_terms = int(aggregated_prime_power_terms)
         self.diagnostics = dict(diagnostics)
         self.enclosure_widths = tuple(enclosure_widths)
+        self.requested_absolute_error = requested_absolute_error
+        self.hr_index_absolute_error_history: tuple[str, ...] = (
+            str(requested_absolute_error),
+        )
         self.refinement_attempts = len(self.precision_history)
         self.rigorous = ball.rigorous and tail_bound.rigorous
         self.status = "rigorous-enclosure" if self.rigorous else "heuristic"
@@ -4650,6 +4863,7 @@ class ZetaLogResidueEnclosure:
             "prime_power_terms": self.prime_power_terms,
             "aggregated_prime_power_terms": self.aggregated_prime_power_terms,
             "enclosure_widths": [str(value) for value in self.enclosure_widths],
+            "requested_absolute_error": str(self.requested_absolute_error),
             "refinement_attempts": self.refinement_attempts,
             "diagnostics": dict(self.diagnostics),
             "rigorous": self.rigorous,
@@ -4697,6 +4911,7 @@ def zeta_log_residue_bound(
         else workspace
     )
     selected_workspace.require_field(discriminant, degree, splitting_provider)
+    selected_workspace._validate_proof_cache()
     zeta_started = time.perf_counter_ns()
     initial_provider_calls = selected_workspace.provider_calls
     initial_splitting_hits = selected_workspace.splitting_cache_hits
@@ -4783,7 +4998,12 @@ def zeta_log_residue_bound(
             selected_workspace.zeta_residue_nanoseconds += (
                 time.perf_counter_ns() - zeta_started
             )
-            selected_workspace._publish_shared_snapshot()
+            # The entry validation above and transactional provider admission
+            # establish the current issued authority; no external callback
+            # runs between the final cache update and this publication.
+            selected_workspace._publish_shared_snapshot(
+                _ZETA_PROOF_CACHE_AUTHORITY_TOKEN
+            )
             return ZetaLogResidueEnclosure(
                 accumulated,
                 finite,
@@ -4797,11 +5017,17 @@ def zeta_log_residue_bound(
                 aggregated_prime_power_terms=plan.aggregated_terms,
                 diagnostics=diagnostics,
                 enclosure_widths=enclosure_widths,
+                requested_absolute_error=requested_error,
             )
         precision *= 2
     raise AnalyticPrecisionError(
         "zeta log-residue enclosure exceeded maximum_precision_bits"
     )
+
+
+_HR_NO_POSITIVE_INTEGER = (
+    "the algebraic and analytic hR enclosures contain no positive integer index"
+)
 
 
 class HRIndexValidationResult:
@@ -4906,9 +5132,7 @@ def validate_hr_index(
     lower_index = max(1, index_ball.lower.ceil())
     upper_index = index_ball.upper.floor()
     if upper_index < lower_index:
-        raise AnalyticCertificationError(
-            "the algebraic and analytic hR enclosures contain no positive integer index"
-        )
+        raise AnalyticCertificationError(_HR_NO_POSITIVE_INTEGER)
     rigorous = regulator_ball.rigorous and residue_ball.rigorous and index_ball.rigorous
     return HRIndexValidationResult(
         log_index,
@@ -4921,10 +5145,95 @@ def validate_hr_index(
     )
 
 
+def _canonical_hr_error_history(values: Sequence[Any]) -> tuple[str, ...]:
+    """Validate one exact coarse-to-fine halving schedule."""
+    history = tuple(str(_endpoint(value, rigorous=True)) for value in values)
+    if not history:
+        raise ValueError("an hR zeta-error history must not be empty")
+    previous = _endpoint(history[0], rigorous=True)
+    if previous <= RationalEndpoint(0):
+        raise ValueError("hR zeta-error history entries must be positive")
+    for value in history[1:]:
+        current = _endpoint(value, rigorous=True)
+        if current != previous / RationalEndpoint(2):
+            raise ValueError("hR zeta-error refinements must halve exactly")
+        previous = current
+    return history
+
+
+def adaptive_hr_index(
+    *,
+    signature: tuple[int, int],
+    discriminant: int,
+    degree: int,
+    class_number: int,
+    roots_of_unity: int,
+    regulator: RegulatorEnclosure | RealBall,
+    splitting_provider: Callable[[int, int], Iterable[Any]],
+    initial_absolute_error: Any = "1",
+    precision_bits: int = 128,
+    limits: ZetaLogResidueLimits | None = None,
+    workspace: ZetaLogResidueWorkspace | None = None,
+    cancelled: Callable[[], Any] | None = None,
+) -> tuple[ZetaLogResidueEnclosure, HRIndexValidationResult, tuple[str, ...]]:
+    """Refine a rigorous zeta enclosure only until `h*R` decides an index.
+
+    An enclosure with several candidate integers is inconclusive.  A coarse
+    enclosure whose exponential interval contains no positive integer is also
+    inconclusive: the next exact halving is attempted before reporting a
+    resource or precision failure.  Only the final unique rigorous integer is
+    authoritative.
+    """
+    requested_error = _endpoint(initial_absolute_error, rigorous=True)
+    if requested_error <= RationalEndpoint(0):
+        raise ValueError("initial_absolute_error must be positive")
+    error_history: list[str] = []
+    while True:
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("adaptive hR completion was cancelled")
+        error_text = str(requested_error)
+        zeta = zeta_log_residue_bound(
+            discriminant,
+            degree,
+            splitting_provider,
+            absolute_error=error_text,
+            precision_bits=precision_bits,
+            limits=limits,
+            workspace=workspace,
+        )
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("adaptive hR completion was cancelled")
+        error_history.append(error_text)
+        try:
+            index = validate_hr_index(
+                signature=signature,
+                discriminant=discriminant,
+                class_number=class_number,
+                roots_of_unity=roots_of_unity,
+                regulator=regulator,
+                zeta_log_residue=zeta,
+                precision_bits=precision_bits,
+            )
+        except AnalyticCertificationError as error:
+            if str(error) != _HR_NO_POSITIVE_INTEGER:
+                raise
+            index = None
+        if index is not None and index.rigorous and index.unique_index is not None:
+            history = _canonical_hr_error_history(error_history)
+            zeta.hr_index_absolute_error_history = history
+            return zeta, index, history
+        if index is not None and not index.rigorous:
+            raise AnalyticCertificationError(
+                "adaptive hR completion requires rigorous regulator and zeta inputs"
+            )
+        requested_error = requested_error / RationalEndpoint(2)
+
+
 def _unit_index_proof_payload(
     regulator: RegulatorEnclosure,
     zeta: ZetaLogResidueEnclosure,
     index: HRIndexValidationResult,
+    error_history: Sequence[Any] = (),
 ) -> dict[str, Any]:
     zeta_payload = zeta.to_dict()
     # Cache counters depend on whether construction reused a workspace. They
@@ -4934,17 +5243,148 @@ def _unit_index_proof_payload(
         "regulator": regulator.to_dict(),
         "zeta_log_residue": zeta_payload,
         "hr_index": index.to_dict(),
+        "zeta_absolute_error_history": list(
+            _canonical_hr_error_history(
+                error_history
+                or zeta.hr_index_absolute_error_history
+                or (str(zeta.requested_absolute_error),)
+            )
+        ),
     }
 
 
-def _compute_unit_index_proof(
+def _unit_index_replay_parameters(
+    configuration: dict[str, Any],
+) -> tuple[
+    int,
+    int,
+    int,
+    int,
+    str,
+    tuple[str, ...],
+    int,
+    ZetaLogResidueLimits,
+]:
+    """Validate producer and verifier analytic limits at one boundary."""
+    regulator_configuration = configuration["regulator"]
+    regulator_precision = _payload_integer(
+        regulator_configuration["precision_bits"], "regulator precision"
+    )
+    regulator_tolerance = _payload_integer(
+        regulator_configuration["absolute_tolerance_bits"],
+        "regulator absolute tolerance",
+    )
+    regulator_maximum_precision = _payload_integer(
+        regulator_configuration["maximum_precision_bits"],
+        "maximum regulator precision",
+    )
+    hr_precision = _payload_integer(
+        configuration["hr_precision_bits"], "hR validation precision"
+    )
+    if (
+        regulator_precision < 16
+        or hr_precision < 16
+        or regulator_tolerance < 1
+        or regulator_maximum_precision < regulator_precision
+    ):
+        raise ValueError("global index certificate precision bounds are invalid")
+    if (
+        min(regulator_precision, regulator_tolerance, regulator_maximum_precision) < 1
+        or max(
+            regulator_precision,
+            regulator_tolerance,
+            regulator_maximum_precision,
+            hr_precision,
+        )
+        > _MAXIMUM_ANALYTIC_REPLAY_PRECISION_BITS
+    ):
+        raise AnalyticResourceError(
+            "global index certificate precision exceeds the verifier cap"
+        )
+    zeta_configuration = configuration["zeta"]
+    zeta_absolute_error = zeta_configuration["absolute_error"]
+    if (
+        not isinstance(zeta_absolute_error, str)
+        or str(_endpoint(zeta_absolute_error, rigorous=True)) != zeta_absolute_error
+    ):
+        raise TypeError("zeta absolute error must be a canonical rational string")
+    history_payload = zeta_configuration.get(
+        "absolute_error_history", [zeta_absolute_error]
+    )
+    if not isinstance(history_payload, list) or any(
+        not isinstance(value, str) for value in history_payload
+    ):
+        raise TypeError("zeta absolute error history must be a list of strings")
+    zeta_error_history = _canonical_hr_error_history(history_payload)
+    if tuple(history_payload) != zeta_error_history:
+        raise TypeError("zeta absolute error history entries must be canonical")
+    if len(zeta_error_history) > _MAXIMUM_SATURATION_REPLAY_PRECISION_STEPS:
+        raise AnalyticResourceError(
+            "zeta absolute error history exceeds the verifier cap"
+        )
+    if zeta_error_history[-1] != zeta_absolute_error:
+        raise AnalyticCertificationError(
+            "the selected zeta error is not the final refinement history entry"
+        )
+    limits_payload = zeta_configuration["limits"]
+    maximum_prime_bound = _payload_integer(
+        limits_payload["maximum_prime_bound"], "maximum zeta prime bound"
+    )
+    maximum_degree = _payload_integer(
+        limits_payload["maximum_degree"], "maximum zeta degree"
+    )
+    splitting_block_size = _payload_integer(
+        limits_payload["splitting_block_size"], "zeta splitting block size"
+    )
+    maximum_zeta_precision = _payload_integer(
+        limits_payload["maximum_precision_bits"], "maximum zeta precision"
+    )
+    zeta_precision = _payload_integer(
+        zeta_configuration["precision_bits"], "zeta precision"
+    )
+    if zeta_precision < 16 or maximum_zeta_precision < zeta_precision:
+        raise ValueError("global index certificate zeta precision bounds are invalid")
+    if (
+        maximum_prime_bound > _MAXIMUM_ANALYTIC_REPLAY_PRIME_BOUND
+        or maximum_degree > _MAXIMUM_SATURATION_REPLAY_DEGREE
+        or splitting_block_size > _MAXIMUM_ANALYTIC_REPLAY_BLOCK_SIZE
+        or max(maximum_zeta_precision, zeta_precision)
+        > _MAXIMUM_ANALYTIC_REPLAY_PRECISION_BITS
+    ):
+        raise AnalyticResourceError(
+            "global index certificate zeta limits exceed the verifier cap"
+        )
+    limits = ZetaLogResidueLimits(
+        maximum_prime_bound=maximum_prime_bound,
+        maximum_degree=maximum_degree,
+        splitting_block_size=splitting_block_size,
+        maximum_precision_bits=maximum_zeta_precision,
+    )
+    return (
+        regulator_precision,
+        regulator_tolerance,
+        regulator_maximum_precision,
+        hr_precision,
+        zeta_absolute_error,
+        zeta_error_history,
+        zeta_precision,
+        limits,
+    )
+
+
+def _authenticated_unit_index_inputs(
     field: Any,
-    order: Any,
     initial_units: Sequence[Any],
     configuration: dict[str, Any],
     *,
-    workspace: ZetaLogResidueWorkspace | None = None,
-) -> tuple[int, dict[str, Any]]:
+    regulator_precision: int,
+    regulator_tolerance: int,
+    regulator_maximum_precision: int,
+    workspace: ZetaLogResidueWorkspace | None,
+    cancelled: Callable[[], Any] | None,
+    retained_regulator: RegulatorEnclosure | None = None,
+) -> tuple[tuple[int, int], RegulatorEnclosure]:
+    """Authenticate exact signature, torsion, rank, and unit regulator."""
     signature_module = __import__(
         "sagejs.number_fields.embeddings", fromlist=["embeddings"]
     )
@@ -4975,25 +5415,26 @@ def _compute_unit_index_proof(
         raise AnalyticCertificationError(
             "the global index certificate has unverified torsion data"
         )
-    regulator_configuration = configuration["regulator"]
-    regulator_precision = _payload_integer(
-        regulator_configuration["precision_bits"], "regulator precision"
+    issued_regulator = (
+        None
+        if workspace is None or retained_regulator is None
+        else workspace.retained_regulator_issuance(
+            initial_units,
+            retained_regulator,
+            unit_rank=expected_rank,
+            precision_bits=regulator_precision,
+            absolute_tolerance_bits=regulator_tolerance,
+            maximum_precision_bits=regulator_maximum_precision,
+        )
     )
-    regulator_tolerance = _payload_integer(
-        regulator_configuration["absolute_tolerance_bits"],
-        "regulator absolute tolerance",
-    )
-    regulator_maximum_precision = _payload_integer(
-        regulator_configuration["maximum_precision_bits"],
-        "maximum regulator precision",
-    )
-    regulator = (
+    regulator = issued_regulator or (
         regulator_from_factored_units(
             initial_units,
             unit_rank=expected_rank,
             precision_bits=regulator_precision,
             absolute_tolerance_bits=regulator_tolerance,
             maximum_precision_bits=regulator_maximum_precision,
+            cancelled=cancelled,
         )
         if workspace is None
         else workspace.regulator_from_factored_units(
@@ -5002,66 +5443,109 @@ def _compute_unit_index_proof(
             precision_bits=regulator_precision,
             absolute_tolerance_bits=regulator_tolerance,
             maximum_precision_bits=regulator_maximum_precision,
+            cancelled=cancelled,
         )
     )
-    zeta_configuration = configuration["zeta"]
-    zeta_absolute_error = zeta_configuration["absolute_error"]
-    if (
-        not isinstance(zeta_absolute_error, str)
-        or str(_endpoint(zeta_absolute_error, rigorous=True)) != zeta_absolute_error
-    ):
-        raise TypeError("zeta absolute error must be a canonical rational string")
-    limits_payload = zeta_configuration["limits"]
-    limits = ZetaLogResidueLimits(
-        maximum_prime_bound=_payload_integer(
-            limits_payload["maximum_prime_bound"], "maximum zeta prime bound"
-        ),
-        maximum_degree=_payload_integer(
-            limits_payload["maximum_degree"], "maximum zeta degree"
-        ),
-        splitting_block_size=_payload_integer(
-            limits_payload["splitting_block_size"], "zeta splitting block size"
-        ),
-        maximum_precision_bits=_payload_integer(
-            limits_payload["maximum_precision_bits"], "maximum zeta precision"
-        ),
-    )
-    zeta = zeta_log_residue_bound(
-        int(order.discriminant()),
-        int(field.degree()),
-        order.splitting_records,
-        absolute_error=zeta_absolute_error,
-        precision_bits=_payload_integer(
-            zeta_configuration["precision_bits"], "zeta precision"
-        ),
-        limits=limits,
+    return (signature[0], signature[1]), regulator
+
+
+def _compute_unit_index_proof(
+    field: Any,
+    order: Any,
+    initial_units: Sequence[Any],
+    configuration: dict[str, Any],
+    *,
+    workspace: ZetaLogResidueWorkspace | None = None,
+    cancelled: Callable[[], Any] | None = None,
+) -> tuple[int, dict[str, Any]]:
+    def check_cancelled() -> None:
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("global index certificate replay was cancelled")
+
+    check_cancelled()
+    (
+        regulator_precision,
+        regulator_tolerance,
+        regulator_maximum_precision,
+        hr_precision,
+        _zeta_absolute_error,
+        zeta_error_history,
+        zeta_precision,
+        limits,
+    ) = _unit_index_replay_parameters(configuration)
+    signature, regulator = _authenticated_unit_index_inputs(
+        field,
+        initial_units,
+        configuration,
+        regulator_precision=regulator_precision,
+        regulator_tolerance=regulator_tolerance,
+        regulator_maximum_precision=regulator_maximum_precision,
         workspace=workspace,
+        cancelled=cancelled,
     )
+    check_cancelled()
     hr_started = time.perf_counter_ns()
     try:
-        index = validate_hr_index(
-            signature=(signature[0], signature[1]),
-            discriminant=int(order.discriminant()),
-            class_number=_payload_integer(
-                configuration["class_number"], "global-index class number"
-            ),
-            roots_of_unity=_payload_integer(
-                configuration["roots_of_unity"], "global-index torsion order"
-            ),
-            regulator=regulator,
-            zeta_log_residue=zeta,
-            precision_bits=_payload_integer(
-                configuration["hr_precision_bits"], "hR validation precision"
-            ),
-        )
+        zeta: ZetaLogResidueEnclosure | None = None
+        index: HRIndexValidationResult | None = None
+        for position, requested_error in enumerate(zeta_error_history):
+            check_cancelled()
+            zeta = zeta_log_residue_bound(
+                int(order.discriminant()),
+                int(field.degree()),
+                order.splitting_records,
+                absolute_error=requested_error,
+                precision_bits=zeta_precision,
+                limits=limits,
+                workspace=workspace,
+            )
+            check_cancelled()
+            try:
+                index = validate_hr_index(
+                    signature=(signature[0], signature[1]),
+                    discriminant=int(order.discriminant()),
+                    class_number=_payload_integer(
+                        configuration["class_number"], "global-index class number"
+                    ),
+                    roots_of_unity=_payload_integer(
+                        configuration["roots_of_unity"],
+                        "global-index torsion order",
+                    ),
+                    regulator=regulator,
+                    zeta_log_residue=zeta,
+                    precision_bits=hr_precision,
+                )
+            except AnalyticCertificationError as error:
+                if str(error) != _HR_NO_POSITIVE_INTEGER:
+                    raise
+                index = None
+            decisive = bool(
+                index is not None and index.rigorous and index.unique_index is not None
+            )
+            if position + 1 < len(zeta_error_history):
+                if decisive:
+                    raise AnalyticCertificationError(
+                        "the zeta error history refined after a decisive hR index"
+                    )
+                continue
+            if not decisive:
+                raise AnalyticPrecisionError(
+                    "the replayed analytic proof does not isolate a unique global index"
+                )
+        if zeta is None or index is None:
+            raise AnalyticPrecisionError("the replayed analytic proof is empty")
+        zeta.hr_index_absolute_error_history = zeta_error_history
     finally:
         if workspace is not None:
             workspace.hr_validation_nanoseconds += time.perf_counter_ns() - hr_started
-    if not index.rigorous or index.unique_index is None:
+    unique_index = index.unique_index
+    if unique_index is None:
         raise AnalyticPrecisionError(
-            "the replayed analytic proof does not isolate a unique global index"
+            "the replayed analytic proof lost its unique global index"
         )
-    return int(index.unique_index), _unit_index_proof_payload(regulator, zeta, index)
+    return int(unique_index), _unit_index_proof_payload(
+        regulator, zeta, index, zeta_error_history
+    )
 
 
 _LIVE_UNIT_INDEX_PARENT_TOKEN = object()
@@ -5258,6 +5742,7 @@ class UnitSaturationIndexCertificate:
         order: Any,
         initial_units: Sequence[Any],
         generation_verifier: Callable[..., Any] | None = None,
+        cancelled: Callable[[], Any] | None = None,
     ) -> bool:
         replay_started = time.perf_counter_ns()
         try:
@@ -5317,9 +5802,18 @@ class UnitSaturationIndexCertificate:
                 initial_units,
                 self._configuration,
                 workspace=self._workspace,
+                cancelled=cancelled,
             )
             return index_bound == self._index_bound and proof == self._analytic_proof
-        except (TypeError, ValueError, ArithmeticError, ZeroDivisionError):
+        except (
+            KeyError,
+            IndexError,
+            TypeError,
+            ValueError,
+            ArithmeticError,
+            ZeroDivisionError,
+            AnalyticResourceError,
+        ):
             return False
         finally:
             if self._workspace is not None:
@@ -5337,6 +5831,7 @@ def certify_unit_saturation_index(
     regulator_absolute_tolerance_bits: int = 64,
     maximum_precision_bits: int = 4096,
     zeta_absolute_error: Any = "0.125",
+    zeta_absolute_error_history: Sequence[Any] | None = None,
     zeta_limits: ZetaLogResidueLimits | None = None,
     workspace: ZetaLogResidueWorkspace | None = None,
     generation_evidence: Any = None,
@@ -5386,6 +5881,24 @@ def certify_unit_saturation_index(
         "sagejs.number_fields.embeddings", fromlist=["embeddings"]
     )
     signature = tuple(int(value) for value in signature_module.exact_signature(field))
+    retained_history = getattr(
+        _precomputed_zeta_log_residue,
+        "hr_index_absolute_error_history",
+        (),
+    )
+    selected_zeta_history = _canonical_hr_error_history(
+        zeta_absolute_error_history
+        if zeta_absolute_error_history is not None
+        else retained_history or (zeta_absolute_error,)
+    )
+    selected_zeta_error = selected_zeta_history[-1]
+    if (
+        zeta_absolute_error_history is not None
+        and str(_endpoint(zeta_absolute_error, rigorous=True)) != selected_zeta_error
+    ):
+        raise AnalyticCertificationError(
+            "the selected zeta error is not the final requested history entry"
+        )
     configuration = {
         "signature": [signature[0], signature[1]],
         "class_number": int(class_number),
@@ -5397,7 +5910,8 @@ def certify_unit_saturation_index(
             "maximum_precision_bits": int(maximum_precision_bits),
         },
         "zeta": {
-            "absolute_error": str(_endpoint(zeta_absolute_error, rigorous=True)),
+            "absolute_error": selected_zeta_error,
+            "absolute_error_history": list(selected_zeta_history),
             "precision_bits": int(precision_bits),
             "limits": {
                 "maximum_prime_bound": selected_limits.maximum_prime_bound,
@@ -5407,7 +5921,22 @@ def certify_unit_saturation_index(
             },
         },
     }
+    # The private precomputed path is an optimization, not an alternate proof
+    # boundary: never issue a certificate outside detached replay's limits.
+    (
+        configured_regulator_precision,
+        configured_regulator_tolerance,
+        configured_regulator_maximum_precision,
+        configured_hr_precision,
+        _configured_zeta_error,
+        _configured_zeta_history,
+        configured_zeta_precision,
+        configured_zeta_limits,
+    ) = _unit_index_replay_parameters(configuration)
     selected_workspace = workspace or ZetaLogResidueWorkspace(
+        int(order.discriminant()), int(field.degree()), order.splitting_records
+    )
+    selected_workspace.require_field(
         int(order.discriminant()), int(field.degree()), order.splitting_records
     )
     construction_started = time.perf_counter_ns()
@@ -5425,6 +5954,26 @@ def certify_unit_saturation_index(
             regulator = _precomputed_regulator
             zeta = _precomputed_zeta_log_residue
             index = _precomputed_index
+            regulator_history = tuple(
+                int(value) for value in getattr(regulator, "precision_history", ())
+            )
+            zeta_precision_history = tuple(
+                int(value) for value in getattr(zeta, "precision_history", ())
+            )
+
+            def compatible_precision_history(
+                history: tuple[int, ...], initial: int, maximum: int
+            ) -> bool:
+                return bool(
+                    history
+                    and history[0] == initial
+                    and history[-1] <= maximum
+                    and all(
+                        history[position] == 2 * history[position - 1]
+                        for position in range(1, len(history))
+                    )
+                )
+
             if (
                 type(regulator) is not RegulatorEnclosure
                 or type(zeta) is not ZetaLogResidueEnclosure
@@ -5434,16 +5983,139 @@ def certify_unit_saturation_index(
                 or not zeta.rigorous
                 or zeta.discriminant != int(order.discriminant())
                 or zeta.degree != int(field.degree())
+                or str(zeta.requested_absolute_error) != selected_zeta_error
+                or tuple(zeta.hr_index_absolute_error_history) != selected_zeta_history
                 or not index.rigorous
                 or index.unique_index is None
                 or index.lower_index != index.upper_index
                 or index.analytic_log_residue.to_dict() != zeta.ball.to_dict()
+                or not compatible_precision_history(
+                    regulator_history,
+                    configured_regulator_precision,
+                    configured_regulator_maximum_precision,
+                )
+                or regulator.precision_bits != regulator_history[-1]
+                or regulator.ball.radius()
+                > RationalEndpoint(1, 2**configured_regulator_tolerance)
+                or not compatible_precision_history(
+                    zeta_precision_history,
+                    configured_zeta_precision,
+                    configured_zeta_limits.maximum_precision_bits,
+                )
+                or zeta.threshold > configured_zeta_limits.maximum_prime_bound
+                or zeta.degree > configured_zeta_limits.maximum_degree
+                or zeta.ball.radius() > _endpoint(selected_zeta_error, rigorous=True)
             ):
                 raise AnalyticCertificationError(
                     "precomputed analytic proof components are inconsistent"
                 )
+            authenticated_regulator = (
+                selected_workspace.retained_regulator_issuance(
+                    initial_units,
+                    regulator,
+                    unit_rank=signature[0] + signature[1] - 1,
+                    precision_bits=configured_regulator_precision,
+                    absolute_tolerance_bits=configured_regulator_tolerance,
+                    maximum_precision_bits=configured_regulator_maximum_precision,
+                )
+                if _live_parent_token is _LIVE_UNIT_INDEX_PARENT_TOKEN
+                else None
+            )
+            if authenticated_regulator is not None:
+                # The standard engine has already verified the complete torsion
+                # object immediately before issuing this one-use live-parent
+                # token.  The signature above is independently recomputed here,
+                # and the identity-bound regulator receipt authenticates these
+                # exact unit objects.  Detached and nonstandard construction
+                # continue through the complete replay boundary below.
+                authenticated_signature = (signature[0], signature[1])
+            else:
+                authenticated_signature, authenticated_regulator = (
+                    _authenticated_unit_index_inputs(
+                        field,
+                        initial_units,
+                        configuration,
+                        regulator_precision=configured_regulator_precision,
+                        regulator_tolerance=configured_regulator_tolerance,
+                        regulator_maximum_precision=(
+                            configured_regulator_maximum_precision
+                        ),
+                        workspace=selected_workspace,
+                        cancelled=None,
+                        retained_regulator=regulator,
+                    )
+                )
+            if authenticated_signature != (signature[0], signature[1]):
+                raise AnalyticCertificationError(
+                    "the precomputed signature authentication changed"
+                )
+            if authenticated_regulator.to_dict() != regulator.to_dict():
+                raise AnalyticCertificationError(
+                    "the precomputed regulator does not match the exact units"
+                )
+            replayed_zeta: ZetaLogResidueEnclosure | None = None
+            replayed_index: HRIndexValidationResult | None = None
+            for position, requested_error in enumerate(selected_zeta_history):
+                replayed_zeta = zeta_log_residue_bound(
+                    int(order.discriminant()),
+                    int(field.degree()),
+                    order.splitting_records,
+                    absolute_error=requested_error,
+                    precision_bits=configured_zeta_precision,
+                    limits=configured_zeta_limits,
+                    workspace=selected_workspace,
+                )
+                try:
+                    replayed_index = validate_hr_index(
+                        signature=(signature[0], signature[1]),
+                        discriminant=int(order.discriminant()),
+                        class_number=int(class_number),
+                        roots_of_unity=int(roots_of_unity),
+                        regulator=regulator,
+                        zeta_log_residue=replayed_zeta,
+                        precision_bits=configured_hr_precision,
+                    )
+                except AnalyticCertificationError as error:
+                    if str(error) != _HR_NO_POSITIVE_INTEGER:
+                        raise
+                    replayed_index = None
+                decisive = bool(
+                    replayed_index is not None
+                    and replayed_index.rigorous
+                    and replayed_index.unique_index is not None
+                )
+                if position + 1 < len(selected_zeta_history):
+                    if decisive:
+                        raise AnalyticCertificationError(
+                            "the precomputed zeta history refined after a decisive hR index"
+                        )
+                    continue
+                if not decisive:
+                    raise AnalyticPrecisionError(
+                        "the precomputed zeta history has no decisive final hR index"
+                    )
+            if replayed_zeta is None or replayed_index is None:
+                raise AnalyticCertificationError(
+                    "the precomputed zeta history did not replay"
+                )
+            if _unit_index_proof_payload(
+                regulator,
+                replayed_zeta,
+                replayed_index,
+                selected_zeta_history,
+            ) != _unit_index_proof_payload(
+                regulator,
+                zeta,
+                index,
+                selected_zeta_history,
+            ):
+                raise AnalyticCertificationError(
+                    "the precomputed analytic proof does not match history replay"
+                )
             index_bound = int(index.unique_index)
-            proof = _unit_index_proof_payload(regulator, zeta, index)
+            proof = _unit_index_proof_payload(
+                regulator, zeta, index, selected_zeta_history
+            )
         else:
             index_bound, proof = _compute_unit_index_proof(
                 field,
@@ -5488,6 +6160,7 @@ __all__ = [
     "ZetaLogResidueEnclosure",
     "ZetaLogResidueLimits",
     "ZetaLogResidueWorkspace",
+    "adaptive_hr_index",
     "certified_regulator_enclosure",
     "certify_unit_saturation_index",
     "extract_unit_lattice",

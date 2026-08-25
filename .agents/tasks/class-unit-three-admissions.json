@@ -1,0 +1,83 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-unit-three-admissions",
+  "title": "Amortize reduced ideal relation search",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Select and validate a generic fixed three-admissions-per-reduced-ideal policy for evidence-supported number-field degree/signature bands while preserving exact class/unit semantics, deterministic checkpoints, and measured non-regression gates.",
+  "base_commit": "2b4902e4c8dffc7b5ca2fd64fef8c6f3288542ee",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "test/class-unit-groups-three-admissions.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "Hecke 0.40 BSD NfOrd/Clgp.jl and Clgp/Main_LLL.jl clean-room design observations",
+    "agents/competitive-class-and-unit-groups-strategy.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing exact Sage.js relation/presentation/hR/saturation replay",
+      "Sage/PARI and pinned C4/quartic expected outputs"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/class-unit-groups-three-admissions.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.525,
+      "started_at": "2026-08-25T11:55:04.322Z",
+      "commit": "7d58f1698c42deb0d82052e9ad1f015ce395bde4",
+      "workspace_fingerprint": "f06391073ddc7bab1621774e6a06d7b4f841fa0d5160258eccc0a6e00bfccf01",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/class-unit-groups-three-admissions.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.985,
+      "started_at": "2026-08-25T12:00:30.010Z",
+      "commit": "7d58f1698c42deb0d82052e9ad1f015ce395bde4",
+      "workspace_fingerprint": "f06391073ddc7bab1621774e6a06d7b4f841fa0d5160258eccc0a6e00bfccf01",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.488,
+      "started_at": "2026-08-25T12:01:00.628Z",
+      "commit": "7d58f1698c42deb0d82052e9ad1f015ce395bde4",
+      "workspace_fingerprint": "f06391073ddc7bab1621774e6a06d7b4f841fa0d5160258eccc0a6e00bfccf01",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Exact source commit 7d58f169 selects three direct admissions only for the measured signature (1,2) with a nonempty factor base, while retaining the exact collector, presentation, rigorous hR, saturation, checkpoint, and replay boundaries. Matched five-pair warm C4 medians improved from 1.330s to 0.854s public and 0.875s to 0.420s relations; attempts/candidates fell from 10/20 to 4/12. The unchanged quartic control was +0.8% public and -2.0% relations. Prepared-field cold C4 median was 2.556s. Degree 4--6 exact controls had no new failure or regression above 1.10x. Independent exact-SHA review declared the source SAFE.",
+    "risks": [
+      "Automatic p3 selection deliberately excludes every unmeasured signature; future expansion requires its own matched evidence.",
+      "The first focused receipt is invalid because an interrupted, origin/main-scoped test:changed build left ignored runtime artifacts inconsistent; a clean rebuild followed by a passing focused receipt at the identical commit and workspace fingerprint.",
+      "The cumulative integration pnpm test:native run passed every correctness, FFI, lifecycle, resource, and native-kernel stage. Its final unrelated dense-GF(p) construct_500 microbenchmark measured 8.01--9.23 ms against an 8.00 ms budget on isolated reruns; the integer, rational, and polynomial performance gates passed."
+    ],
+    "next_steps": [
+      "Preserve the integrated C4 and quartic performance receipts while expanding the corpus.",
+      "Track the unrelated dense-GF(p) construction-budget flake separately; do not weaken its threshold as part of class/unit work."
+    ]
+  }
+}
