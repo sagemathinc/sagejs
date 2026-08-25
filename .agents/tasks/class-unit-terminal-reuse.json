@@ -6,8 +6,8 @@
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Reuse exact terminal class/unit authority safely: cache successfully verified public IdealClassGroup adapters under the full computation policy, and upgrade a cached conditional computation by running only an authenticated unconditional proof suffix without mutating conditional results.",
-  "base_commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+  "objective": "Reuse exact terminal class/unit authority safely: upgrade a cached conditional computation by running only an authenticated unconditional proof suffix without mutating conditional results or adding a second public object cache.",
+  "base_commit": "3e70d55e456bc950b845caaf5f619ed5178df95a",
   "claims": [
     "src/lib/sagejs/number_fields/class_unit_groups.py",
     "src/lib/sagejs/number_fields/class_unit_context.py",
@@ -32,12 +32,92 @@
   },
   "validation": [
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "pnpm architecture:check",
+    "node --test test/number-field-class-unit-terminal-reuse.cjs",
+    "node --test test/number-field-class-group-maps-proof.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.896,
+      "started_at": "2026-08-25T05:09:10.332Z",
+      "commit": "0235dce2145e1148c8253cce5bcd01c946e9f2f2",
+      "workspace_fingerprint": "333750ab12a37b21e777ac716eb1db73895f2f01cd30ebe2459ff639817cc694",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.623,
+      "started_at": "2026-08-25T05:09:23.194Z",
+      "commit": "0235dce2145e1148c8253cce5bcd01c946e9f2f2",
+      "workspace_fingerprint": "333750ab12a37b21e777ac716eb1db73895f2f01cd30ebe2459ff639817cc694",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-terminal-reuse.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 28.985,
+      "started_at": "2026-08-25T05:10:04.569Z",
+      "commit": "0235dce2145e1148c8253cce5bcd01c946e9f2f2",
+      "workspace_fingerprint": "333750ab12a37b21e777ac716eb1db73895f2f01cd30ebe2459ff639817cc694",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.394,
+      "started_at": "2026-08-25T06:08:48.379Z",
+      "commit": "0235dce2145e1148c8253cce5bcd01c946e9f2f2",
+      "workspace_fingerprint": "ef530ba1990754113c4bb615dfe792a2267b932bb6ed4b72552d053bea487287",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.632,
+      "started_at": "2026-08-25T06:09:30.115Z",
+      "commit": "0235dce2145e1148c8253cce5bcd01c946e9f2f2",
+      "workspace_fingerprint": "ef530ba1990754113c4bb615dfe792a2267b932bb6ed4b72552d053bea487287",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-terminal-reuse.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.862,
+      "started_at": "2026-08-25T06:09:42.735Z",
+      "commit": "0235dce2145e1148c8253cce5bcd01c946e9f2f2",
+      "workspace_fingerprint": "ef530ba1990754113c4bb615dfe792a2267b932bb6ed4b72552d053bea487287",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-group-maps-proof.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 48.636,
+      "started_at": "2026-08-25T06:10:12.408Z",
+      "commit": "0235dce2145e1148c8253cce5bcd01c946e9f2f2",
+      "workspace_fingerprint": "ef530ba1990754113c4bb615dfe792a2267b932bb6ed4b72552d053bea487287",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Reuses a sealed conditional class/unit terminal for the existing unconditional Minkowski suffix. Mutable unit, torsion, regulator, and saturation wrappers are reconstructed from private hash-bound authority; a reserve/commit/release lease prevents reentrancy and supports retry after suffix failure. Resource/controller requests including max_checkpoint_bytes bypass reuse. The unsafe second public IdealClassGroup field cache from the source commit is removed.",
+    "risks": [
+      "The live terminal receipt is in-process authority only; detached checkpoints continue through full canonical decoding and verification.",
+      "The C4 quintic unconditional suffix remains mathematically expensive (about 27 seconds measured here), although its conditional snapshot overhead is only about 1.4 percent."
+    ],
+    "next_steps": [
+      "Design any future O(1) public IdealClassGroup projection cache as a context-owned immutable-core feature rather than a second unauthenticated field cache.",
+      "Let the corpus integration lane run the broad native suite; this lane intentionally ran focused proof, strict, and architecture receipts only."
+    ]
   }
 }

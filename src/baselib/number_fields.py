@@ -2082,7 +2082,6 @@ class NumberFieldParent(sage.Parent):
         self._unit_group_cache = runtime.undefined
         self._global_class_group_cache = runtime.undefined
         self._class_unit_engine_cache: dict[Any, Any] = {}
-        self._class_unit_public_group_cache: dict[Any, Any] = {}
         runtime.coercion_model.register(sage.ZZ, self, self)
         runtime.coercion_model.register(sage.QQ, self, self)
 

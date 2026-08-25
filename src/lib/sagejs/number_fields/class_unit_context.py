@@ -597,8 +597,84 @@ class _LiveClassUnitArtifacts:
         self.terminal_proof_status: str | None = None
         self.terminal_dependency_hashes: dict[str, str] = {}
         self.terminal_identity_snapshot: dict[str, Any] | None = None
+        self.terminal_semantic_snapshot: dict[str, Any] | None = None
+        self.terminal_upgrade_reserved = False
         self.terminal_upgrade_issued = False
         self.sealed = False
+
+    @staticmethod
+    def _exact_element_payload(value: Any) -> list[list[int]]:
+        """Detach one exact number-field element without retaining its shell."""
+        return [
+            [int(coordinate._numerator), int(coordinate._denominator)]
+            for coordinate in value.list()
+        ]
+
+    def _capture_terminal_semantics(self) -> dict[str, Any]:
+        """Capture the mutable semantic leaves needed by a proof-only fork."""
+        unit_group = self.unit_group
+        saturation = self.saturation_record
+        if unit_group is None or saturation is None:
+            raise ValueError("a terminal upgrade needs complete unit authority")
+        torsion = getattr(unit_group, "torsion", None)
+        regulator = getattr(unit_group, "regulator_enclosure", None)
+        if torsion is None or regulator is None:
+            raise ValueError("a terminal upgrade needs torsion and regulator evidence")
+        if not self._same_identity_sequence(
+            self.factored_units, getattr(unit_group, "generators", ())
+        ):
+            raise ValueError("the terminal unit wrapper changed its exact generators")
+        certificate = getattr(saturation, "_analytic_certificate", None)
+        body_json = getattr(saturation, "_canonical_body_json", None)
+        body_sha256 = getattr(saturation, "content_sha256", None)
+        if (
+            not isinstance(body_json, str)
+            or not isinstance(body_sha256, str)
+            or hashlib.sha256(body_json.encode("utf-8")).hexdigest() != body_sha256
+        ):
+            raise ValueError("a terminal saturation snapshot is malformed")
+        return canonical_component(
+            {
+                "unit_rank": getattr(unit_group, "unit_rank", None),
+                "unit_complete": getattr(unit_group, "complete", None),
+                "unit_reason": getattr(unit_group, "reason", None),
+                "unit_proof_status": getattr(unit_group, "proof_status", None),
+                "torsion": {
+                    "elements": [
+                        self._exact_element_payload(value)
+                        for value in getattr(torsion, "elements", ())
+                    ],
+                    "generator": self._exact_element_payload(torsion.generator),
+                    "order": getattr(torsion, "order", None),
+                    "complete": getattr(torsion, "complete", None),
+                    "reason": getattr(torsion, "reason", None),
+                    "proof_status": getattr(torsion, "proof_status", None),
+                },
+                "regulator": regulator,
+                "saturation_body_json": body_json,
+                "saturation_content_sha256": body_sha256,
+                "saturation_index_bound": getattr(saturation, "index_bound", None),
+                "saturation_required_primes": getattr(
+                    saturation, "required_primes", None
+                ),
+                "saturation_remaining_index_bound": getattr(
+                    saturation, "remaining_index_bound", None
+                ),
+                "saturation_analytic_validation": getattr(
+                    saturation, "analytic_validation", None
+                ),
+                "saturation_complete": getattr(saturation, "complete", None),
+                "saturation_rigorous": getattr(saturation, "rigorous", None),
+                "saturation_saturated": getattr(saturation, "saturated", None),
+                "saturation_reason": getattr(saturation, "reason", None),
+                "certificate_body_json": getattr(certificate, "_body_json", None),
+                "certificate_content_sha256": getattr(
+                    certificate, "_content_sha256", None
+                ),
+                "certificate_index_bound": getattr(certificate, "_index_bound", None),
+                "certificate_proof_status": getattr(certificate, "_proof_status", None),
+            }
+        )
 
     def _capture_terminal_identity(self) -> dict[str, Any]:
         """Capture a bounded identity shell around producer-hashed content."""
@@ -623,7 +699,21 @@ class _LiveClassUnitArtifacts:
             "collector_relations": tuple(getattr(collector, "records", ())),
             "factored_units": tuple(self.factored_units),
             "saturation": saturation,
+            "saturation_original_units": tuple(
+                getattr(saturation, "original_units", ())
+            ),
+            "saturation_units": tuple(getattr(saturation, "units", ())),
             "saturation_content_sha256": getattr(saturation, "content_sha256", None),
+            "saturation_certificate": getattr(
+                saturation, "_analytic_certificate", None
+            ),
+            "saturation_generation_verifier": getattr(
+                saturation, "_analytic_generation_verifier", None
+            ),
+            "saturation_analytic_module": getattr(saturation, "_analytic_module", None),
+            "saturation_analytic_workspace": getattr(
+                saturation, "_analytic_workspace", None
+            ),
             "class_group": group,
             "group_proof_status": getattr(group, "proof_status", None),
             "group_theorem": getattr(group, "factor_base_theorem", None),
@@ -677,6 +767,8 @@ class _LiveClassUnitArtifacts:
                 "collector_factor_base",
                 "collector_relations",
                 "factored_units",
+                "saturation_original_units",
+                "saturation_units",
                 "group_generator_ideals",
                 "group_factor_base",
                 "group_relations",
@@ -697,6 +789,10 @@ class _LiveClassUnitArtifacts:
                 "unit_group",
                 "unit_torsion",
                 "unit_regulator",
+                "saturation_certificate",
+                "saturation_generation_verifier",
+                "saturation_analytic_module",
+                "saturation_analytic_workspace",
             ):
                 if retained[name] is not current[name]:
                     return False
@@ -1266,19 +1362,23 @@ class _LiveClassUnitArtifacts:
         ):
             try:
                 self.terminal_identity_snapshot = self._capture_terminal_identity()
+                self.terminal_semantic_snapshot = self._capture_terminal_semantics()
             except (AttributeError, TypeError, ValueError, ArithmeticError):
                 # Terminal publication remains valid even if a component
                 # cannot participate in the optional live proof fork.
                 self.terminal_identity_snapshot = None
+                self.terminal_semantic_snapshot = None
 
     def terminal_upgrade_material(self, source: Any) -> dict[str, Any] | None:
         """Issue one identity- and digest-bound conditional terminal fork."""
         if (
             not self.sealed
             or not self.reusable
+            or self.terminal_upgrade_reserved
             or self.terminal_upgrade_issued
             or self.terminal_proof_status != "exact-relations-conditional-grh"
             or self.terminal_identity_snapshot is None
+            or self.terminal_semantic_snapshot is None
         ):
             return None
         try:
@@ -1314,11 +1414,12 @@ class _LiveClassUnitArtifacts:
                 or getattr(self.class_group, "_relation_reconstructor", None)
                 is not self.collector
                 or not self._terminal_identity_matches()
+                or self._capture_terminal_semantics() != self.terminal_semantic_snapshot
             ):
                 return None
         except (AttributeError, TypeError, ValueError, ArithmeticError):
             return None
-        self.terminal_upgrade_issued = True
+        self.terminal_upgrade_reserved = True
         return {
             "factor_base": self.factor_base,
             "collector": self.collector,
@@ -1328,7 +1429,19 @@ class _LiveClassUnitArtifacts:
             "saturation_record": self.saturation_record,
             "class_group": self.class_group,
             "unit_group": self.unit_group,
+            "terminal_semantic_snapshot": self.terminal_semantic_snapshot,
         }
+
+    def finish_terminal_upgrade(self, *, commit: bool) -> bool:
+        """Commit or release the one synchronous terminal-upgrade lease."""
+        if not self.terminal_upgrade_reserved:
+            return False
+        self.terminal_upgrade_reserved = False
+        if commit:
+            if self.terminal_upgrade_issued:
+                return False
+            self.terminal_upgrade_issued = True
+        return True
 
     def diagnostics(self) -> dict[str, Any]:
         return {
@@ -1781,6 +1894,13 @@ class ClassUnitGroupContext:
         return self.fork_for_proof(
             proof_state, _live_token=_LIVE_CLASS_UNIT_CONTEXT_TOKEN
         ), material
+
+    def _finish_live_terminal_upgrade(self, token: Any, *, commit: bool) -> bool:
+        """Finish the producer-owned terminal lease after exact publication."""
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("terminal proof forks are engine-owned")
+        live = self._live_artifacts
+        return bool(live is not None and live.finish_terminal_upgrade(commit=commit))
 
     def live_diagnostics(self) -> dict[str, Any]:
         """Describe retained in-process state without exposing its authority."""
