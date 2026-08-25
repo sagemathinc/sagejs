@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-auto-preflight",
+  "title": "Prime default cubic class-unit context",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Default cacheable cubic class-unit computation automatically reuses the authenticated cubic scalar producer and retained continuation, with exact behavior and measured 10-field speedups",
+  "base_commit": "3a3dca8a061a7aa74e85ce0a584bd8be173e0a46",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "test/number-field-class-unit-auto-preflight.cjs",
+    "bench/class-unit-groups/cubic-auto-preflight.py"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/Hecke.jl pinned 0.40.0 shared ClassGrpCtx design",
+    "/home/user/upstream/pari-2.18.1.alpha/src/basemath/buch2.c clean-room Buchall context design"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing exact class/unit collector, presentation, hR, saturation, proof, replay, and LMFDB cubic fixture outputs",
+      "Explicit class_number followed by class_unit_group A/B control on the 10-field cubic smoke corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

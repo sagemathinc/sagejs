@@ -6385,6 +6385,49 @@ def class_unit_context(
         and selected_limits.to_dict() == ClassUnitEngineLimits().to_dict()
     ):
         projection = _cached_class_number_projection(field, cache_key, proof_value)
+        if (
+            projection is None
+            and getattr(field, "_bounded_cubic_class_number_artifact", None) is None
+        ):
+            # The default cubic scalar producer is also the cheapest way to
+            # initialize the coupled computation.  It either publishes a
+            # small authenticated relation seed, binds a live exact
+            # class-number continuation, or records a measured size decline
+            # that lets the general engine avoid the unrelated bounded
+            # class/unit probe.  Keep this preflight inside the cacheable
+            # default policy: interposed runs retain their ordinary progress,
+            # cancellation, checkpoint, component, and resource semantics.
+            #
+            # Producer artifacts are acceleration state, never mathematical
+            # authority for the final result.  If an unavailable or tampered
+            # hint makes the preflight fail, the unchanged exact engine still
+            # owns relation admission, hR validation, saturation, and replay.
+            try:
+                cubic_class_number_projection(field, proof=proof_value)
+            except (
+                AttributeError,
+                ImportError,
+                KeyError,
+                RuntimeError,
+                TypeError,
+                ValueError,
+                ArithmeticError,
+            ):
+                pass
+            cache = getattr(field, "_class_unit_engine_cache", None)
+            cached = _cached_class_unit_engine_result(
+                cache,
+                cache_key,
+                field,
+                cache_order,
+                proof_value,
+                algorithm,
+                seed,
+                limits_key,
+            )
+            if cached is not None:
+                return cached
+            projection = _cached_class_number_projection(field, cache_key, proof_value)
         if projection is not None:
             result = projection.finish()
             if not isinstance(cache, dict):
