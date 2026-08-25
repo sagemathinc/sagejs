@@ -196,7 +196,7 @@ dyadic_result = dyadic_kummer_height_recurrence(
     z(dyadic_kummer_height_recurrence, height_coefficients),
     u(dyadic_kummer_height_recurrence, height_exponents),
     u(dyadic_kummer_height_recurrence, height_counts),
-    zz(dyadic_kummer_height_recurrence, 48), scale, 1,
+    6144, scale, 1,
 )
 
 period_output = kernel_float64_zeros(_period_edge_batch_float64, 2)
