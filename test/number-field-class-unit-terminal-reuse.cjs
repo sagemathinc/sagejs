@@ -253,6 +253,7 @@ test("reuses C4 quintic terminals with detached torsion authority", () => {
 import json
 import time
 
+import sagejs.number_fields.factored_elements as factored_module
 import sagejs.number_fields.class_unit_groups as engine_module
 import sagejs.number_fields.units as units_module
 
@@ -325,9 +326,24 @@ assert not live.terminal_upgrade_reserved
 assert not live.terminal_upgrade_issued
 assert conditional_torsion.verify(force_replay=True)
 
+proof_constructions = {"representative": 0, "principal": 0}
+original_representative = engine_module._EngineClassGroup.representative_ideal
+original_principal = factored_module.FactoredNumberFieldElement.principal_ideal
+def counted_representative(self, coordinates):
+    proof_constructions["representative"] += 1
+    return original_representative(self, coordinates)
+def counted_principal(self, order):
+    proof_constructions["principal"] += 1
+    return original_principal(self, order)
+engine_module._EngineClassGroup.representative_ideal = counted_representative
+factored_module.FactoredNumberFieldElement.principal_ideal = counted_principal
 started = time.monotonic()
-unconditional = K.class_unit_group(proof=True)
-upgrade_seconds = time.monotonic() - started
+try:
+    unconditional = K.class_unit_group(proof=True)
+    upgrade_seconds = time.monotonic() - started
+finally:
+    engine_module._EngineClassGroup.representative_ideal = original_representative
+    factored_module.FactoredNumberFieldElement.principal_ideal = original_principal
 assert unconditional.complete
 assert unconditional.proof_status == "exact-unconditional"
 assert unconditional.class_number() == 4
@@ -341,6 +357,16 @@ assert unconditional.diagnostics["terminal_upgrade"] == {
     "reused_saturation": True,
     "rerun_relation_search": False,
     "rerun_analytic_index": False,
+}
+proof_prime_count = next(
+    stage.details["prime_ideals"]
+    for stage in unconditional.stages
+    if stage.name == "unconditional-proof"
+)
+assert proof_prime_count == 12
+assert proof_constructions == {
+    "representative": proof_prime_count,
+    "principal": proof_prime_count,
 }
 unconditional_torsion = unconditional.unit_group().torsion
 assert unconditional_torsion is not conditional_torsion
