@@ -17,11 +17,12 @@ const sagejs =
   process.env.SAGEJS_TEST_EXECUTABLE ||
   join(root, "bin", process.platform === "win32" ? "sagejs.cmd" : "sagejs");
 
-function run(source) {
+function run(source, timeout) {
   const result = spawnSync(sagejs, ["--python", "-"], {
     cwd: root,
     encoding: "utf8",
     input: source,
+    ...(timeout === undefined ? {} : { timeout }),
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return result.stdout.trim();
@@ -619,6 +620,190 @@ except ArithmeticError:
 print("engine-class-group-adapter-ok")
 `);
   assert.equal(output, "engine-class-group-adapter-ok");
+});
+
+test("conditional replay authenticates semantic prime identity across residue bases", () => {
+  const output = run(String.raw`
+import copy
+import hashlib
+import json
+
+from sagejs.number_fields.class_group_maps import (
+    _conditional_factor_base_plan,
+    class_group_from_engine_result,
+)
+
+def seal(payload):
+    body = copy.deepcopy(payload)
+    body.pop("content_sha256", None)
+    text = json.dumps(
+        body,
+        allow_nan=False,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    body["content_sha256"] = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return body
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 + 7*x + 8, "a")
+O = K.maximal_order()
+result = K.class_unit_group(False)
+assert result.complete
+C = class_group_from_engine_result(result)
+assert C.invariants() == (6,)
+payload = C.proof_payload()
+assert C.verify_proof_payload(payload)
+
+# This is LMFDB 3.1.4027.2: independently building the same exact factor base
+# chooses different valid quotient-coordinate bases at these entries.  The
+# schema, field/order identity, p/e/f, and HNF lattice remain byte-for-byte
+# equal, so replay must prove the residue presentation rather than nominate
+# either producer as the coordinate-basis authority.
+evidence = payload["conditional_evidence"]
+module, plan, plan_payload = _conditional_factor_base_plan(
+    O, evidence["theorem"], evidence["bound"][0]
+)
+assert plan_payload == evidence["factor_base_plan"]
+rebuilt = [record.prime_ideal.to_dict() for record in module.build_factor_base(plan)]
+assert len(rebuilt) == len(evidence["factor_base"]) == 7
+residue_differences = []
+for index, (expected, supplied) in enumerate(
+    zip(rebuilt, evidence["factor_base"], strict=True)
+):
+    assert set(expected) == set(supplied)
+    assert {
+        name: value for name, value in expected.items() if name != "residue"
+    } == {
+        name: value for name, value in supplied.items() if name != "residue"
+    }
+    if expected["residue"] != supplied["residue"]:
+        residue_differences.append(index)
+assert residue_differences == [2, 4, 5, 6]
+
+# Exercise the actual public entry point as well as the retained detached
+# replay context used for the adversarial payload checks below.
+public = K.class_group(False)
+assert public.invariants() == (6,) and public.verify()
+assert public.verify_proof_payload(public.proof_payload())
+
+# Detached replay derives the exact mod-p kernel from HNF, not from the
+# mutable memo carried by a rebuilt prime object.
+replay_prime = C._proof_context._conditional_plan_cache[2][2]
+replay_prime._mod_p_subspace_cache = {int(replay_prime.rational_prime()): ()}
+original_replay = C._proof_context._verify_conditional_evidence
+replay_calls = [0]
+def counted_replay(*args, **kwargs):
+    replay_calls[0] += 1
+    return original_replay(*args, **kwargs)
+C._proof_context._verify_conditional_evidence = counted_replay
+assert C.verify_proof_payload(payload)
+assert replay_calls == [1]
+C._proof_context._verify_conditional_evidence = original_replay
+replay_prime._mod_p_subspace_cache = {}
+
+def rejected(mutator):
+    corrupted = copy.deepcopy(payload)
+    mutator(corrupted["conditional_evidence"])
+    corrupted["conditional_evidence"] = seal(
+        corrupted["conditional_evidence"]
+    )
+    assert not C.verify_proof_payload(corrupted)
+
+def mutate_field_fingerprint(evidence):
+    evidence["factor_base"][0]["field_order_fingerprint"]["discriminant"] += 1
+
+def mutate_field_instance(evidence):
+    evidence["factor_base"][0]["field_instance"] += 1
+
+def mutate_order_instance(evidence):
+    evidence["factor_base"][0]["order_instance"] += 1
+
+def mutate_hnf(evidence):
+    evidence["factor_base"][0]["basis"][0][0][0] += 1
+
+def mutate_prime(evidence):
+    evidence["factor_base"][0]["prime"] += 1
+
+def mutate_ramification(evidence):
+    evidence["factor_base"][0]["e"] += 1
+
+def mutate_residue_degree(evidence):
+    evidence["factor_base"][0]["f"] += 1
+
+def mutate_ramification_boolean(evidence):
+    evidence["factor_base"][0]["e"] = True
+
+def mutate_residue_degree_boolean(evidence):
+    evidence["factor_base"][0]["f"] = True
+
+def mutate_hnf_boolean(evidence):
+    basis = evidence["factor_base"][0]["basis"]
+    for row in basis:
+        for pair in row:
+            for index, value in enumerate(pair):
+                if value == 1:
+                    pair[index] = True
+                    return
+    raise AssertionError("the regression prime has no unit HNF entry")
+
+def mutate_primitive_action(evidence):
+    evidence["factor_base"][2]["residue"]["primitive"] = [0, 0, 0]
+
+def mutate_quotient_kernel(evidence):
+    evidence["factor_base"][2]["residue"]["quotient_matrix"] = [
+        [0, 0],
+        [0, 0],
+        [0, 0],
+    ]
+
+def mutate_power_inverse(evidence):
+    evidence["factor_base"][2]["residue"]["power_inverse"] = [
+        [0, 0],
+        [0, 0],
+    ]
+
+def mutate_modulus_action(evidence):
+    prime = evidence["factor_base"][2]["prime"]
+    modulus = evidence["factor_base"][2]["residue"]["modulus"]
+    modulus[0] = (modulus[0] + 1) % prime
+
+def mutate_noncanonical_residue(evidence):
+    prime = evidence["factor_base"][2]["prime"]
+    evidence["factor_base"][2]["residue"]["quotient_matrix"][0][0] += prime
+
+def mutate_factor_base_order(evidence):
+    evidence["factor_base"].reverse()
+
+def mutate_factor_base_length(evidence):
+    evidence["factor_base"].pop()
+
+for mutator in (
+    mutate_field_fingerprint,
+    mutate_field_instance,
+    mutate_order_instance,
+    mutate_hnf,
+    mutate_prime,
+    mutate_ramification,
+    mutate_residue_degree,
+    mutate_ramification_boolean,
+    mutate_residue_degree_boolean,
+    mutate_hnf_boolean,
+    mutate_primitive_action,
+    mutate_quotient_kernel,
+    mutate_power_inverse,
+    mutate_modulus_action,
+    mutate_noncanonical_residue,
+    mutate_factor_base_order,
+    mutate_factor_base_length,
+):
+    rejected(mutator)
+
+print("conditional-semantic-prime-replay-ok")
+`, 900_000);
+  assert.equal(output, "conditional-semantic-prime-replay-ok");
 });
 
 test("unconditional engine evidence replays its independent Minkowski stream", () => {
