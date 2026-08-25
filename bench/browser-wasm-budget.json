@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.browser-wasm-budget/v1",
-  "description": "Relative release gates. Populate artifact_baseline, performance_baseline, and native_ratio_baseline only from reviewed final-artifact receipts; absent baselines are reported but never fabricated.",
+  "description": "Relative release gates. Populate artifact_baseline, artifact_topology_limits, performance_baseline, and native_ratio_baseline only from reviewed final-artifact receipts; absent baselines are reported but never fabricated. Per-group limits here are packaging policy and intentionally remain outside mathematical receipt identity.",
   "thresholds": {
     "compressed_growth_fraction": 0.05,
     "startup_regression_fraction": 0.2,
@@ -14,6 +14,12 @@
       "bytes": 141974160,
       "gzip_bytes": 20699924,
       "brotli_bytes": 12983150
+    }
+  },
+  "artifact_topology_limits": {
+    "eager-core": {
+      "gzip_bytes": 14100000,
+      "brotli_bytes": 7850000
     }
   },
   "performance_baseline": {

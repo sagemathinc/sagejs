@@ -13,6 +13,7 @@ const { brotliCompressSync } = require("node:zlib");
 const {
   compareArtifacts,
   enforceBudget,
+  enforceTopologyBudgets,
   inspectProductionArtifact,
   sha256,
 } = require("../packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs");
@@ -230,6 +231,48 @@ test("relative payload gates reject unexplained compressed growth", () => {
   assert.deepEqual(
     enforceBudget(report, { ...baseline, artifact_baseline: null }, { requireBaseline: true }),
     ["reviewed artifact_baseline is absent"],
+  );
+});
+
+test("reviewed packaging budgets can adjust topology limits without changing artifact identity", () => {
+  const report = {
+    payload_groups: [
+      {
+        id: "eager-core",
+        compressed_delta: { gzip_bytes: 101, brotli_bytes: 91 },
+        maximum_compressed_delta: { gzip_bytes: 100, brotli_bytes: 90 },
+      },
+      {
+        id: "specialist",
+        compressed_delta: { gzip_bytes: 20, brotli_bytes: 19 },
+        maximum_compressed_delta: { gzip_bytes: 20, brotli_bytes: 20 },
+      },
+    ],
+  };
+  const budget = {
+    schema: "sagejs.browser-wasm-budget/v1",
+    artifact_topology_limits: {
+      "eager-core": { gzip_bytes: 102, brotli_bytes: 92 },
+    },
+  };
+  assert.deepEqual(enforceTopologyBudgets(report, budget), []);
+  assert.throws(
+    () => enforceTopologyBudgets(report, {
+      ...budget,
+      artifact_topology_limits: {
+        typo: { gzip_bytes: 102, brotli_bytes: 92 },
+      },
+    }),
+    /unknown group typo/,
+  );
+  assert.throws(
+    () => enforceTopologyBudgets(report, {
+      ...budget,
+      artifact_topology_limits: {
+        "eager-core": { gzip_bytes: 102 },
+      },
+    }),
+    /must contain exactly gzip_bytes and brotli_bytes/,
   );
 });
 
