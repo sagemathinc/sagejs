@@ -100,6 +100,42 @@ The earlier `b1a05935` evidence remains historical candidate evidence. The
 generated release allowlist now authenticates only the integrated `6aaa460a`
 bundle and retains the same six exact automatic-selection envelopes.
 
+## Sage.js-owned WASI integration refresh
+
+The candidate was refreshed once more after `main` replaced the former external
+WASI build dependency with the Sage.js-owned toolchain and source mirror. The
+final frozen source is
+`b25ffdd128cb19d95c979133349fb205a40f26e4`, with framed source-bundle digest
+`e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e`.
+The mathematical implementation remains unchanged from `b1a05935`.
+
+The combined-tree WebAssembly ABI was reviewed independently. After
+normalizing content-addressed module identifiers, it has no semantic export
+removals; the additions are the intended Cantor, Kummer, genus-3 candidate,
+rational-reduction, and height kernels. The normal fail-closed ABI check is
+restored after that review. Two incoming test-only probes were also migrated
+from sibling-toolchain paths to the authenticated Sage.js toolchain API, and
+the repository-wide external-toolchain dependency audit passes.
+
+Fresh exact native/dynamic receipts pass on Linux x64, Linux ARM64, macOS
+ARM64, and Windows x64. The authenticated browser artifact has identity
+`sha256:5303e00246f8f890f230aa50df66554ac2b5548a972639731e27e00e2a60d5ce`
+on every platform. Portable Cantor and Kummer digests agree on all four hosts;
+Linux additionally passes the standalone comparison. ASAN, UBSAN, LSAN,
+cache-corruption, bounded-output, cancellation, worker-recovery, package-load,
+and source-bound evidence pass. The refreshed durable evidence is:
+
+- four-platform report:
+  `bench/hyperelliptic/cross-platform/results/report-b25ffdd1.md`;
+- raw primary and portable receipts:
+  `bench/hyperelliptic/cross-platform/results/*-b25ffdd1*.json`;
+- normalized evidence and 24 receipt documents:
+  `bench/hyperelliptic/cross-platform/results/policy-b25ffdd1/`.
+
+The generated release allowlist authenticates only the `b25ffdd1` source
+bundle and retains the same six exact automatic-selection envelopes. The
+earlier `b1a05935` and `6aaa460a` receipts remain immutable historical evidence.
+
 ## Post-candidate priorities
 
 1. Record the pinned Phase-9 analytic receipt and process-cold rank-three map

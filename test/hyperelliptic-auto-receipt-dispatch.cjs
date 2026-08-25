@@ -475,7 +475,7 @@ test("the release policy enables only six exact Cantor envelopes", () => {
   assert(candidate.entries.every((entry) => entry.enabled));
   assert.equal(
     candidate.source_bundle.sha256,
-    "fcd9122e2b010345fd148f9bec7e7d562cd664ead132b4106351d819f8992e09",
+    "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e",
   );
   assert.deepEqual(
     [...new Set(candidate.entries.map((entry) => entry.backend))],

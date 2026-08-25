@@ -212,7 +212,7 @@ test("the checked-in release policy is valid, immutable, and narrow", () => {
   assert.equal(policy.verified_receipts.length, 24);
   assert.equal(
     policy.source_bundle.sha256,
-    "fcd9122e2b010345fd148f9bec7e7d562cd664ead132b4106351d819f8992e09",
+    "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e",
   );
   assert(Object.isFrozen(policy));
   assert.equal(

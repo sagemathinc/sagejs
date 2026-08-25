@@ -1,0 +1,1479 @@
+{
+  "schema": "sagejs.hyperelliptic-cross-platform-acceptance.v1",
+  "generated_at_utc": "2026-08-25T00:46:22.106Z",
+  "host": {
+    "hostname": "studio.local",
+    "os_type": "Darwin",
+    "platform": "darwin",
+    "os_release": "25.4.0",
+    "architecture": "arm64",
+    "cpu_models": [
+      "Apple M1 Max"
+    ],
+    "logical_cpus": 10,
+    "total_memory_bytes": 34359738368,
+    "free_memory_bytes_before": 2144059392,
+    "node": "v26.5.0",
+    "preflight": {
+      "uptime": {
+        "command": [
+          "uptime"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "17:46  up 5 days,  3:40, 3 users, load averages: 1.60 1.61 1.47",
+        "stderr": ""
+      },
+      "git_status": {
+        "command": [
+          "git",
+          "status",
+          "--short",
+          "--branch"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "## HEAD (no branch)",
+        "stderr": ""
+      },
+      "git_commit": {
+        "command": [
+          "git",
+          "rev-parse",
+          "HEAD"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "b25ffdd128cb19d95c979133349fb205a40f26e4",
+        "stderr": ""
+      },
+      "compiler": {
+        "command": [
+          "cc",
+          "--version"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "Apple clang version 17.0.0 (clang-1700.4.4.1)\nTarget: arm64-apple-darwin25.4.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+        "stderr": ""
+      },
+      "uname": {
+        "command": [
+          "uname",
+          "-a"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "Darwin studio.local 25.4.0 Darwin Kernel Version 25.4.0: Thu Mar 19 19:30:44 PDT 2026; root:xnu-12377.101.15~1/RELEASE_ARM64_T6000 arm64",
+        "stderr": ""
+      },
+      "hardware": {
+        "command": [
+          "sysctl",
+          "-n",
+          "machdep.cpu.brand_string",
+          "hw.physicalcpu",
+          "hw.logicalcpu",
+          "hw.memsize"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "Apple M1 Max\n10\n10\n34359738368",
+        "stderr": ""
+      },
+      "processes": {
+        "command": [
+          "ps",
+          "-Ao",
+          "pid,pcpu,pmem,comm",
+          "-r"
+        ],
+        "exit_code": 0,
+        "signal": null,
+        "stdout": "PID  %CPU %MEM COMM\n 1213  21.5  0.0 /usr/libexec/sysmond\n 1267   8.7  0.3 /System/Applications/Utilities/Activity Monitor.app/Contents/MacOS/Activity Monitor\n 1137   3.6  0.2 /usr/libexec/searchpartyd\n10937   1.8  0.7 /opt/homebrew/bin/node\n  967   1.7  0.1 /usr/libexec/runningboardd\n  930   0.9  0.0 /System/Library/CoreServices/launchservicesd\n  961   0.8  0.3 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer\n  953   0.7  0.2 /usr/sbin/bluetoothd\n  935   0.7  0.1 /usr/libexec/locationd\n  954   0.6  0.0 /usr/sbin/notifyd\n 1561   0.6  2.1 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores\n  928   0.6  0.1 /usr/libexec/opendirectoryd\n 9773   0.4  0.4 /System/Library/ExtensionKit/Extensions/FaceTimeNotificationExtension.appex/Contents/MacOS/FaceTimeNotificationExtension\n  887   0.3  0.3 /usr/libexec/logd\n 1188   0.2  0.1 /System/Library/DriverExtensions/com.apple.DriverKit-AppleBCMWLAN.dext/com.apple.DriverKit-AppleBCMWLAN\n 1270   0.2  0.1 /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock\n 1283   0.2  0.1 /usr/libexec/gamepolicyd\n  964   0.1  0.3 /System/Library/CoreServices/loginwindow.app/Contents/MacOS/loginwindow\n  891   0.1  0.1 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd\n    1   0.1  0.1 /sbin/launchd\n  916   0.1  0.6 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds\n 1271   0.1  0.3 /System/Library/CoreServices/ControlCenter.app/Contents/MacOS/ControlCenter\n30358   0.0  0.1 /usr/libexec/textcomposerd\n30357   0.0  0.1 /System/Applications/Messages.app/Contents/PlugIns/Messages Assistant Extension.appex/Contents/MacOS/Messages Assistant Extension\n14890   0.0  0.4 /System/Library/PrivateFrameworks/IntelligencePlatformCore.framework/Versions/A/knowledgeconstructiond\n13000   0.0  0.3 /System/Library/Frameworks/VideoToolbox.framework/Versions/A/XPCServices/VTDecoderXPCService.xpc/Contents/MacOS/VTDecoderXPCService\n59650   0.0  0.0 /System/Library/Frameworks/Speech.framework/Versions/A/XPCServices/localspeechrecognition.xpc/Contents/MacOS/localspeechrecognition\n59648   0.0  0.2 /System/Library/PrivateFrameworks/IntelligencePlatformCompute.framework/Versions/A/XPCServices/IntelligencePlatformComputeService.xpc/Contents/MacOS/IntelligencePlatformComputeService\n59646   0.0  0.0 /System/Library/PrivateFrameworks/MobileAccessoryUpdater.framework/XPCServices/EAUpdaterService.xpc/Contents/MacOS/EAUpdaterService\n59516   0.0  0.0 /usr/sbin/cfprefsd\n59467   0.0  0.0 /usr/sbin/cfprefsd\n59468   0.0  0.0 /usr/sbin/cfprefsd\n59449   0.0  0.0 /usr/sbin/cfprefsd\n59448   0.0  0.0 /usr/sbin/cfprefsd\n59447   0.0  0.0 /usr/sbin/cfprefsd\n59441   0.0  0.0 /usr/sbin/cfprefsd\n59440   0.0  0.0 /usr/sbin/cfprefsd\n59439   0.0  0.0 /usr/sbin/cfprefsd\n59432   0.0  0.0 /usr/sbin/cfprefsd\n12341   0.0  0.0 /usr/sbin/cfprefsd\n12331   0.0  0.0 /usr/sbin/distnoted\n11613   0.0  0.0 /System/Library/PrivateFrameworks/AMPLibrary.framework/Versions/A/Support/AMPArtworkAgent\n11611   0.0  0.0 /System/Library/PrivateFrameworks/PodcastServices.framework/XPCServices/PodcastContentService.xpc/Contents/MacOS/PodcastContentService\n11609   0.0  0.1 /System/Library/PrivateFrameworks/AMPLibrary.framework/Versions/A/Support/AMPLibraryAgent\n11608   0.0  0.0 /System/Library/PrivateFrameworks/AssistantServices.framework/Versions/A/XPCServices/media-indexer.xpc/Contents/MacOS/media-indexer\n10917   0.0  0.0 /System/Cryptexes/App/usr/libexec/com.apple.Safari.History\n10706   0.0  0.0 /System/Library/PrivateFrameworks/JetCore.framework/Support/jetpackassetd\n 9776   0.0  0.0 /System/Library/Frameworks/Speech.framework/Versions/A/XPCServices/localspeechrecognition.xpc/Contents/MacOS/localspeechrecognition\n 9775   0.0  0.0 /System/Library/Frameworks/Speech.framework/Versions/A/XPCServices/localspeechrecognition.xpc/Contents/MacOS/localspeechrecognition\n 9774   0.0  0.1 /System/Library/PrivateFrameworks/CallIntelligence.framework/callintelligenced\n 9772   0.0  0.0 /System/Library/Frameworks/ExtensionFoundation.framework/Versions/A/XPCServices/extensionkitservice.xpc/Contents/MacOS/extensionkitservice\n 9771   0.0  0.1 /System/Library/PrivateFrameworks/FaceTimeNotificationViewBridge.framework/Versions/A/XPCServices/FaceTimeNotificationViewBridgeService.xpc/Contents/MacOS/FaceTimeNotificationViewBridgeService\n 9770   0.0  0.0 /System/Library/PrivateFrameworks/FaceTimeNotification.framework/Versions/A/XPCServices/FaceTimeNotificationService.xpc/Contents/MacOS/FaceTimeNotificationService\n 8349   0.0  0.0 /usr/libexec/feedbackd\n 8176   0.0  0.0 /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService\n 8162   0.0  0.0 /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService\n 5930   0.0  0.0 /System/Library/PrivateFrameworks/MessagesBlastDoorSupport.framework/Versions/A/XPCServices/HubbleBlastDoorService.xpc/Contents/MacOS/HubbleBlastDoorService\n 5929   0.0  0.2 /System/Library/PrivateFrameworks/MediaConversionService.framework/Versions/A/XPCServices/com.apple.photos.ImageConversionService.xpc/Contents/MacOS/com.apple.photos.ImageConversionService\n 5928   0.0  0.0 /System/Library/Frameworks/NetFS.framework/Versions/A/XPCServices/PlugInLibraryService.xpc/Contents/MacOS/PlugInLibraryService\n 5797   0.0  0.0 /System/Library/PrivateFrameworks/MediaAnalysisAccess.framework/Versions/A/XPCServices/mediaanalysisd-access.xpc/Contents/MacOS/mediaanalysisd-access\n 5546   0.0  0.0 /System/Library/Frameworks/NetFS.framework/Versions/A/XPCServices/PlugInLibraryService.xpc/Contents/MacOS/PlugInLibraryService\n 5544   0.0  0.1 /System/iOSSupport/System/Library/PrivateFrameworks/NewsUI2.framework/Versions/A/XPCServices/NewsScoringService.xpc/Contents/MacOS/NewsScoringService\n 5542   0.0  0.1 /System/Library/PrivateFrameworks/NewsDaemon.framework/newsd\n 5538   0.0  0.2 /System/Applications/News.app/Contents/PlugIns/NewsToday2.appex/Contents/MacOS/NewsToday2\n 4541   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper\n 4501   0.0  0.1 /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService\n 4018   0.0  0.0 /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService\n 3776   0.0  0.1 /System/Library/Frameworks/ShazamKit.framework/shazamd\n 3262   0.0  0.0 /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService\n 2980   0.0  0.0 /usr/libexec/mlruntimed\n 2968   0.0  0.0 /System/Library/CoreServices/ReportSystemMemory\n 2966   0.0  0.0 /System/Library/PrivateFrameworks/FileProviderDaemon.framework/XPCServices/FPCKService.xpc/Contents/MacOS/FPCKService\n 2923   0.0  0.4 /System/Library/Frameworks/VideoToolbox.framework/Versions/A/XPCServices/VTDecoderXPCService.xpc/Contents/MacOS/VTDecoderXPCService\n 2918   0.0  0.0 /System/Library/ExtensionKit/Extensions/IFTelemetrySELFIngestor.appex/Contents/MacOS/IFTelemetrySELFIngestor\n 2917   0.0  0.0 /System/Library/ExtensionKit/Extensions/IFTranscriptSELFIngestor.appex/Contents/MacOS/IFTranscriptSELFIngestor\n 2916   0.0  0.0 /System/Library/ExtensionKit/Extensions/GMSSELFIngestor.appex/Contents/MacOS/GMSSELFIngestor\n 2915   0.0  0.0 /System/Library/ExtensionKit/Extensions/BiomeSELFIngestor.appex/Contents/MacOS/BiomeSELFIngestor\n 2914   0.0  0.0 /System/Library/Frameworks/ExtensionFoundation.framework/Versions/A/XPCServices/extensionkitservice.xpc/Contents/MacOS/extensionkitservice\n 2913   0.0  0.0 /System/Library/PrivateFrameworks/SiriAnalytics.framework/Versions/A/XPCServices/SAExtensionOrchestrator.xpc/Contents/MacOS/SAExtensionOrchestrator\n 2890   0.0  0.0 /System/Library/Frameworks/VideoToolbox.framework/Versions/A/XPCServices/VTDecoderXPCService.xpc/Contents/MacOS/VTDecoderXPCService\n 2888   0.0  0.0 /System/Library/ExtensionKit/Extensions/WallpaperSonomaExtension.appex/Contents/MacOS/WallpaperSonomaExtension\n 2886   0.0  0.0 /System/Library/ExtensionKit/Extensions/WallpaperAerialsExtension.appex/Contents/MacOS/WallpaperAerialsExtension\n 2875   0.0  0.0 /System/Library/CoreServices/EscrowSecurityAlert.app/Contents/MacOS/EscrowSecurityAlert\n 2877   0.0  0.0 /usr/libexec/betaenrollmentd\n 2874   0.0  0.0 /usr/libexec/betaenrollmentagent\n 2867   0.0  0.0 /System/Library/PrivateFrameworks/StreamingExtractor.framework/Versions/A/XPCServices/STExtractionService.privileged.xpc/Contents/MacOS/STExtractionService.privileged\n 2831   0.0  0.0 /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/MacOS/XProtect\n 2830   0.0  0.1 /System/Library/PrivateFrameworks/AvatarPersistence.framework/Support/avatarsd\n 2829   0.0  0.1 /System/Library/PrivateFrameworks/ContactsDonation.framework/Versions/A/Support/contactsdonationagent\n 2823   0.0  0.0 /System/Library/PrivateFrameworks/BookKit.framework/Versions/A/XPCServices/com.apple.BKAgentService.xpc/Contents/MacOS/com.apple.BKAgentService\n 2813   0.0  0.0 /System/Library/PrivateFrameworks/CloudPhotoServices.framework/Versions/A/XPCServices/com.apple.CloudPhotosConfiguration.xpc/Contents/MacOS/com.apple.CloudPhotosConfiguration\n 2807   0.0  0.0 /System/Library/PrivateFrameworks/CloudTelemetry.framework/Versions/A/XPCServices/CloudTelemetryService.xpc/Contents/MacOS/CloudTelemetryService\n 2805   0.0  0.0 /System/Library/PrivateFrameworks/AppleNeuralEngine.framework/XPCServices/ANEStorageMaintainer.xpc/Contents/MacOS/ANEStorageMaintainer\n 2803   0.0  0.0 /usr/sbin/distnoted\n 2804   0.0  0.0 /System/Library/PrivateFrameworks/AppleNeuralEngine.framework/XPCServices/ANEStorageMaintainer.xpc/Contents/MacOS/ANEStorageMaintainer\n 2799   0.0  0.0 /System/Library/PrivateFrameworks/DifferentialPrivacy.framework/XPCServices/DPSubmissionService.xpc/Contents/MacOS/DPSubmissionService\n 2797   0.0  0.0 /System/Library/PrivateFrameworks/IMDPersistence.framework/IMAutomaticHistoryDeletionAgent.app/Contents/MacOS/IMAutomaticHistoryDeletionAgent\n 2796   0.0  0.0 /usr/libexec/dprivacyd\n 2795   0.0  0.0 /usr/libexec/dprivacyd\n 2791   0.0  0.0 /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/MacOS/XProtect\n 2787   0.0  0.0 /usr/libexec/griddatad\n 2788   0.0  0.0 /usr/libexec/metrickitd\n 2775   0.0  0.0 /usr/libexec/mmaintenanced\n 2776   0.0  0.0 /usr/libexec/ciphermld\n 2772   0.0  0.0 /System/Library/PrivateFrameworks/ManagedBackgroundAssets.framework/Versions/A/XPCServices/Managed Background Assets Helper Service.xpc/Contents/MacOS/Managed Background Assets Helper Service\n 2698   0.0  0.0 /System/Library/Frameworks/ExtensionFoundation.framework/Versions/A/XPCServices/extensionkitservice.xpc/Contents/MacOS/extensionkitservice\n 2697   0.0  0.1 /usr/libexec/mlhostd\n 2696   0.0  0.0 /usr/libexec/seserviced\n 2695   0.0  0.0 /System/Library/PrivateFrameworks/XprotectFramework.framework/Versions/A/XPCServices/XProtectUpdateService.xpc/Contents/MacOS/XProtectUpdateService\n 2687   0.0  0.0 /System/Cryptexes/App/usr/libexec/PasswordBreachAgent\n 2685   0.0  0.0 /usr/libexec/ASPCarryLog\n 2680   0.0  0.0 /usr/libexec/trustd\n 2677   0.0  0.0 /usr/libexec/containermanagerd\n 2676   0.0  0.0 /usr/libexec/secd\n 2675   0.0  0.0 /usr/libexec/lsd\n 2674   0.0  0.0 /usr/libexec/pkd\n 2673   0.0  0.0 /usr/sbin/cfprefsd\n 2668   0.0  0.0 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mdbulkimport\n 2667   0.0  0.0 /usr/sbin/distnoted\n 2649   0.0  0.9 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/managedcorespotlightd\n 2646   0.0  0.0 /usr/libexec/wifivelocityd\n 2645   0.0  0.1 /usr/libexec/tipsd\n 2643   0.0  0.0 /System/Library/PrivateFrameworks/Synapse.framework/Support/contentlinkingd\n 2640   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper\n 2639   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper\n 2638   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/XPCServices/AUCrashHandlerService.xpc/Contents/MacOS/AUCrashHandlerService\n 2637   0.0  0.0 /System/iOSSupport/System/Library/ExtensionKit/Extensions/MauiAUSP.appex/Contents/MacOS/MauiAUSP\n 2636   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper\n 2635   0.0  0.1 /System/Library/PrivateFrameworks/MacinTalk.framework/PlugIns/WardaSynthesizer.appex/Contents/MacOS/WardaSynthesizer\n 2632   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper\n 2634   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper\n 2633   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper\n 2631   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper\n 2630   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper\n 2629   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper\n 2627   0.0  0.0 /System/Library/PrivateFrameworks/CloudDocs.framework/PlugIns/com.apple.CloudDocs.iCloudDriveFileProvider.appex/Contents/MacOS/com.apple.CloudDocs.iCloudDriveFileProvider\n 2626   0.0  0.0 /System/Library/PrivateFrameworks/StocksKit.framework/XPCServices/StocksKitService.xpc/Contents/MacOS/StocksKitService\n 2625   0.0  0.0 /usr/libexec/rosetta/oahd\n 2618   0.0  0.1 /System/Library/PrivateFrameworks/AppleIntelligenceReportingProcessing.framework/Versions/A/XPCServices/AppleIntelligenceReportingProcessingService.xpc/Contents/MacOS/AppleIntelligenceReportingProcessingService\n 2617   0.0  0.0 /System/Library/PrivateFrameworks/EcosystemAnalytics.framework/Support/ecosystemanalyticsd\n 2615   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/ManagedSettingsSubscriber.xpc/Contents/MacOS/ManagedSettingsSubscriber\n 2614   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/ASConfigurationSubscriber.xpc/Contents/MacOS/ASConfigurationSubscriber\n 2613   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/ManagementTestSubscriber.xpc/Contents/MacOS/ManagementTestSubscriber\n 2612   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/ManagedAppsSubscriber.xpc/Contents/MacOS/ManagedAppsSubscriber\n 2611   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/AccountSubscriber.xpc/Contents/MacOS/AccountSubscriber\n 2610   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/PasscodeSettingsSubscriber.xpc/Contents/MacOS/PasscodeSettingsSubscriber\n 2609   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/LegacyProfilesSubscriber.xpc/Contents/MacOS/LegacyProfilesSubscriber\n 2607   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/ScreenSharingSubscriber.xpc/Contents/MacOS/ScreenSharingSubscriber\n 2606   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/InteractiveLegacyProfilesSubscriber.xpc/Contents/MacOS/InteractiveLegacyProfilesSubscriber\n 2605   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/SecuritySubscriber.xpc/Contents/MacOS/SecuritySubscriber\n 2603   0.0  0.0 /System/Library/PrivateFrameworks/SafariFoundation.framework/Versions/A/XPCServices/SafariConfigurationSubscriber.xpc/Contents/MacOS/SafariConfigurationSubscriber\n 2601   0.0  0.0 /usr/libexec/sysdiagnosed\n 2599   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/RemoteManagementAgent\n 2598   0.0  0.0 /System/Library/PrivateFrameworks/CloudTelemetry.framework/Versions/A/XPCServices/CloudTelemetryService.xpc/Contents/MacOS/CloudTelemetryService\n 2596   0.0  0.0 /System/Library/PrivateFrameworks/PrivateCloudCompute.framework/privatecloudcomputed.app/Contents/MacOS/privatecloudcomputed\n 2594   0.0  0.0 /usr/libexec/proactived\n 2591   0.0  0.0 /usr/libexec/microstackshot\n 2592   0.0  0.0 /usr/libexec/proactiveeventtrackerd\n 2590   0.0  0.1 /System/Cryptexes/App/usr/libexec/SafariBookmarksSyncAgent\n 2589   0.0  0.1 /System/Library/PrivateFrameworks/DataAccess.framework/Support/dataaccessd\n 2588   0.0  0.0 /System/Library/PrivateFrameworks/Noticeboard.framework/Versions/A/Resources/nbstated\n 2587   0.0  0.1 /System/Library/PrivateFrameworks/Noticeboard.framework/Versions/A/Resources/nbagent.app/Contents/MacOS/nbagent\n 2586   0.0  0.0 /usr/libexec/powerdatad\n 2585   0.0  0.0 /usr/libexec/backgroundassets.user\n 2580   0.0  0.0 /System/Library/PrivateFrameworks/WeatherDaemon.framework/weatherd\n 2579   0.0  0.1 /usr/libexec/adprivacyd\n 2578   0.0  0.1 /System/Library/PrivateFrameworks/CoreEmbeddedSpeechRecognition.framework/Versions/A/XPCServices/com.apple.siri.embeddedspeech.xpc/Contents/MacOS/com.apple.siri.embeddedspeech\n 2577   0.0  0.0 /System/Library/PrivateFrameworks/HomeKitEvents.framework/Support/homeeventsd\n 2570   0.0  0.0 /System/Library/PrivateFrameworks/Stickers.framework/Support/stickersd\n 2569   0.0  0.1 /System/Library/Frameworks/ManagedAppDistribution.framework/Support/managedappdistributionagent\n 2568   0.0  0.0 /System/Library/PrivateFrameworks/NewDeviceOutreach.framework/ndoagent\n 2567   0.0  0.0 /usr/libexec/keychainsharingmessagingd\n 2566   0.0  0.1 /System/Cryptexes/App/usr/libexec/AuthenticationServicesAgent\n 2564   0.0  0.0 /System/Library/PrivateFrameworks/MessagesBlastDoorSupport.framework/Versions/A/XPCServices/MessagesBlastDoorService.xpc/Contents/MacOS/MessagesBlastDoorService\n 2562   0.0  0.0 /System/Library/PrivateFrameworks/BusinessChatService.framework/businessservicesd\n 2563   0.0  0.0 /usr/libexec/filevaultd\n 2553   0.0  0.2 /System/Library/ExtensionKit/Extensions/TGOnDeviceInferenceProviderService.appex/Contents/MacOS/TGOnDeviceInferenceProviderService\n 2552   0.0  0.1 /System/Library/ExtensionKit/Extensions/GenerativeExperiencesSafetyInferenceProvider.appex/Contents/MacOS/GenerativeExperiencesSafetyInferenceProvider\n 2538   0.0  0.0 /usr/sbin/distnoted\n 2537   0.0  0.2 /System/Library/ExtensionKit/Extensions/TGOnDeviceInferenceProviderService.appex/Contents/MacOS/TGOnDeviceInferenceProviderService\n 2526   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/ManagedConfigurationFilesSubscriber.xpc/Contents/MacOS/ManagedConfigurationFilesSubscriber\n 2523   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/ManagementTestSubscriber.xpc/Contents/MacOS/ManagementTestSubscriber\n 2521   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/ManagedAppsSubscriber.xpc/Contents/MacOS/ManagedAppsSubscriber\n 2519   0.0  0.0 /System/Library/CoreServices/iconservicesagent\n 2517   0.0  0.2 /System/Library/PrivateFrameworks/SystemMigration.framework/Resources/systemmigrationd\n 2515   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/MigrationSubscriber.xpc/Contents/MacOS/MigrationSubscriber\n 2512   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/SoftwareUpdateSubscriber.xpc/Contents/MacOS/SoftwareUpdateSubscriber\n 2510   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/ManagedPreferencesSubscriber.xpc/Contents/MacOS/ManagedPreferencesSubscriber\n 2507   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/DiskManagementSubscriber.xpc/Contents/MacOS/DiskManagementSubscriber\n 2504   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/PasscodeSettingsSubscriber.xpc/Contents/MacOS/PasscodeSettingsSubscriber\n 2501   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/LegacyProfilesSubscriber.xpc/Contents/MacOS/LegacyProfilesSubscriber\n 2495   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/ScreenSharingSubscriber.xpc/Contents/MacOS/ScreenSharingSubscriber\n 2493   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/InteractiveLegacyProfilesSubscriber.xpc/Contents/MacOS/InteractiveLegacyProfilesSubscriber\n 2490   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/XPCServices/SecuritySubscriber.xpc/Contents/MacOS/SecuritySubscriber\n 2491   0.0  0.0 /usr/sbin/distnoted\n 2481   0.0  0.0 /System/Library/PrivateFrameworks/RemoteManagement.framework/remotemanagementd\n 2458   0.0  0.3 /System/Library/PrivateFrameworks/AppleNeuralEngine.framework/XPCServices/ANECompilerService.xpc/Contents/MacOS/ANECompilerService\n 2414   0.0  0.0 /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService\n 2412   0.0  0.1 /System/Library/PrivateFrameworks/People.framework/peopled\n 2396   0.0  0.0 /usr/libexec/seputil\n 2319   0.0  0.0 /usr/libexec/MTLAssetUpgraderD\n 2320   0.0  0.0 /System/Library/Frameworks/MediaExtension.framework/Versions/A/Helpers/MENotificationAgent\n 2321   0.0  0.1 /System/Library/PrivateFrameworks/BackgroundTaskManagement.framework/Support/BackgroundTaskManagementAgent.app/Contents/MacOS/BackgroundTaskManagementAgent\n 2211   0.0  0.1 /System/Library/PrivateFrameworks/XprotectFramework.framework/Versions/A/XPCServices/XprotectService.xpc/Contents/MacOS/XprotectService\n 2200   0.0  0.0 /System/Library/PrivateFrameworks/DeviceCheckInternal.framework/devicecheckd\n 2197   0.0  0.0 /usr/libexec/diagnosticextensionsd\n 2191   0.0  0.0 /System/Library/CoreServices/CrashReporterSupportHelper\n 2175   0.0  0.1 /System/Library/Frameworks/ManagedAppDistribution.framework/Support/managedappdistributiond\n 2158   0.0  0.1 /System/Library/PrivateFrameworks/IntelligencePlatformCore.framework/Versions/A/intelligenceplatformd\n 2150   0.0  0.2 /usr/libexec/textunderstandingd\n 2146   0.0  0.0 /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService\n 2113   0.0  0.0 /System/Library/PrivateFrameworks/MobileAccessoryUpdater.framework/Support/fudHelperAgent\n 2136   0.0  0.0 /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService\n 2134   0.0  0.0 /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService\n 2111   0.0  0.1 /System/Library/PrivateFrameworks/SafariSafeBrowsing.framework/com.apple.Safari.SafeBrowsing.Service\n 2110   0.0  0.0 /System/Library/Frameworks/NetFS.framework/Versions/A/XPCServices/PlugInLibraryService.xpc/Contents/MacOS/PlugInLibraryService\n 2078   0.0  0.1 /System/Library/CoreServices/Siri.app/Contents/XPCServices/SiriNCService.xpc/Contents/MacOS/SiriNCService\n 2071   0.0  0.0 /System/Library/Frameworks/NetFS.framework/Versions/A/XPCServices/PlugInLibraryService.xpc/Contents/MacOS/PlugInLibraryService\n 2068   0.0  0.1 /usr/libexec/GamePolicyAgent\n 2055   0.0  0.0 /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/XPCServices/XProtectPluginService.xpc/Contents/MacOS/XProtectPluginService\n 2036   0.0  0.1 /System/Applications/Messages.app/Contents/Extensions/MessagesActionExtension.appex/Contents/MacOS/MessagesActionExtension\n 2034   0.0  0.0 /System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app/Contents/Extensions/SafariLinkExtension.appex/Contents/MacOS/SafariLinkExtension\n 2032   0.0  0.0 /System/Applications/Calendar.app/Contents/Extensions/CalendarIntentsExtension.appex/Contents/MacOS/CalendarIntentsExtension\n 2030   0.0  0.0 /System/Library/Frameworks/ExtensionFoundation.framework/Versions/A/XPCServices/extensionkitservice.xpc/Contents/MacOS/extensionkitservice\n 2018   0.0  0.0 /System/Library/Frameworks/FinanceKit.framework/financed\n 1598   0.0  0.0 /System/Library/CoreServices/diagnostics_agent\n 1962   0.0  0.0 /System/Library/PrivateFrameworks/AppStoreDaemon.framework/Versions/A/XPCServices/com.apple.AppStoreDaemon.StorePrivilegedODRService.xpc/Contents/MacOS/com.apple.AppStoreDaemon.StorePrivilegedODRService\n 1960   0.0  0.0 /usr/sbin/distnoted\n 1959   0.0  0.0 /System/Library/PrivateFrameworks/MobileInstallation.framework/XPCServices/com.apple.MobileInstallationHelperService.xpc/Contents/MacOS/com.apple.MobileInstallationHelperService\n 1958   0.0  0.0 /System/Library/PrivateFrameworks/InstallCoordination.framework/Support/installcoordinationd\n 1956   0.0  0.1 /System/Library/PrivateFrameworks/GeoAnalytics.framework/geoanalyticsd\n 1275   0.0  0.0 /System/Library/Frameworks/FamilyControls.framework/Versions/A/FamilyControlsAgent\n 1926   0.0  0.0 /System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU\n 1923   0.0  0.2 /System/Library/PrivateFrameworks/UIFoundation.framework/Versions/A/XPCServices/nsattributedstringagent.xpc/Contents/MacOS/nsattributedstringagent\n 1921   0.0  0.0 /System/Library/Frameworks/MediaAccessibility.framework/Versions/A/XPCServices/com.apple.accessibility.mediaaccessibilityd.xpc/Contents/MacOS/com.apple.accessibility.mediaaccessibilityd\n 1917   0.0  0.0 /usr/sbin/cfprefsd\n 1916   0.0  0.0 /System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/HIServices.framework/Versions/A/XPCServices/com.apple.hiservices-xpcservice.xpc/Contents/MacOS/com.apple.hiservices-xpcservice\n 1914   0.0  0.2 /System/Library/PrivateFrameworks/UIFoundation.framework/Versions/A/XPCServices/nsattributedstringagent.xpc/Contents/MacOS/nsattributedstringagent\n 1902   0.0  0.0 /System/Library/PrivateFrameworks/StreamingZip.framework/Versions/A/XPCServices/com.apple.StreamingUnzipService.privileged.xpc/Contents/MacOS/com.apple.StreamingUnzipService.privileged\n 1898   0.0  0.0 /System/Library/PrivateFrameworks/SiriSuggestionsSupport.framework/Versions/A/XPCServices/SiriSuggestionsBookkeepingService.xpc/Contents/MacOS/SiriSuggestionsBookkeepingService\n 1877   0.0  0.7 /System/Library/Frameworks/Contacts.framework/Support/contactsd\n 1869   0.0  0.0 /usr/libexec/fairplaydeviceidentityd\n 1866   0.0  0.1 /usr/libexec/promotedcontentd\n 1855   0.0  0.0 /System/Library/PrivateFrameworks/GeoServices.framework/geodMachServiceBridge\n 1856   0.0  0.0 /System/Library/PrivateFrameworks/PackageKit.framework/Resources/system_installd\n 1854   0.0  0.1 /System/Library/PrivateFrameworks/AppStoreDaemon.framework/Support/appstoreagent\n 1853   0.0  0.0 /System/Library/PrivateFrameworks/PackageKit.framework/Resources/installd\n 1440   0.0  0.0 /System/Library/CoreServices/SubmitDiagInfo\n 1811   0.0  0.0 /System/Library/PrivateFrameworks/AssetCacheServices.framework/Versions/A/XPCServices/AssetCacheLocatorService.xpc/Contents/MacOS/AssetCacheLocatorService\n 1805   0.0  0.0 /System/Library/AssetsV2/com_apple_MobileAsset_RecoveryOSUpdateBrain/7a84bd1c89069f2e742ece792e84523266f36fdf.asset/AssetData/com.apple.NRD.UpdateBrainService.xpc/Contents/MacOS/com.apple.NRD.UpdateBrainService\n 1801   0.0  0.0 /usr/libexec/NRDUpdated\n 1800   0.0  0.0 /System/Library/PrivateFrameworks/IASUtilities.framework/Versions/A/Resources/installerauthagent\n 1793   0.0  0.0 /System/Library/Frameworks/ClassKit.framework/Versions/A/progressd\n 1792   0.0  0.0 /System/Library/Frameworks/Security.framework/Versions/A/Resources/CloudKeychainProxy.bundle/Contents/MacOS/CloudKeychainProxy\n 1790   0.0  0.1 /System/Library/CoreServices/Keychain Circle Notification.app/Contents/MacOS/Keychain Circle Notification\n 1200   0.0  0.0 /System/Library/CoreServices/TimeMachine/backupd-helper\n 1780   0.0  0.0 /System/Library/PrivateFrameworks/AuthKit.framework/Versions/A/Support/akd\n 1772   0.0  0.0 /usr/libexec/assessmentagent\n 1773   0.0  0.0 /System/Library/Frameworks/NetFS.framework/Versions/A/XPCServices/PlugInLibraryService.xpc/Contents/MacOS/PlugInLibraryService\n 1723   0.0  0.0 /System/Library/PrivateFrameworks/CloudTelemetry.framework/Versions/A/XPCServices/CloudTelemetryService.xpc/Contents/MacOS/CloudTelemetryService\n 1724   0.0  0.0 /System/Library/PrivateFrameworks/XprotectFramework.framework/Versions/A/XPCServices/XProtectBridgeService.xpc/Contents/MacOS/XProtectBridgeService\n 1713   0.0  0.0 /System/Library/PrivateFrameworks/CoreFP.framework/Versions/A/fairplayd\n 1704   0.0  0.0 /System/Library/PrivateFrameworks/LockdownMode.framework/Versions/A/XPCServices/lockdownmoded\n 1692   0.0  0.0 /System/Library/PrivateFrameworks/OnDeviceStorage.framework/Support/amsondevicestoraged\n 1665   0.0  0.0 /System/Library/Frameworks/MediaAccessibility.framework/Versions/A/XPCServices/com.apple.accessibility.mediaaccessibilityd.xpc/Contents/MacOS/com.apple.accessibility.mediaaccessibilityd\n 1664   0.0  0.1 /System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent\n 1663   0.0  0.0 /System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking\n 1661   0.0  0.0 /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/CVMServer\n 1660   0.0  0.0 /System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU\n 1659   0.0  0.0 /System/Library/PrivateFrameworks/WebPrivacy.framework/webprivacyd\n 1649   0.0  0.0 /System/Library/PrivateFrameworks/FindMyDevice.framework/XPCServices/FindMyDeviceSharedConfigurationXPCService.xpc/Contents/MacOS/FindMyDeviceSharedConfigurationXPCService\n 1651   0.0  0.0 /System/Library/CoreServices/diagnosticservicesd\n 1641   0.0  0.0 /usr/libexec/assetsubscriptiond\n 1627   0.0  0.0 /usr/libexec/gamecontrolleragentd\n 1617   0.0  0.0 /usr/sbin/distnoted\n 1616   0.0  0.0 /System/Library/PrivateFrameworks/NearFieldPrivateServices.framework/Versions/A/XPCServices/NFStorageServer.xpc/Contents/MacOS/NFStorageServer\n 1615   0.0  0.0 /usr/sbin/distnoted\n 1614   0.0  0.0 /usr/libexec/nfcd\n 1592   0.0  0.0 /System/Library/PrivateFrameworks/AskPermission.framework/Versions/A/Resources/askpermissiond\n 1584   0.0  0.0 /usr/libexec/inputanalyticsd\n 1594   0.0  0.0 /usr/libexec/mobilerepaird\n 1613   0.0  0.0 /usr/bin/ssh-agent\n 1612   0.0  0.1 /System/Library/PrivateFrameworks/CallHistory.framework/Support/CallHistorySyncHelper\n 1609   0.0  0.1 /System/Library/PrivateFrameworks/SoftwareUpdate.framework/Resources/SoftwareUpdateNotificationManager.app/Contents/MacOS/SoftwareUpdateNotificationManager\n 1610   0.0  0.0 /System/Library/PrivateFrameworks/FindMyMac.framework/Resources/FindMyMacd\n 1608   0.0  0.0 /Library/Apple/System/Library/PrivateFrameworks/MobileDevice.framework/Versions/A/XPCServices/MDRemoteServiceSupport.xpc/Contents/MacOS/MDRemoteServiceSupport\n 1607   0.0  0.2 /Applications/UTM.app/Contents/MacOS/UTM\n 1606   0.0  0.0 /System/Library/Frameworks/NetFS.framework/Versions/A/XPCServices/PlugInLibraryService.xpc/Contents/MacOS/PlugInLibraryService\n 1605   0.0  0.1 /System/Library/CoreServices/TextInputSwitcher.app/Contents/MacOS/TextInputSwitcher\n 1603   0.0  0.0 /System/Library/Frameworks/CryptoTokenKit.framework/ctkahp.bundle/Contents/MacOS/ctkahp\n 1602   0.0  0.2 /Applications/Rectangle.app/Contents/MacOS/Rectangle\n 1596   0.0  0.1 /Users/wstein/bin/mutagen\n 1601   0.0  0.0 /System/Library/Frameworks/CryptoTokenKit.framework/ctkahp.bundle/Contents/MacOS/ctkahp\n 1599   0.0  0.1 /System/Library/CoreServices/TextInputMenuAgent.app/Contents/MacOS/TextInputMenuAgent\n 1588   0.0  0.0 /System/Library/Frameworks/InputMethodKit.framework/Resources/imklaunchagent\n 1591   0.0  0.0 /System/Library/Image Capture/Support/icdd\n 1590   0.0  0.1 /System/Library/CoreServices/Siri.app/Contents/MacOS/Siri\n 1595   0.0  0.0 /System/Library/CoreServices/AirPlayUIAgent.app/Contents/MacOS/AirPlayUIAgent\n 1573   0.0  0.0 /System/Library/PrivateFrameworks/CloudTelemetry.framework/Versions/A/XPCServices/CloudTelemetryService.xpc/Contents/MacOS/CloudTelemetryService\n 1583   0.0  0.0 /System/Library/PrivateFrameworks/AppPredictionFoundation.framework/Versions/A/XPCServices/AppPredictionIntentsHelperService.xpc/Contents/MacOS/AppPredictionIntentsHelperService\n 1580   0.0  0.1 /System/Library/PrivateFrameworks/CloudServices.framework/Helpers/com.apple.sbd\n 1582   0.0  0.0 /System/Library/PrivateFrameworks/MessagesBlastDoorSupport.framework/Versions/A/XPCServices/MessagesBlastDoorService.xpc/Contents/MacOS/MessagesBlastDoorService\n 1581   0.0  0.2 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/151.0.7922.138/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)\n 1572   0.0  0.0 /System/Library/PrivateFrameworks/AssetCacheServicesExtensions.framework/XPCServices/AssetCacheTetheratorService.xpc/Contents/MacOS/AssetCacheTetheratorService\n 1449   0.0  0.0 /System/Library/PrivateFrameworks/IntelligenceTasksEngine.framework/Support/intelligencetasksd\n 1578   0.0  0.0 /System/Library/PrivateFrameworks/ModelCatalogRuntime.framework/Versions/A/ModelCatalogAgent\n 1205   0.0  0.0 /usr/libexec/seld\n 1574   0.0  0.1 /System/Library/PrivateFrameworks/WorkflowKit.framework/XPCServices/ShortcutsViewService.xpc/Contents/MacOS/ShortcutsViewService\n 1571   0.0  0.0 /System/Library/PrivateFrameworks/IDSBlastDoorSupport.framework/Versions/A/XPCServices/IDSBlastDoorService.xpc/Contents/MacOS/IDSBlastDoorService\n 1569   0.0  0.1 /System/Library/PrivateFrameworks/IMTransferServices.framework/IMTransferAgent.app/Contents/MacOS/IMTransferAgent\n 1568   0.0  0.1 /System/Library/PrivateFrameworks/HearingCore.framework/heard\n 1567   0.0  0.0 /System/Applications/Notes.app/Contents/PlugIns/com.apple.Notes.WidgetExtension.appex/Contents/MacOS/com.apple.Notes.WidgetExtension\n 1566   0.0  0.0 /System/Library/CoreServices/PeopleViewService.app/Contents/PlugIns/PeopleWidget_macOSExtension.appex/Contents/MacOS/PeopleWidget_macOSExtension\n 1563   0.0  0.0 /usr/libexec/swcd\n 1562   0.0  0.0 /System/Applications/Tips.app/Contents/PlugIns/TipsWidgetExtension.appex/Contents/MacOS/TipsWidgetExtension\n 1560   0.0  0.1 /System/Applications/Shortcuts.app/Contents/PlugIns/ShortcutsWidgetExtension.appex/Contents/MacOS/ShortcutsWidgetExtension\n 1557   0.0  0.0 /System/Library/PrivateFrameworks/MessagesBlastDoorSupport.framework/Versions/A/XPCServices/MessagesBlastDoorService.xpc/Contents/MacOS/MessagesBlastDoorService\n 1556   0.0  0.1 /System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app/Contents/Extensions/SafariWidgetExtension.appex/Contents/MacOS/SafariWidgetExtension\n 1553   0.0  0.0 /System/Applications/Reminders.app/Contents/PlugIns/RemindersWidgetExtension.appex/Contents/MacOS/RemindersWidgetExtension\n 1552   0.0  0.0 /System/Applications/Photos.app/Contents/PlugIns/PhotosReliveWidget.appex/Contents/MacOS/PhotosReliveWidget\n 1550   0.0  0.1 /System/Applications/VoiceMemos.app/Contents/PlugIns/RecordWidgetExtension.appex/Contents/MacOS/RecordWidgetExtension\n 1551   0.0  0.0 /usr/libexec/swtransparencyd\n 1549   0.0  0.1 /System/Applications/Home.app/Contents/PlugIns/HomeEnergyWidgetsExtension.appex/Contents/MacOS/HomeEnergyWidgetsExtension\n 1547   0.0  0.0 /System/Library/PrivateFrameworks/TextToSpeechVoiceBankingSupport.framework/Support/voicebankingd\n 1545   0.0  0.1 /System/Applications/Home.app/Contents/PlugIns/HomeWidget.appex/Contents/MacOS/HomeWidget\n 1544   0.0  0.1 /System/Applications/News.app/Contents/PlugIns/NewsTodayIntents.appex/Contents/MacOS/NewsTodayIntents\n 1543   0.0  0.1 /System/Library/PrivateFrameworks/UsageTracking.framework/Versions/A/UsageTrackingAgent\n 1539   0.0  0.1 /System/Library/CoreServices/Screen Time.app/Contents/PlugIns/ScreenTimeWidgetIntentsExtension.appex/Contents/MacOS/ScreenTimeWidgetIntentsExtension\n 1534   0.0  0.1 /System/Library/Frameworks/Speech.framework/Versions/A/XPCServices/localspeechrecognition.xpc/Contents/MacOS/localspeechrecognition\n 1535   0.0  0.0 /System/Cryptexes/App/usr/libexec/SafariLaunchAgent\n 1538   0.0  0.5 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/151.0.7922.138/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)\n 1533   0.0  0.0 /System/Library/PrivateFrameworks/CoreSpeech.framework/Versions/A/XPCServices/CoreSpeechXPC.xpc/Contents/MacOS/CoreSpeechXPC\n 1204   0.0  0.0 /usr/libexec/gamecontrollerd\n 1206   0.0  0.0 /usr/libexec/uarpd\n 1527   0.0  0.1 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mdbulkimport\n 1526   0.0  0.1 /System/Library/PrivateFrameworks/AXAssetLoader.framework/Support/axassetsd\n 1525   0.0  0.0 /usr/sbin/netbiosd\n 1524   0.0  0.0 /usr/libexec/captiveagent\n 1522   0.0  0.0 /usr/sbin/distnoted\n 1520   0.0  0.0 /System/Library/PrivateFrameworks/CacheDelete.framework/deleted_helper\n 1518   0.0  0.1 /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService\n 1519   0.0  0.2 /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService\n 1516   0.0  0.2 cloudphotod\n 1514   0.0  0.0 /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService\n 1513   0.0  0.5 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/151.0.7922.138/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)\n 1512   0.0  0.4 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/151.0.7922.138/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)\n 1509   0.0  0.1 /System/Applications/Weather.app/Contents/PlugIns/WeatherIntents.appex/Contents/MacOS/WeatherIntents\n 1510   0.0  0.0 /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService\n 1508   0.0  0.1 /System/Applications/News.app/Contents/PlugIns/NewsTag.appex/Contents/MacOS/NewsTag\n 1506   0.0  0.2 /System/Library/CoreServices/Screen Time.app/Contents/PlugIns/ScreenTimeWidgetExtension.appex/Contents/MacOS/ScreenTimeWidgetExtension\n 1505   0.0  0.0 /System/Library/CoreServices/ReportCrash\n 1502   0.0  0.3 /usr/libexec/spotlightknowledged.updater\n 1504   0.0  0.5 /Library/Application Support/com.canonical.multipass/bin/multipassd\n 1503   0.0  0.0 /usr/libexec/containermanagerd\n 1501   0.0  0.1 /System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc/Contents/MacOS/com.apple.geod\n 1500   0.0  0.5 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/151.0.7922.138/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)\n 1495   0.0  0.0 /usr/libexec/aneuserd\n 1496   0.0  0.0 /usr/libexec/online-auth-agent\n 1492   0.0  0.1 /System/Library/CoreServices/Batteries.app/Contents/PlugIns/BatteriesAvocadoWidgetExtension.appex/Contents/MacOS/BatteriesAvocadoWidgetExtension\n 1491   0.0  0.0 /System/Library/PrivateFrameworks/MobileTimer.framework/PlugIns/MobileTimerIntents.appex/Contents/MacOS/MobileTimerIntents\n 1489   0.0  0.1 /System/Applications/FindMy.app/Contents/PlugIns/FindMyWidgetItems.appex/Contents/MacOS/FindMyWidgetItems\n 1490   0.0  0.1 /usr/sbin/BTLEServer\n 1484   0.0  0.1 /System/Applications/Journal.app/Contents/PlugIns/JournalWidgets.appex/Contents/MacOS/JournalWidgets\n 1487   0.0  0.2 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/151.0.7922.138/Helpers/Google Chrome Helper.app/Contents/MacOS/Google Chrome Helper\n 1486   0.0  0.3 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/151.0.7922.138/Helpers/Google Chrome Helper.app/Contents/MacOS/Google Chrome Helper\n 1485   0.0  0.4 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/151.0.7922.138/Helpers/Google Chrome Helper.app/Contents/MacOS/Google Chrome Helper\n 1483   0.0  0.1 /System/Applications/Journal.app/Contents/PlugIns/JournalWidgetsSecure.appex/Contents/MacOS/JournalWidgetsSecure\n 1481   0.0  0.2 /System/Applications/Weather.app/Contents/PlugIns/WeatherWidget.appex/Contents/MacOS/WeatherWidget\n 1480   0.0  0.0 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/151.0.7922.138/Helpers/chrome_crashpad_handler\n 1478   0.0  0.0 /System/Library/CoreServices/appplaceholdersyncd\n 1476   0.0  0.1 /System/Applications/VoiceMemos.app/Contents/PlugIns/VoiceMemosSettingsWidgetExtension.appex/Contents/MacOS/VoiceMemosSettingsWidgetExtension\n 1477   0.0  0.1 /usr/libexec/modelmanagerd\n 1475   0.0  0.1 /System/Applications/FindMy.app/Contents/PlugIns/FindMyWidgetPeople.appex/Contents/MacOS/FindMyWidgetPeople\n 1469   0.0  0.1 /System/Applications/Clock.app/Contents/PlugIns/WorldClockWidget.appex/Contents/MacOS/WorldClockWidget\n 1471   0.0  0.1 /System/Library/PrivateFrameworks/CoreSpeech.framework/corespeechd\n 1472   0.0  0.2 /System/Library/PrivateFrameworks/SiriInference.framework/Versions/A/siriinferenced\n 1470   0.0  0.1 /usr/libexec/siriknowledged\n 1462   0.0  0.1 /System/Applications/Stocks.app/Contents/PlugIns/StocksWidget.appex/Contents/MacOS/StocksWidget\n 1468   0.0  0.0 /usr/sbin/systemstats\n 1466   0.0  0.0 /System/Library/PrivateFrameworks/TrialServer.framework/Versions/A/XPCServices/TrialArchivingService.xpc/Contents/MacOS/TrialArchivingService\n 1465   0.0  0.2 /System/Library/PrivateFrameworks/AssistantServices.framework/Versions/A/Support/assistantd\n 1464   0.0  0.0 /System/Library/PrivateFrameworks/CoreThreadCommissionerService.framework/CoreThreadCommissionerServiced\n 1463   0.0  0.0 /System/Library/Frameworks/Speech.framework/Versions/A/XPCServices/localspeechrecognition.xpc/Contents/MacOS/localspeechrecognition\n 1461   0.0  0.0 /usr/libexec/bluetoothuserd\n 1459   0.0  0.1 /System/Applications/Podcasts.app/Contents/PlugIns/PodcastsWidget.appex/Contents/MacOS/PodcastsWidget\n 1458   0.0  0.1 /System/Library/PrivateFrameworks/CloudSubscriptionFeatures.framework/FeatureAccessAgent\n 1457   0.0  0.0 /usr/libexec/countryd\n 1455   0.0  0.0 /System/Library/PrivateFrameworks/CoreSymbolication.framework/coresymbolicationd\n 1456   0.0  0.0 /System/Library/PrivateFrameworks/WiFiPolicy.framework/XPCServices/WiFiCloudAssetsXPCService.xpc/Contents/MacOS/WiFiCloudAssetsXPCService\n 1453   0.0  0.0 /usr/libexec/SidecarRelay\n 1452   0.0  0.0 /System/Library/PrivateFrameworks/ProtectedCloudStorage.framework/Helpers/ProtectedCloudKeySyncing\n 1450   0.0  0.0 /usr/sbin/BTLEServerAgent\n 1451   0.0  0.0 /usr/libexec/AssetCache/AssetCache\n 1448   0.0  0.0 /System/Library/DriverExtensions/IOUserBluetoothSerialDriver.dext/IOUserBluetoothSerialDriver\n 1446   0.0  0.1 /System/Library/CoreServices/UniversalControl.app/Contents/MacOS/UniversalControl\n 1447   0.0  0.0 /System/Library/PrivateFrameworks/CoreRecents.framework/Versions/A/Support/recentsd\n 1444   0.0  0.0 /System/Library/PrivateFrameworks/AssetCacheServices.framework/Versions/A/XPCServices/AssetCacheLocatorService.xpc/Contents/MacOS/AssetCacheLocatorService\n 1445   0.0  0.0 /System/Library/CoreServices/pbs\n 1443   0.0  0.2 /System/Library/PrivateFrameworks/FaceTimeMessageStore.framework/facetimemessagestored\n 1441   0.0  0.0 /usr/libexec/spindump_agent\n 1439   0.0  0.0 /System/Library/PrivateFrameworks/ToneLibrary.framework/Versions/A/XPCServices/com.apple.tonelibraryd.xpc/Contents/MacOS/com.apple.tonelibraryd\n 1438   0.0  0.2 /usr/sbin/spindump\n 1390   0.0  0.0 /System/Library/Frameworks/Speech.framework/Versions/A/XPCServices/localspeechrecognition.xpc/Contents/MacOS/localspeechrecognition\n 1436   0.0  2.0 /System/Library/PrivateFrameworks/PhotoAnalysis.framework/Versions/A/Support/photoanalysisd\n 1437   0.0  0.0 /System/Library/PrivateFrameworks/EmailDaemon.framework/Versions/A/maild\n 1434   0.0  0.1 /System/Library/Frameworks/Contacts.framework/Support/postersyncd\n 1432   0.0  0.1 /System/Library/PrivateFrameworks/GenerativeExperiencesRuntime.framework/Versions/A/generativeexperiencesd\n 1433   0.0  0.0 /System/Library/PrivateFrameworks/iCloudNotification.framework/iCloudNotificationAgent\n 1430   0.0  0.1 /System/Library/PrivateFrameworks/AppleMediaServicesUI.framework/amsengagementd\n 1431   0.0  0.0 /System/Library/Frameworks/ColorSync.framework/Versions/A/XPCServices/com.apple.ColorSyncXPCAgent.xpc/Contents/MacOS/com.apple.ColorSyncXPCAgent\n 1429   0.0  0.0 /System/Library/PrivateFrameworks/MapsSync.framework/mapssyncd\n 1427   0.0  0.0 /System/Library/PrivateFrameworks/AmbientDisplay.framework/Versions/A/XPCServices/com.apple.AmbientDisplayAgent.xpc/Contents/MacOS/com.apple.AmbientDisplayAgent\n 1428   0.0  0.4 /usr/libexec/aned\n 1426   0.0  0.0 /usr/libexec/wifianalyticsd\n 1425   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/XPCServices/AudioConverterService.xpc/Contents/MacOS/AudioConverterService\n 1424   0.0  0.1 /System/Library/CoreServices/WiFiAgent.app/Contents/MacOS/WiFiAgent\n 1423   0.0  0.1 /usr/libexec/avconferenced\n 1422   0.0  0.0 /System/Library/PrivateFrameworks/MediaRemote.framework/Support/mediaremoteagent\n 1421   0.0  0.2 /usr/libexec/searchpartyuseragent\n 1420   0.0  0.0 /System/Library/PrivateFrameworks/CoreADI.framework/adid\n 1407   0.0  0.1 /System/Applications/Calendar.app/Contents/PlugIns/CalendarWidgetExtension.appex/Contents/MacOS/CalendarWidgetExtension\n 1418   0.0  0.1 /System/Library/PrivateFrameworks/AppleMediaServices.framework/Resources/amsaccountsd\n 1414   0.0  3.0 /System/Library/PrivateFrameworks/MediaAnalysis.framework/Versions/A/mediaanalysisd\n 1413   0.0  0.1 /System/Library/PrivateFrameworks/iTunesCloud.framework/Support/itunescloudd\n 1417   0.0  0.2 /usr/libexec/duetexpertd\n 1415   0.0  0.1 /usr/libexec/networkserviceproxy\n 1412   0.0  0.1 /usr/libexec/triald\n 1411   0.0  0.0 /usr/libexec/frauddefensed\n 1410   0.0  0.0 /System/Library/PrivateFrameworks/CoreCDP.framework/Versions/A/Resources/cdpd\n 1408   0.0  0.1 /System/Library/PrivateFrameworks/CloudTelemetry.framework/Versions/A/XPCServices/CloudTelemetryService.xpc/Contents/MacOS/CloudTelemetryService\n 1404   0.0  0.1 /usr/libexec/appleaccountd\n 1406   0.0  0.0 /System/Library/Frameworks/ExtensionFoundation.framework/Versions/A/XPCServices/extensionkitservice.xpc/Contents/MacOS/extensionkitservice\n 1402   0.0  0.1 /System/Library/PrivateFrameworks/CoreParsec.framework/parsecd\n 1401   0.0  0.2 /System/Library/PrivateFrameworks/IMDPersistence.framework/XPCServices/IMDPersistenceAgent.xpc/Contents/MacOS/IMDPersistenceAgent\n 1399   0.0  0.1 /System/Library/PrivateFrameworks/AppSSO.framework/Support/AppSSODaemon\n 1398   0.0  0.0 /System/Library/PrivateFrameworks/iCloudDriveService.framework/XPCServices/ContainerMetadataExtractor.xpc/Contents/MacOS/ContainerMetadataExtractor\n 1396   0.0  0.0 /System/Library/PrivateFrameworks/CallHistory.framework/Support/CallHistoryPluginHelper\n 1397   0.0  0.1 /System/Library/PrivateFrameworks/TextInputUIMacHelper.framework/Versions/A/XPCServices/CursorUIViewService.xpc/Contents/MacOS/CursorUIViewService\n 1395   0.0  0.1 /System/Library/PrivateFrameworks/AppSSO.framework/Support/AppSSOAgent.app/Contents/MacOS/AppSSOAgent\n 1394   0.0  0.0 /System/Library/Frameworks/ColorSync.framework/Versions/A/XPCServices/com.apple.ColorSyncXPCAgent.xpc/Contents/MacOS/com.apple.ColorSyncXPCAgent\n 1389   0.0  0.1 /System/Library/Frameworks/Translation.framework/translationd\n 1393   0.0  0.0 /System/Library/PrivateFrameworks/AssetCacheServicesExtensions.framework/XPCServices/AssetCacheManagerService.xpc/Contents/MacOS/AssetCacheManagerService\n 1392   0.0  0.0 /System/Library/Frameworks/ColorSync.framework/Support/colorsync.useragent\n 1391   0.0  0.4 /System/Library/CoreServices/Spotlight.app/Contents/MacOS/Spotlight\n 1386   0.0  0.1 /System/Library/PrivateFrameworks/SiriTTSService.framework/sirittsd\n 1385   0.0  0.2 /System/Library/CoreServices/Dock.app/Contents/XPCServices/com.apple.dock.extra.xpc/Contents/MacOS/com.apple.dock.extra\n 1384   0.0  0.0 /System/Library/PrivateFrameworks/UserActivity.framework/Agents/useractivityd\n 1383   0.0  0.0 /System/Library/PrivateFrameworks/TelephonyUtilities.framework/XPCServices/com.apple.FaceTime.FTConversationService.xpc/Contents/MacOS/com.apple.FaceTime.FTConversationService\n 1377   0.0  0.0 /System/Library/Frameworks/NetFS.framework/Versions/A/XPCServices/PlugInLibraryService.xpc/Contents/MacOS/PlugInLibraryService\n 1374   0.0  0.1 /System/Library/PrivateFrameworks/ContinuousDialogManagerService.framework/assistant_cdmd\n 1373   0.0  0.0 /System/Library/PrivateFrameworks/CoreAnalytics.framework/Support/analyticsagent\n 1367   0.0  0.0 /usr/libexec/milod\n 1375   0.0  0.0 /System/Library/CoreServices/ScopedBookmarkAgent\n 1239   0.0  0.1 /System/Library/PrivateFrameworks/CoreDuetContext.framework/Resources/ContextStoreAgent\n 1366   0.0  1.2 /System/Library/PrivateFrameworks/PhotoLibraryServices.framework/Versions/A/Support/photolibraryd\n 1358   0.0  0.2 /System/Library/PrivateFrameworks/IMCore.framework/imagent.app/Contents/MacOS/imagent\n 1359   0.0  0.1 /System/Library/CoreServices/UIKitSystem.app/Contents/MacOS/UIKitSystem\n 1347   0.0  0.0 /System/Library/PrivateFrameworks/login.framework/Versions/A/XPCServices/LoginUserService.xpc/Contents/MacOS/LoginUserService\n 1346   0.0  0.1 /usr/libexec/kernelmanager_helper\n 1345   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper\n 1339   0.0  0.0 -zsh\n 1338   0.0  0.0 /Library/Apple/System/Library/PrivateFrameworks/DeviceInterface.framework/Support/deviceinterfaced\n 1337   0.0  0.0 -zsh\n 1332   0.0  0.0 /System/Library/PrivateFrameworks/WiFiPolicy.framework/XPCServices/WiFiCloudAssetsXPCService.xpc/Contents/MacOS/WiFiCloudAssetsXPCService\n 1335   0.0  0.0 /System/Library/Frameworks/ExtensionFoundation.framework/Versions/A/XPCServices/extensionkitservice.xpc/Contents/MacOS/extensionkitservice\n 1333   0.0  0.2 /System/Library/PrivateFrameworks/AuthKit.framework/Versions/A/Support/akd\n 1331   0.0  0.0 login\n 1327   0.0  0.0 /System/Library/ExtensionKit/Extensions/WallpaperGradientExtension.appex/Contents/MacOS/WallpaperGradientExtension\n 1329   0.0  0.0 /usr/sbin/systemsoundserverd\n 1328   0.0  0.0 login\n 1326   0.0  0.0 /System/Library/PrivateFrameworks/CommunicationsFilter.framework/CMFSyncAgent\n 1319   0.0  0.0 /System/Library/PrivateFrameworks/MobileTimer.framework/Executables/mobiletimerd\n 1321   0.0  0.1 /usr/libexec/replayd\n 1325   0.0  0.0 /System/Library/Frameworks/ExtensionFoundation.framework/Versions/A/XPCServices/extensionkitservice.xpc/Contents/MacOS/extensionkitservice\n 1318   0.0  0.0 /usr/libexec/nearbyd\n 1317   0.0  0.0 /usr/libexec/ospredictiond\n 1324   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/AudioComponentRegistrar\n 1320   0.0  0.0 /usr/libexec/wallpaperexportd\n 1315   0.0  0.1 /System/Library/PrivateFrameworks/CacheDelete.framework/deleted\n 1312   0.0  0.1 /System/Library/PrivateFrameworks/CommunicationTrust.framework/Support/communicationtrustd\n 1313   0.0  0.0 /System/Library/PrivateFrameworks/SessionCore.framework/Support/liveactivitiesd\n 1307   0.0  0.1 /System/Library/PrivateFrameworks/ContextKit.framework/Versions/A/XPCServices/ContextService.xpc/Contents/MacOS/ContextService\n 1303   0.0  0.0 /usr/libexec/intelligentroutingd\n 1302   0.0  0.0 /System/Library/PrivateFrameworks/AMPDevices.framework/Versions/A/Support/AMPDeviceDiscoveryAgent\n 1305   0.0  0.1 /System/Library/PrivateFrameworks/iCloudDriveCore.framework/Versions/A/Support/bird\n 1300   0.0  0.1 /System/Library/PrivateFrameworks/FileProvider.framework/Support/fileproviderd\n 1301   0.0  1.1 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/corespotlightd\n 1304   0.0  0.1 /System/Library/CoreServices/audioaccessoryd\n 1295   0.0  0.3 /System/Library/PrivateFrameworks/CoreSuggestions.framework/Versions/A/Support/suggestd\n 1296   0.0  0.0 /System/Library/PrivateFrameworks/IntlPreferences.framework/Support/localizationswitcherd\n 1294   0.0  0.0 /System/Library/PrivateFrameworks/SocialLayer.framework/sociallayerd.app/Contents/MacOS/sociallayerd\n 1297   0.0  0.1 /System/Library/PrivateFrameworks/CalendarDaemon.framework/Support/calaccessd\n 1299   0.0  0.0 automountd\n 1292   0.0  0.1 /System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc/Contents/MacOS/com.apple.geod\n 1291   0.0  0.1 /System/Library/CoreServices/iconservicesagent\n 1284   0.0  0.0 /System/Library/PrivateFrameworks/Categories.framework/Versions/A/XPCServices/CategoriesService.xpc/Contents/MacOS/CategoriesService\n 1290   0.0  0.2 /System/Library/PrivateFrameworks/VoiceShortcuts.framework/Versions/A/Support/siriactionsd\n 1285   0.0  0.1 /usr/libexec/wifip2pd\n 1287   0.0  0.1 /System/Library/Frameworks/QuickLookThumbnailing.framework/Support/com.apple.quicklook.ThumbnailsAgent\n 1288   0.0  0.1 /System/Library/CoreServices/WallpaperAgent.app/Contents/MacOS/WallpaperAgent\n 1289   0.0  0.1 /System/Library/Frameworks/QuickLookUI.framework/Versions/A/XPCServices/QuickLookUIService.xpc/Contents/MacOS/QuickLookUIService\n 1286   0.0  0.0 /usr/sbin/filecoordinationd\n 1280   0.0  0.1 /System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/ATS.framework/Versions/A/Support/fontworker\n 1282   0.0  0.2 /System/Library/CoreServices/AccessibilityUIServer.app/Contents/MacOS/AccessibilityUIServer\n 1281   0.0  0.0 /System/Library/PrivateFrameworks/ViewBridge.framework/Versions/A/XPCServices/ViewBridgeAuxiliary.xpc/Contents/MacOS/ViewBridgeAuxiliary\n 1272   0.0  0.1 /System/Library/PrivateFrameworks/FamilyCircle.framework/Versions/A/Resources/familycircled\n 1276   0.0  0.2 /System/Library/CoreServices/Finder.app/Contents/MacOS/Finder\n 1277   0.0  0.0 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/CarbonCore.framework/Versions/A/XPCServices/csnameddatad.xpc/Contents/MacOS/csnameddatad\n 1274   0.0  0.2 /System/Library/CoreServices/SystemUIServer.app/Contents/MacOS/SystemUIServer\n 1273   0.0  0.0 /System/Library/Frameworks/ApplicationServices.framework/Frameworks/ATS.framework/Support/fontd\n 1269   0.0  0.0 /System/Library/PrivateFrameworks/CoreFollowUp.framework/Versions/A/Support/followupd\n 1268   0.0  0.7 /System/Applications/Phone.app/Contents/MacOS/Phone\n 1266   0.0  0.3 /System/Library/CoreServices/NotificationCenter.app/Contents/MacOS/NotificationCenter\n 1263   0.0  0.0 /System/Library/Frameworks/CryptoTokenKit.framework/ctkd\n 1265   0.0  0.1 /usr/libexec/pkd\n 1264   0.0  0.0 /System/Library/Frameworks/LocalAuthentication.framework/Support/coreauthd\n 1262   0.0  0.1 /usr/libexec/transparencyd\n 1260   0.0  0.0 /System/Library/Frameworks/CryptoTokenKit.framework/ctkd\n 1258   0.0  0.3 /usr/libexec/sharingd\n 1257   0.0  0.9 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome\n 1255   0.0  0.2 /System/Library/PrivateFrameworks/ChronoCore.framework/Support/chronod\n 1254   0.0  0.1 /usr/libexec/findmylocateagent\n 1256   0.0  0.1 /System/Library/PrivateFrameworks/StatusKit.framework/StatusKitAgent\n 1253   0.0  0.1 /System/Library/PrivateFrameworks/CloudKitDaemon.framework/Support/cloudd\n 1251   0.0  0.2 /System/Library/PrivateFrameworks/TelephonyUtilities.framework/callservicesd\n 1249   0.0  0.1 /System/Library/CoreServices/sharedfilelistd\n 1252   0.0  0.1 /System/Library/PrivateFrameworks/SyncedDefaults.framework/Support/syncdefaultsd\n 1250   0.0  0.0 /System/Library/Frameworks/ManagedSettings.framework/Versions/A/ManagedSettingsAgent\n 1248   0.0  0.2 /System/Library/PrivateFrameworks/HomeKitDaemon.framework/Support/homed\n 1244   0.0  0.1 /System/Library/PrivateFrameworks/DoNotDisturbServer.framework/Support/donotdisturbd\n 1247   0.0  0.4 /System/Library/PrivateFrameworks/IDS.framework/identityservicesd.app/Contents/MacOS/identityservicesd\n 1245   0.0  0.1 /System/Library/PrivateFrameworks/ReplicatorCore.framework/Support/replicatord\n 1246   0.0  0.1 /usr/libexec/trustd\n 1243   0.0  0.1 /System/Library/CoreServices/CoreLocationAgent.app/Contents/MacOS/CoreLocationAgent\n 1240   0.0  0.0 /usr/libexec/secinitd\n 1241   0.0  0.3 /System/Library/Frameworks/Accounts.framework/Versions/A/Support/accountsd\n 1242   0.0  0.1 /usr/libexec/knowledge-agent\n 1238   0.0  0.1 /System/Library/CoreServices/talagentd\n 1237   0.0  0.0 /System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/HIServices.framework/Versions/A/XPCServices/com.apple.hiservices-xpcservice.xpc/Contents/MacOS/com.apple.hiservices-xpcservice\n 1235   0.0  0.0 /usr/libexec/dmd\n 1236   0.0  0.1 /System/Library/PrivateFrameworks/ScreenTimeCore.framework/Versions/A/ScreenTimeAgent\n 1227   0.0  0.0 /usr/sbin/distnoted\n 1234   0.0  0.0 /System/Library/PrivateFrameworks/TCC.framework/Support/tccd\n 1233   0.0  0.1 /System/Library/PrivateFrameworks/UserNotificationsCore.framework/Support/usernotificationsd\n 1232   0.0  0.0 /usr/libexec/ContinuityCaptureAgent\n 1230   0.0  0.3 /usr/libexec/routined\n 1225   0.0  0.1 /System/Library/PrivateFrameworks/MobileDevice.framework/Resources/MobileDeviceUpdater.app/Contents/MacOS/MobileDeviceUpdater\n 1231   0.0  0.1 /usr/sbin/usernoted\n 1228   0.0  0.0 /System/Library/CoreServices/lockoutagent\n 1229   0.0  0.1 /usr/libexec/rapportd\n 1223   0.0  0.0 /System/Library/CoreServices/APFSUserAgent\n 1226   0.0  0.1 /usr/libexec/nsurlsessiond\n 1221   0.0  0.1 /System/Library/Frameworks/CoreTelephony.framework/Support/CommCenter\n 1222   0.0  0.3 /System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal\n 1220   0.0  0.0 /usr/libexec/findmydevice-user-agent\n 1218   0.0  0.1 /usr/libexec/linkd\n 1219   0.0  0.1 /usr/libexec/findmydeviced\n 1217   0.0  0.1 /usr/libexec/lsd\n 1216   0.0  0.1 /System/Library/PrivateFrameworks/BiomeStreams.framework/Support/BiomeAgent\n 1215   0.0  0.1 /System/Library/CoreServices/WindowManager.app/Contents/MacOS/WindowManager\n 1214   0.0  0.3 /System/Library/CoreServices/ReportCrash\n 1212   0.0  0.0 /usr/libexec/containermanagerd\n 1211   0.0  0.0 /usr/libexec/pboard\n 1210   0.0  0.0 /usr/libexec/neagent\n 1203   0.0  0.1 /usr/libexec/UserEventAgent\n 1209   0.0  0.1 /usr/sbin/universalaccessd\n 1208   0.0  0.1 /System/Library/CoreServices/CoreServicesUIAgent.app/Contents/MacOS/CoreServicesUIAgent\n 1202   0.0  0.0 /System/Library/Frameworks/Security.framework/Versions/A/XPCServices/TrustedPeersHelper.xpc/Contents/MacOS/TrustedPeersHelper\n 1201   0.0  0.0 /System/Library/PrivateFrameworks/CoreKDL.framework/Support/corekdld\n 1199   0.0  0.3 /usr/libexec/secd\n 1198   0.0  0.0 sshd: /opt/homebrew/sbin/sshd -p 2222 -f /opt/homebrew/etc/ssh/sshd_config [listener] 0 of 50-200 startups\n 1197   0.0  0.0 /usr/libexec/applekeystored\n 1196   0.0  0.0 /usr/sbin/cfprefsd\n 1194   0.0  0.0 /usr/sbin/distnoted\n 1192   0.0  0.0 /System/Library/Frameworks/LocalAuthentication.framework/Support/coreauthd\n 1187   0.0  0.0 /usr/sbin/distnoted\n 1191   0.0  0.0 /System/Library/DriverExtensions/com.apple.DriverKit-IOUserDockChannelSerial.dext/com.apple.DriverKit-IOUserDockChannelSerial\n 1189   0.0  0.0 /System/Library/DriverExtensions/com.apple.AppleUserHIDDrivers.dext/com.apple.AppleUserHIDDrivers\n 1186   0.0  0.0 /System/Library/Audio/Plug-Ins/usbaudio.bundle/Contents/MacOS/usbaudiod\n 1180   0.0  0.0 /usr/libexec/containermanagerd\n 1179   0.0  0.0 /usr/sbin/cron\n 1177   0.0  0.1 /usr/libexec/trustd\n 1176   0.0  0.0 /usr/sbin/cfprefsd\n 1175   0.0  0.0 /System/Library/Frameworks/GSS.framework/Helpers/GSSCred\n 1173   0.0  0.0 /usr/libexec/secinitd\n 1169   0.0  0.1 /System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc/Contents/MacOS/com.apple.geod\n 1171   0.0  0.0 /usr/sbin/distnoted\n 1172   0.0  0.0 /System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/HIServices.framework/Versions/A/XPCServices/com.apple.hiservices-xpcservice.xpc/Contents/MacOS/com.apple.hiservices-xpcservice\n 1166   0.0  0.0 /usr/libexec/mobileactivationd\n 1163   0.0  0.0 /System/Library/Frameworks/CoreMediaIO.framework/Versions/A/Resources/UVCAssistant.systemextension/Contents/MacOS/UVCAssistant\n 1160   0.0  0.0 /usr/libexec/cameracaptured\n 1161   0.0  0.1 /usr/libexec/storagekitd\n 1162   0.0  0.0 /System/Library/CoreServices/Software Update.app/Contents/Resources/suhelperd\n 1159   0.0  0.0 /usr/libexec/tzd\n 1158   0.0  0.0 /usr/libexec/cryptexd\n 1157   0.0  0.0 /Library/PrivilegedHelperTools/com.docker.vmnetd\n 1154   0.0  0.1 /System/Library/PrivateFrameworks/CloudTelemetry.framework/Versions/A/XPCServices/CloudTelemetryService.xpc/Contents/MacOS/CloudTelemetryService\n 1153   0.0  0.0 /System/Library/PrivateFrameworks/UARPAssetManager.framework/XPCServices/UARPAssetManagerServiceMobileAsset.xpc/Contents/MacOS/UARPAssetManagerServiceMobileAsset\n 1151   0.0  0.0 /System/Library/PrivateFrameworks/Ecosystem.framework/Support/ecosystemd\n 1152   0.0  0.1 /System/Library/PrivateFrameworks/ModelCatalogRuntime.framework/Versions/A/modelcatalogd\n 1150   0.0  0.0 /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/XPCServices/XProtectPluginService.xpc/Contents/MacOS/XProtectPluginService\n 1149   0.0  0.0 /System/Library/PrivateFrameworks/MobileAccessoryUpdater.framework/XPCServices/ThunderboltAccessoryUpdaterService.xpc/Contents/MacOS/ThunderboltAccessoryUpdaterService\n 1148   0.0  0.1 /System/Library/PrivateFrameworks/CloudKitDaemon.framework/Support/cloudd\n 1147   0.0  0.0 /System/Library/PrivateFrameworks/MobileAccessoryUpdater.framework/XPCServices/StandaloneHIDAudService.xpc/Contents/MacOS/StandaloneHIDAudService\n 1144   0.0  0.0 /System/Library/PrivateFrameworks/MobileAccessoryUpdater.framework/XPCServices/UARPUpdaterServiceAFU.xpc/Contents/MacOS/UARPUpdaterServiceAFU\n 1146   0.0  0.0 /System/Library/PrivateFrameworks/MobileAccessoryUpdater.framework/XPCServices/UARPUpdaterServiceHID.xpc/Contents/MacOS/UARPUpdaterServiceHID\n 1142   0.0  0.0 /System/Library/PrivateFrameworks/MobileAccessoryUpdater.framework/XPCServices/UARPUpdaterServiceLegacyAudio.xpc/Contents/MacOS/UARPUpdaterServiceLegacyAudio\n 1141   0.0  0.0 /System/Library/PrivateFrameworks/MobileAccessoryUpdater.framework/XPCServices/UARPUpdaterServiceDisplay.xpc/Contents/MacOS/UARPUpdaterServiceDisplay\n 1143   0.0  0.0 /System/Library/PrivateFrameworks/MobileAccessoryUpdater.framework/XPCServices/UARPUpdaterServiceUSBPD.xpc/Contents/MacOS/UARPUpdaterServiceUSBPD\n 1145   0.0  0.0 /usr/sbin/distnoted\n 1140   0.0  0.0 /System/Library/PrivateFrameworks/MobileSoftwareUpdate.framework/Versions/A/XPCServices/com.apple.MobileSoftwareUpdate.CleanupPreparePathService.xpc/Contents/MacOS/com.apple.MobileSoftwareUpdate.CleanupPreparePathService\n  985   0.0  0.0 /System/Library/CoreServices/liquiddetectiond.app/liquiddetectiond\n 1139   0.0  0.0 /System/Library/PrivateFrameworks/ContextKit.framework/Versions/A/XPCServices/ContextService.xpc/Contents/MacOS/ContextService\n 1136   0.0  0.0 /System/Library/PrivateFrameworks/Categories.framework/Versions/A/XPCServices/CategoriesService.xpc/Contents/MacOS/CategoriesService\n 1133   0.0  0.0 /usr/libexec/audioanalyticsd\n 1132   0.0  0.0 /usr/sbin/distnoted\n 1131   0.0  0.0 /usr/sbin/distnoted\n 1124   0.0  0.0 /usr/libexec/symptomsd-diag\n 1130   0.0  0.0 /usr/libexec/rtcreportingd\n 1128   0.0  0.0 /usr/libexec/bootinstalld\n 1127   0.0  0.4 /System/Library/CoreServices/Software Update.app/Contents/Resources/softwareupdated\n 1126   0.0  0.0 /System/Library/PrivateFrameworks/ViewBridge.framework/Versions/A/XPCServices/ViewBridgeAuxiliary.xpc/Contents/MacOS/ViewBridgeAuxiliary\n 1125   0.0  0.0 /System/Library/CoreServices/osanalyticshelper\n 1123   0.0  0.0 /usr/sbin/distnoted\n 1120   0.0  0.1 /System/Library/PrivateFrameworks/BackgroundTaskManagement.framework/Resources/backgroundtaskmanagementd\n 1121   0.0  0.0 /System/Library/PrivateFrameworks/PowerLog.framework/Versions/A/XPCServices/PerfPowerTelemetryClientRegistrationService.xpc/Contents/MacOS/PerfPowerTelemetryClientRegistrationService\n 1122   0.0  0.1 /usr/libexec/triald_system\n 1118   0.0  0.0 /System/Library/PrivateFrameworks/AppleDeviceQuerySupport.framework/Versions/A/XPCServices/AppleDeviceQueryService.xpc/Contents/MacOS/AppleDeviceQueryService\n 1117   0.0  0.0 /System/Library/CoreServices/appleeventsd\n 1108   0.0  0.0 /usr/libexec/com.apple.cmio.videodriverkithostextension.systemextension/Contents/MacOS/com.apple.cmio.videodriverkithostextension\n 1109   0.0  0.0 /usr/libexec/audioclocksyncd\n 1103   0.0  0.1 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores\n 1099   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper\n 1098   0.0  0.0 /System/Library/Frameworks/Security.framework/Versions/A/XPCServices/com.apple.CodeSigningHelper.xpc/Contents/MacOS/com.apple.CodeSigningHelper\n 1097   0.0  0.0 /usr/libexec/colorsyncd\n 1093   0.0  0.0 /System/Library/Frameworks/ColorSync.framework/Versions/A/XPCServices/com.apple.ColorSyncXPCAgent.xpc/Contents/MacOS/com.apple.ColorSyncXPCAgent\n 1087   0.0  0.0 /usr/sbin/distnoted\n 1091   0.0  0.0 /System/Library/Frameworks/AudioToolbox.framework/AudioComponentRegistrar\n 1086   0.0  0.1 /usr/libexec/audiomxd\n 1088   0.0  0.0 /usr/libexec/colorsync.displayservices\n 1084   0.0  0.0 Core Audio Driver (ParrotAudioPlugin.driver)\n 1082   0.0  0.0 /System/Library/Frameworks/CoreAudio.framework/Versions/A/XPCServices/com.apple.audio.DriverHelper.xpc/Contents/MacOS/com.apple.audio.DriverHelper\n 1080   0.0  0.0 /System/Library/PrivateFrameworks/MobileAssetDaemon.framework/Versions/A/XPCServices/com.apple.MobileAsset.DownloadService.Builtin.xpc/Contents/MacOS/com.apple.MobileAsset.DownloadService.Builtin\n 1075   0.0  0.0 /System/Library/Frameworks/SystemExtensions.framework/Versions/A/Helpers/sysextd\n 1078   0.0  0.0 /usr/libexec/findmybeaconingd\n 1077   0.0  0.0 /usr/sbin/WirelessRadioManagerd\n  897   0.0  0.1 /System/Library/PrivateFrameworks/MobileAccessoryUpdater.framework/Support/accessoryupdaterd\n  898   0.0  0.0 /usr/libexec/uarpassetmanagerd\n  917   0.0  0.0 /System/Library/CoreServices/iconservicesd\n11163   0.0  0.0 ps\n 1066   0.0  0.0 /System/Library/CoreServices/TimeMachine/backupd\n 1061   0.0  0.3 /usr/libexec/syspolicyd\n 1058   0.0  0.0 /System/Library/Frameworks/NetFS.framework/Versions/A/XPCServices/PlugInLibraryService.xpc/Contents/MacOS/PlugInLibraryService\n 1034   0.0  0.0 /usr/sbin/mDNSResponderHelper\n  909   0.0  0.0 /System/Library/PrivateFrameworks/MobileSoftwareUpdate.framework/Support/softwareupdated\n 1006   0.0  0.0 /usr/sbin/distnoted\n  994   0.0  0.0 /usr/sbin/distnoted\n 1019   0.0  0.5 /usr/libexec/mobileassetd\n  975   0.0  0.1 /System/Library/PrivateFrameworks/CoreAnalytics.framework/Support/analyticsd\n 1004   0.0  0.0 /usr/sbin/distnoted\n 1010   0.0  0.1 /System/Library/PrivateFrameworks/BiomeStreams.framework/Support/biomed\n 1011   0.0  0.0 /usr/libexec/secinitd\n 1002   0.0  0.0 /usr/libexec/hidd\n 1009   0.0  0.0 /usr/libexec/eligibilityd\n 1008   0.0  0.0 /usr/libexec/ApplicationFirewall/socketfilterfw\n  999   0.0  0.0 /usr/libexec/trustdFileHelper\n  996   0.0  0.1 /System/Library/Frameworks/Security.framework/Versions/A/XPCServices/authd.xpc/Contents/MacOS/authd\n  992   0.0  0.0 /System/Library/Frameworks/CoreMediaIO.framework/Resources/VDC.plugin/Contents/Resources/VDCAssistant\n  984   0.0  0.1 /usr/libexec/nsurlsessiond\n  993   0.0  0.0 /usr/libexec/biometrickitd\n  995   0.0  0.0 /System/Library/PrivateFrameworks/SystemStatusServer.framework/Support/systemstatusd\n  988   0.0  0.0 /System/Library/PrivateFrameworks/CoreAccessories.framework/Support/accessoryd\n  990   0.0  0.0 /usr/libexec/usbpowerd\n  987   0.0  0.0 /usr/libexec/apfsd\n  986   0.0  0.0 /System/Library/CryptoTokenKit/com.apple.ifdreader.slotd/Contents/MacOS/com.apple.ifdreader\n  983   0.0  0.1 /usr/sbin/mDNSResponder\n  979   0.0  0.1 /usr/libexec/symptomsd\n  978   0.0  0.0 /usr/libexec/nehelper\n  980   0.0  0.1 /usr/libexec/lsd\n  971   0.0  0.2 /usr/sbin/coreaudiod\n  970   0.0  0.1 /usr/libexec/trustd\n  976   0.0  0.0 /usr/libexec/containermanagerd_system\n  943   0.0  0.0 /usr/sbin/distnoted\n  973   0.0  0.1 /usr/libexec/airportd\n  969   0.0  0.0 /usr/libexec/PowerUIAgent\n  910   0.0  0.0 /System/Library/PrivateFrameworks/CoreSpeech.framework/corespeechd_system\n  968   0.0  0.1 /usr/libexec/fskitd\n  932   0.0  0.0 /System/Library/PrivateFrameworks/MobileDevice.framework/Versions/A/Resources/usbmuxd\n  965   0.0  0.0 /System/Library/CoreServices/coreservicesd\n  966   0.0  0.0 /usr/libexec/powerexperienced\n  931   0.0  0.0 /usr/libexec/timed\n  963   0.0  0.0 /usr/sbin/cfprefsd\n  962   0.0  0.1 /System/Library/PrivateFrameworks/TCC.framework/Support/tccd\n  902   0.0  0.0 /usr/libexec/IOMFB_bics_daemon\n  936   0.0  0.0 /usr/libexec/nesessionmanager\n  895   0.0  0.1 /usr/sbin/systemstats\n  951   0.0  0.0 /usr/libexec/usermanagerd\n  948   0.0  0.0 /System/Library/PrivateFrameworks/GenerationalStorage.framework/Versions/A/Support/revisiond\n  926   0.0  0.1 /System/Library/PrivateFrameworks/CoreDuetContext.framework/Resources/contextstored\n  892   0.0  0.1 /System/Library/PrivateFrameworks/MediaRemote.framework/Support/mediaremoted\n  950   0.0  0.0 /usr/libexec/peakpowermanagerd\n  922   0.0  0.1 /usr/libexec/coreduetd\n  960   0.0  0.8 /usr/libexec/logd_helper\n  958   0.0  0.1 /System/Library/Frameworks/CoreMediaIO.framework/Versions/A/Resources/com.apple.cmio.registerassistantservice\n  900   0.0  0.0 endpointsecurityd\n  888   0.0  0.0 /usr/libexec/smd\n  959   0.0  0.0 aslmanager\n  946   0.0  0.0 /usr/libexec/dirhelper\n  944   0.0  0.0 /System/Library/PrivateFrameworks/AppleCredentialManager.framework/AppleCredentialManagerDaemon\n  923   0.0  0.0 /usr/sbin/syslogd\n  955   0.0  0.0 /usr/libexec/sandboxd\n  956   0.0  0.0 /usr/libexec/corebrightnessd\n  889   0.0  0.1 /usr/libexec/UserEventAgent\n  908   0.0  0.1 /usr/libexec/keybagd\n  941   0.0  0.0 /usr/libexec/corerepaird\n  957   0.0  0.0 /usr/libexec/AirPlayXPCHelper\n  938   0.0  0.0 autofsd\n  949   0.0  0.0 /usr/sbin/KernelEventAgent\n  947   0.0  0.0 /System/Library/CoreServices/logind\n  919   0.0  0.0 /usr/libexec/diskarbitrationd\n  939   0.0  0.1 /usr/libexec/dasd\n  940   0.0  0.0 /System/Library/PrivateFrameworks/Heimdal.framework/Helpers/kdc\n  918   0.0  0.1 /usr/libexec/kernelmanagerd\n  933   0.0  0.0 /usr/sbin/securityd\n  929   0.0  0.1 /System/Library/PrivateFrameworks/ApplePushService.framework/apsd\n  927   0.0  0.0 /usr/libexec/xprotectd\n  925   0.0  0.0 /usr/libexec/thermalmonitord\n  912   0.0  0.0 /usr/libexec/watchdogd\n  906   0.0  0.0 /usr/libexec/remoted\n  904   0.0  0.1 /usr/libexec/amfid\n  901   0.0  0.0 /System/Library/CoreServices/powerd.bundle/powerd\n  899   0.0  0.0 /usr/libexec/configd\n 1065   0.0  0.0 /usr/libexec/securityd_system\n11150   0.0  0.0 /System/Library/Frameworks/Contacts.framework/Support/contactsd\n11149   0.0  0.0 /System/Library/Frameworks/Contacts.framework/Support/contactsd\n11148   0.0  0.0 /System/Library/Frameworks/Contacts.framework/Support/contactsd\n11147   0.0  0.0 /System/Library/Frameworks/Contacts.framework/Support/contactsd\n11146   0.0  0.0 /System/Library/Frameworks/Contacts.framework/Support/contactsd\n11145   0.0  0.0 /System/Library/Frameworks/Contacts.framework/Support/contactsd\n11144   0.0  0.0 /System/Library/Frameworks/Contacts.framework/Support/contactsd\n11143   0.0  0.0 /System/Library/Frameworks/Contacts.framework/Support/contactsd\n11141   0.0  0.0 /System/Library/Frameworks/Contacts.framework/Support/contactsd\n11142   0.0  0.0 /System/Library/Frameworks/Contacts.framework/Support/contactsd\n10936   0.0  0.0 sshd-session: sage@notty\n10934   0.0  0.0 sshd-session: sage [priv]\n10106   0.0  0.1 /usr/libexec/remindd\n 7160   0.0  0.1 /System/iOSSupport/System/Library/PrivateFrameworks/HomeEnergyDaemon.framework/Support/homeenergyd\n97378   0.0  0.0 /usr/bin/ssh\n93251   0.0  0.1 /System/Library/Frameworks/VideoToolbox.framework/Versions/A/XPCServices/VTDecoderXPCService.xpc/Contents/MacOS/VTDecoderXPCService\n93250   0.0  0.2 /System/Library/ExtensionKit/Extensions/PhotosPosterProvider.appex/Contents/MacOS/PhotosPosterProvider\n92090   0.0  0.1 /usr/libexec/PerfPowerServices\n33953   0.0  0.0 /System/Library/PrivateFrameworks/GameControllerFoundation.framework/Versions/A/XPCServices/GameControllerConfigService.xpc/Contents/MacOS/GameControllerConfigService\n31951   0.0  0.2 /System/Library/Frameworks/Intents.framework/XPCServices/intents_helper.xpc/Contents/MacOS/intents_helper\n31349   0.0  0.2 /System/Library/PrivateFrameworks/PassKitCore.framework/passd",
+        "stderr": ""
+      }
+    }
+  },
+  "repository": {
+    "root": "/Volumes/sage/sagejs-hyp-2b7a213d",
+    "commit": "b25ffdd128cb19d95c979133349fb205a40f26e4",
+    "status": "",
+    "harness_sha256": "b81a08b591d94191c23fedb6ea93c576251f46620b16732cab1087ca06c47669",
+    "build_receipt_sha256": "6cbdb5e1a0ef7051ab23d28bc9a0d94815489a8d301cc1f1b84727068c481c87",
+    "source_sha256": {
+      "src/lib/sagejs/hyperelliptic_curves/frobenius.py": "f104c3dbfbcbd80f83e712a6d1c376ed12b5e1489270aa498c4104f10640d755",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py": "8a2191c6978e7cd83c269e279f9d06cff0587a926c068d51ceaebde62a20bf2b",
+      "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_formulas.py": "762394ae727216b4625b7c539ef43799e5abfa8ec7d7f9869c1d6d140b45f0cc",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian.py": "c5202bc7949bb8b757699a9bd3b5b7d0e1ef250e864fc29b574018b321225e4c",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py": "0ad1a48746777eccc6e47c948eadfaeb43937a178be01188fe723c71ebb40bcb",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py": "a93729738d2063be3b85d3948c50edbd2165b1a1ca42f62aa6336eb771b0920c",
+      "packages/flint/src/hyperelliptic/smalljac.c": "a1033120ed51d346771b3abec6b67c70b3ec96e757451b5a642e7aef2fae7058",
+      "packages/flint/src/addon.h": "214cc046b5f664be73917f2c5dee55eadb78a8b285e49667d37370e08cf4dd1e"
+    }
+  },
+  "configuration": {
+    "limits": [
+      10000,
+      100000
+    ],
+    "kummer_batch": 4096,
+    "cantor_add_batch": 1000,
+    "cantor_scalar_batch": 64,
+    "cantor_scalar_bits": 256,
+    "cantor_progression_batch": 1000,
+    "cantor_scalar_repeat": 1,
+    "repeat": 5,
+    "cache_root": "/tmp/sagejs-hyperelliptic-cross-platform-cache",
+    "algorithm_environment": {
+      "SAGEJS_NATIVE_MODE": null,
+      "SAGEJS_NATIVE_DISABLE": null,
+      "SAGEJS_NATIVE_REQUIRED": null,
+      "SAGEJS_NATIVE_AUTOLOAD": null,
+      "SAGEJS_NATIVE_CACHE_DIR": null,
+      "OMP_NUM_THREADS": null,
+      "OPENBLAS_NUM_THREADS": null,
+      "MKL_NUM_THREADS": null,
+      "VECLIB_MAXIMUM_THREADS": null,
+      "NUMEXPR_NUM_THREADS": null
+    }
+  },
+  "native_compilation": {
+    "wall_ms": 1673.8525,
+    "kummer": {
+      "cache_key": "6d88d3a89fbb38fcc57ce0bcb7675e68dc17a686a209dfc9e64de576adfc2be3",
+      "cached": true,
+      "source_hash": "8a2191c6978e7cd83c269e279f9d06cff0587a926c068d51ceaebde62a20bf2b",
+      "native_abi": 22,
+      "host_isolation": {
+        "isolated": true,
+        "boundary": "packed-c-abi",
+        "hostAbiVersion": 2,
+        "hostCallbacks": 0,
+        "forbiddenApis": [
+          "Node-API",
+          "Node header",
+          "CPython API",
+          "JavaScript engine API"
+        ],
+        "nativeDependencies": [
+          "libc",
+          "libm",
+          "FLINT"
+        ],
+        "functions": [
+          "genus2_kummer_project_batch",
+          "genus2_kummer_double_batch",
+          "genus2_kummer_degenerate_pseudo_add_batch"
+        ],
+        "kernelKinds": [
+          "prime-field-source"
+        ]
+      },
+      "source_bounds_checked": true,
+      "module_path": "/tmp/sagejs-hyperelliptic-cross-platform-cache/6d88d3a89fbb38fcc57ce0bcb7675e68dc17a686a209dfc9e64de576adfc2be3/index.cjs",
+      "manifest_sha256": "ef9241be370eb109caadaae50fa07cf1d4dcbf4ab920d0d79808d9c204a4401e",
+      "core_source_sha256": "cbe85050f857caefa6d1215c132ea4cd1b2e415b4dc0b5dbe228724b80ef3c33"
+    },
+    "cantor": {
+      "cache_key": "5982ab6a1c7e133a79dac5a29835f7b3ba87a4bad49b773cb544536f691c191c",
+      "cached": true,
+      "source_hash": "a93729738d2063be3b85d3948c50edbd2165b1a1ca42f62aa6336eb771b0920c",
+      "native_abi": 22,
+      "host_isolation": {
+        "isolated": true,
+        "boundary": "packed-c-abi",
+        "hostAbiVersion": 2,
+        "hostCallbacks": 0,
+        "forbiddenApis": [
+          "Node-API",
+          "Node header",
+          "CPython API",
+          "JavaScript engine API"
+        ],
+        "nativeDependencies": [
+          "libc",
+          "libm",
+          "GMP",
+          "FLINT"
+        ],
+        "functions": [
+          "packed_cantor_validate_batch",
+          "packed_cantor_copy_batch",
+          "packed_cantor_add_batch",
+          "packed_cantor_progression_batch",
+          "packed_cantor_scalar_batch",
+          "packed_cantor_search_progression",
+          "packed_cantor_search_progressions",
+          "packed_cantor_scalar_many_primes",
+          "_validate_packed_row",
+          "_cantor_add_one",
+          "_cantor_scalar_one",
+          "_cantor_negate_one",
+          "_row_copy",
+          "_row_equal",
+          "_row_hash",
+          "_scalar_bit_length",
+          "_scalar_operation_count",
+          "_search_record",
+          "_multi_search_record",
+          "_poly_add",
+          "_poly_clear",
+          "_poly_divrem",
+          "_poly_mul",
+          "_poly_sub",
+          "_unpack_row",
+          "_divexact",
+          "_pack_row",
+          "_poly_copy",
+          "_poly_is_one",
+          "_poly_xgcd",
+          "_reduce",
+          "_poly_scale"
+        ],
+        "kernelKinds": [
+          "prime-field-source",
+          "integer"
+        ]
+      },
+      "source_bounds_checked": true,
+      "module_path": "/tmp/sagejs-hyperelliptic-cross-platform-cache/5982ab6a1c7e133a79dac5a29835f7b3ba87a4bad49b773cb544536f691c191c/index.cjs",
+      "manifest_sha256": "98d13cdee3c9715a0fc459f16460603291470aac3779727fb2a8f7e1acd60904",
+      "core_source_sha256": "ecdf998e345b160705fe7ba84e3cd63f2d5bf1a4ef9b387875ce514b235cc487"
+    }
+  },
+  "modes": {
+    "dynamic": {
+      "mode": "dynamic",
+      "runtime_native_mode": "dynamic",
+      "session_ready_ms": 399.478167,
+      "process_start_rss_bytes": 172146688,
+      "local_factors": [
+        {
+          "curve": "y^2=x^5+x+1",
+          "start": 3,
+          "stop": 10000,
+          "packed_backend": "smalljac-native-addon",
+          "packed_rows": 1228,
+          "packed_exact_sha256": "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d",
+          "packed": {
+            "wall_ms": {
+              "count": 5,
+              "min": 134.25800000000004,
+              "median": 135.78279099999986,
+              "max": 136.43741599999998,
+              "mad": 0.03287500000010368
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 133.967,
+              "median": 135.609,
+              "max": 136.073,
+              "mad": 0.09400000000002251
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 0.279,
+              "median": 0.357,
+              "max": 0.389,
+              "mad": 0.03200000000000003
+            },
+            "peak_rss_bytes": 251281408
+          },
+          "coefficient_rows_exact_sha256": "f25885d7ff7194130ef32d7528a389211e490c49763c27f9af411761b585fea6",
+          "coefficient_exact_checksum": "(1225, 5736361, 1070, 5746424)",
+          "coefficients": {
+            "wall_ms": {
+              "count": 5,
+              "min": 336.55137500000023,
+              "median": 363.4803750000001,
+              "max": 373.7516249999999,
+              "mad": 3.1645409999996446
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 400.311,
+              "median": 416.708,
+              "max": 471.822,
+              "mad": 16.397000000000048
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 3.035,
+              "median": 3.92,
+              "max": 4.029,
+              "mad": 0.10899999999999999
+            },
+            "peak_rss_bytes": 298041344,
+            "arithmetic_ms": {
+              "count": 5,
+              "min": 270.48492431640625,
+              "median": 305.1748275756836,
+              "max": 313.72761726379395,
+              "mad": 1.5308856964111328
+            }
+          }
+        },
+        {
+          "curve": "y^2=x^5+x+1",
+          "start": 3,
+          "stop": 100000,
+          "packed_backend": "smalljac-native-addon",
+          "packed_rows": 9591,
+          "packed_exact_sha256": "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894",
+          "packed": {
+            "wall_ms": {
+              "count": 5,
+              "min": 6945.693334,
+              "median": 6974.043625,
+              "max": 6982.545958999999,
+              "mad": 2.383790999998382
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 6930.665,
+              "median": 6958.904,
+              "max": 7198.092,
+              "mad": 2.772000000000844
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 15.062,
+              "median": 15.15,
+              "max": 31.487,
+              "mad": 0.08800000000000097
+            },
+            "peak_rss_bytes": 298205184
+          },
+          "coefficient_rows_exact_sha256": "a501f7d70e91e32338122f08f89281d301d844b3b143c3af159d74d7d987cb9f",
+          "coefficient_exact_checksum": "(9588, 454396502, 31923, 459539912)",
+          "coefficients": {
+            "wall_ms": {
+              "count": 5,
+              "min": 8234.549792000005,
+              "median": 8249.742124999997,
+              "max": 8277.444583000004,
+              "mad": 15.192332999991777
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 8269.663,
+              "median": 8376.661,
+              "max": 8471.652,
+              "mad": 79.15799999999945
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 25.276,
+              "median": 28.853,
+              "max": 37.341,
+              "mad": 3.5770000000000017
+            },
+            "peak_rss_bytes": 346423296,
+            "arithmetic_ms": {
+              "count": 5,
+              "min": 8161.902189254761,
+              "median": 8185.417652130127,
+              "max": 8197.187185287476,
+              "mad": 10.920524597167969
+            }
+          }
+        }
+      ],
+      "kummer": {
+        "curve": "y^2+h*y=f; f=[1,2,3,4,5,1], h=[2,0,3]",
+        "prime": 4294967291,
+        "batch_size": 4096,
+        "capability": "(False, 'dynamic', 4096, ('genus2-kummer-prime.v1', 4294967291, (1, 2, 3, 4, 5, 1, 0, 0), (2, 0, 3, 0)))",
+        "object_cold": {
+          "wall_ms": 284.4150840000075,
+          "cpu_user_ms": 432.438,
+          "cpu_system_ms": 7.477,
+          "rss_bytes": 314540032
+        },
+        "exact_result_sha256": "b87da12953daa2d1170a8e3f6ea6da10f9c42e90163756e3dd0c2a07504d329c",
+        "exact_checksum": "(4096, 0, 26137496198570)",
+        "doubling": {
+          "wall_ms": {
+            "count": 5,
+            "min": 4225.563582999996,
+            "median": 4268.848041999998,
+            "max": 4324.683958000009,
+            "mad": 6.263290999995661
+          },
+          "cpu_user_ms": {
+            "count": 5,
+            "min": 4238.716,
+            "median": 4296.432,
+            "max": 4410.418,
+            "mad": 57.71599999999944
+          },
+          "cpu_system_ms": {
+            "count": 5,
+            "min": 11.351,
+            "median": 12.74,
+            "max": 13.613,
+            "mad": 0.8729999999999993
+          },
+          "peak_rss_bytes": 317259776,
+          "arithmetic_ms": {
+            "count": 5,
+            "min": 4166.849613189697,
+            "median": 4209.15961265564,
+            "max": 4262.797594070435,
+            "mad": 2.0623207092285156
+          }
+        }
+      },
+      "cantor": {
+        "schema": "sagejs.hyperelliptic.packed-mumford.odd.v1",
+        "capability": "(False, 24, PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 2, 'prime': 3, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9dd3a52eecccdd8eaf0528913862dcf6650ecc0a1ae0143b3ef72ffd4ec56716', 'validation_available': False, 'search_available': False, 'multi_search_available': False}), [(2, PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 2, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234', 'validation_available': False, 'search_available': False, 'multi_search_available': False})), (3, PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 3, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279', 'validation_available': False, 'search_available': False, 'multi_search_available': False}))])",
+        "object_cold": {
+          "wall_ms": 2156.078125,
+          "cpu_user_ms": 2479.384,
+          "cpu_system_ms": 24.874,
+          "rss_bytes": 328761344
+        },
+        "tiny_prime": 3,
+        "tiny_exact_sha256": "cdaf7bf823e523d62172609e5aa8f8b2a8f0c53fa0dc30d2d261edab9c567913",
+        "cases": [
+          {
+            "genus": 2,
+            "prime": 1009,
+            "capability": "PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 2, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234', 'validation_available': False, 'search_available': False, 'multi_search_available': False})",
+            "add_batch_items": 1000,
+            "add_exact_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+            "add_exact_checksum": "(1000, '52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176')",
+            "add_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 13860.21445900001,
+                "median": 14079.327624999976,
+                "max": 14145.663750000007,
+                "mad": 66.33612500003073
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 14088.323,
+                "median": 14271.914,
+                "max": 14332.452,
+                "mad": 60.53799999999865
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 60.581,
+                "median": 71.431,
+                "max": 73.913,
+                "mad": 2.4819999999999993
+              },
+              "peak_rss_bytes": 363036672,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 6862.239837646484,
+                "median": 7137.868165969849,
+                "max": 7195.87779045105,
+                "mad": 58.00962448120117
+              }
+            },
+            "add_materialized_exact_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+            "add_materialized_exact_checksum": "(1000, '52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176')",
+            "add_materialized_batch": null,
+            "scalar_batch_items": 64,
+            "scalar_bits": 256,
+            "scalar_exact_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+            "scalar_exact_checksum": "(64, 'ec3863f93ddb2df46f326eb061c662086d076db67f5d7d80d47e89b67533d0ee')",
+            "scalar_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 121540.80929200002,
+                "median": 121540.80929200002,
+                "max": 121540.80929200002,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 122333.813,
+                "median": 122333.813,
+                "max": 122333.813,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 457.11,
+                "median": 457.11,
+                "max": 457.11,
+                "mad": 0
+              },
+              "peak_rss_bytes": 367411200,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 121050.41980743408,
+                "median": 121050.41980743408,
+                "max": 121050.41980743408,
+                "mad": 0
+              }
+            },
+            "scalar_materialized_exact_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+            "scalar_materialized_exact_checksum": "(64, 'ec3863f93ddb2df46f326eb061c662086d076db67f5d7d80d47e89b67533d0ee')",
+            "scalar_materialized_batch": null,
+            "progression_items": 1000,
+            "progression_packed": true,
+            "progression_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 8017.284207999997,
+                "median": 8024.463874999987,
+                "max": 8103.3515829999815,
+                "mad": 7.179666999989422
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 8191.855,
+                "median": 8203.654,
+                "max": 8253.406,
+                "mad": 11.799000000000888
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 32.646,
+                "median": 34.577,
+                "max": 40.074,
+                "mad": 1.6910000000000025
+              },
+              "peak_rss_bytes": 358383616,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 7976.556062698364,
+                "median": 7980.223894119263,
+                "max": 8066.31875038147,
+                "mad": 3.6678314208984375
+              }
+            },
+            "progression_retained_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_retained_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_retained_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 6866.935292000009,
+                "median": 6921.459124999994,
+                "max": 6927.289250000002,
+                "mad": 5.830125000007683
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 6906.157,
+                "median": 6915.674,
+                "max": 7083.94,
+                "mad": 9.516999999999825
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 24.999,
+                "median": 27.086,
+                "max": 31.274,
+                "mad": 2.0869999999999997
+              },
+              "peak_rss_bytes": 358645760,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 6833.030939102173,
+                "median": 6881.40082359314,
+                "max": 6890.432357788086,
+                "mad": 9.031534194946289
+              }
+            },
+            "progression_materialized_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_materialized_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_materialized_batch": null,
+            "materialization_comparison": "not-applicable-reference-is-already-materialized",
+            "representation_state": "(1000, 1000, 64, 1, 1000, 1000)"
+          },
+          {
+            "genus": 3,
+            "prime": 1009,
+            "capability": "PreparedJacobianCapability({'available': False, 'selected': 'reference', 'reason': 'source-transparent-artifact-unavailable', 'genus': 3, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279', 'validation_available': False, 'search_available': False, 'multi_search_available': False})",
+            "add_batch_items": 1000,
+            "add_exact_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+            "add_exact_checksum": "(1000, '815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323')",
+            "add_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 17317.863207999966,
+                "median": 17362.994292000018,
+                "max": 17436.210457999958,
+                "mad": 42.550625000032596
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 17620.387,
+                "median": 17678.084,
+                "max": 17757.66,
+                "mad": 42.27300000000105
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 75.675,
+                "median": 87.431,
+                "max": 94.735,
+                "mad": 2.1499999999999915
+              },
+              "peak_rss_bytes": 364789760,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 7141.420602798462,
+                "median": 7158.516645431519,
+                "max": 7214.551210403442,
+                "mad": 15.838623046875
+              }
+            },
+            "add_materialized_exact_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+            "add_materialized_exact_checksum": "(1000, '815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323')",
+            "add_materialized_batch": null,
+            "scalar_batch_items": 64,
+            "scalar_bits": 256,
+            "scalar_exact_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+            "scalar_exact_checksum": "(64, '2ee1c3546b80765c8b81a9f305397f9d2d86bd63057890ea0969d5a98e48002a')",
+            "scalar_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 171588.32549999992,
+                "median": 171588.32549999992,
+                "max": 171588.32549999992,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 172514.204,
+                "median": 172514.204,
+                "max": 172514.204,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 733.003,
+                "median": 733.003,
+                "max": 733.003,
+                "mad": 0
+              },
+              "peak_rss_bytes": 361021440,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 170892.41862297058,
+                "median": 170892.41862297058,
+                "max": 170892.41862297058,
+                "mad": 0
+              }
+            },
+            "scalar_materialized_exact_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+            "scalar_materialized_exact_checksum": "(64, '2ee1c3546b80765c8b81a9f305397f9d2d86bd63057890ea0969d5a98e48002a')",
+            "scalar_materialized_batch": null,
+            "progression_items": 1000,
+            "progression_packed": true,
+            "progression_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 8389.88062499999,
+                "median": 8457.83349999995,
+                "max": 8503.490290999995,
+                "mad": 22.56883300014306
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 8394.094,
+                "median": 8457.898,
+                "max": 8544.474,
+                "mad": 13.774000000001251
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 28.803,
+                "median": 30.789,
+                "max": 32.831,
+                "mad": 1.1240000000000023
+              },
+              "peak_rss_bytes": 364789760,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 8355.222463607788,
+                "median": 8423.48599433899,
+                "max": 8468.976259231567,
+                "mad": 22.63808250427246
+              }
+            },
+            "progression_retained_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_retained_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_retained_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 7246.096207999974,
+                "median": 7282.572500000009,
+                "max": 7317.324417000054,
+                "mad": 3.4014170001028106
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 7404.048,
+                "median": 7434.889,
+                "max": 7460.647,
+                "mad": 1.8609999999998763
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 28.418,
+                "median": 29.608,
+                "max": 32.219,
+                "mad": 1.1900000000000013
+              },
+              "peak_rss_bytes": 356007936,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 7200.140476226807,
+                "median": 7236.358642578125,
+                "max": 7271.266222000122,
+                "mad": 3.5483837127685547
+              }
+            },
+            "progression_materialized_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_materialized_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_materialized_batch": null,
+            "materialization_comparison": "not-applicable-reference-is-already-materialized",
+            "representation_state": "(1000, 1000, 64, 1, 1000, 1000)"
+          }
+        ]
+      },
+      "curve_object_cold": {
+        "wall_ms": 257.021167,
+        "cpu_user_ms": 1632.476,
+        "cpu_system_ms": 23.551,
+        "rss_bytes": 200704000
+      },
+      "process_cold_first_answer_ms": 738.683125,
+      "process_end_rss_bytes": 321486848,
+      "worker_total_ms": 784635.323,
+      "stderr": ""
+    },
+    "native": {
+      "mode": "native",
+      "runtime_native_mode": "auto",
+      "session_ready_ms": 399.99058299999996,
+      "process_start_rss_bytes": 177307648,
+      "local_factors": [
+        {
+          "curve": "y^2=x^5+x+1",
+          "start": 3,
+          "stop": 10000,
+          "packed_backend": "smalljac-native-addon",
+          "packed_rows": 1228,
+          "packed_exact_sha256": "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d",
+          "packed": {
+            "wall_ms": {
+              "count": 5,
+              "min": 114.36437500000011,
+              "median": 135.77745800000002,
+              "max": 138.35016700000006,
+              "mad": 2.5727090000000317
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 114.352,
+              "median": 135.427,
+              "max": 138.057,
+              "mad": 2.6299999999999955
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 0.213,
+              "median": 0.325,
+              "max": 0.37,
+              "mad": 0.044999999999999984
+            },
+            "peak_rss_bytes": 262832128
+          },
+          "coefficient_rows_exact_sha256": "f25885d7ff7194130ef32d7528a389211e490c49763c27f9af411761b585fea6",
+          "coefficient_exact_checksum": "(1225, 5736361, 1070, 5746424)",
+          "coefficients": {
+            "wall_ms": {
+              "count": 5,
+              "min": 364.02350000000024,
+              "median": 368.49866599999996,
+              "max": 400.2701669999999,
+              "mad": 4.475165999999717
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 399.083,
+              "median": 416.587,
+              "max": 641.663,
+              "mad": 17.503999999999962
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 3.171,
+              "median": 4.088,
+              "max": 6.66,
+              "mad": 0.9170000000000003
+            },
+            "peak_rss_bytes": 310788096,
+            "arithmetic_ms": {
+              "count": 5,
+              "min": 305.8209419250488,
+              "median": 309.5078468322754,
+              "max": 318.74585151672363,
+              "mad": 3.6869049072265625
+            }
+          }
+        },
+        {
+          "curve": "y^2=x^5+x+1",
+          "start": 3,
+          "stop": 100000,
+          "packed_backend": "smalljac-native-addon",
+          "packed_rows": 9591,
+          "packed_exact_sha256": "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894",
+          "packed": {
+            "wall_ms": {
+              "count": 5,
+              "min": 6945.1888340000005,
+              "median": 6983.178000000001,
+              "max": 6990.303917000001,
+              "mad": 7.1259170000003
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 6930.375,
+              "median": 6967.81,
+              "max": 7198.641,
+              "mad": 36.64500000000044
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 14.843,
+              "median": 16.688,
+              "max": 32.954,
+              "mad": 1.291999999999998
+            },
+            "peak_rss_bytes": 310870016
+          },
+          "coefficient_rows_exact_sha256": "a501f7d70e91e32338122f08f89281d301d844b3b143c3af159d74d7d987cb9f",
+          "coefficient_exact_checksum": "(9588, 454396502, 31923, 459539912)",
+          "coefficients": {
+            "wall_ms": {
+              "count": 5,
+              "min": 7922.044167,
+              "median": 8260.327791999996,
+              "max": 8291.518666999997,
+              "mad": 21.45495800001663
+            },
+            "cpu_user_ms": {
+              "count": 5,
+              "min": 8115.002,
+              "median": 8337.354,
+              "max": 8420.061,
+              "mad": 63.70400000000154
+            },
+            "cpu_system_ms": {
+              "count": 5,
+              "min": 23.531,
+              "median": 28.012,
+              "max": 39.351,
+              "mad": 3.7379999999999995
+            },
+            "peak_rss_bytes": 345899008,
+            "arithmetic_ms": {
+              "count": 5,
+              "min": 7840.56544303894,
+              "median": 8195.149183273315,
+              "max": 8226.04513168335,
+              "mad": 14.431953430175781
+            }
+          }
+        }
+      ],
+      "kummer": {
+        "curve": "y^2+h*y=f; f=[1,2,3,4,5,1], h=[2,0,3]",
+        "prime": 4294967291,
+        "batch_size": 4096,
+        "capability": "(True, 'native-capable', 4096, ('genus2-kummer-prime.v1', 4294967291, (1, 2, 3, 4, 5, 1, 0, 0), (2, 0, 3, 0)))",
+        "object_cold": {
+          "wall_ms": 316.55708300000697,
+          "cpu_user_ms": 463.34,
+          "cpu_system_ms": 9.243,
+          "rss_bytes": 315555840
+        },
+        "exact_result_sha256": "b87da12953daa2d1170a8e3f6ea6da10f9c42e90163756e3dd0c2a07504d329c",
+        "exact_checksum": "(4096, 0, 26137496198570)",
+        "doubling": {
+          "wall_ms": {
+            "count": 5,
+            "min": 216.0387919999921,
+            "median": 219.9407499999943,
+            "max": 234.25679200000013,
+            "mad": 2.9464999999909196
+          },
+          "cpu_user_ms": {
+            "count": 5,
+            "min": 232.256,
+            "median": 249.971,
+            "max": 466.1,
+            "mad": 17.715000000000003
+          },
+          "cpu_system_ms": {
+            "count": 5,
+            "min": 1.615,
+            "median": 1.839,
+            "max": 6.244,
+            "mad": 0.22399999999999998
+          },
+          "peak_rss_bytes": 317292544,
+          "arithmetic_ms": {
+            "count": 5,
+            "min": 157.4563980102539,
+            "median": 158.73241424560547,
+            "max": 163.7129783630371,
+            "mad": 1.2760162353515625
+          }
+        }
+      },
+      "cantor": {
+        "schema": "sagejs.hyperelliptic.packed-mumford.odd.v1",
+        "capability": "(True, 24, PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'policy-disabled', 'genus': 2, 'prime': 3, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9dd3a52eecccdd8eaf0528913862dcf6650ecc0a1ae0143b3ef72ffd4ec56716', 'validation_available': True, 'search_available': True, 'multi_search_available': True}), [(2, PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'policy-disabled', 'genus': 2, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234', 'validation_available': True, 'search_available': True, 'multi_search_available': True})), (3, PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'policy-disabled', 'genus': 3, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279', 'validation_available': True, 'search_available': True, 'multi_search_available': True}))])",
+        "object_cold": {
+          "wall_ms": 1292.1807910000061,
+          "cpu_user_ms": 1569.943,
+          "cpu_system_ms": 23.192,
+          "rss_bytes": 332873728
+        },
+        "tiny_prime": 3,
+        "tiny_exact_sha256": "cdaf7bf823e523d62172609e5aa8f8b2a8f0c53fa0dc30d2d261edab9c567913",
+        "cases": [
+          {
+            "genus": 2,
+            "prime": 1009,
+            "capability": "PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'policy-disabled', 'genus': 2, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234', 'validation_available': True, 'search_available': True, 'multi_search_available': True})",
+            "add_batch_items": 1000,
+            "add_exact_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+            "add_exact_checksum": "(1000, '52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176')",
+            "add_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 205.74104200000875,
+                "median": 236.9235420000041,
+                "max": 247.95666599999822,
+                "mad": 1.1132919999945443
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 228.047,
+                "median": 246.132,
+                "max": 303.794,
+                "mad": 6.788000000000011
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 1.325,
+                "median": 2.089,
+                "max": 3.932,
+                "mad": 0.5110000000000001
+              },
+              "peak_rss_bytes": 354516992,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 5.941152572631836,
+                "median": 6.41179084777832,
+                "max": 6.929636001586914,
+                "mad": 0.14209747314453125
+              }
+            },
+            "add_materialized_exact_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+            "add_materialized_exact_checksum": "(1000, '52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176')",
+            "add_materialized_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 1657.0591669999994,
+                "median": 1706.6037919999944,
+                "max": 1723.8663749999978,
+                "mad": 17.26258300000336
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 1703.145,
+                "median": 1797.294,
+                "max": 1970.909,
+                "mad": 72.19499999999994
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 6.878,
+                "median": 11.037,
+                "max": 14.199,
+                "mad": 3.161999999999999
+              },
+              "peak_rss_bytes": 364118016,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 290.17114639282227,
+                "median": 294.73257064819336,
+                "max": 297.66297340393066,
+                "mad": 1.596212387084961
+              }
+            },
+            "scalar_batch_items": 64,
+            "scalar_bits": 256,
+            "scalar_exact_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+            "scalar_exact_checksum": "(64, 'ec3863f93ddb2df46f326eb061c662086d076db67f5d7d80d47e89b67533d0ee')",
+            "scalar_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 129.02170800000022,
+                "median": 129.02170800000022,
+                "max": 129.02170800000022,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 134.844,
+                "median": 134.844,
+                "max": 134.844,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 0.955,
+                "median": 0.955,
+                "max": 0.955,
+                "mad": 0
+              },
+              "peak_rss_bytes": 367001600,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 80.33943176269531,
+                "median": 80.33943176269531,
+                "max": 80.33943176269531,
+                "mad": 0
+              }
+            },
+            "scalar_materialized_exact_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+            "scalar_materialized_exact_checksum": "(64, 'ec3863f93ddb2df46f326eb061c662086d076db67f5d7d80d47e89b67533d0ee')",
+            "scalar_materialized_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 204.52412499999627,
+                "median": 204.52412499999627,
+                "max": 204.52412499999627,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 209.192,
+                "median": 209.192,
+                "max": 209.192,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 2.338,
+                "median": 2.338,
+                "max": 2.338,
+                "mad": 0
+              },
+              "peak_rss_bytes": 369213440,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 88.30070495605469,
+                "median": 88.30070495605469,
+                "max": 88.30070495605469,
+                "mad": 0
+              }
+            },
+            "progression_items": 1000,
+            "progression_packed": true,
+            "progression_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 103.81783300000825,
+                "median": 105.63579100000788,
+                "max": 106.877542000002,
+                "mad": 0.5939179999841144
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 106.375,
+                "median": 108.749,
+                "max": 115.906,
+                "mad": 2.3739999999999952
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0.769,
+                "median": 1.153,
+                "max": 1.454,
+                "mad": 0.17700000000000005
+              },
+              "peak_rss_bytes": 365133824,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 72.14117050170898,
+                "median": 74.01132583618164,
+                "max": 74.8898983001709,
+                "mad": 0.8785724639892578
+              }
+            },
+            "progression_retained_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_retained_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_retained_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 63.20799999999872,
+                "median": 64.44491700000071,
+                "max": 77.87541699998837,
+                "mad": 1.236917000001995
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 63.301,
+                "median": 69.373,
+                "max": 240.969,
+                "mad": 4.9739999999999895
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0.597,
+                "median": 0.831,
+                "max": 5.011,
+                "mad": 0.14700000000000002
+              },
+              "peak_rss_bytes": 365608960,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 5.489587783813477,
+                "median": 6.011009216308594,
+                "max": 6.0253143310546875,
+                "mad": 0.01430511474609375
+              }
+            },
+            "progression_materialized_exact_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+            "progression_materialized_exact_checksum": "(1000, (2, 452, 828, 1, 0, 217, 166, 0))",
+            "progression_materialized_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 319.5201670000097,
+                "median": 325.4969589999964,
+                "max": 330.6471659999952,
+                "mad": 1.2199580000014976
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 329.948,
+                "median": 340.867,
+                "max": 348.805,
+                "mad": 7.937999999999988
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 1.668,
+                "median": 1.913,
+                "max": 3.171,
+                "mad": 0.2450000000000001
+              },
+              "peak_rss_bytes": 366870528,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 286.00573539733887,
+                "median": 291.9282913208008,
+                "max": 295.5820560455322,
+                "mad": 1.0836124420166016
+              }
+            },
+            "materialization_comparison": "retained-packed-versus-forced-polynomials",
+            "representation_state": "(0, 1000, 0, 64, 0, 1000)"
+          },
+          {
+            "genus": 3,
+            "prime": 1009,
+            "capability": "PreparedJacobianCapability({'available': True, 'selected': 'native', 'reason': 'policy-disabled', 'genus': 3, 'prime': 1009, 'model_kind': 'odd-degree-one-infinity', 'schema': 'sagejs.hyperelliptic.packed-mumford.odd.v1', 'model_fingerprint': '4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279', 'validation_available': True, 'search_available': True, 'multi_search_available': True})",
+            "add_batch_items": 1000,
+            "add_exact_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+            "add_exact_checksum": "(1000, '815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323')",
+            "add_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 236.61975000001257,
+                "median": 237.82520799999475,
+                "max": 238.2850000000035,
+                "mad": 0.1678749999991851
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 237.87,
+                "median": 244.32,
+                "max": 252.232,
+                "mad": 1.4300000000000068
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 1.718,
+                "median": 3.337,
+                "max": 3.822,
+                "mad": 0.4849999999999999
+              },
+              "peak_rss_bytes": 467353600,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 6.497383117675781,
+                "median": 6.531715393066406,
+                "max": 6.784200668334961,
+                "mad": 0.034332275390625
+              }
+            },
+            "add_materialized_exact_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+            "add_materialized_exact_checksum": "(1000, '815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323')",
+            "add_materialized_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 1752.7857499999955,
+                "median": 1761.0433750000084,
+                "max": 1800.9692499999946,
+                "mad": 8.257625000012922
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 1764.319,
+                "median": 1794.266,
+                "max": 1838.883,
+                "mad": 29.947000000000116
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 11.767,
+                "median": 12.413,
+                "max": 12.897,
+                "mad": 0.472999999999999
+              },
+              "peak_rss_bytes": 477052928,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 306.119441986084,
+                "median": 306.95128440856934,
+                "max": 307.65795707702637,
+                "mad": 0.21529197692871094
+              }
+            },
+            "scalar_batch_items": 64,
+            "scalar_bits": 256,
+            "scalar_exact_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+            "scalar_exact_checksum": "(64, '2ee1c3546b80765c8b81a9f305397f9d2d86bd63057890ea0969d5a98e48002a')",
+            "scalar_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 164.17808399999922,
+                "median": 164.17808399999922,
+                "max": 164.17808399999922,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 175.673,
+                "median": 175.673,
+                "max": 175.673,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 1.644,
+                "median": 1.644,
+                "max": 1.644,
+                "mad": 0
+              },
+              "peak_rss_bytes": 481148928,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 112.0603084564209,
+                "median": 112.0603084564209,
+                "max": 112.0603084564209,
+                "mad": 0
+              }
+            },
+            "scalar_materialized_exact_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+            "scalar_materialized_exact_checksum": "(64, '2ee1c3546b80765c8b81a9f305397f9d2d86bd63057890ea0969d5a98e48002a')",
+            "scalar_materialized_batch": {
+              "wall_ms": {
+                "count": 1,
+                "min": 285.13604099999066,
+                "median": 285.13604099999066,
+                "max": 285.13604099999066,
+                "mad": 0
+              },
+              "cpu_user_ms": {
+                "count": 1,
+                "min": 282.213,
+                "median": 282.213,
+                "max": 282.213,
+                "mad": 0
+              },
+              "cpu_system_ms": {
+                "count": 1,
+                "min": 3.678,
+                "median": 3.678,
+                "max": 3.678,
+                "mad": 0
+              },
+              "peak_rss_bytes": 483885056,
+              "arithmetic_ms": {
+                "count": 1,
+                "min": 139.63985443115234,
+                "median": 139.63985443115234,
+                "max": 139.63985443115234,
+                "mad": 0
+              }
+            },
+            "progression_items": 1000,
+            "progression_packed": true,
+            "progression_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 103.49499999999534,
+                "median": 103.78841699998884,
+                "max": 104.16245800000615,
+                "mad": 0.16345899998850655
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 103.242,
+                "median": 104.343,
+                "max": 117.441,
+                "mad": 1.100999999999999
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0.935,
+                "median": 1.022,
+                "max": 1.067,
+                "mad": 0.04499999999999993
+              },
+              "peak_rss_bytes": 477675520,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 72.46828079223633,
+                "median": 72.68071174621582,
+                "max": 73.12226295471191,
+                "mad": 0.15735626220703125
+              }
+            },
+            "progression_retained_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_retained_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_retained_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 64.25408300000709,
+                "median": 64.38895799999591,
+                "max": 66.1363330000022,
+                "mad": 0.13487499998882413
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 65.67,
+                "median": 65.975,
+                "max": 67.767,
+                "mad": 0.3049999999999926
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 0.932,
+                "median": 0.984,
+                "max": 2.242,
+                "mad": 0.03499999999999992
+              },
+              "peak_rss_bytes": 478396416,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 6.339550018310547,
+                "median": 6.390571594238281,
+                "max": 6.446123123168945,
+                "mad": 0.03170967102050781
+              }
+            },
+            "progression_materialized_exact_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+            "progression_materialized_exact_checksum": "(1000, (3, 582, 517, 58, 1, 279, 308, 615))",
+            "progression_materialized_batch": {
+              "wall_ms": {
+                "count": 5,
+                "min": 337.84145900000294,
+                "median": 338.611625000005,
+                "max": 339.1605419999978,
+                "mad": 0.33737500000279397
+              },
+              "cpu_user_ms": {
+                "count": 5,
+                "min": 339.895,
+                "median": 349.055,
+                "max": 354.874,
+                "mad": 5.819000000000017
+              },
+              "cpu_system_ms": {
+                "count": 5,
+                "min": 2.281,
+                "median": 2.448,
+                "max": 2.707,
+                "mad": 0.1379999999999999
+              },
+              "peak_rss_bytes": 479821824,
+              "arithmetic_ms": {
+                "count": 5,
+                "min": 304.78715896606445,
+                "median": 305.1149845123291,
+                "max": 305.7370185852051,
+                "mad": 0.14209747314453125
+              }
+            },
+            "materialization_comparison": "retained-packed-versus-forced-polynomials",
+            "representation_state": "(0, 1000, 0, 64, 0, 1000)"
+          }
+        ]
+      },
+      "curve_object_cold": {
+        "wall_ms": 254.36795899999993,
+        "cpu_user_ms": 1591.507,
+        "cpu_system_ms": 24.395,
+        "rss_bytes": 216956928
+      },
+      "process_cold_first_answer_ms": 734.626541,
+      "process_end_rss_bytes": 467697664,
+      "worker_total_ms": 127908.96812500001,
+      "stderr": ""
+    }
+  },
+  "cross_mode_exact": {
+    "local_factor_packed_sha256": [
+      "22c84c679d21c9e564c7ef960447de5e3c2e32706aa44792bd86015017d70c2d",
+      "2c71e4b3f978c930f135267cd98dfb072b952e1432c0ef90e1aa831931512894"
+    ],
+    "local_factor_coefficients_sha256": [
+      "f25885d7ff7194130ef32d7528a389211e490c49763c27f9af411761b585fea6",
+      "a501f7d70e91e32338122f08f89281d301d844b3b143c3af159d74d7d987cb9f"
+    ],
+    "kummer_sha256": "b87da12953daa2d1170a8e3f6ea6da10f9c42e90163756e3dd0c2a07504d329c",
+    "cantor_tiny_sha256": "cdaf7bf823e523d62172609e5aa8f8b2a8f0c53fa0dc30d2d261edab9c567913",
+    "cantor_cases": [
+      {
+        "genus": 2,
+        "add_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+        "scalar_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+        "progression_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807"
+      },
+      {
+        "genus": 3,
+        "add_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+        "scalar_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+        "progression_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf"
+      }
+    ]
+  }
+}
