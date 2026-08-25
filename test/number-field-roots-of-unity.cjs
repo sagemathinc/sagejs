@@ -21,7 +21,15 @@ function run(source, timeout = 120_000) {
 
 test("exact roots of unity cover higher-degree totally imaginary fields", () => {
   const output = run(String.raw`
-from sagejs.number_fields.units import RootsOfUnityCertificate, roots_of_unity
+import json
+import time
+
+from sagejs.number_fields.units import (
+    RootsOfUnityCertificate,
+    RootsOfUnityResult,
+    _element_key,
+    roots_of_unity,
+)
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -58,10 +66,24 @@ assert fallback.certificate.coefficient_bounds == (1, 1, 1, 1)
 assert fallback.certificate.candidates_checked == 81
 assert fast.elements == fallback.elements
 
-# Reconstructing the field produces the same canonical detached payload.
-detached = roots_of_unity(NumberField(x**4 + 1, "z"))
-assert detached.verify(force_replay=True)
-assert detached.certificate.to_dict() == fast.certificate.to_dict()
+# A JSON round trip reconstructs and mathematically replays the certificate
+# against a distinct field instance without rerunning the producer.
+payload = json.loads(json.dumps(fast.certificate.to_dict()))
+detached_field = NumberField(x**4 + 1, "detached_z")
+detached_certificate = RootsOfUnityCertificate.from_dict(detached_field, payload)
+detached_generator = detached_field._from_coefficients(
+    [QQ(numerator) / QQ(denominator) for numerator, denominator in payload["generator_coordinates"]]
+)
+detached_result = RootsOfUnityResult(
+    [detached_generator**exponent for exponent in range(8)],
+    detached_generator,
+    8,
+    True,
+    "detached test reconstruction",
+    detached_certificate,
+)
+assert detached_result.verify(force_replay=True)
+assert detached_certificate.to_dict() == payload
 
 # The resource boundary never promotes a known subgroup to complete torsion.
 translated = NumberField((x - 1)**4 + 1, "b")
@@ -69,6 +91,18 @@ bounded = roots_of_unity(translated, max_primes=0, max_candidates=1)
 assert not bounded.complete
 assert bounded.certificate is None
 assert "exceeding max_candidates=1" in bounded.reason
+
+# A zero cap and the universal 3^degree box lower bound must refuse before
+# expensive maximal-order/embedding setup, even in a degree-16 field.
+degree_sixteen = NumberField(x**16 + 1, "degree_sixteen")
+started = time.time()
+setup_limited = roots_of_unity(
+    degree_sixteen, max_primes=0, max_candidates=0
+)
+assert time.time() - started < 5
+assert not setup_limited.complete
+assert setup_limited.certificate is None
+assert "at least 43046721 candidates" in setup_limited.reason
 
 # Producer authentication and the issuance seal reject forged/tampered proof.
 try:
@@ -84,6 +118,64 @@ assert not tampered.verify()
 tampered_result = roots_of_unity(NumberField(x**4 + 1, "u"))
 tampered_result.elements = tuple(reversed(tampered_result.elements))
 assert not tampered_result.certificate.verify(tampered_result, force_replay=True)
+
+# Public attributes cannot forge positive verification authority.  In
+# particular, the former identity/result-seal cache names are inert even when
+# a caller assigns exactly matching values for a false order-two result.
+cache_target = roots_of_unity(NumberField(x**4 + 1, "cache_target"))
+false_generator = cache_target.generator.parent()(-1)
+false_result = RootsOfUnityResult(
+    [false_generator.parent()(1), false_generator],
+    false_generator,
+    2,
+    True,
+    "forged order-two replacement",
+    cache_target.certificate,
+)
+cache_target.certificate._verified_result = false_result
+cache_target.certificate._verified_result_seal = (
+    True,
+    2,
+    _element_key(false_generator),
+    tuple(_element_key(element) for element in false_result.elements),
+)
+assert not cache_target.certificate.verify(false_result)
+assert not cache_target.certificate.verify(false_result, force_replay=True)
+
+# Proof status is an immutable property rather than mutable serialized state.
+try:
+    cache_target.certificate.proof_status = "incomplete"
+    raise AssertionError("mutable proof status was accepted")
+except AttributeError:
+    pass
+
+def rejected_detached(changed_payload, changed_field=detached_field):
+    try:
+        RootsOfUnityCertificate.from_dict(changed_field, changed_payload)
+        raise AssertionError("a malformed detached certificate was accepted")
+    except ValueError:
+        pass
+
+unknown = json.loads(json.dumps(payload))
+unknown["unknown_authority"] = True
+rejected_detached(unknown)
+wrong_status = json.loads(json.dumps(payload))
+wrong_status["proof_status"] = "incomplete"
+rejected_detached(wrong_status)
+oversized = json.loads(json.dumps(payload))
+oversized["candidate_cap"] = 100001
+rejected_detached(oversized)
+wrong_candidate_count = json.loads(json.dumps(payload))
+wrong_candidate_count["candidates_checked"] += 1
+rejected_detached(wrong_candidate_count)
+noncanonical = json.loads(json.dumps(payload))
+noncanonical["generator_coordinates"][0] = [0, 2]
+rejected_detached(noncanonical)
+nested_unknown = json.loads(json.dumps(payload))
+nested_unknown["prime_records"][0]["factors"][0]["unknown"] = 1
+rejected_detached(nested_unknown)
+wrong_field = NumberField(x**4 - x**2 + 1, "wrong_field")
+rejected_detached(json.loads(json.dumps(payload)), wrong_field)
 
 # Existing real-place and imaginary-quadratic semantics remain exact.
 real = roots_of_unity(NumberField(x**3 - 2, "r"))

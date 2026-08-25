@@ -24,6 +24,8 @@ _ROOTS_OF_UNITY_CERTIFICATE_SCHEMA = (
 )
 _MAXIMUM_ROOT_OF_UNITY_PRIME = 10_000
 _FAST_ROOT_OF_UNITY_CANDIDATES = 256
+_DETACHED_ROOTS_OF_UNITY_MAX_PRIME_RECORDS = 8
+_DETACHED_ROOTS_OF_UNITY_MAX_CANDIDATES = 100_000
 
 
 def _gcd(left: int, right: int) -> int:
@@ -168,10 +170,12 @@ class RootsOfUnityCertificate:
         self.coefficient_bounds = tuple(int(value) for value in coefficient_bounds)
         self.candidates_checked = int(candidates_checked)
         self.candidate_cap = int(candidate_cap)
-        self.proof_status = "exact"
         self._issuance_seal = self._payload_tuple()
-        self._verified_result: Any = None
-        self._verified_result_seal: Any = None
+
+    @property
+    def proof_status(self) -> str:
+        """The immutable proof status of every producer-issued certificate."""
+        return "exact"
 
     def _payload_tuple(self) -> tuple[Any, ...]:
         return (
@@ -185,26 +189,19 @@ class RootsOfUnityCertificate:
             self.coefficient_bounds,
             self.candidates_checked,
             self.candidate_cap,
+            self.proof_status,
         )
 
     def verify(self, result: RootsOfUnityResult, *, force_replay: bool = False) -> bool:
         if self._issuance_seal != self._payload_tuple():
             return False
         try:
-            result_seal = (
-                bool(result.complete),
-                int(result.order),
-                _element_key(result.generator),
-                tuple(_element_key(element) for element in result.elements),
-            )
+            bool(result.complete)
+            int(result.order)
+            _element_key(result.generator)
+            tuple(_element_key(element) for element in result.elements)
         except (TypeError, ValueError, ArithmeticError, AttributeError):
             return False
-        if (
-            not force_replay
-            and self._verified_result is result
-            and self._verified_result_seal == result_seal
-        ):
-            return True
         try:
             verified = _verify_roots_of_unity_certificate(result, self)
         except (
@@ -215,9 +212,6 @@ class RootsOfUnityCertificate:
             NotImplementedError,
         ):
             return False
-        if verified:
-            self._verified_result = result
-            self._verified_result_seal = result_seal
         return verified
 
     def to_dict(self) -> dict[str, Any]:
@@ -252,6 +246,241 @@ class RootsOfUnityCertificate:
             "candidate_cap": self.candidate_cap,
             "proof_status": self.proof_status,
         }
+
+    @classmethod
+    def from_dict(cls, field: Any, payload: Any) -> RootsOfUnityCertificate:
+        """Validate and reconstruct one detached exact certificate payload.
+
+        Deserialization is deliberately strict: unknown fields, noncanonical
+        rational coordinates, oversized replay work, and merely plausible
+        evidence all fail closed.  The returned certificate has already been
+        replayed against `field`; using it with a result still rechecks that
+        result's exact generator and powers.
+        """
+        expected_keys = {
+            "schema",
+            "kind",
+            "degree",
+            "signature",
+            "universal_prime_powers",
+            "universal_exponent",
+            "generator_coordinates",
+            "prime_records",
+            "coefficient_bounds",
+            "candidates_checked",
+            "candidate_cap",
+            "proof_status",
+        }
+        if type(payload) is not dict or set(payload) != expected_keys:
+            raise ValueError("invalid roots-of-unity certificate fields")
+        if payload["schema"] != _ROOTS_OF_UNITY_CERTIFICATE_SCHEMA:
+            raise ValueError("unknown roots-of-unity certificate schema")
+        if payload["proof_status"] != "exact":
+            raise ValueError("a roots-of-unity certificate must have exact status")
+
+        def exact_integer(
+            value: Any,
+            label: str,
+            *,
+            minimum: int | None = None,
+            maximum: int | None = None,
+        ) -> int:
+            if type(value) is not int:
+                raise ValueError(label + " must be an exact integer")
+            if minimum is not None and value < minimum:
+                raise ValueError(label + " is below its minimum")
+            if maximum is not None and value > maximum:
+                raise ValueError(label + " exceeds its replay cap")
+            return value
+
+        kind = payload["kind"]
+        if type(kind) is not str or kind not in (
+            "real-place",
+            "imaginary-quadratic-classification",
+            "residue-upper-bound",
+            "embedding-box-exhaustion",
+        ):
+            raise ValueError("unknown roots-of-unity certificate kind")
+        degree = exact_integer(payload["degree"], "degree", minimum=1)
+        if degree != int(field.degree()):
+            raise ValueError("roots-of-unity certificate field degree changed")
+        signature_payload = payload["signature"]
+        if type(signature_payload) is not list or len(signature_payload) != 2:
+            raise ValueError("invalid roots-of-unity signature payload")
+        signature = (
+            exact_integer(signature_payload[0], "signature entry", minimum=0),
+            exact_integer(signature_payload[1], "signature entry", minimum=0),
+        )
+        if signature != exact_signature(field):
+            raise ValueError("roots-of-unity certificate field signature changed")
+
+        prime_power_payload = payload["universal_prime_powers"]
+        if type(prime_power_payload) is not list:
+            raise ValueError("invalid universal prime-power payload")
+        universal_prime_powers: list[tuple[int, int]] = []
+        for pair in prime_power_payload:
+            if type(pair) is not list or len(pair) != 2:
+                raise ValueError("invalid universal prime-power entry")
+            universal_prime_powers.append(
+                (
+                    exact_integer(pair[0], "universal prime", minimum=2),
+                    exact_integer(pair[1], "universal prime power", minimum=2),
+                )
+            )
+        exact_prime_powers = _universal_torsion_prime_powers(degree)
+        if tuple(universal_prime_powers) != exact_prime_powers:
+            raise ValueError("universal torsion prime powers changed")
+        universal_exponent = exact_integer(
+            payload["universal_exponent"], "universal exponent", minimum=1
+        )
+        if universal_exponent != _universal_torsion_exponent(degree):
+            raise ValueError("universal torsion exponent changed")
+
+        coordinate_payload = payload["generator_coordinates"]
+        if type(coordinate_payload) is not list or len(coordinate_payload) != degree:
+            raise ValueError("invalid roots-of-unity generator coordinates")
+        generator_coordinates: list[tuple[int, int]] = []
+        generator_coefficients: list[Any] = []
+        for pair in coordinate_payload:
+            if type(pair) is not list or len(pair) != 2:
+                raise ValueError("invalid roots-of-unity generator coordinate")
+            numerator = exact_integer(pair[0], "coordinate numerator")
+            denominator = exact_integer(pair[1], "coordinate denominator", minimum=1)
+            if _gcd(numerator, denominator) != 1:
+                raise ValueError("a generator coordinate is not canonical")
+            generator_coordinates.append((numerator, denominator))
+            generator_coefficients.append(sage.QQ(numerator) / sage.QQ(denominator))
+        generator = field._from_coefficients(generator_coefficients)
+        if _element_key(generator) != tuple(generator_coordinates):
+            raise ValueError("generator coordinate reconstruction changed")
+
+        candidate_cap = exact_integer(
+            payload["candidate_cap"],
+            "candidate cap",
+            minimum=0,
+            maximum=_DETACHED_ROOTS_OF_UNITY_MAX_CANDIDATES,
+        )
+        candidates_checked = exact_integer(
+            payload["candidates_checked"],
+            "candidates checked",
+            minimum=0,
+            maximum=candidate_cap,
+        )
+        bounds_payload = payload["coefficient_bounds"]
+        if type(bounds_payload) is not list:
+            raise ValueError("invalid coefficient-bound payload")
+        coefficient_bounds = tuple(
+            exact_integer(
+                value,
+                "coefficient bound",
+                minimum=0,
+                maximum=_DETACHED_ROOTS_OF_UNITY_MAX_CANDIDATES,
+            )
+            for value in bounds_payload
+        )
+
+        record_payload = payload["prime_records"]
+        if (
+            type(record_payload) is not list
+            or len(record_payload) > _DETACHED_ROOTS_OF_UNITY_MAX_PRIME_RECORDS
+        ):
+            raise ValueError("invalid or oversized residue-prime payload")
+        prime_records: list[tuple[int, tuple[tuple[int, int], ...], int, int]] = []
+        seen_primes: set[int] = set()
+        for record in record_payload:
+            if type(record) is not dict or set(record) != {
+                "prime",
+                "factors",
+                "upper_before",
+                "upper_after",
+            }:
+                raise ValueError("invalid residue-prime record fields")
+            prime = exact_integer(
+                record["prime"],
+                "residue prime",
+                minimum=2,
+                maximum=_MAXIMUM_ROOT_OF_UNITY_PRIME,
+            )
+            if (
+                not _is_prime(prime)
+                or prime in seen_primes
+                or universal_exponent % prime == 0
+            ):
+                raise ValueError("invalid residue prime")
+            seen_primes.add(prime)
+            factor_payload = record["factors"]
+            if (
+                type(factor_payload) is not list
+                or len(factor_payload) < 1
+                or len(factor_payload) > degree
+            ):
+                raise ValueError("invalid residue factor payload")
+            factors: list[tuple[int, int]] = []
+            for factor in factor_payload:
+                if type(factor) is not dict or set(factor) != {"e", "f"}:
+                    raise ValueError("invalid residue factor fields")
+                factors.append(
+                    (
+                        exact_integer(factor["e"], "ramification index", minimum=1),
+                        exact_integer(factor["f"], "residue degree", minimum=1),
+                    )
+                )
+            if sum(e * f for e, f in factors) != degree:
+                raise ValueError(
+                    "residue factor degrees do not sum to the field degree"
+                )
+            prime_records.append(
+                (
+                    prime,
+                    tuple(factors),
+                    exact_integer(
+                        record["upper_before"], "previous upper bound", minimum=1
+                    ),
+                    exact_integer(record["upper_after"], "next upper bound", minimum=1),
+                )
+            )
+
+        if kind in ("real-place", "imaginary-quadratic-classification"):
+            if (
+                prime_records
+                or coefficient_bounds
+                or candidates_checked != 0
+                or candidate_cap != 0
+            ):
+                raise ValueError("classification certificate has extraneous evidence")
+        elif kind == "residue-upper-bound":
+            if not prime_records or coefficient_bounds:
+                raise ValueError("invalid residue-bound certificate shape")
+        elif len(coefficient_bounds) != degree:
+            raise ValueError("an embedding-box certificate needs one bound per degree")
+
+        certificate = cls(
+            kind,
+            degree,
+            signature,
+            tuple(universal_prime_powers),
+            universal_exponent,
+            tuple(generator_coordinates),
+            tuple(prime_records),
+            coefficient_bounds,
+            candidates_checked,
+            candidate_cap,
+            _issuance_token=_ROOTS_OF_UNITY_CERTIFICATE_TOKEN,
+        )
+        order = _exact_order_dividing(generator, universal_exponent)
+        if order < 1:
+            raise ValueError("the detached generator is not a root of unity")
+        result = RootsOfUnityResult(
+            _powers(generator, order),
+            generator,
+            order,
+            True,
+            "detached exact roots-of-unity certificate replay",
+            certificate,
+        )
+        if not certificate.verify(result, force_replay=True):
+            raise ValueError("detached roots-of-unity certificate replay failed")
+        return certificate
 
 
 def _isqrt(value: int) -> int:
@@ -708,6 +937,41 @@ def _canonical_torsion_generator(field: Any, generator: Any, order: int) -> Any:
     return primitive[0]
 
 
+def _replay_fast_torsion_candidate_count(
+    field: Any, universal_exponent: int, candidate_cap: int, target_order: int
+) -> int:
+    """Replay the producer's two-stage deterministic fast-candidate scan."""
+    candidates = _fast_torsion_candidates(
+        field, min(candidate_cap, _FAST_ROOT_OF_UNITY_CANDIDATES)
+    )
+    best_order = 2
+    checked = 0
+    remaining_offset = 0
+    for candidate_index in range(len(candidates)):
+        candidate_order = _exact_order_dividing(
+            candidates[candidate_index], universal_exponent
+        )
+        checked += 1
+        remaining_offset = candidate_index + 1
+        if candidate_order > best_order:
+            best_order = candidate_order
+            if best_order > 2 and best_order % 2 == 0:
+                break
+    if best_order != target_order:
+        for candidate_index in range(remaining_offset, len(candidates)):
+            candidate_order = _exact_order_dividing(
+                candidates[candidate_index], universal_exponent
+            )
+            checked += 1
+            if candidate_order > best_order:
+                best_order = candidate_order
+            if best_order == target_order:
+                break
+    if best_order != target_order:
+        raise ArithmeticError("fast torsion candidate replay did not reach its target")
+    return checked
+
+
 def _next_congruent_prime(start: int, modulus: int) -> int:
     modulus = max(1, modulus)
     candidate = max(2, start)
@@ -776,6 +1040,19 @@ def _residue_torsion_upper_bound(
 def _embedding_box_roots(
     field: Any, universal_exponent: int, candidate_cap: int
 ) -> tuple[tuple[int, ...], int, Any, int, tuple[Any, ...]]:
+    degree = int(field.degree())
+    # Every row of the inverse embedding matrix is nonzero, so its positive
+    # l1 norm has ceiling at least one.  The eventual coordinate box therefore
+    # contains at least 3^degree points.  Decline before maximal-order and
+    # exact-embedding setup when that unavoidable work already exceeds policy.
+    minimum_total = 3**degree
+    if minimum_total > candidate_cap:
+        raise _RootsOfUnityResourceLimit(
+            "the exact roots-of-unity coefficient box has at least "
+            + str(minimum_total)
+            + " candidates, exceeding max_candidates="
+            + str(candidate_cap)
+        )
     order = field.maximal_order()
     basis = tuple(order.basis())
     roots = _exact_roots(field)
@@ -928,7 +1205,13 @@ def _verify_roots_of_unity_certificate(
             bool(certificate.prime_records)
             and residue_upper == result.order
             and not certificate.coefficient_bounds
-            and certificate.candidate_cap >= 0
+            and certificate.candidates_checked
+            == _replay_fast_torsion_candidate_count(
+                field,
+                universal_exponent,
+                certificate.candidate_cap,
+                result.order,
+            )
         )
     if certificate.kind != "embedding-box-exhaustion":
         return False

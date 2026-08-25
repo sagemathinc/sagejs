@@ -4,7 +4,7 @@
   "id": "roots-of-unity-exact",
   "title": "Exact general roots of unity",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Implement a bounded replayable exact roots-of-unity producer for higher-degree totally imaginary number fields, completing cyclotomic quartic class/unit computations without polynomial allowlists",
   "base_commit": "483116bb12acdb6f0aec03f993a9be1a42e89b36",
@@ -34,6 +34,7 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/number-field-roots-of-unity.cjs",
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
@@ -87,16 +88,38 @@
       "commit": "483116bb12acdb6f0aec03f993a9be1a42e89b36",
       "workspace_fingerprint": "f3a6362b553f471e44758d463e30fcf1d9ac49770fb2483d72124068c05a4178",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-roots-of-unity.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.027,
+      "started_at": "2026-08-25T07:41:37.500Z",
+      "commit": "1900da11db15c9d799b9b0428956aa3a8330eefd",
+      "workspace_fingerprint": "2f062c5e52375c6619fb33dda2208274d903b3326800e61d504a9a1986211b49",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 31.92,
+      "started_at": "2026-08-25T07:42:23.046Z",
+      "commit": "1900da11db15c9d799b9b0428956aa3a8330eefd",
+      "workspace_fingerprint": "2f062c5e52375c6619fb33dda2208274d903b3326800e61d504a9a1986211b49",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Adds a general exact roots-of-unity producer with a universal phi exponent, certified residue-field upper bounds, deterministic generators, bounded embedding-box exhaustion, and authenticated replayable certificates. Exact completion now covers cyclotomic and translated quartics, including class/unit completion for x^4 + 1, while retaining real-place and imaginary-quadratic behavior. Focused tests, strict Python, the full native suite, and a production/fallback benchmark pass.",
+    "summary": "Adds a general exact roots-of-unity producer with a universal phi exponent, certified residue-field upper bounds, deterministic generators, bounded embedding-box exhaustion, and authenticated replayable certificates. The proof-authority follow-up removes mutable positive verification caches, makes proof status immutable, adds strict detached JSON reconstruction with full mathematical replay, and declines embedding setup before work when the rigorous 3^degree minimum box exceeds policy. Exact completion covers cyclotomic and translated quartics, including class/unit completion for x^4 + 1, while retaining real-place and imaginary-quadratic behavior.",
     "risks": [
-      "The class-group branch's number-field-global-arithmetic lazy bundle is 1,409,552 bytes after this source change, 9,552 bytes above its integration-owned 1,400,000-byte budget; the integration lane approved raising that narrow budget to 1,420,000 and must rerun architecture:check after cherry-pick.",
-      "Exact embedding-box exhaustion is deliberately capped and can return an honest incomplete result for fields whose certified coordinate box exceeds max_candidates; residue-field certification is the normal fast path."
+      "This lane's old package manifest reports 1,420,179 source bytes against a 1,400,000-byte lazy budget. The integration branch already carries a 1,450,000-byte number-field-global-arithmetic budget; architecture:check must be rerun after cherry-pick.",
+      "Exact embedding-box exhaustion is deliberately capped and can return an honest incomplete result for fields whose certified coordinate box exceeds max_candidates; residue-field certification is the normal fast path.",
+      "The full native suite passed on the initial exact producer commit before the pure-Python proof-authority follow-up. The integration lane is responsible for the cumulative native receipt and explicitly requested no redundant broad native rerun here."
     ],
     "next_steps": [
-      "Cherry-pick this commit into class-group, raise only number-field-global-arithmetic's lazy budget from 1,400,000 to 1,420,000, and rerun pnpm architecture:check.",
+      "Cherry-pick both roots commits into class-group and rerun pnpm architecture:check under the integration branch's 1,450,000-byte narrow lazy budget.",
+      "Record the integration branch's cumulative native validation after the proof-authority follow-up is present.",
       "Use the certificate payload and roots benchmark when profiling higher-degree class/unit completion; do not promote capped fallback results to complete."
     ]
   }
