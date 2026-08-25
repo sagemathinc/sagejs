@@ -78,7 +78,9 @@ print(
             "unit_rank": unit_group.unit_rank,
             "torsion_order": unit_group.torsion.order,
             "zeta_absolute_error": configuration["absolute_error"],
-            "zeta_absolute_error_history": configuration["absolute_error_history"],
+            "zeta_absolute_error_history": configuration.get(
+                "absolute_error_history", [configuration["absolute_error"]]
+            ),
             "zeta_threshold": certificate.analytic_proof["zeta_log_residue"][
                 "threshold"
             ],
