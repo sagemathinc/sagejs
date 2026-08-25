@@ -27,9 +27,11 @@ After this work:
 This is a direct greenfield correction. The completed tree should not retain
 compatibility aliases for the old toolchain layout or environment variables.
 
-## Current dependency boundary
+## Planning-baseline dependency boundary
 
-CoWasm currently enters Sage.js through three independent paths.
+At the start of this migration, CoWasm entered Sage.js through three
+independent paths. This section records that baseline for auditability; the
+completion evidence below describes the resulting tree.
 
 ### 1. Build-time toolchain and recipes
 
@@ -572,23 +574,67 @@ dynamic linker, CPython, POSIX process model, shell, or package ecosystem.
 - Deleting the separately licensed benchmark corpus merely because its source
   repository is CoWasm.
 
+## Completion evidence (2026-08-25)
+
+The implementation was completed and released from implementation commit
+`8c065888a8a5627e5b75b0f1f3747b7c7dbb2876`. The Sage.js-owned toolchain lock
+has identity
+`bfd7e48e622a912f95ef24f64e93c85f3838459b8f75e47590f658b1feb84c74`.
+The exact 67-asset production artifact has identity
+`sha256:7c241676313f46c3a26971d5952cfcda3d503431e8d67e62a764ac7847b94eb9`
+and build-receipt SHA-256
+`c1a52bfb7f954ca06b44ead5ce1062305bea8acfe5c0d781d33043fe2662c236`.
+
+- The guarded source-mirror workflow populated and verified every locked
+  object in workflow run
+  [32789679400](https://github.com/sagemathinc/sagejs/actions/runs/32789679400).
+- Release workflow run
+  [32793971676](https://github.com/sagemathinc/sagejs/actions/runs/32793971676)
+  passed direct mirror-only builds on Linux
+  x86-64, Linux arm64, and macOS arm64; authenticated artifact validation on
+  Windows x64; two clean canonical reproducibility builds; cross-platform
+  receipt comparison; the native public oracle; Node-Wasm CLI parity; and all
+  browser release gates.
+- A separate local reproduction used distinct source roots and distinct
+  toolchain roots and produced byte-identical complete 67-file production
+  directories, including `build-receipt.json`. Generated source metadata is
+  canonicalized under `/sagejs/source`, and receipt generation rejects leaked
+  repository or toolchain paths.
+- The production modules import exactly the 13 reviewed WASI Preview 1
+  functions. The first-party host passed its ABI, adversarial filesystem,
+  allocated-object quota, real FLINT temporary-file, interruption, offline,
+  upgrade, rollback, serialization, and cache-integrity tests.
+- Local validation passed the 177-test `packages/flint-wasm` suite, all 58
+  portable test files, the complete native suite, strict baselib analysis,
+  compiler tests, architecture checks, artifact/topology budgets, and the
+  original `random_matrix(QQ, 2).charpoly()` resource-route regression.
+- The exact public corpus passed 35 of 35 cases with no page errors in
+  Chromium, Firefox, and WebKit. All 12 browser performance shards passed for
+  the 20-case workload corpus, followed by fail-closed workload enforcement.
+  Chromium security/offline checks and WebKit file-origin,
+  memory-pressure, interruption, reset, and recovery checks also passed.
+- `wasi-js`, `@cowasm/memfs`, CoWasm toolchain resolution, legacy cache keys,
+  checkout probing, bundles, wrappers, recipes, and environment variables are
+  absent from every build and runtime path. The separately licensed
+  `bench/cowasm` programs remain provenance-only mathematical test data.
+
 ## Final acceptance checklist
 
-- [ ] `rg -i cowasm` finds only allowed benchmark provenance, licenses, and
+- [x] `rg -i cowasm` finds only allowed benchmark provenance, licenses, and
       historical migration notes.
-- [ ] No CoWasm checkout, Git bundle, workspace lock, wrapper, recipe, package,
+- [x] No CoWasm checkout, Git bundle, workspace lock, wrapper, recipe, package,
       cache key, or environment variable participates in a build.
-- [ ] `wasi-js` and `@cowasm/memfs` are absent from package manifests,
+- [x] `wasi-js` and `@cowasm/memfs` are absent from package manifests,
       `pnpm-lock.yaml`, and production bundles; `pnpm why` and bundle inspection
       show that no obsolete Node/browser filesystem shim remains reachable.
-- [ ] A mirror-only clean build succeeds on Linux x86-64, Linux arm64, and
+- [x] A mirror-only clean build succeeds on Linux x86-64, Linux arm64, and
       macOS arm64.
-- [ ] Windows consumes and validates the same authenticated artifact.
-- [ ] Two clean canonical Linux x86-64 production directories are
+- [x] Windows consumes and validates the same authenticated artifact.
+- [x] Two clean canonical Linux x86-64 production directories are
       byte-identical; arm64 Linux and macOS receipts are semantically identical,
       with any byte difference explicitly reviewed.
-- [ ] Node and all required browser parity/security suites pass.
-- [ ] Mathematical oracles and source-transparent fallback tests pass.
-- [ ] Artifact size, startup, operation, memory, and filesystem budgets pass.
-- [ ] Documentation describes only the Sage.js-owned toolchain and runtime.
-- [ ] The old oracle and every permanent compatibility shim are deleted.
+- [x] Node and all required browser parity/security suites pass.
+- [x] Mathematical oracles and source-transparent fallback tests pass.
+- [x] Artifact size, startup, operation, memory, and filesystem budgets pass.
+- [x] Documentation describes only the Sage.js-owned toolchain and runtime.
+- [x] The old oracle and every permanent compatibility shim are deleted.
