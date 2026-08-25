@@ -1771,6 +1771,33 @@ try:
 except engine.components.analytic.AnalyticResourceError:
     pass
 
+try:
+    engine.components.analytic.certify_unit_saturation_index(
+        K,
+        engine.order,
+        initial_units,
+        class_number=1,
+        roots_of_unity=int(torsion.order),
+        precision_bits=96,
+        maximum_precision_bits=256,
+        zeta_absolute_error="1/2",
+        zeta_absolute_error_history=("1", "1/2"),
+        zeta_limits=engine.components.analytic.ZetaLogResidueLimits(
+            maximum_prime_bound=20000,
+            maximum_precision_bits=64,
+        ),
+        workspace=engine._analytic_workspace,
+        generation_evidence=generation_evidence,
+        generation_verifier=verify_generation,
+        proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
+        _precomputed_regulator=live_regulator,
+        _precomputed_zeta_log_residue=live_zeta,
+        _precomputed_index=live_index,
+    )
+    raise AssertionError("an unreplayable precomputed precision was issued")
+except ValueError:
+    pass
+
 # A cache poisoned after analytic computation but before certificate issuance
 # cannot become live semantic authority, even on the precomputed fast path.
 preseal_ball = next(iter(engine._analytic_workspace._finite_terms.values()))[0]
@@ -1849,8 +1876,25 @@ assert not detached.verify(
     cancelled=lambda: True,
 )
 
-# A rehashed but non-halving detached history has no mathematical authority.
 import copy
+
+# Canonical top-level authentication still fails closed on malformed nested
+# proof structure instead of exposing lookup errors through certificate replay.
+malformed_payload = copy.deepcopy(detached_payload)
+del malformed_payload["analytic_proof"]["hr_index"]
+malformed_body = dict(malformed_payload)
+del malformed_body["content_sha256"]
+malformed_payload["content_sha256"] = engine.components.analytic._content_hash(
+    malformed_body
+)
+malformed = engine.components.analytic.UnitSaturationIndexCertificate.from_dict(
+    malformed_payload
+)
+assert not malformed.verify(
+    K, engine.order, initial_units, generation_verifier=verify_generation
+)
+
+# A rehashed but non-halving detached history has no mathematical authority.
 forged_payload = copy.deepcopy(detached_payload)
 forged_payload["configuration"]["zeta"]["absolute_error"] = "1/3"
 forged_payload["configuration"]["zeta"]["absolute_error_history"] = [

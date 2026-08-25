@@ -3721,7 +3721,22 @@ class ZetaLogResidueWorkspace:
                 )
                 for key, value in sorted(self._finite_terms.items())
             ),
+            self._regulator_cache_snapshot(),
         )
+
+    def _regulator_cache_snapshot(self) -> tuple[Any, ...]:
+        entries: list[Any] = []
+        for key, value in sorted(self._regulators.items()):
+            regulator = value[0]
+            authenticated_payload = value[1]
+            entries.append(
+                (
+                    key,
+                    _canonical_json(regulator.to_dict()),
+                    authenticated_payload,
+                )
+            )
+        return tuple(entries)
 
     def _issue_proof_cache_authority(self, token: object) -> None:
         if token is not _ZETA_PROOF_CACHE_AUTHORITY_TOKEN:
@@ -3734,7 +3749,9 @@ class ZetaLogResidueWorkspace:
 
     def _shared_snapshot(self) -> tuple[Any, ...]:
         self._validate_proof_cache()
-        return self._proof_cache_authority.payload
+        # Regulator entries are identity-sensitive to live unit objects and
+        # remain local; the first six components are field-only zeta state.
+        return self._proof_cache_authority.payload[:6]
 
     def _restore_shared_snapshot(self, snapshot: tuple[Any, ...]) -> None:
         (
@@ -3861,6 +3878,7 @@ class ZetaLogResidueWorkspace:
         try:
             if callable(cancelled) and cancelled():
                 raise AnalyticResourceError("regulator computation was cancelled")
+            self._validate_proof_cache()
             factored_module = None
             try:
                 factored_module = __import__(
@@ -3886,6 +3904,7 @@ class ZetaLogResidueWorkspace:
                 int(maximum_precision_bits),
                 int(maximum_determinant_states),
             )
+            self._validate_proof_cache()
             cached = self._regulators.get(key)
             if cached is not None:
                 regulator, authenticated_payload = cached
@@ -3905,10 +3924,13 @@ class ZetaLogResidueWorkspace:
                 cancelled=cancelled,
                 logarithm_workspace=self.factored_logarithm_workspace,
             )
-            self._regulators[key] = (
-                regulator,
-                _canonical_json(regulator.to_dict()),
-            )
+            authenticated_payload = _canonical_json(regulator.to_dict())
+            # Unit logarithm providers are external callbacks.  Authenticate
+            # all old entries before admitting this result and issuing a new
+            # complete local authority.
+            self._validate_proof_cache()
+            self._regulators[key] = (regulator, authenticated_payload)
+            self._issue_proof_cache_authority(_ZETA_PROOF_CACHE_AUTHORITY_TOKEN)
             return regulator
         finally:
             self.regulator_nanoseconds += time.perf_counter_ns() - started
@@ -5068,6 +5090,8 @@ def adaptive_hr_index(
             limits=limits,
             workspace=workspace,
         )
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("adaptive hR completion was cancelled")
         error_history.append(error_text)
         try:
             index = validate_hr_index(
@@ -5147,6 +5171,13 @@ def _unit_index_replay_parameters(
         configuration["hr_precision_bits"], "hR validation precision"
     )
     if (
+        regulator_precision < 16
+        or hr_precision < 16
+        or regulator_tolerance < 1
+        or regulator_maximum_precision < regulator_precision
+    ):
+        raise ValueError("global index certificate precision bounds are invalid")
+    if (
         min(regulator_precision, regulator_tolerance, regulator_maximum_precision) < 1
         or max(
             regulator_precision,
@@ -5200,6 +5231,8 @@ def _unit_index_replay_parameters(
     zeta_precision = _payload_integer(
         zeta_configuration["precision_bits"], "zeta precision"
     )
+    if zeta_precision < 16 or maximum_zeta_precision < zeta_precision:
+        raise ValueError("global index certificate zeta precision bounds are invalid")
     if (
         maximum_prime_bound > _MAXIMUM_ANALYTIC_REPLAY_PRIME_BOUND
         or maximum_degree > _MAXIMUM_SATURATION_REPLAY_DEGREE
@@ -5624,6 +5657,8 @@ class UnitSaturationIndexCertificate:
             )
             return index_bound == self._index_bound and proof == self._analytic_proof
         except (
+            KeyError,
+            IndexError,
             TypeError,
             ValueError,
             ArithmeticError,

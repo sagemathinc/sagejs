@@ -929,6 +929,49 @@ assert cached_regulator.to_dict() == warm_regulator.to_dict()
 assert counted_unit.calls == [96]
 assert workspace.diagnostics()["regulator_calls"] == 2
 assert workspace.diagnostics()["regulator_cache_hits"] == 1
+
+# Replacing both a cached regulator and its caller-visible JSON sibling cannot
+# bless a different hR value: the owner-bound authority retains the admitted
+# canonical regulator payload independently.
+regulator_key = next(iter(workspace._regulators))
+saved_regulator_entry = workspace._regulators[regulator_key]
+forged_regulator = RegulatorEnclosure(
+    warm_regulator.ball * RealBall(2, precision_bits=96),
+    1,
+    [96],
+    weighted_complex_places=True,
+)
+workspace._regulators[regulator_key] = (
+    forged_regulator, module._canonical_json(forged_regulator.to_dict())
+)
+try:
+    workspace.regulator_from_factored_units(
+        [counted_unit], unit_rank=1, precision_bits=96,
+        absolute_tolerance_bits=60, maximum_precision_bits=192,
+    )
+    raise AssertionError("a paired cached-regulator replacement was accepted")
+except AnalyticCertificationError:
+    pass
+workspace._regulators[regulator_key] = saved_regulator_entry
+
+class ReentrantFactoredUnit(CountedFactoredUnit):
+    def archimedean_logarithms(self, precision):
+        workspace._regulators[regulator_key] = (
+            forged_regulator, module._canonical_json(forged_regulator.to_dict())
+        )
+        return [RealBall("1", precision_bits=precision)]
+
+try:
+    workspace.regulator_from_factored_units(
+        [ReentrantFactoredUnit(2)], unit_rank=1, precision_bits=96,
+        absolute_tolerance_bits=60, maximum_precision_bits=192,
+    )
+    raise AssertionError("a reentrant regulator callback mutation was admitted")
+except AnalyticCertificationError:
+    pass
+finally:
+    workspace._regulators[regulator_key] = saved_regulator_entry
+
 try:
     workspace.regulator_from_factored_units(
         [counted_unit], unit_rank=1, precision_bits=96,
