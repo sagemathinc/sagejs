@@ -620,8 +620,8 @@ function main() {
 
   const hecke = unavailable(
     "Hecke/Oscar",
-    "julia",
-    "Julia is not installed on the capture host; Hecke remains an optional third family and is not counted as agreement",
+    process.env.JULIA_ORACLE || "/home/user/upstream/julia-1.10.10/bin/julia",
+    "this rich ideal-map oracle harness has no Hecke/Oscar adapter; use run-class-unit-corpus.cjs for direct scalar comparator capability and timings",
   );
   hecke.source = {
     hecke_version: "0.40.0",

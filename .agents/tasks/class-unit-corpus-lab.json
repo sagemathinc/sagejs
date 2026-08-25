@@ -1,0 +1,57 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-unit-corpus-lab",
+  "title": "Class Unit Corpus Lab",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make the class/unit benchmark lab reproducible: versioned stratified 100-field LMFDB cubic fixture with smoke/tune/held-out tiers, replay/checksums, offline validation, evidence schema, direct CAS comparator plumbing, and fail-closed exact-source/host receipts.",
+  "base_commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+  "claims": [
+    "bench/class-unit-groups/download-lmfdb-number-fields.cjs",
+    "bench/class-unit-groups/class-unit-evidence-schema.cjs",
+    "bench/class-unit-groups/run-class-unit-corpus.cjs",
+    "bench/class-unit-groups/run-oracles.cjs",
+    "test/fixtures/number-field-lmfdb-cubic-100.json",
+    "test/number-field-class-unit-corpus.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/competitive-class-and-unit-groups-strategy.md",
+    "https://beta.lmfdb.org/api/options",
+    "https://beta.lmfdb.org/api/stats"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "lmfdb",
+      "sage-pari",
+      "direct-gp",
+      "magma",
+      "hecke",
+      "oscar"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/class-unit-groups/run-class-unit-corpus.cjs --tier smoke --limit 1 --proof both --systems direct-gp --samples 5 --output /tmp/class-unit-gp-receipt.json",
+    "node --test test/number-field-class-unit-corpus.cjs test/number-field-lmfdb-class-number-corpus.cjs",
+    "node bench/class-unit-groups/run-class-unit-corpus.cjs --dry-run --tier smoke --limit 1 --proof both --systems sagejs,sage-pari,direct-gp,magma,hecke,oscar --output /tmp/class-unit-corpus-dry-run.json"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
