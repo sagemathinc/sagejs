@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any, Mapping
 
 import sagejs as sage
@@ -98,7 +99,9 @@ def run() -> dict[str, int | bool]:
 
     fixture = _fixture()
     json_module = __import__("json")
-    fixture_path = __file__.rsplit("/", 1)[0] + "/testdata/deficiency.json"
+    fixture_path = os.path.join(
+        os.path.dirname(__file__), "testdata", "deficiency.json"
+    )
     with open(fixture_path, encoding="utf-8") as handle:
         disk_fixture = json_module.load(handle)
     assert disk_fixture == fixture
