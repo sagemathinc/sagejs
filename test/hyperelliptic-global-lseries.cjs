@@ -1,6 +1,11 @@
 // sagejs-test-tier: integration
 "use strict";
 
+// This file exercises the mathematical L-series capability. Receipt-policy
+// selection and fail-closed fallback are covered by their dedicated dispatch
+// tests, so keep the capable development path available here.
+process.env.SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY = "off";
+
 const assert = require("node:assert/strict");
 const test = require("node:test");
 

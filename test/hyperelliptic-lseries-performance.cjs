@@ -1,6 +1,11 @@
 // sagejs-test-tier: integration
 "use strict";
 
+// These tests measure and differentially check the analytic implementation,
+// not release receipt selection. Keep the capable development path enabled;
+// fail-closed policy behavior is tested separately.
+process.env.SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY = "off";
+
 const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const { join } = require("node:path");

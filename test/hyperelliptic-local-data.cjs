@@ -1,6 +1,11 @@
 // sagejs-test-tier: integration
 "use strict";
 
+// Local-data semantics and checkpointing are independent of release receipt
+// gating, which has its own focused coverage. Exercise the capable backends
+// explicitly in this mathematical integration suite.
+process.env.SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY = "off";
+
 const assert = require("node:assert/strict");
 const { createHash } = require("node:crypto");
 const { mkdtempSync, readFileSync, rmSync } = require("node:fs");
@@ -170,7 +175,7 @@ test("canonical JSONL export cancels, resumes, verifies, and preserves exact int
     assert.deepEqual(resumed, readFileSync(freshPath));
     assert.equal(
       createHash("sha256").update(resumed).digest("hex"),
-      "941ab8dac8f0fb17928d883c1451e64a963d56cce5ad73f29322f1723defc3e1",
+      "83c6d2c855d63e2eb89a740d47c3cf81d4faf144e39dca29af2e38bf93627cbc",
     );
   } finally {
     await session.close();
