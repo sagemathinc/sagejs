@@ -8,7 +8,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Readable } from "node:stream";
+import { PassThrough, Readable } from "node:stream";
 import test from "node:test";
 
 import {
@@ -129,6 +129,32 @@ test("a timeout remains observable and the replaced session is closed", async ()
   assert.equal(receipt.timeout_ms, 5);
   assert.equal(receipt.session_recovered, true);
   assert.equal(receipt.instrumentation, null);
+});
+
+test("interactive Wasm evaluation has an unambiguous prompt", async () => {
+  const input = new PassThrough();
+  input.isTTY = true;
+  const output = new PassThrough();
+  let text = "";
+  output.setEncoding("utf8");
+  output.on("data", (chunk) => { text += chunk; });
+  input.end(":quit\n");
+
+  let closed = false;
+  const result = await runCli({
+    argv: [],
+    input,
+    output,
+    errorOutput: sink(),
+    createSession: async () => ({ async close() { closed = true; } }),
+    verifyArtifact: async () => artifactEvidence,
+  });
+  assert.equal(result.status, "repl");
+  assert.equal(closed, true);
+  assert.match(
+    text,
+    /^Sage\.js production WebAssembly \(receipt-authenticated browser artifact\)\nwasm: /,
+  );
 });
 
 async function fixture() {

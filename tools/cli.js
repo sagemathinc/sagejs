@@ -140,6 +140,10 @@ function print_top_level_usage() {
     "defaults to Sage syntax; .py files use Python and .sage files use Sage.\n",
   );
 
+  console.log(label("Execution backend:"));
+  console.log("  --wasm          run the receipt-authenticated browser Wasm artifact");
+  console.log("                  (must be the first option)\n");
+
   console.log(label("Language modes:"));
   console.log("  --sage          force Sage/Python mathematical syntax");
   console.log("  --python        ordinary Python syntax and division");
@@ -167,6 +171,7 @@ function print_top_level_usage() {
 
   console.log(label("Examples:"));
   console.log("  " + command(executable));
+  console.log("  " + command(executable + " --wasm"));
   console.log("  " + command(executable + " --python"));
   console.log("  " + command(executable + " program.sage"));
   console.log("  " + command(executable + " --wolfram program.wl"));

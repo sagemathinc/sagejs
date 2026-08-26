@@ -22,9 +22,11 @@ function usage() {
   return `Sage.js production WebAssembly kernel for Node
 
 Usage:
+  sagejs --wasm [OPTIONS] [FILE]
+  sagejs --wasm [OPTIONS] -c SOURCE
+  echo 'factor(2026)' | sagejs --wasm [OPTIONS]
   sagejs-wasm [OPTIONS] [FILE]
   sagejs-wasm [OPTIONS] -c SOURCE
-  echo 'factor(2026)' | sagejs-wasm [OPTIONS]
 
 Options:
   -c SOURCE                 Evaluate SOURCE.
@@ -353,11 +355,13 @@ export async function runCli({
       );
       return { status: "evaluated", artifact };
     }
-    output.write("Sage.js production WebAssembly (Node host)\n");
+    output.write(
+      "Sage.js production WebAssembly (receipt-authenticated browser artifact)\n",
+    );
     const readline = createInterface({ input, output });
     try {
       while (true) {
-        const source = await readline.question("sage: ");
+        const source = await readline.question("wasm: ");
         const command = source.trim();
         if (["quit", "exit", ":quit", ":exit"].includes(command)) break;
         if (command === ":reset") {
