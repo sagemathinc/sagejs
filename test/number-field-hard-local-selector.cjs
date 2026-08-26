@@ -3,15 +3,15 @@
 
 const assert = require("node:assert/strict");
 const { execFileSync } = require("node:child_process");
-const { existsSync, readFileSync } = require("node:fs");
+const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
-const python = process.env.SAGEJS_PYTHON ??
-  (existsSync("/usr/bin/python3") ? "/usr/bin/python3" : "python3");
+const python = process.env.SAGEJS_PYTHON ?? pythonExecutable();
 const fixture = JSON.parse(
   readFileSync(join(__dirname, "fixtures", "number-field-round4.json"), "utf8"),
 );

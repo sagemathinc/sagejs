@@ -14,6 +14,7 @@ const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
 const modulePath = join(
@@ -197,8 +198,7 @@ print("ok")
 `;
 
 test("ordinary FLINT primitive policy is CPython-parseable", () => {
-  const python = process.env.PYTHON ||
-    (process.platform === "win32" ? "python" : "/usr/bin/python3");
+  const python = pythonExecutable();
   const bootstrap = String.raw`
 import importlib.util
 spec = importlib.util.spec_from_file_location("flint_policy", ${JSON.stringify(modulePath)})

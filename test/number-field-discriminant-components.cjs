@@ -13,6 +13,7 @@ const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
 const decompositionPath = join(
@@ -70,8 +71,7 @@ function runSagejs(source) {
 }
 
 function runCPython(source) {
-  const python = process.env.PYTHON ||
-    (process.platform === "win32" ? "python" : "/usr/bin/python3");
+  const python = pythonExecutable();
   const bootstrap = String.raw`
 import importlib.util
 import sys

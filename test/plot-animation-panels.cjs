@@ -14,6 +14,7 @@ const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
 const documented = JSON.parse(
@@ -49,8 +50,7 @@ function runSagejs(source) {
 }
 
 function runCPython(source) {
-  const executable = process.env.PYTHON ||
-    (process.platform === "win32" ? "python" : "/usr/bin/python3");
+  const executable = pythonExecutable();
   const prefix = String.raw`
 import collections.abc, json, math, sys, typing
 sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})
