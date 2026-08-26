@@ -384,7 +384,7 @@ test("an enabled empty policy gates auto while explicit accelerators remain coll
   assert.equal(observed.group_explicit, "smalljac");
 });
 
-test("absent and disabled policies preserve development auto for receipt collection", (context) => {
+test("absent policy preserves development auto while the merged release fails closed", (context) => {
   const item = enabledEmptyPolicy();
   context.after(() => fs.rmSync(item.root, { recursive: true, force: true }));
   const absent = parseSageJson(runSage(selectorWitness, {
@@ -400,14 +400,14 @@ test("absent and disabled policies preserve development auto for receipt collect
   assert.equal(absent.group_auto, "smalljac");
 
   const release = parseSageJson(runSage(selectorWitness));
-  assert.equal(release.decision.allowed, true);
-  assert.equal(release.decision.reason, "policy-disabled");
-  assert.equal(release.matched_decision.allowed, true);
-  assert.equal(release.matched_decision.reason, "policy-disabled");
-  assert.equal(release.prepared[0], "native");
-  assert.equal(release.rational_auto, "smalljac");
-  assert.equal(release.kummer_selected, release.kummer_compiled);
-  assert.equal(release.group_auto, "smalljac");
+  assert.equal(release.decision.allowed, false);
+  assert.equal(release.decision.reason, "unreceipted-fallback");
+  assert.equal(release.matched_decision.allowed, false);
+  assert.equal(release.matched_decision.reason, "unreceipted-fallback");
+  assert.deepEqual(release.prepared, ["reference", "unreceipted-fallback"]);
+  assert.equal(release.rational_auto, "exhaustive");
+  assert.equal(release.kummer_selected, false);
+  assert.equal(release.group_auto, "squarefree-order");
 });
 
 test("the isolated task runtime installs the checked policy before callables", (context) => {
@@ -463,12 +463,15 @@ test("trusted startup rejects a provider installed before Sage.js", (context) =>
   assert.match(result.stderr, /existed before trusted startup/);
 });
 
-test("the merged release policy remains disabled pending exact combined receipts", () => {
+test("the merged release policy has no enabled envelopes pending exact receipts", () => {
   const candidate = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
-  assert.equal(candidate.enabled, false);
-  assert.equal(candidate.source_bundle, null);
+  assert.equal(candidate.enabled, true);
+  assert.equal(
+    candidate.source_bundle.sha256,
+    "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+  );
   assert.deepEqual(candidate.entries, []);
   assert(candidate.source_bundle_contract.paths.includes(
     "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",

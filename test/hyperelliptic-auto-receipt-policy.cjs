@@ -199,13 +199,19 @@ function exactQuery(bundleSha = null) {
   };
 }
 
-test("the checked-in release policy fails closed after the combined source merge", () => {
+test("the checked-in release policy gates auto after the combined source merge", () => {
   const raw = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
-  const policy = verifyPolicy(raw, { root: ROOT });
-  assert.equal(policy.enabled, false);
-  assert.equal(policy.source_bundle, null);
+  const policy = verifyPolicy(raw, {
+    root: ROOT,
+    sourceCommit: raw.source_bundle.source_commit,
+  });
+  assert.equal(policy.enabled, true);
+  assert.equal(
+    policy.source_bundle.sha256,
+    "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+  );
   assert.equal(policy.entries.length, 0);
   assert.equal(policy.verified_receipts.length, 0);
   assert(Object.isFrozen(policy));
