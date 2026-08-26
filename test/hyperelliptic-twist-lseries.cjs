@@ -1,6 +1,10 @@
 // sagejs-test-tier: integration
 "use strict";
 
+// This suite checks native Arb, inverse-Mellin, and twist mathematics rather
+// than release receipt selection, which has separate focused coverage.
+process.env.SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY = "off";
+
 const assert = require("node:assert/strict");
 const { mkdtempSync, readFileSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -32,7 +36,8 @@ test("native Arb values and jets agree with the readable genus-2 evaluator", asy
     );
     assert.equal(
       result.repr,
-      "(True, True, 'native-arb-central-mellin-weights', True, True, False, True, 3)",
+      "(True, True, 'native-arb-universal-central-taylor-weights', True, " +
+        "True, False, True, 3)",
     );
   } finally {
     await session.close();
