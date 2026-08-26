@@ -4,7 +4,7 @@
   "id": "quartic-class-number-projection",
   "title": "Quartic Class Number Projection",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Optimize the authenticated resumable quartic class-number-only path and reuse bounded Minkowski state without duplicating proof-object construction",
   "base_commit": "d3e81c7b28af2ff55f1bf3f4457100fec7b549ab",
@@ -38,10 +38,38 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 885.661,
+      "started_at": "2026-08-26T18:14:21.398Z",
+      "commit": "9ea52d6781c99c06c768beaaef556c7b12e7c530",
+      "workspace_fingerprint": "b762afb738347dd013a362825130e40c146a7a91dbe6e48a411f6fb911ecd88f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.328,
+      "started_at": "2026-08-26T19:01:56.925Z",
+      "commit": "9ea52d6781c99c06c768beaaef556c7b12e7c530",
+      "workspace_fingerprint": "b762afb738347dd013a362825130e40c146a7a91dbe6e48a411f6fb911ecd88f",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented and integrated an ordinary-Python authenticated quartic class-number projection that carries one bounded Minkowski factor base and exact relation prefix into the general engine, pauses after exact saturation for scalar-only requests, and constructs deferred proof objects only when a class group is requested. The five-field, two-proof-mode benchmark passed with geometric-mean new/old scalar wall ratio 0.688785; the real h=2 quartic improved by about 3.4x, x^4+2 improved by 24-28%, and every route preserved exact output and detached replay. Frozen source commit 9ea52d6781c99c06c768beaaef556c7b12e7c530 has focused, strict, architecture (after the integration-owned ratchet), and full native coverage.",
+    "risks": [
+      "The complex h=2 discriminant-2889 control is intentionally near-neutral at 1.012-1.039x rather than faster, but remains below the 1.10 per-case regression gate.",
+      "The cumulative changed suite reached two pre-existing standalone FLINT compiler-fixture failures and two pre-existing checkpoint-resume assertions; the checkpoint failures reproduce identically on detached exact base d3e81c7b, while the frozen source full native suite passes.",
+      "A later class-group request still pays authenticated certificate and public proof materialization; this change optimizes the scalar request and reuses its mathematical state rather than weakening later replay."
+    ],
+    "next_steps": [
+      "Extend the benchmark to a stratified higher-discriminant quartic corpus and use phase counters to choose the next generic policy boundary.",
+      "Profile the remaining first class-group materialization and detached-replay cost against PARI after the scalar fast path, without adding compiler/native code absent a measured limitation."
+    ]
   }
 }
