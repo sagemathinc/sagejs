@@ -4,7 +4,7 @@
   "id": "quartic-minkowski-public-class-group",
   "title": "Quartic Minkowski public class groups",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Return a complete exact public IdealClassGroup directly from a successful bounded quartic Minkowski certificate, with independent proof replay and safe fallback",
   "base_commit": "185db40d68d62e824e57d8dab8ca0a1d71fa9038",
@@ -33,13 +33,65 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/number-field-quartic-minkowski-public-class-group.cjs",
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "env SAGEJS_USE_SOURCE=1 ./bin/sagejs --python bench/class-unit-groups/quartic-minkowski-public-class-group.py"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/number-field-quartic-minkowski-public-class-group.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.523,
+      "started_at": "2026-08-26T08:06:46.819Z",
+      "commit": "c2302201ee09fe2d131ebbab92794e5ae5d2b7d7",
+      "workspace_fingerprint": "95f5992e8d0ac2bdbdbc1af06adb753b7003ee3f454f74651094914f9c8b173d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_USE_SOURCE=1 ./bin/sagejs --python bench/class-unit-groups/quartic-minkowski-public-class-group.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 132.001,
+      "started_at": "2026-08-26T08:07:14.509Z",
+      "commit": "c2302201ee09fe2d131ebbab92794e5ae5d2b7d7",
+      "workspace_fingerprint": "95f5992e8d0ac2bdbdbc1af06adb753b7003ee3f454f74651094914f9c8b173d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.016,
+      "started_at": "2026-08-26T08:09:35.058Z",
+      "commit": "c2302201ee09fe2d131ebbab92794e5ae5d2b7d7",
+      "workspace_fingerprint": "95f5992e8d0ac2bdbdbc1af06adb753b7003ee3f454f74651094914f9c8b173d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 898.346,
+      "started_at": "2026-08-26T08:10:21.225Z",
+      "commit": "c2302201ee09fe2d131ebbab92794e5ae5d2b7d7",
+      "workspace_fingerprint": "95f5992e8d0ac2bdbdbc1af06adb753b7003ee3f454f74651094914f9c8b173d",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "A successful bounded quartic Minkowski class-number-one result now becomes a genuine exact public IdealClassGroup without entering the complete class/unit engine. The group exposes exact invariants, arbitrary ideal discrete logs with principal witnesses, live verification, cancellation-aware detached JSON proof replay, and fresh caller-isolated wrappers. Exact-source x^4+2 medians improved from 4.335 to 0.668 seconds conditionally and 6.554 to 0.688 seconds exactly; the mixed quartic improved from 0.54-0.56 seconds to 0.067-0.069 seconds.",
+    "risks": [
+      "This path applies only when the bounded certificate proves class number one; nontrivial quartic groups continue through the unchanged class/unit engine.",
+      "Mapping an arbitrary ideal uses the existing exhaustive total ideal reducer. It is exact and cancellable at its existing boundary, but an unusually difficult principal ideal can still take substantial time.",
+      "The number-field-global-arithmetic package is 1,579,998 / 1,580,000 bytes after this slice, so any adjacent integration source growth needs a deliberate narrow budget adjustment or source reduction.",
+      "pnpm test:changed built the exact source and passed all 61 unit assertions reached before stopping solely because the new focused test is absent from the shared manifest outside this lane's claims."
+    ],
+    "next_steps": [
+      "Register test/number-field-quartic-minkowski-public-class-group.cjs in the shared test manifest during integration.",
+      "Retain one sealed successful quartic certificate across scalar and public observations so class_number followed by class_group does not repeat the bounded proof.",
+      "Profile larger-discriminant and nontrivial quartics, then target factor-base relation collection and class-group presentations rather than the already-fast trivial projection."
+    ]
   }
 }
