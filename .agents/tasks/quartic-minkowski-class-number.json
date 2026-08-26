@@ -4,7 +4,7 @@
   "id": "quartic-minkowski-class-number",
   "title": "Bounded quartic Minkowski class numbers",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Compute small-bound quartic class numbers through an exact principal Minkowski factor-base certificate, with bounded fallback and representative performance evidence",
   "base_commit": "425d7974321fea50ec4d0166d56786986c06befc",
@@ -34,11 +34,43 @@
   },
   "validation": [
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "env SAGEJS_USE_SOURCE=1 ./bin/sagejs --python bench/class-unit-groups/quartic-minkowski-class-number.py"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 952.362,
+      "started_at": "2026-08-26T06:49:04.371Z",
+      "commit": "074c49ffc1549641f202889672ba9dcfa40b26df",
+      "workspace_fingerprint": "14c596a015b196272c38d245f695b81ee4f2c2d82f44f7c81e522791f9fb67b1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.139,
+      "started_at": "2026-08-26T07:05:19.893Z",
+      "commit": "074c49ffc1549641f202889672ba9dcfa40b26df",
+      "workspace_fingerprint": "14c596a015b196272c38d245f695b81ee4f2c2d82f44f7c81e522791f9fb67b1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_USE_SOURCE=1 ./bin/sagejs --python bench/class-unit-groups/quartic-minkowski-class-number.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 290.259,
+      "started_at": "2026-08-26T07:06:12.491Z",
+      "commit": "074c49ffc1549641f202889672ba9dcfa40b26df",
+      "workspace_fingerprint": "14c596a015b196272c38d245f695b81ee4f2c2d82f44f7c81e522791f9fb67b1",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "Added a generic degree-three/four exact Minkowski principal-factor-base producer and routed default quartic scalar class-number requests through it before the unchanged class/unit fallback. The source-independent certificate reconstructs the complete factor base and every principal witness under explicit caps. Representative all-signature quartic tests cover live and detached replay, mutation rejection, cache poisoning, cap exhaustion, and honest fallback on a class-number-two field.",
+    "summary": "Added a generic degree-three/four exact Minkowski principal-factor-base producer and routed default quartic scalar class-number requests through it before the unchanged class/unit fallback. The source-independent certificate reconstructs the complete factor base and every principal witness under explicit caps. Representative all-signature quartic tests cover live and detached replay, mutation rejection, cache poisoning, cap exhaustion, and honest fallback on a class-number-two field. On exact source, x^4+2 improved from 1.675 to 0.484 seconds conditionally and 3.269 to 0.480 seconds exactly; x^4+1 improved from 28.5-28.9 seconds to about 0.20 seconds.",
     "risks": [
       "The bounded producer currently proves only class number one; nontrivial quartics pay a bounded probe (0.214 second median on the representative class-number-two field) before the unchanged engine runs.",
       "The public class_group adapter is not accelerated by this slice; class_group_result exposes the exact bounded result, while public class_group still uses the complete class/unit route.",
@@ -46,7 +78,6 @@
     ],
     "next_steps": [
       "Register test/number-field-quartic-minkowski-class-number.cjs in test/node-test-manifest.cjs during integration.",
-      "Run the exact-source native suite and record its receipt before final review status.",
       "Extend the same retained exact certificate into a lightweight public class-group projection, then profile larger-discriminant and nontrivial quartic fields."
     ]
   }
