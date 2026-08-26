@@ -57,6 +57,24 @@ class AstBuilder {
     return this.source.slice(node.startIndex, node.endIndex);
   }
 
+  /**
+   * The named children of `node`, with comments removed.
+   *
+   * `(* ... *)` is not an `extras` rule in tree-sitter-wolfram, so a
+   * comment is a named child of whatever encloses it rather than being
+   * skipped by the parser outright. Every structural read below counts
+   * named children -- `binary` requires exactly two, `prefix` and `group`
+   * take the first -- so a comment sitting inside an expression changed
+   * its arity and the node stopped matching the shape it actually had:
+   * `1 + (* mid *) 2` was refused as unsupported `infix` syntax rather
+   * than read as an addition, and a comment on its own line was refused as
+   * unsupported `comment` syntax. Filtering in one place is what makes a
+   * comment mean nothing everywhere, which is what it means in Wolfram.
+   */
+  private namedChildren(node: SyntaxNode): SyntaxNode[] {
+    return node.namedChildren.filter((child) => child.type !== "comment");
+  }
+
   private unsupported(node: SyntaxNode): never {
     throw new WolframSyntaxError(
       `Wolfram Language '${node.type}' syntax is recognized but is not supported yet`,
@@ -67,7 +85,9 @@ class AstBuilder {
   program(tree: Tree): WolframProgram {
     return {
       kind: "program",
-      body: tree.rootNode.namedChildren.map((node) => this.expression(node)),
+      body: this.namedChildren(tree.rootNode).map((node) =>
+        this.expression(node)
+      ),
       span: sourceSpan(tree.rootNode),
     };
   }
@@ -83,7 +103,7 @@ class AstBuilder {
   }
 
   private group(node: SyntaxNode): WolframExpression {
-    const child = node.namedChildren[0];
+    const child = this.namedChildren(node)[0];
     const text = this.text(node);
     if (text.startsWith("{")) {
       const expression: ListExpression = {
@@ -121,7 +141,7 @@ class AstBuilder {
   }
 
   private binary(node: SyntaxNode): BinaryExpression {
-    const children = node.namedChildren;
+    const children = this.namedChildren(node);
     if (children.length !== 2) return this.unsupported(node);
     return {
       kind: "binary",
@@ -158,11 +178,11 @@ class AstBuilder {
       case "infix": {
         if (
           operator(node) === ";" &&
-          node.namedChildren.length === 1
+          this.namedChildren(node).length === 1
         ) {
           return {
             kind: "suppressed",
-            expression: this.expression(node.namedChildren[0]),
+            expression: this.expression(this.namedChildren(node)[0]),
             span: sourceSpan(node),
           };
         }
@@ -172,7 +192,7 @@ class AstBuilder {
       case "implicit_times":
         return this.binary(node);
       case "prefix": {
-        const child = node.namedChildren[0];
+        const child = this.namedChildren(node)[0];
         if (!child) return this.unsupported(node);
         return {
           kind: "unary",
@@ -221,6 +241,49 @@ const PYTHON_KEYWORDS = new Set([
  * mean special-casing one head inside a helper built for a shape it does
  * not have, so it gets its own `findFitCall` below instead.
  */
+/**
+ * Wolfram's comparison operators, which chain: `a <= x <= b` is one
+ * relation about three operands, exactly as in Python, and NOT the
+ * `(a <= x) <= b` that a plain left-associative lowering produces. That
+ * difference is not cosmetic -- `(3 <= 2) <= 1` compares the *boolean*
+ * `False` against `1` and evaluates to True, so a lowering that
+ * parenthesizes a chain quietly answers the opposite of what was asked.
+ */
+const COMPARISON_OPERATORS = new Set(["==", "!=", "<", "<=", ">", ">="]);
+
+/**
+ * Flatten a left-nested tree of comparison operators into its operands and
+ * the operators between them: `a <= x <= b` gives `[a, x, b]` and
+ * `["<=", "<="]`. A single comparison flattens to two operands and one
+ * operator, which is the uninteresting case every caller checks for.
+ */
+function comparisonChain(
+  expression: WolframExpression,
+): { operands: WolframExpression[]; operators: string[] } {
+  if (
+    expression.kind === "binary" &&
+    COMPARISON_OPERATORS.has(expression.operator) &&
+    expression.left.kind === "binary" &&
+    COMPARISON_OPERATORS.has(expression.left.operator)
+  ) {
+    const left = comparisonChain(expression.left);
+    return {
+      operands: [...left.operands, expression.right],
+      operators: [...left.operators, expression.operator],
+    };
+  }
+  if (
+    expression.kind === "binary" &&
+    COMPARISON_OPERATORS.has(expression.operator)
+  ) {
+    return {
+      operands: [expression.left, expression.right],
+      operators: [expression.operator],
+    };
+  }
+  return { operands: [expression], operators: [] };
+}
+
 const OPTIMIZATION_HEADS = new Set([
   "FindArgMax",
   "FindArgMin",
@@ -1144,6 +1207,21 @@ class SageLowerer {
         this.flattenConstraints(element, head)
       );
     }
+    // `a <= x <= b` is the spelling Wolfram's own Constrained Optimization
+    // tutorial uses to bound a variable, and it is two constraints, not
+    // one. Python's chained comparison would be the faithful lowering
+    // anywhere else, but not here: chaining is defined as `a <= x and
+    // x <= b`, and that `and` short-circuits away a relation exactly as a
+    // written-out `&&` does. Splitting the chain into its individual
+    // relations is what actually reaches the engine as two constraints.
+    const chain = comparisonChain(expression);
+    if (chain.operators.length > 1) {
+      return chain.operators.map((operator_, index) => {
+        const left = this.expression(chain.operands[index]);
+        const right = this.expression(chain.operands[index + 1]);
+        return `(${left} ${operator_} ${right})`;
+      });
+    }
     return [this.expression(expression)];
   }
 
@@ -1302,6 +1380,21 @@ class SageLowerer {
         return `(${operator_}${this.expression(expression.operand)})`;
       }
       case "binary": {
+        // A chain of comparisons lowers to Python's own chained form,
+        // which means the same thing Wolfram's does. Parenthesizing it
+        // left-associatively instead would compare a boolean against the
+        // next operand: `3 <= 2 <= 1` became `(3 <= 2) <= 1`, i.e.
+        // `False <= 1`, i.e. `0 <= 1`, i.e. True -- the opposite answer.
+        if (COMPARISON_OPERATORS.has(expression.operator)) {
+          const chain = comparisonChain(expression);
+          if (chain.operators.length > 1) {
+            const parts = [this.expression(chain.operands[0])];
+            for (const [index, operator_] of chain.operators.entries()) {
+              parts.push(operator_, this.expression(chain.operands[index + 1]));
+            }
+            return `(${parts.join(" ")})`;
+          }
+        }
         const operators: Record<string, string> = {
           ",": ",",
           "+": "+",

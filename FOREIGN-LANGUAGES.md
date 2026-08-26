@@ -39,7 +39,11 @@ Add `--emit-sage` to display the generated Sage source before executing it.
 
 The Wolfram frontend covers ordinary expressions, lists, immediate and simple
 delayed assignments, patterned function arguments, `Table`, `Range`,
-`FactorInteger`, `Prime`, `PrimePi`, and `Plot`.
+`FactorInteger`, `Prime`, `PrimePi`, and `Plot`. `(* ... *)` comments are
+skipped wherever they appear, including nested ones, and chains of comparison
+operators (`a <= x <= b`) mean what they mean in Wolfram -- one relation about
+all the operands, not a left-associative pair of them. The numerical
+optimization heads are documented separately in [`PARITY.md`](PARITY.md).
 
 The MATLAB frontend covers scalars, matrices, assignment/output suppression,
 colon ranges, arithmetic and matrix operators, one-based scalar indexing,
