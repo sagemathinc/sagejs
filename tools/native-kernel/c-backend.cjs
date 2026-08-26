@@ -3314,6 +3314,21 @@ ${wrappers}
 SAGEJS_NATIVE_INITIALIZER_LINKAGE napi_value SAGEJS_NATIVE_INITIALIZER(
     napi_env env, napi_value exports)
 {
+${floats.length === 0 ? "" : `#ifdef _WIN32
+    napi_value delay_load_warmup;
+
+    /*
+     * Windows addons retain node-gyp's delay-load hook so they also work
+     * inside the renamed Sage.js SEA executable.  clang-cl/lld does not
+     * preserve the floating argument to the first delayed
+     * napi_create_double call.  Resolve that import here and discard the
+     * deliberately irrelevant value before returning mathematical results.
+     */
+    if (!sagejs_native_check_napi(env,
+        napi_create_double(env, 0.0, &delay_load_warmup)))
+        return NULL;
+#endif
+`}
     napi_property_descriptor properties[] = {
 ${properties}
     };

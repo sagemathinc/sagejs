@@ -11,6 +11,7 @@ const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const createCompiler = require("..");
 const {
+  generateC,
   generateHostCore,
 } = require("../tools/native-kernel/c-backend.cjs");
 const {
@@ -346,12 +347,15 @@ test("uint64 bitwise IR is canonical, typed, and inspectable", async () => {
   }
 
   const core = generateHostCore(ir).source;
+  const adapter = generateC(ir);
   assert.match(core, /uint64 shift count must be between 0 and 63/);
   assert.match(core, /\s&\s/);
   assert.match(core, /\s\|\s/);
   assert.match(core, /\s\^\s/);
   assert.match(core, /\s<<\s/);
   assert.match(core, /\s>>\s/);
+  assert.match(adapter, /#ifdef _WIN32/);
+  assert.match(adapter, /napi_create_double\(env, 0\.0, &delay_load_warmup\)/);
 
   await assert.rejects(
     lowerSource(
