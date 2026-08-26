@@ -2181,6 +2181,213 @@ def ρσ_bool(value: Any) -> _Bool:
     return True
 
 
+_BUILTINS_EXACT_DECIMAL_DIGITS = 100
+_BUILTINS_MAX_FRACTION_BITS = 1100
+_BUILTINS_MAX_DECIMAL_EXPONENT = 310
+_BUILTINS_ROUND_TRIP_DIGITS = 17
+_BUILTINS_INTEGRAL_LIMIT = 4503599627370496
+_BUILTINS_EXACT_POWER_DIGITS = 22
+_BUILTINS_ROUND_SLACK = 8.881784197001252e-16
+
+
+def _builtins_finite_number(value: Any) -> _Bool:
+    """Return whether a value is a finite float, boxed or primitive."""
+    if runtime.strict_equal(runtime.jstype(value), "number"):
+        return runtime.number.isFinite(value)
+    if _builtins_is_python_float(value):
+        return runtime.number.isFinite(runtime.number(value))
+    return False
+
+
+def _builtins_decimal_places(value: Any, digits: _Int) -> _Str:
+    """Return the value written with exactly `digits` decimal places."""
+    return runtime.reflect.apply(
+        runtime.reflect.get(
+            runtime.reflect.get(runtime.native_number_class, "prototype"),
+            "toFixed",
+        ),
+        value,
+        [digits],
+    )
+
+
+def _builtins_significant_places(value: Any, extra: _Int) -> _Str:
+    """Return the value written with `extra` digits after its leading one."""
+    return runtime.reflect.apply(
+        runtime.reflect.get(
+            runtime.reflect.get(runtime.native_number_class, "prototype"),
+            "toExponential",
+        ),
+        value,
+        [extra],
+    )
+
+
+def _builtins_decimal_exponent(value: Any) -> _Int:
+    """Return the power of ten carried by the leading digit of a value."""
+    text = _builtins_significant_places(value, 20)
+    return int(runtime.number(text[text.index("e") + 1 :]))
+
+
+def _builtins_ends_in_five(text: _Str) -> _Bool:
+    return len(text) > 0 and text[len(text) - 1] == "5"
+
+
+def _builtins_halfway_at(value: Any, digits: _Int) -> _Bool:
+    """
+    Return whether the value lies exactly halfway between two decimals.
+
+    A binary fraction can only sit exactly on a half at `digits` places if it
+    terminates one place further, which happens exactly when scaling it by that
+    power of two lands on an integer.  Scaling by a power of two is itself
+    exact, so the test does not introduce the error it is there to avoid.
+    """
+    if runtime.math.abs(value) >= _BUILTINS_INTEGRAL_LIMIT:
+        # There is no fractional part left to lie on a half, and the decimal
+        # spelling of a value this large is written in exponent form.
+        return False
+    scaled = runtime.native_mul(value, runtime.math.pow(2, digits + 1))
+    if not runtime.number.isFinite(scaled):
+        return False
+    if runtime.math.floor(scaled) != scaled:
+        return False
+    return _builtins_ends_in_five(_builtins_decimal_places(value, digits + 1))
+
+
+def _builtins_fraction_bits(value: Any) -> _Int:
+    """Return how many bits a finite value carries after its binary point."""
+    scaled = value
+    count = 0
+    while count < _BUILTINS_MAX_FRACTION_BITS and not runtime.number.isInteger(scaled):
+        # Doubling is exact, and any value at or above 2**52 is already an
+        # integer, so the walk cannot overflow before it stops.
+        scaled = runtime.native_mul(scaled, 2)
+        count += 1
+    return count
+
+
+def _builtins_round_is_exact(value: Any, digits: _Int) -> _Bool:
+    """
+    Return whether rounding at `digits` places must give the value back.
+
+    Either the value carries no more bits after its binary point than the
+    places asked for, and is already written exactly there, or the decimal grid
+    is finer than its last bit, and the binary64 value nearest any decimal on
+    that grid is the value itself.  Ten binary digits are worth a little over
+    three decimal ones; comparing at three stays on the safe side.
+    """
+    bits = _builtins_fraction_bits(value)
+    return bits <= digits or digits * 33 >= (bits + 1) * 10
+
+
+def _builtins_round_by_scale(value: Any, digits: _Int) -> Any:
+    """
+    Round through a power of ten, where the scaled value settles the answer.
+
+    Multiplying shifts the value by up to an ulp, which only changes the answer
+    when the scaled value sits on a half.  Away from one it names the integer
+    the expansion would, and dividing that by an exactly representable power of
+    ten rounds once, onto the decimal Python names.  Near one the answer is not
+    this function's to give, and it defers by returning `runtime.undefined`.
+    """
+    power = runtime.math.pow(10, digits)
+    scaled = runtime.native_mul(value, power)
+    magnitude = runtime.math.abs(scaled)
+    if magnitude >= _BUILTINS_INTEGRAL_LIMIT:
+        return runtime.undefined
+    floor_value = runtime.math.floor(scaled)
+    fraction = runtime.native_sub(scaled, floor_value)
+    if runtime.math.abs(runtime.native_sub(fraction, 0.5)) <= runtime.native_mul(
+        magnitude, _BUILTINS_ROUND_SLACK
+    ):
+        return runtime.undefined
+    if fraction > 0.5:
+        floor_value = runtime.native_add(floor_value, 1)
+    return runtime.native_div(floor_value, power)
+
+
+def _builtins_round_at_width(value: Any, width: _Int, trailing: _Int) -> Any:
+    """Round a value to the nearest multiple of ten to the `width`."""
+    magnitude = runtime.math.abs(value)
+    power = runtime.number("1e" + str(width))
+    half = runtime.number("5e" + str(width - 1))
+    if width <= _BUILTINS_EXACT_POWER_DIGITS:
+        # Step and remainder are both exact here, so a half is recognized and
+        # settled by going to the even multiple.  A wider step admits no halves:
+        # the value would need a factor of five too large for a significand.
+        remainder = runtime.native_mod(magnitude, power)
+        if runtime.strict_equal(remainder, half):
+            quotient = runtime.native_div(
+                runtime.native_sub(magnitude, remainder), power
+            )
+            if runtime.native_mod(quotient, 2) != 0:
+                quotient = runtime.native_add(quotient, 1)
+            answer = runtime.native_mul(quotient, power)
+            if value < 0:
+                answer = -answer
+            return _builtins_keep_zero_sign(answer, value)
+    if trailing >= 0:
+        return runtime.number(_builtins_significant_places(value, trailing))
+    if magnitude > half:
+        if value < 0:
+            return -power
+        return power
+    return _builtins_keep_zero_sign(0, value)
+
+
+def _builtins_keep_zero_sign(answer: Any, value: Any) -> Any:
+    """Give a zero result the sign Python keeps for it."""
+    if runtime.strict_equal(answer, 0) and (
+        value < 0 or runtime.native_div(1, value) < 0
+    ):
+        return runtime.native_mul(0, -1)
+    return answer
+
+
+def _builtins_step_last_decimal(text: _Str) -> _Str:
+    """Add one unit in the last decimal place of a decimal written as text."""
+    characters = []
+    for character in text:
+        characters.append(character)
+    index = len(characters) - 1
+    carry = 1
+    while index >= 0 and carry == 1:
+        character = characters[index]
+        if character == "." or character == "-":
+            index -= 1
+            continue
+        stepped = int(character) + carry
+        if stepped == 10:
+            characters[index] = "0"
+        else:
+            characters[index] = str(stepped)
+            carry = 0
+        index -= 1
+    answer = "".join(characters)
+    if carry == 1:
+        if len(answer) > 0 and answer[0] == "-":
+            return "-1" + answer[1:]
+        return "1" + answer
+    return answer
+
+
+def _builtins_half_even_from_decimal(text: _Str, digits: _Int) -> Any:
+    """Round a decimal ending exactly halfway, to even, at `digits` places."""
+    del digits
+    kept = text[0 : len(text) - 1]
+    if len(kept) == 0:
+        return runtime.number(text)
+    last = kept[len(kept) - 1]
+    if last == ".":
+        kept = kept[0 : len(kept) - 1]
+        last = kept[len(kept) - 1]
+    if runtime.native_mod(runtime.number(last), 2) == 0:
+        return runtime.number(kept)
+    # Carrying through the text keeps the answer on the decimal that was asked
+    # for; adding a power of ten would reintroduce a rounding error.
+    return runtime.number(_builtins_step_last_decimal(kept))
+
+
 def ρσ_round(
     value: Any = _BUILTINS_MISSING,
     ndigits: Any = runtime.undefined,
@@ -2231,10 +2438,94 @@ def ρσ_round(
             floor_value if runtime.native_mod(floor_value, 2) == 0 else floor_value + 1
         )
 
-    scale = runtime.math.pow(10, int(ndigits))
-    answer = runtime.native_div(
-        ρσ_round(runtime.native_mul(value, scale)),
-        scale,
+    digits = int(ndigits)
+    if _builtins_finite_number(value):
+        number = runtime.number(value)
+        if digits >= 0 and digits <= _BUILTINS_EXACT_POWER_DIGITS:
+            quick = _builtins_round_by_scale(number, digits)
+            if quick is not runtime.undefined:
+                answer = _builtins_keep_zero_sign(quick, number)
+                if _builtins_is_python_float(value):
+                    return ρσ_float_result(answer)
+                return answer
+
+        if digits >= 0 and digits < _BUILTINS_EXACT_DECIMAL_DIGITS:
+            # Read the decimal expansion of the value itself, since scaling
+            # rounds a second time on the way in.  One place more than asked for
+            # is exact whenever a tie is possible, a value lying halfway having
+            # to terminate there, and a tie is the case decided half-to-even.
+            if _builtins_halfway_at(number, digits):
+                answer = _builtins_half_even_from_decimal(
+                    _builtins_decimal_places(number, digits + 1), digits
+                )
+            else:
+                answer = runtime.number(_builtins_decimal_places(number, digits))
+            answer = _builtins_keep_zero_sign(answer, number)
+            if _builtins_is_python_float(value):
+                return ρσ_float_result(answer)
+            return answer
+        if digits >= _BUILTINS_EXACT_DECIMAL_DIGITS:
+            # Scaling this far overflows to infinity and loses the value.  No
+            # binary64 value carries more bits after its binary point than the
+            # first bound, which also keeps a place count too wide for a double
+            # out of the arithmetic below.
+            if digits >= _BUILTINS_MAX_FRACTION_BITS or _builtins_round_is_exact(
+                number, digits
+            ):
+                if _builtins_is_python_float(value):
+                    return ρσ_float_result(number)
+                return number
+
+            # What is left is so far into the subnormals that it still has
+            # digits this deep, and is written by its significant ones instead:
+            # rounding at a place keeps the digits down to it, and seventeen of
+            # them already name a binary64 value uniquely.  No tie arises here,
+            # since one would terminate a place further and be exact above.
+            trailing = digits + _builtins_decimal_exponent(number)
+            if trailing >= _BUILTINS_ROUND_TRIP_DIGITS:
+                answer = number
+            elif trailing >= 0:
+                answer = runtime.number(_builtins_significant_places(number, trailing))
+            elif runtime.math.abs(number) > runtime.number("5e-" + str(digits + 1)):
+                answer = runtime.number("1e-" + str(digits))
+                if number < 0:
+                    answer = -answer
+            else:
+                answer = _builtins_keep_zero_sign(0, number)
+            if _builtins_is_python_float(value):
+                return ρσ_float_result(answer)
+            return answer
+
+        if digits <= -_BUILTINS_MAX_DECIMAL_EXPONENT:
+            # Every place this coarse is wider than the largest finite value,
+            # so the whole of it rounds away.
+            answer = _builtins_keep_zero_sign(0, number)
+            if _builtins_is_python_float(value):
+                return ρσ_float_result(answer)
+            return answer
+
+        if digits < 0:
+            # A step left of the point is no more representable than one to
+            # its right: `1e-2` is not a hundredth, so scaling by it moves large
+            # values off the multiple they belong on.  The digits kept are
+            # counted from the leading one instead, and a place deeper than a
+            # binary64 value can distinguish returns it unchanged.
+            trailing = digits + _builtins_decimal_exponent(number)
+            if trailing >= _BUILTINS_ROUND_TRIP_DIGITS:
+                answer = number
+            else:
+                answer = _builtins_round_at_width(number, -digits, trailing)
+            if _builtins_is_python_float(value):
+                return ρσ_float_result(answer)
+            return answer
+
+    scale = runtime.math.pow(10, digits)
+    answer = _builtins_keep_zero_sign(
+        runtime.native_div(
+            ρσ_round(runtime.native_mul(value, scale)),
+            scale,
+        ),
+        value,
     )
     if _builtins_is_python_float(value):
         return ρσ_float_result(answer)
