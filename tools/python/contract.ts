@@ -208,6 +208,8 @@ export const SAGEJS_PUBLIC_INTRINSICS: Record<string, string> = {
   nth_prime: "nth_prime",
   parent: "parent",
   prime_divisors: "ρσ_prime_divisors",
+  sigma: "sigma",
+  valuation: "valuation",
   arrow: "arrow",
   arrow3d: "arrow3d",
   circle: "circle",
