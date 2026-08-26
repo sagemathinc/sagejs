@@ -459,6 +459,56 @@ sage: len(colors), colors[0], len(colors[1])
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `continued_fraction`
+
+```sage
+continued_fraction(x: Any) -> ContinuedFraction
+```
+
+Return the simple continued fraction of `x`.
+
+Supported inputs are an exact integer, a rational, and an explicit list
+of partial quotients (the first may be any integer, the rest must be
+positive).  The result carries `quotients()`, `value()`, and
+`convergents()`.  A real, floating-point, or symbolic argument raises
+`NotImplementedError`: an infinite or non-terminating expansion is out
+of scope, and Sage.js never fabricates a truncated approximation in its
+place.
+
+### Examples
+
+```sage
+sage: continued_fraction(415/93)
+[4; 2, 6, 7]
+sage: continued_fraction(415/93).value()
+415/93
+sage: continued_fraction(415/93).convergents()
+[4, 9/2, 58/13, 415/93]
+sage: continued_fraction(4)
+[4]
+sage: continued_fraction([1, 2, 3]).value()
+10/7
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, continued fractions
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Euclidean algorithm on the numerator and denominator
+- Limitations: Supports exact integers, rationals, and explicit partial-quotient lists only.  A real, floating-point, or symbolic argument raises NotImplementedError instead of fabricating a truncated expansion.
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
 ## `contour_plot`
 
 ```sage
@@ -484,6 +534,81 @@ Plot a sampled scalar function as a filled contour grid.
 ### References
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `CRT`
+
+```sage
+CRT(left_value: Any, right_value: Any, left_modulus: Any=None, right_modulus: Any=None) -> Any
+```
+
+Sage's capitalized alias for `crt`.
+
+Accepts the same two calling conventions as `crt`: two residues and two
+coprime moduli, or a single list of residues and a matching list of
+moduli.
+
+### Examples
+
+```sage
+sage: CRT(2, 3, 3, 5)
+8
+sage: CRT([2, 3, 2], [3, 5, 7])
+23
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, crt
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Extended-Euclidean pairwise Chinese remainder combination
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `CRT_list`
+
+```sage
+CRT_list(values: Any, moduli: Any) -> Any
+```
+
+Sage's `CRT_list`: solve simultaneous congruences given as two lists.
+
+Equivalent to `crt(values, moduli)`; the moduli must be pairwise
+coprime.
+
+### Examples
+
+```sage
+sage: CRT_list([2, 3, 2], [3, 5, 7])
+23
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, crt
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Extended-Euclidean pairwise Chinese remainder combination
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
 ## `cube`
 
@@ -1261,6 +1386,46 @@ Compile a symbolic expression to a hot JavaScript numeric function.
 ### References
 
 - [Cortex Compute Engine](https://cortexjs.io/compute-engine/).
+
+## `four_squares`
+
+```sage
+four_squares(value: Any) -> Any
+```
+
+Return `(a, b, c, d)` with `a <= b <= c <= d` and
+`a^2 + b^2 + c^2 + d^2 == value`.
+
+By Lagrange's four-square theorem this always succeeds for
+`value >= 0`; `ValueError` is raised only for a negative `value`.
+
+### Examples
+
+```sage
+sage: four_squares(7)
+(1, 1, 1, 2)
+sage: four_squares(0)
+(0, 0, 0, 0)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, sum of squares, factorization
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Search reduced to three_squares, guaranteed to terminate by Lagrange's theorem
+- Limitations: Search-based, not the minimal Euler-descent construction FLINT/PARI use.
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
 ## `frame_labels`
 
@@ -4632,6 +4797,53 @@ Print concise Python-style help derived from Sage.js metadata.
 
 - `sagejs-original`
 
+## `hilbert_symbol`
+
+```sage
+hilbert_symbol(a: Any, b: Any, p: Any) -> _Int
+```
+
+Return the local Hilbert symbol `(a, b)_p` for nonzero rationals `a`,
+`b` at a place `p`.
+
+`p` is an odd prime, `2`, or `-1` for the real place.  The Hilbert
+symbol is `1` if `z^2 = a x^2 + b y^2` has a nonzero solution over the
+completion `Q_p`, and `-1` otherwise.  This uses the classical formulas
+in terms of the `p`-adic valuations and unit parts of `a` and `b`
+(Serre, *A Course in Arithmetic*, Ch. III; Cohen, *A Course in
+Computational Algebraic Number Theory*, Algorithms 1.4.10 and 1.4.12).
+
+### Examples
+
+```sage
+sage: hilbert_symbol(-1, -1, 2)
+-1
+sage: hilbert_symbol(-1, -1, 3)
+1
+sage: hilbert_symbol(-1, -1, -1)
+-1
+sage: hilbert_symbol(1, 1, 5)
+1
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, hilbert symbol, local fields, quadratic forms
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Classical valuation/unit formulas at odd primes, 2, and the real place
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
 ## `histogram`
 
 ```sage
@@ -4975,6 +5187,214 @@ Return whether `value` is prime, using FLINT's primality test.
 - Backends: FLINT
 - Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
 - Algorithm: FLINT primality testing
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `is_pseudoprime`
+
+```sage
+is_pseudoprime(value: Any) -> _Bool
+```
+
+Return whether `value` passes FLINT's industrial-strength
+probable-primality test.
+
+Sage.js has no separate, deliberately weaker pseudoprimality test;
+`is_pseudoprime` and `is_prime` therefore agree for every integer
+reachable in practice, unlike Sage's PARI-backed `is_pseudoprime`,
+which is a Fermat/Miller-Rabin test without a final primality proof.
+
+### Examples
+
+```sage
+sage: is_pseudoprime(97)
+True
+sage: is_pseudoprime(91)
+False
+sage: is_pseudoprime(1)
+False
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, primes, primality
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: FLINT primality testing
+- Limitations: Sage.js has no separate, deliberately weaker pseudoprimality test; this agrees with is_prime for every integer reachable in practice, unlike Sage's Fermat/Miller-Rabin-only is_pseudoprime.
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `is_squarefree`
+
+```sage
+is_squarefree(value: Any) -> _Bool
+```
+
+Return whether `value` is squarefree, i.e. not divisible by any
+perfect square greater than `1`.
+
+`is_squarefree(0)` is `False`; the sign of a nonzero `value` is
+ignored.
+
+### Examples
+
+```sage
+sage: is_squarefree(15)
+True
+sage: is_squarefree(12)
+False
+sage: is_squarefree(0)
+False
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, squarefree, factorization
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: FLINT factorization, exponent test
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `jacobi_symbol`
+
+```sage
+jacobi_symbol(a: Any, b: Any) -> Any
+```
+
+The Jacobi symbol `(a / b)` for an odd positive integer `b`.
+
+Unlike `kronecker_symbol`, the Jacobi symbol is only defined for an odd
+positive `b`; passing an even or nonpositive `b` raises `ValueError`,
+matching Sage.  Use `kronecker_symbol` for the unrestricted domain.
+
+### Examples
+
+```sage
+sage: jacobi_symbol(2, 15)
+1
+sage: jacobi_symbol(5, 17)
+-1
+sage: jacobi_symbol(1, 1)
+1
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, jacobi symbol, quadratic residues
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Kronecker symbol restricted to an odd positive denominator
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `kronecker_symbol`
+
+```sage
+kronecker_symbol(left: Any, right: Any) -> Any
+```
+
+The Kronecker symbol `(left / right)`, generalizing the Jacobi symbol
+to every integer denominator, including even and negative values.
+
+An alias for `kronecker`.
+
+### Examples
+
+```sage
+sage: kronecker_symbol(5, 17)
+-1
+sage: kronecker_symbol(3, -4)
+1
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, kronecker symbol, quadratic residues
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Kronecker's extension of the Jacobi symbol
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `lcm`
+
+```sage
+lcm(left: Any, right: Any=None) -> Any
+```
+
+Return the least common multiple of two integers, or of a list.
+
+Mirrors `gcd`'s calling convention: pass two integers, or a single
+iterable of integers.  The identity for an empty list is `1`, matching
+Sage, PARI/GP, and Python's own `math.lcm()`.  The result is always
+nonnegative, and `lcm` of anything together with `0` is `0`.
+
+### Examples
+
+```sage
+sage: lcm(6, 4)
+12
+sage: lcm(0, 5)
+0
+sage: lcm([2, 3, 4])
+12
+sage: lcm([])
+1
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, lcm
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: FLINT gcd, combined for the least common multiple
 
 ### Provenance
 
@@ -5891,6 +6311,46 @@ Multigraphics with 2 elements
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `multiplicative_order`
+
+```sage
+multiplicative_order(x: Any, n: Any) -> Any
+```
+
+Return the multiplicative order of `x` modulo `n`.
+
+Raises `ArithmeticError` when `x` is not a unit modulo `n`, i.e. when
+`gcd(x, n) != 1`.
+
+### Examples
+
+```sage
+sage: multiplicative_order(2, 7)
+3
+sage: multiplicative_order(3, 7)
+6
+sage: multiplicative_order(1, 1)
+1
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, multiplicative order, modular arithmetic
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Euler totient with prime-power order reduction
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
 ## `next_prime`
 
 ```sage
@@ -5907,6 +6367,133 @@ Return the smallest prime strictly greater than `value` using FLINT.
 - Backends: FLINT
 - Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
 - Algorithm: FLINT next-prime search
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `next_prime_power`
+
+```sage
+next_prime_power(value: Any) -> Any
+```
+
+Return the smallest prime power strictly greater than `value`.
+
+`value` itself is never returned, even when it is already a prime
+power; `1` counts as a prime power.
+
+Walks candidates one at a time and runs `is_prime_power` -- a full
+`factor()` -- on each, so the cost is O(gap x factorization) in the
+size of the gap to the next prime power.  That gap is usually small,
+but is not bounded, so this can be slow for a large `value` in a
+sparse stretch of prime powers.
+
+### Examples
+
+```sage
+sage: next_prime_power(8)
+9
+sage: next_prime_power(9)
+11
+sage: next_prime_power(0)
+1
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, prime powers, primes
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Linear search using is_prime_power
+- Limitations: Runs a full factor() (via is_prime_power) on every candidate, so the cost is O(gap x factorization) in the size of the gap to the next prime power; can be slow for a large value in a sparse stretch of prime powers.
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `nth_prime`
+
+```sage
+nth_prime(n: Any) -> Any
+```
+
+Return the `n`-th prime, 1-indexed, so `nth_prime(1) == 2`.
+
+Walks FLINT's `next_prime` `n` times rather than testing every integer
+for primality individually.
+
+### Examples
+
+```sage
+sage: nth_prime(1)
+2
+sage: nth_prime(10)
+29
+sage: nth_prime(100)
+541
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, primes, enumeration
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Repeated FLINT next-prime search
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `number_of_divisors`
+
+```sage
+number_of_divisors(value: Any) -> Any
+```
+
+Return the number of positive divisors of `value`.
+
+Equal to `sigma(value, 0)`; raises `ValueError` for `0`, matching
+`sigma`.
+
+### Examples
+
+```sage
+sage: number_of_divisors(28)
+6
+sage: number_of_divisors(1)
+1
+sage: number_of_divisors(-12)
+6
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, divisors
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: FLINT factorization via sigma(n, 0)
 
 ### Provenance
 
@@ -7366,6 +7953,51 @@ full constructor while native implementations are selected automatically.
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
+## `previous_prime_power`
+
+```sage
+previous_prime_power(value: Any) -> Any
+```
+
+Return the largest prime power strictly less than `value`.
+
+Raises `ValueError` when no smaller prime power exists, i.e. for
+`value <= 1`.
+
+Walks candidates one at a time and runs `is_prime_power` -- a full
+`factor()` -- on each, so the cost is O(gap x factorization) in the
+size of the gap to the previous prime power.  That gap is usually
+small, but is not bounded, so this can be slow for a large `value` in
+a sparse stretch of prime powers.
+
+### Examples
+
+```sage
+sage: previous_prime_power(9)
+8
+sage: previous_prime_power(2)
+1
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, prime powers, primes
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Linear search using is_prime_power
+- Limitations: Runs a full factor() (via is_prime_power) on every candidate, so the cost is O(gap x factorization) in the size of the gap to the previous prime power; can be slow for a large value in a sparse stretch of prime powers. The result at the bottom of the range depends on the still-open is_prime_power(1) convention question: previous_prime_power(2) currently returns 1 because Sage.js's is_prime_power(1) is True, matching Sage before sage-6.6.  If that convention changes (tracked in sagejs#56), this result changes with it.
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
 ## `prime_pi`
 
 ```sage
@@ -7446,6 +8078,49 @@ sage: prime_range(10, 20)
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
+## `primitive_root`
+
+```sage
+primitive_root(n: Any, check: _Bool=True) -> Any
+```
+
+Return the smallest primitive root of `n`.
+
+A primitive root exists exactly when `n` is `1`, `2`, `4`, `p^k`, or
+`2*p^k` for an odd prime `p`; `ValueError` is raised otherwise.  With
+`check=False` the fast existence test is skipped, but a nonexistent
+primitive root still raises after an exhaustive search.
+
+### Examples
+
+```sage
+sage: primitive_root(7)
+3
+sage: primitive_root(1)
+0
+sage: primitive_root(2)
+1
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, primitive root, modular arithmetic
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Case analysis on the cyclic-group existence criterion, then brute-force search
+- Limitations: Brute-force smallest-witness search, unlike Sage's PARI-backed primitive-root computation; intended for moduli where this search is fast enough.
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
 ## `Qp`
 
 ```sage
@@ -7468,6 +8143,47 @@ Construct a capped-relative p-adic field.
 ### Provenance
 
 - `sage-derived` — [SageMath p-adic factory API](https://doc.sagemath.org/html/en/reference/padics/); license GPL-2.0-or-later
+
+## `quadratic_residues`
+
+```sage
+quadratic_residues(n: Any) -> Any
+```
+
+Return the sorted list of quadratic residues modulo `n`, including `0`.
+
+Computes every residue class by brute force and materializes them in a
+set before sorting, so both time and memory are O(n).  `n` (after
+taking its absolute value) is bounded to `10^7`; above that,
+`OverflowError` is raised rather than allocating a set of that size.
+
+### Examples
+
+```sage
+sage: quadratic_residues(11)
+[0, 1, 3, 4, 5, 9]
+sage: quadratic_residues(1)
+[0]
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, quadratic residues, modular arithmetic
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Exhaustive enumeration of squares modulo n
+- Limitations: Enumerates every residue class into a set before sorting, so both time and memory are O(n); n (after taking its absolute value) is bounded to keep that practical, and raises OverflowError above 10^7 rather than materializing a set of that size.
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
 ## `QuadraticField`
 
@@ -7527,6 +8243,46 @@ status, matching Python's interactive convenience function.
 ### Provenance
 
 - `software-derived` — [Python site.Quitter interactive API](https://docs.python.org/3/library/constants.html); license PSF-2.0
+
+## `radical`
+
+```sage
+radical(value: Any) -> Any
+```
+
+Return the radical (squarefree kernel) of `value`: the product of the
+distinct primes dividing it.
+
+Raises `ArithmeticError` for `0`, which has no radical.
+
+### Examples
+
+```sage
+sage: radical(12)
+6
+sage: radical(1)
+1
+sage: radical(-18)
+6
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, radical, factorization
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: FLINT factorization, product of distinct primes
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
 ## `rainbow`
 
@@ -7930,6 +8686,46 @@ Plot a radial function in spherical coordinates.
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
 
+## `squarefree_part`
+
+```sage
+squarefree_part(value: Any) -> Any
+```
+
+Return `value` divided by the largest perfect square dividing it,
+keeping its sign.
+
+`squarefree_part(0) == 0`.
+
+### Examples
+
+```sage
+sage: squarefree_part(75)
+3
+sage: squarefree_part(-8)
+-2
+sage: squarefree_part(0)
+0
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, squarefree, factorization
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: FLINT factorization, odd-exponent primes only
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
 ## `streamline_plot`
 
 ```sage
@@ -8072,6 +8868,89 @@ Display text at a point in three-dimensional space.
 
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `three_squares`
+
+```sage
+three_squares(value: Any) -> Any
+```
+
+Return `(a, b, c)` with `a <= b <= c` and `a^2 + b^2 + c^2 == value`.
+
+By Legendre's three-square theorem this raises `ValueError` exactly
+when `value` is negative or has the form `4^a*(8*b + 7)`.
+
+### Examples
+
+```sage
+sage: three_squares(30)
+(1, 2, 5)
+sage: three_squares(0)
+(0, 0, 0)
+```
+
+`7` itself is the smallest forbidden value, since `7 == 4^0*(8*0 + 7)`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, sum of squares, factorization
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Legendre's three-square criterion, then search reduced to two_squares
+- Limitations: Search-based, not a polynomial-time construction; practical for moduli where a feasible remainder is found quickly, which is the overwhelming majority in practice.
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `two_squares`
+
+```sage
+two_squares(value: Any) -> Any
+```
+
+Return `(a, b)` with `0 <= a <= b` and `a^2 + b^2 == value`.
+
+Raises `ValueError` for a negative `value`, and for a nonnegative
+`value` that is not a sum of two squares (some prime `p == 3 (mod 4)`
+divides it to an odd power).  Uses factorization and Gaussian-integer
+multiplication rather than search.
+
+### Examples
+
+```sage
+sage: two_squares(50)
+(1, 7)
+sage: two_squares(0)
+(0, 0)
+sage: two_squares(25)
+(3, 4)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.arith.misc`
+- Tags: arithmetic, sum of squares, factorization
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
+- Algorithm: Factorization and Gaussian-integer multiplication (Cornacchia's algorithm at each prime)
+
+### Provenance
+
+- `sage-derived` — [SageMath arithmetic API](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); license GPL-2.0-or-later
+- `library-backed` — [FLINT](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
 ## `var`
 

@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 171,
+    "pass": 230,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
@@ -59,6 +59,46 @@
       "id": "src/baselib/graphics.py#890cc4163e199259-739ef7d6d304c0a4",
       "status": "pass",
       "actual": "(3, [0.0, 0.0, 0], 3)\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#0e5ff160964f901e-abe96b70bbc4a598",
+      "status": "pass",
+      "actual": "[4; 2, 6, 7]\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#f1172c64a67464a6-b712a4990bb3cc63",
+      "status": "pass",
+      "actual": "415/93\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#faf178e67aeffdd8-e755251511102b23",
+      "status": "pass",
+      "actual": "[4, 9/2, 58/13, 415/93]\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#21bf6f05b5bbbb85-46b1884167c4edd3",
+      "status": "pass",
+      "actual": "[4]\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#1f85d5413093eddf-cc5925b930e6c909",
+      "status": "pass",
+      "actual": "10/7\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#3aa843b07942e747-2c624232cdd22177",
+      "status": "pass",
+      "actual": "8\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#7ffdf4b2bcdd55d5-535fa30d7e25dd8a",
+      "status": "pass",
+      "actual": "23\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#d6e411fe4cb83d32-535fa30d7e25dd8a",
+      "status": "pass",
+      "actual": "23\n"
     },
     {
       "id": "src/baselib/polynomial.py#1d12daf28af8136a-e3b0c44298fc1c14",
@@ -169,6 +209,16 @@
       "id": "src/baselib/elliptic_curves.py#5fc3f419b1f2ec5e-112e7d5ec82c367f",
       "status": "pass",
       "actual": "(161/16 : -2065/64 : 1)\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#3ee5103e90c30ad6-8ff33231dee97d73",
+      "status": "pass",
+      "actual": "(1, 1, 1, 2)\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#542285d7149f97c7-a694baed3224c319",
+      "status": "pass",
+      "actual": "(0, 0, 0, 0)\n"
     },
     {
       "id": "src/baselib/finite_fields.py#d5fed5b346a11651-bdf39be03f43bdb9",
@@ -562,6 +612,26 @@
       "reason": "optional features unavailable: networkx"
     },
     {
+      "id": "src/baselib/builtins.py#5075334c1aa6d7e2-1bad6b8cf97131fc",
+      "status": "pass",
+      "actual": "-1\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#376513f6180fe7ff-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#b2fce99a306346f1-1bad6b8cf97131fc",
+      "status": "pass",
+      "actual": "-1\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#7269e4afab4b939e-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
       "id": "src/baselib/graphics.py#17671abe261ba66e-441459f59cccc537",
       "status": "pass",
       "actual": "Graphics object consisting of 1 graphics primitive\n"
@@ -605,6 +675,81 @@
       "id": "src/baselib/graphics3d.py#47b1824ff9234cae-6671064d959f5283",
       "status": "pass",
       "actual": "[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#48ff728cf31569c4-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#56884a69349be09b-60a33e6cf5151f2d",
+      "status": "pass",
+      "actual": "False\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#eb52f7679f840f5a-60a33e6cf5151f2d",
+      "status": "pass",
+      "actual": "False\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#d0c0282f553a0654-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#04f6a9bd6f622944-60a33e6cf5151f2d",
+      "status": "pass",
+      "actual": "False\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#f0dab04bcb48a1b9-60a33e6cf5151f2d",
+      "status": "pass",
+      "actual": "False\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#90f084676983e3a4-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#fd019f765dc5c0e0-1bad6b8cf97131fc",
+      "status": "pass",
+      "actual": "-1\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#7af7a7c35876f2bc-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#76aad44f6f654500-1bad6b8cf97131fc",
+      "status": "pass",
+      "actual": "-1\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#98cb1606c635c252-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#8c6e05ad65de9649-6b51d431df5d7f14",
+      "status": "pass",
+      "actual": "12\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#ef1821c39d8acc78-5feceb66ffc86f38",
+      "status": "pass",
+      "actual": "0\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#4afac3b2c7e8e4dc-6b51d431df5d7f14",
+      "status": "pass",
+      "actual": "12\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#17e09e2a8ba5d318-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
     },
     {
       "id": "src/baselib/matrix.py#3777d1a944e35692-e3b0c44298fc1c14",
@@ -745,6 +890,66 @@
       "id": "src/baselib/graphics.py#4b2c03786228dcdb-5568d4645dfaeadc",
       "status": "pass",
       "actual": "Multigraphics with 2 elements\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#371d5b7ec5597022-4e07408562bedb8b",
+      "status": "pass",
+      "actual": "3\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#3ee53a6c0d4ee12f-e7f6c011776e8db7",
+      "status": "pass",
+      "actual": "6\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#62bfed5a6ea1be14-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#07436648dd87716d-19581e27de7ced00",
+      "status": "pass",
+      "actual": "9\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#b1c54973ee1fde2e-4fc82b26aecb47d2",
+      "status": "pass",
+      "actual": "11\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#c3adc9518fb49761-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#86ed122a69f16ea1-d4735e3a265e16ee",
+      "status": "pass",
+      "actual": "2\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#8e5c138d558d8308-35135aaa6cc23891",
+      "status": "pass",
+      "actual": "29\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#59257d4a8a5ea338-5de664ef205f95d4",
+      "status": "pass",
+      "actual": "541\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#77de747a5859407d-e7f6c011776e8db7",
+      "status": "pass",
+      "actual": "6\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#22b59ece622663c5-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#a2b977a7ec9542ae-e7f6c011776e8db7",
+      "status": "pass",
+      "actual": "6\n"
     },
     {
       "id": "src/baselib/combinat.py#caacab55d28ddb22-73475cb40a568e8d",
@@ -1022,6 +1227,16 @@
       "actual": "x^3 + x^2*y + x*y^2 + y^3\n"
     },
     {
+      "id": "src/baselib/builtins.py#859659df507281d4-2c624232cdd22177",
+      "status": "pass",
+      "actual": "8\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#e9a6bb2a3588cd6e-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
       "id": "src/baselib/builtins.py#4c7d8330c2c79857-4b227777d4dd1fc6",
       "status": "pass",
       "actual": "4\n"
@@ -1037,6 +1252,31 @@
       "actual": "37607912018\n"
     },
     {
+      "id": "src/baselib/builtins.py#9a99c06945f95720-4e07408562bedb8b",
+      "status": "pass",
+      "actual": "3\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#6c5daf94c6d4ec4f-5feceb66ffc86f38",
+      "status": "pass",
+      "actual": "0\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#109cc518716c9604-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#f8d12a946663b0bf-724ae431cacdc00e",
+      "status": "pass",
+      "actual": "[0, 1, 3, 4, 5, 9]\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#85a0d181d9b40c47-d0bca111f8628137",
+      "status": "pass",
+      "actual": "[0]\n"
+    },
+    {
       "id": "src/baselib/number_fields.py#27641fc0831ac6e7-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
@@ -1050,6 +1290,21 @@
       "id": "src/baselib/number_fields.py#9bdbe852abd1679f-4079e4af87d7d813",
       "status": "pass",
       "actual": "(3,)\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#5a9b808eeac513b3-e7f6c011776e8db7",
+      "status": "pass",
+      "actual": "6\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#f1d2ecb4daa1dced-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#c7ec86c1a7d6bc97-e7f6c011776e8db7",
+      "status": "pass",
+      "actual": "6\n"
     },
     {
       "id": "src/baselib/matrix.py#b17ff7be6a528fc2-e3b0c44298fc1c14",
@@ -1077,6 +1332,21 @@
       "actual": "276595200\n"
     },
     {
+      "id": "src/baselib/builtins.py#fe20fe79fe1e0623-4e07408562bedb8b",
+      "status": "pass",
+      "actual": "3\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#61d2834f47ed79a0-cf3bae39dd692048",
+      "status": "pass",
+      "actual": "-2\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#09a43b3c1527e1d7-5feceb66ffc86f38",
+      "status": "pass",
+      "actual": "0\n"
+    },
+    {
       "id": "src/baselib/matrix.py#b58bb4a279a18edf-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
@@ -1085,6 +1355,31 @@
       "id": "src/baselib/matrix.py#9971501a52f38d1a-b7945d60e67a36b5",
       "status": "pass",
       "actual": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#c1f51035d765bc4e-97710fad3ef8ab9e",
+      "status": "pass",
+      "actual": "(1, 2, 5)\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#a4aed5120f07e560-0431de49bb7dbdbb",
+      "status": "pass",
+      "actual": "(0, 0, 0)\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#a2e49dac1d5de7cc-282280e6caccaac2",
+      "status": "pass",
+      "actual": "(1, 7)\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#6526ca84cfe4e56c-9d37e282dff85f7c",
+      "status": "pass",
+      "actual": "(0, 0)\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#7571d8dba7bbe4e7-ae993a9dcb5af553",
+      "status": "pass",
+      "actual": "(3, 4)\n"
     },
     {
       "id": "src/baselib/finite_fields.py#a4efb6c82ad07055-e3b0c44298fc1c14",

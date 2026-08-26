@@ -6800,6 +6800,972 @@ def kronecker(left: Any, right: Any) -> Any:
     return result if b == 1 else 0
 
 
+def lcm(
+    left: Any,
+    right: Any = runtime.undefined,
+) -> Any:
+    r"""
+    Return the least common multiple of two integers, or of a list.
+
+    Mirrors `gcd`'s calling convention: pass two integers, or a single
+    iterable of integers.  The identity for an empty list is `1`, matching
+    Sage, PARI/GP, and Python's own `math.lcm()`.  The result is always
+    nonnegative, and `lcm` of anything together with `0` is `0`.
+
+    ### Examples
+
+    ```sage
+    sage: lcm(6, 4)
+    12
+    sage: lcm(0, 5)
+    0
+    sage: lcm([2, 3, 4])
+    12
+    sage: lcm([])
+    1
+    ```
+    """
+    if right is runtime.undefined:
+        values = list(left)
+        answer = runtime.bigint(1)
+        for value in values:
+            answer = runtime.integer_bigint(lcm(answer, value))
+        return runtime.normalize_integer(answer)
+    left_is_integer = runtime.strict_equal(
+        runtime.jstype(left), "number"
+    ) or runtime.strict_equal(runtime.jstype(left), "bigint")
+    right_is_integer = runtime.strict_equal(
+        runtime.jstype(right), "number"
+    ) or runtime.strict_equal(runtime.jstype(right), "bigint")
+    if left_is_integer and right_is_integer:
+        a = runtime.bigint(left)
+        b = runtime.bigint(right)
+        if a == 0 or b == 0:
+            return 0
+        if a < 0:
+            a = -a
+        if b < 0:
+            b = -b
+        divisor = runtime.flint_backend().gcd(a, b)
+        return runtime.normalize_integer((a // divisor) * b)
+    # `number`/`bigint` values may carry their own `lcm` method (see
+    # `Integer.lcm`, if and when one is added).  Dispatching to that member
+    # when the *other* side is not an integer would call straight back into
+    # `lcm` with the same arguments, so the member fallback below is only
+    # reached for the side that is not itself an integer -- the same guard
+    # shape `ρσ_gcd` uses for the identical hazard.
+    if not left_is_integer and _builtins_member_is_function(left, "lcm"):
+        return _builtins_call_member(left, "lcm", [right])
+    if not right_is_integer and _builtins_member_is_function(right, "lcm"):
+        return _builtins_call_member(right, "lcm", [left])
+    raise TypeError("lcm() is not defined for these arguments")
+
+
+def CRT(
+    left_value: Any,
+    right_value: Any,
+    left_modulus: Any = runtime.undefined,
+    right_modulus: Any = runtime.undefined,
+) -> Any:
+    r"""
+    Sage's capitalized alias for `crt`.
+
+    Accepts the same two calling conventions as `crt`: two residues and two
+    coprime moduli, or a single list of residues and a matching list of
+    moduli.
+
+    ### Examples
+
+    ```sage
+    sage: CRT(2, 3, 3, 5)
+    8
+    sage: CRT([2, 3, 2], [3, 5, 7])
+    23
+    ```
+    """
+    return crt(left_value, right_value, left_modulus, right_modulus)
+
+
+def CRT_list(values: Any, moduli: Any) -> Any:
+    r"""
+    Sage's `CRT_list`: solve simultaneous congruences given as two lists.
+
+    Equivalent to `crt(values, moduli)`; the moduli must be pairwise
+    coprime.
+
+    ### Examples
+
+    ```sage
+    sage: CRT_list([2, 3, 2], [3, 5, 7])
+    23
+    ```
+    """
+    return crt(values, moduli)
+
+
+def kronecker_symbol(left: Any, right: Any) -> Any:
+    r"""
+    The Kronecker symbol `(left / right)`, generalizing the Jacobi symbol
+    to every integer denominator, including even and negative values.
+
+    An alias for `kronecker`.
+
+    ### Examples
+
+    ```sage
+    sage: kronecker_symbol(5, 17)
+    -1
+    sage: kronecker_symbol(3, -4)
+    1
+    ```
+    """
+    return kronecker(left, right)
+
+
+def jacobi_symbol(a: Any, b: Any) -> Any:
+    r"""
+    The Jacobi symbol `(a / b)` for an odd positive integer `b`.
+
+    Unlike `kronecker_symbol`, the Jacobi symbol is only defined for an odd
+    positive `b`; passing an even or nonpositive `b` raises `ValueError`,
+    matching Sage.  Use `kronecker_symbol` for the unrestricted domain.
+
+    ### Examples
+
+    ```sage
+    sage: jacobi_symbol(2, 15)
+    1
+    sage: jacobi_symbol(5, 17)
+    -1
+    sage: jacobi_symbol(1, 1)
+    1
+    ```
+    """
+    if not runtime.is_exact_integer(a) or not runtime.is_exact_integer(b):
+        raise TypeError("jacobi_symbol() arguments must be integers")
+    modulus = runtime.integer_bigint(b)
+    if modulus <= 0 or modulus % 2 == 0:
+        raise ValueError("jacobi_symbol() requires an odd positive second argument")
+    return kronecker(a, b)
+
+
+def _hilbert_symbol_sign(value: Any) -> _Int:
+    """Return the sign of an exact integer or rational."""
+    return -1 if runtime.integer_bigint(numerator(value)) < 0 else 1
+
+
+def _hilbert_local_component(value: Any, prime: Any) -> Any:
+    """Return `(valuation, unit)` for a nonzero rational at `prime`.
+
+    `unit` is the `prime`-adic unit part reduced modulo 8 when `prime == 2`
+    and modulo `prime` otherwise, exactly what the classical Hilbert-symbol
+    formulas consume.
+    """
+    num = runtime.integer_bigint(numerator(value))
+    den = runtime.integer_bigint(denominator(value))
+    valuation_exponent = 0
+    while num % prime == 0:
+        num //= prime
+        valuation_exponent += 1
+    while den % prime == 0:
+        den //= prime
+        valuation_exponent -= 1
+    modulus = runtime.bigint(8) if prime == 2 else runtime.integer_bigint(prime)
+    num_residue = num % modulus
+    den_residue = den % modulus
+    inverse = runtime.integer_bigint(
+        runtime.modular_inverse(
+            runtime.integer_bigint(den_residue), runtime.integer_bigint(modulus)
+        )
+    )
+    unit = (num_residue * inverse) % modulus
+    return valuation_exponent, unit
+
+
+def hilbert_symbol(a: Any, b: Any, p: Any) -> _Int:
+    r"""
+    Return the local Hilbert symbol `(a, b)_p` for nonzero rationals `a`,
+    `b` at a place `p`.
+
+    `p` is an odd prime, `2`, or `-1` for the real place.  The Hilbert
+    symbol is `1` if `z^2 = a x^2 + b y^2` has a nonzero solution over the
+    completion `Q_p`, and `-1` otherwise.  This uses the classical formulas
+    in terms of the `p`-adic valuations and unit parts of `a` and `b`
+    (Serre, *A Course in Arithmetic*, Ch. III; Cohen, *A Course in
+    Computational Algebraic Number Theory*, Algorithms 1.4.10 and 1.4.12).
+
+    ### Examples
+
+    ```sage
+    sage: hilbert_symbol(-1, -1, 2)
+    -1
+    sage: hilbert_symbol(-1, -1, 3)
+    1
+    sage: hilbert_symbol(-1, -1, -1)
+    -1
+    sage: hilbert_symbol(1, 1, 5)
+    1
+    ```
+    """
+    if not (runtime.is_exact_integer(a) or isinstance(a, runtime.rational_class)):
+        raise TypeError("hilbert_symbol() arguments must be integers or rationals")
+    if not (runtime.is_exact_integer(b) or isinstance(b, runtime.rational_class)):
+        raise TypeError("hilbert_symbol() arguments must be integers or rationals")
+    if (
+        runtime.integer_bigint(numerator(a)) == 0
+        or runtime.integer_bigint(numerator(b)) == 0
+    ):
+        raise ValueError("hilbert_symbol() arguments must be nonzero")
+    if p == -1:
+        both_negative = _hilbert_symbol_sign(a) < 0 and _hilbert_symbol_sign(b) < 0
+        return -1 if both_negative else 1
+    if not runtime.is_exact_integer(p):
+        raise TypeError("hilbert_symbol() place must be an integer prime or -1")
+    place = runtime.integer_bigint(p)
+    if place != 2 and not is_prime(place):
+        raise ValueError("hilbert_symbol() place must be a prime, 2, or -1")
+    alpha, a_unit = _hilbert_local_component(a, place)
+    beta, b_unit = _hilbert_local_component(b, place)
+    if place == 2:
+
+        def _epsilon(unit: Any) -> _Int:
+            return ((unit - 1) // 2) % 2
+
+        def _omega(unit: Any) -> _Int:
+            return ((unit * unit - 1) // 8) % 2
+
+        exponent = (
+            _epsilon(a_unit) * _epsilon(b_unit)
+            + alpha * _omega(b_unit)
+            + beta * _omega(a_unit)
+        )
+        return -1 if exponent % 2 == 1 else 1
+    sign = -1 if (alpha % 2 == 1 and beta % 2 == 1 and place % 4 == 3) else 1
+    if beta % 2 == 1:
+        sign *= legendre_symbol(a_unit, place)
+    if alpha % 2 == 1:
+        sign *= legendre_symbol(b_unit, place)
+    return sign
+
+
+def multiplicative_order(x: Any, n: Any) -> Any:
+    r"""
+    Return the multiplicative order of `x` modulo `n`.
+
+    Raises `ArithmeticError` when `x` is not a unit modulo `n`, i.e. when
+    `gcd(x, n) != 1`.
+
+    ### Examples
+
+    ```sage
+    sage: multiplicative_order(2, 7)
+    3
+    sage: multiplicative_order(3, 7)
+    6
+    sage: multiplicative_order(1, 1)
+    1
+    ```
+    """
+    if not runtime.is_exact_integer(x) or not runtime.is_exact_integer(n):
+        raise TypeError("multiplicative_order() requires integer arguments")
+    modulus = runtime.integer_bigint(n)
+    if modulus <= 0:
+        raise ValueError("multiplicative_order() requires a positive modulus")
+    if modulus == 1:
+        return 1
+    base = runtime.integer_bigint(x) % modulus
+    if (
+        runtime.bigint_gcd(
+            runtime.integer_bigint(base), runtime.integer_bigint(modulus)
+        )
+        != 1
+    ):
+        raise ArithmeticError(
+            "the multiplicative order is only defined for units of Z/nZ"
+        )
+    order = runtime.integer_bigint(euler_phi(modulus))
+    for prime, exponent in factor(order):
+        prime_integer = runtime.integer_bigint(prime)
+        remaining = exponent
+        while remaining > 0 and power_mod(base, order // prime_integer, modulus) == 1:
+            order //= prime_integer
+            remaining -= 1
+    return runtime.normalize_integer(order)
+
+
+def primitive_root(n: Any, check: _Bool = True) -> Any:
+    r"""
+    Return the smallest primitive root of `n`.
+
+    A primitive root exists exactly when `n` is `1`, `2`, `4`, `p^k`, or
+    `2*p^k` for an odd prime `p`; `ValueError` is raised otherwise.  With
+    `check=False` the fast existence test is skipped, but a nonexistent
+    primitive root still raises after an exhaustive search.
+
+    ### Examples
+
+    ```sage
+    sage: primitive_root(7)
+    3
+    sage: primitive_root(1)
+    0
+    sage: primitive_root(2)
+    1
+    ```
+    """
+    if not runtime.is_exact_integer(n):
+        raise TypeError("primitive_root() requires an integer")
+    modulus = runtime.integer_bigint(n)
+    if modulus <= 0:
+        raise ValueError("primitive_root() requires a positive modulus")
+    if modulus == 1:
+        return 0
+    if modulus == 2:
+        return 1
+    if modulus == 4:
+        return 3
+    if check:
+        working = modulus
+        if working % 2 == 0:
+            working //= 2
+            if working % 2 == 0:
+                raise ValueError("n does not have a primitive root")
+        if len(factor(working)) != 1:
+            raise ValueError("n does not have a primitive root")
+    target = euler_phi(modulus)
+    candidate = 2
+    while candidate < modulus:
+        if (
+            runtime.bigint_gcd(
+                runtime.bigint(candidate), runtime.integer_bigint(modulus)
+            )
+            == 1
+            and multiplicative_order(candidate, modulus) == target
+        ):
+            return runtime.normalize_integer(candidate)
+        candidate += 1
+    raise ValueError("n does not have a primitive root")
+
+
+def number_of_divisors(value: Any) -> Any:
+    r"""
+    Return the number of positive divisors of `value`.
+
+    Equal to `sigma(value, 0)`; raises `ValueError` for `0`, matching
+    `sigma`.
+
+    ### Examples
+
+    ```sage
+    sage: number_of_divisors(28)
+    6
+    sage: number_of_divisors(1)
+    1
+    sage: number_of_divisors(-12)
+    6
+    ```
+    """
+    return sigma(value, 0)
+
+
+def radical(value: Any) -> Any:
+    r"""
+    Return the radical (squarefree kernel) of `value`: the product of the
+    distinct primes dividing it.
+
+    Raises `ArithmeticError` for `0`, which has no radical.
+
+    ### Examples
+
+    ```sage
+    sage: radical(12)
+    6
+    sage: radical(1)
+    1
+    sage: radical(-18)
+    6
+    ```
+    """
+    if not runtime.is_exact_integer(value):
+        raise TypeError("radical() requires an integer")
+    integer = runtime.integer_bigint(value)
+    if integer == 0:
+        raise ArithmeticError("Radical of 0 not defined.")
+    if integer < 0:
+        integer = -integer
+    result = runtime.bigint(1)
+    for prime, _exponent in factor(integer):
+        result *= runtime.integer_bigint(prime)
+    return runtime.normalize_integer(result)
+
+
+def squarefree_part(value: Any) -> Any:
+    r"""
+    Return `value` divided by the largest perfect square dividing it,
+    keeping its sign.
+
+    `squarefree_part(0) == 0`.
+
+    ### Examples
+
+    ```sage
+    sage: squarefree_part(75)
+    3
+    sage: squarefree_part(-8)
+    -2
+    sage: squarefree_part(0)
+    0
+    ```
+    """
+    if not runtime.is_exact_integer(value):
+        raise TypeError("squarefree_part() requires an integer")
+    integer = runtime.integer_bigint(value)
+    if integer == 0:
+        return 0
+    negative = integer < 0
+    magnitude = -integer if negative else integer
+    result = runtime.bigint(1)
+    for prime, exponent in factor(magnitude):
+        if exponent % 2 == 1:
+            result *= runtime.integer_bigint(prime)
+    return runtime.normalize_integer(-result if negative else result)
+
+
+def is_squarefree(value: Any) -> _Bool:
+    r"""
+    Return whether `value` is squarefree, i.e. not divisible by any
+    perfect square greater than `1`.
+
+    `is_squarefree(0)` is `False`; the sign of a nonzero `value` is
+    ignored.
+
+    ### Examples
+
+    ```sage
+    sage: is_squarefree(15)
+    True
+    sage: is_squarefree(12)
+    False
+    sage: is_squarefree(0)
+    False
+    ```
+    """
+    if not runtime.is_exact_integer(value):
+        raise TypeError("is_squarefree() requires an integer")
+    integer = runtime.integer_bigint(value)
+    if integer == 0:
+        return False
+    if integer < 0:
+        integer = -integer
+    if integer == 1:
+        return True
+    for _prime, exponent in factor(integer):
+        if exponent > 1:
+            return False
+    return True
+
+
+def nth_prime(n: Any) -> Any:
+    r"""
+    Return the `n`-th prime, 1-indexed, so `nth_prime(1) == 2`.
+
+    Walks FLINT's `next_prime` `n` times rather than testing every integer
+    for primality individually.
+
+    ### Examples
+
+    ```sage
+    sage: nth_prime(1)
+    2
+    sage: nth_prime(10)
+    29
+    sage: nth_prime(100)
+    541
+    ```
+    """
+    if not runtime.is_exact_integer(n):
+        raise TypeError("nth_prime() requires an integer")
+    count = runtime.integer_bigint(n)
+    if count < 1:
+        raise ValueError("nth_prime() requires a positive index")
+    candidate = runtime.bigint(1)
+    index = 0
+    while index < count:
+        candidate = runtime.flint_backend().nextPrime(candidate)
+        index += 1
+    return runtime.normalize_integer(candidate)
+
+
+def is_pseudoprime(value: Any) -> _Bool:
+    r"""
+    Return whether `value` passes FLINT's industrial-strength
+    probable-primality test.
+
+    Sage.js has no separate, deliberately weaker pseudoprimality test;
+    `is_pseudoprime` and `is_prime` therefore agree for every integer
+    reachable in practice, unlike Sage's PARI-backed `is_pseudoprime`,
+    which is a Fermat/Miller-Rabin test without a final primality proof.
+
+    ### Examples
+
+    ```sage
+    sage: is_pseudoprime(97)
+    True
+    sage: is_pseudoprime(91)
+    False
+    sage: is_pseudoprime(1)
+    False
+    ```
+    """
+    if not runtime.is_exact_integer(value):
+        return False
+    integer = runtime.integer_bigint(value)
+    if integer < 2:
+        return False
+    return runtime.flint_backend().isPrime(integer)
+
+
+def next_prime_power(value: Any) -> Any:
+    r"""
+    Return the smallest prime power strictly greater than `value`.
+
+    `value` itself is never returned, even when it is already a prime
+    power; `1` counts as a prime power.
+
+    Walks candidates one at a time and runs `is_prime_power` -- a full
+    `factor()` -- on each, so the cost is O(gap x factorization) in the
+    size of the gap to the next prime power.  That gap is usually small,
+    but is not bounded, so this can be slow for a large `value` in a
+    sparse stretch of prime powers.
+
+    ### Examples
+
+    ```sage
+    sage: next_prime_power(8)
+    9
+    sage: next_prime_power(9)
+    11
+    sage: next_prime_power(0)
+    1
+    ```
+    """
+    if not runtime.is_exact_integer(value):
+        raise TypeError("next_prime_power() requires an integer")
+    candidate = runtime.integer_bigint(value) + 1
+    while not is_prime_power(candidate):
+        candidate += 1
+    return runtime.normalize_integer(candidate)
+
+
+def previous_prime_power(value: Any) -> Any:
+    r"""
+    Return the largest prime power strictly less than `value`.
+
+    Raises `ValueError` when no smaller prime power exists, i.e. for
+    `value <= 1`.
+
+    Walks candidates one at a time and runs `is_prime_power` -- a full
+    `factor()` -- on each, so the cost is O(gap x factorization) in the
+    size of the gap to the previous prime power.  That gap is usually
+    small, but is not bounded, so this can be slow for a large `value` in
+    a sparse stretch of prime powers.
+
+    ### Examples
+
+    ```sage
+    sage: previous_prime_power(9)
+    8
+    sage: previous_prime_power(2)
+    1
+    ```
+    """
+    if not runtime.is_exact_integer(value):
+        raise TypeError("previous_prime_power() requires an integer")
+    candidate = runtime.integer_bigint(value) - 1
+    while candidate >= 1:
+        if is_prime_power(candidate):
+            return runtime.normalize_integer(candidate)
+        candidate -= 1
+    raise ValueError("no prime power less than " + str(value))
+
+
+def quadratic_residues(n: Any) -> Any:
+    r"""
+    Return the sorted list of quadratic residues modulo `n`, including `0`.
+
+    Computes every residue class by brute force and materializes them in a
+    set before sorting, so both time and memory are O(n).  `n` (after
+    taking its absolute value) is bounded to `10^7`; above that,
+    `OverflowError` is raised rather than allocating a set of that size.
+
+    ### Examples
+
+    ```sage
+    sage: quadratic_residues(11)
+    [0, 1, 3, 4, 5, 9]
+    sage: quadratic_residues(1)
+    [0]
+    ```
+    """
+    if not runtime.is_exact_integer(n):
+        raise TypeError("quadratic_residues() requires an integer")
+    modulus = runtime.integer_bigint(n)
+    if modulus < 0:
+        modulus = -modulus
+    if modulus == 0:
+        raise ValueError("quadratic_residues() requires a nonzero modulus")
+    if modulus > runtime.bigint(10000000):
+        raise OverflowError("quadratic_residues() modulus is too large to enumerate")
+    count = runtime.number(modulus)
+    residues = set()
+    for i in range(count):
+        residues.add((i * i) % count)
+    return sorted(residues)
+
+
+def _number_theory_isqrt(value: Any) -> Any:
+    """Return the exact floor square root of a nonnegative integer."""
+    if value < 2:
+        return value
+    estimate = value
+    candidate = (estimate + 1) // 2
+    while candidate < estimate:
+        estimate = candidate
+        candidate = (estimate + value // estimate) // 2
+    return estimate
+
+
+def _sqrt_minus_one_mod(prime: Any) -> Any:
+    """Return a square root of `-1` modulo an odd prime `prime == 1 (mod 4)`."""
+    a = 2
+    while legendre_symbol(a, prime) != -1:
+        a += 1
+    return power_mod(a, (prime - 1) // 4, prime)
+
+
+def _prime_as_two_squares(prime: Any) -> Any:
+    """Return `(x, y)` with `x^2 + y^2 == prime`, via Cornacchia's algorithm."""
+    if prime == 2:
+        return 1, 1
+    b = runtime.integer_bigint(_sqrt_minus_one_mod(prime))
+    left, right = prime, b
+    while right * right > prime:
+        left, right = right, left % right
+    x = right
+    y = _number_theory_isqrt(prime - x * x)
+    return x, y
+
+
+def _two_squares_feasible(value: Any) -> _Bool:
+    """Return whether a nonnegative integer is a sum of two squares."""
+    if value == 0:
+        return True
+    for prime, exponent in factor(value):
+        prime_integer = runtime.integer_bigint(prime)
+        if prime_integer % 4 == 3 and exponent % 2 == 1:
+            return False
+    return True
+
+
+def _two_squares_construct(value: Any) -> Any:
+    """Return `(x, y)` with `x^2 + y^2 == value`, assuming feasibility."""
+    if value == 0:
+        return 0, 0
+    # Seed as bigints, not plain integers: the prime-2 branch below combines
+    # `real`/`imag` with themselves via ordinary `-`/`+`, with no other
+    # bigint operand to force exact arithmetic once a long run of factors of
+    # 2 pushes their magnitude past 2**53.
+    real, imag = runtime.bigint(1), runtime.bigint(0)
+    for prime, exponent in factor(value):
+        prime_integer = runtime.integer_bigint(prime)
+        if prime_integer == 2:
+            for _ in range(exponent):
+                real, imag = real - imag, real + imag
+        elif prime_integer % 4 == 1:
+            factor_re, factor_im = _prime_as_two_squares(prime_integer)
+            for _ in range(exponent):
+                real, imag = (
+                    real * factor_re - imag * factor_im,
+                    real * factor_im + imag * factor_re,
+                )
+        else:
+            scalar = prime_integer ** runtime.bigint(exponent // 2)
+            real *= scalar
+            imag *= scalar
+    return abs(real), abs(imag)
+
+
+def two_squares(value: Any) -> Any:
+    r"""
+    Return `(a, b)` with `0 <= a <= b` and `a^2 + b^2 == value`.
+
+    Raises `ValueError` for a negative `value`, and for a nonnegative
+    `value` that is not a sum of two squares (some prime `p == 3 (mod 4)`
+    divides it to an odd power).  Uses factorization and Gaussian-integer
+    multiplication rather than search.
+
+    ### Examples
+
+    ```sage
+    sage: two_squares(50)
+    (1, 7)
+    sage: two_squares(0)
+    (0, 0)
+    sage: two_squares(25)
+    (3, 4)
+    ```
+    """
+    if not runtime.is_exact_integer(value):
+        raise TypeError("two_squares() requires an integer")
+    integer = runtime.integer_bigint(value)
+    if integer < 0:
+        raise ValueError("two_squares() requires a nonnegative integer")
+    if not _two_squares_feasible(integer):
+        raise ValueError(str(value) + " is not a sum of two squares")
+    first, second = _two_squares_construct(integer)
+    if second < first:
+        first, second = second, first
+    return runtime.math_tuple(
+        [runtime.normalize_integer(first), runtime.normalize_integer(second)]
+    )
+
+
+def _is_forbidden_three_squares(value: Any) -> _Bool:
+    """Return whether `value == 4^a * (8*b + 7)` for some `a, b >= 0`."""
+    working = value
+    while working != 0 and working % 4 == 0:
+        working //= 4
+    return working % 8 == 7
+
+
+def _three_squares_or_none(value: Any) -> Any:
+    """Return a sorted 3-tuple summing to `value`, or `None` if impossible."""
+    if value < 0 or _is_forbidden_three_squares(value):
+        return None
+    working = value
+    scale = runtime.bigint(1)
+    while working != 0 and working % 4 == 0:
+        working //= 4
+        scale *= runtime.bigint(2)
+    if working == 0:
+        return 0, 0, 0
+    limit = _number_theory_isqrt(working)
+    b = 0
+    while b <= limit:
+        remainder = working - b * b
+        if _two_squares_feasible(remainder):
+            c, d = _two_squares_construct(remainder)
+            return tuple(sorted([scale * b, scale * c, scale * d]))
+        b += 1
+    return None
+
+
+def three_squares(value: Any) -> Any:
+    r"""
+    Return `(a, b, c)` with `a <= b <= c` and `a^2 + b^2 + c^2 == value`.
+
+    By Legendre's three-square theorem this raises `ValueError` exactly
+    when `value` is negative or has the form `4^a*(8*b + 7)`.
+
+    ### Examples
+
+    ```sage
+    sage: three_squares(30)
+    (1, 2, 5)
+    sage: three_squares(0)
+    (0, 0, 0)
+    ```
+
+    `7` itself is the smallest forbidden value, since `7 == 4^0*(8*0 + 7)`.
+    """
+    if not runtime.is_exact_integer(value):
+        raise TypeError("three_squares() requires an integer")
+    integer = runtime.integer_bigint(value)
+    if integer < 0:
+        raise ValueError("three_squares() requires a nonnegative integer")
+    result = _three_squares_or_none(integer)
+    if result is None:
+        raise ValueError(str(value) + " is not a sum of three squares")
+    return runtime.math_tuple([runtime.normalize_integer(part) for part in result])
+
+
+def four_squares(value: Any) -> Any:
+    r"""
+    Return `(a, b, c, d)` with `a <= b <= c <= d` and
+    `a^2 + b^2 + c^2 + d^2 == value`.
+
+    By Lagrange's four-square theorem this always succeeds for
+    `value >= 0`; `ValueError` is raised only for a negative `value`.
+
+    ### Examples
+
+    ```sage
+    sage: four_squares(7)
+    (1, 1, 1, 2)
+    sage: four_squares(0)
+    (0, 0, 0, 0)
+    ```
+    """
+    if not runtime.is_exact_integer(value):
+        raise TypeError("four_squares() requires an integer")
+    integer = runtime.integer_bigint(value)
+    if integer < 0:
+        raise ValueError("four_squares() requires a nonnegative integer")
+    limit = _number_theory_isqrt(integer)
+    d = 0
+    while d <= limit:
+        result = _three_squares_or_none(integer - d * d)
+        if result is not None:
+            parts = sorted([d, result[0], result[1], result[2]])
+            return runtime.math_tuple(
+                [runtime.normalize_integer(part) for part in parts]
+            )
+        d += 1
+    raise RuntimeError(
+        "four_squares() failed to find a decomposition"
+    )  # pragma: no cover
+
+
+class ContinuedFraction:
+    """A finite simple continued fraction with exact integer partial quotients.
+
+    Constructed by `continued_fraction`; not intended to be instantiated
+    directly.
+    """
+
+    def __init__(self, quotients: Any) -> None:
+        # Force every partial quotient to a true bigint, not merely an
+        # integer-valued JavaScript number.  `value()` and `convergents()`
+        # fold these with plain `*`/`+`; once an intermediate product grows
+        # past 2**53 that fold silently loses precision unless a bigint
+        # operand is already present to keep every step exact.
+        self._quotients = [runtime.integer_bigint(term) for term in quotients]
+
+    def quotients(self) -> Any:
+        """Return the partial quotients as a plain list."""
+        return [runtime.normalize_integer(term) for term in self._quotients]
+
+    def value(self) -> Any:
+        """Return the exact rational (or integer) value."""
+        terms = self._quotients
+        num = terms[-1]
+        den = 1
+        for term in reversed(terms[:-1]):
+            num, den = term * num + den, num
+        if den == 1:
+            return runtime.normalize_integer(num)
+        return runtime.rational_class(
+            runtime.normalize_integer(num), runtime.normalize_integer(den)
+        )
+
+    def convergents(self) -> Any:
+        """Return the successive convergents `p_0/q_0, p_1/q_1, ...`."""
+        terms = self._quotients
+        h_prev2, h_prev1 = 0, 1
+        k_prev2, k_prev1 = 1, 0
+        result = []
+        for term in terms:
+            h = term * h_prev1 + h_prev2
+            k = term * k_prev1 + k_prev2
+            if k == 1:
+                result.append(runtime.normalize_integer(h))
+            else:
+                result.append(
+                    runtime.rational_class(
+                        runtime.normalize_integer(h), runtime.normalize_integer(k)
+                    )
+                )
+            h_prev2, h_prev1 = h_prev1, h
+            k_prev2, k_prev1 = k_prev1, k
+        return result
+
+    def __repr__(self) -> _Str:
+        terms = [runtime.normalize_integer(term) for term in self._quotients]
+        if len(terms) == 1:
+            return "[" + str(terms[0]) + "]"
+        rest = ", ".join(str(term) for term in terms[1:])
+        return "[" + str(terms[0]) + "; " + rest + "]"
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def __eq__(self, other: Any) -> Any:
+        if isinstance(other, ContinuedFraction):
+            return self._quotients == other._quotients
+        return NotImplemented
+
+    def __len__(self) -> _Int:
+        return len(self._quotients)
+
+
+def _continued_fraction_from_rational(p: Any, q: Any) -> Any:
+    """Return the canonical partial quotients of the rational `p/q`."""
+    if q < 0:
+        p, q = -p, -q
+    quotients = []
+    while q != 0:
+        a = p // q
+        quotients.append(a)
+        p, q = q, p - a * q
+    return quotients
+
+
+def continued_fraction(x: Any) -> ContinuedFraction:
+    r"""
+    Return the simple continued fraction of `x`.
+
+    Supported inputs are an exact integer, a rational, and an explicit list
+    of partial quotients (the first may be any integer, the rest must be
+    positive).  The result carries `quotients()`, `value()`, and
+    `convergents()`.  A real, floating-point, or symbolic argument raises
+    `NotImplementedError`: an infinite or non-terminating expansion is out
+    of scope, and Sage.js never fabricates a truncated approximation in its
+    place.
+
+    ### Examples
+
+    ```sage
+    sage: continued_fraction(415/93)
+    [4; 2, 6, 7]
+    sage: continued_fraction(415/93).value()
+    415/93
+    sage: continued_fraction(415/93).convergents()
+    [4, 9/2, 58/13, 415/93]
+    sage: continued_fraction(4)
+    [4]
+    sage: continued_fraction([1, 2, 3]).value()
+    10/7
+    ```
+    """
+    if isinstance(x, (list, tuple)):
+        values = list(x)
+        if len(values) == 0:
+            raise ValueError("continued_fraction() requires at least one term")
+        quotients = []
+        for index, term in enumerate(values):
+            if not runtime.is_exact_integer(term):
+                raise TypeError("continued_fraction() list entries must be integers")
+            entry = runtime.integer_bigint(term)
+            if index > 0 and entry < 1:
+                raise ValueError(
+                    "continued_fraction() partial quotients after the first "
+                    "must be positive"
+                )
+            quotients.append(entry)
+        return ContinuedFraction(quotients)
+    if runtime.is_exact_integer(x):
+        return ContinuedFraction([runtime.integer_bigint(x)])
+    if isinstance(x, runtime.rational_class):
+        p = runtime.integer_bigint(numerator(x))
+        q = runtime.integer_bigint(denominator(x))
+        return ContinuedFraction(_continued_fraction_from_rational(p, q))
+    raise NotImplementedError(
+        "continued_fraction() supports exact integers, rationals, and "
+        "explicit partial-quotient lists; real, floating-point, and "
+        "symbolic arguments are not implemented"
+    )
+
+
 def srange(
     start: Any,
     stop: Any = None,
@@ -8583,6 +9549,233 @@ runtime.register_doc(
         "Lehmer prime counting with incremental enumeration for small bounds",
         [
             ("Like Sage primecountpy, inputs at or above 2^63 are not supported."),
+        ],
+    ),
+)
+runtime.register_doc(
+    "lcm",
+    lcm,
+    _builtins_arithmetic_doc(
+        ["lcm"], "FLINT gcd, combined for the least common multiple"
+    ),
+)
+runtime.register_doc(
+    "CRT",
+    CRT,
+    _builtins_arithmetic_doc(
+        ["crt"], "Extended-Euclidean pairwise Chinese remainder combination"
+    ),
+)
+runtime.register_doc(
+    "CRT_list",
+    CRT_list,
+    _builtins_arithmetic_doc(
+        ["crt"], "Extended-Euclidean pairwise Chinese remainder combination"
+    ),
+)
+runtime.register_doc(
+    "kronecker_symbol",
+    kronecker_symbol,
+    _builtins_arithmetic_doc(
+        ["kronecker symbol", "quadratic residues"],
+        "Kronecker's extension of the Jacobi symbol",
+    ),
+)
+runtime.register_doc(
+    "jacobi_symbol",
+    jacobi_symbol,
+    _builtins_arithmetic_doc(
+        ["jacobi symbol", "quadratic residues"],
+        "Kronecker symbol restricted to an odd positive denominator",
+    ),
+)
+runtime.register_doc(
+    "hilbert_symbol",
+    hilbert_symbol,
+    _builtins_arithmetic_doc(
+        ["hilbert symbol", "local fields", "quadratic forms"],
+        "Classical valuation/unit formulas at odd primes, 2, and the real place",
+    ),
+)
+runtime.register_doc(
+    "multiplicative_order",
+    multiplicative_order,
+    _builtins_arithmetic_doc(
+        ["multiplicative order", "modular arithmetic"],
+        "Euler totient with prime-power order reduction",
+    ),
+)
+runtime.register_doc(
+    "primitive_root",
+    primitive_root,
+    _builtins_arithmetic_doc(
+        ["primitive root", "modular arithmetic"],
+        "Case analysis on the cyclic-group existence criterion, then brute-force search",
+        [
+            (
+                "Brute-force smallest-witness search, unlike Sage's PARI-backed "
+                "primitive-root computation; intended for moduli where this "
+                "search is fast enough."
+            ),
+        ],
+    ),
+)
+runtime.register_doc(
+    "number_of_divisors",
+    number_of_divisors,
+    _builtins_arithmetic_doc(["divisors"], "FLINT factorization via sigma(n, 0)"),
+)
+runtime.register_doc(
+    "radical",
+    radical,
+    _builtins_arithmetic_doc(
+        ["radical", "factorization"], "FLINT factorization, product of distinct primes"
+    ),
+)
+runtime.register_doc(
+    "squarefree_part",
+    squarefree_part,
+    _builtins_arithmetic_doc(
+        ["squarefree", "factorization"], "FLINT factorization, odd-exponent primes only"
+    ),
+)
+runtime.register_doc(
+    "is_squarefree",
+    is_squarefree,
+    _builtins_arithmetic_doc(
+        ["squarefree", "factorization"], "FLINT factorization, exponent test"
+    ),
+)
+runtime.register_doc(
+    "nth_prime",
+    nth_prime,
+    _builtins_arithmetic_doc(
+        ["primes", "enumeration"], "Repeated FLINT next-prime search"
+    ),
+)
+runtime.register_doc(
+    "is_pseudoprime",
+    is_pseudoprime,
+    _builtins_arithmetic_doc(
+        ["primes", "primality"],
+        "FLINT primality testing",
+        [
+            (
+                "Sage.js has no separate, deliberately weaker pseudoprimality "
+                "test; this agrees with is_prime for every integer reachable "
+                "in practice, unlike Sage's Fermat/Miller-Rabin-only "
+                "is_pseudoprime."
+            ),
+        ],
+    ),
+)
+runtime.register_doc(
+    "next_prime_power",
+    next_prime_power,
+    _builtins_arithmetic_doc(
+        ["prime powers", "primes"],
+        "Linear search using is_prime_power",
+        [
+            (
+                "Runs a full factor() (via is_prime_power) on every "
+                "candidate, so the cost is O(gap x factorization) in the "
+                "size of the gap to the next prime power; can be slow for "
+                "a large value in a sparse stretch of prime powers."
+            ),
+        ],
+    ),
+)
+runtime.register_doc(
+    "previous_prime_power",
+    previous_prime_power,
+    _builtins_arithmetic_doc(
+        ["prime powers", "primes"],
+        "Linear search using is_prime_power",
+        [
+            (
+                "Runs a full factor() (via is_prime_power) on every "
+                "candidate, so the cost is O(gap x factorization) in the "
+                "size of the gap to the previous prime power; can be slow "
+                "for a large value in a sparse stretch of prime powers."
+            ),
+            (
+                "The result at the bottom of the range depends on the "
+                "still-open is_prime_power(1) convention question: "
+                "previous_prime_power(2) currently returns 1 because "
+                "Sage.js's is_prime_power(1) is True, matching Sage before "
+                "sage-6.6.  If that convention changes (tracked in "
+                "sagejs#56), this result changes with it."
+            ),
+        ],
+    ),
+)
+runtime.register_doc(
+    "quadratic_residues",
+    quadratic_residues,
+    _builtins_arithmetic_doc(
+        ["quadratic residues", "modular arithmetic"],
+        "Exhaustive enumeration of squares modulo n",
+        [
+            (
+                "Enumerates every residue class into a set before sorting, "
+                "so both time and memory are O(n); n (after taking its "
+                "absolute value) is bounded to keep that practical, and "
+                "raises OverflowError above 10^7 rather than materializing "
+                "a set of that size."
+            ),
+        ],
+    ),
+)
+runtime.register_doc(
+    "two_squares",
+    two_squares,
+    _builtins_arithmetic_doc(
+        ["sum of squares", "factorization"],
+        "Factorization and Gaussian-integer multiplication (Cornacchia's algorithm at each prime)",
+    ),
+)
+runtime.register_doc(
+    "three_squares",
+    three_squares,
+    _builtins_arithmetic_doc(
+        ["sum of squares", "factorization"],
+        "Legendre's three-square criterion, then search reduced to two_squares",
+        [
+            (
+                "Search-based, not a polynomial-time construction; practical "
+                "for moduli where a feasible remainder is found quickly, "
+                "which is the overwhelming majority in practice."
+            ),
+        ],
+    ),
+)
+runtime.register_doc(
+    "four_squares",
+    four_squares,
+    _builtins_arithmetic_doc(
+        ["sum of squares", "factorization"],
+        "Search reduced to three_squares, guaranteed to terminate by Lagrange's theorem",
+        [
+            (
+                "Search-based, not the minimal Euler-descent construction "
+                "FLINT/PARI use."
+            ),
+        ],
+    ),
+)
+runtime.register_doc(
+    "continued_fraction",
+    continued_fraction,
+    _builtins_arithmetic_doc(
+        ["continued fractions"],
+        "Euclidean algorithm on the numerator and denominator",
+        [
+            (
+                "Supports exact integers, rationals, and explicit "
+                "partial-quotient lists only.  A real, floating-point, or "
+                "symbolic argument raises NotImplementedError instead of "
+                "fabricating a truncated expansion."
+            ),
         ],
     ),
 )

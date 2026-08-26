@@ -196,6 +196,46 @@ class AstBuilder {
   }
 }
 
+// Runtime heads dispatch to a `_wolfram.<Head>` wrapper in src/lib/wolfram.py
+// rather than a bare Sage global, because Wolfram's calling convention
+// differs from the Sage global of the same underlying name (variadic
+// arguments, an extra positional form, or a different return shape).  #46
+// (arith/integer-methods) may have already renamed this array to a similarly
+// named constant on its branch; expect a small mechanical conflict on merge.
+const RUNTIME_HEADS = [
+  "Dimensions",
+  "FactorInteger",
+  "Head",
+  "Length",
+  "Prime",
+  "Range",
+  "LCM",
+  "ContinuedFraction",
+  "FromContinuedFraction",
+  "CoprimeQ",
+];
+
+// Elementary number-theory heads added alongside RUNTIME_HEADS and
+// directHeads.  Each entry only accepts positional arguments: Wolfram
+// `Option -> value` (Rule) syntax is refused everywhere below rather than
+// lowered to a keyword argument.  PR #35 (origin/numerics/wolfram-options)
+// owns that machinery (`OptimizationOptionAction`, `declinedOptions()`,
+// `lowerMethodOption()`, `lowerOptimizationOptions()`) for the optimization
+// heads; extending option support to these heads later means adding a spec
+// table per head family once #35 lands, not new lowering machinery.
+const NUMBER_THEORY_HEAD_ARITY: Record<string, number> = {
+  LCM: Infinity,
+  ChineseRemainder: 2,
+  JacobiSymbol: 2,
+  KroneckerSymbol: 2,
+  MultiplicativeOrder: 2,
+  PrimitiveRoot: 1,
+  ContinuedFraction: 2,
+  FromContinuedFraction: 1,
+  CoprimeQ: Infinity,
+  PrimePowerQ: 1,
+};
+
 const PYTHON_KEYWORDS = new Set([
   "and", "as", "assert", "async", "await", "break", "class", "continue",
   "def", "del", "elif", "else", "except", "False", "finally", "for",
@@ -209,11 +249,17 @@ class SageLowerer {
   private readonly plotVariables = new Set<string>();
   private readonly directHeads: Record<string, string> = {
     Abs: "abs",
+    ChineseRemainder: "CRT_list",
     Cos: "cos",
     Exp: "exp",
+    JacobiSymbol: "jacobi_symbol",
+    KroneckerSymbol: "kronecker_symbol",
     Log: "log",
+    MultiplicativeOrder: "multiplicative_order",
     Plot: "plot",
     PrimePi: "prime_pi",
+    PrimePowerQ: "is_prime_power",
+    PrimitiveRoot: "primitive_root",
     Sin: "sin",
     Sqrt: "sqrt",
     Tan: "tan",
@@ -315,6 +361,35 @@ class SageLowerer {
     );
   }
 
+  // Number-theory heads accept only their documented positional arguments.
+  // Reject a Rule/RuleDelayed argument, or more arguments than the head
+  // documents, by name instead of silently lowering `Option -> value` into a
+  // keyword argument (that machinery belongs to PR #35, not this branch).
+  private checkNumberTheoryArguments(
+    head: string,
+    expression: CallExpression,
+    maxArguments: number,
+  ): void {
+    const refuse = (span: SourceSpan) => {
+      throw new WolframSyntaxError(
+        `${head} options are not supported yet: Rule expressions do not ` +
+          `lower to keyword arguments outside plot options`,
+        span,
+      );
+    };
+    for (const argument of expression.arguments) {
+      if (
+        argument.kind === "binary" &&
+        ["->", ":>"].includes(argument.operator)
+      ) {
+        refuse(argument.span);
+      }
+    }
+    if (expression.arguments.length > maxArguments) {
+      refuse(expression.span);
+    }
+  }
+
   private call(expression: CallExpression): string {
     if (expression.head.kind !== "symbol") {
       return `${this.expression(expression.head)}(${
@@ -323,6 +398,10 @@ class SageLowerer {
       })`;
     }
     const head = expression.head.name;
+    const numberTheoryArity = NUMBER_THEORY_HEAD_ARITY[head];
+    if (numberTheoryArity !== undefined) {
+      this.checkNumberTheoryArguments(head, expression, numberTheoryArity);
+    }
     if (head === "Table") return this.table(expression);
     if (head === "Plot") return this.plot(expression);
     if (head === "ParametricPlot") {
@@ -408,8 +487,7 @@ class SageLowerer {
     }
     const direct = this.directHeads[head];
     const target = direct ?? (
-      ["Dimensions", "FactorInteger", "Head", "Length", "Prime", "Range"]
-        .includes(head)
+      RUNTIME_HEADS.includes(head)
         ? `_wolfram.${head}`
         : this.name(head)
     );

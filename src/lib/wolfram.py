@@ -78,13 +78,43 @@ def factor_integer(value: Any) -> list[list[Any]]:
 def prime(index: int) -> int:
     if index < 1:
         raise ValueError("Prime index must be positive")
-    found = 0
-    candidate = 1
-    while found < index:
-        candidate += 1
-        if sage.is_prime(candidate):
-            found += 1
-    return candidate
+    return sage.nth_prime(index)
+
+
+def lcm_all(*values: Any) -> Any:
+    """`LCM[]` is `1`; `LCM[a, b, ...]` matches Sage's `lcm` list form."""
+    return sage.lcm(list(values))
+
+
+def coprime_q(*values: Any) -> bool:
+    """`CoprimeQ[a1, a2, ...]`: `True` iff the arguments are pairwise coprime."""
+    items = list(values)
+    for first in range(len(items)):
+        for second in range(first + 1, len(items)):
+            if sage.gcd(items[first], items[second]) != 1:
+                return False
+    return True
+
+
+def continued_fraction_terms(x: Any, n: int | None = None) -> list[Any]:
+    """`ContinuedFraction[x]` / `ContinuedFraction[x, n]`: a list of terms.
+
+    Unlike `sage.continued_fraction`, which returns an object, Wolfram's
+    `ContinuedFraction` returns the partial quotients directly.  `n` selects
+    the first `n` terms; requesting more terms than the exact expansion has
+    just returns the terms that exist, matching Sage's own list truncation.
+    """
+    quotients = list(sage.continued_fraction(x).quotients())
+    if n is None:
+        return quotients
+    if n < 0:
+        raise ValueError("ContinuedFraction term count must be nonnegative")
+    return quotients[:n]
+
+
+def from_continued_fraction(quotients: Any) -> Any:
+    """`FromContinuedFraction[{a0, a1, ...}]`: reassemble the exact value."""
+    return sage.continued_fraction(list(quotients)).value()
 
 
 def wolfram_range(
@@ -117,6 +147,10 @@ Length = length
 Prime = prime
 Range = wolfram_range
 Table = table
+LCM = lcm_all
+CoprimeQ = coprime_q
+ContinuedFraction = continued_fraction_terms
+FromContinuedFraction = from_continued_fraction
 
 
 class _GraphicsDirective:

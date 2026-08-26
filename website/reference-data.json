@@ -716,6 +716,57 @@
       },
       {
         "schema_version": 1,
+        "name": "continued_fraction",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "continued_fraction(x: Any) -> ContinuedFraction",
+        "summary": "Return the simple continued fraction of `x`.",
+        "doc": "Return the simple continued fraction of `x`.\n\nSupported inputs are an exact integer, a rational, and an explicit list\nof partial quotients (the first may be any integer, the rest must be\npositive).  The result carries `quotients()`, `value()`, and\n`convergents()`.  A real, floating-point, or symbolic argument raises\n`NotImplementedError`: an infinite or non-terminating expansion is out\nof scope, and Sage.js never fabricates a truncated approximation in its\nplace.\n\n### Examples\n\n```sage\nsage: continued_fraction(415/93)\n[4; 2, 6, 7]\nsage: continued_fraction(415/93).value()\n415/93\nsage: continued_fraction(415/93).convergents()\n[4, 9/2, 58/13, 415/93]\nsage: continued_fraction(4)\n[4]\nsage: continued_fraction([1, 2, 3]).value()\n10/7\n```",
+        "tags": [
+          "arithmetic",
+          "continued fractions"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Euclidean algorithm on the numerator and denominator"
+        },
+        "limitations": [
+          "Supports exact integers, rationals, and explicit partial-quotient lists only.  A real, floating-point, or symbolic argument raises NotImplementedError instead of fabricating a truncated expansion."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "contour_plot",
         "aliases": [],
         "kind": "function",
@@ -760,6 +811,104 @@
         ],
         "implementation": {
           "algorithm": "Sage-compatible semantic graphics with Plotly rendering"
+        },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "CRT",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "CRT(left_value: Any, right_value: Any, left_modulus: Any=None, right_modulus: Any=None) -> Any",
+        "summary": "Sage's capitalized alias for `crt`.",
+        "doc": "Sage's capitalized alias for `crt`.\n\nAccepts the same two calling conventions as `crt`: two residues and two\ncoprime moduli, or a single list of residues and a matching list of\nmoduli.\n\n### Examples\n\n```sage\nsage: CRT(2, 3, 3, 5)\n8\nsage: CRT([2, 3, 2], [3, 5, 7])\n23\n```",
+        "tags": [
+          "arithmetic",
+          "crt"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Extended-Euclidean pairwise Chinese remainder combination"
+        },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "CRT_list",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "CRT_list(values: Any, moduli: Any) -> Any",
+        "summary": "Sage's `CRT_list`: solve simultaneous congruences given as two lists.",
+        "doc": "Sage's `CRT_list`: solve simultaneous congruences given as two lists.\n\nEquivalent to `crt(values, moduli)`; the moduli must be pairwise\ncoprime.\n\n### Examples\n\n```sage\nsage: CRT_list([2, 3, 2], [3, 5, 7])\n23\n```",
+        "tags": [
+          "arithmetic",
+          "crt"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Extended-Euclidean pairwise Chinese remainder combination"
         },
         "limitations": []
       },
@@ -1904,6 +2053,58 @@
         },
         "limitations": [
           "The current compiler targets JavaScript numeric evaluation."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "four_squares",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "four_squares(value: Any) -> Any",
+        "summary": "Return `(a, b, c, d)` with `a <= b <= c <= d` and",
+        "doc": "Return `(a, b, c, d)` with `a <= b <= c <= d` and\n`a^2 + b^2 + c^2 + d^2 == value`.\n\nBy Lagrange's four-square theorem this always succeeds for\n`value >= 0`; `ValueError` is raised only for a negative `value`.\n\n### Examples\n\n```sage\nsage: four_squares(7)\n(1, 1, 1, 2)\nsage: four_squares(0)\n(0, 0, 0, 0)\n```",
+        "tags": [
+          "arithmetic",
+          "sum of squares",
+          "factorization"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Search reduced to three_squares, guaranteed to terminate by Lagrange's theorem"
+        },
+        "limitations": [
+          "Search-based, not the minimal Euler-descent construction FLINT/PARI use."
         ]
       },
       {
@@ -6410,6 +6611,57 @@
       },
       {
         "schema_version": 1,
+        "name": "hilbert_symbol",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "hilbert_symbol(a: Any, b: Any, p: Any) -> _Int",
+        "summary": "Return the local Hilbert symbol `(a, b)_p` for nonzero rationals `a`,",
+        "doc": "Return the local Hilbert symbol `(a, b)_p` for nonzero rationals `a`,\n`b` at a place `p`.\n\n`p` is an odd prime, `2`, or `-1` for the real place.  The Hilbert\nsymbol is `1` if `z^2 = a x^2 + b y^2` has a nonzero solution over the\ncompletion `Q_p`, and `-1` otherwise.  This uses the classical formulas\nin terms of the `p`-adic valuations and unit parts of `a` and `b`\n(Serre, *A Course in Arithmetic*, Ch. III; Cohen, *A Course in\nComputational Algebraic Number Theory*, Algorithms 1.4.10 and 1.4.12).\n\n### Examples\n\n```sage\nsage: hilbert_symbol(-1, -1, 2)\n-1\nsage: hilbert_symbol(-1, -1, 3)\n1\nsage: hilbert_symbol(-1, -1, -1)\n-1\nsage: hilbert_symbol(1, 1, 5)\n1\n```",
+        "tags": [
+          "arithmetic",
+          "hilbert symbol",
+          "local fields",
+          "quadratic forms"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Classical valuation/unit formulas at odd primes, 2, and the real place"
+        },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
         "name": "histogram",
         "aliases": [],
         "kind": "function",
@@ -6969,6 +7221,257 @@
         ],
         "implementation": {
           "algorithm": "FLINT primality testing"
+        },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "is_pseudoprime",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "is_pseudoprime(value: Any) -> _Bool",
+        "summary": "Return whether `value` passes FLINT's industrial-strength",
+        "doc": "Return whether `value` passes FLINT's industrial-strength\nprobable-primality test.\n\nSage.js has no separate, deliberately weaker pseudoprimality test;\n`is_pseudoprime` and `is_prime` therefore agree for every integer\nreachable in practice, unlike Sage's PARI-backed `is_pseudoprime`,\nwhich is a Fermat/Miller-Rabin test without a final primality proof.\n\n### Examples\n\n```sage\nsage: is_pseudoprime(97)\nTrue\nsage: is_pseudoprime(91)\nFalse\nsage: is_pseudoprime(1)\nFalse\n```",
+        "tags": [
+          "arithmetic",
+          "primes",
+          "primality"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "FLINT primality testing"
+        },
+        "limitations": [
+          "Sage.js has no separate, deliberately weaker pseudoprimality test; this agrees with is_prime for every integer reachable in practice, unlike Sage's Fermat/Miller-Rabin-only is_pseudoprime."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "is_squarefree",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "is_squarefree(value: Any) -> _Bool",
+        "summary": "Return whether `value` is squarefree, i.e. not divisible by any",
+        "doc": "Return whether `value` is squarefree, i.e. not divisible by any\nperfect square greater than `1`.\n\n`is_squarefree(0)` is `False`; the sign of a nonzero `value` is\nignored.\n\n### Examples\n\n```sage\nsage: is_squarefree(15)\nTrue\nsage: is_squarefree(12)\nFalse\nsage: is_squarefree(0)\nFalse\n```",
+        "tags": [
+          "arithmetic",
+          "squarefree",
+          "factorization"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "FLINT factorization, exponent test"
+        },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "jacobi_symbol",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "jacobi_symbol(a: Any, b: Any) -> Any",
+        "summary": "The Jacobi symbol `(a / b)` for an odd positive integer `b`.",
+        "doc": "The Jacobi symbol `(a / b)` for an odd positive integer `b`.\n\nUnlike `kronecker_symbol`, the Jacobi symbol is only defined for an odd\npositive `b`; passing an even or nonpositive `b` raises `ValueError`,\nmatching Sage.  Use `kronecker_symbol` for the unrestricted domain.\n\n### Examples\n\n```sage\nsage: jacobi_symbol(2, 15)\n1\nsage: jacobi_symbol(5, 17)\n-1\nsage: jacobi_symbol(1, 1)\n1\n```",
+        "tags": [
+          "arithmetic",
+          "jacobi symbol",
+          "quadratic residues"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Kronecker symbol restricted to an odd positive denominator"
+        },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "kronecker_symbol",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "kronecker_symbol(left: Any, right: Any) -> Any",
+        "summary": "The Kronecker symbol `(left / right)`, generalizing the Jacobi symbol",
+        "doc": "The Kronecker symbol `(left / right)`, generalizing the Jacobi symbol\nto every integer denominator, including even and negative values.\n\nAn alias for `kronecker`.\n\n### Examples\n\n```sage\nsage: kronecker_symbol(5, 17)\n-1\nsage: kronecker_symbol(3, -4)\n1\n```",
+        "tags": [
+          "arithmetic",
+          "kronecker symbol",
+          "quadratic residues"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Kronecker's extension of the Jacobi symbol"
+        },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "lcm",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "lcm(left: Any, right: Any=None) -> Any",
+        "summary": "Return the least common multiple of two integers, or of a list.",
+        "doc": "Return the least common multiple of two integers, or of a list.\n\nMirrors `gcd`'s calling convention: pass two integers, or a single\niterable of integers.  The identity for an empty list is `1`, matching\nSage, PARI/GP, and Python's own `math.lcm()`.  The result is always\nnonnegative, and `lcm` of anything together with `0` is `0`.\n\n### Examples\n\n```sage\nsage: lcm(6, 4)\n12\nsage: lcm(0, 5)\n0\nsage: lcm([2, 3, 4])\n12\nsage: lcm([])\n1\n```",
+        "tags": [
+          "arithmetic",
+          "lcm"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "FLINT gcd, combined for the least common multiple"
         },
         "limitations": []
       },
@@ -8541,6 +9044,56 @@
       },
       {
         "schema_version": 1,
+        "name": "multiplicative_order",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "multiplicative_order(x: Any, n: Any) -> Any",
+        "summary": "Return the multiplicative order of `x` modulo `n`.",
+        "doc": "Return the multiplicative order of `x` modulo `n`.\n\nRaises `ArithmeticError` when `x` is not a unit modulo `n`, i.e. when\n`gcd(x, n) != 1`.\n\n### Examples\n\n```sage\nsage: multiplicative_order(2, 7)\n3\nsage: multiplicative_order(3, 7)\n6\nsage: multiplicative_order(1, 1)\n1\n```",
+        "tags": [
+          "arithmetic",
+          "multiplicative order",
+          "modular arithmetic"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Euler totient with prime-power order reduction"
+        },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
         "name": "next_prime",
         "aliases": [],
         "kind": "function",
@@ -8585,6 +9138,157 @@
         ],
         "implementation": {
           "algorithm": "FLINT next-prime search"
+        },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "next_prime_power",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "next_prime_power(value: Any) -> Any",
+        "summary": "Return the smallest prime power strictly greater than `value`.",
+        "doc": "Return the smallest prime power strictly greater than `value`.\n\n`value` itself is never returned, even when it is already a prime\npower; `1` counts as a prime power.\n\nWalks candidates one at a time and runs `is_prime_power` -- a full\n`factor()` -- on each, so the cost is O(gap x factorization) in the\nsize of the gap to the next prime power.  That gap is usually small,\nbut is not bounded, so this can be slow for a large `value` in a\nsparse stretch of prime powers.\n\n### Examples\n\n```sage\nsage: next_prime_power(8)\n9\nsage: next_prime_power(9)\n11\nsage: next_prime_power(0)\n1\n```",
+        "tags": [
+          "arithmetic",
+          "prime powers",
+          "primes"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Linear search using is_prime_power"
+        },
+        "limitations": [
+          "Runs a full factor() (via is_prime_power) on every candidate, so the cost is O(gap x factorization) in the size of the gap to the next prime power; can be slow for a large value in a sparse stretch of prime powers."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "nth_prime",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "nth_prime(n: Any) -> Any",
+        "summary": "Return the `n`-th prime, 1-indexed, so `nth_prime(1) == 2`.",
+        "doc": "Return the `n`-th prime, 1-indexed, so `nth_prime(1) == 2`.\n\nWalks FLINT's `next_prime` `n` times rather than testing every integer\nfor primality individually.\n\n### Examples\n\n```sage\nsage: nth_prime(1)\n2\nsage: nth_prime(10)\n29\nsage: nth_prime(100)\n541\n```",
+        "tags": [
+          "arithmetic",
+          "primes",
+          "enumeration"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Repeated FLINT next-prime search"
+        },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "number_of_divisors",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "number_of_divisors(value: Any) -> Any",
+        "summary": "Return the number of positive divisors of `value`.",
+        "doc": "Return the number of positive divisors of `value`.\n\nEqual to `sigma(value, 0)`; raises `ValueError` for `0`, matching\n`sigma`.\n\n### Examples\n\n```sage\nsage: number_of_divisors(28)\n6\nsage: number_of_divisors(1)\n1\nsage: number_of_divisors(-12)\n6\n```",
+        "tags": [
+          "arithmetic",
+          "divisors"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "FLINT factorization via sigma(n, 0)"
         },
         "limitations": []
       },
@@ -10597,6 +11301,59 @@
       },
       {
         "schema_version": 1,
+        "name": "previous_prime_power",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "previous_prime_power(value: Any) -> Any",
+        "summary": "Return the largest prime power strictly less than `value`.",
+        "doc": "Return the largest prime power strictly less than `value`.\n\nRaises `ValueError` when no smaller prime power exists, i.e. for\n`value <= 1`.\n\nWalks candidates one at a time and runs `is_prime_power` -- a full\n`factor()` -- on each, so the cost is O(gap x factorization) in the\nsize of the gap to the previous prime power.  That gap is usually\nsmall, but is not bounded, so this can be slow for a large `value` in\na sparse stretch of prime powers.\n\n### Examples\n\n```sage\nsage: previous_prime_power(9)\n8\nsage: previous_prime_power(2)\n1\n```",
+        "tags": [
+          "arithmetic",
+          "prime powers",
+          "primes"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Linear search using is_prime_power"
+        },
+        "limitations": [
+          "Runs a full factor() (via is_prime_power) on every candidate, so the cost is O(gap x factorization) in the size of the gap to the previous prime power; can be slow for a large value in a sparse stretch of prime powers.",
+          "The result at the bottom of the range depends on the still-open is_prime_power(1) convention question: previous_prime_power(2) currently returns 1 because Sage.js's is_prime_power(1) is True, matching Sage before sage-6.6.  If that convention changes (tracked in sagejs#56), this result changes with it."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "prime_pi",
         "aliases": [],
         "kind": "function",
@@ -10699,6 +11456,58 @@
       },
       {
         "schema_version": 1,
+        "name": "primitive_root",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "primitive_root(n: Any, check: _Bool=True) -> Any",
+        "summary": "Return the smallest primitive root of `n`.",
+        "doc": "Return the smallest primitive root of `n`.\n\nA primitive root exists exactly when `n` is `1`, `2`, `4`, `p^k`, or\n`2*p^k` for an odd prime `p`; `ValueError` is raised otherwise.  With\n`check=False` the fast existence test is skipped, but a nonexistent\nprimitive root still raises after an exhaustive search.\n\n### Examples\n\n```sage\nsage: primitive_root(7)\n3\nsage: primitive_root(1)\n0\nsage: primitive_root(2)\n1\n```",
+        "tags": [
+          "arithmetic",
+          "primitive root",
+          "modular arithmetic"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Case analysis on the cyclic-group existence criterion, then brute-force search"
+        },
+        "limitations": [
+          "Brute-force smallest-witness search, unlike Sage's PARI-backed primitive-root computation; intended for moduli where this search is fast enough."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "Qp",
         "aliases": [
           "Zp"
@@ -10734,6 +11543,58 @@
         },
         "limitations": [
           "Only exact rational elements are currently supported."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "quadratic_residues",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "quadratic_residues(n: Any) -> Any",
+        "summary": "Return the sorted list of quadratic residues modulo `n`, including `0`.",
+        "doc": "Return the sorted list of quadratic residues modulo `n`, including `0`.\n\nComputes every residue class by brute force and materializes them in a\nset before sorting, so both time and memory are O(n).  `n` (after\ntaking its absolute value) is bounded to `10^7`; above that,\n`OverflowError` is raised rather than allocating a set of that size.\n\n### Examples\n\n```sage\nsage: quadratic_residues(11)\n[0, 1, 3, 4, 5, 9]\nsage: quadratic_residues(1)\n[0]\n```",
+        "tags": [
+          "arithmetic",
+          "quadratic residues",
+          "modular arithmetic"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Exhaustive enumeration of squares modulo n"
+        },
+        "limitations": [
+          "Enumerates every residue class into a set before sorting, so both time and memory are O(n); n (after taking its absolute value) is bounded to keep that practical, and raises OverflowError above 10^7 rather than materializing a set of that size."
         ]
       },
       {
@@ -10813,6 +11674,56 @@
           }
         ],
         "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "radical",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "radical(value: Any) -> Any",
+        "summary": "Return the radical (squarefree kernel) of `value`: the product of the",
+        "doc": "Return the radical (squarefree kernel) of `value`: the product of the\ndistinct primes dividing it.\n\nRaises `ArithmeticError` for `0`, which has no radical.\n\n### Examples\n\n```sage\nsage: radical(12)\n6\nsage: radical(1)\n1\nsage: radical(-18)\n6\n```",
+        "tags": [
+          "arithmetic",
+          "radical",
+          "factorization"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "FLINT factorization, product of distinct primes"
+        },
         "limitations": []
       },
       {
@@ -11441,6 +12352,56 @@
       },
       {
         "schema_version": 1,
+        "name": "squarefree_part",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "squarefree_part(value: Any) -> Any",
+        "summary": "Return `value` divided by the largest perfect square dividing it,",
+        "doc": "Return `value` divided by the largest perfect square dividing it,\nkeeping its sign.\n\n`squarefree_part(0) == 0`.\n\n### Examples\n\n```sage\nsage: squarefree_part(75)\n3\nsage: squarefree_part(-8)\n-2\nsage: squarefree_part(0)\n0\n```",
+        "tags": [
+          "arithmetic",
+          "squarefree",
+          "factorization"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "FLINT factorization, odd-exponent primes only"
+        },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
         "name": "streamline_plot",
         "aliases": [],
         "kind": "function",
@@ -11671,6 +12632,108 @@
         "references": [],
         "implementation": {
           "algorithm": "Semantic 3D primitives with Plotly rendering"
+        },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "three_squares",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "three_squares(value: Any) -> Any",
+        "summary": "Return `(a, b, c)` with `a <= b <= c` and `a^2 + b^2 + c^2 == value`.",
+        "doc": "Return `(a, b, c)` with `a <= b <= c` and `a^2 + b^2 + c^2 == value`.\n\nBy Legendre's three-square theorem this raises `ValueError` exactly\nwhen `value` is negative or has the form `4^a*(8*b + 7)`.\n\n### Examples\n\n```sage\nsage: three_squares(30)\n(1, 2, 5)\nsage: three_squares(0)\n(0, 0, 0)\n```\n\n`7` itself is the smallest forbidden value, since `7 == 4^0*(8*0 + 7)`.",
+        "tags": [
+          "arithmetic",
+          "sum of squares",
+          "factorization"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Legendre's three-square criterion, then search reduced to two_squares"
+        },
+        "limitations": [
+          "Search-based, not a polynomial-time construction; practical for moduli where a feasible remainder is found quickly, which is the overwhelming majority in practice."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "two_squares",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.arith.misc",
+        "signature": "two_squares(value: Any) -> Any",
+        "summary": "Return `(a, b)` with `0 <= a <= b` and `a^2 + b^2 == value`.",
+        "doc": "Return `(a, b)` with `0 <= a <= b` and `a^2 + b^2 == value`.\n\nRaises `ValueError` for a negative `value`, and for a nonnegative\n`value` that is not a sum of two squares (some prime `p == 3 (mod 4)`\ndivides it to an odd power).  Uses factorization and Gaussian-integer\nmultiplication rather than search.\n\n### Examples\n\n```sage\nsage: two_squares(50)\n(1, 7)\nsage: two_squares(0)\n(0, 0)\nsage: two_squares(25)\n(3, 4)\n```",
+        "tags": [
+          "arithmetic",
+          "sum of squares",
+          "factorization"
+        ],
+        "backends": [
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches the documented SageMath result for the supported integer inputs."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath arithmetic API",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Factorization and Gaussian-integer multiplication (Cornacchia's algorithm at each prime)"
         },
         "limitations": []
       },
@@ -12802,6 +13865,149 @@
     },
     {
       "schema_version": 1,
+      "name": "continued_fraction",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "continued_fraction(x: Any) -> ContinuedFraction",
+      "summary": "Return the simple continued fraction of `x`.",
+      "doc": "Return the simple continued fraction of `x`.\n\nSupported inputs are an exact integer, a rational, and an explicit list\nof partial quotients (the first may be any integer, the rest must be\npositive).  The result carries `quotients()`, `value()`, and\n`convergents()`.  A real, floating-point, or symbolic argument raises\n`NotImplementedError`: an infinite or non-terminating expansion is out\nof scope, and Sage.js never fabricates a truncated approximation in its\nplace.\n\n### Examples\n\n```sage\nsage: continued_fraction(415/93)\n[4; 2, 6, 7]\nsage: continued_fraction(415/93).value()\n415/93\nsage: continued_fraction(415/93).convergents()\n[4, 9/2, 58/13, 415/93]\nsage: continued_fraction(4)\n[4]\nsage: continued_fraction([1, 2, 3]).value()\n10/7\n```",
+      "tags": [
+        "arithmetic",
+        "continued fractions"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Euclidean algorithm on the numerator and denominator"
+      },
+      "limitations": [
+        "Supports exact integers, rationals, and explicit partial-quotient lists only.  A real, floating-point, or symbolic argument raises NotImplementedError instead of fabricating a truncated expansion."
+      ],
+      "source": {
+        "name": "continued_fraction",
+        "qualified": "continued_fraction",
+        "path": "src/baselib/builtins.py",
+        "line": 7713,
+        "excerpt": {
+          "start_line": 7701,
+          "text": "def _continued_fraction_from_rational(p: Any, q: Any) -> Any:\n    \"\"\"Return the canonical partial quotients of the rational `p/q`.\"\"\"\n    if q < 0:\n        p, q = -p, -q\n    quotients = []\n    while q != 0:\n        a = p // q\n        quotients.append(a)\n        p, q = q, p - a * q\n    return quotients\n\n\ndef continued_fraction(x: Any) -> ContinuedFraction:\n    r\"\"\"\n    Return the simple continued fraction of `x`.\n\n    Supported inputs are an exact integer, a rational, and an explicit list\n    of partial quotients (the first may be any integer, the rest must be\n    positive).  The result carries `quotients()`, `value()`, and\n    `convergents()`.  A real, floating-point, or symbolic argument raises\n    `NotImplementedError`: an infinite or non-terminating expansion is out\n    of scope, and Sage.js never fabricates a truncated approximation in its\n    place.\n\n    ### Examples"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#0e5ff160964f901e-abe96b70bbc4a598",
+          "line": 7728,
+          "source": "continued_fraction(415/93)",
+          "want": "[4; 2, 6, 7]\n",
+          "tags": [],
+          "owner": "continued_fraction",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#0e5ff160964f901e-abe96b70bbc4a598",
+            "status": "pass",
+            "actual": "[4; 2, 6, 7]\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#f1172c64a67464a6-b712a4990bb3cc63",
+          "line": 7730,
+          "source": "continued_fraction(415/93).value()",
+          "want": "415/93\n",
+          "tags": [],
+          "owner": "continued_fraction",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#f1172c64a67464a6-b712a4990bb3cc63",
+            "status": "pass",
+            "actual": "415/93\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#faf178e67aeffdd8-e755251511102b23",
+          "line": 7732,
+          "source": "continued_fraction(415/93).convergents()",
+          "want": "[4, 9/2, 58/13, 415/93]\n",
+          "tags": [],
+          "owner": "continued_fraction",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#faf178e67aeffdd8-e755251511102b23",
+            "status": "pass",
+            "actual": "[4, 9/2, 58/13, 415/93]\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#21bf6f05b5bbbb85-46b1884167c4edd3",
+          "line": 7734,
+          "source": "continued_fraction(4)",
+          "want": "[4]\n",
+          "tags": [],
+          "owner": "continued_fraction",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#21bf6f05b5bbbb85-46b1884167c4edd3",
+            "status": "pass",
+            "actual": "[4]\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#1f85d5413093eddf-cc5925b930e6c909",
+          "line": 7736,
+          "source": "continued_fraction([1, 2, 3]).value()",
+          "want": "10/7\n",
+          "tags": [],
+          "owner": "continued_fraction",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#1f85d5413093eddf-cc5925b930e6c909",
+            "status": "pass",
+            "actual": "10/7\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "contour_plot",
       "aliases": [],
       "kind": "function",
@@ -12859,6 +14065,176 @@
         }
       },
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "CRT",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "CRT(left_value: Any, right_value: Any, left_modulus: Any=None, right_modulus: Any=None) -> Any",
+      "summary": "Sage's capitalized alias for `crt`.",
+      "doc": "Sage's capitalized alias for `crt`.\n\nAccepts the same two calling conventions as `crt`: two residues and two\ncoprime moduli, or a single list of residues and a matching list of\nmoduli.\n\n### Examples\n\n```sage\nsage: CRT(2, 3, 3, 5)\n8\nsage: CRT([2, 3, 2], [3, 5, 7])\n23\n```",
+      "tags": [
+        "arithmetic",
+        "crt"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Extended-Euclidean pairwise Chinese remainder combination"
+      },
+      "limitations": [],
+      "source": {
+        "name": "crt",
+        "qualified": "crt",
+        "path": "src/baselib/builtins.py",
+        "line": 6716,
+        "excerpt": {
+          "start_line": 6704,
+          "text": "    modulus = runtime.integer_bigint(m)\n    if answer < 0:\n        answer = -answer\n    if modulus < 0:\n        modulus = -modulus\n    common = runtime.integer_bigint(ρσ_gcd(answer, modulus))\n    while common != 1:\n        answer //= common\n        common = runtime.integer_bigint(ρσ_gcd(answer, modulus))\n    return runtime.normalize_integer(answer)\n\n\ndef crt(\n    left_value: Any,\n    right_value: Any,\n    left_modulus: Any = runtime.undefined,\n    right_modulus: Any = runtime.undefined,\n) -> Any:\n    if left_modulus is runtime.undefined and right_modulus is runtime.undefined:\n        values = list(left_value)\n        moduli = list(right_value)\n        if len(values) != len(moduli):\n            raise ValueError(\"CRT lists must have the same length\")\n        if len(values) == 0:\n            return 0"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#3aa843b07942e747-2c624232cdd22177",
+          "line": 6880,
+          "source": "CRT(2, 3, 3, 5)",
+          "want": "8\n",
+          "tags": [],
+          "owner": "CRT",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#3aa843b07942e747-2c624232cdd22177",
+            "status": "pass",
+            "actual": "8\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#7ffdf4b2bcdd55d5-535fa30d7e25dd8a",
+          "line": 6882,
+          "source": "CRT([2, 3, 2], [3, 5, 7])",
+          "want": "23\n",
+          "tags": [],
+          "owner": "CRT",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#7ffdf4b2bcdd55d5-535fa30d7e25dd8a",
+            "status": "pass",
+            "actual": "23\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "CRT_list",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "CRT_list(values: Any, moduli: Any) -> Any",
+      "summary": "Sage's `CRT_list`: solve simultaneous congruences given as two lists.",
+      "doc": "Sage's `CRT_list`: solve simultaneous congruences given as two lists.\n\nEquivalent to `crt(values, moduli)`; the moduli must be pairwise\ncoprime.\n\n### Examples\n\n```sage\nsage: CRT_list([2, 3, 2], [3, 5, 7])\n23\n```",
+      "tags": [
+        "arithmetic",
+        "crt"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Extended-Euclidean pairwise Chinese remainder combination"
+      },
+      "limitations": [],
+      "source": {
+        "name": "CRT_list",
+        "qualified": "CRT_list",
+        "path": "src/baselib/builtins.py",
+        "line": 6889,
+        "excerpt": {
+          "start_line": 6877,
+          "text": "    ### Examples\n\n    ```sage\n    sage: CRT(2, 3, 3, 5)\n    8\n    sage: CRT([2, 3, 2], [3, 5, 7])\n    23\n    ```\n    \"\"\"\n    return crt(left_value, right_value, left_modulus, right_modulus)\n\n\ndef CRT_list(values: Any, moduli: Any) -> Any:\n    r\"\"\"\n    Sage's `CRT_list`: solve simultaneous congruences given as two lists.\n\n    Equivalent to `crt(values, moduli)`; the moduli must be pairwise\n    coprime.\n\n    ### Examples\n\n    ```sage\n    sage: CRT_list([2, 3, 2], [3, 5, 7])\n    23\n    ```"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#d6e411fe4cb83d32-535fa30d7e25dd8a",
+          "line": 6899,
+          "source": "CRT_list([2, 3, 2], [3, 5, 7])",
+          "want": "23\n",
+          "tags": [],
+          "owner": "CRT_list",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#d6e411fe4cb83d32-535fa30d7e25dd8a",
+            "status": "pass",
+            "actual": "23\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -14780,6 +16156,102 @@
         }
       },
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "four_squares",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "four_squares(value: Any) -> Any",
+      "summary": "Return `(a, b, c, d)` with `a <= b <= c <= d` and",
+      "doc": "Return `(a, b, c, d)` with `a <= b <= c <= d` and\n`a^2 + b^2 + c^2 + d^2 == value`.\n\nBy Lagrange's four-square theorem this always succeeds for\n`value >= 0`; `ValueError` is raised only for a negative `value`.\n\n### Examples\n\n```sage\nsage: four_squares(7)\n(1, 1, 1, 2)\nsage: four_squares(0)\n(0, 0, 0, 0)\n```",
+      "tags": [
+        "arithmetic",
+        "sum of squares",
+        "factorization"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Search reduced to three_squares, guaranteed to terminate by Lagrange's theorem"
+      },
+      "limitations": [
+        "Search-based, not the minimal Euler-descent construction FLINT/PARI use."
+      ],
+      "source": {
+        "name": "four_squares",
+        "qualified": "four_squares",
+        "path": "src/baselib/builtins.py",
+        "line": 7592,
+        "excerpt": {
+          "start_line": 7580,
+          "text": "    \"\"\"\n    if not runtime.is_exact_integer(value):\n        raise TypeError(\"three_squares() requires an integer\")\n    integer = runtime.integer_bigint(value)\n    if integer < 0:\n        raise ValueError(\"three_squares() requires a nonnegative integer\")\n    result = _three_squares_or_none(integer)\n    if result is None:\n        raise ValueError(str(value) + \" is not a sum of three squares\")\n    return runtime.math_tuple([runtime.normalize_integer(part) for part in result])\n\n\ndef four_squares(value: Any) -> Any:\n    r\"\"\"\n    Return `(a, b, c, d)` with `a <= b <= c <= d` and\n    `a^2 + b^2 + c^2 + d^2 == value`.\n\n    By Lagrange's four-square theorem this always succeeds for\n    `value >= 0`; `ValueError` is raised only for a negative `value`.\n\n    ### Examples\n\n    ```sage\n    sage: four_squares(7)\n    (1, 1, 1, 2)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#3ee5103e90c30ad6-8ff33231dee97d73",
+          "line": 7603,
+          "source": "four_squares(7)",
+          "want": "(1, 1, 1, 2)\n",
+          "tags": [],
+          "owner": "four_squares",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#3ee5103e90c30ad6-8ff33231dee97d73",
+            "status": "pass",
+            "actual": "(1, 1, 1, 2)\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#542285d7149f97c7-a694baed3224c319",
+          "line": 7605,
+          "source": "four_squares(0)",
+          "want": "(0, 0, 0, 0)\n",
+          "tags": [],
+          "owner": "four_squares",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#542285d7149f97c7-a694baed3224c319",
+            "status": "pass",
+            "actual": "(0, 0, 0, 0)\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -25138,6 +26610,133 @@
     },
     {
       "schema_version": 1,
+      "name": "hilbert_symbol",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "hilbert_symbol(a: Any, b: Any, p: Any) -> _Int",
+      "summary": "Return the local Hilbert symbol `(a, b)_p` for nonzero rationals `a`,",
+      "doc": "Return the local Hilbert symbol `(a, b)_p` for nonzero rationals `a`,\n`b` at a place `p`.\n\n`p` is an odd prime, `2`, or `-1` for the real place.  The Hilbert\nsymbol is `1` if `z^2 = a x^2 + b y^2` has a nonzero solution over the\ncompletion `Q_p`, and `-1` otherwise.  This uses the classical formulas\nin terms of the `p`-adic valuations and unit parts of `a` and `b`\n(Serre, *A Course in Arithmetic*, Ch. III; Cohen, *A Course in\nComputational Algebraic Number Theory*, Algorithms 1.4.10 and 1.4.12).\n\n### Examples\n\n```sage\nsage: hilbert_symbol(-1, -1, 2)\n-1\nsage: hilbert_symbol(-1, -1, 3)\n1\nsage: hilbert_symbol(-1, -1, -1)\n-1\nsage: hilbert_symbol(1, 1, 5)\n1\n```",
+      "tags": [
+        "arithmetic",
+        "hilbert symbol",
+        "local fields",
+        "quadratic forms"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Classical valuation/unit formulas at odd primes, 2, and the real place"
+      },
+      "limitations": [],
+      "source": {
+        "name": "hilbert_symbol",
+        "qualified": "hilbert_symbol",
+        "path": "src/baselib/builtins.py",
+        "line": 6985,
+        "excerpt": {
+          "start_line": 6973,
+          "text": "    modulus = runtime.bigint(8) if prime == 2 else runtime.integer_bigint(prime)\n    num_residue = num % modulus\n    den_residue = den % modulus\n    inverse = runtime.integer_bigint(\n        runtime.modular_inverse(\n            runtime.integer_bigint(den_residue), runtime.integer_bigint(modulus)\n        )\n    )\n    unit = (num_residue * inverse) % modulus\n    return valuation_exponent, unit\n\n\ndef hilbert_symbol(a: Any, b: Any, p: Any) -> _Int:\n    r\"\"\"\n    Return the local Hilbert symbol `(a, b)_p` for nonzero rationals `a`,\n    `b` at a place `p`.\n\n    `p` is an odd prime, `2`, or `-1` for the real place.  The Hilbert\n    symbol is `1` if `z^2 = a x^2 + b y^2` has a nonzero solution over the\n    completion `Q_p`, and `-1` otherwise.  This uses the classical formulas\n    in terms of the `p`-adic valuations and unit parts of `a` and `b`\n    (Serre, *A Course in Arithmetic*, Ch. III; Cohen, *A Course in\n    Computational Algebraic Number Theory*, Algorithms 1.4.10 and 1.4.12).\n\n    ### Examples"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#5075334c1aa6d7e2-1bad6b8cf97131fc",
+          "line": 7000,
+          "source": "hilbert_symbol(-1, -1, 2)",
+          "want": "-1\n",
+          "tags": [],
+          "owner": "hilbert_symbol",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#5075334c1aa6d7e2-1bad6b8cf97131fc",
+            "status": "pass",
+            "actual": "-1\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#376513f6180fe7ff-6b86b273ff34fce1",
+          "line": 7002,
+          "source": "hilbert_symbol(-1, -1, 3)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "hilbert_symbol",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#376513f6180fe7ff-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#b2fce99a306346f1-1bad6b8cf97131fc",
+          "line": 7004,
+          "source": "hilbert_symbol(-1, -1, -1)",
+          "want": "-1\n",
+          "tags": [],
+          "owner": "hilbert_symbol",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#b2fce99a306346f1-1bad6b8cf97131fc",
+            "status": "pass",
+            "actual": "-1\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#7269e4afab4b939e-6b86b273ff34fce1",
+          "line": 7006,
+          "source": "hilbert_symbol(1, 1, 5)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "hilbert_symbol",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#7269e4afab4b939e-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "histogram",
       "aliases": [],
       "kind": "function",
@@ -25961,6 +27560,557 @@
       "limitations": [],
       "source": null,
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "is_pseudoprime",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "is_pseudoprime(value: Any) -> _Bool",
+      "summary": "Return whether `value` passes FLINT's industrial-strength",
+      "doc": "Return whether `value` passes FLINT's industrial-strength\nprobable-primality test.\n\nSage.js has no separate, deliberately weaker pseudoprimality test;\n`is_pseudoprime` and `is_prime` therefore agree for every integer\nreachable in practice, unlike Sage's PARI-backed `is_pseudoprime`,\nwhich is a Fermat/Miller-Rabin test without a final primality proof.\n\n### Examples\n\n```sage\nsage: is_pseudoprime(97)\nTrue\nsage: is_pseudoprime(91)\nFalse\nsage: is_pseudoprime(1)\nFalse\n```",
+      "tags": [
+        "arithmetic",
+        "primes",
+        "primality"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "FLINT primality testing"
+      },
+      "limitations": [
+        "Sage.js has no separate, deliberately weaker pseudoprimality test; this agrees with is_prime for every integer reachable in practice, unlike Sage's Fermat/Miller-Rabin-only is_pseudoprime."
+      ],
+      "source": {
+        "name": "is_pseudoprime",
+        "qualified": "is_pseudoprime",
+        "path": "src/baselib/builtins.py",
+        "line": 7299,
+        "excerpt": {
+          "start_line": 7287,
+          "text": "        raise TypeError(\"nth_prime() requires an integer\")\n    count = runtime.integer_bigint(n)\n    if count < 1:\n        raise ValueError(\"nth_prime() requires a positive index\")\n    candidate = runtime.bigint(1)\n    index = 0\n    while index < count:\n        candidate = runtime.flint_backend().nextPrime(candidate)\n        index += 1\n    return runtime.normalize_integer(candidate)\n\n\ndef is_pseudoprime(value: Any) -> _Bool:\n    r\"\"\"\n    Return whether `value` passes FLINT's industrial-strength\n    probable-primality test.\n\n    Sage.js has no separate, deliberately weaker pseudoprimality test;\n    `is_pseudoprime` and `is_prime` therefore agree for every integer\n    reachable in practice, unlike Sage's PARI-backed `is_pseudoprime`,\n    which is a Fermat/Miller-Rabin test without a final primality proof.\n\n    ### Examples\n\n    ```sage"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#48ff728cf31569c4-3cbc87c7681f34db",
+          "line": 7312,
+          "source": "is_pseudoprime(97)",
+          "want": "True\n",
+          "tags": [],
+          "owner": "is_pseudoprime",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#48ff728cf31569c4-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#56884a69349be09b-60a33e6cf5151f2d",
+          "line": 7314,
+          "source": "is_pseudoprime(91)",
+          "want": "False\n",
+          "tags": [],
+          "owner": "is_pseudoprime",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#56884a69349be09b-60a33e6cf5151f2d",
+            "status": "pass",
+            "actual": "False\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#eb52f7679f840f5a-60a33e6cf5151f2d",
+          "line": 7316,
+          "source": "is_pseudoprime(1)",
+          "want": "False\n",
+          "tags": [],
+          "owner": "is_pseudoprime",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#eb52f7679f840f5a-60a33e6cf5151f2d",
+            "status": "pass",
+            "actual": "False\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "is_squarefree",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "is_squarefree(value: Any) -> _Bool",
+      "summary": "Return whether `value` is squarefree, i.e. not divisible by any",
+      "doc": "Return whether `value` is squarefree, i.e. not divisible by any\nperfect square greater than `1`.\n\n`is_squarefree(0)` is `False`; the sign of a nonzero `value` is\nignored.\n\n### Examples\n\n```sage\nsage: is_squarefree(15)\nTrue\nsage: is_squarefree(12)\nFalse\nsage: is_squarefree(0)\nFalse\n```",
+      "tags": [
+        "arithmetic",
+        "squarefree",
+        "factorization"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "FLINT factorization, exponent test"
+      },
+      "limitations": [],
+      "source": {
+        "name": "is_squarefree",
+        "qualified": "is_squarefree",
+        "path": "src/baselib/builtins.py",
+        "line": 7234,
+        "excerpt": {
+          "start_line": 7222,
+          "text": "    integer = runtime.integer_bigint(value)\n    if integer == 0:\n        return 0\n    negative = integer < 0\n    magnitude = -integer if negative else integer\n    result = runtime.bigint(1)\n    for prime, exponent in factor(magnitude):\n        if exponent % 2 == 1:\n            result *= runtime.integer_bigint(prime)\n    return runtime.normalize_integer(-result if negative else result)\n\n\ndef is_squarefree(value: Any) -> _Bool:\n    r\"\"\"\n    Return whether `value` is squarefree, i.e. not divisible by any\n    perfect square greater than `1`.\n\n    `is_squarefree(0)` is `False`; the sign of a nonzero `value` is\n    ignored.\n\n    ### Examples\n\n    ```sage\n    sage: is_squarefree(15)\n    True"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#d0c0282f553a0654-3cbc87c7681f34db",
+          "line": 7245,
+          "source": "is_squarefree(15)",
+          "want": "True\n",
+          "tags": [],
+          "owner": "is_squarefree",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#d0c0282f553a0654-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#04f6a9bd6f622944-60a33e6cf5151f2d",
+          "line": 7247,
+          "source": "is_squarefree(12)",
+          "want": "False\n",
+          "tags": [],
+          "owner": "is_squarefree",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#04f6a9bd6f622944-60a33e6cf5151f2d",
+            "status": "pass",
+            "actual": "False\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#f0dab04bcb48a1b9-60a33e6cf5151f2d",
+          "line": 7249,
+          "source": "is_squarefree(0)",
+          "want": "False\n",
+          "tags": [],
+          "owner": "is_squarefree",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#f0dab04bcb48a1b9-60a33e6cf5151f2d",
+            "status": "pass",
+            "actual": "False\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "jacobi_symbol",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "jacobi_symbol(a: Any, b: Any) -> Any",
+      "summary": "The Jacobi symbol `(a / b)` for an odd positive integer `b`.",
+      "doc": "The Jacobi symbol `(a / b)` for an odd positive integer `b`.\n\nUnlike `kronecker_symbol`, the Jacobi symbol is only defined for an odd\npositive `b`; passing an even or nonpositive `b` raises `ValueError`,\nmatching Sage.  Use `kronecker_symbol` for the unrestricted domain.\n\n### Examples\n\n```sage\nsage: jacobi_symbol(2, 15)\n1\nsage: jacobi_symbol(5, 17)\n-1\nsage: jacobi_symbol(1, 1)\n1\n```",
+      "tags": [
+        "arithmetic",
+        "jacobi symbol",
+        "quadratic residues"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Kronecker symbol restricted to an odd positive denominator"
+      },
+      "limitations": [],
+      "source": {
+        "name": "jacobi_symbol",
+        "qualified": "jacobi_symbol",
+        "path": "src/baselib/builtins.py",
+        "line": 6925,
+        "excerpt": {
+          "start_line": 6913,
+          "text": "    ### Examples\n\n    ```sage\n    sage: kronecker_symbol(5, 17)\n    -1\n    sage: kronecker_symbol(3, -4)\n    1\n    ```\n    \"\"\"\n    return kronecker(left, right)\n\n\ndef jacobi_symbol(a: Any, b: Any) -> Any:\n    r\"\"\"\n    The Jacobi symbol `(a / b)` for an odd positive integer `b`.\n\n    Unlike `kronecker_symbol`, the Jacobi symbol is only defined for an odd\n    positive `b`; passing an even or nonpositive `b` raises `ValueError`,\n    matching Sage.  Use `kronecker_symbol` for the unrestricted domain.\n\n    ### Examples\n\n    ```sage\n    sage: jacobi_symbol(2, 15)\n    1"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#90f084676983e3a4-6b86b273ff34fce1",
+          "line": 6936,
+          "source": "jacobi_symbol(2, 15)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "jacobi_symbol",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#90f084676983e3a4-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#fd019f765dc5c0e0-1bad6b8cf97131fc",
+          "line": 6938,
+          "source": "jacobi_symbol(5, 17)",
+          "want": "-1\n",
+          "tags": [],
+          "owner": "jacobi_symbol",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#fd019f765dc5c0e0-1bad6b8cf97131fc",
+            "status": "pass",
+            "actual": "-1\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#7af7a7c35876f2bc-6b86b273ff34fce1",
+          "line": 6940,
+          "source": "jacobi_symbol(1, 1)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "jacobi_symbol",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#7af7a7c35876f2bc-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "kronecker_symbol",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "kronecker_symbol(left: Any, right: Any) -> Any",
+      "summary": "The Kronecker symbol `(left / right)`, generalizing the Jacobi symbol",
+      "doc": "The Kronecker symbol `(left / right)`, generalizing the Jacobi symbol\nto every integer denominator, including even and negative values.\n\nAn alias for `kronecker`.\n\n### Examples\n\n```sage\nsage: kronecker_symbol(5, 17)\n-1\nsage: kronecker_symbol(3, -4)\n1\n```",
+      "tags": [
+        "arithmetic",
+        "kronecker symbol",
+        "quadratic residues"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Kronecker's extension of the Jacobi symbol"
+      },
+      "limitations": [],
+      "source": {
+        "name": "kronecker_symbol",
+        "qualified": "kronecker_symbol",
+        "path": "src/baselib/builtins.py",
+        "line": 6906,
+        "excerpt": {
+          "start_line": 6894,
+          "text": "    coprime.\n\n    ### Examples\n\n    ```sage\n    sage: CRT_list([2, 3, 2], [3, 5, 7])\n    23\n    ```\n    \"\"\"\n    return crt(values, moduli)\n\n\ndef kronecker_symbol(left: Any, right: Any) -> Any:\n    r\"\"\"\n    The Kronecker symbol `(left / right)`, generalizing the Jacobi symbol\n    to every integer denominator, including even and negative values.\n\n    An alias for `kronecker`.\n\n    ### Examples\n\n    ```sage\n    sage: kronecker_symbol(5, 17)\n    -1\n    sage: kronecker_symbol(3, -4)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#76aad44f6f654500-1bad6b8cf97131fc",
+          "line": 6916,
+          "source": "kronecker_symbol(5, 17)",
+          "want": "-1\n",
+          "tags": [],
+          "owner": "kronecker_symbol",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#76aad44f6f654500-1bad6b8cf97131fc",
+            "status": "pass",
+            "actual": "-1\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#98cb1606c635c252-6b86b273ff34fce1",
+          "line": 6918,
+          "source": "kronecker_symbol(3, -4)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "kronecker_symbol",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#98cb1606c635c252-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "lcm",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "lcm(left: Any, right: Any=None) -> Any",
+      "summary": "Return the least common multiple of two integers, or of a list.",
+      "doc": "Return the least common multiple of two integers, or of a list.\n\nMirrors `gcd`'s calling convention: pass two integers, or a single\niterable of integers.  The identity for an empty list is `1`, matching\nSage, PARI/GP, and Python's own `math.lcm()`.  The result is always\nnonnegative, and `lcm` of anything together with `0` is `0`.\n\n### Examples\n\n```sage\nsage: lcm(6, 4)\n12\nsage: lcm(0, 5)\n0\nsage: lcm([2, 3, 4])\n12\nsage: lcm([])\n1\n```",
+      "tags": [
+        "arithmetic",
+        "lcm"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "FLINT gcd, combined for the least common multiple"
+      },
+      "limitations": [],
+      "source": {
+        "name": "lcm",
+        "qualified": "lcm",
+        "path": "src/baselib/builtins.py",
+        "line": 6803,
+        "excerpt": {
+          "start_line": 6791,
+          "text": "        while a % runtime.bigint(2) == 0:\n            a //= runtime.bigint(2)\n            residue = b % runtime.bigint(8)\n            if residue == 3 or residue == 5:\n                result = -result\n        a, b = b, a\n        if a % runtime.bigint(4) == 3 and b % runtime.bigint(4) == 3:\n            result = -result\n        a %= b\n    return result if b == 1 else 0\n\n\ndef lcm(\n    left: Any,\n    right: Any = runtime.undefined,\n) -> Any:\n    r\"\"\"\n    Return the least common multiple of two integers, or of a list.\n\n    Mirrors `gcd`'s calling convention: pass two integers, or a single\n    iterable of integers.  The identity for an empty list is `1`, matching\n    Sage, PARI/GP, and Python's own `math.lcm()`.  The result is always\n    nonnegative, and `lcm` of anything together with `0` is `0`.\n\n    ### Examples"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#8c6e05ad65de9649-6b51d431df5d7f14",
+          "line": 6818,
+          "source": "lcm(6, 4)",
+          "want": "12\n",
+          "tags": [],
+          "owner": "lcm",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#8c6e05ad65de9649-6b51d431df5d7f14",
+            "status": "pass",
+            "actual": "12\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#ef1821c39d8acc78-5feceb66ffc86f38",
+          "line": 6820,
+          "source": "lcm(0, 5)",
+          "want": "0\n",
+          "tags": [],
+          "owner": "lcm",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#ef1821c39d8acc78-5feceb66ffc86f38",
+            "status": "pass",
+            "actual": "0\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#4afac3b2c7e8e4dc-6b51d431df5d7f14",
+          "line": 6822,
+          "source": "lcm([2, 3, 4])",
+          "want": "12\n",
+          "tags": [],
+          "owner": "lcm",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#4afac3b2c7e8e4dc-6b51d431df5d7f14",
+            "status": "pass",
+            "actual": "12\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#17e09e2a8ba5d318-6b86b273ff34fce1",
+          "line": 6824,
+          "source": "lcm([])",
+          "want": "1\n",
+          "tags": [],
+          "owner": "lcm",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#17e09e2a8ba5d318-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -28260,6 +30410,116 @@
     },
     {
       "schema_version": 1,
+      "name": "multiplicative_order",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "multiplicative_order(x: Any, n: Any) -> Any",
+      "summary": "Return the multiplicative order of `x` modulo `n`.",
+      "doc": "Return the multiplicative order of `x` modulo `n`.\n\nRaises `ArithmeticError` when `x` is not a unit modulo `n`, i.e. when\n`gcd(x, n) != 1`.\n\n### Examples\n\n```sage\nsage: multiplicative_order(2, 7)\n3\nsage: multiplicative_order(3, 7)\n6\nsage: multiplicative_order(1, 1)\n1\n```",
+      "tags": [
+        "arithmetic",
+        "multiplicative order",
+        "modular arithmetic"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Euler totient with prime-power order reduction"
+      },
+      "limitations": [],
+      "source": {
+        "name": "multiplicative_order",
+        "qualified": "multiplicative_order",
+        "path": "src/baselib/builtins.py",
+        "line": 7051,
+        "excerpt": {
+          "start_line": 7039,
+          "text": "            + alpha * _omega(b_unit)\n            + beta * _omega(a_unit)\n        )\n        return -1 if exponent % 2 == 1 else 1\n    sign = -1 if (alpha % 2 == 1 and beta % 2 == 1 and place % 4 == 3) else 1\n    if beta % 2 == 1:\n        sign *= legendre_symbol(a_unit, place)\n    if alpha % 2 == 1:\n        sign *= legendre_symbol(b_unit, place)\n    return sign\n\n\ndef multiplicative_order(x: Any, n: Any) -> Any:\n    r\"\"\"\n    Return the multiplicative order of `x` modulo `n`.\n\n    Raises `ArithmeticError` when `x` is not a unit modulo `n`, i.e. when\n    `gcd(x, n) != 1`.\n\n    ### Examples\n\n    ```sage\n    sage: multiplicative_order(2, 7)\n    3\n    sage: multiplicative_order(3, 7)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#371d5b7ec5597022-4e07408562bedb8b",
+          "line": 7061,
+          "source": "multiplicative_order(2, 7)",
+          "want": "3\n",
+          "tags": [],
+          "owner": "multiplicative_order",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#371d5b7ec5597022-4e07408562bedb8b",
+            "status": "pass",
+            "actual": "3\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#3ee53a6c0d4ee12f-e7f6c011776e8db7",
+          "line": 7063,
+          "source": "multiplicative_order(3, 7)",
+          "want": "6\n",
+          "tags": [],
+          "owner": "multiplicative_order",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#3ee53a6c0d4ee12f-e7f6c011776e8db7",
+            "status": "pass",
+            "actual": "6\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#62bfed5a6ea1be14-6b86b273ff34fce1",
+          "line": 7065,
+          "source": "multiplicative_order(1, 1)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "multiplicative_order",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#62bfed5a6ea1be14-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "next_prime",
       "aliases": [],
       "kind": "function",
@@ -28308,6 +30568,337 @@
       "limitations": [],
       "source": null,
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "next_prime_power",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "next_prime_power(value: Any) -> Any",
+      "summary": "Return the smallest prime power strictly greater than `value`.",
+      "doc": "Return the smallest prime power strictly greater than `value`.\n\n`value` itself is never returned, even when it is already a prime\npower; `1` counts as a prime power.\n\nWalks candidates one at a time and runs `is_prime_power` -- a full\n`factor()` -- on each, so the cost is O(gap x factorization) in the\nsize of the gap to the next prime power.  That gap is usually small,\nbut is not bounded, so this can be slow for a large `value` in a\nsparse stretch of prime powers.\n\n### Examples\n\n```sage\nsage: next_prime_power(8)\n9\nsage: next_prime_power(9)\n11\nsage: next_prime_power(0)\n1\n```",
+      "tags": [
+        "arithmetic",
+        "prime powers",
+        "primes"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Linear search using is_prime_power"
+      },
+      "limitations": [
+        "Runs a full factor() (via is_prime_power) on every candidate, so the cost is O(gap x factorization) in the size of the gap to the next prime power; can be slow for a large value in a sparse stretch of prime powers."
+      ],
+      "source": {
+        "name": "next_prime_power",
+        "qualified": "next_prime_power",
+        "path": "src/baselib/builtins.py",
+        "line": 7328,
+        "excerpt": {
+          "start_line": 7316,
+          "text": "    sage: is_pseudoprime(1)\n    False\n    ```\n    \"\"\"\n    if not runtime.is_exact_integer(value):\n        return False\n    integer = runtime.integer_bigint(value)\n    if integer < 2:\n        return False\n    return runtime.flint_backend().isPrime(integer)\n\n\ndef next_prime_power(value: Any) -> Any:\n    r\"\"\"\n    Return the smallest prime power strictly greater than `value`.\n\n    `value` itself is never returned, even when it is already a prime\n    power; `1` counts as a prime power.\n\n    Walks candidates one at a time and runs `is_prime_power` -- a full\n    `factor()` -- on each, so the cost is O(gap x factorization) in the\n    size of the gap to the next prime power.  That gap is usually small,\n    but is not bounded, so this can be slow for a large `value` in a\n    sparse stretch of prime powers.\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#07436648dd87716d-19581e27de7ced00",
+          "line": 7344,
+          "source": "next_prime_power(8)",
+          "want": "9\n",
+          "tags": [],
+          "owner": "next_prime_power",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#07436648dd87716d-19581e27de7ced00",
+            "status": "pass",
+            "actual": "9\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#b1c54973ee1fde2e-4fc82b26aecb47d2",
+          "line": 7346,
+          "source": "next_prime_power(9)",
+          "want": "11\n",
+          "tags": [],
+          "owner": "next_prime_power",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#b1c54973ee1fde2e-4fc82b26aecb47d2",
+            "status": "pass",
+            "actual": "11\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#c3adc9518fb49761-6b86b273ff34fce1",
+          "line": 7348,
+          "source": "next_prime_power(0)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "next_prime_power",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#c3adc9518fb49761-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "nth_prime",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "nth_prime(n: Any) -> Any",
+      "summary": "Return the `n`-th prime, 1-indexed, so `nth_prime(1) == 2`.",
+      "doc": "Return the `n`-th prime, 1-indexed, so `nth_prime(1) == 2`.\n\nWalks FLINT's `next_prime` `n` times rather than testing every integer\nfor primality individually.\n\n### Examples\n\n```sage\nsage: nth_prime(1)\n2\nsage: nth_prime(10)\n29\nsage: nth_prime(100)\n541\n```",
+      "tags": [
+        "arithmetic",
+        "primes",
+        "enumeration"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Repeated FLINT next-prime search"
+      },
+      "limitations": [],
+      "source": {
+        "name": "nth_prime",
+        "qualified": "nth_prime",
+        "path": "src/baselib/builtins.py",
+        "line": 7268,
+        "excerpt": {
+          "start_line": 7256,
+          "text": "    if integer == 0:\n        return False\n    if integer < 0:\n        integer = -integer\n    if integer == 1:\n        return True\n    for _prime, exponent in factor(integer):\n        if exponent > 1:\n            return False\n    return True\n\n\ndef nth_prime(n: Any) -> Any:\n    r\"\"\"\n    Return the `n`-th prime, 1-indexed, so `nth_prime(1) == 2`.\n\n    Walks FLINT's `next_prime` `n` times rather than testing every integer\n    for primality individually.\n\n    ### Examples\n\n    ```sage\n    sage: nth_prime(1)\n    2\n    sage: nth_prime(10)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#86ed122a69f16ea1-d4735e3a265e16ee",
+          "line": 7278,
+          "source": "nth_prime(1)",
+          "want": "2\n",
+          "tags": [],
+          "owner": "nth_prime",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#86ed122a69f16ea1-d4735e3a265e16ee",
+            "status": "pass",
+            "actual": "2\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#8e5c138d558d8308-35135aaa6cc23891",
+          "line": 7280,
+          "source": "nth_prime(10)",
+          "want": "29\n",
+          "tags": [],
+          "owner": "nth_prime",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#8e5c138d558d8308-35135aaa6cc23891",
+            "status": "pass",
+            "actual": "29\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#59257d4a8a5ea338-5de664ef205f95d4",
+          "line": 7282,
+          "source": "nth_prime(100)",
+          "want": "541\n",
+          "tags": [],
+          "owner": "nth_prime",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#59257d4a8a5ea338-5de664ef205f95d4",
+            "status": "pass",
+            "actual": "541\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "number_of_divisors",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "number_of_divisors(value: Any) -> Any",
+      "summary": "Return the number of positive divisors of `value`.",
+      "doc": "Return the number of positive divisors of `value`.\n\nEqual to `sigma(value, 0)`; raises `ValueError` for `0`, matching\n`sigma`.\n\n### Examples\n\n```sage\nsage: number_of_divisors(28)\n6\nsage: number_of_divisors(1)\n1\nsage: number_of_divisors(-12)\n6\n```",
+      "tags": [
+        "arithmetic",
+        "divisors"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "FLINT factorization via sigma(n, 0)"
+      },
+      "limitations": [],
+      "source": {
+        "name": "number_of_divisors",
+        "qualified": "number_of_divisors",
+        "path": "src/baselib/builtins.py",
+        "line": 7150,
+        "excerpt": {
+          "start_line": 7138,
+          "text": "        if (\n            runtime.bigint_gcd(\n                runtime.bigint(candidate), runtime.integer_bigint(modulus)\n            )\n            == 1\n            and multiplicative_order(candidate, modulus) == target\n        ):\n            return runtime.normalize_integer(candidate)\n        candidate += 1\n    raise ValueError(\"n does not have a primitive root\")\n\n\ndef number_of_divisors(value: Any) -> Any:\n    r\"\"\"\n    Return the number of positive divisors of `value`.\n\n    Equal to `sigma(value, 0)`; raises `ValueError` for `0`, matching\n    `sigma`.\n\n    ### Examples\n\n    ```sage\n    sage: number_of_divisors(28)\n    6\n    sage: number_of_divisors(1)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#77de747a5859407d-e7f6c011776e8db7",
+          "line": 7160,
+          "source": "number_of_divisors(28)",
+          "want": "6\n",
+          "tags": [],
+          "owner": "number_of_divisors",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#77de747a5859407d-e7f6c011776e8db7",
+            "status": "pass",
+            "actual": "6\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#22b59ece622663c5-6b86b273ff34fce1",
+          "line": 7162,
+          "source": "number_of_divisors(1)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "number_of_divisors",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#22b59ece622663c5-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#a2b977a7ec9542ae-e7f6c011776e8db7",
+          "line": 7164,
+          "source": "number_of_divisors(-12)",
+          "want": "6\n",
+          "tags": [],
+          "owner": "number_of_divisors",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#a2b977a7ec9542ae-e7f6c011776e8db7",
+            "status": "pass",
+            "actual": "6\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -31766,6 +34357,103 @@
     },
     {
       "schema_version": 1,
+      "name": "previous_prime_power",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "previous_prime_power(value: Any) -> Any",
+      "summary": "Return the largest prime power strictly less than `value`.",
+      "doc": "Return the largest prime power strictly less than `value`.\n\nRaises `ValueError` when no smaller prime power exists, i.e. for\n`value <= 1`.\n\nWalks candidates one at a time and runs `is_prime_power` -- a full\n`factor()` -- on each, so the cost is O(gap x factorization) in the\nsize of the gap to the previous prime power.  That gap is usually\nsmall, but is not bounded, so this can be slow for a large `value` in\na sparse stretch of prime powers.\n\n### Examples\n\n```sage\nsage: previous_prime_power(9)\n8\nsage: previous_prime_power(2)\n1\n```",
+      "tags": [
+        "arithmetic",
+        "prime powers",
+        "primes"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Linear search using is_prime_power"
+      },
+      "limitations": [
+        "Runs a full factor() (via is_prime_power) on every candidate, so the cost is O(gap x factorization) in the size of the gap to the previous prime power; can be slow for a large value in a sparse stretch of prime powers.",
+        "The result at the bottom of the range depends on the still-open is_prime_power(1) convention question: previous_prime_power(2) currently returns 1 because Sage.js's is_prime_power(1) is True, matching Sage before sage-6.6.  If that convention changes (tracked in sagejs#56), this result changes with it."
+      ],
+      "source": {
+        "name": "previous_prime_power",
+        "qualified": "previous_prime_power",
+        "path": "src/baselib/builtins.py",
+        "line": 7360,
+        "excerpt": {
+          "start_line": 7348,
+          "text": "    sage: next_prime_power(0)\n    1\n    ```\n    \"\"\"\n    if not runtime.is_exact_integer(value):\n        raise TypeError(\"next_prime_power() requires an integer\")\n    candidate = runtime.integer_bigint(value) + 1\n    while not is_prime_power(candidate):\n        candidate += 1\n    return runtime.normalize_integer(candidate)\n\n\ndef previous_prime_power(value: Any) -> Any:\n    r\"\"\"\n    Return the largest prime power strictly less than `value`.\n\n    Raises `ValueError` when no smaller prime power exists, i.e. for\n    `value <= 1`.\n\n    Walks candidates one at a time and runs `is_prime_power` -- a full\n    `factor()` -- on each, so the cost is O(gap x factorization) in the\n    size of the gap to the previous prime power.  That gap is usually\n    small, but is not bounded, so this can be slow for a large `value` in\n    a sparse stretch of prime powers.\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#859659df507281d4-2c624232cdd22177",
+          "line": 7376,
+          "source": "previous_prime_power(9)",
+          "want": "8\n",
+          "tags": [],
+          "owner": "previous_prime_power",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#859659df507281d4-2c624232cdd22177",
+            "status": "pass",
+            "actual": "8\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#e9a6bb2a3588cd6e-6b86b273ff34fce1",
+          "line": 7378,
+          "source": "previous_prime_power(2)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "previous_prime_power",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#e9a6bb2a3588cd6e-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "prime_pi",
       "aliases": [],
       "kind": "function",
@@ -31930,6 +34618,118 @@
     },
     {
       "schema_version": 1,
+      "name": "primitive_root",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "primitive_root(n: Any, check: _Bool=True) -> Any",
+      "summary": "Return the smallest primitive root of `n`.",
+      "doc": "Return the smallest primitive root of `n`.\n\nA primitive root exists exactly when `n` is `1`, `2`, `4`, `p^k`, or\n`2*p^k` for an odd prime `p`; `ValueError` is raised otherwise.  With\n`check=False` the fast existence test is skipped, but a nonexistent\nprimitive root still raises after an exhaustive search.\n\n### Examples\n\n```sage\nsage: primitive_root(7)\n3\nsage: primitive_root(1)\n0\nsage: primitive_root(2)\n1\n```",
+      "tags": [
+        "arithmetic",
+        "primitive root",
+        "modular arithmetic"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Case analysis on the cyclic-group existence criterion, then brute-force search"
+      },
+      "limitations": [
+        "Brute-force smallest-witness search, unlike Sage's PARI-backed primitive-root computation; intended for moduli where this search is fast enough."
+      ],
+      "source": {
+        "name": "primitive_root",
+        "qualified": "primitive_root",
+        "path": "src/baselib/builtins.py",
+        "line": 7096,
+        "excerpt": {
+          "start_line": 7084,
+          "text": "            \"the multiplicative order is only defined for units of Z/nZ\"\n        )\n    order = runtime.integer_bigint(euler_phi(modulus))\n    for prime, exponent in factor(order):\n        prime_integer = runtime.integer_bigint(prime)\n        remaining = exponent\n        while remaining > 0 and power_mod(base, order // prime_integer, modulus) == 1:\n            order //= prime_integer\n            remaining -= 1\n    return runtime.normalize_integer(order)\n\n\ndef primitive_root(n: Any, check: _Bool = True) -> Any:\n    r\"\"\"\n    Return the smallest primitive root of `n`.\n\n    A primitive root exists exactly when `n` is `1`, `2`, `4`, `p^k`, or\n    `2*p^k` for an odd prime `p`; `ValueError` is raised otherwise.  With\n    `check=False` the fast existence test is skipped, but a nonexistent\n    primitive root still raises after an exhaustive search.\n\n    ### Examples\n\n    ```sage\n    sage: primitive_root(7)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#9a99c06945f95720-4e07408562bedb8b",
+          "line": 7108,
+          "source": "primitive_root(7)",
+          "want": "3\n",
+          "tags": [],
+          "owner": "primitive_root",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#9a99c06945f95720-4e07408562bedb8b",
+            "status": "pass",
+            "actual": "3\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#6c5daf94c6d4ec4f-5feceb66ffc86f38",
+          "line": 7110,
+          "source": "primitive_root(1)",
+          "want": "0\n",
+          "tags": [],
+          "owner": "primitive_root",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#6c5daf94c6d4ec4f-5feceb66ffc86f38",
+            "status": "pass",
+            "actual": "0\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#109cc518716c9604-6b86b273ff34fce1",
+          "line": 7112,
+          "source": "primitive_root(2)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "primitive_root",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#109cc518716c9604-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "Qp",
       "aliases": [
         "Zp"
@@ -31977,6 +34777,102 @@
         }
       },
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "quadratic_residues",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "quadratic_residues(n: Any) -> Any",
+      "summary": "Return the sorted list of quadratic residues modulo `n`, including `0`.",
+      "doc": "Return the sorted list of quadratic residues modulo `n`, including `0`.\n\nComputes every residue class by brute force and materializes them in a\nset before sorting, so both time and memory are O(n).  `n` (after\ntaking its absolute value) is bounded to `10^7`; above that,\n`OverflowError` is raised rather than allocating a set of that size.\n\n### Examples\n\n```sage\nsage: quadratic_residues(11)\n[0, 1, 3, 4, 5, 9]\nsage: quadratic_residues(1)\n[0]\n```",
+      "tags": [
+        "arithmetic",
+        "quadratic residues",
+        "modular arithmetic"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Exhaustive enumeration of squares modulo n"
+      },
+      "limitations": [
+        "Enumerates every residue class into a set before sorting, so both time and memory are O(n); n (after taking its absolute value) is bounded to keep that practical, and raises OverflowError above 10^7 rather than materializing a set of that size."
+      ],
+      "source": {
+        "name": "quadratic_residues",
+        "qualified": "quadratic_residues",
+        "path": "src/baselib/builtins.py",
+        "line": 7392,
+        "excerpt": {
+          "start_line": 7380,
+          "text": "    ```\n    \"\"\"\n    if not runtime.is_exact_integer(value):\n        raise TypeError(\"previous_prime_power() requires an integer\")\n    candidate = runtime.integer_bigint(value) - 1\n    while candidate >= 1:\n        if is_prime_power(candidate):\n            return runtime.normalize_integer(candidate)\n        candidate -= 1\n    raise ValueError(\"no prime power less than \" + str(value))\n\n\ndef quadratic_residues(n: Any) -> Any:\n    r\"\"\"\n    Return the sorted list of quadratic residues modulo `n`, including `0`.\n\n    Computes every residue class by brute force and materializes them in a\n    set before sorting, so both time and memory are O(n).  `n` (after\n    taking its absolute value) is bounded to `10^7`; above that,\n    `OverflowError` is raised rather than allocating a set of that size.\n\n    ### Examples\n\n    ```sage\n    sage: quadratic_residues(11)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#f8d12a946663b0bf-724ae431cacdc00e",
+          "line": 7404,
+          "source": "quadratic_residues(11)",
+          "want": "[0, 1, 3, 4, 5, 9]\n",
+          "tags": [],
+          "owner": "quadratic_residues",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#f8d12a946663b0bf-724ae431cacdc00e",
+            "status": "pass",
+            "actual": "[0, 1, 3, 4, 5, 9]\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#85a0d181d9b40c47-d0bca111f8628137",
+          "line": 7406,
+          "source": "quadratic_residues(1)",
+          "want": "[0]\n",
+          "tags": [],
+          "owner": "quadratic_residues",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#85a0d181d9b40c47-d0bca111f8628137",
+            "status": "pass",
+            "actual": "[0]\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -32120,13 +35016,123 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 8153,
+        "line": 9119,
         "excerpt": {
-          "start_line": 8141,
+          "start_line": 9107,
           "text": "arraylike = ρσ_arraylike\nprint = ρσ_print\nid = ρσ_id\nget_module = ρσ_get_module\npow = ρσ_pow\ndivmod = ρσ_divmod\ndir = ρσ_dir\nvars = ρσ_vars\nhelp = ρσ_help\nsearch_doc = ρσ_search_doc\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "radical",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "radical(value: Any) -> Any",
+      "summary": "Return the radical (squarefree kernel) of `value`: the product of the",
+      "doc": "Return the radical (squarefree kernel) of `value`: the product of the\ndistinct primes dividing it.\n\nRaises `ArithmeticError` for `0`, which has no radical.\n\n### Examples\n\n```sage\nsage: radical(12)\n6\nsage: radical(1)\n1\nsage: radical(-18)\n6\n```",
+      "tags": [
+        "arithmetic",
+        "radical",
+        "factorization"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "FLINT factorization, product of distinct primes"
+      },
+      "limitations": [],
+      "source": {
+        "name": "radical",
+        "qualified": "radical",
+        "path": "src/baselib/builtins.py",
+        "line": 7171,
+        "excerpt": {
+          "start_line": 7159,
+          "text": "    ```sage\n    sage: number_of_divisors(28)\n    6\n    sage: number_of_divisors(1)\n    1\n    sage: number_of_divisors(-12)\n    6\n    ```\n    \"\"\"\n    return sigma(value, 0)\n\n\ndef radical(value: Any) -> Any:\n    r\"\"\"\n    Return the radical (squarefree kernel) of `value`: the product of the\n    distinct primes dividing it.\n\n    Raises `ArithmeticError` for `0`, which has no radical.\n\n    ### Examples\n\n    ```sage\n    sage: radical(12)\n    6\n    sage: radical(1)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#5a9b808eeac513b3-e7f6c011776e8db7",
+          "line": 7181,
+          "source": "radical(12)",
+          "want": "6\n",
+          "tags": [],
+          "owner": "radical",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#5a9b808eeac513b3-e7f6c011776e8db7",
+            "status": "pass",
+            "actual": "6\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#f1d2ecb4daa1dced-6b86b273ff34fce1",
+          "line": 7183,
+          "source": "radical(1)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "radical",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#f1d2ecb4daa1dced-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#c7ec86c1a7d6bc97-e7f6c011776e8db7",
+          "line": 7185,
+          "source": "radical(-18)",
+          "want": "6\n",
+          "tags": [],
+          "owner": "radical",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#c7ec86c1a7d6bc97-e7f6c011776e8db7",
+            "status": "pass",
+            "actual": "6\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -32982,6 +35988,116 @@
     },
     {
       "schema_version": 1,
+      "name": "squarefree_part",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "squarefree_part(value: Any) -> Any",
+      "summary": "Return `value` divided by the largest perfect square dividing it,",
+      "doc": "Return `value` divided by the largest perfect square dividing it,\nkeeping its sign.\n\n`squarefree_part(0) == 0`.\n\n### Examples\n\n```sage\nsage: squarefree_part(75)\n3\nsage: squarefree_part(-8)\n-2\nsage: squarefree_part(0)\n0\n```",
+      "tags": [
+        "arithmetic",
+        "squarefree",
+        "factorization"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "FLINT factorization, odd-exponent primes only"
+      },
+      "limitations": [],
+      "source": {
+        "name": "squarefree_part",
+        "qualified": "squarefree_part",
+        "path": "src/baselib/builtins.py",
+        "line": 7202,
+        "excerpt": {
+          "start_line": 7190,
+          "text": "        raise TypeError(\"radical() requires an integer\")\n    integer = runtime.integer_bigint(value)\n    if integer == 0:\n        raise ArithmeticError(\"Radical of 0 not defined.\")\n    if integer < 0:\n        integer = -integer\n    result = runtime.bigint(1)\n    for prime, _exponent in factor(integer):\n        result *= runtime.integer_bigint(prime)\n    return runtime.normalize_integer(result)\n\n\ndef squarefree_part(value: Any) -> Any:\n    r\"\"\"\n    Return `value` divided by the largest perfect square dividing it,\n    keeping its sign.\n\n    `squarefree_part(0) == 0`.\n\n    ### Examples\n\n    ```sage\n    sage: squarefree_part(75)\n    3\n    sage: squarefree_part(-8)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#fe20fe79fe1e0623-4e07408562bedb8b",
+          "line": 7212,
+          "source": "squarefree_part(75)",
+          "want": "3\n",
+          "tags": [],
+          "owner": "squarefree_part",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#fe20fe79fe1e0623-4e07408562bedb8b",
+            "status": "pass",
+            "actual": "3\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#61d2834f47ed79a0-cf3bae39dd692048",
+          "line": 7214,
+          "source": "squarefree_part(-8)",
+          "want": "-2\n",
+          "tags": [],
+          "owner": "squarefree_part",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#61d2834f47ed79a0-cf3bae39dd692048",
+            "status": "pass",
+            "actual": "-2\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#09a43b3c1527e1d7-5feceb66ffc86f38",
+          "line": 7216,
+          "source": "squarefree_part(0)",
+          "want": "0\n",
+          "tags": [],
+          "owner": "squarefree_part",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#09a43b3c1527e1d7-5feceb66ffc86f38",
+            "status": "pass",
+            "actual": "0\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "streamline_plot",
       "aliases": [],
       "kind": "function",
@@ -33305,6 +36421,212 @@
     },
     {
       "schema_version": 1,
+      "name": "three_squares",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "three_squares(value: Any) -> Any",
+      "summary": "Return `(a, b, c)` with `a <= b <= c` and `a^2 + b^2 + c^2 == value`.",
+      "doc": "Return `(a, b, c)` with `a <= b <= c` and `a^2 + b^2 + c^2 == value`.\n\nBy Legendre's three-square theorem this raises `ValueError` exactly\nwhen `value` is negative or has the form `4^a*(8*b + 7)`.\n\n### Examples\n\n```sage\nsage: three_squares(30)\n(1, 2, 5)\nsage: three_squares(0)\n(0, 0, 0)\n```\n\n`7` itself is the smallest forbidden value, since `7 == 4^0*(8*0 + 7)`.",
+      "tags": [
+        "arithmetic",
+        "sum of squares",
+        "factorization"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Legendre's three-square criterion, then search reduced to two_squares"
+      },
+      "limitations": [
+        "Search-based, not a polynomial-time construction; practical for moduli where a feasible remainder is found quickly, which is the overwhelming majority in practice."
+      ],
+      "source": {
+        "name": "three_squares",
+        "qualified": "three_squares",
+        "path": "src/baselib/builtins.py",
+        "line": 7563,
+        "excerpt": {
+          "start_line": 7551,
+          "text": "        return 0, 0, 0\n    limit = _number_theory_isqrt(working)\n    b = 0\n    while b <= limit:\n        remainder = working - b * b\n        if _two_squares_feasible(remainder):\n            c, d = _two_squares_construct(remainder)\n            return tuple(sorted([scale * b, scale * c, scale * d]))\n        b += 1\n    return None\n\n\ndef three_squares(value: Any) -> Any:\n    r\"\"\"\n    Return `(a, b, c)` with `a <= b <= c` and `a^2 + b^2 + c^2 == value`.\n\n    By Legendre's three-square theorem this raises `ValueError` exactly\n    when `value` is negative or has the form `4^a*(8*b + 7)`.\n\n    ### Examples\n\n    ```sage\n    sage: three_squares(30)\n    (1, 2, 5)\n    sage: three_squares(0)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#c1f51035d765bc4e-97710fad3ef8ab9e",
+          "line": 7573,
+          "source": "three_squares(30)",
+          "want": "(1, 2, 5)\n",
+          "tags": [],
+          "owner": "three_squares",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#c1f51035d765bc4e-97710fad3ef8ab9e",
+            "status": "pass",
+            "actual": "(1, 2, 5)\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#a4aed5120f07e560-0431de49bb7dbdbb",
+          "line": 7575,
+          "source": "three_squares(0)",
+          "want": "(0, 0, 0)\n",
+          "tags": [],
+          "owner": "three_squares",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#a4aed5120f07e560-0431de49bb7dbdbb",
+            "status": "pass",
+            "actual": "(0, 0, 0)\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "two_squares",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.arith.misc",
+      "signature": "two_squares(value: Any) -> Any",
+      "summary": "Return `(a, b)` with `0 <= a <= b` and `a^2 + b^2 == value`.",
+      "doc": "Return `(a, b)` with `0 <= a <= b` and `a^2 + b^2 == value`.\n\nRaises `ValueError` for a negative `value`, and for a nonnegative\n`value` that is not a sum of two squares (some prime `p == 3 (mod 4)`\ndivides it to an odd power).  Uses factorization and Gaussian-integer\nmultiplication rather than search.\n\n### Examples\n\n```sage\nsage: two_squares(50)\n(1, 7)\nsage: two_squares(0)\n(0, 0)\nsage: two_squares(25)\n(3, 4)\n```",
+      "tags": [
+        "arithmetic",
+        "sum of squares",
+        "factorization"
+      ],
+      "backends": [
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches the documented SageMath result for the supported integer inputs."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath arithmetic API",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Factorization and Gaussian-integer multiplication (Cornacchia's algorithm at each prime)"
+      },
+      "limitations": [],
+      "source": {
+        "name": "two_squares",
+        "qualified": "two_squares",
+        "path": "src/baselib/builtins.py",
+        "line": 7498,
+        "excerpt": {
+          "start_line": 7486,
+          "text": "            for _ in range(exponent):\n                real, imag = (\n                    real * factor_re - imag * factor_im,\n                    real * factor_im + imag * factor_re,\n                )\n        else:\n            scalar = prime_integer ** runtime.bigint(exponent // 2)\n            real *= scalar\n            imag *= scalar\n    return abs(real), abs(imag)\n\n\ndef two_squares(value: Any) -> Any:\n    r\"\"\"\n    Return `(a, b)` with `0 <= a <= b` and `a^2 + b^2 == value`.\n\n    Raises `ValueError` for a negative `value`, and for a nonnegative\n    `value` that is not a sum of two squares (some prime `p == 3 (mod 4)`\n    divides it to an odd power).  Uses factorization and Gaussian-integer\n    multiplication rather than search.\n\n    ### Examples\n\n    ```sage\n    sage: two_squares(50)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#a2e49dac1d5de7cc-282280e6caccaac2",
+          "line": 7510,
+          "source": "two_squares(50)",
+          "want": "(1, 7)\n",
+          "tags": [],
+          "owner": "two_squares",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#a2e49dac1d5de7cc-282280e6caccaac2",
+            "status": "pass",
+            "actual": "(1, 7)\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#6526ca84cfe4e56c-9d37e282dff85f7c",
+          "line": 7512,
+          "source": "two_squares(0)",
+          "want": "(0, 0)\n",
+          "tags": [],
+          "owner": "two_squares",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#6526ca84cfe4e56c-9d37e282dff85f7c",
+            "status": "pass",
+            "actual": "(0, 0)\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#7571d8dba7bbe4e7-ae993a9dcb5af553",
+          "line": 7514,
+          "source": "two_squares(25)",
+          "want": "(3, 4)\n",
+          "tags": [],
+          "owner": "two_squares",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#7571d8dba7bbe4e7-ae993a9dcb5af553",
+            "status": "pass",
+            "actual": "(3, 4)\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "var",
       "aliases": [],
       "kind": "function",
@@ -33473,23 +36795,23 @@
     },
     "documentation": {
       "schema_version": 1,
-      "registry_entries": 289,
-      "with_docstring": 289,
-      "with_summary": 289,
-      "with_tags": 289,
-      "with_backend": 289,
-      "with_provenance": 289,
-      "with_compatibility_notes": 289,
-      "with_references": 88,
-      "markdown_docstrings": 289,
+      "registry_entries": 310,
+      "with_docstring": 310,
+      "with_summary": 310,
+      "with_tags": 310,
+      "with_backend": 310,
+      "with_provenance": 310,
+      "with_compatibility_notes": 310,
+      "with_references": 109,
+      "markdown_docstrings": 310,
       "invalid_markdown_entries": [],
       "incomplete_entries": []
     },
     "examples": {
-      "entries_with_examples": 194,
+      "entries_with_examples": 215,
       "entries_without_examples": 95,
-      "documented": 177,
-      "verified": 171,
+      "documented": 236,
+      "verified": 230,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,
