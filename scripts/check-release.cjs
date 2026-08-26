@@ -47,9 +47,12 @@ for (const directory of nativePackages) {
   names.push(manifest.name);
 }
 assert.deepEqual(
-  Object.keys(rootPackage.optionalDependencies).sort(),
+  Object.entries(rootPackage.optionalDependencies)
+    .filter(([, requirement]) => requirement === "workspace:*")
+    .map(([name]) => name)
+    .sort(),
   names.sort(),
-  "native optional dependencies must exactly match platform packages",
+  "workspace-backed optional dependencies must exactly match platform packages",
 );
 for (const name of names) {
   assert.equal(rootPackage.optionalDependencies[name], "workspace:*");
@@ -78,10 +81,32 @@ assert.ok(
     availabilityIndex < publishIndex,
   "release workflow must upload, publish npm, and await public availability before making GitHub immutable",
 );
+assert.match(
+  releaseWorkflow,
+  /id-token:\s*write/,
+  "release workflow must be allowed to request an npm OIDC token",
+);
+assert.ok(
+  !releaseWorkflow.includes("secrets.NPM_TOKEN"),
+  "release workflow must use npm Trusted Publishing instead of a reusable token",
+);
+assert.ok(
+  releaseWorkflow.includes('npm publish "$archive"'),
+  "release workflow must invoke the OIDC-aware npm CLI directly",
+);
+assert.ok(
+  !releaseWorkflow.includes('pnpm publish "$archive"'),
+  "release workflow must not route Trusted Publishing through pnpm",
+);
 
 const tagIndex = process.argv.indexOf("--tag");
 if (tagIndex >= 0) {
   const tag = process.argv[tagIndex + 1];
-  assert.equal(tag, `v${rootPackage.version}`, "tag must match package version");
+  const version = rootPackage.version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  assert.match(
+    tag,
+    new RegExp(`^v${version}(?:\\+release\\.[1-9]\\d*)?$`),
+    "tag must match the package version or its numbered recovery tag",
+  );
 }
 console.log(`Sage.js ${rootPackage.version} release metadata is consistent.`);

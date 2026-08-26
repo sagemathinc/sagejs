@@ -210,7 +210,7 @@ test("dashboard covers the three questions and all install paths", () => {
   assert.match(html, /@sagemath\/sagejs/);
   assert.match(html, /curl -fsSL https:\/\/sagejs\.org\/install\.sh \| sh/);
   assert.match(pagesWorkflow, /cp install\.sh website\/install\.sh/);
-  assert.match(html, /Early alpha · v0\.3\.0/);
+  assert.match(html, /Early alpha · v0\.4\.0/);
   assert.match(html, /sagejs-windows-x64\.zip/);
   assert.match(html, /GPL-3\.0/);
   assert.match(html, /does not embed or invoke CPython/);

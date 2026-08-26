@@ -1,6 +1,6 @@
 {
   "name": "@sagemath/sagejs-linux-x64",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Private workspace version anchor for Sage.js Linux x64",
   "private": true,
   "license": "GPL-3.0-only",

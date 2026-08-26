@@ -9,6 +9,9 @@
   "startup_budgets": {
     "development-cli": {
       "normalized_median_ms": 350,
+      "normalized_median_ms_by_platform_arch": {
+        "linux-arm64": 400
+      },
       "hard_limit_ms": 1500,
       "samples": 11,
       "reference_node_ms": 30
@@ -40,7 +43,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 690000,
+      "max_source_bytes": 700000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [

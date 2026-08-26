@@ -9,9 +9,10 @@ const { createSage } = require("../dist/tools/kernel.js");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 function runCPython(source) {
-  const result = spawnSync(pythonExecutable(), ["-c", source], {
+  const result = spawnSync(pythonExecutable(), ["-"], {
     cwd: __dirname,
     encoding: "utf8",
+    input: source,
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return result.stdout.replaceAll("\r\n", "\n").trim();
@@ -390,6 +391,237 @@ for index, (numerator, denominator) in enumerate(cases):
   t.after(() => session.close());
   const result = await session.evaluate(source);
   assert.equal(result.stdout.trim(), expected);
+});
+
+test("two-argument round matches CPython's decimal rounding corpus", async (t) => {
+  // The families here are the ones where scaling by a power of ten and
+  // rounding the scaled value part company with the decimal nearest the
+  // value: halves that only look like ties, halves that are ties and must go
+  // to even, magnitudes where the scale factor overflows, and places beyond
+  // the reach of a decimal expansion.
+  const source = String.raw`
+import math
+
+cases = []
+
+# Every 0.005 step through the range where a decimal tie is written exactly
+# but is almost never the value the binary64 double actually holds.
+for step in range(1, 601):
+    value = step / 200
+    cases.append((value, 2))
+    cases.append((-value, 2))
+
+# Exact ties: a binary fraction lands on a half only when it terminates one
+# place further, and those are the values that round to even.
+for power in range(1, 11):
+    for numerator in range(1, 40):
+        value = numerator / 2**power
+        for digits in range(0, power + 2):
+            cases.append((value, digits))
+            cases.append((-value, digits))
+
+# Decimal literals whose doubles sit just under or just over the tie.
+for text in ('0.5', '1.5', '2.5', '-0.5', '-1.5', '0.05', '0.15', '0.25',
+             '0.35', '1.005', '2.675', '2.665', '-2.675', '1.115', '8.835',
+             '0.145', '2.145', '1.0000000000000002', '0.30000000000000004'):
+    for digits in range(0, 6):
+        cases.append((float(text), digits))
+
+# Magnitudes: the scale factor overflows at either end long before the value
+# stops being finite.
+for value in (1e16, 1e16 + 2.0, 2.0**53, 2.0**53 + 2.0, 1e21, 1e300, 1e308,
+              5e-324, 1e-300, 1e-308, 1e-100, 1e-15, 0.0, -0.0, -0.4, -1e-30):
+    for digits in (0, 1, 2, 15, 16, 17, 30, 99, 100, 101, 308, 309, 320, 400,
+                   1000, -1, -2, -300):
+        cases.append((value, digits))
+
+# Negative places on a float, including the half-even decisions.
+for value in (1234.5678, -1234.5678, 1250.0, 1350.0, -1250.0, 15.0, 25.0,
+              -25.0, 2.5, 1e300):
+    for digits in range(-6, 1):
+        cases.append((value, digits))
+
+# Halves at a place left of the point, which go to the even multiple, and the
+# multiples on either side of them.
+for width in range(1, 16):
+    step = 10**width
+    for count in (0, 1, 2, 3, 12, 13, 4567):
+        middle = count * step + step // 2
+        for value in (middle, middle - 1, middle + 1, count * step):
+            cases.append((float(value), -width))
+            cases.append((float(-value), -width))
+            cases.append((float(value), -(width + 1)))
+
+# Magnitudes at a place left of the point, where the step itself stops being
+# representable long before the value does.
+for value in (2.0**53, 2.0**53 - 2.0, 2.0**53 + 2.0, 1e17, 1.5e17, 9.87654321e20,
+              1e21, 1e22, 1e23, 1.23456789e30, 1e300, 5e307, 1.5e308):
+    for digits in (-1, -2, -3, -5, -10, -15, -16, -17, -20, -22, -23, -25, -30,
+                   -100, -298, -299, -300, -301, -308, -309):
+        cases.append((value, digits))
+        cases.append((-value, digits))
+
+# Integers keep their own path; a place count of any width is still valid.
+for value in (0, 1234, 2500, -2500, 15, 25, 10**30 + 5 * 10**9, -(10**30)):
+    for digits in (0, 2, -1, -2, -3, -10, -31):
+        cases.append((value, digits))
+
+cases.append((2.675, True))
+cases.append((2.675, False))
+cases.append((1.5, 10**100))
+cases.append((1.5, -(10**100)))
+cases.append((12345.6789, 10**100))
+
+state = 0x2545F4914F6CDD1D
+mask = 2**64 - 1
+
+def next_word():
+    global state
+    state = (state * 6364136223846793005 + 1442695040888963407) & mask
+    return state
+
+# Dyadic values, which is what a double is, at places on both sides of where
+# their expansion terminates.
+for index in range(400):
+    mantissa = next_word() % 2**53
+    exponent = next_word() % 121 - 60
+    value = math.ldexp(mantissa, exponent)
+    if next_word() % 2:
+        value = -value
+    cases.append((value, next_word() % 18))
+
+# Quotients of decimal integers, which land beside a decimal rather than on
+# it, at the places a program would actually ask for.
+for index in range(400):
+    numerator = next_word() % 10**9
+    scale = next_word() % 9
+    value = numerator / 10**scale
+    if next_word() % 2:
+        value = -value
+    cases.append((value, next_word() % 8))
+
+# The same values against places left of the point.
+for index in range(300):
+    mantissa = next_word() % 2**53
+    exponent = next_word() % 121 - 20
+    value = math.ldexp(mantissa, exponent)
+    if next_word() % 2:
+        value = -value
+    cases.append((value, -(next_word() % 12) - 1))
+
+for index, (value, digits) in enumerate(cases):
+    try:
+        answer = round(value, digits)
+        print(index, repr(answer), type(answer) is float, type(answer) is int)
+    except Exception as error:
+        print(index, type(error).__name__, str(error))
+`;
+  const expected = runCPython(source);
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate(source);
+  assert.equal(result.stdout.trim(), expected);
+});
+
+test("two-argument round matches random binary64 values across all exponents", async (t) => {
+  let state = 0x9e3779b97f4a7c15n;
+  const mask = (1n << 64n) - 1n;
+  const buffer = new ArrayBuffer(8);
+  const view = new DataView(buffer);
+  const cases = [];
+  function nextWord() {
+    state =
+      (state * 6364136223846793005n + 1442695040888963407n) & mask;
+    return state;
+  }
+  while (cases.length < 4_000) {
+    view.setBigUint64(0, nextWord(), false);
+    const value = view.getFloat64(0, false);
+    if (!Number.isFinite(value)) continue;
+    cases.push([value.toString(), Number(nextWord() % 1451n) - 350]);
+  }
+  const source = [
+    "import json",
+    `cases = json.loads(${JSON.stringify(JSON.stringify(cases))})`,
+    "for text, digits in cases:",
+    "    value = float(text)",
+    "    try:",
+    "        print(repr(round(value, digits)))",
+    "    except OverflowError:",
+    "        print('OverflowError')",
+  ].join("\n");
+  const expected = runCPython(source).split("\n");
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate(source, { timeoutMs: 120_000 });
+  const observed = result.stdout.trim().split("\n");
+  assert.equal(observed.length, expected.length);
+  for (let index = 0; index < expected.length; index += 1) {
+    if (expected[index] === "OverflowError") {
+      assert.equal(observed[index], expected[index], `case ${index}`);
+      continue;
+    }
+    assert.ok(
+      Object.is(Number(observed[index]), Number(expected[index])),
+      `case ${index}: ${JSON.stringify(cases[index])} produced ${observed[index]} instead of ${expected[index]}`,
+    );
+  }
+});
+
+test("round requires an exact integer place count", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "for digits in (1.5, float('nan')):",
+    "    try:",
+    "        round(2.675, digits)",
+    "    except TypeError as error:",
+    "        print(str(error))",
+    "class Indexed:",
+    "    def __index__(self): return 2",
+    "print(round(2.675, Indexed()))",
+    "print(round(1, -(10**100)))",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), [
+    "'float' object cannot be interpreted as an integer",
+    "'float' object cannot be interpreted as an integer",
+    "2.67",
+    "0",
+  ].join("\n"));
+});
+
+test("round keeps Python's result protocol at the edges", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "import math",
+    // Infinities and NaN pass through a place count untouched.
+    "print(math.isinf(round(float('inf'), 2)), math.isinf(round(float('-inf'), 2)))",
+    "print(round(float('inf'), 2) > 0, round(float('-inf'), 2) < 0)",
+    "print(math.isnan(round(float('nan'), 2)), math.isnan(round(float('nan'), -2)))",
+    // One argument answers with an int, two with a float, whatever the value.
+    "print(type(round(2.675)) is int, type(round(2.675, 2)) is float)",
+    "print(type(round(2.675, 0)) is float, type(round(7, 2)) is int)",
+    "print(repr(round(2.0**53, 2)), type(round(2.0**53, 2)) is float)",
+    // A value carrying __round__ decides for itself.
+    "class Rounded:",
+    "    def __round__(self, digits=None):",
+    "        return ('rounded', digits)",
+    "print(round(Rounded()), round(Rounded(), 3))",
+    // A place count still reaches the float path through bool and through an
+    // int too wide for a double.
+    "print(repr(round(2.675, True)), repr(round(1.5, 10**100)))",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), [
+    "True True",
+    "True True",
+    "True True",
+    "True True",
+    "True True",
+    "9007199254740992.0 True",
+    "('rounded', None) ('rounded', 3)",
+    "2.7 1.5",
+  ].join("\n"));
 });
 
 test("complex() honors Python numeric conversion protocols", async (t) => {

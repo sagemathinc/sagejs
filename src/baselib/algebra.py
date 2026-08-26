@@ -144,6 +144,22 @@ class Element:
     def parent(self) -> Parent:
         return self._parent
 
+    def __bool__(self) -> bool:
+        """
+        Report whether the element differs from the zero of its parent.
+
+        Sage decides an element's truth by whether it is zero, so an element
+        that prints as zero must not be true.  Without this an `if` on a ring
+        element takes the branch for a nonzero value whatever it holds.
+        """
+        checker = getattr(self, "is_zero", None)
+        if callable(checker):
+            return not checker()
+        answer = self == 0
+        if answer is True or answer is False:
+            return not answer
+        return True
+
 
 class RingElement(Element):
     """Base class for elements represented by ring parents."""

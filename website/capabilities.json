@@ -729,7 +729,7 @@
         "summary": "Covers package-manager and standalone installation across the supported desktop targets, including relocation and checksums.",
         "includes": ["npm global install", "npm embedding package", "curl | sh installer", "Linux x64 / arm64", "macOS arm64", "Windows x64", "SHA-256 verification", "relocatable SEA executables"]
       },
-      "summary": "Sage.js 0.3.0 is installable from npm on every supported platform, with a curl-to-shell native installer for macOS and Linux.",
+      "summary": "Sage.js 0.4.0 is installable from npm on every supported platform, with a curl-to-shell native installer for macOS and Linux.",
       "implementation": "Meta-package plus platform packages for npm, checksum-verifying macOS/Linux installation, and standalone native archives.",
       "evidence": "Package, relocation, and installer tests in release CI.",
       "target": "Learn from early-alpha installations, add native Windows installer ergonomics, and provide automatic update guidance.",
@@ -747,7 +747,7 @@
         "summary": "macOS releases are required to pass Developer ID signing and notarization. Windows Authenticode automation exists, but the early-alpha release may be unsigned while identity provisioning is completed.",
         "includes": ["Apple Developer ID", "Apple notarization", "Windows Authenticode", "protected environments", "release checksums", "artifact verification"]
       },
-      "summary": "macOS signing and notarization are release gates; Windows signing is explicitly reported and remains optional for the 0.3.0 early alpha.",
+      "summary": "macOS signing and notarization are release gates; Windows signing is explicitly reported and remains optional for the 0.4.0 early alpha.",
       "implementation": "Apple Developer ID/notarization, optional Azure or PFX Windows Authenticode, checksums, and CI release gates.",
       "evidence": "The release workflow fails closed for macOS trust and labels the selected Windows signing policy in its job summary.",
       "target": "Every public desktop artifact signed and verified automatically from protected CI environments.",

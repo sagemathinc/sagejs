@@ -155,11 +155,19 @@ function configuredPolicy(environment: NodeJS.ProcessEnv): AutomaticPolicy {
 
 function readState(filename: string): AutomaticCacheState | undefined {
   if (!existsSync(filename)) return undefined;
-  const metadata = lstatSync(filename);
+  let metadata: ReturnType<typeof lstatSync>;
+  let contents: string;
+  try {
+    metadata = lstatSync(filename);
+    contents = readFileSync(filename, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return undefined;
+    throw error;
+  }
   if (!metadata.isFile() || metadata.isSymbolicLink()) {
     throw new Error("automatic cache cleanup refused unsafe state marker");
   }
-  const state = JSON.parse(readFileSync(filename, "utf8")) as AutomaticCacheState;
+  const state = JSON.parse(contents) as AutomaticCacheState;
   if (
     state.schema !== AUTOMATIC_CACHE_STATE_SCHEMA ||
     !Number.isFinite(state.last_attempt_ms) ||
@@ -176,9 +184,19 @@ function writeState(filename: string, state: AutomaticCacheState): void {
     if (!metadata.isFile() || metadata.isSymbolicLink()) {
       throw new Error("automatic cache cleanup refused unsafe state marker");
     }
+    if (process.platform === "win32") {
+      // The maintenance directory mutex serializes writers. Windows cache
+      // publication is intentionally first-writer-wins, so rotate this small
+      // advisory marker before publishing its next immutable generation.
+      try {
+        unlinkSync(filename);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") throw error;
+      }
+    }
   }
-  // Publish beside the marker and rename into place, so a concurrent symlink
-  // replacement cannot redirect this advisory write outside the cache root.
+  // Publish from a complete private file beside the marker, so a concurrent
+  // symlink replacement cannot redirect this advisory write outside the root.
   atomicWriteCacheFileSync(filename, `${JSON.stringify(state)}\n`);
 }
 

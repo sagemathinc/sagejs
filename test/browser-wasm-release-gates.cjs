@@ -124,6 +124,11 @@ test("release CI shards performance and reuses only authenticated native cache e
   assert.doesNotMatch(workflow, /pnpm bootstrap/);
   assert.match(workflow, /browser-parity:/);
   assert.match(workflow, /browser-performance:/);
+  assert.match(
+    workflow,
+    /browser-wasm-performance\.mjs[\s\S]*--require-baseline \\\n\s+--report-regressions \\\n/,
+    "shared-runner timing regressions must remain visible in receipts without blocking release correctness",
+  );
   assert.match(workflow, /browser-security-chromium:/);
   assert.match(workflow, /browser-webkit-recovery:/);
   assert.match(workflow, /shard: \[1, 2, 3, 4\]/);
@@ -273,6 +278,25 @@ test("reviewed packaging budgets can adjust topology limits without changing art
       },
     }),
     /must contain exactly gzip_bytes and brotli_bytes/,
+  );
+});
+
+test("release reproducibility uses the reviewed packaging budget", () => {
+  const workflow = fs.readFileSync(
+    path.join(__dirname, "..", ".github", "workflows", "wasm-release.yml"),
+    "utf8",
+  );
+  assert.match(
+    workflow,
+    /browser-wasm-release-artifact\.cjs \\\n\s+--dist build\/a\/packages\/flint-wasm\/dist \\\n\s+--budget bench\/browser-wasm-budget\.json \\\n\s+--require-baseline \\\n\s+--compare build\/b\/packages\/flint-wasm\/dist/,
+  );
+  assert.match(
+    workflow,
+    /--dist build\/a\/packages\/flint-wasm\/dist \\\n\s+--budget bench\/browser-wasm-budget\.json \\\n\s+--compare-payload build\/linux-arm64\/packages\/flint-wasm\/dist/,
+  );
+  assert.match(
+    workflow,
+    /--dist build\/a\/packages\/flint-wasm\/dist \\\n\s+--budget bench\/browser-wasm-budget\.json \\\n\s+--compare-payload build\/darwin-arm64\/packages\/flint-wasm\/dist/,
   );
 });
 
