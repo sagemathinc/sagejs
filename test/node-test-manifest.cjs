@@ -85,6 +85,7 @@ const integration = [
   "test/number-field-class-unit-auto-preflight.cjs",
   "test/number-field-class-unit-context.cjs",
   "test/number-field-class-unit-engine.cjs",
+  "test/number-field-class-unit-exact-public-projection.cjs",
   "test/number-field-class-unit-public.cjs",
   "test/number-field-class-unit-public-projection.cjs",
   "test/number-field-class-unit-terminal-reuse.cjs",
