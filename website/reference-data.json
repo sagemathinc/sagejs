@@ -14773,9 +14773,9 @@
         "name": "fast_callable",
         "qualified": "fast_callable",
         "path": "src/baselib/symbolic.py",
-        "line": 2615,
+        "line": 2619,
         "excerpt": {
-          "start_line": 2603,
+          "start_line": 2607,
           "text": ") -> Any:\n    if isinstance(value, Expression):\n        return value.n(prec=prec, digits=digits)\n    if hasattr(value, \"numerical_approx\"):\n        return value.numerical_approx(prec=prec, digits=digits)\n    return SR(value).n(prec=prec, digits=digits)\n\n\nn = numerical_approx\nN = numerical_approx\n\n\ndef fast_callable(\n    expression: Any,\n    vars: Sequence[Any] | None = None,\n) -> Any:\n    \"\"\"Compile a symbolic expression to a hot JavaScript numeric function.\"\"\"\n    symbolic_expression = SR(expression)\n    variables = symbolic_expression.variables() if vars is None else list(vars)\n    names = [_symbol_name(variable) for variable in variables]\n    return _call_backend(\"compile\", [symbolic_expression._tree, names])\n\n\npi = Expression(\"Pi\")\ne = Expression(\"ExponentialE\")"
         }
       },
@@ -26629,16 +26629,16 @@
         "name": "matrix",
         "qualified": "matrix",
         "path": "src/baselib/matrix.py",
-        "line": 8716,
+        "line": 8723,
         "excerpt": {
-          "start_line": 8704,
+          "start_line": 8711,
           "text": "        return 1, len(rows), rows\n    first = list(rows[0])\n    cols = len(first)\n    values = []\n    for row in rows:\n        entries = list(row)\n        if len(entries) != cols:\n            raise ValueError(\"matrix rows must all have the same length\")\n        values.extend(entries)\n    return len(rows), cols, values\n\n\ndef matrix(*args: Any) -> Matrix:\n    r\"\"\"\n    Construct a dense matrix, optionally over an explicit base ring.\n\n    Sage's common row-list, flat-list, dimension, and entry-function forms are\n    supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and\n    arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 2, [1, 2, 3, 4])\n    sage: A.det()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#3777d1a944e35692-e3b0c44298fc1c14",
-          "line": 8727,
+          "line": 8734,
           "source": "A = matrix(ZZ, 2, [1, 2, 3, 4])",
           "want": "",
           "tags": [],
@@ -26654,7 +26654,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9593f09a484811c7-cf3bae39dd692048",
-          "line": 8728,
+          "line": 8735,
           "source": "A.det()",
           "want": "-2\n",
           "tags": [],
@@ -26670,7 +26670,7 @@
         },
         {
           "id": "src/baselib/matrix.py#405777987b283881-149964165c0e1bbf",
-          "line": 8730,
+          "line": 8737,
           "source": "A.rref()",
           "want": "[1 0]\n[0 1]\n",
           "tags": [],
@@ -28551,9 +28551,9 @@
         "name": "numerical_integral",
         "qualified": "numerical_integral",
         "path": "src/baselib/symbolic.py",
-        "line": 1755,
+        "line": 1759,
         "excerpt": {
-          "start_line": 1743,
+          "start_line": 1747,
           "text": "        for index in range(len(parameters)):\n            runtime.reflect.set(\n                substitutions,\n                _symbol_name(variables[index + 1]),\n                _expression_tree(parameters[index]),\n            )\n        function_value = Expression(\n            _call_backend(\"substitute\", [function_value._tree, substitutions])\n        )\n    return function_value._tree, _symbol_name(variables[0])\n\n\ndef numerical_integral(\n    function_value: Any,\n    a: Any,\n    b: Any = None,\n    algorithm: str = \"qag\",\n    max_points: int = 87,\n    params: Any = None,\n    eps_abs: float = 1e-6,\n    eps_rel: float = 1e-6,\n    rule: int = 6,\n) -> tuple[float, float]:\n    r\"\"\"Numerically integrate a real function and estimate absolute error.\n"
         }
       },
@@ -31819,16 +31819,16 @@
         "name": "prime_pi",
         "qualified": "prime_pi",
         "path": "src/baselib/builtins.py",
-        "line": 6227,
+        "line": 6394,
         "excerpt": {
-          "start_line": 6215,
+          "start_line": 6382,
           "text": "\ndef latex(value: Any) -> LatexExpr:\n    \"\"\"Return a compact LaTeX expression for `value`.\"\"\"\n    if _builtins_member_is_function(value, \"_latex_\"):\n        return LatexExpr(_builtins_call_member(value, \"_latex_\", []))\n    return LatexExpr(value)\n\n\n_prime_pi_primes = None\n_prime_pi_checked_through = 1\n\n\ndef prime_pi(value: Any) -> Any:\n    r\"\"\"\n    Return the number of primes less than or equal to `value`.\n\n    Results are exact.  Moderate bounds are served by an incremental prime\n    cache, while large isolated bounds use Lehmer's combinatorial algorithm.\n    As in Sage, inputs are limited to integers below `2^63`.\n\n    ### Examples\n\n    ```sage\n    sage: prime_pi(10)\n    4"
         }
       },
       "examples": [
         {
           "id": "src/baselib/builtins.py#4c7d8330c2c79857-4b227777d4dd1fc6",
-          "line": 6238,
+          "line": 6405,
           "source": "prime_pi(10)",
           "want": "4\n",
           "tags": [],
@@ -31844,7 +31844,7 @@
         },
         {
           "id": "src/baselib/builtins.py#ca981138a8a22b10-b7a56873cd771f2c",
-          "line": 6240,
+          "line": 6407,
           "source": "prime_pi(100)",
           "want": "25\n",
           "tags": [],
@@ -31860,7 +31860,7 @@
         },
         {
           "id": "src/baselib/builtins.py#c0bc81d3429aebdb-0f03cde178fa9f37",
-          "line": 6242,
+          "line": 6409,
           "source": "prime_pi(10^12)",
           "want": "37607912018\n",
           "tags": [],
@@ -32120,9 +32120,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 7986,
+        "line": 8153,
         "excerpt": {
-          "start_line": 7974,
+          "start_line": 8141,
           "text": "arraylike = ρσ_arraylike\nprint = ρσ_print\nid = ρσ_id\nget_module = ρσ_get_module\npow = ρσ_pow\ndivmod = ρσ_divmod\ndir = ρσ_dir\nvars = ρσ_vars\nhelp = ρσ_help\nsearch_doc = ρσ_search_doc\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
@@ -32247,16 +32247,16 @@
         "name": "random_matrix",
         "qualified": "random_matrix",
         "path": "src/baselib/matrix.py",
-        "line": 9588,
+        "line": 9595,
         "excerpt": {
-          "start_line": 9576,
+          "start_line": 9583,
           "text": "            return MatrixSpace(sage.QQ, rows, columns)._from_fmpq_matrix_resource(\n                resource\n            )\n        except Exception:\n            private_resource.close()\n            if resource is not runtime.undefined:\n                resource.close()\n            raise\n\n    return runtime.undefined\n\n\ndef random_matrix(\n    base: sage.Parent,\n    nrows: int,\n    ncols: Any = None,\n    algorithm: str = \"randomize\",\n    implementation: Any = None,\n    *args: Any,\n    **kwds: Any,\n) -> Matrix:\n    r\"\"\"\n    Construct a random dense matrix over `base`.\n\n    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b17ff7be6a528fc2-e3b0c44298fc1c14",
-          "line": 9612,
+          "line": 9619,
           "source": "A = random_matrix(ZZ, 3, 5, x=-10, y=11)",
           "want": "",
           "tags": [],
@@ -32272,7 +32272,7 @@
         },
         {
           "id": "src/baselib/matrix.py#97db44fc39945d18-41f2eaaeeeb24074",
-          "line": 9613,
+          "line": 9620,
           "source": "A.nrows(), A.ncols(), A.base_ring()",
           "want": "(3, 5, Integer Ring)\n",
           "tags": [],
@@ -32288,7 +32288,7 @@
         },
         {
           "id": "src/baselib/matrix.py#fa1961c5906b90ea-3cbc87c7681f34db",
-          "line": 9615,
+          "line": 9622,
           "source": "random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')",
           "want": "True\n",
           "tags": [],
@@ -32787,16 +32787,16 @@
         "name": "solve",
         "qualified": "solve",
         "path": "src/baselib/symbolic.py",
-        "line": 2490,
+        "line": 2494,
         "excerpt": {
-          "start_line": 2478,
+          "start_line": 2482,
           "text": "                    Expression(\n                        [\n                            \"Equal\",\n                            _expression_tree(variables[index]),\n                            values[index]._tree,\n                        ]\n                    )\n                )\n            answers.append(relations)\n    return answers\n\n\ndef solve(\n    equations: Any,\n    *variables: Any,\n    **options: Any,\n) -> Any:\n    r\"\"\"\n    Solve supported elementary symbolic equations.\n\n    One equation or a list of equations may be supplied, followed by one or\n    more variables. Set `solution_dict=True` for dictionary-valued\n    solutions.\n\n    ### Examples"
         }
       },
       "examples": [
         {
           "id": "src/baselib/symbolic.py#92a64902788254ae-9c10500612dcb6f1",
-          "line": 2505,
+          "line": 2509,
           "source": "solve(x^2 == 4, x)",
           "want": "[x == -2, x == 2]\n",
           "tags": [],
@@ -33097,16 +33097,16 @@
         "name": "sudoku",
         "qualified": "sudoku",
         "path": "src/baselib/matrix.py",
-        "line": 8822,
+        "line": 8829,
         "excerpt": {
-          "start_line": 8810,
+          "start_line": 8817,
           "text": "    elif len(values) == 1:\n        entries = list(values[0])\n    else:\n        raise TypeError(\"unsupported vector() constructor signature\")\n    if isinstance(values[0], Vector):\n        source = values[0]\n        return source if base is None else source.change_ring(base)\n    if base is None:\n        base = _base_for_values(entries)\n    return VectorSpace(base, len(entries))(entries)\n\n\ndef sudoku(puzzle: Matrix) -> Matrix:\n    r\"\"\"\n    Solve a 9-by-9 Sudoku puzzle represented by a matrix.\n\n    Entries from 1 through 9 are fixed clues and zero denotes an empty cell.\n    The input matrix is not modified.  A `ValueError` is raised if the clues\n    are inconsistent or the puzzle has no solution.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 9, [\n    ....:     5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b58bb4a279a18edf-e3b0c44298fc1c14",
-          "line": 8833,
+          "line": 8840,
           "source": "A = matrix(ZZ, 9, [\n    5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,\n    0,6,7,3,0,0,0,0,1, 1,5,0,0,0,0,0,0,0,\n    0,0,0,2,0,8,0,0,0, 0,0,0,0,0,0,0,1,8,\n    7,0,0,0,0,4,1,5,0, 0,3,0,0,0,2,0,0,0,\n    4,9,0,0,5,0,0,0,3])",
           "want": "",
           "tags": [],
@@ -33122,7 +33122,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9971501a52f38d1a-b7945d60e67a36b5",
-          "line": 8839,
+          "line": 8846,
           "source": "sudoku(A)[0]",
           "want": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n",
           "tags": [],

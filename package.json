@@ -223,6 +223,8 @@
     "jupyter:install:python": "pnpm run build && node bin/sagejs-jupyter --install --mode python --user",
     "bench:cold": "node bench/cold-start.cjs",
     "bench:arithmetic": "node bench/compare-sagelite.cjs",
+    "bench:python-round": "node bench/python-round.cjs",
+    "bench:python-round:check": "node bench/python-round.cjs --check",
     "bench:puiseux-series": "bin/sagejs bench/puiseux-series.py",
     "bench:complex": "node bench/compare-complex.cjs",
     "bench:linear-algebra": "node bench/compare-exact-linear-algebra.cjs",

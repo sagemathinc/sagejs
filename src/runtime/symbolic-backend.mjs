@@ -22,6 +22,38 @@ function boxed(expression) {
   return engine().box(expression);
 }
 
+function symbolicTruth(expression) {
+  const candidate = boxed(expression);
+  const evaluated = candidate.evaluate().valueOf();
+  if (typeof evaluated === "boolean") return evaluated;
+
+  const canonical = candidate.json;
+  if (
+    Array.isArray(canonical) &&
+    canonical.length === 3 &&
+    ["Equal", "Less", "LessEqual", "Greater", "GreaterEqual"].includes(
+      canonical[0],
+    )
+  ) {
+    const difference = boxed([
+      "Subtract",
+      canonical[1],
+      canonical[2],
+    ]).simplify();
+    const sign = difference.sgn;
+    const isZero = sign === "zero" || difference.isSame(boxed(0));
+    if (canonical[0] === "Equal") return isZero;
+    if (sign === undefined) return false;
+    if (canonical[0] === "Less") return sign === "negative";
+    if (canonical[0] === "LessEqual") return sign === "negative" || isZero;
+    if (canonical[0] === "Greater") return sign === "positive";
+    return sign === "positive" || isZero;
+  }
+
+  const simplified = candidate.simplify();
+  return !(simplified.sgn === "zero" || simplified.isSame(boxed(0)));
+}
+
 function checkedCompilation(expression, variables) {
   const lambda = ["Function", expression, ...variables];
   const result = compileExpression(engine().box(lambda));
@@ -226,6 +258,10 @@ export function createSymbolicBackend() {
 
     same(left, right) {
       return boxed(left).isSame(boxed(right));
+    },
+
+    truth(expression) {
+      return symbolicTruth(expression);
     },
 
     evaluate(expression) {

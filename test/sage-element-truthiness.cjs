@@ -45,6 +45,10 @@ test("a symbolic relation is true when it can be proved", async (t) => {
       "print(bool(t > 0), bool(t == 0))",
       // A value is false only when it is zero, whatever shape it has.
       "print(bool(SR(2)), bool(SR(0)), bool(sin(SR(0))), bool(sin(SR(1))))",
+      // Truth must not be decided through binary64: these values underflow
+      // numerically, but their symbolic signs are exact.
+      "print(bool(exp(-1000) > 0), bool(-exp(-1000) >= 0))",
+      "print(bool(sin(t)^2 + cos(t)^2 - 1), bool(t/t - 1))",
     ].join("\n"),
   );
   assert.equal(
@@ -55,6 +59,26 @@ test("a symbolic relation is true when it can be proved", async (t) => {
       "True False",
       "False False",
       "True False False True",
+      "True False",
+      "False False",
     ].join("\n"),
   );
+});
+
+test("element equality failures are not silently treated as truth", async (t) => {
+  const session = await createSage();
+  t.after(() => session.close());
+  const result = await session.evaluate(
+    [
+      "ElementSubclass = type(RR(1))",
+      "class BrokenEquality(ElementSubclass):",
+      "    def __init__(self): pass",
+      "    def __eq__(self, other): raise RuntimeError('broken equality')",
+      "try:",
+      "    bool(BrokenEquality())",
+      "except RuntimeError as error:",
+      "    print(str(error))",
+    ].join("\n"),
+  );
+  assert.equal(result.stdout.trim(), "broken equality");
 });

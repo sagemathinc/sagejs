@@ -155,10 +155,7 @@ class Element:
         checker = getattr(self, "is_zero", None)
         if callable(checker):
             return not checker()
-        try:
-            answer = self == 0
-        except Exception:
-            return True
+        answer = self == 0
         if answer is True or answer is False:
             return not answer
         return True

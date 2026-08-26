@@ -9,9 +9,10 @@ const { createSage } = require("../dist/tools/kernel.js");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 function runCPython(source) {
-  const result = spawnSync(pythonExecutable(), ["-c", source], {
+  const result = spawnSync(pythonExecutable(), ["-"], {
     cwd: __dirname,
     encoding: "utf8",
+    input: source,
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return result.stdout.replaceAll("\r\n", "\n").trim();
@@ -454,7 +455,7 @@ for width in range(1, 16):
 # Magnitudes at a place left of the point, where the step itself stops being
 # representable long before the value does.
 for value in (2.0**53, 2.0**53 - 2.0, 2.0**53 + 2.0, 1e17, 1.5e17, 9.87654321e20,
-              1e21, 1e22, 1e23, 1.23456789e30, 1e300):
+              1e21, 1e22, 1e23, 1.23456789e30, 1e300, 5e307, 1.5e308):
     for digits in (-1, -2, -3, -5, -10, -15, -16, -17, -20, -22, -23, -25, -30,
                    -100, -298, -299, -300, -301, -308, -309):
         cases.append((value, digits))
@@ -520,6 +521,73 @@ for index, (value, digits) in enumerate(cases):
   t.after(() => session.close());
   const result = await session.evaluate(source);
   assert.equal(result.stdout.trim(), expected);
+});
+
+test("two-argument round matches random binary64 values across all exponents", async (t) => {
+  let state = 0x9e3779b97f4a7c15n;
+  const mask = (1n << 64n) - 1n;
+  const buffer = new ArrayBuffer(8);
+  const view = new DataView(buffer);
+  const cases = [];
+  function nextWord() {
+    state =
+      (state * 6364136223846793005n + 1442695040888963407n) & mask;
+    return state;
+  }
+  while (cases.length < 4_000) {
+    view.setBigUint64(0, nextWord(), false);
+    const value = view.getFloat64(0, false);
+    if (!Number.isFinite(value)) continue;
+    cases.push([value.toString(), Number(nextWord() % 1451n) - 350]);
+  }
+  const source = [
+    "import json",
+    `cases = json.loads(${JSON.stringify(JSON.stringify(cases))})`,
+    "for text, digits in cases:",
+    "    value = float(text)",
+    "    try:",
+    "        print(repr(round(value, digits)))",
+    "    except OverflowError:",
+    "        print('OverflowError')",
+  ].join("\n");
+  const expected = runCPython(source).split("\n");
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate(source, { timeoutMs: 120_000 });
+  const observed = result.stdout.trim().split("\n");
+  assert.equal(observed.length, expected.length);
+  for (let index = 0; index < expected.length; index += 1) {
+    if (expected[index] === "OverflowError") {
+      assert.equal(observed[index], expected[index], `case ${index}`);
+      continue;
+    }
+    assert.ok(
+      Object.is(Number(observed[index]), Number(expected[index])),
+      `case ${index}: ${JSON.stringify(cases[index])} produced ${observed[index]} instead of ${expected[index]}`,
+    );
+  }
+});
+
+test("round requires an exact integer place count", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "for digits in (1.5, float('nan')):",
+    "    try:",
+    "        round(2.675, digits)",
+    "    except TypeError as error:",
+    "        print(str(error))",
+    "class Indexed:",
+    "    def __index__(self): return 2",
+    "print(round(2.675, Indexed()))",
+    "print(round(1, -(10**100)))",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), [
+    "'float' object cannot be interpreted as an integer",
+    "'float' object cannot be interpreted as an integer",
+    "2.67",
+    "0",
+  ].join("\n"));
 });
 
 test("round keeps Python's result protocol at the edges", async (t) => {
