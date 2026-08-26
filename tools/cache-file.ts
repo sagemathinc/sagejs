@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import {
   closeSync,
+  lstatSync,
   openSync,
   renameSync,
   unlinkSync,
@@ -19,12 +20,25 @@ function renamePublishedCacheFileSync(temporary: string, filename: string): void
       return;
     } catch (error) {
       const code = (error as NodeJS.ErrnoException)?.code;
+      const exhausted = attempt >= WINDOWS_RENAME_RETRY_DELAYS_MS.length;
       if (
         process.platform !== "win32" ||
         code === undefined ||
         !WINDOWS_RENAME_RETRY_CODES.has(code) ||
-        attempt >= WINDOWS_RENAME_RETRY_DELAYS_MS.length
+        exhausted
       ) {
+        if (process.platform === "win32" && exhausted) {
+          try {
+            const destination = lstatSync(filename);
+            if (destination.isFile() && !destination.isSymbolicLink()) {
+              // A competing publisher already left a complete cache value.
+              // This cache is disposable, so losing that final replacement
+              // race is a successful no-op rather than an application error.
+              unlinkSync(temporary);
+              return;
+            }
+          } catch (_destinationError) {}
+        }
         throw error;
       }
       Atomics.wait(synchronousWait, 0, 0, WINDOWS_RENAME_RETRY_DELAYS_MS[attempt]);
@@ -45,7 +59,10 @@ function renamePublishedCacheFileSync(temporary: string, filename: string): void
  * Windows does not always grant delete sharing to a reader, so replacing the
  * destination can transiently fail while another process has it open. Retry
  * only those sharing failures for a bounded interval; the final successful
- * rename remains the single atomic publication event.
+ * rename remains the single atomic publication event. If another publisher's
+ * complete regular file still occupies the destination after that interval,
+ * discard this disposable candidate instead of making cache contention fail
+ * the application.
  */
 export function atomicWriteCacheFileSync(
   filename: string,
