@@ -9,7 +9,7 @@
  */
 
 const { existsSync, readFileSync } = require("node:fs");
-const { join } = require("node:path");
+const { basename, join } = require("node:path");
 
 const TOOL_PARENT = join(__dirname, "..");
 const ROOT = existsSync(join(TOOL_PARENT, "src"))
@@ -33,7 +33,7 @@ function resolveRelativeImport(importer, imported) {
   const level = imported.length - imported.replace(/^\.+/, "").length;
   const suffix = imported.slice(level);
   const importerSource = sourceFilenameForModule(importer);
-  let base = importerSource?.endsWith("/__init__.py")
+  let base = importerSource && basename(importerSource) === "__init__.py"
     ? importer
     : importer.split(".").slice(0, -1).join(".");
   for (let index = 1; index < level; index += 1) {
