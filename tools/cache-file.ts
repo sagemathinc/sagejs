@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import {
   closeSync,
+  linkSync,
   lstatSync,
   openSync,
   renameSync,
@@ -9,39 +10,53 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 
-const WINDOWS_RENAME_RETRY_DELAYS_MS = [1, 2, 4, 8, 16, 32, 64, 128, 256];
-const WINDOWS_RENAME_RETRY_CODES = new Set(["EACCES", "EBUSY", "EPERM"]);
+const WINDOWS_PUBLICATION_RETRY_DELAYS_MS = [1, 2, 4, 8, 16, 32, 64, 128, 256];
+const WINDOWS_PUBLICATION_RETRY_CODES = new Set(["EACCES", "EBUSY", "EPERM"]);
 const synchronousWait = new Int32Array(new SharedArrayBuffer(4));
 
-function renamePublishedCacheFileSync(temporary: string, filename: string): void {
+function completeRegularFileExists(filename: string): boolean {
+  try {
+    const destination = lstatSync(filename);
+    return destination.isFile() && !destination.isSymbolicLink();
+  } catch (_error) {
+    return false;
+  }
+}
+
+function publishCacheFileSync(temporary: string, filename: string): void {
+  if (process.platform !== "win32") {
+    renameSync(temporary, filename);
+    return;
+  }
   for (let attempt = 0; ; attempt += 1) {
     try {
-      renameSync(temporary, filename);
+      // Unlike replacement-rename on Windows, creating a new hard link never
+      // removes an existing destination before reporting a sharing failure.
+      // The temporary file is complete and on the same filesystem.
+      linkSync(temporary, filename);
+      unlinkSync(temporary);
       return;
     } catch (error) {
       const code = (error as NodeJS.ErrnoException)?.code;
-      const exhausted = attempt >= WINDOWS_RENAME_RETRY_DELAYS_MS.length;
+      if (completeRegularFileExists(filename)) {
+        // A competing publisher already left a complete cache value. This
+        // content-addressed cache is disposable, so first complete writer wins.
+        unlinkSync(temporary);
+        return;
+      }
       if (
-        process.platform !== "win32" ||
         code === undefined ||
-        !WINDOWS_RENAME_RETRY_CODES.has(code) ||
-        exhausted
+        !WINDOWS_PUBLICATION_RETRY_CODES.has(code) ||
+        attempt >= WINDOWS_PUBLICATION_RETRY_DELAYS_MS.length
       ) {
-        if (process.platform === "win32" && exhausted) {
-          try {
-            const destination = lstatSync(filename);
-            if (destination.isFile() && !destination.isSymbolicLink()) {
-              // A competing publisher already left a complete cache value.
-              // This cache is disposable, so losing that final replacement
-              // race is a successful no-op rather than an application error.
-              unlinkSync(temporary);
-              return;
-            }
-          } catch (_destinationError) {}
-        }
         throw error;
       }
-      Atomics.wait(synchronousWait, 0, 0, WINDOWS_RENAME_RETRY_DELAYS_MS[attempt]);
+      Atomics.wait(
+        synchronousWait,
+        0,
+        0,
+        WINDOWS_PUBLICATION_RETRY_DELAYS_MS[attempt],
+      );
     }
   }
 }
@@ -56,13 +71,11 @@ function renamePublishedCacheFileSync(temporary: string, filename: string): void
  * a cache miss, including when a whole obsolete cache generation is
  * concurrently quarantined by maintenance.
  *
- * Windows does not always grant delete sharing to a reader, so replacing the
- * destination can transiently fail while another process has it open. Retry
- * only those sharing failures for a bounded interval; the final successful
- * rename remains the single atomic publication event. If another publisher's
- * complete regular file still occupies the destination after that interval,
- * discard this disposable candidate instead of making cache contention fail
- * the application.
+ * Windows replacement-rename can remove the old destination before a sharing
+ * failure, so it is not safe for concurrent readers. Publish there by creating
+ * the destination as a hard link to the complete private file. The first
+ * complete writer wins; losing disposable candidates are removed. POSIX uses
+ * the usual atomic replacement rename.
  */
 export function atomicWriteCacheFileSync(
   filename: string,
@@ -78,7 +91,7 @@ export function atomicWriteCacheFileSync(
     writeFileSync(descriptor, data);
     closeSync(descriptor);
     descriptor = undefined;
-    renamePublishedCacheFileSync(temporary, filename);
+    publishCacheFileSync(temporary, filename);
   } catch (error) {
     if (descriptor !== undefined) {
       try {
