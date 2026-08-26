@@ -413,13 +413,13 @@
     },
     {
       "path": "packages/flint-wasm/src/numeric.c",
-      "lines": 1311,
-      "bytes": 40997,
+      "lines": 1443,
+      "bytes": 45694,
       "decision": "retain-bridge",
       "priority": "high",
       "responsibilities": [
         "bounded generation-tagged MPFR and complex resource ownership",
-        "decimal ingress and copied numeric output transport",
+        "decimal ingress plus exact MPFR spill and restore transport",
         "mature Arb and Acb special-function dispatch",
         "bounded elementary-expression VM, quadrature, and root iteration"
       ],

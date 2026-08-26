@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "owned_resource_families": [
+    {"library":"flint","id":"fmpz_matrix","policy":"bounded-exact-spill","evidence":"src/baselib/matrix.py"},
+    {"library":"flint","id":"fmpq_matrix","policy":"bounded-exact-spill","evidence":"src/baselib/matrix.py"},
+    {"library":"flint","id":"fmpz_vector","policy":"bounded-exact-spill","evidence":"src/baselib/matrix.py"},
+    {"library":"flint","id":"fmpq_vector","policy":"bounded-exact-spill","evidence":"src/baselib/matrix.py"},
+    {"library":"flint","id":"nmod_matrix","policy":"bounded-exact-spill","evidence":"src/baselib/matrix.py"},
+    {"library":"flint","id":"fmpq_value","policy":"operation-scoped-close","evidence":"src/lib/sagejs/linear_algebra/exact_vector_public.py"},
+    {"library":"flint","id":"byte_region","policy":"copy-and-close","evidence":"src/baselib/sagejs/ffi/flint.py"},
+    {"library":"flint","id":"number_field_order_resource","policy":"desktop-operation-scoped-close","evidence":"src/lib/sagejs/number_fields/round4.py"},
+    {"library":"flint","id":"number_field_analysis_resource","policy":"desktop-operation-scoped-close","evidence":"src/lib/sagejs/number_fields/round4.py"},
+    {"library":"flint","id":"fmpz_polynomial","policy":"bounded-exact-spill","evidence":"src/baselib/polynomial.py"},
+    {"library":"flint","id":"fmpq_polynomial","policy":"bounded-exact-spill","evidence":"src/baselib/polynomial.py"},
+    {"library":"flint","id":"fmpq_polynomial_workspace","policy":"desktop-owner-scoped-close","evidence":"src/lib/sagejs/hyperelliptic_curves/jacobian_rational_native.py"},
+    {"library":"flint","id":"fmpq_polynomial_pair","policy":"desktop-operation-scoped-close","evidence":"src/lib/sagejs/hyperelliptic_curves/jacobian_rational_native.py"},
+    {"library":"flint","id":"fmpq_mumford_result","policy":"desktop-operation-scoped-close","evidence":"src/lib/sagejs/hyperelliptic_curves/jacobian_rational_native.py"},
+    {"library":"flint","id":"fmpz_mod_polynomial","policy":"bounded-exact-spill","evidence":"src/baselib/polynomial.py"},
+    {"library":"flint","id":"fmpz_mod_polynomial_division_result","policy":"operation-scoped-close","evidence":"src/baselib/polynomial.py"},
+    {"library":"flint","id":"fmpz_mod_polynomial_xgcd_result","policy":"operation-scoped-close","evidence":"src/baselib/polynomial.py"},
+    {"library":"flint","id":"fmpz_mod_polynomial_factorization","policy":"copy-and-close","evidence":"src/baselib/polynomial.py"},
+    {"library":"flint","id":"fmpz_mod_polynomial_roots","policy":"copy-and-close","evidence":"src/baselib/polynomial.py"},
+    {"library":"flint","id":"fq_context","policy":"bounded-context-with-child-spill","evidence":"src/baselib/finite_fields.py"},
+    {"library":"flint","id":"fq_element","policy":"bounded-exact-spill","evidence":"src/baselib/finite_fields.py"},
+    {"library":"flint","id":"fq_polynomial","policy":"bounded-exact-spill","evidence":"src/baselib/polynomial.py"},
+    {"library":"flint","id":"exact_polynomial_factorization","policy":"copy-and-close","evidence":"src/baselib/polynomial.py"},
+    {"library":"flint","id":"fmpz_polynomial_division_result","policy":"operation-scoped-close","evidence":"src/baselib/polynomial.py"},
+    {"library":"flint","id":"fmpq_polynomial_division_result","policy":"operation-scoped-close","evidence":"src/baselib/polynomial.py"},
+    {"library":"flint","id":"fmpz_polynomial_xgcd_result","policy":"operation-scoped-close","evidence":"src/baselib/polynomial.py"},
+    {"library":"flint","id":"fmpq_polynomial_xgcd_result","policy":"operation-scoped-close","evidence":"src/baselib/polynomial.py"},
+    {"library":"flint","id":"dirichlet_group","policy":"public-reactor-copy-or-explicit-scope","evidence":"packages/flint-wasm/dirichlet-group.mjs"},
+    {"library":"m4ri","id":"matrix","policy":"bounded-exact-spill","evidence":"src/baselib/matrix.py"},
+    {"library":"m4ri","id":"byte_region","policy":"copy-and-close","evidence":"src/baselib/sagejs/ffi/m4ri.py"},
+    {"library":"igraph","id":"graph","policy":"desktop-owner-scoped-close","evidence":"src/baselib/graphs.py"}
+  ],
+  "direct_finalizer_sites": [
+    {"path":"packages/flint-wasm/algebraic.mjs","count":2,"policy":"bounded exact snapshots; finalizer is last-resort cleanup"},
+    {"path":"packages/flint-wasm/index.mjs","count":1,"policy":"bounded reconstructible P1 handles; finalizer is last-resort cleanup"},
+    {"path":"packages/flint-wasm/numeric-backend.mjs","count":2,"policy":"bounded exact MPFR snapshots; finalizer is last-resort cleanup"},
+    {"path":"src/baselib/sagejs_bootstrap.py","count":1,"policy":"generated generic resource token; persistent public owners require an audited policy above"},
+    {"path":"tools/ffi/wasm-adapters.cjs","count":1,"policy":"generated backend wrapper; persistent public owners require an audited policy above"},
+    {"path":"tools/native-kernel/ffi-codegen.cjs","count":1,"policy":"generated native-module resource wrapper"}
+  ],
+  "non_ffi_persistent_families": [
+    {"id":"numeric-real-complex","policy":"bounded-exact-spill","evidence":"packages/flint-wasm/numeric-backend.mjs"},
+    {"id":"algebraic-scalar-matrix","policy":"bounded-exact-spill","evidence":"packages/flint-wasm/algebraic.mjs"},
+    {"id":"modular-p1-list","policy":"bounded-reconstructible-cache","evidence":"packages/flint-wasm/index.mjs"}
+  ],
+  "stateful_reactor_scopes": [
+    {"path":"packages/flint-wasm/algebraic.mjs","begin":"sagejs_wasm_algebraic_initialize","cleanup":"sagejs_wasm_algebraic_clear","policy":"backend-lifetime-explicit-dispose"},
+    {"path":"packages/flint-wasm/curve-backend.mjs","begin":"sagejs_wasm_smalljac_lpoly_begin","cleanup":"sagejs_wasm_smalljac_lpoly_clear","policy":"operation-finally"},
+    {"path":"packages/flint-wasm/curve-backend.mjs","begin":"sagejs_wasm_smalljac_begin","cleanup":"sagejs_wasm_smalljac_clear","policy":"operation-finally"},
+    {"path":"packages/flint-wasm/curve-backend.mjs","begin":"sagejs_wasm_ec_lseries_direct_begin","cleanup":"sagejs_wasm_ec_lseries_clear","policy":"operation-finally"},
+    {"path":"packages/flint-wasm/curve-backend.mjs","begin":"sagejs_wasm_ec_lseries_begin","cleanup":"sagejs_wasm_ec_lseries_clear","policy":"operation-finally"},
+    {"path":"packages/flint-wasm/dirichlet-group.mjs","begin":"sagejs_wasm_dirichlet_group_begin","cleanup":"sagejs_wasm_dirichlet_group_clear","policy":"operation-finally"},
+    {"path":"packages/flint-wasm/dirichlet-group.mjs","begin":"sagejs_wasm_dirichlet_character_begin","cleanup":"sagejs_wasm_dirichlet_group_clear","policy":"nested-state-cleared-by-owner-finally"},
+    {"path":"packages/flint-wasm/index.mjs","begin":"sagejs_modsym_weight2_init","cleanup":"sagejs_modsym_clear","policy":"operation-finally"},
+    {"path":"packages/flint-wasm/number-field-zeta.mjs","begin":"sagejs_nf_zeta_residue_begin","cleanup":"sagejs_nf_zeta_residue_clear","policy":"operation-finally"}
+  ]
+}

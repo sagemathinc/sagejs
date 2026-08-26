@@ -120,11 +120,17 @@ The package also includes a production-artifact developer CLI. It accepts a
 source file, `-c`, piped source, or starts a line-oriented REPL:
 
 ```sh
-node packages/flint-wasm/node-cli.mjs -c 'print(factor(2026))'
+sagejs --wasm -c 'print(factor(2026))'
 printf '%s\n' 'E = EllipticCurve([1,2,3,4,999]); print(E.anlist(10000)[-5:])' |
-  node packages/flint-wasm/node-cli.mjs
-node packages/flint-wasm/node-cli.mjs --timeout 30000 --diagnostics example.sage
+  sagejs --wasm
+sagejs --wasm --timeout 30000 --diagnostics example.sage
 ```
+
+With no file or piped input, `sagejs --wasm` starts a prompt labeled `wasm: `
+so it cannot be confused with the native `sage: ` or Python `>>> ` prompts.
+The standalone `sagejs-wasm` package executable and
+`node packages/flint-wasm/node-cli.mjs` remain equivalent developer entry
+points.
 
 Both forms use `dist/production-manifest.json` and the same Wasm modules,
 compiler cache, capability report, and nested compiler worker as the browser.

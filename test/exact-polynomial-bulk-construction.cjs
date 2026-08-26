@@ -232,12 +232,18 @@ print("exact-polynomial-lazy-resource-ingress-ok")
 
 test("lazy integer resource source has no host-list projection", () => {
   const source = readFileSync(join(root, "src/baselib/polynomial.py"), "utf8");
-  const start = source.indexOf("    def _exact_polynomial_resource(self)");
+  const start = source.indexOf("class _FmpzPolynomialResourceStorage:");
+  const end = source.indexOf("\nclass _FmpqPolynomialResourceStorage:", start);
   assert.notEqual(start, -1);
-  const body = source.slice(start, source.indexOf("\n    def ", start + 8));
-  const integerBranch = body.slice(
-    body.indexOf("if self._has_fmpz_polynomial_resource():"),
-    body.indexOf("            else:"),
+  assert.notEqual(end, -1);
+  const integerStorage = source.slice(start, end);
+  const resourceStart = integerStorage.indexOf("    def resource(self)");
+  const resourceEnd = integerStorage.indexOf("\n    def _spill", resourceStart);
+  assert.notEqual(resourceStart, -1);
+  assert.notEqual(resourceEnd, -1);
+  const integerBranch = integerStorage.slice(
+    resourceStart,
+    resourceEnd,
   );
   assert.match(integerBranch, /runtime\.integer_buffer_to_packed_bytes\(/);
   assert.match(integerBranch, /_buffer_length\(/);

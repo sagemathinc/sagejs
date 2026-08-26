@@ -84,6 +84,101 @@ def _decode_extension_element_coordinates(source: Any, degree: int) -> list[Any]
 
 _flint_ffi_module_cache = runtime.undefined
 _generated_extension_resources_available_cache = runtime.undefined
+_FQ_CONTEXT_RESOURCE_CACHE_LIMIT = 32
+_fq_context_resource_cache = []
+_FQ_ELEMENT_RESOURCE_CACHE_LIMIT = 128
+_fq_element_resource_cache = []
+
+
+def _touch_fq_context_resource(storage: Any) -> None:
+    if _fq_context_resource_cache and _fq_context_resource_cache[-1] is storage:
+        return
+    if storage in _fq_context_resource_cache:
+        _fq_context_resource_cache.remove(storage)
+    _fq_context_resource_cache.append(storage)
+    while len(_fq_context_resource_cache) > _FQ_CONTEXT_RESOURCE_CACHE_LIMIT:
+        victim = _fq_context_resource_cache[0]
+        victim._spill()
+        _fq_context_resource_cache.pop(0)
+
+
+def _touch_fq_element_resource(storage: Any) -> None:
+    if _fq_element_resource_cache and _fq_element_resource_cache[-1] is storage:
+        return
+    if storage in _fq_element_resource_cache:
+        _fq_element_resource_cache.remove(storage)
+    _fq_element_resource_cache.append(storage)
+    while len(_fq_element_resource_cache) > _FQ_ELEMENT_RESOURCE_CACHE_LIMIT:
+        victim = _fq_element_resource_cache[0]
+        victim._spill()
+        _fq_element_resource_cache.pop(0)
+
+
+class _FqContextResourceStorage:
+    """Bound generated `fq` contexts while preserving their exact modulus."""
+
+    def __init__(self, parent: Any, resource: Any) -> None:
+        self.parent = parent
+        self._resource = resource
+        _touch_fq_context_resource(self)
+
+    @property
+    def resource(self) -> Any:
+        if self._resource is runtime.undefined:
+            self._resource = _flint_ffi_module().fq_context(
+                runtime.uint64_buffer(self.parent._modulusCoefficients),
+                self.parent._degree + 1,
+                self.parent._prime,
+            )
+        _touch_fq_context_resource(self)
+        return self._resource
+
+    def _spill(self) -> None:
+        if self._resource is runtime.undefined:
+            return
+        # FLINT elements and polynomials borrow their context.  Snapshot every
+        # active child before closing the context; the bounded child caches
+        # make this list bounded as well.
+        for child in list(self.parent._nativeResourceChildren):
+            child._spill()
+        self._resource.close()
+        self._resource = runtime.undefined
+
+
+class _FqElementResourceStorage:
+    """Keep exact coordinates while bounding active generated `fq` handles."""
+
+    def __init__(self, parent: Any, resource: Any) -> None:
+        self.parent = parent
+        self._resource = resource
+        self._coordinates: Any = runtime.undefined
+        self.parent._registerNativeResource(self)
+        _touch_fq_element_resource(self)
+
+    @property
+    def resource(self) -> Any:
+        if self._resource is runtime.undefined:
+            ffi = _flint_ffi_module()
+            self._resource = ffi.fq_element(
+                self.parent._nativeContext,
+                runtime.uint64_buffer(self._coordinates),
+                self.parent._degree,
+            )
+            self._coordinates = runtime.undefined
+            self.parent._registerNativeResource(self)
+        _touch_fq_element_resource(self)
+        return self._resource
+
+    def _spill(self) -> None:
+        if self._resource is runtime.undefined:
+            return
+        region = _flint_ffi_module().fq_element_coordinate_bytes(self._resource)
+        self._coordinates = _decode_extension_element_coordinates(
+            region.take_bytes(), self.parent._degree
+        )
+        self._resource.close()
+        self._resource = runtime.undefined
+        self.parent._unregisterNativeResource(self)
 
 
 @runtime.bigint_fields("_value")
@@ -481,8 +576,18 @@ _integer_mod_element_prototype = runtime.reflect.get(IntegerModElement, "prototy
 class FiniteFieldExtensionElement(sage.Element):
     def __init__(self, parent: Any, native_value: Any) -> None:
         self._parent = parent
-        self._native = native_value
+        self._native_storage = (
+            _FqElementResourceStorage(parent, native_value)
+            if parent._generatedResourceBackend
+            else native_value
+        )
         runtime.object.freeze(self)
+
+    @property
+    def _native(self) -> Any:
+        if isinstance(self._native_storage, _FqElementResourceStorage):
+            return self._native_storage.resource
+        return self._native_storage
 
     def _new(self, native_value: Any) -> FiniteFieldExtensionElement:
         return _new_extension_field_element(self._parent, native_value)
@@ -838,7 +943,6 @@ class FiniteFieldExtensionParent(sage.Parent):
         )
         self._kind = "GF_EXTENSION"
         self._elementType = element_type
-        self._nativeContext = native_context
         runtime.object.freeze(modulus_coefficients)
         self._modulusCoefficients = modulus_coefficients
         self._primeSubfield = prime_subfield
@@ -848,6 +952,27 @@ class FiniteFieldExtensionParent(sage.Parent):
         self._variable = variable
         self._explicitModulus = explicit_modulus
         self._generatedResourceBackend = generated_resource_backend
+        self._nativeResourceChildren = []
+        self._nativeContextStorage: Any = runtime.undefined
+        self._legacyNativeContext: Any = runtime.undefined
+        if generated_resource_backend:
+            self._nativeContextStorage = _FqContextResourceStorage(self, native_context)
+        else:
+            self._legacyNativeContext = native_context
+
+    @property
+    def _nativeContext(self) -> Any:
+        if self._nativeContextStorage is runtime.undefined:
+            return self._legacyNativeContext
+        return self._nativeContextStorage.resource
+
+    def _registerNativeResource(self, storage: Any) -> None:
+        if storage not in self._nativeResourceChildren:
+            self._nativeResourceChildren.append(storage)
+
+    def _unregisterNativeResource(self, storage: Any) -> None:
+        if storage in self._nativeResourceChildren:
+            self._nativeResourceChildren.remove(storage)
 
     def __call__(
         self,

@@ -107,4 +107,20 @@ test("real FLINT Wasm algebraic resources preserve exact semantics", async (t) =
     algebraic.qqbarClose(value);
   }
   assert.equal(algebraic.__sagejs_algebraic_live_count__(), 0);
+
+  const retained = [];
+  for (let index = 0; index < 2000; index += 1) {
+    retained.push(algebraic.qqbarFromRational(BigInt(index + 1), 2001n));
+  }
+  assert.equal(algebraic.algebraicHandleCacheLimits.values, 256);
+  assert.ok(
+    algebraic.__sagejs_algebraic_live_count__() <=
+      algebraic.algebraicHandleCacheLimits.values,
+  );
+  assert.equal(algebraic.qqbarToString(retained[0], 30), "1/2001");
+  const equalityOracle = algebraic.qqbarFromRational(2000n, 2001n);
+  assert.equal(algebraic.qqbarEqual(retained[1999], equalityOracle), true);
+  for (const value of retained) algebraic.qqbarClose(value);
+  algebraic.qqbarClose(equalityOracle);
+  assert.equal(algebraic.__sagejs_algebraic_live_count__(), 0);
 });

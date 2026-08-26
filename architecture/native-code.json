@@ -18,6 +18,27 @@
   },
   "files": [
     {
+      "path": "bench/call-boundary/napi_add.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Standalone checked two-int32 Node-API callback used only to measure scalar native-call boundary overhead across compatible JavaScript runtimes; it is not linked into Sage.js."
+    },
+    {
+      "path": "bench/call-boundary/python_add.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Standalone two-int32 CPython FASTCALL and legacy VARARGS extension used only as a matched native-call boundary reference; it is not linked into Sage.js."
+    },
+    {
+      "path": "bench/call-boundary/win_delay_load_hook.cc",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Benchmark-local adaptation of node-gyp's MIT-licensed Windows delay-load hook so the same stable Node-API addon can be hosted by Node, Bun, and Deno without binding eagerly to node.exe."
+    },
+    {
       "path": "bench/hyperelliptic/cuda-twist-feasibility.cu",
       "category": "benchmark-reference",
       "review_status": "accepted",
