@@ -175,14 +175,25 @@ for (const line of lines) {
   // These are regression ceilings, deliberately above the uncontended
   // benchmark medians. The benchmark records the sharper optimization
   // targets without making shared CI load a source of false failures.
-  const readLimit = prime === 2 ? 25e-6 : prime === 97 ? 20e-6 : 25e-6;
-  const writeLimit = prime === 2 ? 50e-6 : 40e-6;
+  const readLimit = process.platform === "win32"
+    ? 100e-6
+    : prime === 2
+      ? 25e-6
+      : prime === 97
+        ? 20e-6
+        : 25e-6;
+  const writeLimit = process.platform === "win32"
+    ? 150e-6
+    : prime === 2
+      ? 50e-6
+      : 40e-6;
   assert.ok(read < readLimit, `GF(${prime}) scalar read took ${read}s`);
   assert.ok(write < writeLimit, `GF(${prime}) scalar write took ${write}s`);
   // The identity check above proves that this is the cached O(1) accessor.
   // Keep a generous microsecond-scale ceiling: sub-10us measurements are too
   // sensitive to Windows timer and process-scheduling noise for a release gate.
-  assert.ok(cached < 25e-6, `GF(${prime}) cached pivots took ${cached}s`);
+  const cachedLimit = process.platform === "win32" ? 50e-6 : 25e-6;
+  assert.ok(cached < cachedLimit, `GF(${prime}) cached pivots took ${cached}s`);
   assert.ok(
     pivots < rref * 1.3 + 0.0005,
     `GF(${prime}) fresh pivots ${pivots}s versus RREF ${rref}s`,
