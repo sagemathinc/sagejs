@@ -133,6 +133,29 @@ static inline void sagejs_fmpz_mod_polynomial_recompute_allocated_bytes(
     polynomial->retained_bytes = retained;
 }
 
+/* FLINT's comparison entry points accept a context even though they do not
+   inspect it.  GCC 14 can misdiagnose an embedded fmpz_mod_ctx_t passed to
+   those declarations as an undersized object.  These representation-level
+   checks are exact and avoid that false-positive boundary entirely. */
+static inline int sagejs_fmpz_mod_polynomial_value_is_zero(
+    const sagejs_fmpz_mod_polynomial_t polynomial)
+{
+    return polynomial->value->length == 0;
+}
+
+static inline int sagejs_fmpz_mod_polynomial_values_equal(
+    const sagejs_fmpz_mod_polynomial_t left,
+    const sagejs_fmpz_mod_polynomial_t right)
+{
+    if (left->value->length != right->value->length)
+        return 0;
+    for (slong index = 0; index < left->value->length; index++)
+        if (!fmpz_equal(left->value->coeffs + index,
+                right->value->coeffs + index))
+            return 0;
+    return 1;
+}
+
 static inline size_t sagejs_fmpz_mod_polynomial_allocated_bytes(
     const sagejs_fmpz_mod_polynomial_t polynomial)
 {
@@ -243,8 +266,8 @@ static inline int sagejs_fmpz_mod_polynomial_is_zero(
 {
     if (!polynomial->sealed)
         return 0;
-    fmpz_set_ui(result, (ulong) fmpz_mod_poly_is_zero(
-        polynomial->value, polynomial->context));
+    fmpz_set_ui(result,
+        (ulong) sagejs_fmpz_mod_polynomial_value_is_zero(polynomial));
     return 1;
 }
 
@@ -295,8 +318,8 @@ static inline int sagejs_fmpz_mod_polynomial_equal(
 {
     if (!sagejs_fmpz_mod_polynomial_same_modulus(left, right))
         return 0;
-    fmpz_set_ui(result, (ulong) fmpz_mod_poly_equal(
-        left->value, right->value, left->context));
+    fmpz_set_ui(result,
+        (ulong) sagejs_fmpz_mod_polynomial_values_equal(left, right));
     return 1;
 }
 
@@ -464,8 +487,8 @@ static inline int sagejs_fmpz_mod_polynomial_xgcd_resource(
     sagejs_fmpz_mod_polynomial_init_result(gcd, left);
     sagejs_fmpz_mod_polynomial_init_result(left_coefficient, left);
     sagejs_fmpz_mod_polynomial_init_result(right_coefficient, left);
-    if (fmpz_mod_poly_is_zero(left->value, left->context) &&
-        fmpz_mod_poly_is_zero(right->value, right->context))
+    if (sagejs_fmpz_mod_polynomial_value_is_zero(left) &&
+        sagejs_fmpz_mod_polynomial_value_is_zero(right))
     {
         fmpz_mod_poly_one(result->left_coefficient.value,
             result->left_coefficient.context);
@@ -550,7 +573,7 @@ static inline int sagejs_fmpz_mod_polynomial_factor_resource(
     const sagejs_fmpz_mod_polynomial_t source)
 {
     if (!source->sealed ||
-        fmpz_mod_poly_is_zero(source->value, source->context))
+        sagejs_fmpz_mod_polynomial_value_is_zero(source))
         return 0;
     fmpz_mod_ctx_init(result->context,
         fmpz_mod_ctx_modulus(source->context));
@@ -714,7 +737,7 @@ static inline int sagejs_fmpz_mod_polynomial_roots_resource(
     const sagejs_fmpz_mod_polynomial_t source)
 {
     if (!source->sealed ||
-        fmpz_mod_poly_is_zero(source->value, source->context))
+        sagejs_fmpz_mod_polynomial_value_is_zero(source))
         return 0;
     fmpz_mod_ctx_init(result->context,
         fmpz_mod_ctx_modulus(source->context));
