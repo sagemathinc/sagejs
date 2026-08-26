@@ -115,6 +115,19 @@ if (process.platform === "win32") {
   process.exit(0);
 }
 
+if (process.platform === "darwin") {
+  process.stdout.write(JSON.stringify({
+    schema: "sagejs.ffi/lifecycle-fuzz-v1",
+    capability: "sanitizers",
+    supported: false,
+    reason:
+      "one static-library Apple ASan lifecycle schedule exceeds six minutes " +
+      "on the M1 witness host",
+    dynamic: dynamicResult,
+  }) + "\n");
+  process.exit(0);
+}
+
 const graphLifecycleRounds = sanitizerRounds(4000);
 const rationalLifecycleRounds = sanitizerRounds(500);
 
