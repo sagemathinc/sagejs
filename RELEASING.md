@@ -61,6 +61,19 @@ macOS runner itself is discarded after the job.
 6. Test a clean `curl | sh` install, a clean global npm install, Jupyter kernel
    registration, and Gatekeeper/SmartScreen behavior on real target machines.
 
+Browser performance shards always upload their reviewed-baseline and
+browser/native comparison receipts. Relative timing regressions are reported as
+warnings rather than release blockers because the browser and native timings
+come from independent shared GitHub runners. Correctness, authenticated route
+selection, workload timeouts, and the absolute interruption safety ceiling
+remain blocking gates.
+
+If validation of `vX.Y.Z` exposes a release-only defect before publication,
+fix it in a new commit and use the append-only recovery tag
+`vX.Y.Z+release.N`. Never move the original tag. Recovery tags publish the same
+npm version, must use a positive monotonically increasing integer, and reruns
+verify any package versions and dist-tags that are already public.
+
 The tag workflow intentionally fails when macOS signing/notarization or the npm
 Trusted Publisher relationship is absent. Windows unsigned mode is an explicit
 early-alpha exception and is recorded in the Actions job summary; it is never

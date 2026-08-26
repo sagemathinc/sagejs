@@ -845,10 +845,20 @@ jobs:
         run: |
           package_version="$(tar -xOzf release/npm/sagejs.tgz package/package.json | \
             node -e "let text=''; process.stdin.on('data',x=>text+=x); process.stdin.on('end',()=>console.log(JSON.parse(text).version))")"
-          [[ "${GITHUB_REF_NAME}" == "v${package_version}" ]] || {
-            echo "Tag ${GITHUB_REF_NAME} does not match npm version ${package_version}" >&2
-            exit 1
-          }
+          case "${GITHUB_REF_NAME}" in
+            "v${package_version}") ;;
+            "v${package_version}+release."*)
+              recovery="${GITHUB_REF_NAME#v${package_version}+release.}"
+              [[ "$recovery" =~ ^[1-9][0-9]*$ ]] || {
+                echo "Invalid recovery tag ${GITHUB_REF_NAME}" >&2
+                exit 1
+              }
+              ;;
+            *)
+              echo "Tag ${GITHUB_REF_NAME} does not match npm version ${package_version}" >&2
+              exit 1
+              ;;
+          esac
 
           publish_package() {
             local archive="$1"

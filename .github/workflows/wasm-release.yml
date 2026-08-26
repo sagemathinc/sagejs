@@ -293,10 +293,12 @@ jobs:
             --output build/reproducible-artifact.json
           node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs \
             --dist build/a/packages/flint-wasm/dist \
+            --budget bench/browser-wasm-budget.json \
             --compare-payload build/linux-arm64/packages/flint-wasm/dist \
             --output build/reproducible-linux-arm64.json
           node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs \
             --dist build/a/packages/flint-wasm/dist \
+            --budget bench/browser-wasm-budget.json \
             --compare-payload build/darwin-arm64/packages/flint-wasm/dist \
             --output build/reproducible-darwin-arm64.json
           tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner \
@@ -406,6 +408,7 @@ jobs:
             --native-reference build/node-reference/wasm-performance-node-native.json \
             --budget bench/browser-wasm-budget.json \
             --require-baseline \
+            --report-regressions \
             --output build/wasm-performance-${{ matrix.engine }}-shard-${{ matrix.shard }}.json
       - uses: actions/upload-artifact@v7
         if: always()
