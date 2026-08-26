@@ -61,6 +61,13 @@ macOS runner itself is discarded after the job.
 6. Test a clean `curl | sh` install, a clean global npm install, Jupyter kernel
    registration, and Gatekeeper/SmartScreen behavior on real target machines.
 
+Browser performance shards always upload their reviewed-baseline and
+browser/native comparison receipts. Relative timing regressions are reported as
+warnings rather than release blockers because the browser and native timings
+come from independent shared GitHub runners. Correctness, authenticated route
+selection, workload timeouts, and the absolute interruption safety ceiling
+remain blocking gates.
+
 If validation of `vX.Y.Z` exposes a release-only defect before publication,
 fix it in a new commit and use the append-only recovery tag
 `vX.Y.Z+release.N`. Never move the original tag. Recovery tags publish the same

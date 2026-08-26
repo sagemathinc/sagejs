@@ -124,6 +124,11 @@ test("release CI shards performance and reuses only authenticated native cache e
   assert.doesNotMatch(workflow, /pnpm bootstrap/);
   assert.match(workflow, /browser-parity:/);
   assert.match(workflow, /browser-performance:/);
+  assert.match(
+    workflow,
+    /browser-wasm-performance\.mjs[\s\S]*--require-baseline \\\n\s+--report-regressions \\\n/,
+    "shared-runner timing regressions must remain visible in receipts without blocking release correctness",
+  );
   assert.match(workflow, /browser-security-chromium:/);
   assert.match(workflow, /browser-webkit-recovery:/);
   assert.match(workflow, /shard: \[1, 2, 3, 4\]/);
