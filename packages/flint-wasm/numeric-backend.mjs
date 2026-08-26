@@ -1085,7 +1085,6 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
       return result;
     },
     serializeAnalyticPoint(value) {
-      value = requireResource(value, "complex");
       const realPart = backend.complexReal(value);
       const imaginaryPart = backend.complexImag(value);
       try {

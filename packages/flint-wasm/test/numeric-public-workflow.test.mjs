@@ -236,6 +236,11 @@ test("MPFR resources and Acb special functions execute in the production Wasm mo
     backend.complexToString(mixedResources[1024]),
     "1.00000000000000000*I",
   );
+  assert.deepEqual(
+    backend.serializeAnalyticPoint(mixedResources[1024]),
+    ["0.000000000000000000", "1.00000000000000000"],
+    "analytic serialization must rehydrate an evicted complex resource",
+  );
   const closedComplex = mixedResources[1024];
   assert.equal(backend.closeNumericResource(closedComplex), true);
   assert.throws(
