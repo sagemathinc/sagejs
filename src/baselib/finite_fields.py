@@ -89,6 +89,12 @@ _fq_context_resource_cache = []
 _FQ_ELEMENT_RESOURCE_CACHE_LIMIT = 128
 _fq_element_resource_cache = []
 
+# Every canonical residue is at most `p - 1`.  This is the largest modulus for
+# which one fused multiply-add `a * b + c` remains an exact JavaScript Number:
+# `p * (p - 1) <= Number.MAX_SAFE_INTEGER`.  Larger parents retain BigInt
+# residues, so this representation choice never changes exact semantics.
+_MACHINE_RESIDUE_MAX_MODULUS = runtime.bigint(94906266)
+
 
 def _touch_fq_context_resource(storage: Any) -> None:
     if _fq_context_resource_cache and _fq_context_resource_cache[-1] is storage:
@@ -181,7 +187,6 @@ class _FqElementResourceStorage:
         self.parent._unregisterNativeResource(self)
 
 
-@runtime.bigint_fields("_value")
 @runtime.lightweight_math_class
 class FiniteFieldElement(sage.Element):
     def __init__(self, parent: Any, value: Any) -> None:
@@ -209,14 +214,31 @@ class FiniteFieldElement(sage.Element):
         if residue < 0:
             residue = runtime.native_add(residue, parent._modulus)
         self._parent = parent
-        self._value = residue
-        runtime.object.freeze(self)
+        self._value = runtime.number(residue) if parent._machineResidues else residue
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Keep public field elements immutable without freezing JS temporaries.
+
+        Baselib construction writes the two private representation slots
+        directly.  Python-level attribute assignment always enters this
+        method, so public immutability does not require an `Object.freeze`
+        barrier on every arithmetic result.
+        """
+        if name in ("_parent", "_value") and not hasattr(self, name):
+            object.__setattr__(self, name, value)
+            return
+        raise AttributeError("finite field elements are immutable")
+
+    def __delattr__(self, name: str) -> None:
+        """Reject deletion of representation or user-visible attributes."""
+        raise AttributeError("finite field elements are immutable")
 
     def _new_reduced(self, value: int) -> FiniteFieldElement:
         answer = runtime.object.create(_finite_field_element_prototype)
         answer._parent = self._parent
-        answer._value = runtime.bigint(value)
-        runtime.object.freeze(answer)
+        answer._value = (
+            runtime.number(value) if self._parent._machineResidues else value
+        )
         return answer
 
     def _add_(
@@ -224,8 +246,8 @@ class FiniteFieldElement(sage.Element):
         other: FiniteFieldElement,
     ) -> FiniteFieldElement:
         value = runtime.native_add(self._value, other._value)
-        if value >= self._parent._modulus:
-            value = runtime.native_sub(value, self._parent._modulus)
+        if value >= self._parent._residueModulus:
+            value = runtime.native_sub(value, self._parent._residueModulus)
         return self._new_reduced(value)
 
     def _sub_(
@@ -234,7 +256,7 @@ class FiniteFieldElement(sage.Element):
     ) -> FiniteFieldElement:
         value = runtime.native_sub(self._value, other._value)
         if value < 0:
-            value = runtime.native_add(value, self._parent._modulus)
+            value = runtime.native_add(value, self._parent._residueModulus)
         return self._new_reduced(value)
 
     def _mul_(
@@ -244,7 +266,7 @@ class FiniteFieldElement(sage.Element):
         return self._new_reduced(
             runtime.native_mod(
                 runtime.native_mul(self._value, other._value),
-                self._parent._modulus,
+                self._parent._residueModulus,
             ),
         )
 
@@ -252,13 +274,13 @@ class FiniteFieldElement(sage.Element):
         self,
         other: FiniteFieldElement,
     ) -> FiniteFieldElement:
+        inverse = runtime.modular_inverse(other._value, self._parent._modulus)
+        if self._parent._machineResidues:
+            inverse = runtime.number(inverse)
         return self._new_reduced(
             runtime.native_mod(
-                runtime.native_mul(
-                    self._value,
-                    runtime.modular_inverse(other._value, self._parent._modulus),
-                ),
-                self._parent._modulus,
+                runtime.native_mul(self._value, inverse),
+                self._parent._residueModulus,
             ),
         )
 
@@ -284,7 +306,7 @@ class FiniteFieldElement(sage.Element):
         if self._value == runtime.bigint(0):
             return self
         return self._new_reduced(
-            runtime.native_sub(self._parent._modulus, self._value),
+            runtime.native_sub(self._parent._residueModulus, self._value),
         )
 
     def __pow__(self, exponent: int) -> FiniteFieldElement:
@@ -319,9 +341,9 @@ class FiniteFieldElement(sage.Element):
         return self._value == runtime.bigint(1)
 
     def is_unit(self) -> bool:
-        return runtime.bigint_gcd(self._value, self._parent._modulus) == runtime.bigint(
-            1
-        )
+        return runtime.bigint_gcd(
+            runtime.integer_bigint(self._value), self._parent._modulus
+        ) == runtime.bigint(1)
 
     def multiplicative_order(self) -> int:
         if not self.is_unit():
@@ -425,7 +447,7 @@ class FiniteFieldElement(sage.Element):
 
     def rational_reconstruction(self) -> Any:
         modulus = self._parent._modulus
-        residue = self._value
+        residue = runtime.integer_bigint(self._value)
         bound = runtime.bigint(
             runtime.math.floor(runtime.math.sqrt(runtime.number(modulus) / 2.0))
         )
@@ -486,19 +508,18 @@ def _new_reduced_prime_field_element(
     """Construct an element from an already canonical residue."""
     answer = runtime.object.create(_finite_field_element_prototype)
     answer._parent = parent
-    answer._value = runtime.bigint(value)
-    runtime.object.freeze(answer)
+    answer._value = runtime.number(value) if parent._machineResidues else value
     return answer
 
 
-@runtime.bigint_fields("_value")
 @runtime.lightweight_math_class
 class IntegerModElement(FiniteFieldElement):
     def _new_reduced(self, value: int) -> IntegerModElement:
         answer = runtime.object.create(_integer_mod_element_prototype)
         answer._parent = self._parent
-        answer._value = runtime.bigint(value)
-        runtime.object.freeze(answer)
+        answer._value = (
+            runtime.number(value) if self._parent._machineResidues else value
+        )
         return answer
 
     def _add_(
@@ -506,8 +527,8 @@ class IntegerModElement(FiniteFieldElement):
         other: FiniteFieldElement,
     ) -> IntegerModElement:
         value = runtime.native_add(self._value, other._value)
-        if value >= self._parent._modulus:
-            value = runtime.native_sub(value, self._parent._modulus)
+        if value >= self._parent._residueModulus:
+            value = runtime.native_sub(value, self._parent._residueModulus)
         return self._new_reduced(value)
 
     def _sub_(
@@ -516,7 +537,7 @@ class IntegerModElement(FiniteFieldElement):
     ) -> IntegerModElement:
         value = runtime.native_sub(self._value, other._value)
         if value < 0:
-            value = runtime.native_add(value, self._parent._modulus)
+            value = runtime.native_add(value, self._parent._residueModulus)
         return self._new_reduced(value)
 
     def _mul_(
@@ -526,7 +547,7 @@ class IntegerModElement(FiniteFieldElement):
         return self._new_reduced(
             runtime.native_mod(
                 runtime.native_mul(self._value, other._value),
-                self._parent._modulus,
+                self._parent._residueModulus,
             ),
         )
 
@@ -534,13 +555,13 @@ class IntegerModElement(FiniteFieldElement):
         self,
         other: FiniteFieldElement,
     ) -> IntegerModElement:
+        inverse = runtime.modular_inverse(other._value, self._parent._modulus)
+        if self._parent._machineResidues:
+            inverse = runtime.number(inverse)
         return self._new_reduced(
             runtime.native_mod(
-                runtime.native_mul(
-                    self._value,
-                    runtime.modular_inverse(other._value, self._parent._modulus),
-                ),
-                self._parent._modulus,
+                runtime.native_mul(self._value, inverse),
+                self._parent._residueModulus,
             ),
         )
 
@@ -548,7 +569,7 @@ class IntegerModElement(FiniteFieldElement):
         if self._value == runtime.bigint(0):
             return self
         return self._new_reduced(
-            runtime.native_sub(self._parent._modulus, self._value),
+            runtime.native_sub(self._parent._residueModulus, self._value),
         )
 
     def __pow__(self, exponent: int) -> IntegerModElement:
@@ -741,6 +762,9 @@ class FiniteField_prime_modn(sage.Parent):
         self._kind = "GF"
         self._elementType = FiniteFieldElement
         self._modulus = order
+        self._machineResidues = order <= _MACHINE_RESIDUE_MAX_MODULUS
+        self._residueModulus = runtime.number(order) if self._machineResidues else order
+        self._closedScalarArithmetic = True
         self._order = order
         self._generator = generator
         self._dict_keys = runtime.reflect.construct(runtime.map_class, [])
@@ -847,6 +871,9 @@ class IntegerModRing(sage.Parent):
         self._kind = "ZMOD"
         self._elementType = IntegerModElement
         self._modulus = order
+        self._machineResidues = order <= _MACHINE_RESIDUE_MAX_MODULUS
+        self._residueModulus = runtime.number(order) if self._machineResidues else order
+        self._closedScalarArithmetic = True
         self._order = order
         self._dict_keys = runtime.reflect.construct(runtime.map_class, [])
 

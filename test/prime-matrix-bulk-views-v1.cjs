@@ -68,7 +68,17 @@ host_values = prime_cache(source)
 assert host_values is not runtime.undefined
 assert [int(value.lift()) for value in flat] == values
 assert all(value.parent() is F for value in flat)
-assert all(runtime.object.isFrozen(value) for value in flat)
+try:
+    flat[0]._value = 17
+    raise AssertionError("prime-field scalar mutation succeeded")
+except AttributeError as error:
+    assert "immutable" in str(error)
+try:
+    del flat[0]._value
+    raise AssertionError("prime-field scalar deletion succeeded")
+except AttributeError as error:
+    assert "immutable" in str(error)
+assert int(flat[0]) == values[0]
 
 second_flat = source.list()
 assert second_flat is not flat

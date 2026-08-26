@@ -39,6 +39,27 @@
       "rationale": "Benchmark-local adaptation of node-gyp's MIT-licensed Windows delay-load hook so the same stable Node-API addon can be hosted by Node, Bun, and Deno without binding eagerly to node.exe."
     },
     {
+      "path": "bench/finite-field-boundary/napi_modular.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Standalone checked uint32 modular arithmetic callbacks used only to measure scalar, fused, batched, and borrowed-buffer Node-API costs; they are not linked into Sage.js."
+    },
+    {
+      "path": "bench/finite-field-boundary/wasm_modular.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Standalone dependency-chained and packed uint32 modular arithmetic benchmark compiled to a minimal host-neutral Wasm module; it is not linked into Sage.js."
+    },
+    {
+      "path": "bench/finite-field-boundary/win_delay_load_hook.cc",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Benchmark-local adaptation of node-gyp's MIT-licensed delay-load hook so the finite-field Node-API reference can be hosted by Node, Bun, and Deno on Windows."
+    },
+    {
       "path": "bench/hyperelliptic/cuda-twist-feasibility.cu",
       "category": "benchmark-reference",
       "review_status": "accepted",

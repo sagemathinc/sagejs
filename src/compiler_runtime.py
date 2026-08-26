@@ -106,6 +106,10 @@ def native_sub(left, right):
     return r"%js left - right"
 
 
+def fast_closed_binary(left, right, operation, missing):
+    return r"%js missing"
+
+
 def native_method_adapter(target_function):
     return r"""%js (() => {
         function method(...args) {

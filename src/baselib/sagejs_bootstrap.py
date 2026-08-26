@@ -72,6 +72,11 @@ def ρσ_native_method_adapter(target_function):
     })()"""
 
 
+def ρσ_native_jstype(value):
+    """Return JavaScript's primitive representation tag."""
+    return r"%js typeof value"
+
+
 def ρσ_unbound_method_adapter(target_function):
     """Expose a JavaScript-receiver method as `method(self, *args)`."""
     return r"""%js (() => {
@@ -1353,6 +1358,7 @@ def ρσ_uint64_residue_elements(source, parent, element_type):
         if (modulus <= 0n || modulus > 0xffffffffffffffffn) {
             throw new RangeError("invalid uint64 residue modulus");
         }
+        const machineResidues = Reflect.get(parent, "_machineResidues") === true;
         const output = new Array(source.length);
         for (let index = 0; index < source.length; index += 1) {
             const residue = source[index];
@@ -1361,10 +1367,31 @@ def ρσ_uint64_residue_elements(source, parent, element_type):
             }
             const value = Object.create(prototype);
             value._parent = parent;
-            value._value = residue;
-            output[index] = Object.freeze(value);
+            value._value = machineResidues ? Number(residue) : residue;
+            output[index] = value;
         }
         return ρσ_list_decorate(output);
+    })()"""
+
+
+def ρσ_fast_closed_binary(left, right, operation, missing):
+    """Dispatch one whitelisted closed-parent operation without coercion."""
+    return r"""%js (() => {
+        if (left !== null && right !== null &&
+            typeof left === "object" && typeof right === "object") {
+            const parent = left._parent;
+            if (parent !== undefined && parent === right._parent &&
+                parent._closedScalarArithmetic === true) {
+                switch (operation) {
+                    case "add": return left._add_(right);
+                    case "sub": return left._sub_(right);
+                    case "mul": return left._mul_(right);
+                    case "truediv": return left._truediv_(right);
+                    default: throw new Error("invalid closed binary operation");
+                }
+            }
+        }
+        return missing;
     })()"""
 
 

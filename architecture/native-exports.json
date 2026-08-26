@@ -5,7 +5,7 @@
     "declared-ffi": 7,
     "migrate-to-declared-ffi": 214,
     "migrate-to-typed-python": 34,
-    "retain-differential-oracle": 1,
+    "retain-differential-oracle": 6,
     "retain-host-adapter": 35,
     "retain-representation-primitive": 29
   },
@@ -13967,6 +13967,177 @@
         "packages/graph/test/test.cjs",
         "src/baselib/graphs.py"
       ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs:add_mod_u32",
+      "package": "@sagemath/sagejs",
+      "export": "add_mod_u32",
+      "callback": "add_mod_u32",
+      "registration": {
+        "path": "bench/finite-field-boundary/napi_modular.c"
+      },
+      "implementation": {
+        "path": "bench/finite-field-boundary/napi_modular.c",
+        "line": 34,
+        "lines": 13,
+        "sha256": "57938b1fd306f2da6f7a93f728ad0d316bf478ec1d06f5650dbb1fe9a45fdc30",
+        "calls": [
+          "add_mod",
+          "napi_get_cb_info",
+          "napi_throw_type_error",
+          "read_u32",
+          "return_u32"
+        ]
+      },
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle",
+      "note": null,
+      "rationale": "Standalone microbenchmark exports measure JavaScript, Node-API, and WebAssembly call and representation costs without entering any production runtime path.",
+      "fallback": "The benchmark reports an unavailable runtime instead of substituting these experimental callbacks for Sage.js mathematical operations.",
+      "oracles": [
+        "JavaScript scalar arithmetic",
+        "WebAssembly scalar arithmetic",
+        "cross-runtime deterministic checksums"
+      ],
+      "consumers": [],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs:chain_mod_u32",
+      "package": "@sagemath/sagejs",
+      "export": "chain_mod_u32",
+      "callback": "chain_mod_u32",
+      "registration": {
+        "path": "bench/finite-field-boundary/napi_modular.c"
+      },
+      "implementation": {
+        "path": "bench/finite-field-boundary/napi_modular.c",
+        "line": 77,
+        "lines": 18,
+        "sha256": "eeed64479b9570652bee9218b6004b89b53e94d671ba24858bdd46f020234a51",
+        "calls": [
+          "mul_add_mod",
+          "napi_get_cb_info",
+          "napi_throw_type_error",
+          "read_u32",
+          "return_u32"
+        ]
+      },
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle",
+      "note": null,
+      "rationale": "Standalone microbenchmark exports measure JavaScript, Node-API, and WebAssembly call and representation costs without entering any production runtime path.",
+      "fallback": "The benchmark reports an unavailable runtime instead of substituting these experimental callbacks for Sage.js mathematical operations.",
+      "oracles": [
+        "JavaScript scalar arithmetic",
+        "WebAssembly scalar arithmetic",
+        "cross-runtime deterministic checksums"
+      ],
+      "consumers": [],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_add_mod_u32",
+      "package": "@sagemath/sagejs",
+      "export": "mul_add_mod_u32",
+      "callback": "mul_add_mod_u32",
+      "registration": {
+        "path": "bench/finite-field-boundary/napi_modular.c"
+      },
+      "implementation": {
+        "path": "bench/finite-field-boundary/napi_modular.c",
+        "line": 62,
+        "lines": 14,
+        "sha256": "14e9a75d003635631f0610bb1590f1ec612f21a8d64fe1f794a8727d3d366089",
+        "calls": [
+          "mul_add_mod",
+          "napi_get_cb_info",
+          "napi_throw_type_error",
+          "read_u32",
+          "return_u32"
+        ]
+      },
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle",
+      "note": null,
+      "rationale": "Standalone microbenchmark exports measure JavaScript, Node-API, and WebAssembly call and representation costs without entering any production runtime path.",
+      "fallback": "The benchmark reports an unavailable runtime instead of substituting these experimental callbacks for Sage.js mathematical operations.",
+      "oracles": [
+        "JavaScript scalar arithmetic",
+        "WebAssembly scalar arithmetic",
+        "cross-runtime deterministic checksums"
+      ],
+      "consumers": [],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_mod_u32",
+      "package": "@sagemath/sagejs",
+      "export": "mul_mod_u32",
+      "callback": "mul_mod_u32",
+      "registration": {
+        "path": "bench/finite-field-boundary/napi_modular.c"
+      },
+      "implementation": {
+        "path": "bench/finite-field-boundary/napi_modular.c",
+        "line": 48,
+        "lines": 13,
+        "sha256": "5d20da3a6d42acfe89e4e5e02b390819f046c4336fe95c3d100ea0688102592a",
+        "calls": [
+          "mul_mod",
+          "napi_get_cb_info",
+          "napi_throw_type_error",
+          "read_u32",
+          "return_u32"
+        ]
+      },
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle",
+      "note": null,
+      "rationale": "Standalone microbenchmark exports measure JavaScript, Node-API, and WebAssembly call and representation costs without entering any production runtime path.",
+      "fallback": "The benchmark reports an unavailable runtime instead of substituting these experimental callbacks for Sage.js mathematical operations.",
+      "oracles": [
+        "JavaScript scalar arithmetic",
+        "WebAssembly scalar arithmetic",
+        "cross-runtime deterministic checksums"
+      ],
+      "consumers": [],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs:vector_mul_add_mod_u32",
+      "package": "@sagemath/sagejs",
+      "export": "vector_mul_add_mod_u32",
+      "callback": "vector_mul_add_mod_u32",
+      "registration": {
+        "path": "bench/finite-field-boundary/napi_modular.c"
+      },
+      "implementation": {
+        "path": "bench/finite-field-boundary/napi_modular.c",
+        "line": 96,
+        "lines": 31,
+        "sha256": "b5d7112fb8ec350fcbd74520187d6925c3472c1a7915b895309adbfa00a2ce4f",
+        "calls": [
+          "mul_add_mod",
+          "napi_get_cb_info",
+          "napi_get_typedarray_info",
+          "napi_throw_type_error",
+          "read_u32",
+          "return_u32"
+        ]
+      },
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle",
+      "note": null,
+      "rationale": "Standalone microbenchmark exports measure JavaScript, Node-API, and WebAssembly call and representation costs without entering any production runtime path.",
+      "fallback": "The benchmark reports an unavailable runtime instead of substituting these experimental callbacks for Sage.js mathematical operations.",
+      "oracles": [
+        "JavaScript scalar arithmetic",
+        "WebAssembly scalar arithmetic",
+        "cross-runtime deterministic checksums"
+      ],
+      "consumers": [],
       "declared_ffi": null
     }
   ]

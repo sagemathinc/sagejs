@@ -1,27 +1,27 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "fabf896a6741eba67cddd76410ab3482856389c197ac4e2fa556da856e5559f5",
+  "source_sha256": "28c3c3abd2c40f8d6e5efa6888ced0766b3f388b371d7696f0eabdde89282335",
   "counts": {
-    "total": 1007,
+    "total": 1013,
     "by_kind": {
       "declared-ffi-function": 440,
       "declared-ffi-resource": 32,
-      "napi-export": 320,
+      "napi-export": 325,
       "production-kernel": 47,
-      "runtime-intrinsic": 142,
+      "runtime-intrinsic": 143,
       "specialist-capability": 26
     },
     "by_disposition": {
       "compiled-source": 47,
-      "desktop-only": 42,
+      "desktop-only": 47,
       "generated-wasm": 321,
-      "portable-fallback": 552,
+      "portable-fallback": 553,
       "shared-core": 45
     },
     "by_status": {
-      "available": 550,
-      "desktop-only": 42,
+      "available": 551,
+      "desktop-only": 47,
       "fallback": 415
     }
   },
@@ -10458,6 +10458,66 @@
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs:add_mod_u32",
+      "family": "boundary-benchmarks",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:chain_mod_u32",
+      "family": "boundary-benchmarks",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_add_mod_u32",
+      "family": "boundary-benchmarks",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_mod_u32",
+      "family": "boundary-benchmarks",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:vector_mul_add_mod_u32",
+      "family": "boundary-benchmarks",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
       "id": "runtime:array",
       "family": "runtime",
       "disposition": "portable-fallback",
@@ -10744,6 +10804,18 @@
         "compiled Sage and Python modules"
       ],
       "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:fast_closed_binary",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "explanation": "This guarded JavaScript representation primitive accelerates same-parent closed scalar operations while retaining the exact generic operator fallback."
     },
     {
       "id": "runtime:ffi_call",
