@@ -2,7 +2,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { existsSync, readFileSync, rmSync } = require("node:fs");
+const { readFileSync, rmSync } = require("node:fs");
 const { mkdtemp } = require("node:fs/promises");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
@@ -10,7 +10,7 @@ const { pathToFileURL } = require("node:url");
 const test = require("node:test");
 const { WASI } = require("node:wasi");
 
-const { build, toolchain } = require(
+const { build, toolchainAvailable } = require(
   "../scripts/build-ffi-wasm-resource-adapter.cjs"
 );
 const { loadRegistry } = require("../tools/ffi/declarations.cjs");
@@ -48,15 +48,6 @@ const functionIds = [
 
 function declaration() {
   return loadRegistry({ root }).byId.get("m4ri");
-}
-
-function hasToolchain() {
-  const current = toolchain("m4ri");
-  return existsSync(current.clang) && existsSync(current.sysroot) &&
-    current.prefixes.every((prefix) =>
-      existsSync(join(prefix.path, "include")) &&
-      existsSync(join(prefix.path, "lib", `lib${prefix.name}.a`))
-    );
 }
 
 function closeAll(backend, owned) {
@@ -99,7 +90,9 @@ test("complete M4RI resource surface lowers generically to Wasm", () => {
 });
 
 test("complete M4RI resources execute through real Wasm", {
-  skip: hasToolchain() ? false : "Sage.js M4RI Wasm toolchain is not available",
+  skip: toolchainAvailable("m4ri")
+    ? false
+    : "Sage.js M4RI Wasm toolchain is not available",
 }, async () => {
   const output = await mkdtemp(join(tmpdir(), "sagejs-wasm-m4ri-"));
   try {

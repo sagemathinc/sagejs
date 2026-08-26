@@ -2,7 +2,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { existsSync, readFileSync, rmSync } = require("node:fs");
+const { readFileSync, rmSync } = require("node:fs");
 const { mkdtemp } = require("node:fs/promises");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
@@ -10,7 +10,7 @@ const { pathToFileURL } = require("node:url");
 const test = require("node:test");
 const { WASI } = require("node:wasi");
 
-const { build, toolchain } = require(
+const { build, toolchainAvailable } = require(
   "../scripts/build-ffi-wasm-resource-adapter.cjs"
 );
 const { loadRegistry } = require("../tools/ffi/declarations.cjs");
@@ -70,16 +70,6 @@ function withSyntheticBoolParameter(declaration) {
     ...declaration,
     functions: [...declaration.functions, synthetic],
   };
-}
-
-function hasWasmFlintToolchain() {
-  const current = toolchain();
-  return existsSync(current.clang) &&
-    existsSync(current.sysroot) &&
-    current.prefixes.every((prefix) =>
-      existsSync(join(prefix.path, "include")) &&
-      existsSync(join(prefix.path, "lib", `lib${prefix.name}.a`))
-    );
 }
 
 test("generated Wasm resource selection is explicit and fail-closed", () => {
@@ -170,7 +160,7 @@ test("generated Wasm route traces retain the declaration library identity", () =
 });
 
 test("generated FLINT resource has a real Wasm lifecycle", {
-  skip: hasWasmFlintToolchain()
+  skip: toolchainAvailable("flint")
     ? false
     : "Sage.js FLINT Wasm toolchain is not available",
 }, async () => {

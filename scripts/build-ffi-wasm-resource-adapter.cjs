@@ -15,6 +15,7 @@ const {
 
 const root = resolve(__dirname, "..");
 const {
+  inspectToolchain,
   resolveToolchain,
 } = require("../packages/wasm-toolchain/scripts/toolchain.cjs");
 
@@ -82,6 +83,37 @@ function toolchain(library = "flint") {
     libraries: configuration.libraries,
     sources: configuration.sources,
   };
+}
+
+/**
+ * Return whether the complete authenticated toolchain for `library` is ready.
+ *
+ * Availability probes are used to decide whether optional real-Wasm tests
+ * should run.  They must not call `resolveToolchain`, whose deliberately
+ * diagnostic exception would turn an unavailable optional toolchain into a
+ * test-file load failure.
+ */
+function toolchainAvailable(library = "flint") {
+  const configuration = wasmLibraries[library];
+  if (configuration === undefined) {
+    throw new Error(`no Wasm toolchain configuration for ${library}`);
+  }
+  let prepared;
+  try {
+    prepared = inspectToolchain({ root });
+  } catch {
+    // Windows consumes authenticated prebuilt Wasm artifacts and has no local
+    // source toolchain.  Unsupported or absent host toolchains are likewise a
+    // normal unavailable capability for these optional adapter tests.
+    return false;
+  }
+  if (!prepared.ready) return false;
+  return configuration.prefixes.every((name) => {
+    const prefix = prepared.paths.libraries[name]?.prefix;
+    return typeof prefix === "string" &&
+      existsSync(join(prefix, "include")) &&
+      existsSync(join(prefix, "lib", `lib${name}.a`));
+  });
 }
 
 function requirePath(description, path) {
@@ -176,4 +208,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { build, parseArguments, toolchain };
+module.exports = { build, parseArguments, toolchain, toolchainAvailable };
