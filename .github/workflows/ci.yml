@@ -617,6 +617,11 @@ jobs:
           node-version: 26.5.1
           cache: pnpm
 
+      - name: Install the supported CPython oracle runtime
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
       - name: Install native build prerequisites
         run: |
           brew untap aws/tap || true

@@ -55,3 +55,12 @@ test("routine gate does not build native dependencies or SEA executables", () =>
     /test:integration|test:native|test:sea|pnpm bootstrap/,
   );
 });
+
+test("macOS native validation provisions the supported CPython oracle", () => {
+  const start = workflow.indexOf("  macos-arm64:");
+  const nextJob = workflow.slice(start + 3).search(/^  [a-z][a-z0-9-]*:/m);
+  const end = nextJob === -1 ? workflow.length : start + 3 + nextJob;
+  const section = workflow.slice(start, end);
+  assert.match(section, /uses: actions\/setup-python@v6/);
+  assert.match(section, /python-version: "3\.13"/);
+});
