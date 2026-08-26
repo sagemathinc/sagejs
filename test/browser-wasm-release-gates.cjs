@@ -122,6 +122,11 @@ test("release CI shards performance and reuses only authenticated native cache e
   assert.doesNotMatch(workflow, /\$\{\{ runner\.temp \}\}/);
   assert.match(workflow, /pnpm parallel:cache -- prepare/);
   assert.doesNotMatch(workflow, /pnpm bootstrap/);
+  assert.match(
+    workflow,
+    /--runtime node-native --samples 3[\s\S]*?--require-baseline \\\n\s+--report-regressions \\\n/,
+    "shared-runner native-reference timing must be reported without replacing safety gates",
+  );
   assert.match(workflow, /browser-parity:/);
   assert.match(workflow, /browser-performance:/);
   assert.match(
@@ -485,7 +490,7 @@ test("performance instrumentation distinguishes unavailable data from measured z
 });
 
 test("required performance budgets reject newly added unbaselined workloads", async () => {
-  const { checkBudget } = await import(
+  const { checkBudget, classifyBudgetFailures } = await import(
     "../bench/browser-wasm-performance.mjs"
   );
   const report = {
@@ -540,6 +545,22 @@ test("required performance budgets reject newly added unbaselined workloads", as
   assert.deepEqual(safetyOnly.failures, [
     "interrupt latency exceeded its absolute safety ceiling",
   ]);
+  assert.deepEqual(
+    classifyBudgetFailures([
+      "startup median regressed beyond its reviewed allowance",
+      "interrupt latency exceeded its absolute safety ceiling",
+      "reviewed performance_baseline.chromium is absent",
+    ]),
+    {
+      regressions: [
+        "startup median regressed beyond its reviewed allowance",
+      ],
+      blocking: [
+        "interrupt latency exceeded its absolute safety ceiling",
+        "reviewed performance_baseline.chromium is absent",
+      ],
+    },
+  );
 });
 
 test("performance workload shards are deterministic, disjoint, and complete", async () => {

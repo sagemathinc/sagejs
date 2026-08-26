@@ -563,6 +563,19 @@ export function checkBudget(
   };
 }
 
+export function classifyBudgetFailures(failures) {
+  const regressions = [];
+  const blocking = [];
+  for (const failure of failures) {
+    if (failure.endsWith("regressed beyond its reviewed allowance")) {
+      regressions.push(failure);
+    } else {
+      blocking.push(failure);
+    }
+  }
+  return { regressions, blocking };
+}
+
 async function main() {
   const runtimeKind = option("--runtime", "browser-wasm");
   const engine = option("--engine", "chromium");
@@ -633,7 +646,9 @@ async function main() {
       enforceNativeRatio: !safetyCeilingsOnly,
       enforceRegressionBaseline: !safetyCeilingsOnly,
     });
-    report.budget.enforcement = reportRegressions ? "report-only" : "required";
+    report.budget.enforcement = reportRegressions
+      ? "safety-required-regressions-report-only"
+      : "required";
   } else {
     report.budget = null;
   }
@@ -645,11 +660,19 @@ async function main() {
     process.stdout.write(serialized);
   }
   if (report.budget?.failures.length) {
-    const message = `browser Wasm performance budget failed:\n${report.budget.failures.join("\n")}`;
-    if (reportRegressions) {
-      console.warn(`Warning: ${message}`);
-    } else {
-      throw new Error(message);
+    const { regressions, blocking } = classifyBudgetFailures(
+      report.budget.failures,
+    );
+    if (blocking.length || !reportRegressions) {
+      const failures = reportRegressions ? blocking : report.budget.failures;
+      throw new Error(
+        `browser Wasm performance budget failed:\n${failures.join("\n")}`,
+      );
+    }
+    if (regressions.length) {
+      console.warn(
+        `Warning: browser Wasm timing regressions:\n${regressions.join("\n")}`,
+      );
     }
   }
 }

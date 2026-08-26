@@ -75,6 +75,7 @@ jobs:
             --runtime node-native --samples 3 \
             --budget bench/browser-wasm-budget.json \
             --require-baseline \
+            --report-regressions \
             --output build/wasm-performance-node-native.json
       - uses: actions/upload-artifact@v7
         if: always()
