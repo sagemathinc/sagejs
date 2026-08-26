@@ -1198,12 +1198,23 @@ test("FFLAS installation metadata remains valid after relocating its builder pre
     renameSync(prefix, relocated);
     rmSync(builder, { recursive: true, force: true });
 
-    assert.equal(
-      execFileSync(join(relocated, "bin", "givaro-config"), {
-        encoding: "utf8",
-      }).trim(),
-      realpathSync(relocated),
+    const relocatedConfig = join(relocated, "bin", "givaro-config");
+    const configContents = readFileSync(relocatedConfig, "utf8");
+    assert.equal(configContents.includes(prefix), false);
+    assert.match(
+      configContents,
+      /^prefix=\$\(CDPATH= cd -- "\$\(dirname -- "\$0"\)\/\.\." && pwd -P\)$/m,
     );
+    // This metadata is a POSIX shell helper produced by Autoconf builds.
+    // Native Windows consumes the library archives directly and intentionally
+    // has no supported shell runtime, so validate the rewrite there without
+    // trying to execute a non-Windows file format.
+    if (process.platform !== "win32") {
+      assert.equal(
+        execFileSync(relocatedConfig, { encoding: "utf8" }).trim(),
+        realpathSync(relocated),
+      );
+    }
     const pkgconfig = readFileSync(
       join(relocated, "lib", "pkgconfig", "givaro.pc"),
       "utf8",
