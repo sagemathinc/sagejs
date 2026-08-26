@@ -5227,6 +5227,51 @@ sage: n.binomial(2)
 
 - `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
 
+## `Integer.crt`
+
+```sage
+Integer.crt()
+```
+
+Return the unique integer between `0` and `lcm(m, n)` that is
+congruent to `self` modulo `m` and to `y` modulo `n`.
+
+`m` and `n` must be coprime -- this shares its implementation with
+the `CRT`/`CRT_list` globals, and like them, does not attempt
+SageMath's more general non-coprime case (SageMath's
+`Integer.crt` still returns a solution there whenever one exists).
+
+### Examples
+
+```sage
+sage: n = 17
+sage: n.crt(5, 23, 11)
+247
+```
+
+Non-coprime moduli raise `ValueError`, even when SageMath would
+find a solution:
+
+```sage
+sage: (6).crt(0, 10, 10)
+Traceback (most recent call last):
+...
+ValueError: CRT moduli must be coprime
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: partial — Matches the documented SageMath `sage.rings.integer.Integer` behavior for coprime moduli. SageMath's `Integer.crt` also solves some non-coprime systems (whenever gcd(m, n) divides self - y); Sage.js's `crt`, which this method shares its implementation with, raises `ValueError` for every non-coprime pair instead. Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match for the coprime case.
+- Limitations: Non-coprime moduli raise ValueError instead of the solution SageMath finds when one exists.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
 ## `Integer.denominator`
 
 ```sage
@@ -5631,6 +5676,45 @@ False
 
 - `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
 
+## `Integer.is_pseudoprime`
+
+```sage
+Integer.is_pseudoprime()
+```
+
+Return whether `self` passes FLINT's industrial-strength
+probable-primality test.
+
+Sage.js has no separate, deliberately weaker pseudoprimality test;
+`is_pseudoprime()` and `is_prime()` therefore agree for every
+integer reachable in practice, unlike SageMath's PARI-backed
+`is_pseudoprime()`, which is a Fermat/Miller-Rabin test without a
+final primality proof.
+
+### Examples
+
+```sage
+sage: n = 97
+sage: n.is_pseudoprime()
+True
+sage: (91).is_pseudoprime()
+False
+sage: (1).is_pseudoprime()
+False
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
 ## `Integer.is_squarefree`
 
 ```sage
@@ -5776,6 +5860,38 @@ sage: n.kronecker(11)
 
 - `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
 
+## `Integer.lcm`
+
+```sage
+Integer.lcm()
+```
+
+Return the least common multiple of `self` and `other`.
+
+### Examples
+
+```sage
+sage: n = 6
+sage: n.lcm(4)
+12
+sage: (0).lcm(5)
+0
+sage: (-6).lcm(4)
+12
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
 ## `Integer.moebius`
 
 ```sage
@@ -5808,6 +5924,50 @@ sage: (1).moebius()
 
 - `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
 
+## `Integer.multiplicative_order`
+
+```sage
+Integer.multiplicative_order()
+```
+
+Return the multiplicative order of `self` as a unit of the ring `ZZ`.
+
+This is *not* the modular order, and takes no modulus: it is the
+order of `self` as an element of `ZZ` itself, which has only two
+units. The result is `1` for `self == 1`, `2` for `self == -1`, and
+positive infinity for every other integer -- including `0`, which
+is not a unit at all. For the modular order (the order of `self` in
+`(ZZ/nZZ)^*`), matching SageMath's `Mod(self, n).multiplicative_order()`,
+use the two-argument `multiplicative_order(self, n)` global function
+instead; do not confuse the two, since SageMath's `Integer` method
+and its `multiplicative_order` global mean genuinely different
+things.
+
+### Examples
+
+```sage
+sage: (1).multiplicative_order()
+1
+sage: (-1).multiplicative_order()
+2
+sage: (2).multiplicative_order()
++Infinity
+sage: (0).multiplicative_order()
++Infinity
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
 ## `Integer.next_prime`
 
 ```sage
@@ -5822,6 +5982,41 @@ Return the smallest prime strictly greater than `self`.
 sage: n = 10
 sage: n.next_prime()
 11
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.next_prime_power`
+
+```sage
+Integer.next_prime_power()
+```
+
+Return the smallest prime power strictly greater than `self`.
+
+`self` itself is never returned, even when it is already a prime
+power; `1` counts as a prime power.
+
+### Examples
+
+```sage
+sage: n = 8
+sage: n.next_prime_power()
+9
+sage: (9).next_prime_power()
+11
+sage: (0).next_prime_power()
+1
 ```
 
 ### Metadata
@@ -6041,6 +6236,44 @@ ValueError: no previous prime
 
 - `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
 
+## `Integer.previous_prime_power`
+
+```sage
+Integer.previous_prime_power()
+```
+
+Return the largest prime power strictly less than `self`.
+
+### Examples
+
+```sage
+sage: n = 9
+sage: n.previous_prime_power()
+8
+```
+
+There is no prime power below 1:
+
+```sage
+sage: (1).previous_prime_power()
+Traceback (most recent call last):
+...
+ValueError: no prime power less than 1
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+- Limitations: The result at the bottom of the range depends on the still-open is_prime_power(1) convention question: (2).previous_prime_power() currently returns 1 because Sage.js's is_prime_power(1) is True, matching Sage before sage-6.6.  If that convention changes (tracked in sagejs#56), this result changes with it.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
 ## `Integer.prime_divisors`
 
 ```sage
@@ -6143,6 +6376,48 @@ sage: n.quo_rem(5)
 (3, 2)
 sage: (-17).quo_rem(5)
 (-4, 3)
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.rings.integer`
+- Tags: arithmetic, integers
+- Backends: FLINT
+- Sage compatibility: compatible — Matches the documented SageMath `sage.rings.integer.Integer` behavior for the supported inputs.  Raised exception *messages* are Sage.js's own wording, not transcribed from Sage; exception *types* match.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.rings.integer.Integer`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/rings/integer.html); license GPL-2.0-or-later
+
+## `Integer.radical`
+
+```sage
+Integer.radical()
+```
+
+Return the radical of `self`: the product of the distinct primes
+dividing it.
+
+### Examples
+
+```sage
+sage: n = 12
+sage: n.radical()
+6
+sage: (1).radical()
+1
+sage: (-18).radical()
+6
+```
+
+The radical of zero is undefined:
+
+```sage
+sage: (0).radical()
+Traceback (most recent call last):
+...
+ArithmeticError: Radical of 0 not defined.
 ```
 
 ### Metadata

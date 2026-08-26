@@ -8614,6 +8614,37 @@ def _builtins_bigint_nth_root_floor(value: Any, degree: Any) -> Any:
     return estimate
 
 
+class _IntegerRingPositiveInfinity:
+    """
+    Sentinel for `Integer.multiplicative_order()`'s result outside `{1, 2}`.
+
+    `combinat.py` already has an equivalent (`_CombinatPositiveInfinity`),
+    but `core-runtime` (this module's package, see
+    `architecture/package-graph.json`) cannot depend on the combinatorics
+    package that `combinat.py` belongs to, so this is a second, tiny copy
+    of the same shape rather than a cross-package import.
+    """
+
+    def __repr__(self) -> _Str:
+        return "+Infinity"
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def __eq__(self, other: Any) -> Any:
+        return isinstance(other, _IntegerRingPositiveInfinity)
+
+    def __lt__(self, other: Any) -> _Bool:
+        del other
+        return False
+
+    def __gt__(self, other: Any) -> _Bool:
+        return not isinstance(other, _IntegerRingPositiveInfinity)
+
+
+_integer_ring_infinity = _IntegerRingPositiveInfinity()
+
+
 class _IntegerMethods:
     """
     Method-only home for the `sage.rings.integer.Integer` method surface.
@@ -9444,6 +9475,186 @@ class _IntegerMethods:
         if divisor == runtime.bigint(0):
             return dividend == runtime.bigint(0)
         return runtime.native_mod(dividend, divisor) == runtime.bigint(0)
+
+    def lcm(self, other: Any) -> Any:
+        """
+        Return the least common multiple of `self` and `other`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 6
+        sage: n.lcm(4)
+        12
+        sage: (0).lcm(5)
+        0
+        sage: (-6).lcm(4)
+        12
+        ```
+        """
+        return lcm(self, other)
+
+    def radical(self) -> Any:
+        """
+        Return the radical of `self`: the product of the distinct primes
+        dividing it.
+
+        ### Examples
+
+        ```sage
+        sage: n = 12
+        sage: n.radical()
+        6
+        sage: (1).radical()
+        1
+        sage: (-18).radical()
+        6
+        ```
+
+        The radical of zero is undefined:
+
+        ```sage
+        sage: (0).radical()
+        Traceback (most recent call last):
+        ...
+        ArithmeticError: Radical of 0 not defined.
+        ```
+        """
+        return radical(self)
+
+    def is_pseudoprime(self) -> _Bool:
+        """
+        Return whether `self` passes FLINT's industrial-strength
+        probable-primality test.
+
+        Sage.js has no separate, deliberately weaker pseudoprimality test;
+        `is_pseudoprime()` and `is_prime()` therefore agree for every
+        integer reachable in practice, unlike SageMath's PARI-backed
+        `is_pseudoprime()`, which is a Fermat/Miller-Rabin test without a
+        final primality proof.
+
+        ### Examples
+
+        ```sage
+        sage: n = 97
+        sage: n.is_pseudoprime()
+        True
+        sage: (91).is_pseudoprime()
+        False
+        sage: (1).is_pseudoprime()
+        False
+        ```
+        """
+        return is_pseudoprime(self)
+
+    def next_prime_power(self) -> Any:
+        """
+        Return the smallest prime power strictly greater than `self`.
+
+        `self` itself is never returned, even when it is already a prime
+        power; `1` counts as a prime power.
+
+        ### Examples
+
+        ```sage
+        sage: n = 8
+        sage: n.next_prime_power()
+        9
+        sage: (9).next_prime_power()
+        11
+        sage: (0).next_prime_power()
+        1
+        ```
+        """
+        return next_prime_power(self)
+
+    def previous_prime_power(self) -> Any:
+        """
+        Return the largest prime power strictly less than `self`.
+
+        ### Examples
+
+        ```sage
+        sage: n = 9
+        sage: n.previous_prime_power()
+        8
+        ```
+
+        There is no prime power below 1:
+
+        ```sage
+        sage: (1).previous_prime_power()
+        Traceback (most recent call last):
+        ...
+        ValueError: no prime power less than 1
+        ```
+        """
+        return previous_prime_power(self)
+
+    def crt(self, y: Any, m: Any, n: Any) -> Any:
+        """
+        Return the unique integer between `0` and `lcm(m, n)` that is
+        congruent to `self` modulo `m` and to `y` modulo `n`.
+
+        `m` and `n` must be coprime -- this shares its implementation with
+        the `CRT`/`CRT_list` globals, and like them, does not attempt
+        SageMath's more general non-coprime case (SageMath's
+        `Integer.crt` still returns a solution there whenever one exists).
+
+        ### Examples
+
+        ```sage
+        sage: n = 17
+        sage: n.crt(5, 23, 11)
+        247
+        ```
+
+        Non-coprime moduli raise `ValueError`, even when SageMath would
+        find a solution:
+
+        ```sage
+        sage: (6).crt(0, 10, 10)
+        Traceback (most recent call last):
+        ...
+        ValueError: CRT moduli must be coprime
+        ```
+        """
+        return crt(self, y, m, n)
+
+    def multiplicative_order(self) -> Any:
+        """
+        Return the multiplicative order of `self` as a unit of the ring `ZZ`.
+
+        This is *not* the modular order, and takes no modulus: it is the
+        order of `self` as an element of `ZZ` itself, which has only two
+        units. The result is `1` for `self == 1`, `2` for `self == -1`, and
+        positive infinity for every other integer -- including `0`, which
+        is not a unit at all. For the modular order (the order of `self` in
+        `(ZZ/nZZ)^*`), matching SageMath's `Mod(self, n).multiplicative_order()`,
+        use the two-argument `multiplicative_order(self, n)` global function
+        instead; do not confuse the two, since SageMath's `Integer` method
+        and its `multiplicative_order` global mean genuinely different
+        things.
+
+        ### Examples
+
+        ```sage
+        sage: (1).multiplicative_order()
+        1
+        sage: (-1).multiplicative_order()
+        2
+        sage: (2).multiplicative_order()
+        +Infinity
+        sage: (0).multiplicative_order()
+        +Infinity
+        ```
+        """
+        value = runtime.bigint(self)
+        if value == runtime.bigint(1):
+            return 1
+        if value == runtime.bigint(-1):
+            return 2
+        return _integer_ring_infinity
 
 
 def _builtins_extreme(
@@ -10858,6 +11069,13 @@ _INTEGER_METHOD_NAMES = [
     "binary",
     "hex",
     "oct",
+    "lcm",
+    "radical",
+    "is_pseudoprime",
+    "next_prime_power",
+    "previous_prime_power",
+    "crt",
+    "multiplicative_order",
 ]
 for _integer_method_name in _INTEGER_METHOD_NAMES:
     _integer_method_native = runtime.native_method(
@@ -10916,6 +11134,22 @@ _INTEGER_METHOD_DOCS = [
     ["Integer.binary", "the binary digits, without a `0b` prefix"],
     ["Integer.hex", "the hexadecimal digits, without a `0x` prefix"],
     ["Integer.oct", "the octal digits, without a `0o` prefix"],
+    ["Integer.lcm", "the least common multiple with another integer"],
+    ["Integer.radical", "the product of the distinct primes dividing the integer"],
+    ["Integer.is_pseudoprime", "whether the integer passes a probable-primality test"],
+    [
+        "Integer.next_prime_power",
+        "the smallest prime power strictly greater than the integer",
+    ],
+    [
+        "Integer.previous_prime_power",
+        "the largest prime power strictly smaller than the integer",
+    ],
+    ["Integer.crt", "the Chinese remainder theorem solution for coprime moduli"],
+    [
+        "Integer.multiplicative_order",
+        "the integer's order as a unit of ZZ (1, 2, or +Infinity)",
+    ],
 ]
 
 
@@ -11027,8 +11261,128 @@ def _register_is_prime_power_compatibility_note() -> None:
     )
 
 
+def _register_crt_method_compatibility_note() -> None:
+    # `crt`'s coprime-only restriction genuinely diverges from SageMath's
+    # `Integer.crt`, which also solves some non-coprime systems (see this
+    # method's docstring), so it needs its own `sage_compatibility` entry
+    # instead of the generic "compatible" one every other `Integer` method
+    # above shares. Same registration shape as
+    # `_register_is_prime_power_compatibility_note` above, for the same
+    # module-load-order reason given there.
+    name = "Integer.crt"
+    value = _integer_method_value("crt")
+    authored = runtime.undefined
+    if value is not runtime.undefined and value is not None:
+        authored = runtime.reflect.get(value, "__doc__")
+    fallback = "the Chinese remainder theorem solution for coprime moduli"
+    text = fallback if authored is runtime.undefined or not authored else authored
+    runtime.register_doc(
+        name,
+        value,
+        {
+            "kind": "method",
+            "module": "sage.rings.integer",
+            "signature": name + "()",
+            "doc": text,
+            "tags": ["arithmetic", "integers"],
+            "backends": ["FLINT"],
+            "sage_compatibility": {
+                "status": "partial",
+                "notes": (
+                    "Matches the documented SageMath `sage.rings.integer.Integer` "
+                    "behavior for coprime moduli. SageMath's `Integer.crt` also "
+                    "solves some non-coprime systems (whenever gcd(m, n) divides "
+                    "self - y); Sage.js's `crt`, which this method shares its "
+                    "implementation with, raises `ValueError` for every "
+                    "non-coprime pair instead. Raised exception *messages* are "
+                    "Sage.js's own wording, not transcribed from Sage; exception "
+                    "*types* match for the coprime case."
+                ),
+            },
+            "provenance": [
+                {
+                    "kind": "sage-derived",
+                    "source": "SageMath `sage.rings.integer.Integer`",
+                    "url": (
+                        "https://doc.sagemath.org/html/en/reference/"
+                        "rings_standard/sage/rings/integer.html"
+                    ),
+                    "license": "GPL-2.0-or-later",
+                },
+            ],
+            "limitations": [
+                (
+                    "Non-coprime moduli raise ValueError instead of the "
+                    "solution SageMath finds when one exists."
+                ),
+            ],
+        },
+    )
+
+
+def _register_previous_prime_power_method_note() -> None:
+    # Same open sagejs#56 dependency the `previous_prime_power` *global*
+    # already documents (see its `runtime.register_doc` call above): this
+    # method shares that global's implementation, so its result at the
+    # bottom of the range depends on the same still-open
+    # `is_prime_power(1)` convention question. Registered the same way
+    # `_register_is_prime_power_compatibility_note` above is, for the same
+    # module-load-order reason given there.
+    name = "Integer.previous_prime_power"
+    value = _integer_method_value("previous_prime_power")
+    authored = runtime.undefined
+    if value is not runtime.undefined and value is not None:
+        authored = runtime.reflect.get(value, "__doc__")
+    fallback = "the largest prime power strictly smaller than the integer"
+    text = fallback if authored is runtime.undefined or not authored else authored
+    runtime.register_doc(
+        name,
+        value,
+        {
+            "kind": "method",
+            "module": "sage.rings.integer",
+            "signature": name + "()",
+            "doc": text,
+            "tags": ["arithmetic", "integers"],
+            "backends": ["FLINT"],
+            "sage_compatibility": {
+                "status": "compatible",
+                "notes": (
+                    "Matches the documented SageMath `sage.rings.integer.Integer` "
+                    "behavior for the supported inputs.  Raised exception "
+                    "*messages* are Sage.js's own wording, not transcribed "
+                    "from Sage; exception *types* match."
+                ),
+            },
+            "provenance": [
+                {
+                    "kind": "sage-derived",
+                    "source": "SageMath `sage.rings.integer.Integer`",
+                    "url": (
+                        "https://doc.sagemath.org/html/en/reference/"
+                        "rings_standard/sage/rings/integer.html"
+                    ),
+                    "license": "GPL-2.0-or-later",
+                },
+            ],
+            "limitations": [
+                (
+                    "The result at the bottom of the range depends on the "
+                    "still-open is_prime_power(1) convention question: "
+                    "(2).previous_prime_power() currently returns 1 because "
+                    "Sage.js's is_prime_power(1) is True, matching Sage before "
+                    "sage-6.6.  If that convention changes (tracked in "
+                    "sagejs#56), this result changes with it."
+                ),
+            ],
+        },
+    )
+
+
 _register_integer_method_docs()
 _register_is_prime_power_compatibility_note()
+_register_crt_method_compatibility_note()
+_register_previous_prime_power_method_note()
 
 runtime.reflect.set(runtime.global_object, "true", True)
 runtime.reflect.set(runtime.global_object, "false", False)
