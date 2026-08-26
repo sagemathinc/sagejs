@@ -5,11 +5,9 @@ const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { resolve } = require("node:path");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
-const referencePython = process.env.SAGEJS_REFERENCE_PYTHON ||
-  process.env.PYTHON ||
-  (process.platform === "win32" ? "python" : "python3");
 
 function execute(command, args, source) {
   const result = spawnSync(command, args, {
@@ -19,7 +17,7 @@ function execute(command, args, source) {
   });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.equal(result.stderr, "");
-  return result.stdout;
+  return result.stdout.replaceAll("\r\n", "\n");
 }
 
 const differentialSource = String.raw`
@@ -52,7 +50,11 @@ for source in (bytes(b"byte source"), bytearray(b"bytearray source")):
 `;
 
 test("ASCII decode agrees with CPython", () => {
-  const cpython = execute(referencePython, ["-"], differentialSource);
+  const cpython = execute(
+    pythonExecutable(),
+    ["-X", "utf8", "-"],
+    differentialSource,
+  );
   const sagejs = execute(
     process.execPath,
     [resolve(root, "bin", "sagejs"), "--python"],
