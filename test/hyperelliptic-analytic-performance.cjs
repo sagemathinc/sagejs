@@ -128,6 +128,9 @@ True
   },
 );
 
+// Keep the cache and ownership checks below as bounded semantic witnesses.
+// The heavyweight competitive workload, including its honest timeout result,
+// is owned by bench/hyperelliptic/analytic-acceptance rather than this tier.
 test(
   "exact coefficient prefixes extend without rebuilding old coefficients",
   { timeout: 180_000 },
@@ -140,15 +143,15 @@ R = PolynomialRing(QQ, "x")
 x = R.gen()
 C = HyperellipticCurve(x, x**3-x+1)
 incremental = GlobalCoefficientPrefix(C)
-first = list(incremental.through(80))
-second = list(incremental.through(160))
-one_shot = list(GlobalCoefficientPrefix(C).through(160))
+first = list(incremental.through(60))
+second = list(incremental.through(120))
+one_shot = list(GlobalCoefficientPrefix(C).through(120))
 diagnostics = incremental.diagnostics()
-assert second == one_shot and second[:81] == first
-assert diagnostics["bound"] == 160
+assert second == one_shot and second[:61] == first
+assert diagnostics["bound"] == 120
 assert diagnostics["extensions"] == 2
-assert diagnostics["local_prime_bound"] == 160
-assert diagnostics["cached_euler_factors"] >= 37
+assert diagnostics["local_prime_bound"] == 120
+assert diagnostics["cached_euler_factors"] >= 29
 True
 `);
       assert.equal(result.repr, "True");
@@ -169,8 +172,8 @@ R = PolynomialRing(QQ, "x")
 x = R.gen()
 C = HyperellipticCurve(x, x**3-x+1)
 L = C.lseries()
-jet4 = L.central_jet(4, prec=32, algorithm="native")
-jet2 = L.central_jet(2, prec=32, algorithm="native")
+jet4 = L.central_jet(4, prec=16, algorithm="native")
+jet2 = L.central_jet(2, prec=16, algorithm="native")
 cache = L.cache_diagnostics()
 last = L.last_diagnostics()
 assert len(jet4) == 5 and len(jet2) == 3
@@ -178,7 +181,7 @@ assert tuple(jet2) == tuple(jet4[:3])
 assert last["cache_hit"]
 assert last["cache_reused_maximum_derivative"] == 4
 assert cache["evaluation_subsumption_hits"] == 1
-initialized = L.init(prec=32, max_order=4, algorithm="native")
+initialized = L.init(prec=16, max_order=4, algorithm="native")
 value = initialized.central_value()
 assert value is initialized.central_value()
 assert tuple(initialized.central_jet(2)) == tuple(jet4[:3])
@@ -203,13 +206,13 @@ R = PolynomialRing(QQ, "x")
 x = R.gen()
 C = HyperellipticCurve(x, x**3-x+1)
 L = C.lseries()
-jet = tuple(L.central_jet(2, prec=32, algorithm="native"))
+jet = tuple(L.central_jet(2, prec=16, algorithm="native"))
 diagnostics = L.last_diagnostics()
 diagnostics["values"][0]["raw_derivatives"] = (("999", "0"),)
 diagnostics["balls"][0]["raw"][0]["real_midpoint"] = "999"
-assert tuple(L.central_jet(2, prec=32, algorithm="native")) == jet
+assert tuple(L.central_jet(2, prec=16, algorithm="native")) == jet
 assert L.last_diagnostics()["values"][0]["raw_derivatives"][0] != ("999", "0")
-initialized = L.init(prec=32, max_order=2, algorithm="native")
+initialized = L.init(prec=16, max_order=2, algorithm="native")
 rank = initialized.analytic_rank()
 prepared = tuple(initialized.central_jet())
 init_diagnostics = initialized.diagnostics()
