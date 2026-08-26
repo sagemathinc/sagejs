@@ -1657,7 +1657,12 @@ class _SealedIdealClassGroupProjection:
             raise ArithmeticError("a public projection source failed exact replay")
         self._initialize(source)
 
-    def _initialize(self, source: IdealClassGroup) -> None:
+    def _initialize(
+        self,
+        source: IdealClassGroup,
+        *,
+        proof_payload: dict[str, Any] | None = None,
+    ) -> None:
         if type(source) is not IdealClassGroup:
             raise TypeError("a public projection needs an ordinary exact group")
         if not isinstance(
@@ -1700,7 +1705,11 @@ class _SealedIdealClassGroupProjection:
             self, "_presentation_json", _canonical_json(presentation_encoder())
         )
         object.__setattr__(
-            self, "_proof_payload_json", _canonical_json(source.proof_payload())
+            self,
+            "_proof_payload_json",
+            _canonical_json(
+                source.proof_payload() if proof_payload is None else proof_payload
+            ),
         )
         object.__setattr__(
             self,
@@ -1718,13 +1727,6 @@ class _SealedIdealClassGroupProjection:
         object.__setattr__(self, "_ideal_log", source._ideal_log)
         object.__setattr__(self, "_generation_verifier", generation_verifier)
         object.__setattr__(self, "_sealed", True)
-
-    @classmethod
-    def from_engine_result(cls, result: Any) -> _SealedIdealClassGroupProjection:
-        source = class_group_from_engine_result(result)
-        answer = cls.__new__(cls)
-        answer._initialize(source)
-        return answer
 
     def __setattr__(self, name: str, value: Any) -> None:
         if getattr(self, "_sealed", False):
@@ -2972,7 +2974,7 @@ def _direct_minkowski_evidence(
     return tuple(records), progress_payload, progress_payload
 
 
-def class_group_from_engine_result(result: Any) -> IdealClassGroup:
+def _class_group_from_engine_result(result: Any, verify_group: Any) -> IdealClassGroup:
     """Adapt one complete class/unit engine result to the public map contract."""
     if getattr(result, "complete", None) is not True:
         raise ValueError("an incomplete engine result has no public class group")
@@ -3153,16 +3155,88 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
         proof_context=replay,
         relation_count=relation_count,
     )
-    if not answer.verify():
+    if verify_group(answer) is not True:
         raise ArithmeticError("the adapted public class group failed proof replay")
     return answer
 
 
-def adapt_and_seal_public_class_group_projection(
-    result: Any,
-) -> _SealedIdealClassGroupProjection:
-    """Run the standard verified adapter and seal its local result atomically."""
-    return _SealedIdealClassGroupProjection.from_engine_result(result)
+def _standard_public_class_group_adapter(implementation: Any, verify_group: Any) -> Any:
+    """Bind the exact verifier inside the public engine adapter."""
+
+    def class_group_from_engine_result(result: Any) -> IdealClassGroup:
+        """Adapt one complete class/unit engine result to the public map contract."""
+        return implementation(result, verify_group)
+
+    return class_group_from_engine_result
+
+
+class_group_from_engine_result = _standard_public_class_group_adapter(
+    _class_group_from_engine_result, IdealClassGroup.verify
+)
+
+
+def _standard_adapt_and_seal_public_class_group_projection(
+    adapter: Any,
+    projection_type: Any,
+    initialize: Any,
+    allocate: Any,
+    proof_payload: Any,
+) -> Any:
+    """Capture every authority-bearing operation across verify and sealing."""
+
+    def adapt_and_seal_public_class_group_projection(
+        result: Any,
+    ) -> _SealedIdealClassGroupProjection:
+        """Run the standard verified adapter and seal its local result atomically."""
+        source = adapter(result)
+        if type(source) is not IdealClassGroup:
+            raise TypeError("the standard adapter changed its exact result type")
+        expected_metadata = (
+            source._order,
+            source._invariants,
+            source._proof_status,
+            source._algorithm,
+            source._factor_base_theorem,
+            source._factor_base_bound,
+            source._relation_count,
+        )
+        exact_proof_payload = proof_payload(source)
+        if expected_metadata != (
+            source._order,
+            source._invariants,
+            source._proof_status,
+            source._algorithm,
+            source._factor_base_theorem,
+            source._factor_base_bound,
+            source._relation_count,
+        ):
+            raise ArithmeticError(
+                "the verified class group changed while its proof was serialized"
+            )
+        answer = allocate(projection_type)
+        initialize(answer, source, proof_payload=exact_proof_payload)
+        if (
+            type(answer) is not projection_type
+            or answer._sealed is not True
+            or answer._metadata != expected_metadata
+        ):
+            raise ArithmeticError(
+                "the verified class group changed while its projection was sealed"
+            )
+        return answer
+
+    return adapt_and_seal_public_class_group_projection
+
+
+adapt_and_seal_public_class_group_projection = (
+    _standard_adapt_and_seal_public_class_group_projection(
+        class_group_from_engine_result,
+        _SealedIdealClassGroupProjection,
+        _SealedIdealClassGroupProjection._initialize,
+        object.__new__,
+        IdealClassGroup.proof_payload,
+    )
+)
 
 
 __all__ = [

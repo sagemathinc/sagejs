@@ -36,19 +36,19 @@ def check_case(case_index, label, coefficients, invariants, proof):
     # below that identity-checked helper must roll the reservation back.
     if label == "3.1.588.1" and proof:
         projection_type = class_group_maps._SealedIdealClassGroupProjection
-        original_from_result = projection_type.from_engine_result
+        original_canonical_json = class_group_maps._canonical_json
 
-        def failing_from_result(_result):
-            raise ArithmeticError("injected exact adapter failure")
+        def failing_canonical_json(_value):
+            raise ArithmeticError("injected exact sealing failure")
 
-        projection_type.from_engine_result = failing_from_result
+        class_group_maps._canonical_json = failing_canonical_json
         try:
             K.class_group(proof=proof)
-            raise AssertionError("the injected exact adapter failure disappeared")
+            raise AssertionError("the injected exact sealing failure disappeared")
         except ArithmeticError as error:
-            assert "injected exact adapter failure" in str(error)
+            assert "injected exact sealing failure" in str(error)
         finally:
-            projection_type.from_engine_result = original_from_result
+            class_group_maps._canonical_json = original_canonical_json
         assert live.public_class_group_projection is None
         assert not live.public_class_group_projection_reserved
 
@@ -81,6 +81,45 @@ def check_case(case_index, label, coefficients, invariants, proof):
             raise AssertionError("a mutated exact source was sealed")
         except ArithmeticError:
             pass
+
+        # Replacing a private class hook while the four public module helpers
+        # retain their standard identities used to mutate the locally verified
+        # group after replay and publish a false capsule. The combined helper
+        # now owns the original initializer in a closure, so the replacement
+        # is never dispatched and both the retry and fresh view stay exact.
+        original_initialize = projection_type._initialize
+        original_verify = class_group_maps.IdealClassGroup.verify
+        original_proof_payload = class_group_maps.IdealClassGroup.proof_payload
+        replacement_calls = []
+
+        def mutating_initialize(projection, source, **options):
+            replacement_calls.append(True)
+            source._invariants = (2,)
+            return original_initialize(projection, source, **options)
+
+        def replaced_verify(_source):
+            replacement_calls.append("verify")
+            return True
+
+        def replaced_proof_payload(_source):
+            replacement_calls.append("proof-payload")
+            return {"schema": "interposed"}
+
+        projection_type._initialize = mutating_initialize
+        class_group_maps.IdealClassGroup.verify = replaced_verify
+        class_group_maps.IdealClassGroup.proof_payload = replaced_proof_payload
+        try:
+            guarded_first = K.class_group(proof=proof)
+            guarded_fresh = K.class_group(proof=proof)
+        finally:
+            projection_type._initialize = original_initialize
+            class_group_maps.IdealClassGroup.verify = original_verify
+            class_group_maps.IdealClassGroup.proof_payload = original_proof_payload
+        assert replacement_calls == []
+        assert guarded_first.invariants() == invariants
+        assert guarded_fresh.invariants() == invariants
+        assert guarded_first.verify()
+        assert guarded_fresh.verify()
 
     counters = {
         "engine_discrete_logs": 0,
