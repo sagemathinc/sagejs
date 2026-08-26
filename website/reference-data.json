@@ -6980,7 +6980,7 @@
         "module": "sage.schemes.hyperelliptic_curves.jacobian_generic",
         "signature": "Jacobian(curve: Any) -> Any",
         "summary": "Return the Jacobian parent of a supported hyperelliptic curve.",
-        "doc": "Return the Jacobian parent of a supported hyperelliptic curve.\n\nThis is the conventional Sage spelling and is exactly equivalent to\n`curve.jacobian()`.\n\n```sage\nsage: R.<x> = GF(101)[]\nsage: H = HyperellipticCurve(x^8 + x + 1)\nsage: J = Jacobian(H)\nsage: J.curve() is H\nTrue\nsage: J.model_kind()\n'even-degree-split-two-infinity'\n```",
+        "doc": "Return the Jacobian parent of a supported hyperelliptic curve.\n\nThis is the conventional Sage spelling and is exactly equivalent to\n`curve.jacobian()`.\n\n```sage\nsage: R.<x> = GF(101)[]\nsage: H = HyperellipticCurve(x^8 + x + 1)\nsage: J = Jacobian(H)\nsage: J.curve() is H\nTrue\nsage: J.model_kind() == \"even-degree-split-two-infinity\"\nTrue\n```",
         "tags": [
           "hyperelliptic curves",
           "Jacobians",
@@ -26004,7 +26004,7 @@
       "module": "sage.schemes.hyperelliptic_curves.jacobian_generic",
       "signature": "Jacobian(curve: Any) -> Any",
       "summary": "Return the Jacobian parent of a supported hyperelliptic curve.",
-      "doc": "Return the Jacobian parent of a supported hyperelliptic curve.\n\nThis is the conventional Sage spelling and is exactly equivalent to\n`curve.jacobian()`.\n\n```sage\nsage: R.<x> = GF(101)[]\nsage: H = HyperellipticCurve(x^8 + x + 1)\nsage: J = Jacobian(H)\nsage: J.curve() is H\nTrue\nsage: J.model_kind()\n'even-degree-split-two-infinity'\n```",
+      "doc": "Return the Jacobian parent of a supported hyperelliptic curve.\n\nThis is the conventional Sage spelling and is exactly equivalent to\n`curve.jacobian()`.\n\n```sage\nsage: R.<x> = GF(101)[]\nsage: H = HyperellipticCurve(x^8 + x + 1)\nsage: J = Jacobian(H)\nsage: J.curve() is H\nTrue\nsage: J.model_kind() == \"even-degree-split-two-infinity\"\nTrue\n```",
       "tags": [
         "hyperelliptic curves",
         "Jacobians",
@@ -26036,7 +26036,7 @@
         "line": 49,
         "excerpt": {
           "start_line": 37,
-          "text": "\n    ```sage\n    sage: R.<x> = PolynomialRing(GF(5))\n    sage: C = HyperellipticCurve(x^5 + x + 1)\n    sage: C.genus()\n    2\n    ```\n    \"\"\"\n    module = _hyperelliptic_module()\n    return module.HyperellipticCurve(f, h, names, check_squarefree)\n\n\ndef Jacobian(curve: Any) -> Any:\n    \"\"\"Return the Jacobian parent of a supported hyperelliptic curve.\n\n    This is the conventional Sage spelling and is exactly equivalent to\n    `curve.jacobian()`.\n\n    ```sage\n    sage: R.<x> = GF(101)[]\n    sage: H = HyperellipticCurve(x^8 + x + 1)\n    sage: J = Jacobian(H)\n    sage: J.curve() is H\n    True\n    sage: J.model_kind()"
+          "text": "\n    ```sage\n    sage: R.<x> = PolynomialRing(GF(5))\n    sage: C = HyperellipticCurve(x^5 + x + 1)\n    sage: C.genus()\n    2\n    ```\n    \"\"\"\n    module = _hyperelliptic_module()\n    return module.HyperellipticCurve(f, h, names, check_squarefree)\n\n\ndef Jacobian(curve: Any) -> Any:\n    \"\"\"Return the Jacobian parent of a supported hyperelliptic curve.\n\n    This is the conventional Sage spelling and is exactly equivalent to\n    `curve.jacobian()`.\n\n    ```sage\n    sage: R.<x> = GF(101)[]\n    sage: H = HyperellipticCurve(x^8 + x + 1)\n    sage: J = Jacobian(H)\n    sage: J.curve() is H\n    True\n    sage: J.model_kind() == \"even-degree-split-two-infinity\""
         }
       },
       "examples": [
@@ -26051,8 +26051,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/hyperelliptic_curves.py#b0ba7464f1ad3eef-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
           }
         },
         {
@@ -26066,8 +26067,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/hyperelliptic_curves.py#99eda4a1ade22001-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
           }
         },
         {
@@ -26081,8 +26083,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/hyperelliptic_curves.py#611ac9d6272f6e2e-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
           }
         },
         {
@@ -26096,23 +26099,25 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/hyperelliptic_curves.py#7237ee8d7489d0f8-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
           }
         },
         {
-          "id": "src/baselib/hyperelliptic_curves.py#7ffe81d1b028fb2f-a0e4d7a913c3c39f",
+          "id": "src/baselib/hyperelliptic_curves.py#eaa6c4b6da83248d-3cbc87c7681f34db",
           "line": 61,
-          "source": "J.model_kind()",
-          "want": "'even-degree-split-two-infinity'\n",
+          "source": "J.model_kind() == \"even-degree-split-two-infinity\"",
+          "want": "True\n",
           "tags": [],
           "owner": "Jacobian",
           "path": "src/baselib/hyperelliptic_curves.py",
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/hyperelliptic_curves.py#eaa6c4b6da83248d-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
           }
         }
       ]
@@ -33644,11 +33649,11 @@
       "entries_with_examples": 195,
       "entries_without_examples": 95,
       "documented": 182,
-      "verified": 171,
+      "verified": 176,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,
-      "unverified": 5,
+      "unverified": 0,
       "random_seed": "sagejs-reference-0"
     }
   }

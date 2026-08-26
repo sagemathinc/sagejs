@@ -19,25 +19,25 @@ const {
 
 const root = resolve(__dirname, "..", "..", "..");
 const results = join(__dirname, "results");
-const policyDirectory = join(results, "policy-2f1e2964");
+const policyDirectory = join(results, "policy-70513bba");
 const policyPath = join(
   root,
   "architecture",
   "hyperelliptic-auto-receipt-policy.json",
 );
-const sourceCommit = "2f1e296481aef4455ccd0aa35199692e44509116";
+const sourceCommit = "70513bba22f7895dfab72e5879f5a5f2ca7d6478";
 const sourceBundleSha =
-  "1985fa5202ce06e6dcbfe037db6f569c9791d2d6677e8c1f1a1a29b6af8d7d59";
+  "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d";
 const harnessPath = "bench/hyperelliptic/cross-platform/run.cjs";
 const modelFingerprints = Object.freeze({
   2: "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234",
   3: "4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279",
 });
 const platformFiles = Object.freeze({
-  "linux-x64": "linux-x64-2f1e2964",
-  "linux-arm64": "linux-arm64-2f1e2964",
-  "darwin-arm64": "macos-arm64-2f1e2964",
-  "win32-x64": "windows-x64-2f1e2964",
+  "linux-x64": "linux-x64-70513bba",
+  "linux-arm64": "linux-arm64-70513bba",
+  "darwin-arm64": "macos-arm64-70513bba",
+  "win32-x64": "windows-x64-70513bba",
 });
 const platforms = Object.freeze(Object.keys(platformFiles));
 
@@ -127,10 +127,10 @@ function main() {
   const harness = { path: harnessPath, sha256: sha256(harnessBytes) };
   assert.equal(
     harness.sha256,
-    "b81a08b591d94191c23fedb6ea93c576251f46620b16732cab1087ca06c47669",
+    "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435",
   );
   const corpus = {
-    id: "phase10-primary-cantor-2f1e2964-v1",
+    id: "phase10-primary-cantor-70513bba-v1",
     path: harnessPath,
     sha256: harness.sha256,
   };
@@ -186,7 +186,7 @@ function main() {
   for (const platform of platforms.slice(1)) {
     assert.deepEqual(receipts[platform].cross_mode_exact, referenceExact);
   }
-  const cachePath = join(results, "linux-x64-2f1e2964-cache-corruption.stdout");
+  const cachePath = join(results, "linux-x64-70513bba-cache-corruption.stdout");
   assert.match(
     readFileSync(cachePath, "utf8"),
     /receipt validation detects changed production assets/,
@@ -197,7 +197,7 @@ function main() {
       "artifact identity binds layout and content",
     ]),
   );
-  const sanitizerPath = join(results, "linux-x64-2f1e2964-cantor-sanitizers.json");
+  const sanitizerPath = join(results, "linux-x64-70513bba-cantor-sanitizers.json");
   const sanitizer = readJson(sanitizerPath);
   assert.equal(sanitizer.schema, "sagejs.hyperelliptic-cantor-sanitizers/v1");
   assert.equal(sanitizer.platform, "linux-x64");
@@ -251,7 +251,7 @@ function main() {
     assert(exact, `missing genus-${genus} exact row`);
     for (const operation of ["add", "scalar", "progression"]) {
       const digest = exact[`${operation}_sha256`];
-      const entryId = `prime-cantor-g${genus}-${operation}-2f1e2964-v1`;
+      const entryId = `prime-cantor-g${genus}-${operation}-70513bba-v1`;
       const references = [];
       for (const platform of platforms) {
         const receiptEvidence = {

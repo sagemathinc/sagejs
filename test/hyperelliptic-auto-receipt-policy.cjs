@@ -212,8 +212,57 @@ test("the checked-in release policy gates auto after the combined source merge",
     policy.source_bundle.sha256,
     "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
   );
-  assert.equal(policy.entries.length, 0);
-  assert.equal(policy.verified_receipts.length, 0);
+  assert.deepEqual(
+    policy.entries.map((entry) => entry.id),
+    [
+      "prime-cantor-g2-add-70513bba-v1",
+      "prime-cantor-g2-scalar-70513bba-v1",
+      "prime-cantor-g2-progression-70513bba-v1",
+      "prime-cantor-g3-add-70513bba-v1",
+      "prime-cantor-g3-scalar-70513bba-v1",
+      "prime-cantor-g3-progression-70513bba-v1",
+    ],
+  );
+  assert.equal(policy.verified_receipts.length, 24);
+  const query = {
+    platform: "linux-x64",
+    backend: "prime-cantor",
+    operation: "add",
+    source_bundle_sha256: policy.source_bundle.sha256,
+    model: {
+      kind: "exact-fingerprint",
+      fingerprint:
+        "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234",
+    },
+    workload: {
+      prime: 1009,
+      interval_start: 1009,
+      interval_stop: 1009,
+      batch_items: 1000,
+      scalar_bits: 0,
+      resource_bytes: 200096,
+    },
+  };
+  assert.deepEqual(queryAutoReceiptPolicy(policy, query), {
+    selected: true,
+    reason: "exact-receipt-policy-match",
+    entry_id: "prime-cantor-g2-add-70513bba-v1",
+    backend: "prime-cantor",
+  });
+  assert.deepEqual(
+    queryAutoReceiptPolicy(policy, {
+      ...query,
+      workload: { ...query.workload, prime: 1013 },
+    }),
+    { selected: false, reason: "unreceipted-fallback" },
+  );
+  assert.deepEqual(
+    queryAutoReceiptPolicy(policy, {
+      ...query,
+      workload: { ...query.workload, batch_items: 999 },
+    }),
+    { selected: false, reason: "unreceipted-fallback" },
+  );
   assert(Object.isFrozen(policy));
 });
 

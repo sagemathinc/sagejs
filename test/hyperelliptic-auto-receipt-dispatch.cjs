@@ -384,7 +384,7 @@ test("an enabled empty policy gates auto while explicit accelerators remain coll
   assert.equal(observed.group_explicit, "smalljac");
 });
 
-test("absent policy preserves development auto while the merged release fails closed", (context) => {
+test("absent policy preserves development auto while the merged release admits only exact receipts", (context) => {
   const item = enabledEmptyPolicy();
   context.after(() => fs.rmSync(item.root, { recursive: true, force: true }));
   const absent = parseSageJson(runSage(selectorWitness, {
@@ -402,8 +402,8 @@ test("absent policy preserves development auto while the merged release fails cl
   const release = parseSageJson(runSage(selectorWitness));
   assert.equal(release.decision.allowed, false);
   assert.equal(release.decision.reason, "unreceipted-fallback");
-  assert.equal(release.matched_decision.allowed, false);
-  assert.equal(release.matched_decision.reason, "unreceipted-fallback");
+  assert.equal(release.matched_decision.allowed, true);
+  assert.equal(release.matched_decision.reason, "exact-receipt-policy-match");
   assert.deepEqual(release.prepared, ["reference", "unreceipted-fallback"]);
   assert.equal(release.rational_auto, "exhaustive");
   assert.equal(release.kummer_selected, false);
@@ -463,7 +463,7 @@ test("trusted startup rejects a provider installed before Sage.js", (context) =>
   assert.match(result.stderr, /existed before trusted startup/);
 });
 
-test("the merged release policy has no enabled envelopes pending exact receipts", () => {
+test("the merged release policy contains only the six exact frozen envelopes", () => {
   const candidate = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
@@ -472,7 +472,19 @@ test("the merged release policy has no enabled envelopes pending exact receipts"
     candidate.source_bundle.sha256,
     "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
   );
-  assert.deepEqual(candidate.entries, []);
+  assert.deepEqual(
+    candidate.entries.map((entry) => entry.id),
+    [
+      "prime-cantor-g2-add-70513bba-v1",
+      "prime-cantor-g2-scalar-70513bba-v1",
+      "prime-cantor-g2-progression-70513bba-v1",
+      "prime-cantor-g3-add-70513bba-v1",
+      "prime-cantor-g3-scalar-70513bba-v1",
+      "prime-cantor-g3-progression-70513bba-v1",
+    ],
+  );
+  assert(candidate.entries.every((entry) => entry.enabled));
+  assert(candidate.entries.every((entry) => entry.receipts.length === 4));
   assert(candidate.source_bundle_contract.paths.includes(
     "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",
   ));

@@ -1,19 +1,21 @@
 # Hyperelliptic release-candidate scorecard
 
 This scorecard applies the literal exit criteria in
-`agents/hyperelliptic-magma-pari-performance-plan.md` to the final integrated
-mathematical source commit
-`a680c04d06fbffd7831a96b3d6e0791ebfc39f26`. Its framed source-bundle digest
-is `36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1`.
-Later commits change only tests, benchmark orchestration, receipts, reports,
-and policy packaging; the authenticated mathematical source bundle is
-unchanged.
+`agents/hyperelliptic-magma-pari-performance-plan.md` to the final exact
+cross-platform mathematical receipt source
+`70513bba22f7895dfab72e5879f5a5f2ca7d6478`. Its framed source-bundle digest
+is `99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d`.
+The final combined-tree assembly through `0b37b74d` adds release evidence,
+documentation, test-boundary repairs, and bounded number-field integration
+repairs outside that framed hyperelliptic source bundle. It does not broaden
+the automatic-selection envelope authenticated by the four-platform receipts.
 
 ## Release decision
 
-**Defensible release candidate.** The final source-current four-platform
-matrix passes at `a9d83f82`, and the checked-in release policy verifies 24
-normalized receipts. It enables only six exact `GF(1009)` Cantor envelopes:
+**Defensible combined-source release candidate, with narrow automatic
+selection.** The final source-current four-platform matrix passes at
+`70513bba`, and the checked-in release policy verifies 24 normalized receipts.
+It enables only six exact `GF(1009)` Cantor envelopes:
 genus-2/genus-3 add, 256-bit scalar batch, and progression. Every unmatched
 model, prime, operation, platform, or workload continues to fail closed to the
 existing exact dynamic/reference path. Explicit `algorithm="native"` remains
@@ -37,7 +39,7 @@ cross-architecture timing is treated as a direct speed comparison.
 | 6 — rational arithmetic | MIXED | The 1,024-by-32 many-prime workload is 1.42x faster than Magma. Growing-coefficient public addition is 1.97x Magma, but the small row is 7.81x and is an honest miss. Bounded-output non-torsion scalar rows pass at 1.664x for scalar 17/347-bit output and 0.407x for scalar 65/5,094-bit output. The separately labelled 256-bit 2-torsion row is 0.334x; it is not evidence about non-torsion `QQ` growth. The generalized `h != 0` row is a non-gating 2.181x. |
 | 7 — genus-2 heights | MIXED | Accuracy-matched single-height and warm reuse gates pass, exact proof/cancellation/cache review passes, and the optimized object-cold paths improve by about 2x. Rank-2 remains 322--335 ms and the four-vector case 738--777 ms, above the 80/380 ms final targets. |
 | 8 — periods and genus-3 heights | PASS | Genus-2/3 periods are within 2x PARI, the 12-point Abel--Jacobi batch beats separate Magma calls, and the genus-3 height is 7.29x faster than the exact historical path while preserving finite replay and refinement stability. Its `rigorous=false` label remains explicit. |
-| 9 — analytic `L`-functions | OPEN — SOURCE-CURRENT REGRESSION | The pinned five-sample run timed out first at 300 seconds/8.9 GiB RSS and again at 600 seconds/17.0 GiB RSS. A one-sample diagnostic also timed out at 600 seconds/17.4 GiB RSS. No receipt was fabricated; the previous local pass is historical and no longer source-current. |
+| 9 — analytic `L`-functions | OPEN — FORMAL COMPETITOR RECEIPT | The source-current integration matrix passes exact coefficient-prefix extension, prepared-cache reuse and poisoning resistance, inverse-Mellin differentials, central derivatives, functional equations, twist parity, and sequential/two-worker equality. The required quiet-host five-sample PARI-bracketed acceptance receipt has not been recollected for this exact freeze, so the phase is not declared complete. No timing result is inferred from integration-test duration. |
 | 10 — auto selection and platforms | PASS, NARROWLY ENABLED | Exact native/dynamic receipts and the authenticated Wasm pack agree across Linux x64, Linux ARM64, macOS ARM64, and Windows x64. ASAN/UBSAN/LSAN, cache corruption, bounded output, cancellation/recovery, and package smoke pass. The policy verifies 24 receipts and enables only six exact model/workload cells. |
 
 ## Enabled exact automatic-selection envelope
@@ -64,11 +66,11 @@ exact fallbacks until a future source freeze supplies their own receipts.
 ## Durable release evidence
 
 - four-platform human report:
-  `bench/hyperelliptic/cross-platform/results/report-a9d83f82.md`;
+  `bench/hyperelliptic/cross-platform/results/report-70513bba.md`;
 - raw primary and portable JSON receipts:
-  `bench/hyperelliptic/cross-platform/results/*-a9d83f82*.json`;
+  `bench/hyperelliptic/cross-platform/results/*-70513bba*.json`;
 - normalized evidence and 24 receipt documents:
-  `bench/hyperelliptic/cross-platform/results/policy-a9d83f82/`;
+  `bench/hyperelliptic/cross-platform/results/policy-70513bba/`;
 - generated release allowlist:
   `architecture/hyperelliptic-auto-receipt-policy.json`.
 
@@ -176,11 +178,56 @@ This packaging hash does not replace the immutable four-platform receipt
 artifact: the difference is the subsequently generated allowlist and coverage
 metadata, not a change to the authenticated mathematical source bundle.
 
+## Final combined-source freeze
+
+The last exact cross-platform refresh is
+`70513bba22f7895dfab72e5879f5a5f2ca7d6478`, with framed source-bundle digest
+`99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d`.
+All four hosts pass matching dynamic/native exact digests, authenticated Wasm
+execution, bounded-output behavior, cancellation and worker recovery, and the
+all-family package smoke. Linux x64 additionally passes cache-corruption and
+ASAN/UBSAN/LSAN evidence. The split even-degree suite passes 8/8 on Linux x64,
+Linux ARM64, macOS ARM64, and Windows x64, covering Sage vectors, cancellation,
+generalized equations, exhaustive small group laws, genus-3 enumeration,
+cross-parent rejection, and both public documentation examples.
+
+The combined tree was then replayed through the complete 313-file integration
+manifest. The canonical run passed batches 1--17 and exposed two stale
+maximal-order instrumentation aliases in batch 18. The probes were moved to
+their actual lazy owner modules; corrected batch 18 passed 65 tests with one
+optional GP skip, and all remaining 97 files passed in the same bounded
+stop-on-failure batches. The replay also exposed and fixed two real
+class/unit integration regressions before the final run: exact cubic proof
+projection now resumes its authenticated terminal, and one-prime relation
+steering declines unit search instead of trapping degree-six completion. The
+degree-six unconditional proof that previously ran for 51.5 minutes and ended
+incomplete passes after the repair; the focused current-tree replay completes
+in 17.3 seconds.
+
+The current combined assembly also passes the seven-stage production build,
+the architecture ratchets (440 FFI functions, 1,131 reviewed native
+boundaries, and 1,007 Wasm capabilities), strict checking of 242 mathematical
+modules with zero errors, all 73 unit files, all 62 portable files, and the
+focused class/unit regressions. The generated reference documentation has 176
+verified examples, two expected failures, four skips, and no failures or
+unverified examples. After the final precompile, the FLINT-Wasm distribution
+was republished: 273 production functions compile with zero unsupported
+functions, all 13 reviewed ABI modules verify, and the current assembly artifact
+has SHA-256
+`fe707c2a0128d192fa3582a1cc208c68a68463d353972e1fd1921ff84e2e9e8e`.
+This assembly hash is not substituted for the immutable four-platform artifact
+identity in the release policy.
+
+The release policy remains deliberately exact: six entries only, all bound to
+the two `GF(1009)` model fingerprints and their fixed add, scalar, or
+progression workloads. Later test, documentation, number-field, or packaging
+commits do not authorize adjacent models or workloads by ancestry.
+
 ## Post-candidate priorities
 
-1. Diagnose the source-current Phase-9 evaluation/RSS regression before
-   attempting another acceptance run; do not raise timeouts or memory ceilings
-   again without a named dominant stage.
+1. Collect the formal source-current five-sample Phase-9 PARI-bracketed receipt
+   on a quiet host. The integration mathematics is green, but it is not a
+   substitute for the equal-contract competitor measurement.
 2. Treat rational small-row public addition and genus-2 object-cold proof
    assembly as the two declared mathematical performance misses. Revisit their
    representation floors only after the live exact-workspace compiler slice is

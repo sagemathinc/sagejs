@@ -60,7 +60,800 @@
       "tools/task-evaluator.ts"
     ],
     "sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
-    "source_commit": "325e687665e5ecd6c323e1a07b2cdde07af88cfa"
+    "source_commit": "70513bba22f7895dfab72e5879f5a5f2ca7d6478"
   },
-  "entries": []
+  "entries": [
+    {
+      "id": "prime-cantor-g2-add-70513bba-v1",
+      "enabled": true,
+      "backend": "prime-cantor",
+      "operation": "add",
+      "platforms": [
+        "linux-x64",
+        "linux-arm64",
+        "darwin-arm64",
+        "win32-x64"
+      ],
+      "source_bundle_sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+      "corpus": {
+        "id": "phase10-primary-cantor-70513bba-v1",
+        "path": "bench/hyperelliptic/cross-platform/run.cjs",
+        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+      },
+      "harness": {
+        "path": "bench/hyperelliptic/cross-platform/run.cjs",
+        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+      },
+      "required_targets": [
+        "dynamic",
+        "native"
+      ],
+      "exact_result_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+      "model": {
+        "kind": "exact-fingerprint",
+        "fingerprints": [
+          "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234"
+        ]
+      },
+      "envelope": {
+        "prime_min": 1009,
+        "prime_max": 1009,
+        "interval_start_min": 1009,
+        "interval_stop_max": 1009,
+        "interval_span_max": 1,
+        "batch_items_min": 1000,
+        "batch_items_max": 1000,
+        "scalar_bits_max": 0,
+        "resource_bytes_max": 200096
+      },
+      "required_evidence": {
+        "failures": [
+          {
+            "id": "missing-artifact",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "cancellation",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "memory-exhaustion",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "worker-loss",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "cache-corruption",
+            "platforms": [
+              "linux-x64"
+            ]
+          }
+        ],
+        "sanitizers": [
+          {
+            "id": "address",
+            "platforms": [
+              "linux-x64"
+            ]
+          },
+          {
+            "id": "undefined",
+            "platforms": [
+              "linux-x64"
+            ]
+          },
+          {
+            "id": "leak",
+            "platforms": [
+              "linux-x64"
+            ]
+          }
+        ]
+      },
+      "receipts": [
+        {
+          "platform": "linux-x64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g2-add-70513bba-v1-linux-x64.json",
+          "sha256": "303b7830dac9bc1c8b0ee88d5eb68431fd8d6585888756677dd0c49bbbeab111"
+        },
+        {
+          "platform": "linux-arm64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g2-add-70513bba-v1-linux-arm64.json",
+          "sha256": "5099f0bd938bbb9363ecc78cb7915f365c1ffd4f80ddada125be106e23c5fecf"
+        },
+        {
+          "platform": "darwin-arm64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g2-add-70513bba-v1-darwin-arm64.json",
+          "sha256": "3d44925b386bc50a4cd417bddd125953f97e4ad7c4a0cfb8751dc051438641f4"
+        },
+        {
+          "platform": "win32-x64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g2-add-70513bba-v1-win32-x64.json",
+          "sha256": "d7b7a29bb820f5243b0e56cb2415821c4881dc05c9515dd8687a73b93483ac05"
+        }
+      ]
+    },
+    {
+      "id": "prime-cantor-g2-scalar-70513bba-v1",
+      "enabled": true,
+      "backend": "prime-cantor",
+      "operation": "scalar",
+      "platforms": [
+        "linux-x64",
+        "linux-arm64",
+        "darwin-arm64",
+        "win32-x64"
+      ],
+      "source_bundle_sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+      "corpus": {
+        "id": "phase10-primary-cantor-70513bba-v1",
+        "path": "bench/hyperelliptic/cross-platform/run.cjs",
+        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+      },
+      "harness": {
+        "path": "bench/hyperelliptic/cross-platform/run.cjs",
+        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+      },
+      "required_targets": [
+        "dynamic",
+        "native"
+      ],
+      "exact_result_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+      "model": {
+        "kind": "exact-fingerprint",
+        "fingerprints": [
+          "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234"
+        ]
+      },
+      "envelope": {
+        "prime_min": 1009,
+        "prime_max": 1009,
+        "interval_start_min": 1009,
+        "interval_stop_max": 1009,
+        "interval_span_max": 1,
+        "batch_items_min": 64,
+        "batch_items_max": 64,
+        "scalar_bits_max": 256,
+        "resource_bytes_max": 11360
+      },
+      "required_evidence": {
+        "failures": [
+          {
+            "id": "missing-artifact",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "cancellation",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "memory-exhaustion",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "worker-loss",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "cache-corruption",
+            "platforms": [
+              "linux-x64"
+            ]
+          }
+        ],
+        "sanitizers": [
+          {
+            "id": "address",
+            "platforms": [
+              "linux-x64"
+            ]
+          },
+          {
+            "id": "undefined",
+            "platforms": [
+              "linux-x64"
+            ]
+          },
+          {
+            "id": "leak",
+            "platforms": [
+              "linux-x64"
+            ]
+          }
+        ]
+      },
+      "receipts": [
+        {
+          "platform": "linux-x64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g2-scalar-70513bba-v1-linux-x64.json",
+          "sha256": "8a869575a4c10598a66f8327328b08648ba2303f70dd907bb4790aa6d7e49b96"
+        },
+        {
+          "platform": "linux-arm64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g2-scalar-70513bba-v1-linux-arm64.json",
+          "sha256": "e17d42edc3041d9826cadb17b2893661d69817feb0449b69494ccb80f0cfadfe"
+        },
+        {
+          "platform": "darwin-arm64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g2-scalar-70513bba-v1-darwin-arm64.json",
+          "sha256": "0e3b134d629940de49c0aac920ce26132a97c59c6f72c827a92ce387ecc62e11"
+        },
+        {
+          "platform": "win32-x64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g2-scalar-70513bba-v1-win32-x64.json",
+          "sha256": "3d24da2f45b8716936ac572f70e1fe630fcf37dd70956c2dae6586291c5ec9c3"
+        }
+      ]
+    },
+    {
+      "id": "prime-cantor-g2-progression-70513bba-v1",
+      "enabled": true,
+      "backend": "prime-cantor",
+      "operation": "progression",
+      "platforms": [
+        "linux-x64",
+        "linux-arm64",
+        "darwin-arm64",
+        "win32-x64"
+      ],
+      "source_bundle_sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+      "corpus": {
+        "id": "phase10-primary-cantor-70513bba-v1",
+        "path": "bench/hyperelliptic/cross-platform/run.cjs",
+        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+      },
+      "harness": {
+        "path": "bench/hyperelliptic/cross-platform/run.cjs",
+        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+      },
+      "required_targets": [
+        "dynamic",
+        "native"
+      ],
+      "exact_result_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+      "model": {
+        "kind": "exact-fingerprint",
+        "fingerprints": [
+          "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234"
+        ]
+      },
+      "envelope": {
+        "prime_min": 1009,
+        "prime_max": 1009,
+        "interval_start_min": 1009,
+        "interval_stop_max": 1009,
+        "interval_span_max": 1,
+        "batch_items_min": 1000,
+        "batch_items_max": 1000,
+        "scalar_bits_max": 0,
+        "resource_bytes_max": 72224
+      },
+      "required_evidence": {
+        "failures": [
+          {
+            "id": "missing-artifact",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "cancellation",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "memory-exhaustion",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "worker-loss",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "cache-corruption",
+            "platforms": [
+              "linux-x64"
+            ]
+          }
+        ],
+        "sanitizers": [
+          {
+            "id": "address",
+            "platforms": [
+              "linux-x64"
+            ]
+          },
+          {
+            "id": "undefined",
+            "platforms": [
+              "linux-x64"
+            ]
+          },
+          {
+            "id": "leak",
+            "platforms": [
+              "linux-x64"
+            ]
+          }
+        ]
+      },
+      "receipts": [
+        {
+          "platform": "linux-x64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g2-progression-70513bba-v1-linux-x64.json",
+          "sha256": "e25494767065b3e2d059c4dc3dceccecca8479b27c9de018feb6b40c3bfd92c1"
+        },
+        {
+          "platform": "linux-arm64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g2-progression-70513bba-v1-linux-arm64.json",
+          "sha256": "f09041c84c3de95ce0f8b73043be308099d92315b59b964ebb9f72f4270a2dfb"
+        },
+        {
+          "platform": "darwin-arm64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g2-progression-70513bba-v1-darwin-arm64.json",
+          "sha256": "cc16ea01c7d77b177f1d51b62611686c74fd1d33b6f3bef981511db520934350"
+        },
+        {
+          "platform": "win32-x64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g2-progression-70513bba-v1-win32-x64.json",
+          "sha256": "84c0643d75d0886f27e45ec771363b415a1400459c8f2db865add4068b48f196"
+        }
+      ]
+    },
+    {
+      "id": "prime-cantor-g3-add-70513bba-v1",
+      "enabled": true,
+      "backend": "prime-cantor",
+      "operation": "add",
+      "platforms": [
+        "linux-x64",
+        "linux-arm64",
+        "darwin-arm64",
+        "win32-x64"
+      ],
+      "source_bundle_sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+      "corpus": {
+        "id": "phase10-primary-cantor-70513bba-v1",
+        "path": "bench/hyperelliptic/cross-platform/run.cjs",
+        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+      },
+      "harness": {
+        "path": "bench/hyperelliptic/cross-platform/run.cjs",
+        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+      },
+      "required_targets": [
+        "dynamic",
+        "native"
+      ],
+      "exact_result_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
+      "model": {
+        "kind": "exact-fingerprint",
+        "fingerprints": [
+          "4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279"
+        ]
+      },
+      "envelope": {
+        "prime_min": 1009,
+        "prime_max": 1009,
+        "interval_start_min": 1009,
+        "interval_stop_max": 1009,
+        "interval_span_max": 1,
+        "batch_items_min": 1000,
+        "batch_items_max": 1000,
+        "scalar_bits_max": 0,
+        "resource_bytes_max": 200096
+      },
+      "required_evidence": {
+        "failures": [
+          {
+            "id": "missing-artifact",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "cancellation",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "memory-exhaustion",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "worker-loss",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "cache-corruption",
+            "platforms": [
+              "linux-x64"
+            ]
+          }
+        ],
+        "sanitizers": [
+          {
+            "id": "address",
+            "platforms": [
+              "linux-x64"
+            ]
+          },
+          {
+            "id": "undefined",
+            "platforms": [
+              "linux-x64"
+            ]
+          },
+          {
+            "id": "leak",
+            "platforms": [
+              "linux-x64"
+            ]
+          }
+        ]
+      },
+      "receipts": [
+        {
+          "platform": "linux-x64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g3-add-70513bba-v1-linux-x64.json",
+          "sha256": "5b30f9b626efb38a08c5bddbc7b5e150b648af3e841886e6587e89a7a4816e34"
+        },
+        {
+          "platform": "linux-arm64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g3-add-70513bba-v1-linux-arm64.json",
+          "sha256": "b43554773ce616d3634ecee544c5c71d2a90b55c946c9a9b9f88967308708e18"
+        },
+        {
+          "platform": "darwin-arm64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g3-add-70513bba-v1-darwin-arm64.json",
+          "sha256": "9ffc8bb937c9d4137abdb17e5633e15ea934adecce94ae8b30b59e787b52db99"
+        },
+        {
+          "platform": "win32-x64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g3-add-70513bba-v1-win32-x64.json",
+          "sha256": "ceec1729058a33aef72244d4aa5927dbad0eafb2862507aca4be6c55561552f2"
+        }
+      ]
+    },
+    {
+      "id": "prime-cantor-g3-scalar-70513bba-v1",
+      "enabled": true,
+      "backend": "prime-cantor",
+      "operation": "scalar",
+      "platforms": [
+        "linux-x64",
+        "linux-arm64",
+        "darwin-arm64",
+        "win32-x64"
+      ],
+      "source_bundle_sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+      "corpus": {
+        "id": "phase10-primary-cantor-70513bba-v1",
+        "path": "bench/hyperelliptic/cross-platform/run.cjs",
+        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+      },
+      "harness": {
+        "path": "bench/hyperelliptic/cross-platform/run.cjs",
+        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+      },
+      "required_targets": [
+        "dynamic",
+        "native"
+      ],
+      "exact_result_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
+      "model": {
+        "kind": "exact-fingerprint",
+        "fingerprints": [
+          "4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279"
+        ]
+      },
+      "envelope": {
+        "prime_min": 1009,
+        "prime_max": 1009,
+        "interval_start_min": 1009,
+        "interval_stop_max": 1009,
+        "interval_span_max": 1,
+        "batch_items_min": 64,
+        "batch_items_max": 64,
+        "scalar_bits_max": 256,
+        "resource_bytes_max": 11360
+      },
+      "required_evidence": {
+        "failures": [
+          {
+            "id": "missing-artifact",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "cancellation",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "memory-exhaustion",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "worker-loss",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "cache-corruption",
+            "platforms": [
+              "linux-x64"
+            ]
+          }
+        ],
+        "sanitizers": [
+          {
+            "id": "address",
+            "platforms": [
+              "linux-x64"
+            ]
+          },
+          {
+            "id": "undefined",
+            "platforms": [
+              "linux-x64"
+            ]
+          },
+          {
+            "id": "leak",
+            "platforms": [
+              "linux-x64"
+            ]
+          }
+        ]
+      },
+      "receipts": [
+        {
+          "platform": "linux-x64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g3-scalar-70513bba-v1-linux-x64.json",
+          "sha256": "787c2de1ce40d4463f7a03ae288d7f8ca99ec0b176384f8a2758baaafda42499"
+        },
+        {
+          "platform": "linux-arm64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g3-scalar-70513bba-v1-linux-arm64.json",
+          "sha256": "bc401446201b9147333c7d7fc978ad7a97a6317b7a57e0b3e2203d5ed3a40603"
+        },
+        {
+          "platform": "darwin-arm64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g3-scalar-70513bba-v1-darwin-arm64.json",
+          "sha256": "c0437f3cd1352f2a79f75c11829d01571fc622080da4afb2e23427d6c3d3f00c"
+        },
+        {
+          "platform": "win32-x64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g3-scalar-70513bba-v1-win32-x64.json",
+          "sha256": "fa54c0caa7cc993247ca8f21402ac08ee46d69f947e9c364cedecafe39f274a9"
+        }
+      ]
+    },
+    {
+      "id": "prime-cantor-g3-progression-70513bba-v1",
+      "enabled": true,
+      "backend": "prime-cantor",
+      "operation": "progression",
+      "platforms": [
+        "linux-x64",
+        "linux-arm64",
+        "darwin-arm64",
+        "win32-x64"
+      ],
+      "source_bundle_sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+      "corpus": {
+        "id": "phase10-primary-cantor-70513bba-v1",
+        "path": "bench/hyperelliptic/cross-platform/run.cjs",
+        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+      },
+      "harness": {
+        "path": "bench/hyperelliptic/cross-platform/run.cjs",
+        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+      },
+      "required_targets": [
+        "dynamic",
+        "native"
+      ],
+      "exact_result_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
+      "model": {
+        "kind": "exact-fingerprint",
+        "fingerprints": [
+          "4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279"
+        ]
+      },
+      "envelope": {
+        "prime_min": 1009,
+        "prime_max": 1009,
+        "interval_start_min": 1009,
+        "interval_stop_max": 1009,
+        "interval_span_max": 1,
+        "batch_items_min": 1000,
+        "batch_items_max": 1000,
+        "scalar_bits_max": 0,
+        "resource_bytes_max": 72224
+      },
+      "required_evidence": {
+        "failures": [
+          {
+            "id": "missing-artifact",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "cancellation",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "memory-exhaustion",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "worker-loss",
+            "platforms": [
+              "linux-x64",
+              "linux-arm64",
+              "darwin-arm64",
+              "win32-x64"
+            ]
+          },
+          {
+            "id": "cache-corruption",
+            "platforms": [
+              "linux-x64"
+            ]
+          }
+        ],
+        "sanitizers": [
+          {
+            "id": "address",
+            "platforms": [
+              "linux-x64"
+            ]
+          },
+          {
+            "id": "undefined",
+            "platforms": [
+              "linux-x64"
+            ]
+          },
+          {
+            "id": "leak",
+            "platforms": [
+              "linux-x64"
+            ]
+          }
+        ]
+      },
+      "receipts": [
+        {
+          "platform": "linux-x64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g3-progression-70513bba-v1-linux-x64.json",
+          "sha256": "da6f65cc8cfb43b6e85a82fa6bec0c6282d539dffa9bf9e6605d080417906475"
+        },
+        {
+          "platform": "linux-arm64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g3-progression-70513bba-v1-linux-arm64.json",
+          "sha256": "3d860856aec0e6c2b5ad741b3c99d3d7f6853f2f88c805d6d404b2c48dd218e9"
+        },
+        {
+          "platform": "darwin-arm64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g3-progression-70513bba-v1-darwin-arm64.json",
+          "sha256": "bcb8d6ffb5de5d52536d75775ec1c9677e5b15ef54c6875e307e3edf9647c09b"
+        },
+        {
+          "platform": "win32-x64",
+          "path": "bench/hyperelliptic/cross-platform/results/policy-70513bba/prime-cantor-g3-progression-70513bba-v1-win32-x64.json",
+          "sha256": "5da9c00332d36c22223edd13dd0164a807712c395c2ee57af494d1fa1da3605c"
+        }
+      ]
+    }
+  ]
 }

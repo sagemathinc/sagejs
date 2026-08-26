@@ -1,0 +1,14 @@
+✔ the production artifact manifest is deterministic and uses dist-relative files (38.454017ms)
+✔ receipt validation detects changed production assets (24.781629ms)
+✔ artifact identity binds both layout and file content (22.710698ms)
+✔ every deployed asset must have an explicit reviewed topology owner (10.684539ms)
+✔ eager and specialist compressed deltas have independent hard budgets (0.54734ms)
+✔ the Wasm memory parser enforces initial and maximum pages (1.08474ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 188.225585

@@ -58,8 +58,8 @@ def Jacobian(curve: Any) -> Any:
     sage: J = Jacobian(H)
     sage: J.curve() is H
     True
-    sage: J.model_kind()
-    'even-degree-split-two-infinity'
+    sage: J.model_kind() == "even-degree-split-two-infinity"
+    True
     ```
     """
     if not hasattr(curve, "jacobian"):

@@ -5002,8 +5002,8 @@ sage: H = HyperellipticCurve(x^8 + x + 1)
 sage: J = Jacobian(H)
 sage: J.curve() is H
 True
-sage: J.model_kind()
-'even-degree-split-two-infinity'
+sage: J.model_kind() == "even-degree-split-two-infinity"
+True
 ```
 
 ### Metadata
