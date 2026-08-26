@@ -182,12 +182,12 @@ print(json.dumps({
 }, sort_keys=True))
 `;
 
-function run(command, args, environment = {}) {
+function run(command, args, environment = {}, input = source) {
   const result = spawnSync(command, args, {
     cwd: root,
     encoding: "utf8",
     env: { ...process.env, ...environment },
-    input: source,
+    input,
     timeout: 120_000,
     maxBuffer: 50 * 1024 * 1024,
   });
@@ -207,10 +207,12 @@ function run(command, args, environment = {}) {
 }
 
 test("2772-bit BL construction and independent replay agree exactly", () => {
-  const python = run(pythonExecutable(), [
-    "-c",
+  const python = run(
+    pythonExecutable(),
+    ["-"],
+    {},
     `import decimal\n${source}`,
-  ]);
+  );
   const [sagejsCommand, sagejsArguments] = sagejsInvocation(
     root,
     ["--python", "-"],
