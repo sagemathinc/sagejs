@@ -99,6 +99,19 @@ assert.ok(
   "release workflow must not route Trusted Publishing through pnpm",
 );
 
+const macosJobStart = releaseWorkflow.indexOf("  macos-arm64:");
+const macosJobEnd = releaseWorkflow.indexOf("\n  macos-sign:", macosJobStart);
+assert.ok(
+  macosJobStart >= 0 && macosJobEnd > macosJobStart,
+  "release workflow must define the macOS native build before signing",
+);
+const macosJob = releaseWorkflow.slice(macosJobStart, macosJobEnd);
+assert.ok(
+  macosJob.includes("packages/m4ri/.native/prefix") &&
+    macosJob.includes("pnpm --dir packages/m4ri build"),
+  "macOS release builds must cache and build the supported M4RI capability",
+);
+
 const tagIndex = process.argv.indexOf("--tag");
 if (tagIndex >= 0) {
   const tag = process.argv[tagIndex + 1];
