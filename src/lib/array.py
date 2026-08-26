@@ -143,6 +143,7 @@ class array:
         self._signed = info[1]
         self._floating = info[2]
         self._values = []
+        self._float_bytes = []
         if initializer is runtime.undefined:
             return
         if (
@@ -172,9 +173,10 @@ class array:
             index += len(self._values)
         if index < 0 or index >= len(self._values):
             raise IndexError("array assignment index out of range")
-        self._values[index] = _coerce_value(
-            value, self.itemsize, self._signed, self._floating
-        )
+        coerced = _coerce_value(value, self.itemsize, self._signed, self._floating)
+        self._values[index] = coerced
+        if self._floating:
+            self._float_bytes[index] = _float_to_bytes(coerced, self.itemsize)
 
     def slice(
         self,
@@ -183,20 +185,31 @@ class array:
     ) -> array:
         first = 0 if start is runtime.undefined else start
         last = len(self) if end is runtime.undefined else end
-        return array(self.typecode, self._values[first:last])
+        answer = array(self.typecode)
+        answer._values = self._values[first:last]
+        if self._floating:
+            answer._float_bytes = [value[:] for value in self._float_bytes[first:last]]
+        return answer
 
     def __setslice__(self, start: int, end: int, values: Any) -> None:
         if not isinstance(values, array) or values.typecode != self.typecode:
             raise TypeError("can only assign array of same kind")
         self._values[start:end] = values._values[:]
+        if self._floating:
+            self._float_bytes[start:end] = [value[:] for value in values._float_bytes]
 
     def append(self, value: Any) -> None:
-        self._values.append(
-            _coerce_value(value, self.itemsize, self._signed, self._floating)
-        )
+        coerced = _coerce_value(value, self.itemsize, self._signed, self._floating)
+        self._values.append(coerced)
+        if self._floating:
+            self._float_bytes.append(_float_to_bytes(coerced, self.itemsize))
 
     def extend(self, values: Any) -> None:
         if isinstance(values, array):
+            if self._floating and values.typecode == self.typecode:
+                self._values.extend(values._values[:])
+                self._float_bytes.extend([value[:] for value in values._float_bytes])
+                return
             values = values._values
         next_method = runtime.reflect.get(values, "next")
         if runtime.strict_equal(runtime.jstype(next_method), "function"):
@@ -214,7 +227,9 @@ class array:
             raise ValueError("bytes length not a multiple of item size")
         for offset in range(0, len(raw), self.itemsize):
             if self._floating:
-                self._values.append(_float_from_bytes(raw, offset, self.itemsize))
+                encoded = [raw[offset + index] for index in range(self.itemsize)]
+                self._values.append(_float_from_bytes(encoded, 0, self.itemsize))
+                self._float_bytes.append(encoded)
                 continue
             value = 0
             if _LITTLE_ENDIAN:
@@ -241,17 +256,26 @@ class array:
             for index in range(self.itemsize - 1, -1, -1):
                 swapped.append(raw[offset + index])
         self._values = []
+        self._float_bytes = []
         self.frombytes(bytes(swapped))
 
     def __add__(self, other: Any) -> array:
         if not isinstance(other, array) or other.typecode != self.typecode:
             raise TypeError("can only append array to array")
-        return array(self.typecode, self._values + other._values)
+        answer = array(self.typecode)
+        answer._values = self._values + other._values
+        if self._floating:
+            answer._float_bytes = [
+                value[:] for value in self._float_bytes + other._float_bytes
+            ]
+        return answer
 
     def __iadd__(self, other: Any) -> array:
         if not isinstance(other, array) or other.typecode != self.typecode:
             raise TypeError("can only extend with array of same kind")
         self._values.extend(other._values)
+        if self._floating:
+            self._float_bytes.extend([value[:] for value in other._float_bytes])
         return self
 
     def __contains__(self, value: Any) -> bool:
@@ -287,8 +311,8 @@ class array:
             else:
                 count = length
             answer = []
-            for item in self._values[start : start + count]:
-                answer.extend(_float_to_bytes(item, self.itemsize))
+            for encoded in self._float_bytes[start : start + count]:
+                answer.extend(encoded)
             return answer
         if length is runtime.undefined:
             count = len(self._values) - start

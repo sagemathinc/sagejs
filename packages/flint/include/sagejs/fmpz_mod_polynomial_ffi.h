@@ -156,6 +156,17 @@ static inline int sagejs_fmpz_mod_polynomial_values_equal(
     return 1;
 }
 
+static inline void sagejs_fmpz_mod_polynomial_value_leading_coefficient(
+    fmpz_t result, const sagejs_fmpz_mod_polynomial_t polynomial)
+{
+    /* The caller establishes that the polynomial is nonzero.  Reading the
+       canonical leading coefficient directly avoids passing the embedded
+       context through FLINT's unused-context accessor, which GCC 14 can
+       misdiagnose as an undersized object under -Werror=stringop-overread. */
+    fmpz_set(result,
+        polynomial->value->coeffs + polynomial->value->length - 1);
+}
+
 static inline size_t sagejs_fmpz_mod_polynomial_allocated_bytes(
     const sagejs_fmpz_mod_polynomial_t polynomial)
 {
@@ -579,8 +590,8 @@ static inline int sagejs_fmpz_mod_polynomial_factor_resource(
         fmpz_mod_ctx_modulus(source->context));
     fmpz_mod_poly_factor_init(result->value, result->context);
     fmpz_init(result->unit);
-    fmpz_mod_poly_get_coeff_fmpz(result->unit, source->value,
-        fmpz_mod_poly_degree(source->value, source->context), source->context);
+    sagejs_fmpz_mod_polynomial_value_leading_coefficient(
+        result->unit, source);
     fmpz_mod_poly_t monic;
     fmpz_mod_poly_init(monic, result->context);
     fmpz_mod_poly_make_monic(monic, source->value, result->context);

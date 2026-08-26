@@ -290,6 +290,14 @@ test("release reproducibility uses the reviewed packaging budget", () => {
     workflow,
     /browser-wasm-release-artifact\.cjs \\\n\s+--dist build\/a\/packages\/flint-wasm\/dist \\\n\s+--budget bench\/browser-wasm-budget\.json \\\n\s+--require-baseline \\\n\s+--compare build\/b\/packages\/flint-wasm\/dist/,
   );
+  assert.match(
+    workflow,
+    /--dist build\/a\/packages\/flint-wasm\/dist \\\n\s+--budget bench\/browser-wasm-budget\.json \\\n\s+--compare-payload build\/linux-arm64\/packages\/flint-wasm\/dist/,
+  );
+  assert.match(
+    workflow,
+    /--dist build\/a\/packages\/flint-wasm\/dist \\\n\s+--budget bench\/browser-wasm-budget\.json \\\n\s+--compare-payload build\/darwin-arm64\/packages\/flint-wasm\/dist/,
+  );
 });
 
 test("Cloudflare-compatible header policy is parsed and security checked", () => {
