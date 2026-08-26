@@ -2,7 +2,7 @@
 "use strict";
 
 const { createHash } = require("node:crypto");
-const { execFileSync, spawn } = require("node:child_process");
+const { spawn } = require("node:child_process");
 const { writeFileSync } = require("node:fs");
 const { resolve } = require("node:path");
 
@@ -97,40 +97,8 @@ function validatePlatformValidationReceipt(receipt, identity = null) {
   return { valid: errors.length === 0, errors };
 }
 
-function processOnlyRssKilobytes(pid) {
-  try {
-    if (process.platform === "darwin") {
-      const value = Number(execFileSync("ps", ["-o", "rss=", "-p", String(pid)], {
-        encoding: "utf8",
-        timeout: 2_000,
-      }).trim());
-      return Number.isFinite(value) && value > 0 ? value : null;
-    }
-    if (process.platform === "win32") {
-      const script = `(Get-Process -Id ${Number(pid)} -ErrorAction Stop).WorkingSet64`;
-      const bytes = Number(execFileSync("powershell.exe", [
-        "-NoLogo",
-        "-NoProfile",
-        "-NonInteractive",
-        "-Command",
-        script,
-      ], { encoding: "utf8", timeout: 5_000 }).trim());
-      return Number.isFinite(bytes) && bytes > 0 ? Math.ceil(bytes / 1024) : null;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
 function rssSample(pid) {
-  if (process.platform === "linux") return readProcessTreeRssKilobytes(pid);
-  const kilobytes = processOnlyRssKilobytes(pid);
-  return {
-    kilobytes,
-    scope: "process-only",
-    observed_processes: kilobytes === null ? 0 : 1,
-  };
+  return readProcessTreeRssKilobytes(pid);
 }
 
 function commandText(argv) {
