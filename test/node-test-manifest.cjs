@@ -96,6 +96,7 @@ const integration = [
   "test/number-field-quadratic-class-units.cjs",
   "test/number-field-quadratic-compact-composition.cjs",
   "test/number-field-quadratic-narrow-relations.cjs",
+  "test/number-field-quartic-minkowski-class-number.cjs",
   "test/number-field-roots-of-unity.cjs",
   "test/number-field-fastmath-wasm.cjs",
   "test/number-field-maximal-order-final-evidence/test.cjs",
