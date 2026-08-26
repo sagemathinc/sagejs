@@ -203,7 +203,11 @@ assert format_seconds < legacy_format_seconds * 0.65, (
     format_seconds,
     legacy_format_seconds,
 )
-assert pack_seconds < medium_pack_seconds * 3.5, (
+# These sub-millisecond pack measurements can cross V8 allocation/timer
+# boundaries on shared runners.  The 5ms additive floor is tiny beside the
+# 250ms absolute gate above while keeping the scaling ratchet meaningful once
+# the operation is large enough to measure reliably.
+assert pack_seconds < medium_pack_seconds * 3.5 + 0.005, (
     medium_pack_seconds,
     pack_seconds,
 )
@@ -212,11 +216,11 @@ assert pack_seconds < medium_pack_seconds * 3.5, (
 # pack and format paths. The absolute and legacy-relative gates above remain
 # the decisive regression guards; this bound catches genuinely superlinear
 # scaling without failing on a single sub-millisecond allocation sample.
-assert unpack_seconds < medium_unpack_seconds * 5.0, (
+assert unpack_seconds < medium_unpack_seconds * 5.0 + 0.005, (
     medium_unpack_seconds,
     unpack_seconds,
 )
-assert format_seconds < medium_format_seconds * 3.5, (
+assert format_seconds < medium_format_seconds * 3.5 + 0.005, (
     medium_format_seconds,
     format_seconds,
 )
