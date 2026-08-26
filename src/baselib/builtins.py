@@ -2181,6 +2181,147 @@ def ρσ_bool(value: Any) -> _Bool:
     return True
 
 
+_BUILTINS_MAX_BINARY_FRACTION_BITS = 1074
+_BUILTINS_ZERO_DECIMAL_WIDTH = 309
+_BUILTINS_INTEGRAL_LIMIT = 4503599627370496
+_BUILTINS_FAST_POWER_DIGITS = 22
+_BUILTINS_ROUND_SLACK = 8.881784197001252e-16
+
+
+def _builtins_finite_number(value: Any) -> _Bool:
+    """Return whether a value is a finite float, boxed or primitive."""
+    if runtime.strict_equal(runtime.jstype(value), "number"):
+        return runtime.number.isFinite(value)
+    if _builtins_is_python_float(value):
+        return runtime.number.isFinite(runtime.number(value))
+    return False
+
+
+def _builtins_round_by_scale(value: Any, digits: _Int) -> Any:
+    """
+    Round through a power of ten, where the scaled value settles the answer.
+
+    Multiplying shifts the value by up to an ulp, which only changes the answer
+    when the scaled value sits on a half.  Away from one it names the integer
+    the expansion would, and dividing that by an exactly representable power of
+    ten rounds once, onto the decimal Python names.  Near one the answer is not
+    this function's to give, and it defers by returning `runtime.undefined`.
+    """
+    power = runtime.math.pow(10, digits)
+    scaled = runtime.native_mul(value, power)
+    magnitude = runtime.math.abs(scaled)
+    if magnitude >= _BUILTINS_INTEGRAL_LIMIT:
+        return runtime.undefined
+    floor_value = runtime.math.floor(scaled)
+    fraction = runtime.native_sub(scaled, floor_value)
+    if runtime.math.abs(runtime.native_sub(fraction, 0.5)) <= runtime.native_mul(
+        magnitude, _BUILTINS_ROUND_SLACK
+    ):
+        return runtime.undefined
+    if fraction > 0.5:
+        floor_value = runtime.native_add(floor_value, 1)
+    return runtime.native_div(floor_value, power)
+
+
+def _builtins_keep_zero_sign(answer: Any, value: Any) -> Any:
+    """Give a zero result the sign Python keeps for it."""
+    if runtime.strict_equal(answer, 0) and (
+        value < 0 or runtime.native_div(1, value) < 0
+    ):
+        return runtime.native_mul(0, -1)
+    return answer
+
+
+def _builtins_binary_ratio(value: Any) -> Any:
+    """Return the exact numerator and power-of-two denominator of a float."""
+    scaled = runtime.math.abs(value)
+    binary_places = 0
+    while not runtime.number.isInteger(scaled):
+        scaled = runtime.native_mul(scaled, 2)
+        binary_places += 1
+    numerator = runtime.bigint(scaled)
+    if value < 0:
+        numerator = -numerator
+    return numerator, binary_places
+
+
+def _builtins_round_bigint_ratio(numerator: _Int, denominator: _Int) -> _Int:
+    """Round an exact rational to an integer, with ties going to even."""
+    negative = numerator < 0
+    magnitude = -numerator if negative else numerator
+    quotient = runtime.native_div(magnitude, denominator)
+    remainder = runtime.native_mod(magnitude, denominator)
+    doubled = runtime.native_mul(remainder, runtime.bigint(2))
+    if doubled > denominator or (
+        doubled == denominator and runtime.native_mod(quotient, runtime.bigint(2)) != 0
+    ):
+        quotient = runtime.native_add(quotient, runtime.bigint(1))
+    return -quotient if negative else quotient
+
+
+def _builtins_decimal_coefficient(value: _Int, places: _Int) -> Any:
+    """Convert `value * 10**-places` to the nearest binary64 number."""
+    negative = value < 0
+    magnitude = -value if negative else value
+    digits = str(magnitude)
+    if places == 0:
+        text = digits
+    elif len(digits) <= places:
+        text = "0." + "0" * (places - len(digits)) + digits
+    else:
+        split = len(digits) - places
+        text = digits[0:split] + "." + digits[split:]
+    if negative:
+        text = "-" + text
+    return runtime.number(text)
+
+
+def _builtins_round_finite_exact(value: Any, digits: _Int) -> Any:
+    """
+    Round a finite binary64 value through its exact rational representation.
+
+    The common case is handled before this function by a safe scaling fast
+    path.  This path is deliberately exact: powers of five and two describe
+    the requested decimal grid as integers, the quotient is rounded to even,
+    and the final decimal is converted to binary64 exactly once.
+    """
+    if runtime.strict_equal(value, 0):
+        return value
+    if digits >= _BUILTINS_MAX_BINARY_FRACTION_BITS:
+        return value
+    if digits <= -_BUILTINS_ZERO_DECIMAL_WIDTH:
+        return _builtins_keep_zero_sign(0, value)
+
+    decimal_places = runtime.number(digits)
+    numerator, binary_places = _builtins_binary_ratio(value)
+    if decimal_places >= 0:
+        if decimal_places >= binary_places:
+            return value
+        scaled_numerator = runtime.native_mul(
+            numerator,
+            runtime.native_pow(runtime.bigint(5), runtime.bigint(decimal_places)),
+        )
+        denominator = runtime.native_pow(
+            runtime.bigint(2), runtime.bigint(binary_places - decimal_places)
+        )
+        coefficient = _builtins_round_bigint_ratio(scaled_numerator, denominator)
+        answer = _builtins_decimal_coefficient(coefficient, decimal_places)
+        return _builtins_keep_zero_sign(answer, value)
+
+    width = -decimal_places
+    denominator = runtime.native_mul(
+        runtime.native_pow(runtime.bigint(2), runtime.bigint(binary_places + width)),
+        runtime.native_pow(runtime.bigint(5), runtime.bigint(width)),
+    )
+    coefficient = _builtins_round_bigint_ratio(numerator, denominator)
+    if coefficient == 0:
+        return _builtins_keep_zero_sign(0, value)
+    answer = runtime.number(str(coefficient) + "e" + str(width))
+    if not runtime.number.isFinite(answer):
+        raise OverflowError("rounded value too large to represent")
+    return answer
+
+
 def ρσ_round(
     value: Any = _BUILTINS_MISSING,
     ndigits: Any = runtime.undefined,
@@ -2193,7 +2334,7 @@ def ρσ_round(
     if _builtins_exact_integer_primitive(value):
         if ndigits is runtime.undefined or ndigits is None:
             return runtime.normalize_integer(runtime.bigint(value))
-        digits = int(ndigits)
+        digits = _builtins_index_value(ndigits)
         if digits >= 0:
             return runtime.normalize_integer(runtime.bigint(value))
 
@@ -2201,7 +2342,10 @@ def ρσ_round(
         negative = magnitude < 0
         if negative:
             magnitude = -magnitude
-        factor = runtime.native_pow(runtime.bigint(10), runtime.bigint(-digits))
+        width = -digits
+        if width > len(str(magnitude)):
+            return 0
+        factor = runtime.native_pow(runtime.bigint(10), runtime.bigint(width))
         quotient = runtime.native_div(magnitude, factor)
         remainder = runtime.native_mod(magnitude, factor)
         doubled = runtime.native_mul(remainder, runtime.bigint(2))
@@ -2231,10 +2375,28 @@ def ρσ_round(
             floor_value if runtime.native_mod(floor_value, 2) == 0 else floor_value + 1
         )
 
-    scale = runtime.math.pow(10, int(ndigits))
-    answer = runtime.native_div(
-        ρσ_round(runtime.native_mul(value, scale)),
-        scale,
+    digits = _builtins_index_value(ndigits)
+    if _builtins_finite_number(value):
+        number = runtime.number(value)
+        if digits >= 0 and digits <= _BUILTINS_FAST_POWER_DIGITS:
+            quick = _builtins_round_by_scale(number, runtime.number(digits))
+            if quick is not runtime.undefined:
+                answer = _builtins_keep_zero_sign(quick, number)
+                if _builtins_is_python_float(value):
+                    return ρσ_float_result(answer)
+                return answer
+        answer = _builtins_round_finite_exact(number, digits)
+        if _builtins_is_python_float(value):
+            return ρσ_float_result(answer)
+        return answer
+
+    scale = runtime.math.pow(10, digits)
+    answer = _builtins_keep_zero_sign(
+        runtime.native_div(
+            ρσ_round(runtime.native_mul(value, scale)),
+            scale,
+        ),
+        value,
     )
     if _builtins_is_python_float(value):
         return ρσ_float_result(answer)
@@ -4132,7 +4294,12 @@ def _builtins_index_value(value: Any) -> _Int:
         if _builtins_exact_integer_primitive(answer):
             return answer
         raise TypeError("__index__ returned non-int")
-    raise TypeError("object cannot be interpreted as an integer")
+    value_name = (
+        "float"
+        if _builtins_is_python_float(value)
+        else _builtins_get_member(ρσ_type(value), "__name__")
+    )
+    raise TypeError("'" + value_name + "' object cannot be interpreted as an integer")
 
 
 def ρσ_range(

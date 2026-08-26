@@ -33,6 +33,9 @@ _CONSTANT_NAMES = {
 }
 
 
+_RELATION_HEADS = ["Equal", "Less", "LessEqual", "Greater", "GreaterEqual"]
+
+
 def _backend() -> Any:
     backend = _backend_state["value"]
     if backend is None:
@@ -186,7 +189,7 @@ def _format_expression(value: Any, surrounding: int = 0) -> str:
             + _format_expression(operands[1])
             + ")"
         )
-    elif head in ["Equal", "Less", "LessEqual", "Greater", "GreaterEqual"]:
+    elif head in _RELATION_HEADS:
         precedence = 20
         operators = {
             "Equal": " == ",
@@ -529,10 +532,11 @@ class Expression(sage.Element):
         return self._relation("Equal", right)
 
     def __bool__(self) -> bool:
-        evaluated = _call_backend("evaluate", [self._tree])
-        if evaluated is True:
-            return True
-        return False
+        """
+        Decide truth by what this is: a relation is a claim, true once proved,
+        and anything else is a value, false only when it is zero.
+        """
+        return bool(_call_backend("truth", [self._tree]))
 
     def __neg__(self) -> Expression:
         return Expression(_call_backend("canonical", [["Negate", self._tree]]))

@@ -577,6 +577,7 @@ async function main() {
   const shard = option("--shard");
   const requireBaseline = process.argv.includes("--require-baseline");
   const safetyCeilingsOnly = process.argv.includes("--safety-ceilings-only");
+  const reportRegressions = process.argv.includes("--report-regressions");
   if (!Number.isSafeInteger(samples) || samples < 1 || samples > 50) {
     throw new Error("--samples must be an integer from 1 through 50");
   }
@@ -588,6 +589,12 @@ async function main() {
   }
   if (safetyCeilingsOnly && requireBaseline) {
     throw new Error("--safety-ceilings-only cannot be combined with --require-baseline");
+  }
+  if (safetyCeilingsOnly && reportRegressions) {
+    throw new Error("--safety-ceilings-only cannot be combined with --report-regressions");
+  }
+  if (reportRegressions && !budgetPath) {
+    throw new Error("--report-regressions requires --budget");
   }
   const workloadBytes = await fs.promises.readFile(workloadPath);
   const workloads = validatePerformanceWorkloads(JSON.parse(workloadBytes));
@@ -626,6 +633,7 @@ async function main() {
       enforceNativeRatio: !safetyCeilingsOnly,
       enforceRegressionBaseline: !safetyCeilingsOnly,
     });
+    report.budget.enforcement = reportRegressions ? "report-only" : "required";
   } else {
     report.budget = null;
   }
@@ -637,7 +645,12 @@ async function main() {
     process.stdout.write(serialized);
   }
   if (report.budget?.failures.length) {
-    throw new Error(`browser Wasm performance budget failed:\n${report.budget.failures.join("\n")}`);
+    const message = `browser Wasm performance budget failed:\n${report.budget.failures.join("\n")}`;
+    if (reportRegressions) {
+      console.warn(`Warning: ${message}`);
+    } else {
+      throw new Error(message);
+    }
   }
 }
 

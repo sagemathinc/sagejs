@@ -22,7 +22,7 @@ console.log(result.repr);
 await sage.close();
 ```
 
-In the 0.3.0 npm alpha, this API includes the compiler and pure-JavaScript
+In the 0.4.0 npm alpha, this API includes the compiler and pure-JavaScript
 runtime. The platform package's standalone `sagejs` command has the full native
 mathematics stack; those bundled native addons are not yet connected to the npm
 `createSage()` session. A source checkout with its native workspace packages

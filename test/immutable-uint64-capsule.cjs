@@ -641,7 +641,14 @@ test("authorized leases borrow read-only storage in native kernels", {
       /__sagejsConfigureImmutableUInt64Capsules/,
     );
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    try {
+      rmSync(temporary, { recursive: true, force: true });
+    } catch (error) {
+      // Windows keeps the native addon loaded by this test locked until the
+      // Node process exits.  The directory lives under the runner-owned OS
+      // temp root, so defer only that unavoidable cleanup to process teardown.
+      if (process.platform !== "win32" || error?.code !== "EPERM") throw error;
+    }
   }
 });
 

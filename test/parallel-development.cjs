@@ -1052,7 +1052,7 @@ test("native compiler self-host bypasses an installed platform launcher", () => 
       require.resolve(`@sagemath/${packageName}/package.json`, {
         paths: [directory],
       }),
-      join(packageDirectory, "package.json"),
+      realpathSync(join(packageDirectory, "package.json")),
     );
 
     assert.equal(ensureNativeCompiler(directory, {
@@ -1761,7 +1761,12 @@ test("a custom prefix skips only its package during cache restore", () => {
       results.map(({ id, status }) => ({ id, status })),
       [
         { id: "flint", status: "skipped-custom-prefix" },
-        { id: "fflas", status: "skipped-custom-prefix" },
+        ...(fflasUsesFlintPrefix()
+          ? [{ id: "fflas", status: "skipped-custom-prefix" }]
+          : [
+              { id: "fflas-dependencies", status: "miss" },
+              { id: "fflas-addon", status: "miss" },
+            ]),
         { id: "graph-dependencies", status: "miss" },
         { id: "graph-addon", status: "miss" },
       ],

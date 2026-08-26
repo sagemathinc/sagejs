@@ -2046,6 +2046,13 @@ class Vector(sage.Element):
             exact.rational_set(self._exact_vector_resource(), position, coerced)
         self._presentation_cache = runtime.undefined
 
+    def is_zero(self) -> bool:
+        """Report whether every entry is zero, which is Sage's test for truth."""
+        for entry in self:
+            if entry != 0:
+                return False
+        return True
+
     def is_immutable(self) -> bool:
         return self._immutable
 

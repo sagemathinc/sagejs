@@ -5,10 +5,15 @@ GitHub and npm. The npm platform packages contain the same signed/notarized
 bytes as the direct archives; the public `@sagemath/sagejs` package is published
 last so its exact optional dependencies are already available.
 
-## Required GitHub secrets
+## Required release configuration
 
-- `NPM_TOKEN`: an automation token allowed to publish public packages in the
-  `@sagemath` scope.
+- Configure npm Trusted Publishing for `@sagemath/sagejs` and each of its four
+  platform packages. Each package must trust GitHub organization `sagemathinc`,
+  repository `sagejs`, workflow `ci.yml`, and environment `sagejs-release`,
+  with `npm publish` permission. The publish job uses GitHub OIDC and never
+  stores a reusable npm credential.
+- The `sagejs-release` GitHub environment requires a maintainer approval before
+  npm publication and before the draft GitHub release becomes immutable.
 - The preferred Windows path is Azure Artifact Signing with the repository
   variable `SAGEJS_WINDOWS_SIGNING_MODE=azure`; secrets
   `SAGEJS_AZURE_CLIENT_ID`, `SAGEJS_AZURE_TENANT_ID`, and
@@ -20,7 +25,7 @@ last so its exact optional dependencies are already available.
   `SAGEJS_WINDOWS_CERTIFICATE_PFX_BASE64` and
   `SAGEJS_WINDOWS_CERTIFICATE_PASSWORD` with an exportable Authenticode code
   signing certificate.
-- During the 0.3 early-alpha series only, leave
+- During pre-1.0 early-alpha releases, leave
   `SAGEJS_WINDOWS_SIGNING_MODE` unset or set it to `unsigned` to publish an
   explicitly reported unsigned Windows artifact. This is not the production
   signing policy.
@@ -56,10 +61,23 @@ macOS runner itself is discarded after the job.
 6. Test a clean `curl | sh` install, a clean global npm install, Jupyter kernel
    registration, and Gatekeeper/SmartScreen behavior on real target machines.
 
-The tag workflow intentionally fails when macOS signing/notarization or npm
-credentials are absent. Windows unsigned mode is an explicit 0.3 early-alpha
-exception and is recorded in the Actions job summary; it is never silently
-selected in place of a requested Azure or PFX mode.
+Browser performance shards always upload their reviewed-baseline and
+browser/native comparison receipts. Relative timing regressions are reported as
+warnings rather than release blockers because the browser and native timings
+come from independent shared GitHub runners. Correctness, authenticated route
+selection, workload timeouts, and the absolute interruption safety ceiling
+remain blocking gates.
+
+If validation of `vX.Y.Z` exposes a release-only defect before publication,
+fix it in a new commit and use the append-only recovery tag
+`vX.Y.Z+release.N`. Never move the original tag. Recovery tags publish the same
+npm version, must use a positive monotonically increasing integer, and reruns
+verify any package versions and dist-tags that are already public.
+
+The tag workflow intentionally fails when macOS signing/notarization or the npm
+Trusted Publisher relationship is absent. Windows unsigned mode is an explicit
+early-alpha exception and is recorded in the Actions job summary; it is never
+silently selected in place of a requested Azure or PFX mode.
 
 ## Local signing checks
 
