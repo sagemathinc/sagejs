@@ -238,7 +238,12 @@ print(context.capability()["general_pseudo_addition"])
   assert.deepEqual(runSage(witness), ["False"]);
 });
 
-const wasmToolchainStatus = inspectToolchain({ root });
+// The pinned WASI SDK publishes native hosts for Linux and macOS, not
+// Windows.  Do not ask the strict resolver to select a nonexistent host
+// archive before Node's test runner can register the intended skip.
+const wasmToolchainStatus = process.platform === "win32"
+  ? { ready: false }
+  : inspectToolchain({ root });
 const toolchain = wasmToolchainStatus.ready
   ? wasmKernelToolchain({ root })
   : null;
