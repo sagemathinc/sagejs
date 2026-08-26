@@ -1,0 +1,258 @@
+{
+  "schema": "sagejs.hyperelliptic/analytic-phase9-failure-v1",
+  "status": "failed",
+  "mode": "acceptance",
+  "recorded_at_utc": "2026-08-26T16:33:36.625Z",
+  "source": {
+    "commit": "1e53b41165558bc361e182ffe917e7fe6f7a6d88",
+    "status": "",
+    "implementation_base_commit": "b30ecbfae62760d44a24438f3fb7f99bedfe1eee",
+    "implementation_base_is_ancestor": true,
+    "build_receipt_preflight": {
+      "current": true,
+      "reason": "exact build inputs and required outputs match",
+      "completedAt": "2026-08-26T16:21:29.989Z",
+      "durationMilliseconds": 390570
+    },
+    "inputs": [
+      {
+        "path": "agents/hyperelliptic-magma-pari-performance-plan.md",
+        "bytes": 49623,
+        "sha256": "890c82601fbbd7c4af1d6d546f45342cce952328ba8aab0d56640e8539aa97bd"
+      },
+      {
+        "path": "bench/hyperelliptic/benchmark-analytic-competitive.cjs",
+        "bytes": 25979,
+        "sha256": "dc48c2202009af25fa783360fd8b0623d1d21357e9db85d27a0463a041739c03"
+      },
+      {
+        "path": "bench/hyperelliptic/analytic-acceptance/README.md",
+        "bytes": 4727,
+        "sha256": "d5352529ff177fcb2e5dbe05fecb79f1a3451dccdde3cce33a9cb8bfb45ffd9a"
+      },
+      {
+        "path": "bench/hyperelliptic/analytic-acceptance/contract.cjs",
+        "bytes": 19310,
+        "sha256": "bd6963988db016fe91decbc8b52ab805ec47b31a352d24f758d7186084f48ba9"
+      },
+      {
+        "path": "bench/hyperelliptic/analytic-acceptance/evidence.cjs",
+        "bytes": 12414,
+        "sha256": "c1d7715469e858d162318d639dc55bd856678b943ee80536e8adccb7a4ab8a8b"
+      },
+      {
+        "path": "bench/hyperelliptic/analytic-acceptance/run.cjs",
+        "bytes": 15346,
+        "sha256": "19916e771e55a6d073ee98021b4d3ef640421d9ee9c75457118c795e7a36b767"
+      },
+      {
+        "path": "bench/hyperelliptic/analytic-acceptance/validate-receipt.cjs",
+        "bytes": 1266,
+        "sha256": "430e434a2885054c1dc3cf4cc354dee57a3074b96e94a15fc415a869a7067f69"
+      },
+      {
+        "path": "packages/flint/src/addon.c",
+        "bytes": 168535,
+        "sha256": "5c172c6da6dd94d24e8e4eee12b1b5bc4ddc84686679f527041c89caa3b49fd1"
+      },
+      {
+        "path": "packages/flint/src/elliptic_lfunction.c",
+        "bytes": 185215,
+        "sha256": "152a5e07647045e918b1a67292be8d88c5cd423172cf6778cc1b0d079409ce22"
+      },
+      {
+        "path": "packages/flint/src/elliptic_lfunction.h",
+        "bytes": 622,
+        "sha256": "92997092968a209473e5a955687264c281dc720d527de460e63a6f4891e88d1c"
+      },
+      {
+        "path": "src/lib/sagejs/hyperelliptic_curves/family_cpu.py",
+        "bytes": 19710,
+        "sha256": "f92614b2dbe45b75f17faac1a88f2d725f002778eaf0286a15eba327d9f3ba44"
+      },
+      {
+        "path": "src/lib/sagejs/hyperelliptic_curves/frobenius.py",
+        "bytes": 55993,
+        "sha256": "f104c3dbfbcbd80f83e712a6d1c376ed12b5e1489270aa498c4104f10640d755"
+      },
+      {
+        "path": "src/lib/sagejs/hyperelliptic_curves/global_arithmetic.py",
+        "bytes": 6051,
+        "sha256": "87ec7dbe1a2143281de0c9fa5a38075a3a431779c78c034010b711c47ca59af7"
+      },
+      {
+        "path": "src/lib/sagejs/hyperelliptic_curves/lseries.py",
+        "bytes": 82148,
+        "sha256": "89be4f22ca30ca323fe3dddb7944251b462ae8c4d284900d63292a3c897ef107"
+      },
+      {
+        "path": "src/lib/sagejs/hyperelliptic_curves/twists.py",
+        "bytes": 46654,
+        "sha256": "4abc5d19cf7579d52f1311d0e503429e0fb026fc264bc2c6d64b8c9e15f3b521"
+      },
+      {
+        "path": "test/hyperelliptic-analytic-acceptance.cjs",
+        "bytes": 8572,
+        "sha256": "4ab1741a2717e46dc91ca61b1b4585257267b7e9f41a284400f81dd1ad70cb5d"
+      }
+    ]
+  },
+  "host": {
+    "captured_at_utc": "2026-08-26T16:22:30.399Z",
+    "declared_host": "bench-1",
+    "hostname": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux",
+    "release": "6.17.0-1022-gcp",
+    "architecture": "x64",
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpus": 8,
+    "total_memory_bytes": 33649016832,
+    "free_memory_bytes": 32439181312,
+    "node": "v22.22.2",
+    "load_average": [
+      0.37,
+      0.68,
+      0.72
+    ],
+    "noise_policy": {
+      "maximum_one_minute_load": 0.5,
+      "observed_one_minute_load": 0.37,
+      "passed": true,
+      "manual_process_review_required": true
+    },
+    "commands": [
+      {
+        "command": "uptime",
+        "status": 0,
+        "stdout": "16:22:30 up 4 days,  6:19,  1 user,  load average: 0.37, 0.68, 0.72",
+        "stderr": ""
+      },
+      {
+        "command": "uname -a",
+        "status": 0,
+        "stdout": "Linux cocalc-vm-51c5044ca6d3406d983e0f10 6.17.0-1022-gcp #25-Ubuntu SMP Sat Jul 25 01:12:40 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux",
+        "stderr": ""
+      },
+      {
+        "command": "lscpu",
+        "status": 0,
+        "stdout": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           48 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  8\nOn-line CPU(s) list:                     0-7\nVendor ID:                               AuthenticAMD\nModel name:                              AMD EPYC 7B13\nCPU family:                              25\nModel:                                   1\nThread(s) per core:                      1\nCore(s) per socket:                      8\nSocket(s):                               1\nStepping:                                0\nBogoMIPS:                                4899.99\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext ssbd ibrs ibpb stibp vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 clzero xsaveerptr arat umip vaes vpclmulqdq rdpid fsrm\nHypervisor vendor:                       KVM\nVirtualization type:                     full\nL1d cache:                               256 KiB (8 instances)\nL1i cache:                               256 KiB (8 instances)\nL2 cache:                                4 MiB (8 instances)\nL3 cache:                                32 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-7\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Mitigation; Safe RET\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Mitigation; Clear CPU buffers\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected",
+        "stderr": ""
+      },
+      {
+        "command": "free -b",
+        "status": 0,
+        "stdout": "total        used        free      shared  buff/cache   available\nMem:     33649016832  1209237504 17343950848     1114112 15580831744 32439779328\nSwap:              0           0           0",
+        "stderr": ""
+      },
+      {
+        "command": "ps -eo pid,ppid,comm,%cpu,%mem,rss --sort=-%cpu | head -25",
+        "status": 0,
+        "stdout": "PID    PPID COMMAND         %CPU %MEM   RSS\n1605583 1605582 node            82.6  0.3 119740\n1605521       1 systemd         15.3  0.0 11640\n1605517 1579328 sshd             1.0  0.0 10540\n      1       0 systemd          0.0  0.0 13908\n     15       2 rcu_sched        0.0  0.0     0\n1604849       2 kworker/u32:3-i  0.0  0.0     0\n1579338       1 google_guest_ag  0.0  0.0 23468\n1579321       1 systemd-journal  0.0  0.1 35012\n    708       1 google_osconfig  0.0  0.1 49140\n    241       1 multipathd       0.0  0.0 26372\n     97       2 hwrng            0.0  0.0     0\n     73       2 kcompactd0       0.0  0.0     0\n1593311       2 kworker/u32:5-i  0.0  0.0     0\n1601496       2 kworker/u32:1-f  0.0  0.0     0\n    693       1 dbus-daemon      0.0  0.0  5136\n    793       1 rsyslogd         0.0  0.0  6472\n1601940       2 kworker/6:0-eve  0.0  0.0     0\n    754       1 snapd            0.0  0.1 41320\n1603175       2 kworker/0:2-eve  0.0  0.0     0\n1591415       2 kworker/4:1-mm_  0.0  0.0     0\n   1091       1 polkitd          0.0  0.0  8544\n1603704       2 kworker/u32:0-i  0.0  0.0     0\n1599550       2 kworker/2:3-eve  0.0  0.0     0\n1589720       2 kworker/1:0-eve  0.0  0.0     0",
+        "stderr": ""
+      },
+      {
+        "command": "for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do test -r \"$f\" && printf \"%s=\" \"$f\" && cat \"$f\"; done",
+        "status": 1,
+        "stdout": "",
+        "stderr": ""
+      }
+    ],
+    "algorithm_environment": {
+      "SAGEJS_BENCH_HOST": "bench-1"
+    }
+  },
+  "postflight": {
+    "captured_at_utc": "2026-08-26T16:33:36.750Z",
+    "declared_host": "bench-1",
+    "hostname": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux",
+    "release": "6.17.0-1022-gcp",
+    "architecture": "x64",
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpus": 8,
+    "total_memory_bytes": 33649016832,
+    "free_memory_bytes": 32469344256,
+    "node": "v22.22.2",
+    "load_average": [
+      1,
+      0.98,
+      0.88
+    ],
+    "noise_policy": {
+      "maximum_one_minute_load": 0.5,
+      "observed_one_minute_load": 1,
+      "passed": false,
+      "manual_process_review_required": true
+    },
+    "commands": [
+      {
+        "command": "uptime",
+        "status": 0,
+        "stdout": "16:33:36 up 4 days,  6:30,  1 user,  load average: 1.00, 0.98, 0.88",
+        "stderr": ""
+      },
+      {
+        "command": "uname -a",
+        "status": 0,
+        "stdout": "Linux cocalc-vm-51c5044ca6d3406d983e0f10 6.17.0-1022-gcp #25-Ubuntu SMP Sat Jul 25 01:12:40 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux",
+        "stderr": ""
+      },
+      {
+        "command": "lscpu",
+        "status": 0,
+        "stdout": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           48 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  8\nOn-line CPU(s) list:                     0-7\nVendor ID:                               AuthenticAMD\nModel name:                              AMD EPYC 7B13\nCPU family:                              25\nModel:                                   1\nThread(s) per core:                      1\nCore(s) per socket:                      8\nSocket(s):                               1\nStepping:                                0\nBogoMIPS:                                4899.99\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext ssbd ibrs ibpb stibp vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 clzero xsaveerptr arat umip vaes vpclmulqdq rdpid fsrm\nHypervisor vendor:                       KVM\nVirtualization type:                     full\nL1d cache:                               256 KiB (8 instances)\nL1i cache:                               256 KiB (8 instances)\nL2 cache:                                4 MiB (8 instances)\nL3 cache:                                32 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-7\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Mitigation; Safe RET\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Mitigation; Clear CPU buffers\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected",
+        "stderr": ""
+      },
+      {
+        "command": "free -b",
+        "status": 0,
+        "stdout": "total        used        free      shared  buff/cache   available\nMem:     33649016832  1178251264 17840889856     1114112 15114878976 32470765568\nSwap:              0           0           0",
+        "stderr": ""
+      },
+      {
+        "command": "ps -eo pid,ppid,comm,%cpu,%mem,rss --sort=-%cpu | head -25",
+        "status": 0,
+        "stdout": "PID    PPID COMMAND         %CPU %MEM   RSS\n1605583 1605582 node             0.0  0.3 120940\n      1       0 systemd          0.0  0.0 13908\n1605521       1 systemd          0.0  0.0 11640\n     15       2 rcu_sched        0.0  0.0     0\n1579338       1 google_guest_ag  0.0  0.0 23384\n1579321       1 systemd-journal  0.0  0.1 35228\n    708       1 google_osconfig  0.0  0.1 49140\n    241       1 multipathd       0.0  0.0 26372\n     97       2 hwrng            0.0  0.0     0\n1604849       2 kworker/u32:3-i  0.0  0.0     0\n     73       2 kcompactd0       0.0  0.0     0\n1593311       2 kworker/u32:5-e  0.0  0.0     0\n1601496       2 kworker/u32:1-i  0.0  0.0     0\n    693       1 dbus-daemon      0.0  0.0  5136\n    793       1 rsyslogd         0.0  0.0  6472\n1601940       2 kworker/6:0-mm_  0.0  0.0     0\n    754       1 snapd            0.0  0.1 41320\n   1091       1 polkitd          0.0  0.0  8544\n1591415       2 kworker/4:1-mm_  0.0  0.0     0\n1589720       2 kworker/1:0-eve  0.0  0.0     0\n1603175       2 kworker/0:2-eve  0.0  0.0     0\n1604683       2 kworker/u32:2-i  0.0  0.0     0\n1599550       2 kworker/2:3-eve  0.0  0.0     0\n1579500       1 systemd-logind   0.0  0.0  8932",
+        "stderr": ""
+      },
+      {
+        "command": "for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do test -r \"$f\" && printf \"%s=\" \"$f\" && cat \"$f\"; done",
+        "status": 1,
+        "stdout": "",
+        "stderr": ""
+      }
+    ],
+    "algorithm_environment": {
+      "SAGEJS_BENCH_HOST": "bench-1"
+    }
+  },
+  "provisioning": {
+    "pari": {
+      "version": "2.18.1 (alpha)",
+      "version_output": "GP/PARI CALCULATOR Version 2.18.1 (alpha)\n          amd64 running linux (x86-64/GMP-6.3.0 kernel) 64-bit version\n   compiled: Aug 23 2026, gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1)\n                            threading engine: single\n                (readline v8.2 disabled, extended help enabled)",
+      "executable": "/home/user/.local/pari-2.18.1-alpha/bin/gp",
+      "executable_sha256": "fc24f2254ce68592ecaf51b0e79b310f5ea0863bb796113c5ae04710ae9cc869",
+      "source_url": "https://pari.math.u-bordeaux.fr/pub/pari/testing/pari-2.18.1.alpha.tar.gz",
+      "source_sha256": "f046c222db92e3f02120e2f4e74a5b0e1e6faaa248ff90f10c51b2daa0b3599c",
+      "configure": "--with-gmp --with-readline --graphic=none",
+      "host_tuned": false,
+      "threading": "resident single-thread GP"
+    }
+  },
+  "configuration": {
+    "samples": 5,
+    "precision_bits": 64,
+    "lseries_only": true,
+    "maximum_wall_seconds": 1200,
+    "sagejs_threads": 1,
+    "pari_threads": 1
+  },
+  "failure": {
+    "stage": "analytic-competitive-benchmark",
+    "name": "Error",
+    "message": "analytic competitive benchmark failed (1):\nSageSessionTimeoutError: Sage.js evaluation timed out after 600000 ms\n    at Timeout.<anonymous> (/home/user/sagejs-hyp-domain-f54434f5/dist/tools/kernel.js:206:45)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)\n/home/user/sagejs-hyp-domain-f54434f5/dist/tools/kernel.js:396\n        const error = new SageSessionClosedError();\n                      ^\n\nSageSessionClosedError: Sage.js session is closed\n    at SageSession.close (/home/user/sagejs-hyp-domain-f54434f5/dist/tools/kernel.js:396:23)\n    at main (/home/user/sagejs-hyp-domain-f54434f5/bench/hyperelliptic/benchmark-analytic-competitive.cjs:675:19)\n\nNode.js v22.22.2\n\n",
+    "stack": "Error: analytic competitive benchmark failed (1):\nSageSessionTimeoutError: Sage.js evaluation timed out after 600000 ms\n    at Timeout.<anonymous> (/home/user/sagejs-hyp-domain-f54434f5/dist/tools/kernel.js:206:45)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)\n/home/user/sagejs-hyp-domain-f54434f5/dist/tools/kernel.js:396\n        const error = new SageSessionClosedError();\n                      ^\n\nSageSessionClosedError: Sage.js session is closed\n    at SageSession.close (/home/user/sagejs-hyp-domain-f54434f5/dist/tools/kernel.js:396:23)\n    at main (/home/user/sagejs-hyp-domain-f54434f5/bench/hyperelliptic/benchmark-analytic-competitive.cjs:675:19)\n\nNode.js v22.22.2\n\n\n    at parseJsonOutput (/home/user/sagejs-hyp-domain-f54434f5/bench/hyperelliptic/analytic-acceptance/run.cjs:191:11)\n    at runCompetitive (/home/user/sagejs-hyp-domain-f54434f5/bench/hyperelliptic/analytic-acceptance/run.cjs:210:10)\n    at run (/home/user/sagejs-hyp-domain-f54434f5/bench/hyperelliptic/analytic-acceptance/run.cjs:294:25)\n    at main (/home/user/sagejs-hyp-domain-f54434f5/bench/hyperelliptic/analytic-acceptance/run.cjs:419:27)\n    at Object.<anonymous> (/home/user/sagejs-hyp-domain-f54434f5/bench/hyperelliptic/analytic-acceptance/run.cjs:444:3)\n    at Module._compile (node:internal/modules/cjs/loader:1705:14)\n    at Object..js (node:internal/modules/cjs/loader:1838:10)\n    at Module.load (node:internal/modules/cjs/loader:1441:32)\n    at Function._load (node:internal/modules/cjs/loader:1263:12)\n    at TracingChannel.traceSync (node:diagnostics_channel:328:14)"
+  },
+  "harness_wall_ms": 666857.632
+}

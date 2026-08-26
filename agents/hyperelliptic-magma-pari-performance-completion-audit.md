@@ -39,7 +39,7 @@ cross-architecture timing is treated as a direct speed comparison.
 | 6 — rational arithmetic | MIXED | The 1,024-by-32 many-prime workload is 1.42x faster than Magma. Growing-coefficient public addition is 1.97x Magma, but the small row is 7.81x and is an honest miss. Bounded-output non-torsion scalar rows pass at 1.664x for scalar 17/347-bit output and 0.407x for scalar 65/5,094-bit output. The separately labelled 256-bit 2-torsion row is 0.334x; it is not evidence about non-torsion `QQ` growth. The generalized `h != 0` row is a non-gating 2.181x. |
 | 7 — genus-2 heights | MIXED | Accuracy-matched single-height and warm reuse gates pass, exact proof/cancellation/cache review passes, and the optimized object-cold paths improve by about 2x. The first `NativeIntegerVector` evaluation preserves identical enclosures and improves the isolated dyadic recurrence by 6.3--7.8%, but only 0.2--2.0% end to end; no further representation machinery is justified there. Rank-2 remains 322--335 ms and the four-vector case 738--777 ms, above the 80/380 ms final targets. |
 | 8 — periods and genus-3 heights | PASS | Genus-2/3 periods are within 2x PARI, the 12-point Abel--Jacobi batch beats separate Magma calls, and the genus-3 height is 7.29x faster than the exact historical path while preserving finite replay and refinement stability. Its `rigorous=false` label remains explicit. |
-| 9 — analytic `L`-functions | OPEN — FORMAL ACCEPTANCE TIMEOUT | The source-current integration matrix passes exact coefficient-prefix extension, prepared-cache reuse and poisoning resistance, inverse-Mellin differentials, central derivatives, functional equations, twist parity, and sequential/two-worker equality. The quiet-host five-sample PARI-bracketed run reaches the analytic competitive stage but exhausts its 600-second Sage.js evaluator bound before producing the comparison matrix. The transactional `phase9-receipt-linux-x64.json` failure artifact is authoritative; the phase is not declared complete, and no ratio is inferred from the timeout. |
+| 9 — analytic `L`-functions | OPEN — FORMAL ACCEPTANCE TIMEOUT | The source-current integration matrix passes exact coefficient-prefix extension, prepared-cache reuse and poisoning resistance, inverse-Mellin differentials, central derivatives, functional equations, twist parity, and sequential/two-worker equality. The quiet-host five-sample PARI-bracketed run at `1e53b411` reaches the analytic competitive stage but exhausts its 600-second Sage.js evaluator bound before producing the comparison matrix. The validated transactional `phase9-receipt-linux-x64.json` failure artifact (SHA-256 `fe50d345...83f1`) records a 0.37 preflight load separately from the 1.00 postflight load and is authoritative; the phase is not declared complete, and no ratio is inferred from the timeout. |
 | 10 — auto selection and platforms | PASS, BRANCH-COVERED DOMAIN | Fresh native/dynamic receipts agree across Linux x64, Linux ARM64, macOS ARM64, and Windows x64 on 2,020 add rows, 148 scalar rows, and 2,160 progression rows. The policy verifies 12 receipts and enables three named-domain operations. Split even-degree models, extension fields, primes outside 5--65521, wider scalars, and larger workloads remain exact fallback. Prior ASAN/UBSAN/LSAN, cache-corruption, bounded-output, cancellation/recovery, and package-smoke evidence is reused only because the authenticated framed runtime source bundle is byte-identical, with that carry-forward recorded explicitly. |
 
 ## Enabled branch-covered automatic-selection envelope
@@ -220,9 +220,10 @@ commits do not authorize adjacent models or workloads by ancestry.
 
 ## Post-candidate priorities
 
-1. Collect the formal source-current five-sample Phase-9 PARI-bracketed receipt
-   on a quiet host. The integration mathematics is green, but it is not a
-   substitute for the equal-contract competitor measurement.
+1. Diagnose the formal Phase-9 analytic timeout from its source-current failed
+   receipt before attempting another competitor run. The integration
+   mathematics is green, but the timed competitive stage did not complete and
+   no PARI ratio is available.
 2. Treat rational small-row public addition and genus-2 object-cold proof
    assembly as the two declared mathematical performance misses. Revisit their
    representation floors only after the live exact-workspace compiler slice is
