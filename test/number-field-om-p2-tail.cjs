@@ -6,6 +6,7 @@ const { readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
 const corpus = JSON.parse(
@@ -146,7 +147,7 @@ function run(command, args, input, timeout) {
 }
 
 test("vector429 p=2 OM equals the frozen local HNF and rejects corruption", () => {
-  const expected = run("python3", ["-"], cpython, 30_000);
+  const expected = run(pythonExecutable(), ["-"], cpython, 30_000);
   const actual = run(
     process.execPath,
     [join(root, "bin/sagejs"), "--python"],

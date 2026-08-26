@@ -13,6 +13,7 @@ const { createSage } = require("../dist/tools/kernel.js");
 const {
   createKernelEvaluatorAsync,
 } = require("../dist/tools/kernel-evaluator.js");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const packageDirectory = path.join(__dirname, "../src/lib/conway_polynomials");
 const sourcePath = path.join(packageDirectory, "CPimport.txt");
@@ -236,12 +237,12 @@ test("Conway data access fails deterministically without filesystem capability",
 
 test("ordinary CPython uses the portable Conway JSON fallback", () => {
   const result = spawnSync(
-    "python3",
+    pythonExecutable(),
     [
       "-c",
       [
         "import collections.abc, json",
-        `import sys; sys.path.insert(0, ${JSON.stringify(path.join(__dirname, "../src/lib"))})`,
+        `import sys; sys.path.append(${JSON.stringify(path.join(__dirname, "../src/lib"))})`,
         "from sage.databases.conway import ConwayPolynomials",
         "c = ConwayPolynomials()",
         "print(len(c), len(c.primes()), c[60869, 3])",

@@ -12,6 +12,7 @@ const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
 const { explainKernel } = require("../tools/native-kernel/introspection.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const {
   removeLoadedNativeCache,
 } = require("./helpers/native-cache-cleanup.cjs");
@@ -112,11 +113,10 @@ test("compiled, JavaScript, tagged, GMP, and CPython paths agree", async () => {
       }
     }
 
-    const python = spawnSync(process.platform === "win32"
-      ? "python" : "/usr/local/bin/python3", ["-c", [
+    const python = spawnSync(pythonExecutable(), ["-c", [
       "import sys",
-      `sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})`,
-      `sys.path.insert(0, ${JSON.stringify(join(root, "bench"))})`,
+      `sys.path.append(${JSON.stringify(join(root, "src", "lib"))})`,
+      `sys.path.append(${JSON.stringify(join(root, "bench"))})`,
       "from native_exact_uint64_buffer import exact_uint64_buffer_witness as f",
       "cases = [(-17, 13, 9), (2**250 + 7, 2**55 + 33, 4)]",
       "for value, modulus, seed in cases:",

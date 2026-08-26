@@ -6,8 +6,10 @@ const { readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
+const cpython = pythonExecutable();
 const fixture = JSON.parse(
   readFileSync(join(__dirname, "fixtures/number-field-om-maxmin.json"), "utf8"),
 );
@@ -277,7 +279,7 @@ function checkWitness(output) {
 }
 
 test("bounded OM/MaxMin agrees with frozen Sage/PARI-family fixtures in CPython", () => {
-  const output = run("python3", ["-"]);
+  const output = run(cpython, ["-"]);
   checkWitness(output);
 });
 
@@ -298,7 +300,7 @@ except AttributeError:
     print("IMMUTABLE")
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [cpython, ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -389,7 +391,7 @@ except OMDomainError:
     print("REJECTED")
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [cpython, ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -426,7 +428,7 @@ print(json.dumps({
 }))
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [cpython, ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -473,7 +475,7 @@ if rejected.status != "rejected" or rejected.certificate is None:
 print(json.dumps(answer))
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [cpython, ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -510,7 +512,7 @@ print(json.dumps([
     [[4, 4, 5, 3, 1], 1],
   ];
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [cpython, ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -624,7 +626,7 @@ print(json.dumps({
     [[ [0, 0, 2], [1] ], 1],
   ];
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [cpython, ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -673,7 +675,7 @@ print(json.dumps({
 }))
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [cpython, ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -712,7 +714,7 @@ corrupt = packed_maxmin_valuations_are_maximal(
 print(json.dumps([valid, corrupt]))
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [cpython, ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -798,7 +800,7 @@ for polynomial, discriminant_valuation, expected_index, offsets, selection_kind 
 print(json.dumps(answer))
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [cpython, ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -870,7 +872,7 @@ print(json.dumps([
 ]))
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [cpython, ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
