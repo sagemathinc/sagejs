@@ -841,10 +841,8 @@ jobs:
 
       - name: Publish the platform and public npm packages
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
         run: |
-          [[ -n "$NODE_AUTH_TOKEN" ]] || { echo "Missing NPM_TOKEN" >&2; exit 1; }
           package_version="$(tar -xOzf release/npm/sagejs.tgz package/package.json | \
             node -e "let text=''; process.stdin.on('data',x=>text+=x); process.stdin.on('end',()=>console.log(JSON.parse(text).version))")"
           [[ "${GITHUB_REF_NAME}" == "v${package_version}" ]] || {
@@ -855,7 +853,7 @@ jobs:
           publish_package() {
             local archive="$1"
             local tag="$2"
-            local metadata name version published
+            local metadata name version published tags tagged_version
             metadata="$(tar -xOzf "$archive" package/package.json)"
             name="$(node -e 'console.log(JSON.parse(process.argv[1]).name)' "$metadata")"
             version="$(node -e 'console.log(JSON.parse(process.argv[1]).version)' "$metadata")"
@@ -864,11 +862,18 @@ jobs:
                 echo "Unexpected published version for ${name}@${version}: $published" >&2
                 exit 1
               }
-              echo "${name}@${version} is already published; refreshing dist-tag ${tag}"
-              npm dist-tag add "${name}@${version}" "$tag"
+              tags="$(npm view "$name" dist-tags --json)"
+              tagged_version="$(node -e \
+                'console.log(JSON.parse(process.argv[1])[process.argv[2]] ?? "")' \
+                "$tags" "$tag")"
+              [[ "$tagged_version" == "$version" ]] || {
+                echo "${name}@${version} exists but dist-tag ${tag} points at ${tagged_version:-nothing}" >&2
+                exit 1
+              }
+              echo "${name}@${version} is already published with dist-tag ${tag}; skipping"
             else
-              pnpm publish "$archive" \
-                --access public --tag "$tag" --ignore-scripts --no-git-checks
+              npm publish "$archive" \
+                --access public --tag "$tag" --ignore-scripts
             fi
           }
 

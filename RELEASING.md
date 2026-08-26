@@ -5,10 +5,15 @@ GitHub and npm. The npm platform packages contain the same signed/notarized
 bytes as the direct archives; the public `@sagemath/sagejs` package is published
 last so its exact optional dependencies are already available.
 
-## Required GitHub secrets
+## Required release configuration
 
-- `NPM_TOKEN`: an automation token allowed to publish public packages in the
-  `@sagemath` scope.
+- Configure npm Trusted Publishing for `@sagemath/sagejs` and each of its four
+  platform packages. Each package must trust GitHub organization `sagemathinc`,
+  repository `sagejs`, workflow `ci.yml`, and environment `sagejs-release`,
+  with `npm publish` permission. The publish job uses GitHub OIDC and never
+  stores a reusable npm credential.
+- The `sagejs-release` GitHub environment requires a maintainer approval before
+  npm publication and before the draft GitHub release becomes immutable.
 - The preferred Windows path is Azure Artifact Signing with the repository
   variable `SAGEJS_WINDOWS_SIGNING_MODE=azure`; secrets
   `SAGEJS_AZURE_CLIENT_ID`, `SAGEJS_AZURE_TENANT_ID`, and
@@ -56,10 +61,10 @@ macOS runner itself is discarded after the job.
 6. Test a clean `curl | sh` install, a clean global npm install, Jupyter kernel
    registration, and Gatekeeper/SmartScreen behavior on real target machines.
 
-The tag workflow intentionally fails when macOS signing/notarization or npm
-credentials are absent. Windows unsigned mode is an explicit early-alpha
-exception and is recorded in the Actions job summary; it is never silently
-selected in place of a requested Azure or PFX mode.
+The tag workflow intentionally fails when macOS signing/notarization or the npm
+Trusted Publisher relationship is absent. Windows unsigned mode is an explicit
+early-alpha exception and is recorded in the Actions job summary; it is never
+silently selected in place of a requested Azure or PFX mode.
 
 ## Local signing checks
 
