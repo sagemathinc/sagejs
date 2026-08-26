@@ -536,3 +536,163 @@ test("NMinimize's documented Integers domain quadruple has no path through the f
       "See PARITY.md.",
   );
 });
+
+// ---------------------------------------------------------------------
+// The `&&` constraint spelling.
+//
+// Wolfram writes a conjunction of constraints `c1 && c2`, and its own
+// optimization documentation uses that spelling throughout -- rather more
+// often than the `{c1, c2}` List this package tested. Both are documented
+// and both mean the same thing, so the two must agree.
+//
+// Before the fix these tests guard, they did not, and the failure was the
+// worst possible kind: silent. The frontend lowered `&&` with its generic
+// boolean mapping to Python `and`, which short-circuits on truthiness, so
+// `(x + y >= 3) and (x <= 1)` evaluated to just one of the two relations
+// and the other never reached the engine. `bool()` of an unprovable
+// symbolic relation is False, so `and` returned its left operand: the
+// FIRST constraint survived and every later one was silently discarded.
+// No error, no warning -- just a confidently wrong answer to a different
+// problem than the one asked.
+//
+// `_constraint` in src/lib/wolfram.py did refuse `&&` by name, but that
+// guard could never fire for this: `and` had already collapsed the
+// conjunction to a single perfectly valid relation long before Python saw
+// it. The guard was dead code for the exact case it was written for, and
+// no test exercised the `&&` spelling at all, so the audit in this file
+// did not catch it either. That is why these agreement tests compare
+// against the List spelling bit for bit rather than against a pinned
+// number: identical problems, identical engine call, identical seed --
+// any divergence at all means a constraint went missing.
+// ---------------------------------------------------------------------
+
+test("NMinimize: `c1 && c2` agrees bit-for-bit with the {c1, c2} List", async () => {
+  // The unconstrained optimum is (5, 5). `x + y >= 3` is already
+  // satisfied there and `x <= 1` is not, so the second constraint is the
+  // only active one -- which is exactly the one the old `and` lowering
+  // dropped, since it kept the left operand. With it dropped the search
+  // returns ~0 at (5, 5); with it honored, 16 at (1, 5). A test whose
+  // constraints were all inactive, or where the active one happened to
+  // come first, would have passed against the bug.
+  const list = await wolfram(
+    "NMinimize[{(x-5)^2 + (y-5)^2, {x + y >= 3, x <= 1}}, {x, y}]",
+  );
+  const conjunction = await wolfram(
+    "NMinimize[{(x-5)^2 + (y-5)^2, x + y >= 3 && x <= 1}, {x, y}]",
+  );
+  assert.equal(conjunction, list, "`&&` and the List must run the same call");
+
+  const { value, rules } = extremum(conjunction);
+  assert.ok(rules.x <= 1 + 1e-3, `x ${rules.x} should respect x <= 1`);
+  assert.ok(Math.abs(value - 16) < 1e-3, `value ${value} should be ~16, not ~0`);
+});
+
+test("NMinimize: `&&` order does not decide which constraint survives", async () => {
+  // The mirror image of the test above: the same two constraints written
+  // the other way round. Against the bug, the surviving constraint was
+  // whichever came first, so the two orderings disagreed with each other
+  // as well as with the truth. Wolfram's And is commutative here; so is
+  // a list of constraints that must hold together.
+  const forward = await wolfram(
+    "NMinimize[{(x-5)^2 + (y-5)^2, x + y >= 3 && x <= 1}, {x, y}]",
+  );
+  const reversed = await wolfram(
+    "NMinimize[{(x-5)^2 + (y-5)^2, x <= 1 && x + y >= 3}, {x, y}]",
+  );
+  assert.equal(forward, reversed, "constraint order must not change the answer");
+});
+
+test("FindMinimum: `c1 && c2` agrees with the List spelling too", async () => {
+  // `_constraint` is shared verbatim by `_optimize` and `_find_optimize`,
+  // and so was the bug: the local family dropped constraints identically,
+  // returning ~2.5e-13 at (5, 5) instead of 16 at (1, 5). Proven on the
+  // local family directly rather than assumed from the global one.
+  const list = await wolfram(
+    "FindMinimum[{(x-5)^2 + (y-5)^2, {x + y >= 3, x <= 1}}, {{x, 0}, {y, 0}}]",
+  );
+  const conjunction = await wolfram(
+    "FindMinimum[{(x-5)^2 + (y-5)^2, x + y >= 3 && x <= 1}, {{x, 0}, {y, 0}}]",
+  );
+  assert.equal(conjunction, list, "`&&` and the List must run the same call");
+
+  const { value, rules } = extremum(conjunction);
+  assert.ok(rules.x <= 1 + 1e-4, `x ${rules.x} should respect x <= 1`);
+  assert.ok(Math.abs(value - 16) < 1e-3, `value ${value} should be ~16`);
+});
+
+test("a `&&` chain of three flattens, and nests with the List spelling", async () => {
+  // Wolfram's And is flat and associative, so `c1 && c2 && c3` is three
+  // constraints and `{c1 && c2, c3}` is the same three -- not two, one of
+  // which is a boolean. All three constraints are active here (the
+  // unconstrained optimum is the origin), so a chain that flattened only
+  // its first level would give a visibly different answer.
+  const chained = await wolfram(
+    "NMinimize[{x^2 + y^2 + z^2, x >= 1 && y >= 2 && z >= 3}, {x, y, z}]",
+  );
+  const nested = await wolfram(
+    "NMinimize[{x^2 + y^2 + z^2, {x >= 1 && y >= 2, z >= 3}}, {x, y, z}]",
+  );
+  assert.equal(chained, nested, "And is flat: both spellings are 3 constraints");
+
+  const { rules } = extremum(chained);
+  assert.ok(rules.x >= 1 - 1e-2, `x ${rules.x} should respect x >= 1`);
+  assert.ok(rules.y >= 2 - 1e-2, `y ${rules.y} should respect y >= 2`);
+  assert.ok(rules.z >= 3 - 1e-2, `z ${rules.z} should respect z >= 3`);
+});
+
+test("`&&` outside the constraint slot still lowers to ordinary Python `and`", async () => {
+  // The fix is scoped to the `cons` half of the {f, cons} pair, where a
+  // conjunction means "several constraints". Everywhere else `&&` is an
+  // ordinary boolean operator and must keep lowering to `and` -- this is
+  // the guard against the fix leaking out of the slot it belongs to.
+  assert.equal(await wolfram("1 < 2 && 3 < 4"), "True");
+  assert.equal(await wolfram("1 < 2 && 3 > 4"), "False");
+});
+
+// ---------------------------------------------------------------------
+// The `||` constraint spelling -- refused, not silently mis-answered.
+//
+// Wolfram does accept a disjunctive region (`NMinimize[{f, x <= 1 ||
+// x >= 9}, {x}]` searches both branches), and this package cannot: both
+// `_optimize` and `_find_optimize` take a list of constraints that must
+// hold *together*, and no engine behind them expresses a union of
+// regions. That makes `||` a genuine divergence, and this file's whole
+// thesis is that a divergence is refused loudly and by name rather than
+// silently mis-answered.
+//
+// Left to the generic boolean lowering it was the latter. Python `or`
+// short-circuits exactly as `and` does, keeping one branch -- the last
+// one, since `bool()` of an unprovable relation is False. See PARITY.md.
+// ---------------------------------------------------------------------
+
+test("a disjunctive `||` constraint is refused by name on both families", async () => {
+  // The concrete wrong answer this replaces: `NMinimize[{(x-2)^2,
+  // x <= 1 || x >= 9}, {x}]` returned 49 at x = 9, having kept only the
+  // `x >= 9` branch. Wolfram returns 1 at x = 1.
+  await assert.rejects(
+    () => wolfram("NMinimize[{(x-2)^2, x <= 1 || x >= 9}, {x}]"),
+    /NMinimize does not support the disjunctive constraint '\|\|'/,
+  );
+  await assert.rejects(
+    () => wolfram("FindMinimum[{(x-2)^2, x <= 1 || x >= 9}, {x, 0}]"),
+    /FindMinimum does not support the disjunctive constraint '\|\|'/,
+  );
+});
+
+test("`||` is refused wherever it appears in the constraint slot", async () => {
+  // Including nested inside a List or inside a `&&` chain, where a
+  // top-level-only check would miss it and fall through to `or`.
+  await assert.rejects(
+    () => wolfram("NMinimize[{(x-2)^2, {x >= 0, x <= 1 || x >= 9}}, {x}]"),
+    /NMinimize does not support the disjunctive constraint '\|\|'/,
+  );
+  await assert.rejects(
+    () => wolfram("NArgMin[{(x-2)^2, x >= 0 && (x <= 1 || x >= 9)}, {x}]"),
+    /NArgMin does not support the disjunctive constraint '\|\|'/,
+  );
+});
+
+test("`||` outside the constraint slot still lowers to ordinary Python `or`", async () => {
+  assert.equal(await wolfram("1 > 2 || 3 < 4"), "True");
+  assert.equal(await wolfram("1 > 2 || 3 > 4"), "False");
+});

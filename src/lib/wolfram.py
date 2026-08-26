@@ -300,6 +300,14 @@ def _constraint(value: Any, variables: list[Any], module: Any, head: str) -> Any
     both, so there is exactly one converter, not one per family. `head`
     names the caller in the one error this function can raise, so the
     message stays actionable regardless of which family reached it.
+
+    Several constraints arrive here already separated, one call per
+    constraint, whether the caller wrote the Wolfram List `{c1, c2}` or the
+    conjunction `c1 && c2`: the frontend flattens both to a Python list
+    before the pair reaches Python. That matters because `&&` must never be
+    allowed to lower to Python `and`, which short-circuits on truthiness and
+    would silently drop every constraint but one. See
+    `flattenConstraints` in `tools/wolfram/frontend.ts`.
     """
     parts = _relation_parts(value)
     if parts is None:
@@ -307,7 +315,7 @@ def _constraint(value: Any, variables: list[Any], module: Any, head: str) -> Any
             return module.inequality(value)
         raise ValueError(
             "%s constraints must be equations, inequalities, or callables; "
-            "combine several of them in a List, not with &&" % (head,)
+            "combine several of them in a List or with &&" % (head,)
         )
     orientation = _RELATION_ORIENTATION[parts[0]]
     difference = parts[1] - parts[2] if orientation >= 0 else parts[2] - parts[1]

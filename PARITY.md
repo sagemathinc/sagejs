@@ -42,6 +42,8 @@ times over.
 | List of variable regions, `f[obj, {{x,a,b},{y,c,d}}]` | Covered |
 | `{f, cons}`, one constraint | Covered |
 | `{f, cons}`, a `List` of constraints | Covered |
+| `{f, cons}`, a `&&` conjunction of constraints | Covered |
+| `{f, cons}`, a `||` disjunctive region | **Diverges** -- refused by name (see below) |
 | Malformed 3+ element pair -- refused by name, naming the actual head | Covered |
 | A constraint that is neither a relation nor a callable -- refused by name, naming the actual head | Covered |
 | Default region `-1 <= x <= 1` for a bare/unbounded variable | Covered |
@@ -74,6 +76,7 @@ identical table.
 | `{x, x0, x1}` two-starting-value form | **Diverges** -- refused by name (see below) |
 | `{f, cons}` constrained pair, on `FindMinimum`/`FindMaximum` | Covered |
 | `{f, cons}` constrained pair, on `FindMinValue`/`FindMaxValue`/`FindArgMin`/`FindArgMax` | Covered |
+| `{f, cons}`, `&&` conjunction and `||` refusal | Covered -- shared verbatim with the global family |
 | Malformed 3+ element pair -- refused by name, naming the actual head | Covered |
 
 Result shapes (`{fmin,{rules}}`, bare value, bare argument list) and
@@ -206,12 +209,26 @@ gap stays visible rather than being quietly encoded as "expected".
     one-line safety change. Tracked as a `t.skip` gap in
     `test/wolfram-optimization-parity.cjs`.
 
+12. **A disjunctive `||` constraint is refused, not approximated.**
+    Wolfram accepts a union of regions -- `NMinimize[{(x-2)^2,
+    x <= 1 || x >= 9}, {x}]` searches both branches and returns `1` at
+    `x = 1`. Both `_optimize` and `_find_optimize` take a list of
+    constraints that must hold *together*, and no engine behind them
+    expresses a union of regions, so `||` anywhere in the constraint slot
+    is refused by name. Approximating it would mean silently answering a
+    different problem: before this refusal existed, the frontend lowered
+    `||` to Python `or`, which short-circuits and kept a single branch --
+    the call above returned `49` at `x = 9`, the wrong branch, with no
+    diagnostic. Covered in `test/wolfram-optimization-parity.cjs`.
+
 ## Fixed during this audit
 
-Two bugs were found and fixed (not merely documented) as part of writing
-the parity suite, because they were small, mechanical, and did not touch
-any documented behavior this project claims to support -- only the
-accuracy of an internal error message naming the wrong head.
+Two bugs were found and fixed as part of writing the parity suite,
+because they were small, mechanical, and did not touch any documented
+behavior this project claims to support -- only the accuracy of an
+internal error message naming the wrong head. A third, found afterwards
+by reading Wolfram's own documentation examples, was serious enough to
+fix on its own terms; it is described last.
 
 - **`src/lib/wolfram.py`'s shared dispatchers, `_optimize` and
   `_find_optimize`, hardcoded `"NMinimize"`/`"FindMinimum"` in their
@@ -241,6 +258,33 @@ accuracy of an internal error message naming the wrong head.
 Both fixes are exercised as regression tests in
 `test/wolfram-optimization-parity.cjs` (the "naming the actual head"
 tests).
+
+The third, found after this audit shipped and fixed on top of it:
+
+- **The `&&` constraint spelling silently dropped every constraint but
+  one.** `tools/wolfram/frontend.ts` lowered `&&` with its generic boolean
+  mapping to Python `and`, which short-circuits on truthiness: given
+  `NMinimize[{f, x + y >= 3 && x <= 1}, {x, y}]`, the lowered
+  `(x + y >= 3) and (x <= 1)` evaluated to a single relation and the other
+  never reached the engine. `bool()` of an unprovable symbolic relation is
+  False, so `and` returned its left operand -- the first constraint
+  survived, the rest were discarded. No error, no warning, just a
+  confident answer to a different problem. Constraints in the `{f, cons}`
+  slot now flatten through `&&` and through nested Lists alike into the
+  Python list the engines already read, so `{f, c1 && c2}` and
+  `{f, {c1, c2}}` produce bit-identical results; `&&` outside that slot
+  still lowers to `and`.
+
+  This is worth dwelling on as an audit lesson. `_constraint` in
+  `src/lib/wolfram.py` *did* refuse `&&` by name -- the guard was written
+  in anticipation of exactly this -- but it could never fire, because
+  `and` had already collapsed the conjunction to a valid single relation
+  before Python saw it. A guard that cannot fire reads, to a later
+  reviewer and to this document's own coverage matrix, exactly like a
+  guard that works. What actually caught it was running Wolfram's
+  documented spelling and comparing it against the spelling this suite
+  already tested. The `||` divergence above was found the same way, in the
+  same slot, ten minutes later.
 
 ## Suites this document credits
 

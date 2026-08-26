@@ -1045,10 +1045,106 @@ class SageLowerer {
       spec,
     );
     const positional = [
-      this.expression(expression.arguments[0]),
+      this.optimizationProblem(expression.arguments[0], head),
       this.expression(expression.arguments[1]),
     ];
     return `_wolfram.${head}(${[...positional, ...options].join(", ")})`;
+  }
+
+  /**
+   * Lower an optimization head's first argument -- either a bare objective
+   * or the `{f, cons}` pair -- so that the `cons` half is read as
+   * constraints rather than as an ordinary boolean expression.
+   *
+   * Only the two-element list shape is the documented pair, so only it is
+   * treated specially; anything else is a bare objective and lowers
+   * generically. `FindFit` never reaches here: it takes no constraints and
+   * has its own `findFitCall`.
+   */
+  private optimizationProblem(
+    expression: WolframExpression,
+    head: string,
+  ): string {
+    if (expression.kind !== "list" || expression.elements.length !== 2) {
+      return this.expression(expression);
+    }
+    return `[${this.expression(expression.elements[0])}, ${
+      this.optimizationConstraints(expression.elements[1], head)
+    }]`;
+  }
+
+  /**
+   * Lower the `cons` half of an optimization head's `{f, cons}` pair.
+   *
+   * Wolfram spells a conjunction of constraints `c1 && c2`, and its own
+   * optimization documentation uses that spelling throughout. The generic
+   * binary lowering maps `&&` to Python `and`, which is correct for
+   * ordinary boolean code and silently wrong here: `and` short-circuits on
+   * truthiness, so `(x + y >= 3) and (x <= 1)` evaluates to just one of
+   * the two relations and the rest are discarded before `wolfram.py` ever
+   * sees them. The result is a dropped constraint and a wrong answer with
+   * no diagnostic at all. (`_constraint` in `src/lib/wolfram.py` refuses
+   * `&&` by name, but that guard cannot fire for this: what reaches it is
+   * a perfectly valid single relation.)
+   *
+   * So a `&&` chain here flattens to the Python list `[c1, c2, ...]` --
+   * exactly what the `{f, {c1, c2}}` List spelling already produces, and
+   * what `_optimize` and `_find_optimize` read as several constraints. The
+   * two spellings then agree, as they do in Wolfram. `&&` outside this
+   * slot still lowers to `and`.
+   *
+   * `And` is flat and associative in Wolfram, so nested `&&` and nested
+   * Lists flatten together: `{c1 && c2, c3}` is three constraints, not two.
+   */
+  private optimizationConstraints(
+    expression: WolframExpression,
+    head: string,
+  ): string {
+    const constraints = this.flattenConstraints(expression, head);
+    if (constraints.length === 1 && expression.kind !== "list") {
+      return constraints[0];
+    }
+    return `[${constraints.join(", ")}]`;
+  }
+
+  /**
+   * Flatten one constraint expression into its individual lowered
+   * constraints, descending through `&&` and through Lists alike.
+   *
+   * `||` is refused here rather than flattened. A disjunction is not a
+   * conjunction of anything: `_optimize` and `_find_optimize` take a list
+   * of constraints that must hold *together*, and the engines behind them
+   * have no disjunctive-region support to lower onto. Left to the generic
+   * binary lowering it would become Python `or`, which short-circuits the
+   * same way `and` does and silently keeps exactly one branch -- for
+   * `NMinimize[{(x-2)^2, x <= 1 || x >= 9}, {x}]` that is the wrong
+   * branch, returning 49 where Wolfram returns 1. Refusing by name is the
+   * honest answer until the engines can express a disjunctive region.
+   */
+  private flattenConstraints(
+    expression: WolframExpression,
+    head: string,
+  ): string[] {
+    if (expression.kind === "binary" && expression.operator === "||") {
+      throw new WolframSyntaxError(
+        `${head} does not support the disjunctive constraint '||': its ` +
+          `engines take constraints that hold together, with no ` +
+          `disjunctive region to lower onto`,
+        expression.span,
+      );
+    }
+    if (expression.kind === "binary" && expression.operator === "&&") {
+      return [
+        ...this.flattenConstraints(expression.left, head),
+        ...this.flattenConstraints(expression.right, head),
+      ];
+    }
+    if (expression.kind === "list") {
+      return expression.elements.flatMap((element) =>
+        this.flattenConstraints(element, head)
+      );
+    }
+    return [this.expression(expression)];
   }
 
   /**
