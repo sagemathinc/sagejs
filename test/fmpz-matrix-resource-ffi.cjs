@@ -7,7 +7,10 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerEnvironment,
+  sanitizerRounds,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const flintPrefix = resolve(
@@ -930,7 +933,7 @@ int main(void)
     fmpz_init(entry);
     fmpz_init(determinant);
     fmpz_init(trace);
-    for (slong round = 0; round < 300; round++)
+    for (slong round = 0; round < ${sanitizerRounds(300)}; round++)
     {
         sagejs_fmpz_matrix_t left, right, sum, difference, negated;
         sagejs_fmpz_matrix_t scaled, transposed, product, power, hnf, snf;
@@ -1098,7 +1101,7 @@ int main(void)
 process.stdout.write(JSON.stringify({
   schema: "sagejs.ffi/fmpz-matrix-resource-v1",
   randomizedRounds: 30,
-  lifecycleRounds: process.platform === "win32" ? 0 : 300,
+  lifecycleRounds: process.platform === "win32" ? 0 : sanitizerRounds(300),
   performance: {
     host: {
       node: process.version,

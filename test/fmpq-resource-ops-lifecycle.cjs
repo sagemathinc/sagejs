@@ -7,7 +7,10 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerEnvironment,
+  sanitizerRounds,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const flintPrefix = resolve(
@@ -188,7 +191,7 @@ int main(void)
     fmpz_init(numerator);
     fmpz_init(denominator);
     fmpz_init(scale);
-    for (slong round = 0; round < 500; round++)
+    for (slong round = 0; round < ${sanitizerRounds(500)}; round++)
     {
         sagejs_fmpq_matrix_t left, right, sum, difference;
         sagejs_fmpq_matrix_t negated, scaled, transposed, inverse, solution;
@@ -355,7 +358,7 @@ int main(void)
        primitives visible to this sanitizer harness: make a read-only deep
        copy, close the private source first, then grow and destroy only the
        public copy. ASan/UBSan/LSan exercise the large-limb lifecycle. */
-    for (slong round = 0; round < 200; round++)
+    for (slong round = 0; round < ${sanitizerRounds(200)}; round++)
     {
         sagejs_fmpq_matrix_t private_matrix, public_matrix;
         fmpz_one(numerator);
@@ -383,7 +386,7 @@ int main(void)
     fmpz_clear(scale);
     fmpz_clear(denominator);
     fmpz_clear(numerator);
-    printf("rounds=500\n");
+    printf("rounds=${sanitizerRounds(500)}\n");
     return 0;
 }
 `;

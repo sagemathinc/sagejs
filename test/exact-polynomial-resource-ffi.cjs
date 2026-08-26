@@ -7,7 +7,10 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerEnvironment,
+  sanitizerRounds,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const flintPrefix = resolve(
@@ -1229,7 +1232,7 @@ int main(void)
     fmpz_init(result);
     if (!exact_region_rejection_matrix())
         return 23;
-    for (slong round = 0; round < 300; round++)
+    for (slong round = 0; round < ${sanitizerRounds(300)}; round++)
     {
         sagejs_fmpz_polynomial_t z, zsum, zproduct, zquotient, zgcd, zpower;
         sagejs_fmpz_polynomial_t zscalar, ztruncated;

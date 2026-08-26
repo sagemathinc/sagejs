@@ -8,7 +8,10 @@ const { tmpdir } = require("node:os");
 const { resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compile: compileNative } = require("@sagemath/sagejs/native");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerEnvironment,
+  sanitizerRounds,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const flintPrefix = resolve(
@@ -532,7 +535,7 @@ int main(void)
     fmpz_t coefficient, scalar;
     fmpz_init(coefficient);
     fmpz_init(scalar);
-    for (int iteration = 0; iteration < 200; iteration++)
+    for (int iteration = 0; iteration < ${sanitizerRounds(200)}; iteration++)
     {
         sagejs_fmpz_polynomial_t z, zinner, zcompose, zreverse;
         sagejs_fmpq_polynomial_t q, qintegral, zintegral;

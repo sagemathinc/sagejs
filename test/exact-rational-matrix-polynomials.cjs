@@ -9,7 +9,10 @@ const {
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerEnvironment,
+  sanitizerRounds,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const flintPrefix = resolve(
@@ -295,7 +298,7 @@ int main(void)
     fmpz_init(numerator);
     fmpz_init(denominator);
     fmpz_one(denominator);
-    for (slong round = 0; round < 500; round++)
+    for (slong round = 0; round < ${sanitizerRounds(500)}; round++)
     {
         sagejs_fmpq_matrix_t matrix;
         sagejs_fmpq_polynomial_t characteristic, minimal;
@@ -342,7 +345,7 @@ int main(void)
     }
     fmpz_clear(denominator);
     fmpz_clear(numerator);
-    printf("rounds=500\n");
+    printf("rounds=${sanitizerRounds(500)}\n");
     return 0;
 }
 `;

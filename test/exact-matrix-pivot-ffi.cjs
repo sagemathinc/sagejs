@@ -14,7 +14,10 @@ const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { compile } = require("@sagemath/sagejs/native");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerEnvironment,
+  sanitizerRounds,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const packagePath = join(root, "packages", "flint");
@@ -306,7 +309,7 @@ int main(void)
     fmpz_init(numerator);
     fmpz_init(denominator);
     fmpz_one(denominator);
-    for (slong round = 0; round < 500; round++)
+    for (slong round = 0; round < ${sanitizerRounds(500)}; round++)
     {
         sagejs_fmpz_matrix_t z;
         sagejs_fmpq_matrix_t q;
@@ -348,7 +351,7 @@ int main(void)
     sagejs_fmpz_matrix_clear(empty_z);
     fmpz_clear(denominator);
     fmpz_clear(numerator);
-    printf("rounds=500\n");
+    printf("rounds=${sanitizerRounds(500)}\n");
     return 0;
 }
 `;
@@ -376,7 +379,7 @@ test("exact pivot resources pass sanitizer-backed lifecycle stress", {
       run(executable, [], {
         env: sanitizerEnvironment({ strictStringChecks: true }),
       }),
-      "rounds=500",
+      `rounds=${sanitizerRounds(500)}`,
     );
   } finally {
     rmSync(temporary, { recursive: true, force: true });

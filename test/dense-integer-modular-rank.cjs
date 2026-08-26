@@ -7,7 +7,10 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerEnvironment,
+  sanitizerRounds,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const flintPrefix = resolve(
@@ -177,7 +180,7 @@ if (process.platform !== "win32") {
 
 int main(void)
 {
-    for (slong round = 0; round < 1000; round++)
+    for (slong round = 0; round < ${sanitizerRounds(1000)}; round++)
     {
         sagejs_fmpz_matrix_t matrix;
         fmpz_t entry;
@@ -200,7 +203,7 @@ int main(void)
         fmpz_clear(entry);
         sagejs_fmpz_matrix_clear(matrix);
     }
-    printf("rounds=1000\n");
+    printf("rounds=${sanitizerRounds(1000)}\n");
     return 0;
 }
 `;
@@ -224,7 +227,7 @@ int main(void)
       run(executable, [], {
         env: sanitizerEnvironment(),
       }).trim(),
-      "rounds=1000",
+      `rounds=${sanitizerRounds(1000)}`,
     );
   } finally {
     rmSync(temporary, { recursive: true, force: true });
