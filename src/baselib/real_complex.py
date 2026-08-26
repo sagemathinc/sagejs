@@ -608,8 +608,12 @@ def Ei(value: Any) -> ComplexNumberElement:
 def li(value: Any) -> float:
     """Numerically evaluate the unoffset logarithmic integral `li(value)`."""
     real_value = float(value)
-    if real_value <= 0:
-        raise ValueError("li() currently requires a positive real argument")
+    if real_value != real_value or real_value < 0:
+        raise ValueError("li() currently requires a nonnegative real argument")
+    if real_value == 0:
+        return 0.0
+    if real_value == 1:
+        return runtime.number.NEGATIVE_INFINITY
     argument = CDF(runtime.math.log(real_value))
     try:
         result = Ei(argument)
@@ -634,8 +638,8 @@ def Li(value: Any) -> float:
     polylogarithm, which is also conventionally written as `Li`.
     """
     real_value = float(value)
-    if real_value <= 0:
-        raise ValueError("Li() currently requires a positive real argument")
+    if real_value != real_value or real_value < 0:
+        raise ValueError("Li() currently requires a nonnegative real argument")
     if real_value == 2:
         return 0.0
     return li(real_value) - 1.0451637801174927

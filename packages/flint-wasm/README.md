@@ -128,6 +128,8 @@ sagejs --wasm --timeout 30000 --diagnostics example.sage
 
 With no file or piped input, `sagejs --wasm` starts a prompt labeled `wasm: `
 so it cannot be confused with the native `sage: ` or Python `>>> ` prompts.
+The interactive prompt accepts Sage's `time EXPR` and `%time EXPR` spellings
+and reports process CPU plus wall time for the complete worker evaluation.
 The standalone `sagejs-wasm` package executable and
 `node packages/flint-wasm/node-cli.mjs` remain equivalent developer entry
 points.
@@ -142,6 +144,19 @@ check. `--diagnostics` writes a separate JSON record to stderr containing the
 artifact identity, input digest, elapsed time, outcome, and evaluator-owned
 capability-route instrumentation; `--diagnostics-file FILE` writes that record
 to a file without mixing it into ordinary program output.
+
+After changing runtime or mathematical source in a checkout, rebuild the root
+runtime and then the authenticated production artifact:
+
+```sh
+pnpm build
+pnpm --dir packages/flint-wasm build
+sagejs --wasm --verify-only
+```
+
+The second command alone is sufficient when `pnpm build` has already completed.
+The verifier reports this exact recovery command when package-root runtime
+source is newer than its receipted copy.
 
 `--timeout MS` uses the session's worker-replacement timeout, so synchronous
 compiler or mathematics loops cannot wedge the Node process. In the interactive

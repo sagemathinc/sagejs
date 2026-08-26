@@ -13,6 +13,7 @@ import test from "node:test";
 
 import {
   argumentsFrom,
+  replTimeDirective,
   runCli,
   verifyProductionArtifact,
 } from "../node-cli.mjs";
@@ -58,6 +59,14 @@ test("CLI arguments keep source selection, timeout, and diagnostics explicit", (
   assert.throws(() => argumentsFrom(["-c", "2", "source.sage"]), /cannot be used/);
   assert.throws(() => argumentsFrom(["--verify-only", "source.sage"]), /does not accept/);
   assert.throws(() => argumentsFrom(["--shell"]), /unknown option/);
+});
+
+test("the Wasm prompt recognizes Sage time directives before compilation", () => {
+  assert.deepEqual(replTimeDirective("time 2 + 3"), { source: "2 + 3" });
+  assert.deepEqual(replTimeDirective("  %time -- 2 + 3"), { source: "2 + 3" });
+  assert.equal(replTimeDirective("time = 5"), undefined);
+  assert.throws(() => replTimeDirective("time"), /requires a statement/);
+  assert.throws(() => replTimeDirective("%time --unknown 2 + 3"), /unsupported/);
 });
 
 test("piped source preserves ordinary output and emits a separate route receipt", async () => {
@@ -157,6 +166,36 @@ test("interactive Wasm evaluation has an unambiguous prompt", async () => {
   );
 });
 
+test("interactive Wasm timing strips the directive and reports CPU and wall time", async () => {
+  const input = new PassThrough();
+  input.isTTY = true;
+  const output = new PassThrough();
+  let text = "";
+  output.setEncoding("utf8");
+  output.on("data", (chunk) => { text += chunk; });
+  input.write("time 2 + 3\n");
+
+  let evaluated;
+  await runCli({
+    argv: [],
+    input,
+    output,
+    errorOutput: sink(),
+    createSession: async () => ({
+      async evaluate(source) {
+        evaluated = source;
+        setImmediate(() => input.end(":quit\n"));
+        return { repr: "5", instrumentation: { routes: [] } };
+      },
+      async close() {},
+    }),
+    verifyArtifact: async () => artifactEvidence,
+  });
+  assert.equal(evaluated, "2 + 3");
+  assert.match(text, /5\nCPU times: user [\d.]+ms, sys: [\d.]+ms, total: [\d.]+ms/);
+  assert.match(text, /Wall time: [\d.]+ms/);
+});
+
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), "sagejs-node-wasm-cli-"));
   const packageRoot = join(root, "package");
@@ -234,7 +273,7 @@ test("production verification accepts only exact artifact and Node source bytes"
     await writeFile(join(value.packageRoot, "node-cli.mjs"), "// stale source\n");
     await assert.rejects(
       verifyProductionArtifact(value),
-      /Node runtime source does not match the production artifact: node-cli\.mjs/,
+      /Node runtime source does not match.*pnpm --dir packages\/flint-wasm build/,
     );
 
     await writeFile(join(value.packageRoot, "node-cli.mjs"), value.runtime);

@@ -270,6 +270,15 @@ async function main(t) {
     (await session.evaluate("round(zeta_zeros()[-1], 9)")).repr,
     "14040.459877073",
   );
+  assert.equal(
+    (await session.evaluate(
+      "[li(0) == 0, li(1) == float('-inf'), " +
+      "abs(Li(0)+1.0451637801174927) < 1e-13, " +
+      "Li(1) == float('-inf'), " +
+      "sum(Li(n) for n in [1,2,3]) == float('-inf')]",
+    )).repr,
+    "[True, True, True, True, True]",
+  );
   await session.evaluate(`
 class ImportedMethod:
     def value(self):

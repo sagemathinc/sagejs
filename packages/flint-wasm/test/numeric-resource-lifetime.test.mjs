@@ -86,6 +86,10 @@ const workload = [
   "print(Li(2), abs(Li(3)-1.11842481454970) < 1e-13,",
   "      abs(li(3)-2.16358859466719) < 1e-13,",
   "      abs(total-2000*Li(3)) < 1e-9)",
+  "print(li(0) == 0, li(1) == float('-inf'),",
+  "      abs(Li(0)+1.0451637801174927) < 1e-13,",
+  "      Li(1) == float('-inf'),",
+  "      sum(Li(n) for n in [1, 2, 3]) == float('-inf'))",
   "print(real_value == 5000, complex_value == 5000,",
   "      algebraic_value == 5000,",
   "      algebraic_matrix[0,0] == 2^100)",
@@ -106,6 +110,7 @@ const workload = [
 const expected = [
   "0 0 True True True True",
   "0 True True True",
+  "True True True True True",
   "True True True True",
   "True True True True True True",
   "True True True True True True True True True True",

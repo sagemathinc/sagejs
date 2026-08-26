@@ -10,7 +10,7 @@ import { isDeepStrictEqual } from "node:util";
 import { dirname, isAbsolute, resolve, sep } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { stdin, stdout, stderr } from "node:process";
+import { cpuUsage, stdin, stdout, stderr } from "node:process";
 
 import { createSage } from "./node-kernel.mjs";
 
@@ -112,6 +112,29 @@ function canonicalJson(value) {
   return JSON.stringify(value);
 }
 
+export function replTimeDirective(source) {
+  const percentPrefix = source.match(/^[ \t]*%time(?:[ \t]+|$)/);
+  const plainPrefix = percentPrefix
+    ? null
+    : source.match(/^[ \t]*time(?:[ \t]+|$)/);
+  const prefix = percentPrefix ?? plainPrefix;
+  if (!prefix) return undefined;
+  let rest = source.slice(prefix[0].length);
+  if (plainPrefix && /^[ \t]*=/.test(rest)) return undefined;
+  const separator = rest.match(/^--(?:[ \t]+|$)/);
+  if (separator) rest = rest.slice(separator[0].length);
+  else if (/^--[A-Za-z]/.test(rest)) {
+    const name = rest.match(/^--[^ \t\r\n]*/)?.[0] ?? rest;
+    throw new TypeError(`unsupported %time option ${name}`);
+  }
+  if (!rest.trim()) throw new TypeError("%time requires a statement");
+  return { source: rest };
+}
+
+function formatMilliseconds(value) {
+  return `${value.toFixed(3)}ms`;
+}
+
 function safeArtifactPath(root, name) {
   if (
     typeof name !== "string" ||
@@ -204,7 +227,8 @@ export async function verifyProductionArtifact({
       );
       if (source.status.size !== asset.bytes || sha256(source.bytes) !== asset.sha256) {
         throw new Error(
-          `Node runtime source does not match the production artifact: ${asset.servePath}`,
+          `Node runtime source does not match the production artifact: ${asset.servePath}. ` +
+          "Rebuild it with `pnpm --dir packages/flint-wasm build` after `pnpm build`.",
         );
       }
     }
@@ -255,8 +279,18 @@ async function emitDiagnostic(receipt, options, errorOutput) {
   }
 }
 
-async function evaluate(session, source, filename, options, artifact, output, errorOutput) {
+async function evaluate(
+  session,
+  source,
+  filename,
+  options,
+  artifact,
+  output,
+  errorOutput,
+  timed = false,
+) {
   const started = performance.now();
+  const cpuStarted = timed ? cpuUsage() : undefined;
   let result;
   let failure;
   let sessionRecovered = null;
@@ -280,12 +314,24 @@ async function evaluate(session, source, filename, options, artifact, output, er
     }
     throw error;
   } finally {
+    const elapsed = performance.now() - started;
+    if (timed && failure === undefined) {
+      const cpu = cpuUsage(cpuStarted);
+      const user = cpu.user / 1000;
+      const system = cpu.system / 1000;
+      output.write(
+        `CPU times: user ${formatMilliseconds(user)}, ` +
+        `sys: ${formatMilliseconds(system)}, ` +
+        `total: ${formatMilliseconds(user + system)}\n` +
+        `Wall time: ${formatMilliseconds(elapsed)}\n`,
+      );
+    }
     await emitDiagnostic(diagnosticReceipt({
       artifact,
       source: sourceReceipt(source, filename),
       timeout: options.timeout,
       result,
-      elapsed: Math.round((performance.now() - started) * 1000) / 1000,
+      elapsed: Math.round(elapsed * 1000) / 1000,
       error: failure,
       sessionRecovered,
     }), options, errorOutput);
@@ -370,14 +416,16 @@ export async function runCli({
           continue;
         }
         try {
+          const directive = replTimeDirective(source);
           await evaluate(
             session,
-            source,
+            directive?.source ?? source,
             "<repl>",
             options,
             artifact,
             output,
             errorOutput,
+            directive !== undefined,
           );
         } catch (error) {
           errorOutput.write(`${error.stack ?? error}\n`);
