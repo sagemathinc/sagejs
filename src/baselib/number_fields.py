@@ -2923,6 +2923,10 @@ class NumberFieldParent(sage.Parent):
             return _nf_class_unit_groups_module().cubic_class_number_projection(
                 self, proof=proof
             )
+        if self.degree() == 4 and algorithm == "auto" and len(limits) == 0:
+            bounded = _nf_class_groups_module().bounded_minkowski_class_number_one(self)
+            if bounded.complete:
+                return int(bounded.order())
         if self.degree() == 2:
             routing = self.quadratic_class_group_plan(algorithm, **limits)
             if routing.backend == "minkowski-triviality":

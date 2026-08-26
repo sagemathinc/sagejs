@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "quartic-minkowski-class-number",
+  "title": "Bounded quartic Minkowski class numbers",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compute small-bound quartic class numbers through an exact principal Minkowski factor-base certificate, with bounded fallback and representative performance evidence",
+  "base_commit": "425d7974321fea50ec4d0166d56786986c06befc",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_groups.py",
+    "src/lib/sagejs/number_fields/cubic_class_number.py",
+    "src/baselib/number_fields.py",
+    "test/number-field-quartic-minkowski-class-number.cjs",
+    "bench/class-unit-groups/quartic-minkowski-class-number.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "PARI/GP bnfinit and bnfcertify",
+      "existing class-unit engine exact result and proof replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Added a generic degree-three/four exact Minkowski principal-factor-base producer and routed default quartic scalar class-number requests through it before the unchanged class/unit fallback. The source-independent certificate reconstructs the complete factor base and every principal witness under explicit caps. Representative all-signature quartic tests cover live and detached replay, mutation rejection, cache poisoning, cap exhaustion, and honest fallback on a class-number-two field.",
+    "risks": [
+      "The bounded producer currently proves only class number one; nontrivial quartics pay a bounded probe (0.214 second median on the representative class-number-two field) before the unchanged engine runs.",
+      "The public class_group adapter is not accelerated by this slice; class_group_result exposes the exact bounded result, while public class_group still uses the complete class/unit route.",
+      "pnpm test:changed built the exact source and passed all 61 unit assertions reached before stopping solely because the new focused test is intentionally absent from the shared test manifest outside this lane's claims."
+    ],
+    "next_steps": [
+      "Register test/number-field-quartic-minkowski-class-number.cjs in test/node-test-manifest.cjs during integration.",
+      "Run the exact-source native suite and record its receipt before final review status.",
+      "Extend the same retained exact certificate into a lightweight public class-group projection, then profile larger-discriminant and nontrivial quartic fields."
+    ]
+  }
+}
