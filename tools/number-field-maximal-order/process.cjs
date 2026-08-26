@@ -59,7 +59,11 @@ function readRssKilobytes(pid) {
             "-Command",
             script,
           ],
-          { encoding: "utf8", timeout: 5_000 },
+          {
+            encoding: "utf8",
+            timeout: 5_000,
+            stdio: ["ignore", "pipe", "ignore"],
+          },
         ).trim(),
       );
       return Number.isFinite(bytes) && bytes > 0

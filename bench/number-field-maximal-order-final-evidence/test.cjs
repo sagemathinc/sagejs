@@ -793,9 +793,13 @@ test("platform validation producer exposes the fixed named command plan", () => 
 });
 
 test("platform validation check execution records representative RSS and exact argv", async () => {
+  // Starting the native PowerShell process sampler is much slower than reading
+  // /proc or invoking ps.  Keep the synthetic child alive long enough for one
+  // actual Windows observation; production performance checks run far longer.
+  const lifetimeMs = process.platform === "win32" ? 2_000 : 80;
   const check = await runCheck(
     "representative_performance",
-    [process.execPath, "-e", "setTimeout(() => {}, 80)"],
+    [process.execPath, "-e", `setTimeout(() => {}, ${lifetimeMs})`],
     { timeoutMs: 5_000 },
   );
   assert.equal(check.status, "pass", check.failure_output_tail);
