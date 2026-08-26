@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "quartic-class-number-projection",
+  "title": "Quartic Class Number Projection",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Optimize the authenticated resumable quartic class-number-only path and reuse bounded Minkowski state without duplicating proof-object construction",
+  "base_commit": "d3e81c7b28af2ff55f1bf3f4457100fec7b549ab",
+  "claims": [
+    "src/baselib/number_fields.py",
+    "src/lib/sagejs/number_fields/class_unit_context.py",
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "src/lib/sagejs/number_fields/class_groups.py",
+    "test/node-test-manifest.cjs",
+    "test/number-field-quartic-minkowski-class-number.cjs",
+    "test/number-field-quartic-class-number-projection.cjs",
+    "bench/class-unit-groups/quartic-class-number-projection.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

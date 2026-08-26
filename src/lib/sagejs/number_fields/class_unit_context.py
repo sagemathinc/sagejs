@@ -587,6 +587,10 @@ class _LiveClassUnitArtifacts:
         self.analytic_workspace = analytic_workspace
         self.factored_logarithm_workspace = factored_logarithm_workspace
         self.analytic_proof: tuple[Any, ...] | None = None
+        self.minkowski_class_number_one_state: Any = None
+        self.minkowski_class_number_one_snapshot: Any = None
+        self.deferred_saturation_state: Any = None
+        self.deferred_saturation_snapshot: Any = None
         self.generation_artifact: _LiveClassGenerationArtifact | None = None
         self.generation_verification_active = True
         self.saturation_record: Any = None
@@ -1164,6 +1168,52 @@ class _LiveClassUnitArtifacts:
         if len(values) != 6:
             raise ValueError("a live analytic proof must contain six exact components")
         self.analytic_proof = values
+
+    def bind_deferred_saturation_state(self, state: Any, snapshot: Any) -> bool:
+        if (
+            self.sealed
+            or not self.reusable
+            or self.deferred_saturation_state is not None
+            or not isinstance(snapshot, tuple)
+        ):
+            return False
+        self.deferred_saturation_state = state
+        self.deferred_saturation_snapshot = snapshot
+        return True
+
+    def bind_minkowski_class_number_one_state(self, state: Any, snapshot: Any) -> bool:
+        if (
+            self.sealed
+            or not self.reusable
+            or self.minkowski_class_number_one_state is not None
+            or not isinstance(snapshot, tuple)
+        ):
+            return False
+        self.minkowski_class_number_one_state = state
+        self.minkowski_class_number_one_snapshot = snapshot
+        return True
+
+    def minkowski_class_number_one_state_authenticated(
+        self, state: Any, snapshot: Any
+    ) -> bool:
+        return bool(
+            not self.sealed
+            and self.reusable
+            and state is self.minkowski_class_number_one_state
+            and isinstance(snapshot, tuple)
+            and snapshot == self.minkowski_class_number_one_snapshot
+        )
+
+    def deferred_saturation_state_authenticated(
+        self, state: Any, snapshot: Any
+    ) -> bool:
+        return bool(
+            not self.sealed
+            and self.reusable
+            and state is self.deferred_saturation_state
+            and isinstance(snapshot, tuple)
+            and snapshot == self.deferred_saturation_snapshot
+        )
 
     def dependency_hashes(
         self, collector: Any, presentation: Any
@@ -1858,6 +1908,49 @@ class ClassUnitGroupContext:
             raise TypeError("live analytic state is engine-owned")
         live = self._live_artifacts
         return None if live is None else live.analytic_proof
+
+    def _bind_live_deferred_saturation_state(
+        self, token: Any, state: Any, snapshot: Any
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live deferred saturation state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None and live.bind_deferred_saturation_state(state, snapshot)
+        )
+
+    def _bind_live_minkowski_class_number_one_state(
+        self, token: Any, state: Any, snapshot: Any
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live Minkowski scalar state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.bind_minkowski_class_number_one_state(state, snapshot)
+        )
+
+    def _live_minkowski_class_number_one_state_authenticated(
+        self, token: Any, state: Any, snapshot: Any
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live Minkowski scalar state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.minkowski_class_number_one_state_authenticated(state, snapshot)
+        )
+
+    def _live_deferred_saturation_state_authenticated(
+        self, token: Any, state: Any, snapshot: Any
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live deferred saturation state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.deferred_saturation_state_authenticated(state, snapshot)
+        )
 
     def _live_generation_dependency_hashes(
         self, token: Any, collector: Any, presentation: Any

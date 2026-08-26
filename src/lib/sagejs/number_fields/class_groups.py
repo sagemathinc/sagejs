@@ -764,6 +764,8 @@ def bounded_minkowski_class_number_one(
     max_prime_ideals: int = DEFAULT_MINKOWSKI_MAX_PRIME_IDEALS,
     max_memory_bytes: int = DEFAULT_MINKOWSKI_MAX_MEMORY_BYTES,
     max_reduction_candidates: int = DEFAULT_MINKOWSKI_MAX_REDUCTION_CANDIDATES,
+    _incomplete_relation_receiver: Any = None,
+    _complete_relation_receiver: Any = None,
 ) -> ClassGroupSearchResult:
     """Prove a cubic or quartic class number is one within exact work caps.
 
@@ -815,6 +817,7 @@ def bounded_minkowski_class_number_one(
         fromlist=["class_group_relations"],
     )
     witness_payloads: list[dict[str, Any]] = []
+    live_witnesses: list[Any] = []
     candidates_checked: list[int] = []
     for record in records:
         checked = [0]
@@ -830,6 +833,26 @@ def bounded_minkowski_class_number_one(
                 checkpoint_callback=checkpoint,
             )
         except relations.IdealReductionResourceLimit:
+            if callable(_incomplete_relation_receiver):
+                try:
+                    _incomplete_relation_receiver(
+                        plan,
+                        tuple(records),
+                        tuple(live_witnesses),
+                    )
+                except (
+                    AttributeError,
+                    ImportError,
+                    KeyError,
+                    RuntimeError,
+                    TypeError,
+                    ValueError,
+                    ArithmeticError,
+                ):
+                    # The receiver is an acceleration boundary only.  Failure
+                    # to retain live state must not change this producer's
+                    # honest bounded result or become proof of nonprincipality.
+                    pass
             return ClassGroupSearchResult(
                 field,
                 False,
@@ -843,6 +866,7 @@ def bounded_minkowski_class_number_one(
         ):
             raise ArithmeticError("a Minkowski principal witness failed exact replay")
         witness_payloads.append(witness.to_dict())
+        live_witnesses.append(witness)
         candidates_checked.append(checked[0])
     arithmetic = MinkowskiPrincipalFactorBaseCertificate(
         field,
@@ -852,6 +876,33 @@ def bounded_minkowski_class_number_one(
         candidates_checked=candidates_checked,
         maximum_reduction_candidates=max_reduction_candidates,
     )
+    if callable(_complete_relation_receiver):
+        try:
+            if _complete_relation_receiver(
+                plan,
+                tuple(records),
+                tuple(live_witnesses),
+                arithmetic,
+            ):
+                return ClassGroupSearchResult(
+                    field,
+                    False,
+                    "class-number-one proof retained for deferred publication",
+                    int(plan.bound),
+                    minkowski_factor_base_complete=True,
+                )
+        except (
+            AttributeError,
+            ImportError,
+            KeyError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+            ArithmeticError,
+        ):
+            # A rejected acceleration receipt cannot replace the ordinary
+            # independently replayed class-number-one certificate below.
+            pass
     group = _TrivialClassGroup()
     certificate = ClassGroupCertificate(
         group,

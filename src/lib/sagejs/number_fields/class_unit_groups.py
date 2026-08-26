@@ -1264,6 +1264,217 @@ class _ClassUnitEngineCacheEntry:
 
 
 _CLASS_NUMBER_PROJECTION_TOKEN = object()
+_QUARTIC_RELATION_SEED_TOKEN = object()
+_MINKOWSKI_CLASS_NUMBER_ONE_PROJECTION_TOKEN = object()
+_ADAPTIVE_SATURATION_STATE_TOKEN = object()
+
+
+class _QuarticMinkowskiRelationSeed:
+    """One synchronous exact Minkowski factor-base/relation prefix."""
+
+    def __init__(
+        self,
+        token: object,
+        engine: Any,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+    ) -> None:
+        if token is not _QUARTIC_RELATION_SEED_TOKEN:
+            raise TypeError("quartic relation seeds are producer-issued")
+        self.engine = engine
+        self.plan = plan
+        self.factor_base = tuple(factor_base)
+        self.collector = collector
+        self._snapshot = (
+            id(engine),
+            id(plan),
+            tuple(id(value) for value in self.factor_base),
+            id(collector),
+            tuple(id(value) for value in collector.records),
+        )
+
+    def matches(self, engine: Any) -> bool:
+        try:
+            return bool(
+                engine is self.engine
+                and self.plan.order is engine.order
+                and not tuple(self.plan.assumptions)
+                and "Minkowski" in str(self.plan.theorem)
+                and self.collector.order is engine.order
+                and tuple(self.collector.factor_base) == self.factor_base
+                and self._snapshot
+                == (
+                    id(engine),
+                    id(self.plan),
+                    tuple(id(value) for value in self.factor_base),
+                    id(self.collector),
+                    tuple(id(value) for value in self.collector.records),
+                )
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+
+class _AdaptiveSaturationState:
+    """Retained exact saturation search state before certificate publication."""
+
+    def __init__(
+        self,
+        token: object,
+        engine: Any,
+        original_units: tuple[Any, ...],
+        initial_bound: int,
+        required_primes: Iterable[int],
+        attempts: Iterable[Any],
+        artifacts: Iterable[tuple[Any, Sequence[Any], Any, Any]],
+    ) -> None:
+        if token is not _ADAPTIVE_SATURATION_STATE_TOKEN:
+            raise TypeError("adaptive saturation state is engine-issued")
+        self.engine = engine
+        self.original_units = tuple(original_units)
+        self.initial_bound = int(initial_bound)
+        self.required_primes = tuple(sorted({int(value) for value in required_primes}))
+        self.attempts = tuple(_component_payload(value) for value in attempts)
+        self.artifacts = tuple(
+            (artifact, tuple(before), torsion, verifier)
+            for artifact, before, torsion, verifier in artifacts
+        )
+        self._snapshot = (
+            id(engine),
+            tuple(id(value) for value in self.original_units),
+            self.initial_bound,
+            self.required_primes,
+            _canonical_payload_hash(self.attempts),
+            tuple(
+                (
+                    id(artifact),
+                    tuple(id(value) for value in before),
+                    id(torsion),
+                    id(verifier),
+                )
+                for artifact, before, torsion, verifier in self.artifacts
+            ),
+        )
+
+    def authority_snapshot(self) -> tuple[Any, ...]:
+        return (
+            id(self.engine),
+            tuple(id(value) for value in self.original_units),
+            int(self.initial_bound),
+            tuple(self.required_primes),
+            _canonical_payload_hash(self.attempts),
+            tuple(
+                (
+                    id(artifact),
+                    tuple(id(value) for value in before),
+                    id(torsion),
+                    id(verifier),
+                )
+                for artifact, before, torsion, verifier in self.artifacts
+            ),
+        )
+
+    def matches(self, engine: Any) -> bool:
+        try:
+            return self.engine is engine and self._snapshot == self.authority_snapshot()
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+
+class _MinkowskiClassNumberOneProjection:
+    """Deferred exact class-number-one proof plus a resumable unit suffix."""
+
+    def __init__(self, token: object, engine: Any, arithmetic: Any) -> None:
+        if token is not _MINKOWSKI_CLASS_NUMBER_ONE_PROJECTION_TOKEN:
+            raise TypeError("Minkowski scalar projections are producer-issued")
+        if (
+            getattr(arithmetic, "field", None) is not engine.field
+            or getattr(arithmetic, "proof_status", None) != EXACT_UNCONDITIONAL
+            or getattr(arithmetic, "has_principal_element_witnesses", None) is not True
+        ):
+            raise ArithmeticError(
+                "a Minkowski scalar projection needs exact live principal witnesses"
+            )
+        self.field = engine.field
+        self.order = engine.order
+        self.class_number = 1
+        self.proof_status = EXACT_UNCONDITIONAL
+        self._engine = engine
+        self._arithmetic = arithmetic
+        self.__dict__["_authentication_snapshot"] = self.authority_snapshot()
+        if not engine._bind_context_minkowski_class_number_one_state(self):
+            raise ArithmeticError(
+                "the Minkowski scalar projection lost its context authority"
+            )
+        self.__dict__["_frozen"] = True
+        runtime.object.freeze(self)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if self.__dict__.get("_frozen", False):
+            raise AttributeError("Minkowski scalar projections are immutable")
+        self.__dict__[name] = value
+
+    def authority_snapshot(self) -> tuple[Any, ...]:
+        arithmetic = self._arithmetic
+        return (
+            id(self.field),
+            id(self.order),
+            id(self._engine),
+            id(arithmetic),
+            getattr(arithmetic, "_plan_json", None),
+            getattr(arithmetic, "_factor_base_json", None),
+            getattr(arithmetic, "_witnesses_json", None),
+            tuple(getattr(arithmetic, "candidates_checked", ())),
+            getattr(arithmetic, "maximum_reduction_candidates", None),
+            getattr(arithmetic, "_content_sha256", None),
+        )
+
+    def matches(self, field: Any, proof: bool) -> bool:
+        del proof
+        try:
+            snapshot = self.authority_snapshot()
+            return bool(
+                self.field is field
+                and self.order is field.maximal_order()
+                and self.class_number == 1
+                and self.proof_status == EXACT_UNCONDITIONAL
+                and snapshot == self.__dict__.get("_authentication_snapshot")
+                and self._engine._context_minkowski_class_number_one_state_authenticated(
+                    self
+                )
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+    def finish_bounded(self) -> Any:
+        if not self.matches(self.field, True):
+            raise ArithmeticError("the retained Minkowski scalar state changed")
+        completed = getattr(self.field, "_global_class_group_cache", None)
+        completed_order = getattr(completed, "order", None)
+        if (
+            getattr(completed, "field", None) is self.field
+            and getattr(completed, "complete", None) is True
+            and callable(completed_order)
+            and _integer(completed_order(), "cached class-group order") == 1
+        ):
+            return completed
+        self._engine._resource_usage[
+            "deferred_minkowski_certificate_constructions"
+        ] += 1
+        completed = _STANDARD_MINKOWSKI_CLASS_NUMBER_ONE_FINISHER(
+            self.field, self._arithmetic
+        )
+        self.field._global_class_group_cache = completed
+        return completed
+
+    def finish(self) -> ClassUnitComputation:
+        if not self.matches(self.field, True):
+            raise ArithmeticError("the retained Minkowski scalar state changed")
+        completed = self._engine.run()
+        if not isinstance(completed, ClassUnitComputation):
+            raise ArithmeticError("the Minkowski unit continuation returned no result")
+        return completed
 
 
 class _ClassNumberProjection:
@@ -1283,6 +1494,7 @@ class _ClassNumberProjection:
         index: Any,
         unit_rank: int,
         proof_status: str,
+        saturation_state: Any = None,
     ) -> None:
         if token is not _CLASS_NUMBER_PROJECTION_TOKEN:
             raise TypeError("class-number projections are engine-issued")
@@ -1301,6 +1513,13 @@ class _ClassNumberProjection:
             or len(units) != int(unit_rank)
             or getattr(plan, "order", None) is not engine.order
             or not engine._context_relation_stage_authenticated(collector, presentation)
+            or (
+                saturation_state is not None
+                and (
+                    type(saturation_state) is not _AdaptiveSaturationState
+                    or not saturation_state.matches(engine)
+                )
+            )
         ):
             raise ArithmeticError(
                 "a class-number projection needs a live exact index-one stage"
@@ -1337,6 +1556,7 @@ class _ClassNumberProjection:
             index,
             int(unit_rank),
             str(proof_status),
+            saturation_state,
         )
         self._completed: ClassUnitComputation | None = None
         self.__dict__["_authentication_snapshot"] = (
@@ -1368,13 +1588,56 @@ class _ClassNumberProjection:
             return False
 
     def matches(self, field: Any, proof: bool) -> bool:
-        return bool(
-            self._authentication_matches()
-            and self.field is field
-            and self.order is field.maximal_order()
-            and (not proof or self.proof_status == EXACT_UNCONDITIONAL)
-            and self._engine.context is not None
-        )
+        try:
+            (
+                plan,
+                _factor_base,
+                collector,
+                presentation,
+                units,
+                torsion,
+                regulator,
+                index,
+                _unit_rank,
+                proof_status,
+                saturation_state,
+            ) = self._continuation
+            live_proof = self._engine._context_analytic_proof()
+            return bool(
+                self._authentication_matches()
+                and self.field is field
+                and self.order is field.maximal_order()
+                and (not proof or self.proof_status == EXACT_UNCONDITIONAL)
+                and self._engine.context is not None
+                and getattr(plan, "order", None) is self.order
+                and proof_status == self.proof_status
+                and self._engine._context_relation_stage_authenticated(
+                    collector, presentation
+                )
+                and live_proof is not None
+                and len(live_proof) == 6
+                and len(live_proof[0]) == len(units)
+                and all(
+                    retained is supplied
+                    for retained, supplied in zip(live_proof[0], units, strict=True)
+                )
+                and int(live_proof[1]) == int(presentation.order)
+                and int(live_proof[2]) == int(getattr(torsion, "order", 0))
+                and live_proof[3] is regulator
+                and live_proof[5] is index
+                and (
+                    saturation_state is None
+                    or (
+                        type(saturation_state) is _AdaptiveSaturationState
+                        and saturation_state.matches(self._engine)
+                        and self._engine._context_deferred_saturation_state_authenticated(
+                            saturation_state
+                        )
+                    )
+                )
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
 
     def finish(self) -> ClassUnitComputation:
         completed = self._completed
@@ -1385,7 +1648,16 @@ class _ClassNumberProjection:
             self._engine._started_ns += time.perf_counter_ns() - paused_ns
             self._engine._projection_pause_started_ns = None
         try:
-            completed = self._engine._finish_class_unit_computation(*self._continuation)
+            continuation = self._continuation
+            saturation_state = continuation[-1]
+            if saturation_state is None:
+                completed = self._engine._finish_class_unit_computation(
+                    *continuation[:-1]
+                )
+            else:
+                completed = self._engine._finish_saturated_class_unit_computation(
+                    *continuation[:-1], saturation_state
+                )
         except RuntimeError as error:
             if not _is_cancellation(error):
                 raise
@@ -1743,6 +2015,11 @@ class ClassUnitGroupEngine:
             "cubic_integral_sieve_validated_batch_uses": 0,
             "cubic_specialized_empty_factor_base_skips": 0,
             "cubic_specialized_seed_skips": 0,
+            "quartic_factor_base_seed_uses": 0,
+            "quartic_relation_seed_relations": 0,
+            "deferred_minkowski_certificate_constructions": 0,
+            "class_number_post_saturation_projections": 0,
+            "deferred_saturation_certificate_constructions": 0,
             "automorphism_orbit_plans": 0,
             "automorphism_orbit_available_plans": 0,
             "automorphism_orbit_useful_plans": 0,
@@ -1779,6 +2056,7 @@ class ClassUnitGroupEngine:
         self._proof_progress: Any = None
         self._proof_dependency_hashes: dict[str, str] = {}
         self._authenticated_cubic_relation_seed_cache: Any = _CUBIC_RELATION_SEED_UNREAD
+        self._quartic_relation_seed: Any = None
         self._projection_pause_started_ns: int | None = None
 
     def _stage(self, name: str, state: str, **details: Any) -> None:
@@ -1922,6 +2200,85 @@ class ClassUnitGroupEngine:
             )
         )
 
+    def _receive_quartic_minkowski_relation_seed(
+        self,
+        plan: Any,
+        records: Iterable[Any],
+        principal_witnesses: Iterable[Any],
+    ) -> bool:
+        """Retain one synchronous bounded quartic Minkowski prefix."""
+        if (
+            int(self.field.degree()) != 4
+            or self.algorithm != "auto"
+            or self._quartic_relation_seed is not None
+            or self.checkpoint_controller is not None
+            or self.progress is not None
+            or self._cancelled_callback_supplied
+            or self.components.factor_base
+            is not _optional_module("sagejs.number_fields.class_group_factor_base")
+            or self.components.relations
+            is not _optional_module("sagejs.number_fields.class_group_relations")
+        ):
+            return False
+        try:
+            retained_records = tuple(records)
+            witnesses = tuple(principal_witnesses)
+            if (
+                getattr(plan, "order", None) is not self.order
+                or tuple(getattr(plan, "assumptions", ()))
+                or "Minkowski" not in str(getattr(plan, "theorem", ""))
+                or int(plan.bound) > self.limits.max_factor_base_bound
+                or len(retained_records) > self.limits.max_factor_base_size
+                or len(witnesses) > len(retained_records)
+                or type(plan) is not self.components.factor_base.FactorBasePlan
+                or getattr(plan, "_factor_base_cache", None) is not retained_records
+                or any(
+                    type(record)
+                    is not self.components.factor_base.FactorBasePrimeRecord
+                    for record in retained_records
+                )
+            ):
+                return False
+            factor_base = tuple(record.prime_ideal for record in retained_records)
+            collector = self.components.relations.ExactRelationCollector(
+                self.order, factor_base
+            )
+            width = len(factor_base)
+            for position, witness in enumerate(witnesses):
+                row = tuple(1 if index == position else 0 for index in range(width))
+                collector.admit_witness(
+                    witness,
+                    source_ideal=factor_base[position],
+                    source_row=row,
+                    principal_row=row,
+                    provenance={
+                        "source": "bounded-quartic-minkowski-principal-prefix",
+                        "factor_base_position": position,
+                    },
+                )
+            seed = _QuarticMinkowskiRelationSeed(
+                _QUARTIC_RELATION_SEED_TOKEN,
+                self,
+                plan,
+                factor_base,
+                collector,
+            )
+            if not seed.matches(self):
+                return False
+            self._quartic_relation_seed = seed
+            self._bind_context_factor_base(factor_base, validated=True)
+            return True
+        except (
+            AttributeError,
+            ImportError,
+            IndexError,
+            KeyError,
+            TypeError,
+            ValueError,
+            ArithmeticError,
+        ):
+            return False
+
     def _bind_context_factor_base(
         self,
         factor_base: Iterable[Any],
@@ -2019,6 +2376,66 @@ class ClassUnitGroupEngine:
         value: Any = retained(self._live_context_token)
         return None if value is None else tuple(value)
 
+    def _bind_context_deferred_saturation_state(self, state: Any) -> bool:
+        bind = getattr(self.context, "_bind_live_deferred_saturation_state", None)
+        return bool(
+            callable(bind)
+            and self._live_context_token is not None
+            and bind(
+                self._live_context_token,
+                state,
+                state.authority_snapshot(),
+            )
+        )
+
+    def _bind_context_minkowski_class_number_one_state(self, state: Any) -> bool:
+        bind = getattr(
+            self.context, "_bind_live_minkowski_class_number_one_state", None
+        )
+        return bool(
+            callable(bind)
+            and self._live_context_token is not None
+            and bind(
+                self._live_context_token,
+                state,
+                state.authority_snapshot(),
+            )
+        )
+
+    def _context_minkowski_class_number_one_state_authenticated(
+        self, state: Any
+    ) -> bool:
+        authenticate = getattr(
+            self.context,
+            "_live_minkowski_class_number_one_state_authenticated",
+            None,
+        )
+        return bool(
+            callable(authenticate)
+            and self._live_context_token is not None
+            and authenticate(
+                self._live_context_token,
+                state,
+                state.authority_snapshot(),
+            )
+        )
+
+    def _context_deferred_saturation_state_authenticated(self, state: Any) -> bool:
+        authenticate = getattr(
+            self.context,
+            "_live_deferred_saturation_state_authenticated",
+            None,
+        )
+        return bool(
+            callable(authenticate)
+            and self._live_context_token is not None
+            and authenticate(
+                self._live_context_token,
+                state,
+                state.authority_snapshot(),
+            )
+        )
+
     def _context_generation_dependency_hashes(
         self, collector: Any, presentation: Any
     ) -> tuple[str, str] | None:
@@ -2084,7 +2501,9 @@ class ClassUnitGroupEngine:
         if callable(deactivate) and self._live_context_token is not None:
             deactivate(self._live_context_token)
 
-    def _bind_context_saturation_record(self, record: Any) -> None:
+    def _bind_context_saturation_record(
+        self, record: Any, *, allow_live_authentication: bool = True
+    ) -> None:
         bind = getattr(self.context, "_bind_live_saturation_record", None)
         if callable(bind) and self._live_context_token is not None:
             uninterrupted = (
@@ -2094,6 +2513,7 @@ class ClassUnitGroupEngine:
             )
             authenticated = bool(
                 uninterrupted
+                and allow_live_authentication
                 and _standard_live_saturation_record_is_valid(
                     record, self.field, self.order
                 )
@@ -4907,6 +5327,7 @@ class ClassUnitGroupEngine:
         *,
         plan: Any = None,
         proof_status: str = EXACT_RELATIONS_CONDITIONAL_GRH,
+        defer_record: bool = False,
     ) -> tuple[Any, Any, tuple[Any, ...], Any, Any, Any, Any]:
         """Boundedly enlarge class/unit lattices and re-run rigorous `h*R`."""
         original_units = tuple(units)
@@ -5060,9 +5481,88 @@ class ClassUnitGroupEngine:
             ):
                 try_unit_saturation(round_index)
 
+        state = _AdaptiveSaturationState(
+            _ADAPTIVE_SATURATION_STATE_TOKEN,
+            self,
+            original_units,
+            initial_bound,
+            required_primes,
+            attempts,
+            artifacts,
+        )
+        if defer_record and self._bind_context_deferred_saturation_state(state):
+            self._stage(
+                "saturation",
+                "complete" if index.index_one else "bounded",
+                index_bound=state.initial_bound,
+                remaining_index_bound=max(1, int(index.upper_index)),
+                required_primes=state.required_primes,
+                attempts=len(state.attempts),
+                rigorous=bool(index.rigorous),
+                certificate_deferred=True,
+            )
+            return collector, presentation, units, torsion, regulator, index, state
+        record = self._finalize_adaptive_saturation_record(
+            state,
+            collector,
+            presentation,
+            units,
+            torsion,
+            regulator,
+            index,
+            plan=plan,
+            proof_status=proof_status,
+        )
+        return collector, presentation, units, torsion, regulator, index, record
+
+    def _finalize_adaptive_saturation_record(
+        self,
+        state: Any,
+        collector: Any,
+        presentation: Any,
+        units: tuple[Any, ...],
+        torsion: Any,
+        regulator: Any,
+        index: Any,
+        *,
+        plan: Any,
+        proof_status: str,
+        from_deferred_projection: bool = False,
+    ) -> Any:
+        """Publish the deferred analytic certificate without repeating search."""
+        live_proof = self._context_analytic_proof()
+        if (
+            type(state) is not _AdaptiveSaturationState
+            or not state.matches(self)
+            or (
+                from_deferred_projection
+                and not self._context_deferred_saturation_state_authenticated(state)
+            )
+            or not self._context_relation_stage_authenticated(collector, presentation)
+            or live_proof is None
+            or len(live_proof) != 6
+            or len(live_proof[0]) != len(units)
+            or any(
+                retained is not supplied
+                for retained, supplied in zip(live_proof[0], units, strict=True)
+            )
+            or int(live_proof[1]) != int(presentation.order)
+            or int(live_proof[2]) != int(_value(torsion, ("order",), 0))
+            or live_proof[3] is not regulator
+            or live_proof[5] is not index
+        ):
+            raise ArithmeticError("deferred saturation state lost exact authority")
+        self._resource_usage["deferred_saturation_certificate_constructions"] += 1
         analytic_validation = self._analytic_validation_payload(index, regulator)
         final_generation_evidence, final_generation_verifier = (
-            current_generation_authority()
+            self._generation_authority(
+                plan,
+                tuple(collector.factor_base),
+                collector,
+                presentation,
+                proof_status,
+                _defer_live_authentication=True,
+            )
         )
         analytic_certificate = self._unit_index_certificate(
             units,
@@ -5075,16 +5575,16 @@ class ClassUnitGroupEngine:
         record = ClassUnitSaturationRecord(
             self.field,
             self.order,
-            original_units,
+            state.original_units,
             units,
-            index_bound=initial_bound,
-            required_primes=tuple(required_primes),
+            index_bound=state.initial_bound,
+            required_primes=state.required_primes,
             remaining_index_bound=max(1, int(index.upper_index)),
-            attempts=attempts,
+            attempts=state.attempts,
             analytic_validation=analytic_validation,
             analytic_certificate=analytic_certificate,
             analytic_generation_verifier=final_generation_verifier,
-            producer_artifacts=artifacts,
+            producer_artifacts=state.artifacts,
             analytic_module=self.components.analytic,
             analytic_workspace=self._analytic_workspace,
             reason=(
@@ -5093,7 +5593,10 @@ class ClassUnitGroupEngine:
                 else "bounded saturation did not isolate class/unit index one"
             ),
         )
-        self._bind_context_saturation_record(record)
+        self._bind_context_saturation_record(
+            record,
+            allow_live_authentication=not from_deferred_projection,
+        )
         self._checkpoint_capture({"saturation": record})
         self._stage(
             "saturation",
@@ -5104,7 +5607,7 @@ class ClassUnitGroupEngine:
             attempts=len(record._attempts),
             rigorous=record.rigorous,
         )
-        return collector, presentation, units, torsion, regulator, index, record
+        return record
 
     def _class_group(
         self,
@@ -5310,6 +5813,56 @@ class ClassUnitGroupEngine:
         except (AttributeError, ImportError, TypeError, ValueError, ArithmeticError):
             return None
 
+    def _direct_quartic_relation_seed(self) -> Any:
+        """Consume the exact live prefix issued by the bounded quartic producer."""
+        seed = self._quartic_relation_seed
+        self._quartic_relation_seed = None
+        if type(seed) is not _QuarticMinkowskiRelationSeed or not seed.matches(self):
+            return None
+        return seed
+
+    def _issue_class_number_projection(
+        self,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        units: tuple[Any, ...],
+        torsion: Any,
+        regulator: Any,
+        index: Any,
+        unit_rank: int,
+        proof_status: str,
+        saturation_state: Any = None,
+    ) -> Any:
+        self._phase_finish("class-number-total", self._started_ns)
+        self._stage(
+            "class-number-projection",
+            "complete",
+            class_number=int(presentation.order),
+            proof_status=proof_status,
+            rigorous=True,
+            after_adaptive_saturation=saturation_state is not None,
+        )
+        if saturation_state is not None:
+            self._resource_usage["class_number_post_saturation_projections"] += 1
+        self._projection_pause_started_ns = time.perf_counter_ns()
+        return _ClassNumberProjection(
+            _CLASS_NUMBER_PROJECTION_TOKEN,
+            self,
+            plan,
+            factor_base,
+            collector,
+            presentation,
+            units,
+            torsion,
+            regulator,
+            index,
+            unit_rank,
+            proof_status,
+            saturation_state,
+        )
+
     def _finish_class_unit_computation(
         self,
         plan: Any,
@@ -5322,7 +5875,9 @@ class ClassUnitGroupEngine:
         index: Any,
         unit_rank: int,
         initial_proof_status: str,
-    ) -> ClassUnitComputation:
+        *,
+        class_number_only: bool = False,
+    ) -> Any:
         """Finish the proof objects and maps after one rigorous `hR` stage."""
         (
             collector,
@@ -5343,7 +5898,68 @@ class ClassUnitGroupEngine:
             unit_rank,
             plan=plan,
             proof_status=initial_proof_status,
+            defer_record=class_number_only,
         )
+        if (
+            class_number_only
+            and index.index_one
+            and type(saturation_record) is _AdaptiveSaturationState
+            and (not self.proof or initial_proof_status == EXACT_UNCONDITIONAL)
+        ):
+            return self._issue_class_number_projection(
+                plan,
+                factor_base,
+                collector,
+                presentation,
+                units,
+                torsion,
+                regulator,
+                index,
+                unit_rank,
+                initial_proof_status,
+                saturation_record,
+            )
+        return self._finish_saturated_class_unit_computation(
+            plan,
+            factor_base,
+            collector,
+            presentation,
+            units,
+            torsion,
+            regulator,
+            index,
+            unit_rank,
+            initial_proof_status,
+            saturation_record,
+        )
+
+    def _finish_saturated_class_unit_computation(
+        self,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        units: tuple[Any, ...],
+        torsion: Any,
+        regulator: Any,
+        index: Any,
+        unit_rank: int,
+        initial_proof_status: str,
+        saturation_record: Any,
+    ) -> ClassUnitComputation:
+        if type(saturation_record) is _AdaptiveSaturationState:
+            saturation_record = self._finalize_adaptive_saturation_record(
+                saturation_record,
+                collector,
+                presentation,
+                units,
+                torsion,
+                regulator,
+                index,
+                plan=plan,
+                proof_status=initial_proof_status,
+                from_deferred_projection=True,
+            )
         unit_group = UnitGroupComputation(
             torsion,
             units,
@@ -5490,8 +6106,29 @@ class ClassUnitGroupEngine:
             # proof=True request is upgraded afterward by expressing every
             # Minkowski-required prime ideal in this exact presentation.
             discovery_proof = self.algorithm == "minkowski"
-            relation_seed = self._direct_cubic_relation_seed()
-            if relation_seed is None:
+            quartic_relation_seed = self._direct_quartic_relation_seed()
+            relation_seed = (
+                None
+                if quartic_relation_seed is not None
+                else self._direct_cubic_relation_seed()
+            )
+            if quartic_relation_seed is not None:
+                started = self._phase_start()
+                plan = quartic_relation_seed.plan
+                factor_base = quartic_relation_seed.factor_base
+                self._resource_usage["quartic_factor_base_seed_uses"] += 1
+                self._bind_context_factor_base(factor_base, validated=True)
+                self._phase_finish("factor-base", started)
+                self._stage(
+                    "factor-base",
+                    "complete",
+                    theorem=plan.theorem,
+                    assumptions=list(plan.assumptions),
+                    bound=int(plan.bound),
+                    size=len(factor_base),
+                    reused_quartic_minkowski_seed=True,
+                )
+            elif relation_seed is None:
                 plan, factor_base = self._factor_base(proof=discovery_proof)
                 relation_seed = self._cubic_relation_seed(plan, factor_base)
             else:
@@ -5516,7 +6153,17 @@ class ClassUnitGroupEngine:
             self._resource_usage["initial_relations_per_ideal"] = (
                 initial_relations_per_ideal
             )
-            if relation_seed is None:
+            if quartic_relation_seed is not None:
+                self._resource_usage["quartic_relation_seed_relations"] += len(
+                    quartic_relation_seed.collector.records
+                )
+                collector, presentation = self._relations(
+                    factor_base,
+                    unit_rank,
+                    collector=quartic_relation_seed.collector,
+                    relations_per_ideal=initial_relations_per_ideal,
+                )
+            elif relation_seed is None:
                 collector, presentation = self._relations(
                     factor_base,
                     unit_rank,
@@ -5563,18 +6210,7 @@ class ClassUnitGroupEngine:
                 and index.index_one
                 and (not self.proof or initial_proof_status == EXACT_UNCONDITIONAL)
             ):
-                self._phase_finish("class-number-total", self._started_ns)
-                self._stage(
-                    "class-number-projection",
-                    "complete",
-                    class_number=int(presentation.order),
-                    proof_status=initial_proof_status,
-                    rigorous=True,
-                )
-                self._projection_pause_started_ns = time.perf_counter_ns()
-                return _ClassNumberProjection(
-                    _CLASS_NUMBER_PROJECTION_TOKEN,
-                    self,
+                return self._issue_class_number_projection(
                     plan,
                     factor_base,
                     collector,
@@ -5597,6 +6233,7 @@ class ClassUnitGroupEngine:
                 index,
                 unit_rank,
                 initial_proof_status,
+                class_number_only=class_number_only,
             )
         except RuntimeError as error:
             if _is_cancellation(error):
@@ -6272,14 +6909,17 @@ def _retain_class_unit_engine_result(
 
 def _cached_class_number_projection(
     field: Any, cache_key: tuple[Any, ...], proof: bool
-) -> _ClassNumberProjection | None:
+) -> Any:
     cache = getattr(field, "_class_number_projection_cache", None)
     if not isinstance(cache, dict):
         return None
     projection = cache.get(cache_key)
     return (
         projection
-        if isinstance(projection, _ClassNumberProjection)
+        if isinstance(
+            projection,
+            (_ClassNumberProjection, _MinkowskiClassNumberOneProjection),
+        )
         and projection.matches(field, proof)
         else None
     )
@@ -6287,7 +6927,7 @@ def _cached_class_number_projection(
 
 def _retain_class_number_projection(
     field: Any,
-    projection: _ClassNumberProjection,
+    projection: Any,
     limits: ClassUnitEngineLimits,
 ) -> None:
     cache = getattr(field, "_class_number_projection_cache", None)
@@ -6422,6 +7062,14 @@ def class_unit_context(
                 upgraded,
             )
             return upgraded
+    projection = (
+        _cached_class_number_projection(field, cache_key, proof_value)
+        if use_cache
+        and algorithm == "auto"
+        and seed == 0
+        and selected_limits.to_dict() == ClassUnitEngineLimits().to_dict()
+        else None
+    )
     if (
         use_cache
         and int(field.degree()) == 3
@@ -6429,7 +7077,6 @@ def class_unit_context(
         and seed == 0
         and selected_limits.to_dict() == ClassUnitEngineLimits().to_dict()
     ):
-        projection = _cached_class_number_projection(field, cache_key, proof_value)
         if (
             projection is None
             and getattr(field, "_bounded_cubic_class_number_artifact", None) is None
@@ -6473,23 +7120,23 @@ def class_unit_context(
             if cached is not None:
                 return cached
             projection = _cached_class_number_projection(field, cache_key, proof_value)
-        if projection is not None:
-            result = projection.finish()
-            if not isinstance(cache, dict):
-                cache = {}
-                field._class_unit_engine_cache = cache
-            _retain_class_unit_engine_result(
-                cache,
-                cache_key,
-                field,
-                cache_order,
-                proof_value,
-                algorithm,
-                seed,
-                limits_key,
-                result,
-            )
-            return result
+    if projection is not None:
+        result = projection.finish()
+        if not isinstance(cache, dict):
+            cache = {}
+            field._class_unit_engine_cache = cache
+        _retain_class_unit_engine_result(
+            cache,
+            cache_key,
+            field,
+            cache_order,
+            proof_value,
+            algorithm,
+            seed,
+            limits_key,
+            result,
+        )
+        return result
     result = compute_class_unit_group(
         field,
         proof=proof_value,
@@ -6536,6 +7183,85 @@ _STANDARD_PUBLIC_CLASS_GROUP_VIEW = (
 )
 _STANDARD_PUBLIC_CLASS_GROUP_ADAPT_AND_SEAL = (
     _STANDARD_PUBLIC_CLASS_GROUP_MAPS.adapt_and_seal_public_class_group_projection
+)
+_STANDARD_BOUNDED_CLASS_GROUPS = __import__(
+    "sagejs.number_fields.class_groups", fromlist=["class_groups"]
+)
+
+
+def _standard_minkowski_class_number_one_finisher(
+    arithmetic_type: Any,
+    group_type: Any,
+    certificate_type: Any,
+    verify_certificate: Any,
+    result_type: Any,
+) -> Any:
+    """Capture exact constructors used by deferred Minkowski publication."""
+
+    def finish(field: Any, arithmetic: Any) -> Any:
+        if (
+            type(arithmetic) is not arithmetic_type
+            or arithmetic.field is not field
+            or arithmetic.proof_status != EXACT_UNCONDITIONAL
+        ):
+            raise TypeError("the deferred Minkowski proof changed type or field")
+        group = group_type()
+        certificate = certificate_type(
+            group,
+            [],
+            [],
+            1,
+            arithmetic.source,
+            "minkowski-principal-factor-base",
+            arithmetic,
+        )
+        if verify_certificate(certificate, max_elements=1) is not True:
+            raise ArithmeticError("the deferred class-number-one proof failed replay")
+        result = result_type(
+            field,
+            True,
+            certificate.source,
+            int(arithmetic.bound),
+            group,
+            certificate,
+            minkowski_factor_base_complete=True,
+        )
+        if type(result) is not result_type or int(result.order()) != 1:
+            raise ArithmeticError("the deferred Minkowski result changed semantics")
+        return result
+
+    return finish
+
+
+_STANDARD_MINKOWSKI_CLASS_NUMBER_ONE_FINISHER = (
+    _standard_minkowski_class_number_one_finisher(
+        _STANDARD_BOUNDED_CLASS_GROUPS.MinkowskiPrincipalFactorBaseCertificate,
+        _STANDARD_BOUNDED_CLASS_GROUPS._TrivialClassGroup,
+        _STANDARD_BOUNDED_CLASS_GROUPS.ClassGroupCertificate,
+        _STANDARD_BOUNDED_CLASS_GROUPS.ClassGroupCertificate.verify,
+        _STANDARD_BOUNDED_CLASS_GROUPS.ClassGroupSearchResult,
+    )
+)
+
+
+def _standard_bounded_quartic_producer(producer: Any) -> Any:
+    """Capture the exact bounded producer behind a non-forgeable closure."""
+
+    def run(field: Any, incomplete_receiver: Any, complete_receiver: Any) -> Any:
+        return producer(
+            field,
+            _incomplete_relation_receiver=incomplete_receiver,
+            _complete_relation_receiver=complete_receiver,
+        )
+
+    return run
+
+
+_STANDARD_BOUNDED_MINKOWSKI_CLASS_NUMBER_ONE_IMPL = (
+    _STANDARD_BOUNDED_CLASS_GROUPS.bounded_minkowski_class_number_one
+)
+_STANDARD_BOUNDED_MINKOWSKI_CLASS_NUMBER_ONE = _standard_bounded_quartic_producer(
+    _STANDARD_BOUNDED_MINKOWSKI_CLASS_NUMBER_ONE_IMPL
 )
 
 
@@ -6640,6 +7366,153 @@ def class_group(
                         "an interposed public class-group adapter failed verification"
                     )
     return answer
+
+
+def quartic_class_number_projection(field: Any, proof: bool | None = None) -> int:
+    """Run the default quartic scalar request through one resumable context."""
+    if int(field.degree()) != 4:
+        raise ValueError("the quartic class-number projection requires degree four")
+    proof_value = True if proof is None else bool(proof)
+    default_limits = ClassUnitEngineLimits()
+    projection_key = _class_number_projection_cache_key(proof_value, default_limits)
+    cached_projection = _cached_class_number_projection(
+        field, projection_key, proof_value
+    )
+    if cached_projection is not None:
+        return int(cached_projection.class_number)
+    limits_key = _class_unit_engine_limits_key(default_limits)
+    result_cache = getattr(field, "_class_unit_engine_cache", None)
+    result_key = (proof_value, "auto", 0, limits_key)
+    cached_result = _cached_class_unit_engine_result(
+        result_cache,
+        result_key,
+        field,
+        field.maximal_order(),
+        proof_value,
+        "auto",
+        0,
+        limits_key,
+    )
+    if cached_result is not None:
+        return int(cached_result.class_number())
+
+    engine_holder: list[Any] = []
+    class_number_one_holder: list[Any] = []
+
+    def receive_relation_seed(
+        plan: Any, records: Iterable[Any], witnesses: Iterable[Any]
+    ) -> bool:
+        if engine_holder:
+            return False
+        engine = ClassUnitGroupEngine(field, proof=proof_value, algorithm="auto")
+        if not engine._receive_quartic_minkowski_relation_seed(
+            plan, records, witnesses
+        ):
+            return False
+        engine_holder.append(engine)
+        return True
+
+    def receive_class_number_one(
+        plan: Any,
+        records: Iterable[Any],
+        witnesses: Iterable[Any],
+        arithmetic: Any,
+    ) -> bool:
+        del plan, records, witnesses
+        if class_number_one_holder or engine_holder:
+            return False
+        engine = ClassUnitGroupEngine(field, proof=proof_value, algorithm="auto")
+        projection = _MinkowskiClassNumberOneProjection(
+            _MINKOWSKI_CLASS_NUMBER_ONE_PROJECTION_TOKEN,
+            engine,
+            arithmetic,
+        )
+        if not projection.matches(field, proof_value):
+            return False
+        engine_holder.append(engine)
+        class_number_one_holder.append(projection)
+        return True
+
+    live_producer = _STANDARD_BOUNDED_CLASS_GROUPS.bounded_minkowski_class_number_one
+    bounded = (
+        _STANDARD_BOUNDED_MINKOWSKI_CLASS_NUMBER_ONE(
+            field, receive_relation_seed, receive_class_number_one
+        )
+        if live_producer is _STANDARD_BOUNDED_MINKOWSKI_CLASS_NUMBER_ONE_IMPL
+        else live_producer(field)
+    )
+    if bounded.field is not field:
+        raise ArithmeticError("the quartic class-number search changed fields")
+    if class_number_one_holder:
+        projection = class_number_one_holder[0]
+        _retain_class_number_projection(field, projection, default_limits)
+        return 1
+    if bounded.complete:
+        field._global_class_group_cache = bounded
+        return int(bounded.order())
+    if not engine_holder:
+        if bounded.minkowski_factor_base_complete:
+            return class_number(field, proof=proof_value, algorithm="minkowski")
+        engine_holder.append(
+            ClassUnitGroupEngine(field, proof=proof_value, algorithm="auto")
+        )
+    engine = engine_holder[0]
+    result = engine.run(class_number_only=True)
+    if isinstance(result, _ClassNumberProjection):
+        if not result.matches(field, proof_value):
+            raise ArithmeticError("the quartic class-number projection lost authority")
+        _retain_class_number_projection(field, result, default_limits)
+        return int(result.class_number)
+    answer = int(result.class_number())
+    if not isinstance(result_cache, dict):
+        result_cache = {}
+        field._class_unit_engine_cache = result_cache
+    _retain_class_unit_engine_result(
+        result_cache,
+        result_key,
+        field,
+        engine.order,
+        proof_value,
+        "auto",
+        0,
+        limits_key,
+        result,
+    )
+    return answer
+
+
+def quartic_class_number_projection_pending(
+    field: Any, proof: bool | None = None
+) -> bool:
+    """Return whether a valid default quartic scalar continuation is retained."""
+    if int(field.degree()) != 4:
+        return False
+    proof_value = True if proof is None else bool(proof)
+    limits = ClassUnitEngineLimits()
+    key = _class_number_projection_cache_key(proof_value, limits)
+    return _cached_class_number_projection(field, key, proof_value) is not None
+
+
+def quartic_class_number_one_projection_result(
+    field: Any, proof: bool | None = None
+) -> Any:
+    """Materialize a retained bounded class-number-one proof, if present."""
+    if int(field.degree()) != 4:
+        return None
+    proof_value = True if proof is None else bool(proof)
+    limits = ClassUnitEngineLimits()
+    key = _class_number_projection_cache_key(proof_value, limits)
+    projection = _cached_class_number_projection(field, key, proof_value)
+    if type(projection) is not _MinkowskiClassNumberOneProjection:
+        return None
+    result = projection.finish_bounded()
+    if (
+        getattr(result, "field", None) is not field
+        or getattr(result, "complete", None) is not True
+        or int(result.order()) != 1
+    ):
+        raise ArithmeticError("the retained quartic class-number-one proof changed")
+    return result
 
 
 def cubic_class_number_projection(field: Any, proof: bool | None = None) -> int:
