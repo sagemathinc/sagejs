@@ -24,15 +24,15 @@ function sanitizerEnvironment({ strictStringChecks = false } = {}) {
 /**
  * Keep deterministic sanitizer stress useful on Apple's much slower runtime.
  *
- * Linux retains the complete acceptance count. Two macOS rounds still
- * exercise distinct seeded values and every lifecycle edge repeatedly; more
- * rounds make individual files take tens of minutes under Apple ASan.
+ * Linux retains the complete acceptance count. One macOS round still executes
+ * every lifecycle edge; repeating a single witness twice takes over nine
+ * minutes under Apple ASan, while Linux provides the full stress coverage.
  */
 function sanitizerRounds(fullCount) {
   if (!Number.isSafeInteger(fullCount) || fullCount < 1) {
     throw new RangeError("sanitizer round count must be a positive integer");
   }
-  return process.platform === "darwin" ? Math.min(fullCount, 2) : fullCount;
+  return process.platform === "darwin" ? 1 : fullCount;
 }
 
 module.exports = { sanitizerEnvironment, sanitizerRounds };
