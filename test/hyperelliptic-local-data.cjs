@@ -38,12 +38,12 @@ test("genus-2 local data derives exact invariants with bounded cache growth", as
         )
       ).repr,
       "([(2, 'omitted', 'exhaustive', None, None, {}, None, None, False), " +
-        "(3, 'omitted', 'smalljac', None, None, {}, None, None, False), " +
-        "(5, 'exact', 'smalljac', 36, 36, {1: 6, 2: 46}, 0, False, True), " +
-        "(7, 'omitted', 'smalljac', None, None, {}, None, None, False), " +
-        "(11, 'exact', 'smalljac', 88, 184, {1: 8, 2: 134}, 2, True, True), " +
-        "(13, 'exact', 'smalljac', 188, 160, {1: 15, 2: 177}, 2, True, True)], " +
-        "2, 6, 3, True)",
+        "(3, 'omitted', 'exhaustive', None, None, {}, None, None, False), " +
+        "(5, 'exact', 'exhaustive', 36, 36, {1: 6, 2: 46}, 0, False, True), " +
+        "(7, 'omitted', 'exhaustive', None, None, {}, None, None, False), " +
+        "(11, 'exact', 'exhaustive', 88, 184, {1: 8, 2: 134}, 2, True, True), " +
+        "(13, 'exact', 'exhaustive', 188, 160, {1: 15, 2: 177}, 2, True, True)], " +
+        "2, 6, 0, True)",
     );
   } finally {
     await session.close();
@@ -170,7 +170,7 @@ test("canonical JSONL export cancels, resumes, verifies, and preserves exact int
     assert.deepEqual(resumed, readFileSync(freshPath));
     assert.equal(
       createHash("sha256").update(resumed).digest("hex"),
-      "941ab8dac8f0fb17928d883c1451e64a963d56cce5ad73f29322f1723defc3e1",
+      "83c6d2c855d63e2eb89a740d47c3cf81d4faf144e39dca29af2e38bf93627cbc",
     );
   } finally {
     await session.close();

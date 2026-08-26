@@ -150,12 +150,14 @@ test("the odd-degree genus-3 engine uses certified global data", async () => {
             "(C.conductor(), C.root_number(), C.bad_primes(),",
             " abs(value-0.2263) < 0.0001,",
             " L.last_diagnostics()['genus'],",
-            " L.last_diagnostics()['refinement_stable'])",
+            " L.last_diagnostics()['refinement_stable'],",
+            " L.last_diagnostics()['coefficient_backend_counts']",
+            "     .get('rforest', 0) > 0)",
           ].join("\n"),
           { timeout: 120_000 },
         )
       ).repr,
-      "(24055, 1, (5, 17, 283), True, 3, True)",
+      "(24055, 1, (5, 17, 283), True, 3, True, True)",
     );
   } finally {
     await session.close();

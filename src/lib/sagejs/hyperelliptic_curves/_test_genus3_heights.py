@@ -473,7 +473,10 @@ def test_real_period_abel_theta_integration():
         x_value + x_value**2 - 2 * x_value**4 - x_value**5 + x_value**6 + x_value**7
     )
     curve = HyperellipticCurve(f_value, 1 + x_value**2)
-    period_result = periods.real_period(curve, prec=64)
+    # Compute the shared period lattice with guard bits.  The achieved
+    # stability can be lower than the requested working precision, and every
+    # downstream Abel--Jacobi request must stay within that certified budget.
+    period_result = periods.real_period(curve, prec=80)
     raw_result = periods.abel_jacobi(
         curve,
         curve((0, 0)),

@@ -138,11 +138,12 @@ def central_weight_cache_info() -> dict[str, int]:
 class GlobalCoefficientPrefix:
     """One extendable exact global Dirichlet-coefficient prefix.
 
-    Genus-2 analytic computations explicitly use smalljac as their exact
-    local-factor supplier when that capability is present.  The public
-    `algorithm="auto"` local-factor API remains receipt-gated; an analytic
-    coefficient stream is a distinct consumer which requires many consecutive
-    factors and must not silently degrade to exhaustive point counting.
+    Genus-2 and genus-3 analytic computations explicitly use smalljac and
+    certified rforest, respectively, as their exact local-factor suppliers
+    when those capabilities are present.  The public `algorithm="auto"`
+    local-factor API remains receipt-gated; an analytic coefficient stream is
+    a distinct consumer which requires many consecutive factors and must not
+    silently degrade to exhaustive point counting.
     """
 
     def __init__(self, curve: Any) -> None:
@@ -205,14 +206,26 @@ class GlobalCoefficientPrefix:
                 smalljac_supported = getattr(
                     frobenius, "_rational_smalljac_supported", None
                 )
+                rforest_supported = getattr(
+                    frobenius, "_rational_rforest_supported", None
+                )
                 use_smalljac = (
                     cutoff >= 3
                     and callable(smalljac_supported)
                     and smalljac_supported(self.curve, max(3, start), cutoff)
                 )
-                if use_smalljac:
+                use_rforest = (
+                    not use_smalljac
+                    and cutoff >= 3
+                    and callable(rforest_supported)
+                    and rforest_supported(self.curve, max(3, start), cutoff)
+                )
+                explicit_algorithm = (
+                    "smalljac" if use_smalljac else "rforest" if use_rforest else None
+                )
+                if explicit_algorithm is not None:
 
-                    def smalljac_chunks() -> Any:
+                    def analytic_chunks() -> Any:
                         if start <= 2:
                             yield from packed_function(
                                 self.curve,
@@ -224,10 +237,10 @@ class GlobalCoefficientPrefix:
                             self.curve,
                             max(3, start),
                             cutoff,
-                            algorithm="smalljac",
+                            algorithm=explicit_algorithm,
                         )
 
-                    packed_chunks = smalljac_chunks()
+                    packed_chunks = analytic_chunks()
                 else:
                     packed_chunks = packed_function(
                         self.curve,
