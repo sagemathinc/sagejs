@@ -225,6 +225,10 @@ class Rational(runtime.element):
     def __ge__(self, other: Any) -> bool:
         return self._compare(other) >= 0
 
+    def __bool__(self) -> bool:
+        """A rational is false exactly when it is zero."""
+        return self._numerator != runtime.bigint(0)
+
     def __neg__(self) -> Rational:
         return Rational(-self._numerator, self._denominator)
 
