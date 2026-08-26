@@ -43,12 +43,14 @@ for (let round = 0; round < 200; round += 1) {
   }
 }
 
-if (process.platform === "win32") {
+if (process.platform === "win32" || process.platform === "darwin") {
   process.stdout.write(JSON.stringify({
     schema: "sagejs.ffi/nmod-matrix-lifecycle-v1",
     supported: false,
     dynamicRounds: 200,
-    reason: "ASan/UBSan C lifecycle witnesses are currently a Unix capability",
+    reason: process.platform === "darwin"
+      ? "one static-FLINT Apple ASan lifecycle schedule exceeds six minutes on the M1 witness host"
+      : "ASan/UBSan C lifecycle witnesses are currently a Unix capability",
   }) + "\n");
   process.exit(0);
 }
