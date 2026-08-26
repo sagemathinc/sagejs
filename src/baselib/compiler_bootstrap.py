@@ -215,6 +215,11 @@ def ρσ_string_primitive(value):
     return r"%js String(value)"
 
 
+def ρσ_native_jstype(value):
+    """Return JavaScript's primitive representation tag."""
+    return r"%js typeof value"
+
+
 def ρσ_string_find(value, needle):
     return r"%js String.prototype.indexOf.call(value, needle)"
 
@@ -267,6 +272,26 @@ def ρσ_math_tuple(values):
     return r"""%js (() => {
         const answer = Array.isArray(values) ? values : Array.from(values);
         return Object.freeze(answer);
+    })()"""
+
+
+def ρσ_fast_closed_binary(left, right, operation, missing):
+    return r"""%js (() => {
+        if (left !== null && right !== null &&
+            typeof left === "object" && typeof right === "object") {
+            const parent = left._parent;
+            if (parent !== undefined && parent === right._parent &&
+                parent._closedScalarArithmetic === true) {
+                switch (operation) {
+                    case "add": return left._add_(right);
+                    case "sub": return left._sub_(right);
+                    case "mul": return left._mul_(right);
+                    case "truediv": return left._truediv_(right);
+                    default: throw new Error("invalid closed binary operation");
+                }
+            }
+        }
+        return missing;
     })()"""
 
 

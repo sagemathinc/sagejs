@@ -1208,7 +1208,9 @@ class PolynomialElement(sage.Element):
                     runtime.integer_bigint(coefficient._denominator),
                 )
             else:
-                constant = backend.nmodPolyConstant(coefficient._value, base._modulus)
+                constant = backend.nmodPolyConstant(
+                    runtime.integer_bigint(coefficient._value), base._modulus
+                )
             result = backend.polyAdd(result, constant)
         return result
 
@@ -3737,10 +3739,16 @@ class PolynomialRingParent(sage.Parent):
         ):
             if self._base._kind == "ZMOD":
                 return PolynomialElement(
-                    self, backend.zmodPolyConstant(value._value, self._base._modulus)
+                    self,
+                    backend.zmodPolyConstant(
+                        runtime.integer_bigint(value._value), self._base._modulus
+                    ),
                 )
             return PolynomialElement(
-                self, backend.nmodPolyConstant(value._value, self._base._modulus)
+                self,
+                backend.nmodPolyConstant(
+                    runtime.integer_bigint(value._value), self._base._modulus
+                ),
             )
         if (
             self._base._kind == "GF_EXTENSION"
@@ -4155,7 +4163,7 @@ class MultivariatePolynomialRingParent(sage.Parent):
             denominator = rational._denominator
         elif self._base._kind in ["GF", "ZMOD"]:
             residue = self._base(value)
-            numerator = residue._value
+            numerator = runtime.integer_bigint(residue._value)
             denominator = runtime.bigint(1)
         elif self._base._kind == "GF_EXTENSION":
             residue = self._base(value)

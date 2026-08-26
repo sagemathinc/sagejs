@@ -17,5 +17,6 @@ bench/.native-prime-source-cache
 bench/.dense-prime-migration-cache/
 bench/.native-tate-corpus
 bench/.native-poc
+bench/finite-field-boundary/build/
 build/*
 .artifacts/
