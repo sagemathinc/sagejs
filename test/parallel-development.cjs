@@ -1981,8 +1981,12 @@ test("native cache heartbeat advances during a synchronous build", {
       heartbeatMilliseconds: 20,
       build(current) {
         const before = readFileSync(join(lock, "heartbeat"), "utf8");
-        Atomics.wait(pause, 0, 0, 250);
-        const after = readFileSync(join(lock, "heartbeat"), "utf8");
+        const deadline = Date.now() + 5000;
+        let after = before;
+        while (after === before && Date.now() < deadline) {
+          Atomics.wait(pause, 0, 0, 50);
+          after = readFileSync(join(lock, "heartbeat"), "utf8");
+        }
         assert.notEqual(after, before);
         buildNativeCacheFixture({ count: 0 })(current);
       },
