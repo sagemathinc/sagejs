@@ -61,8 +61,13 @@ small-coefficient ordinary rational-addition row and genus-2 object-cold
 rank-2/rank-4 proof assembly. Phase 9 is separately marked as a source-current
 acceptance regression, not folded into those two measured representation
 floors. The final four-platform refresh authenticates and enables only the six
-exact `GF(1009)` genus-2/genus-3 Cantor add, scalar, and progression envelopes;
-all unmatched automatic requests continue to fail closed to exact fallback.
+exact `GF(1009)` genus-2/genus-3 Cantor add, scalar, and progression envelopes.
+The subsequent branch-covering `c5622982` matrix replaces them with three
+named-domain entries spanning odd-prime, odd-degree one-infinity genus-2/3
+models, both `h = 0` and `h != 0`, primes 5 through 65521, and only the
+receipted batch/scalar/resource bounds. Split even-degree models, extension
+fields, neighboring primes, and all other automatic requests continue to fail
+closed to exact fallback.
 
 Linux x64, Windows x64, Linux ARM64, and macOS ARM64 native receipts agree on exact
 local-factor, Kummer, Cantor, scalar, and progression digests. Their
@@ -77,8 +82,15 @@ The completed foundation is **native public Cantor and Kummer arithmetic for
 genus 2 and 3**. It now accelerates ordinary divisor operations, element
 orders, group structures and maps, genus-3 local-factor certification,
 rational torsion and saturation, and height calculations without changing
-their mathematical contracts. Further representation-heavy optimization is
-deferred until the live exact-workspace compiler slice has been evaluated.
+their mathematical contracts. The first live exact-workspace evaluation is
+now recorded in
+`bench/hyperelliptic/competitive/genus2-height-native-integer-vector-evaluation.json`.
+Keeping the fixed 48-slot dyadic scratch vector live in GMP improves that
+recurrence by 6.3% at rank 2 and 7.8% at rank 4, but only 0.2--2.0% end to end,
+with identical rigorous enclosures and oracle checks. The accepted API is
+therefore useful, but it does not justify more representation machinery for
+this path; theorem/result checking and proof assembly remain the next measured
+bottleneck.
 
 This document is deliberately broader than that first project.  It defines a
 measured program for making Sage.js competitive with Magma and PARI across the

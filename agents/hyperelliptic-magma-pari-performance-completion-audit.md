@@ -3,24 +3,24 @@
 This scorecard applies the literal exit criteria in
 `agents/hyperelliptic-magma-pari-performance-plan.md` to the final exact
 cross-platform mathematical receipt source
-`70513bba22f7895dfab72e5879f5a5f2ca7d6478`. Its framed source-bundle digest
+`c562298260be498bfb2b0c61872b0d3ac9c06062`. Its framed source-bundle digest
 is `99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d`.
-The final combined-tree assembly through `0b37b74d` adds release evidence,
-documentation, test-boundary repairs, and bounded number-field integration
-repairs outside that framed hyperelliptic source bundle. It does not broaden
-the automatic-selection envelope authenticated by the four-platform receipts.
+The combined-tree assembly through `a7202ee0` adds release evidence,
+documentation, and analytic failure-receipt persistence outside that framed
+hyperelliptic source bundle.
 
 ## Release decision
 
 **Defensible combined-source release candidate, with narrow automatic
 selection.** The final source-current four-platform matrix passes at
-`70513bba`, and the checked-in release policy verifies 24 normalized receipts.
-It enables only six exact `GF(1009)` Cantor envelopes:
-genus-2/genus-3 add, 256-bit scalar batch, and progression. Every unmatched
-model, prime, operation, platform, or workload continues to fail closed to the
-existing exact dynamic/reference path. Explicit `algorithm="native"` remains
-available for future receipt collection, subject to ordinary capability,
-exactness, and resource checks.
+`c5622982`, and the checked-in release policy verifies 12 normalized receipts.
+It enables three branch-covered Cantor domains—add, 256-bit scalar batch, and
+progression—across odd-prime, odd-degree one-infinity genus-2/3 models with
+`h = 0` or `h != 0`, primes 5 through 65521, and only the recorded resource
+bounds. Every unmatched model, prime, operation, platform, or workload
+continues to fail closed to the existing exact dynamic/reference path.
+Explicit `algorithm="native"` remains available for future receipt collection,
+subject to ordinary capability, exactness, and resource checks.
 
 This is not a declaration that the entire Magma/PARI performance program is
 complete. Open competitor and cold-path gates remain visible below, and no
@@ -37,40 +37,35 @@ cross-architecture timing is treated as a direct speed comparison.
 | 4 — high-fan-out consumers | PASS WITH ARTIFACT-COLD CAVEAT | Genus-3 certification through `10^5` passes exactness, time, and memory under the documented 256 MiB V8 old-space envelope. Five separate process-cold rank-three maps after native-artifact publication take 0.532--0.563 s and pass the 0.8103 s gate. The first artifact-cold post-build sample took 1.224 s and remains an explicit miss. |
 | 5 — local-factor materialization | PASS | Frozen-source packed and coefficient streams agree through `10^5` on all four hosts; bounded coefficient streaming avoids public polynomial materialization. Public polynomial construction remains separately visible rather than hidden in packed timings. |
 | 6 — rational arithmetic | MIXED | The 1,024-by-32 many-prime workload is 1.42x faster than Magma. Growing-coefficient public addition is 1.97x Magma, but the small row is 7.81x and is an honest miss. Bounded-output non-torsion scalar rows pass at 1.664x for scalar 17/347-bit output and 0.407x for scalar 65/5,094-bit output. The separately labelled 256-bit 2-torsion row is 0.334x; it is not evidence about non-torsion `QQ` growth. The generalized `h != 0` row is a non-gating 2.181x. |
-| 7 — genus-2 heights | MIXED | Accuracy-matched single-height and warm reuse gates pass, exact proof/cancellation/cache review passes, and the optimized object-cold paths improve by about 2x. Rank-2 remains 322--335 ms and the four-vector case 738--777 ms, above the 80/380 ms final targets. |
+| 7 — genus-2 heights | MIXED | Accuracy-matched single-height and warm reuse gates pass, exact proof/cancellation/cache review passes, and the optimized object-cold paths improve by about 2x. The first `NativeIntegerVector` evaluation preserves identical enclosures and improves the isolated dyadic recurrence by 6.3--7.8%, but only 0.2--2.0% end to end; no further representation machinery is justified there. Rank-2 remains 322--335 ms and the four-vector case 738--777 ms, above the 80/380 ms final targets. |
 | 8 — periods and genus-3 heights | PASS | Genus-2/3 periods are within 2x PARI, the 12-point Abel--Jacobi batch beats separate Magma calls, and the genus-3 height is 7.29x faster than the exact historical path while preserving finite replay and refinement stability. Its `rigorous=false` label remains explicit. |
-| 9 — analytic `L`-functions | OPEN — FORMAL COMPETITOR RECEIPT | The source-current integration matrix passes exact coefficient-prefix extension, prepared-cache reuse and poisoning resistance, inverse-Mellin differentials, central derivatives, functional equations, twist parity, and sequential/two-worker equality. The required quiet-host five-sample PARI-bracketed acceptance receipt has not been recollected for this exact freeze, so the phase is not declared complete. No timing result is inferred from integration-test duration. |
-| 10 — auto selection and platforms | PASS, NARROWLY ENABLED | Exact native/dynamic receipts and the authenticated Wasm pack agree across Linux x64, Linux ARM64, macOS ARM64, and Windows x64. ASAN/UBSAN/LSAN, cache corruption, bounded output, cancellation/recovery, and package smoke pass. The policy verifies 24 receipts and enables only six exact model/workload cells. |
+| 9 — analytic `L`-functions | OPEN — FORMAL ACCEPTANCE TIMEOUT | The source-current integration matrix passes exact coefficient-prefix extension, prepared-cache reuse and poisoning resistance, inverse-Mellin differentials, central derivatives, functional equations, twist parity, and sequential/two-worker equality. The quiet-host five-sample PARI-bracketed run reaches the analytic competitive stage but exhausts its 600-second Sage.js evaluator bound before producing the comparison matrix. The transactional `phase9-receipt-linux-x64.json` failure artifact is authoritative; the phase is not declared complete, and no ratio is inferred from the timeout. |
+| 10 — auto selection and platforms | PASS, BRANCH-COVERED DOMAIN | Fresh native/dynamic receipts agree across Linux x64, Linux ARM64, macOS ARM64, and Windows x64 on 2,020 add rows, 148 scalar rows, and 2,160 progression rows. The policy verifies 12 receipts and enables three named-domain operations. Split even-degree models, extension fields, primes outside 5--65521, wider scalars, and larger workloads remain exact fallback. Prior ASAN/UBSAN/LSAN, cache-corruption, bounded-output, cancellation/recovery, and package-smoke evidence is reused only because the authenticated framed runtime source bundle is byte-identical, with that carry-forward recorded explicitly. |
 
-## Enabled exact automatic-selection envelope
+## Enabled branch-covered automatic-selection envelope
 
-Six automatic-selection entries are enabled from the final four-platform
-receipts. Both exact model fingerprints are restricted to `GF(1009)`:
+Three automatic-selection entries are enabled from the final four-platform
+domain receipts. Each covers genus 2 and 3 over odd prime fields, odd-degree
+one-infinity models, and both `h = 0` and `h != 0`.
 
-- genus 2:
-  `9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234`;
-- genus 3:
-  `4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279`.
+| Operation | Prime interval | Batch interval | Scalar bound | Resource bound |
+|---|---:|---:|---:|---:|
+| add | 5--65,521 | 1--1,000 | 0 bits | 200,096 bytes |
+| scalar | 5--65,521 | 1--64 | 256 bits | 11,360 bytes |
+| progression | 5--65,521 | 1--1,000 | 0 bits | 72,224 bytes |
 
-| Operation | Exact batch | Scalar bound | Resource bound |
-|---|---:|---:|---:|
-| add | 1,000 | 0 bits | 200,096 bytes |
-| scalar | 64 | 256 bits | 11,360 bytes |
-| progression | 1,000 | 0 bits | 72,224 bytes |
-
-The policy does not authorize a neighboring prime, a different curve, a
-smaller or larger batch, a broader model class, Kummer, Frobenius, group
-structure, rational arithmetic, or height arithmetic. Those cells remain
-exact fallbacks until a future source freeze supplies their own receipts.
+The policy does not authorize split even-degree models, extension fields,
+primes outside the recorded interval, larger batches, wider scalars, Kummer,
+Frobenius, group structure, rational arithmetic, or height arithmetic. Those
+cells remain exact fallbacks until a future source freeze supplies their own
+receipts.
 
 ## Durable release evidence
 
-- four-platform human report:
-  `bench/hyperelliptic/cross-platform/results/report-70513bba.md`;
-- raw primary and portable JSON receipts:
-  `bench/hyperelliptic/cross-platform/results/*-70513bba*.json`;
-- normalized evidence and 24 receipt documents:
-  `bench/hyperelliptic/cross-platform/results/policy-70513bba/`;
+- raw four-platform domain JSON receipts:
+  `bench/hyperelliptic/cross-platform/results/*-c5622982-domain.json`;
+- normalized evidence and 12 receipt documents:
+  `bench/hyperelliptic/cross-platform/results/policy-c5622982/`;
 - generated release allowlist:
   `architecture/hyperelliptic-auto-receipt-policy.json`.
 

@@ -48,7 +48,11 @@ version, an undeclared host, or a noisy one-minute load.  It records `uptime`,
 `uname`, `lscpu`, memory, top processes, governor information, algorithm-
 affecting environment variables, the GP executable digest, the successful
 build preflight, and SHA-256 identities for every mathematical and harness
-source file.
+source file. If an exception or evaluator timeout occurs before the ordinary
+acceptance object exists, the runner transactionally writes a distinct
+`analytic-phase9-failure-v1` receipt with that same provenance and the complete
+error stack. A structurally valid failure receipt remains a failed performance
+gate; it is evidence, never a pass.
 
 The measured one-sample development-host path is 3 minutes 11 seconds for the
 competitive rows plus 20--80 seconds for exact evidence, depending on whether
@@ -57,8 +61,9 @@ have an expected quiet-host wall time of 15--19 minutes.  The hard contract is
 20 minutes.  The
 competitive benchmark and exact evidence each have their own bounded timeout;
 the complete receipt also fails validation if total wall time exceeds the
-declared bound.  A failing numerical gate is still written transactionally as
-an honest receipt and makes the acceptance command exit nonzero.
+declared bound. A failing numerical gate or thrown benchmark stage is still
+written transactionally as honest evidence and makes the acceptance command
+exit nonzero.
 
 Validate a checked-in receipt against the current sources with:
 

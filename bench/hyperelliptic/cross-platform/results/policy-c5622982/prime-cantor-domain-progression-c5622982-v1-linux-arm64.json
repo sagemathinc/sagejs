@@ -1,0 +1,102 @@
+{
+  "schema": "sagejs.hyperelliptic-auto-receipt/v1",
+  "platform": "linux-arm64",
+  "source_bundle": {
+    "algorithm": "sagejs.source-bundle-sha256/v1",
+    "paths": [
+      "packages/flint-wasm/auto-receipt-policy.mjs",
+      "packages/flint-wasm/evaluator.mjs",
+      "packages/flint-wasm/release/production-layout.json",
+      "packages/flint-wasm/scripts/build.cjs",
+      "packages/flint/src/addon.h",
+      "packages/flint/src/hyperelliptic/smalljac.c",
+      "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",
+      "src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
+      "src/lib/sagejs/hyperelliptic_curves/frobenius.py",
+      "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_formulas.py",
+      "src/lib/sagejs/hyperelliptic_curves/group_structure.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py",
+      "src/lib/sagejs/hyperelliptic_curves/rforest.py",
+      "tools/math-dispatch/hyperelliptic-auto-receipt-loader.cjs",
+      "tools/math-dispatch/hyperelliptic-auto-receipt-policy.cjs",
+      "tools/native-kernel/wasm-bridge.cjs",
+      "tools/runtime-bootstrap.ts",
+      "tools/task-evaluator.ts"
+    ],
+    "sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+    "source_commit": "c562298260be498bfb2b0c61872b0d3ac9c06062"
+  },
+  "corpus": {
+    "id": "prime-cantor-domain-v1",
+    "path": "bench/hyperelliptic/cross-platform/domain-corpus-v1.json",
+    "sha256": "885ef40a2cb4b6ecdb801a8ee1c8d24334d6632a6522e93d5f4106b665c85b1f"
+  },
+  "backend": "prime-cantor",
+  "operation": "progression",
+  "model_evidence": {
+    "kind": "domain-envelope",
+    "domain_id": "prime-cantor-odd-v1",
+    "constraints": {
+      "genus": [
+        2,
+        3
+      ],
+      "field_kind": [
+        "prime-field"
+      ],
+      "model_kind": [
+        "odd-degree-one-infinity"
+      ],
+      "h_kind": [
+        "zero",
+        "nonzero"
+      ]
+    }
+  },
+  "envelope_evidence": {
+    "prime_min": 5,
+    "prime_max": 65521,
+    "interval_start_min": 5,
+    "interval_stop_max": 65521,
+    "interval_span_max": 1,
+    "batch_items_min": 1,
+    "batch_items_max": 1000,
+    "scalar_bits_max": 0,
+    "resource_bytes_max": 72224
+  },
+  "exact": {
+    "harness_sha256": "cbc4dad80e62b46674a5caaff28cac33009c4441e392fd4de19d97cf753fc583",
+    "targets": {
+      "dynamic": {
+        "result_sha256": "7c642303e3002bb9c17ccb555b60cbe50f33270f3ff0c430b71bcaf1ab26b161"
+      },
+      "native": {
+        "result_sha256": "7c642303e3002bb9c17ccb555b60cbe50f33270f3ff0c430b71bcaf1ab26b161"
+      }
+    }
+  },
+  "evidence": {
+    "failures": {
+      "missing-artifact": {
+        "status": "passed",
+        "artifact_sha256": "272606c4c28cee1ec134eeb262dc3bd0bf0fcaa1408bf5bea59e97a1ca004061"
+      },
+      "cancellation": {
+        "status": "passed",
+        "artifact_sha256": "8af438e501f590abc1ba0be0bfcacc2b986c472cf521e57ea34580a890efe362"
+      },
+      "memory-exhaustion": {
+        "status": "passed",
+        "artifact_sha256": "8af438e501f590abc1ba0be0bfcacc2b986c472cf521e57ea34580a890efe362"
+      },
+      "worker-loss": {
+        "status": "passed",
+        "artifact_sha256": "8af438e501f590abc1ba0be0bfcacc2b986c472cf521e57ea34580a890efe362"
+      }
+    },
+    "sanitizers": {}
+  }
+}

@@ -161,9 +161,19 @@ node bench/hyperelliptic/cross-platform/release-policy.cjs --check
 node scripts/hyperelliptic-auto-receipt-policy.cjs verify
 ```
 
-The generated policy is intentionally an allowlist of exact model and workload
-envelopes. It is not permission to widen an entry to a neighboring prime,
-larger batch, broader model class, or different operation. A release without a
-matching verified entry uses the existing exact dynamic/reference path;
-`algorithm="native"` remains an explicit developer or receipt-collection
-choice subject to the ordinary capability and resource checks.
+The generated policy is intentionally an allowlist of receipt-backed model and
+workload envelopes. The `c5622982` freeze replaces the two `GF(1009)` exact
+fingerprints with three named-domain entries: add, scalar, and progression for
+odd-prime, odd-degree one-infinity genus-2/3 models, `h = 0` or `h != 0`, primes
+5 through 65521, and only the recorded resource bounds. Its 12 normalized
+receipts bind the four raw `*-c5622982-domain.json` artifacts. Failure and
+sanitizer evidence from `70513bba` is carried forward only because the framed
+mathematical runtime source bundle is byte-identical, and that provenance is
+explicit in `policy-c5622982/evidence-index.json`.
+
+This does not authorize split even-degree models, extension fields,
+neighboring primes, larger batches, wider scalars, or different operations. A
+release without a matching verified entry uses the existing exact
+dynamic/reference path; `algorithm="native"` remains an explicit developer or
+receipt-collection choice subject to the ordinary capability and resource
+checks.
