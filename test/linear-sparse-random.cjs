@@ -36,6 +36,13 @@ function runSageJs(source) {
   try {
     const script = join(directory, "witness.py");
     writeFileSync(script, source);
+    if (process.platform === "win32") {
+      return run(
+        process.execPath,
+        [join(root, "bin", "sagejs-source.cjs"), "--python", script],
+        "",
+      );
+    }
     return run(resolve(root, "bin", "sagejs"), ["--python", script], "");
   } finally {
     rmSync(directory, { recursive: true, force: true });

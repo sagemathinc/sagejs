@@ -300,7 +300,10 @@ imported_method = ImportedMethod()
   if (process.platform === "win32") {
     // Windows has no thread-directed POSIX SIGINT. An uncooperative loop is
     // interrupted by replacing its worker, so state from that worker is lost.
-    await assert.rejects(session.evaluate("value"), /value is not defined/);
+    await assert.rejects(
+      session.evaluate("value"),
+      /name 'value' is not defined/,
+    );
     await session.evaluate("value = 12");
   } else {
     assert.equal((await session.evaluate("value")).repr, "12");
