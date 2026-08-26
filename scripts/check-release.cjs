@@ -102,6 +102,11 @@ assert.ok(
 const tagIndex = process.argv.indexOf("--tag");
 if (tagIndex >= 0) {
   const tag = process.argv[tagIndex + 1];
-  assert.equal(tag, `v${rootPackage.version}`, "tag must match package version");
+  const version = rootPackage.version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  assert.match(
+    tag,
+    new RegExp(`^v${version}(?:\\+release\\.[1-9]\\d*)?$`),
+    "tag must match the package version or its numbered recovery tag",
+  );
 }
 console.log(`Sage.js ${rootPackage.version} release metadata is consistent.`);
